@@ -1419,28 +1419,24 @@ export default function ReportQA() {
       <LiveRegion message={liveAnnouncement} />
       <div 
         className={cn(
-          "p-3 md:p-6 space-y-4 md:space-y-6 h-[calc(100vh-4rem)] pb-20 md:pb-0",
+          "p-0 sm:p-3 md:p-6 sm:space-y-4 md:space-y-6 h-[calc(100vh-4rem)] pb-16 sm:pb-20 md:pb-0",
           isFullScreen && "report-qa-fullscreen"
         )}
         role="main"
         aria-label="Report Q&A Chat"
       >
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center justify-between">
-        <div>
-          <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-foreground">Report Q&A</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
-            Upload investment reports and ask questions to generate summaries
-          </p>
+      {/* Header - compact on mobile */}
+      <div className="flex items-center justify-between px-3 py-2 sm:px-0 sm:py-0 sm:flex-col sm:items-start sm:gap-3 md:flex-row md:items-center border-b sm:border-b-0 border-border/50">
+        <div className="flex items-center gap-2 min-w-0">
+          <h1 className="text-base sm:text-xl md:text-2xl font-bold text-foreground truncate">Report Q&A</h1>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-1.5 sm:gap-2">
           <FullScreenToggle isFullScreen={isFullScreen} onToggle={toggleFullScreen} />
-          <Button onClick={handleNewChat} className="gap-1.5 h-8 text-xs sm:h-9 sm:text-sm">
+          <Button onClick={handleNewChat} className="gap-1.5 h-8 text-xs sm:h-9 sm:text-sm" size="sm">
             <Plus className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">New Chat</span>
-            <span className="sm:hidden">New</span>
           </Button>
-          <Button variant="outline" onClick={() => setShowHistory(true)} className="gap-1.5 h-8 text-xs sm:h-9 sm:text-sm">
+          <Button variant="outline" onClick={() => setShowHistory(true)} className="gap-1.5 h-8 text-xs sm:h-9 sm:text-sm" size="sm">
             <History className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">History</span>
             {savedConversations.length > 0 && (
@@ -1455,6 +1451,7 @@ export default function ReportQA() {
               onClick={handleGeneratePDFAttachment} 
               className="gap-1.5 h-8 text-xs sm:h-9 sm:text-sm"
               disabled={isGeneratingPDF}
+              size="sm"
             >
               {isGeneratingPDF ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -1465,15 +1462,18 @@ export default function ReportQA() {
             </Button>
           )}
           {uploadedReports.length > 0 && (
-            <Button variant="outline" onClick={clearAll} className="gap-1.5 h-8 text-xs sm:h-9 sm:text-sm">
+            <Button variant="outline" onClick={clearAll} className="gap-1.5 h-8 text-xs sm:h-9 sm:text-sm" size="sm">
               <X className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Clear All</span>
             </Button>
           )}
+          <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block w-full">
+            Upload investment reports and ask questions to generate summaries
+          </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 h-[calc(100%-4rem)] md:h-[calc(100%-5rem)]">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-0 sm:gap-4 md:gap-6 h-[calc(100%-3rem)] sm:h-[calc(100%-4rem)] md:h-[calc(100%-5rem)]">
         {/* Upload Section - Hidden on mobile, accessible via MobileReportsPanel */}
         {showReportsPanel && (
         <Card className="hidden lg:flex lg:col-span-1 flex-col">
@@ -1609,64 +1609,123 @@ export default function ReportQA() {
         )}
 
         {/* Chat Section */}
-        <Card className={cn("flex flex-col overflow-hidden min-h-0", showReportsPanel ? "lg:col-span-2" : "lg:col-span-3")}>
-          <CardHeader className="pb-3 px-3 sm:px-6">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:justify-between">
-              <div className="flex items-center gap-2">
-                {!showReportsPanel && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={handleToggleReportsPanel}
-                    title="Show reports panel (⌘B)"
-                  >
-                    <FileText className="h-4 w-4" />
-                  </Button>
-                )}
-                <MessageSquare className="h-5 w-5" />
+        <Card className={cn("flex flex-col overflow-hidden min-h-0 border-0 shadow-none sm:border sm:shadow-sm rounded-none sm:rounded-lg", showReportsPanel ? "lg:col-span-2" : "lg:col-span-3")}>
+          <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6 py-2 sm:py-4 flex-shrink-0">
+            {/* Mobile: single compact row — title + model + overflow menu */}
+            <div className="flex items-center gap-2 sm:hidden">
+              {!showReportsPanel && (
+                <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0" onClick={handleToggleReportsPanel}>
+                  <FileText className="h-3.5 w-3.5" />
+                </Button>
+              )}
+              <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                <MessageSquare className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
                 {isEditingMainTitle && conversationId ? (
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 flex-1">
                     <Input
                       value={mainTitleEdit}
                       onChange={(e) => setMainTitleEdit(e.target.value)}
-                      className="h-7 w-48 text-sm"
+                      className="h-7 text-xs flex-1"
                       autoFocus
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') handleSaveTitle(conversationId, mainTitleEdit);
                         if (e.key === 'Escape') setIsEditingMainTitle(false);
                       }}
                     />
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() => handleSaveTitle(conversationId, mainTitleEdit)}
-                    >
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleSaveTitle(conversationId, mainTitleEdit)}>
                       <Check className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() => setIsEditingMainTitle(false)}
-                    >
-                      <X className="h-3 w-3" />
                     </Button>
                   </div>
                 ) : (
+                  <span 
+                    className="text-sm font-semibold truncate cursor-pointer"
+                    onClick={() => {
+                      if (conversationId) {
+                        setMainTitleEdit(getCurrentTitle());
+                        setIsEditingMainTitle(true);
+                      }
+                    }}
+                  >
+                    {getCurrentTitle()}
+                  </span>
+                )}
+              </div>
+              <ModelSelector
+                selectedModel={selectedModel}
+                onModelChange={setSelectedModel}
+                disabled={isProcessing}
+              />
+              {/* Mobile overflow menu for all toolbar actions */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  {conversationId && (
+                    <>
+                      <DropdownMenuItem onClick={() => handleTogglePin(conversationId)}>
+                        <Pin className="h-3.5 w-3.5 mr-2" />
+                        {pinnedIds.includes(conversationId) ? 'Unpin' : 'Pin'} Chat
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
+                  <DropdownMenuItem asChild>
+                    <div className="p-0"><ChatThemeSelector onThemeChange={setChatTheme} /></div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <div className="p-0">
+                      <ConversationExport
+                        messages={messages}
+                        title={getCurrentTitle()}
+                        reportNames={uploadedReports.map(r => r.name)}
+                        conversationId={conversationId}
+                      />
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <div className="p-0">
+                      <AutoSummarize
+                        messages={messages.map(m => ({ role: m.role, content: m.content }))}
+                        reportNames={uploadedReports.map(r => r.name)}
+                        disabled={messages.length < 2}
+                      />
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <div className="p-0"><AccessibilitySettings /></div>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            {/* Desktop: full toolbar layout (unchanged) */}
+            <div className="hidden sm:flex sm:flex-row sm:items-center gap-2 sm:justify-between">
+              <div className="flex items-center gap-2">
+                {!showReportsPanel && (
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleToggleReportsPanel} title="Show reports panel (⌘B)">
+                    <FileText className="h-4 w-4" />
+                  </Button>
+                )}
+                <MessageSquare className="h-5 w-5" />
+                {isEditingMainTitle && conversationId ? (
+                  <div className="flex items-center gap-2">
+                    <Input value={mainTitleEdit} onChange={(e) => setMainTitleEdit(e.target.value)} className="h-7 w-48 text-sm" autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleSaveTitle(conversationId, mainTitleEdit);
+                        if (e.key === 'Escape') setIsEditingMainTitle(false);
+                      }}
+                    />
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleSaveTitle(conversationId, mainTitleEdit)}><Check className="h-3 w-3" /></Button>
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsEditingMainTitle(false)}><X className="h-3 w-3" /></Button>
+                  </div>
+                ) : (
                   <div className="flex items-center gap-2 min-w-0">
-                    <CardTitle className="text-base sm:text-lg truncate max-w-[120px] sm:max-w-none">{getCurrentTitle()}</CardTitle>
+                    <CardTitle className="text-lg">{getCurrentTitle()}</CardTitle>
                     {conversationId && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => {
-                          setMainTitleEdit(getCurrentTitle());
-                          setIsEditingMainTitle(true);
-                        }}
-                      >
+                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setMainTitleEdit(getCurrentTitle()); setIsEditingMainTitle(true); }}>
                         <Pencil className="h-3 w-3" />
                       </Button>
                     )}
@@ -1674,48 +1733,21 @@ export default function ReportQA() {
                 )}
               </div>
               
-              {/* Action bar - wraps on mobile */}
-              <div className="flex items-center gap-1 flex-wrap flex-shrink-0">
-                {/* Model Selector */}
-                <ModelSelector
-                  selectedModel={selectedModel}
-                  onModelChange={setSelectedModel}
-                  disabled={isProcessing}
-                />
-                <Separator orientation="vertical" className="h-6 mx-1 hidden sm:block" />
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <ModelSelector selectedModel={selectedModel} onModelChange={setSelectedModel} disabled={isProcessing} />
+                <Separator orientation="vertical" className="h-6 mx-1" />
                 {conversationId && (
                   <>
-                    <PinConversation
-                      conversationId={conversationId}
-                      isPinned={pinnedIds.includes(conversationId)}
-                      onTogglePin={handleTogglePin}
-                    />
-                    <ConversationTags
-                      tags={conversationTags.get(conversationId) || []}
-                      onAddTag={handleAddTag}
-                      onRemoveTag={handleRemoveTag}
-                    />
+                    <PinConversation conversationId={conversationId} isPinned={pinnedIds.includes(conversationId)} onTogglePin={handleTogglePin} />
+                    <ConversationTags tags={conversationTags.get(conversationId) || []} onAddTag={handleAddTag} onRemoveTag={handleRemoveTag} />
                   </>
                 )}
                 <ChatThemeSelector onThemeChange={setChatTheme} />
-                <ConversationExport
-                  messages={messages}
-                  title={getCurrentTitle()}
-                  reportNames={uploadedReports.map(r => r.name)}
-                  conversationId={conversationId}
-                />
-                <AutoSummarize
-                  messages={messages.map(m => ({ role: m.role, content: m.content }))}
-                  reportNames={uploadedReports.map(r => r.name)}
-                  disabled={messages.length < 2}
-                />
-                <span className="hidden sm:inline-flex">
-                  <KeyboardShortcutsHelp />
-                </span>
+                <ConversationExport messages={messages} title={getCurrentTitle()} reportNames={uploadedReports.map(r => r.name)} conversationId={conversationId} />
+                <AutoSummarize messages={messages.map(m => ({ role: m.role, content: m.content }))} reportNames={uploadedReports.map(r => r.name)} disabled={messages.length < 2} />
+                <KeyboardShortcutsHelp />
                 <AccessibilitySettings />
-                {conversationId && (
-                  <Badge variant="outline" className="text-xs ml-2 whitespace-nowrap hidden sm:inline-flex">Auto-saving</Badge>
-                )}
+                {conversationId && <Badge variant="outline" className="text-xs ml-2 whitespace-nowrap">Auto-saving</Badge>}
               </div>
             </div>
             <CardDescription className="hidden sm:block">
@@ -1724,21 +1756,15 @@ export default function ReportQA() {
                 : 'Ask questions about the uploaded report'}
             </CardDescription>
             
-            {/* Show current conversation tags */}
             {conversationId && (conversationTags.get(conversationId) || []).length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-2">
-                <ConversationTags
-                  tags={conversationTags.get(conversationId) || []}
-                  onAddTag={handleAddTag}
-                  onRemoveTag={handleRemoveTag}
-                  compact
-                />
+              <div className="flex flex-wrap gap-1 mt-1 sm:mt-2">
+                <ConversationTags tags={conversationTags.get(conversationId) || []} onAddTag={handleAddTag} onRemoveTag={handleRemoveTag} compact />
               </div>
             )}
           </CardHeader>
-          <CardContent id="chat-main" className="flex-1 flex flex-col min-h-0 overflow-hidden px-3 sm:px-6">
+          <CardContent id="chat-main" className="flex-1 flex flex-col min-h-0 overflow-hidden px-2 sm:px-6">
             {/* Messages */}
-            <ScrollArea className="flex-1 pr-2 sm:pr-4 mb-4" aria-label="Chat messages" role="log" aria-live="polite">
+            <ScrollArea className="flex-1 pr-1 sm:pr-4 mb-2 sm:mb-4" aria-label="Chat messages" role="log" aria-live="polite">
               {messages.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-center p-4 sm:p-8">
                   <div className="space-y-4">
@@ -1783,7 +1809,7 @@ export default function ReportQA() {
                   </div>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-2 sm:space-y-4">
                   {messages.map((message, index) => {
                     const previousMessage = index > 0 ? messages[index - 1] : null;
                     const showDateSep = shouldShowDateSeparator(
@@ -1794,15 +1820,15 @@ export default function ReportQA() {
                     return (
                       <div key={message.id}>
                         {showDateSep && <MessageDateSeparator date={message.timestamp} />}
-                        <div className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`flex gap-2 sm:gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                           {message.role === 'assistant' && (
-                        <div className={cn("h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0", getAccentClass())}>
+                        <div className={cn("hidden sm:flex h-8 w-8 rounded-full items-center justify-center flex-shrink-0", getAccentClass())}>
                           <Bot className="h-4 w-4 text-primary" />
                         </div>
                       )}
                       <div 
                         className={cn(
-                          "max-w-[90%] sm:max-w-[80%] rounded-lg p-2.5 sm:p-3",
+                          "max-w-[95%] sm:max-w-[80%] rounded-lg sm:rounded-xl p-2 sm:p-3",
                           message.role === 'user' ? 'qa-chat-bubble-user' : 'qa-chat-bubble-assistant',
                           getMessageBgClass(message.role)
                         )}
@@ -1980,8 +2006,8 @@ export default function ReportQA() {
             )}
 
             {/* Input */}
-            <div className="space-y-1 pt-2 border-t">
-              <div className="flex gap-2 items-end">
+            <div className="space-y-1 pt-1.5 sm:pt-2 border-t flex-shrink-0">
+              <div className="flex gap-1.5 sm:gap-2 items-end">
                 <Textarea
                   ref={inputRef}
                   placeholder={
