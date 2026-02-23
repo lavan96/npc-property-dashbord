@@ -127,7 +127,7 @@ export function MobileNav() {
                 )}
               </button>
             </SheetTrigger>
-            <SheetContent side="left" className="p-0 w-[280px]">
+            <SheetContent side="left" className="p-0 w-[280px]" hideClose>
               <MobileSidebar onNavigate={() => setIsMoreOpen(false)} />
             </SheetContent>
           </Sheet>
