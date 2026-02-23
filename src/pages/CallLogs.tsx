@@ -1519,7 +1519,8 @@ const CallLogs = () => {
                   <CallToolCalls artifactMessages={selectedCall.artifact_messages as any[]} />
                 </TabsContent>
 
-                <TabsContent value="analysis" className="space-y-4 p-1 sm:p-2 overflow-hidden">
+                <TabsContent value="analysis" className="p-1 sm:p-2 overflow-hidden">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Call Quality Score */}
                   <Card>
                     <CardHeader className="pb-2">
@@ -1584,6 +1585,7 @@ const CallLogs = () => {
                       )}
                     </CardContent>
                   </Card>
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="metadata" className="p-1 sm:p-2 overflow-hidden">
