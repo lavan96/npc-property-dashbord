@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar, Clock, User, MapPin, FileText, Phone, Mail, Trash2, Edit2, Save, X, CalendarClock, RefreshCw, Globe } from 'lucide-react';
 import { format, parseISO, addMinutes, differenceInMinutes } from 'date-fns';
-import { toSydneyISO } from '@/lib/sydneyTime';
+import { toTimezoneISO } from '@/lib/sydneyTime';
 import { formatInSydney, formatDateInSydney, getSydneyTzAbbr, getSydneyDateTimeParts, isNonSydneyTimezone, formatInLocal } from '@/lib/timezoneUtils';
 import { GHLEvent } from '@/hooks/useGHLCalendar';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -76,6 +76,7 @@ export function EventDetailsModal({
   const [rescheduleDate, setRescheduleDate] = useState('');
   const [rescheduleTime, setRescheduleTime] = useState('');
   const [rescheduleDuration, setRescheduleDuration] = useState(30);
+  const [rescheduleTimezone, setRescheduleTimezone] = useState('Australia/Sydney');
 
   useEffect(() => {
     if (open && event?.contactId && fetchContact) {
@@ -144,15 +145,14 @@ export function EventDetailsModal({
     setIsSaving(true);
     
     // Convert selected Sydney wall-clock time to correct UTC
-    const newStartISO = toSydneyISO(rescheduleDate, rescheduleTime);
+    const newStartISO = toTimezoneISO(rescheduleDate, rescheduleTime, rescheduleTimezone);
     
-    // Calculate end time: parse the start, add duration, convert back
     const [hours, minutes] = rescheduleTime.split(':').map(Number);
     const endTotalMinutes = hours * 60 + minutes + rescheduleDuration;
     const endHours = Math.floor(endTotalMinutes / 60) % 24;
     const endMins = endTotalMinutes % 60;
     const endTimeStr = `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}`;
-    const newEndISO = toSydneyISO(rescheduleDate, endTimeStr);
+    const newEndISO = toTimezoneISO(rescheduleDate, endTimeStr, rescheduleTimezone);
     
     const result = await onRescheduleEvent(
       event.id,
@@ -252,7 +252,7 @@ export function EventDetailsModal({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="reschedule-time" className="text-xs">Time <span className="text-muted-foreground font-normal">(Sydney)</span></Label>
+                  <Label htmlFor="reschedule-time" className="text-xs">Time</Label>
                   <Input
                     id="reschedule-time"
                     type="time"
@@ -261,6 +261,36 @@ export function EventDetailsModal({
                     className="h-9"
                   />
                 </div>
+              </div>
+
+              {/* Timezone Selector */}
+              <div className="space-y-2">
+                <Label className="text-xs flex items-center gap-1">
+                  <Globe className="h-3 w-3" />
+                  Timezone
+                </Label>
+                <Select value={rescheduleTimezone} onValueChange={setRescheduleTimezone}>
+                  <SelectTrigger className="h-9 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Australia/Sydney">Sydney (AEST/AEDT)</SelectItem>
+                    <SelectItem value="Australia/Melbourne">Melbourne (AEST/AEDT)</SelectItem>
+                    <SelectItem value="Australia/Brisbane">Brisbane (AEST)</SelectItem>
+                    <SelectItem value="Australia/Adelaide">Adelaide (ACST/ACDT)</SelectItem>
+                    <SelectItem value="Australia/Perth">Perth (AWST)</SelectItem>
+                    <SelectItem value="Australia/Darwin">Darwin (ACST)</SelectItem>
+                    <SelectItem value="Australia/Hobart">Hobart (AEST/AEDT)</SelectItem>
+                    <SelectItem value="Pacific/Auckland">Auckland (NZST/NZDT)</SelectItem>
+                    <SelectItem value="Asia/Singapore">Singapore (SGT)</SelectItem>
+                    <SelectItem value="Asia/Tokyo">Tokyo (JST)</SelectItem>
+                    <SelectItem value="Asia/Hong_Kong">Hong Kong (HKT)</SelectItem>
+                    <SelectItem value="Asia/Kolkata">India (IST)</SelectItem>
+                    <SelectItem value="Europe/London">London (GMT/BST)</SelectItem>
+                    <SelectItem value="America/New_York">New York (EST/EDT)</SelectItem>
+                    <SelectItem value="America/Los_Angeles">Los Angeles (PST/PDT)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               
               <div className="space-y-2">
