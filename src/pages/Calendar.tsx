@@ -1088,124 +1088,133 @@ export default function Calendar() {
         {!isMobile && (
         <Card className={cn(
           "transition-all duration-300 overflow-hidden",
-          sidebarCollapsed ? "w-16 min-w-16" : "min-w-0"
+          sidebarCollapsed ? "w-[52px] min-w-[52px]" : "min-w-0"
         )}>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between mb-2">
-              {!sidebarCollapsed && (
-                <span className="text-xs font-medium text-muted-foreground">Tools</span>
-              )}
-              <div className="flex items-center gap-1 ml-auto">
-                {!sidebarCollapsed && (
-                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setQuickAddModalOpen(true)}>
-                    <Plus className="h-3 w-3 mr-1" />
-                    Quick Add
+          {sidebarCollapsed ? (
+            // Collapsed: compact vertical icon strip
+            <div className="flex flex-col items-center py-3 gap-1">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 mb-2"
+                    onClick={() => setSidebarCollapsed(false)}
+                  >
+                    <PanelLeft className="h-4 w-4" />
                   </Button>
-                )}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                    >
-                      {sidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="left">
-                    {sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-                  </TooltipContent>
-                </Tooltip>
-              </div>
-            </div>
+                </TooltipTrigger>
+                <TooltipContent side="left">Expand sidebar</TooltipContent>
+              </Tooltip>
 
-            <TooltipProvider delayDuration={100}>
-              {sidebarCollapsed ? (
-                // Vertical icon-only tabs
-                <div className="flex flex-col gap-1">
-                  {SIDEBAR_TABS.map((tab) => {
-                    const isPinned = pinnedTabs.includes(tab.id);
-                    return (
-                      <Tooltip key={tab.id}>
-                        <TooltipTrigger asChild>
-                          <button
-                            onClick={() => {
-                              setSidebarTab(tab.id);
-                              setSidebarCollapsed(false);
-                            }}
-                            onContextMenu={(e) => {
-                              e.preventDefault();
-                              handleTogglePin(tab.id);
-                            }}
-                            className={cn(
-                              'p-2 rounded-md transition-colors relative',
-                              sidebarTab === tab.id 
-                                ? 'bg-primary text-primary-foreground' 
-                                : 'hover:bg-muted text-muted-foreground hover:text-foreground',
-                              isPinned && 'ring-1 ring-primary/30'
-                            )}
-                          >
-                            {tab.icon}
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="left">
-                          <div className="flex items-center gap-2">
-                            {tab.label}
-                            {tab.shortcut && (
-                              <kbd className="px-1.5 py-0.5 text-[10px] bg-muted rounded">{tab.shortcut}</kbd>
-                            )}
-                          </div>
-                        </TooltipContent>
-                      </Tooltip>
+              <TooltipProvider delayDuration={100}>
+                {SIDEBAR_TABS.map((tab) => {
+                  const isPinned = pinnedTabs.includes(tab.id);
+                  return (
+                    <Tooltip key={tab.id}>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={() => {
+                            setSidebarTab(tab.id);
+                            setSidebarCollapsed(false);
+                          }}
+                          onContextMenu={(e) => {
+                            e.preventDefault();
+                            handleTogglePin(tab.id);
+                          }}
+                          className={cn(
+                            'h-8 w-8 flex items-center justify-center rounded-md transition-colors relative',
+                            sidebarTab === tab.id 
+                              ? 'bg-primary text-primary-foreground' 
+                              : 'hover:bg-muted text-muted-foreground hover:text-foreground',
+                            isPinned && 'ring-1 ring-primary/30'
+                          )}
+                        >
+                          {tab.icon}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="left">
+                        <div className="flex items-center gap-2">
+                          {tab.label}
+                          {tab.shortcut && (
+                            <kbd className="px-1.5 py-0.5 text-[10px] bg-muted rounded">{tab.shortcut}</kbd>
+                          )}
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
                     );
                   })}
+              </TooltipProvider>
+            </div>
+          ) : (
+            // Expanded: full sidebar with header and content
+            <>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium text-muted-foreground">Tools</span>
+                  <div className="flex items-center gap-1 ml-auto">
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setQuickAddModalOpen(true)}>
+                      <Plus className="h-3 w-3 mr-1" />
+                      Quick Add
+                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => setSidebarCollapsed(true)}
+                        >
+                          <PanelLeftClose className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="left">Collapse sidebar</TooltipContent>
+                    </Tooltip>
+                  </div>
                 </div>
-              ) : (
-                // Horizontal tabs
-                <Tabs value={sidebarTab} onValueChange={(v) => setSidebarTab(v as any)}>
-                  <TabsList className="w-full grid grid-cols-11 h-8 gap-0">
-                    {SIDEBAR_TABS.map((tab) => {
-                      const isPinned = pinnedTabs.includes(tab.id);
-                      return (
-                        <Tooltip key={tab.id}>
-                          <TooltipTrigger asChild>
-                            <TabsTrigger 
-                              value={tab.id} 
-                              className={cn(
-                                "text-xs px-0.5 relative",
-                                isPinned && "ring-1 ring-primary/30"
-                              )}
-                              onContextMenu={(e) => {
-                                e.preventDefault();
-                                handleTogglePin(tab.id);
-                              }}
-                            >
-                              {tab.icon}
-                            </TabsTrigger>
-                          </TooltipTrigger>
-                          <TooltipContent side="bottom" className="flex flex-col gap-1">
-                            <div className="flex items-center gap-2">
-                              {tab.label}
-                              {tab.shortcut && (
-                                <kbd className="px-1.5 py-0.5 text-[10px] bg-background/50 rounded border">{tab.shortcut}</kbd>
-                              )}
-                            </div>
-                            <div className="text-[10px] text-muted-foreground">
-                              Right-click to {isPinned ? 'unpin' : 'pin'}
-                            </div>
-                          </TooltipContent>
-                        </Tooltip>
-                      );
-                    })}
-                  </TabsList>
-                </Tabs>
-              )}
-            </TooltipProvider>
-          </CardHeader>
 
-          {!sidebarCollapsed && (
-            <CardContent className="p-3">
+                <TooltipProvider delayDuration={100}>
+                  <Tabs value={sidebarTab} onValueChange={(v) => setSidebarTab(v as any)}>
+                    <TabsList className="w-full grid grid-cols-11 h-8 gap-0">
+                      {SIDEBAR_TABS.map((tab) => {
+                        const isPinned = pinnedTabs.includes(tab.id);
+                        return (
+                          <Tooltip key={tab.id}>
+                            <TooltipTrigger asChild>
+                              <TabsTrigger 
+                                value={tab.id} 
+                                className={cn(
+                                  "text-xs px-0.5 relative",
+                                  isPinned && "ring-1 ring-primary/30"
+                                )}
+                                onContextMenu={(e) => {
+                                  e.preventDefault();
+                                  handleTogglePin(tab.id);
+                                }}
+                              >
+                                {tab.icon}
+                              </TabsTrigger>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" className="flex flex-col gap-1">
+                              <div className="flex items-center gap-2">
+                                {tab.label}
+                                {tab.shortcut && (
+                                  <kbd className="px-1.5 py-0.5 text-[10px] bg-background/50 rounded border">{tab.shortcut}</kbd>
+                                )}
+                              </div>
+                              <div className="text-[10px] text-muted-foreground">
+                                Right-click to {isPinned ? 'unpin' : 'pin'}
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        );
+                      })}
+                    </TabsList>
+                  </Tabs>
+                </TooltipProvider>
+              </CardHeader>
+
+              <CardContent className="p-3">
               {/* Mini Calendar Navigator */}
               <div className="mb-4 pb-3 border-b">
                 <MiniCalendarNavigator
@@ -1296,7 +1305,8 @@ export default function Calendar() {
               {sidebarTab === 'reminders' && (
                 <SmartReminders calendars={calendars} />
               )}
-            </CardContent>
+             </CardContent>
+            </>
           )}
         </Card>
         )}
