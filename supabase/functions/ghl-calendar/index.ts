@@ -344,7 +344,7 @@ serve(async (req) => {
 
       const updateResponse = await fetch(`${GHL_API_BASE}/calendars/events/appointments/${eventId}`, {
         method: 'PUT',
-        headers,
+        headers: { ...headers, 'Content-Type': 'application/json' },
         body: JSON.stringify(updatePayload),
       });
 
