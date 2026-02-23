@@ -521,15 +521,13 @@ export default function Calendar() {
   // Swipe gestures for mobile calendar navigation
   const calendarSwipeHandlers = useSwipeGesture(
     useCallback(() => {
-      // Swipe left = navigate forward
+      // Swipe left = navigate forward (only in month view to avoid conflict with week horizontal scroll)
       if (view === 'month') setCurrentMonth(addMonths(currentMonth, 1));
-      else setCurrentWeek(addWeeks(currentWeek, 1));
-    }, [view, currentMonth, currentWeek]),
+    }, [view, currentMonth]),
     useCallback(() => {
-      // Swipe right = navigate backward
+      // Swipe right = navigate backward (only in month view)
       if (view === 'month') setCurrentMonth(subMonths(currentMonth, 1));
-      else setCurrentWeek(subWeeks(currentWeek, 1));
-    }, [view, currentMonth, currentWeek]),
+    }, [view, currentMonth]),
     { threshold: 60 }
   );
 
