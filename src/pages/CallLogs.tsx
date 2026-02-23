@@ -1181,7 +1181,7 @@ const CallLogs = () => {
       <Dialog open={showCallDetail} onOpenChange={handleModalOpenChange}>
         <DialogContent className={cn(
           "flex flex-col",
-          isMobile ? "w-full max-w-full h-[95vh] max-h-[95vh] p-3 rounded-t-xl" : "max-w-4xl h-[85vh] max-h-[85vh]"
+          isMobile ? "w-full max-w-full h-[95vh] max-h-[95vh] p-2 rounded-t-xl" : "max-w-4xl h-[85vh] max-h-[85vh]"
         )}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -1211,7 +1211,7 @@ const CallLogs = () => {
               </div>
               
               <ScrollArea className={cn("mt-2", isMobile ? "h-[60vh]" : "flex-1")}>
-                <TabsContent value="overview" className="space-y-3 sm:space-y-4 pr-3 sm:pr-4 overflow-hidden">
+                <TabsContent value="overview" className={cn("space-y-3 sm:space-y-4 overflow-hidden", isMobile ? "px-1" : "pr-4")}>
                   {/* Squad badge if applicable */}
                   {selectedCall.is_squad_call && (
                     <div className="flex items-center gap-2 mb-4">
@@ -1231,76 +1231,145 @@ const CallLogs = () => {
                     </div>
                   )}
                   
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4 overflow-hidden">
-                    <Card className="min-w-0 overflow-hidden">
-                      <CardContent className="p-2.5 sm:p-4">
-                        <p className="text-xs sm:text-sm text-muted-foreground">Customer</p>
-                        <p className="font-medium text-sm sm:text-base truncate">{selectedCall.customer_name || 'Unknown'}</p>
-                        <p className="text-xs sm:text-sm text-muted-foreground truncate">{selectedCall.phone_number || '-'}</p>
-                      </CardContent>
-                    </Card>
-                    <Card className="min-w-0 overflow-hidden">
-                      <CardContent className="p-2.5 sm:p-4">
-                        <p className="text-xs sm:text-sm text-muted-foreground">
-                          {selectedCall.is_squad_call ? 'Primary Agent' : 'Agent'}
-                        </p>
-                        <p className="font-medium text-sm sm:text-base truncate">{selectedCall.agent_name || 'Unknown'}</p>
-                        <p className="text-xs sm:text-sm text-muted-foreground truncate">{selectedCall.agent_id || '-'}</p>
-                      </CardContent>
-                    </Card>
-                    <Card className="min-w-0 overflow-hidden">
-                      <CardContent className="p-2.5 sm:p-4">
-                        <p className="text-xs sm:text-sm text-muted-foreground">Direction</p>
-                        <div className="flex items-center gap-1.5 mt-1">
-                          {selectedCall.call_direction === 'inbound' ? (
-                            <>
-                              <PhoneIncoming className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-                              <span className="text-sm">Inbound</span>
-                            </>
-                          ) : (
-                            <>
-                              <PhoneOutgoing className="w-4 h-4 text-blue-500 flex-shrink-0" />
-                              <span className="text-sm">Outbound</span>
-                            </>
-                          )}
+                  {isMobile ? (
+                    /* Mobile: compact stacked list instead of grid */
+                    <div className="space-y-1.5">
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <div className="rounded-lg border bg-card p-2.5">
+                          <p className="text-[11px] text-muted-foreground">Customer</p>
+                          <p className="font-medium text-sm leading-tight break-words">{selectedCall.customer_name || 'Unknown'}</p>
+                          <p className="text-[11px] text-muted-foreground break-all">{selectedCall.phone_number || '-'}</p>
                         </div>
-                      </CardContent>
-                    </Card>
-                    <Card className="min-w-0 overflow-hidden">
-                      <CardContent className="p-2.5 sm:p-4">
-                        <p className="text-xs sm:text-sm text-muted-foreground">Outcome</p>
-                        <div className="mt-1">{getOutcomeBadge(selectedCall.call_outcome)}</div>
-                      </CardContent>
-                    </Card>
-                    <Card className="min-w-0 overflow-hidden">
-                      <CardContent className="p-2.5 sm:p-4">
-                        <p className="text-xs sm:text-sm text-muted-foreground">Duration</p>
-                        <p className="font-medium text-sm sm:text-base">{formatDuration(selectedCall.duration_seconds)}</p>
-                      </CardContent>
-                    </Card>
-                    <Card className="min-w-0 overflow-hidden">
-                      <CardContent className="p-2.5 sm:p-4">
-                        <p className="text-xs sm:text-sm text-muted-foreground">Cost</p>
-                        <p className="font-medium text-sm sm:text-base">${selectedCall.cost?.toFixed(4) || '0.00'}</p>
-                      </CardContent>
-                    </Card>
-                    <Card className="min-w-0 overflow-hidden">
-                      <CardContent className="p-2.5 sm:p-4">
-                        <p className="text-xs sm:text-sm text-muted-foreground">Started</p>
-                        <p className="font-medium text-xs sm:text-base">
-                          {selectedCall.started_at ? format(new Date(selectedCall.started_at), 'PPpp') : '-'}
-                        </p>
-                      </CardContent>
-                    </Card>
-                    <Card className="min-w-0 overflow-hidden">
-                      <CardContent className="p-2.5 sm:p-4">
-                        <p className="text-xs sm:text-sm text-muted-foreground">Ended</p>
-                        <p className="font-medium text-xs sm:text-base">
-                          {selectedCall.ended_at ? format(new Date(selectedCall.ended_at), 'PPpp') : '-'}
-                        </p>
-                      </CardContent>
-                    </Card>
-                  </div>
+                        <div className="rounded-lg border bg-card p-2.5">
+                          <p className="text-[11px] text-muted-foreground">{selectedCall.is_squad_call ? 'Primary Agent' : 'Agent'}</p>
+                          <p className="font-medium text-sm leading-tight break-words">{selectedCall.agent_name || 'Unknown'}</p>
+                          <p className="text-[11px] text-muted-foreground break-all">{selectedCall.agent_id || '-'}</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        <div className="rounded-lg border bg-card p-2.5">
+                          <p className="text-[11px] text-muted-foreground">Direction</p>
+                          <div className="flex items-center gap-1 mt-0.5">
+                            {selectedCall.call_direction === 'inbound' ? (
+                              <>
+                                <PhoneIncoming className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                                <span className="text-xs font-medium">In</span>
+                              </>
+                            ) : (
+                              <>
+                                <PhoneOutgoing className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+                                <span className="text-xs font-medium">Out</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <div className="rounded-lg border bg-card p-2.5">
+                          <p className="text-[11px] text-muted-foreground">Duration</p>
+                          <p className="font-medium text-sm mt-0.5">{formatDuration(selectedCall.duration_seconds)}</p>
+                        </div>
+                        <div className="rounded-lg border bg-card p-2.5">
+                          <p className="text-[11px] text-muted-foreground">Cost</p>
+                          <p className="font-medium text-sm mt-0.5">${selectedCall.cost?.toFixed(4) || '0.00'}</p>
+                        </div>
+                      </div>
+                      <div className="rounded-lg border bg-card p-2.5">
+                        <p className="text-[11px] text-muted-foreground">Outcome</p>
+                        <div className="mt-0.5">{getOutcomeBadge(selectedCall.call_outcome)}</div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <div className="rounded-lg border bg-card p-2.5">
+                          <p className="text-[11px] text-muted-foreground">Started</p>
+                          <p className="font-medium text-xs leading-snug">
+                            {selectedCall.started_at ? format(new Date(selectedCall.started_at), 'MMM d, yyyy') : '-'}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground">
+                            {selectedCall.started_at ? format(new Date(selectedCall.started_at), 'h:mm:ss a') : ''}
+                          </p>
+                        </div>
+                        <div className="rounded-lg border bg-card p-2.5">
+                          <p className="text-[11px] text-muted-foreground">Ended</p>
+                          <p className="font-medium text-xs leading-snug">
+                            {selectedCall.ended_at ? format(new Date(selectedCall.ended_at), 'MMM d, yyyy') : '-'}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground">
+                            {selectedCall.ended_at ? format(new Date(selectedCall.ended_at), 'h:mm:ss a') : ''}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Desktop: original 3-column grid */
+                    <div className="grid grid-cols-3 gap-4">
+                      <Card>
+                        <CardContent className="p-4">
+                          <p className="text-sm text-muted-foreground">Customer</p>
+                          <p className="font-medium">{selectedCall.customer_name || 'Unknown'}</p>
+                          <p className="text-sm text-muted-foreground">{selectedCall.phone_number || '-'}</p>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-4">
+                          <p className="text-sm text-muted-foreground">
+                            {selectedCall.is_squad_call ? 'Primary Agent' : 'Agent'}
+                          </p>
+                          <p className="font-medium">{selectedCall.agent_name || 'Unknown'}</p>
+                          <p className="text-sm text-muted-foreground">{selectedCall.agent_id || '-'}</p>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-4">
+                          <p className="text-sm text-muted-foreground">Direction</p>
+                          <div className="flex items-center gap-1.5 mt-1">
+                            {selectedCall.call_direction === 'inbound' ? (
+                              <>
+                                <PhoneIncoming className="w-4 h-4 text-emerald-500" />
+                                <span className="text-sm">Inbound</span>
+                              </>
+                            ) : (
+                              <>
+                                <PhoneOutgoing className="w-4 h-4 text-blue-500" />
+                                <span className="text-sm">Outbound</span>
+                              </>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-4">
+                          <p className="text-sm text-muted-foreground">Outcome</p>
+                          <div className="mt-1">{getOutcomeBadge(selectedCall.call_outcome)}</div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-4">
+                          <p className="text-sm text-muted-foreground">Duration</p>
+                          <p className="font-medium">{formatDuration(selectedCall.duration_seconds)}</p>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-4">
+                          <p className="text-sm text-muted-foreground">Cost</p>
+                          <p className="font-medium">${selectedCall.cost?.toFixed(4) || '0.00'}</p>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-4">
+                          <p className="text-sm text-muted-foreground">Started</p>
+                          <p className="font-medium">
+                            {selectedCall.started_at ? format(new Date(selectedCall.started_at), 'PPpp') : '-'}
+                          </p>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-4">
+                          <p className="text-sm text-muted-foreground">Ended</p>
+                          <p className="font-medium">
+                            {selectedCall.ended_at ? format(new Date(selectedCall.ended_at), 'PPpp') : '-'}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  )}
 
                   {selectedCall.summary && (
                     <Card>
