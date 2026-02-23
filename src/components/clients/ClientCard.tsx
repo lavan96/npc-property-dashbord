@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -67,9 +68,11 @@ interface ClientCardProps {
   onView: () => void;
   onDelete: () => void;
   onSyncComplete?: () => void;
+  isSelected?: boolean;
+  onSelect?: (checked: boolean) => void;
 }
 
-export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComplete }: ClientCardProps) {
+export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComplete, isSelected, onSelect }: ClientCardProps) {
   const [isSyncing, setIsSyncing] = useState(false);
   const queryClient = useQueryClient();
   const propertyCount = client.client_properties?.length || 0;
@@ -198,12 +201,20 @@ export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComp
               )}
             </div>
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
+          <div className="flex items-center gap-1">
+            {onSelect && (
+              <Checkbox
+                checked={isSelected}
+                onCheckedChange={onSelect}
+                className="mr-1"
+              />
+            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={onView}>
                 <Eye className="h-4 w-4 mr-2" />
@@ -235,7 +246,8 @@ export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComp
                 Delete
               </DropdownMenuItem>
             </DropdownMenuContent>
-          </DropdownMenu>
+           </DropdownMenu>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">

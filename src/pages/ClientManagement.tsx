@@ -669,21 +669,16 @@ export default function ClientManagement() {
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {displayClients.map((client) => (
-                <div key={client.id} className="relative">
-                  <div className="absolute left-3 z-10 top-[60px] sm:top-3">
-                    <Checkbox
-                      checked={selectedClients.includes(client.id)}
-                      onCheckedChange={(checked) => handleSelectClient(client.id, !!checked)}
-                    />
-                  </div>
-                  <ClientCard
+              <ClientCard
+                    key={client.id}
                     client={client}
                     ghlLocationId={ghlLocationId}
                     onView={() => handleViewClient(client)}
                     onDelete={() => handleDeleteClient(client)}
                     onSyncComplete={() => refetch()}
+                    isSelected={selectedClients.includes(client.id)}
+                    onSelect={(checked) => handleSelectClient(client.id, !!checked)}
                   />
-                </div>
               ))}
             </div>
           )}
