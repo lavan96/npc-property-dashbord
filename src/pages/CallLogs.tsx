@@ -1180,8 +1180,8 @@ const CallLogs = () => {
       {/* Call Detail Modal */}
       <Dialog open={showCallDetail} onOpenChange={handleModalOpenChange}>
         <DialogContent className={cn(
-          "max-h-[90vh]",
-          isMobile ? "w-full max-w-full h-[95vh] p-3 rounded-t-xl" : "max-w-3xl"
+          "max-h-[90vh] flex flex-col",
+          isMobile ? "w-full max-w-full h-[95vh] p-3 rounded-t-xl" : "max-w-4xl"
         )}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -1190,7 +1190,7 @@ const CallLogs = () => {
             </DialogTitle>
           </DialogHeader>
           {selectedCall && (
-            <Tabs defaultValue="overview" className="w-full">
+            <Tabs defaultValue="overview" className="w-full flex flex-col flex-1 min-h-0 overflow-hidden">
               <div className={isMobile ? "overflow-x-auto -mx-1 px-1 scrollbar-hide" : ""}>
                 <TabsList className={isMobile 
                   ? "inline-flex w-auto min-w-max h-auto gap-0.5 p-0.5"
@@ -1210,8 +1210,8 @@ const CallLogs = () => {
                 </TabsList>
               </div>
               
-              <ScrollArea className="h-[60vh] mt-4">
-                <TabsContent value="overview" className="space-y-4 p-1">
+              <ScrollArea className={cn("mt-4", isMobile ? "h-[60vh]" : "flex-1")}>
+                <TabsContent value="overview" className="space-y-4 p-1 sm:p-2 overflow-hidden">
                   {/* Squad badge if applicable */}
                   {selectedCall.is_squad_call && (
                     <div className="flex items-center gap-2 mb-4">
@@ -1231,7 +1231,7 @@ const CallLogs = () => {
                     </div>
                   )}
                   
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                     <Card>
                       <CardContent className="p-4">
                         <p className="text-sm text-muted-foreground">Customer</p>
@@ -1328,7 +1328,7 @@ const CallLogs = () => {
 
                 {/* Squad Tab - Only shown for squad calls */}
                 {selectedCall.is_squad_call && (
-                  <TabsContent value="squad" className="space-y-4 p-1">
+                  <TabsContent value="squad" className="space-y-4 p-1 sm:p-2 overflow-hidden">
                     {/* Call Intent */}
                     {selectedCall.call_intent && (
                       <Card>
@@ -1451,18 +1451,18 @@ const CallLogs = () => {
                   </TabsContent>
                 )}
 
-                <TabsContent value="transcript" className="p-1">
+                <TabsContent value="transcript" className="p-1 sm:p-2 overflow-hidden">
                   <CallTranscriptChat 
                     artifactMessages={selectedCall.artifact_messages as any[]}
                     plainTranscript={selectedCall.transcript}
                   />
                 </TabsContent>
 
-                <TabsContent value="tool-calls" className="p-1">
+                <TabsContent value="tool-calls" className="p-1 sm:p-2 overflow-hidden">
                   <CallToolCalls artifactMessages={selectedCall.artifact_messages as any[]} />
                 </TabsContent>
 
-                <TabsContent value="analysis" className="space-y-4 p-1">
+                <TabsContent value="analysis" className="space-y-4 p-1 sm:p-2 overflow-hidden">
                   {/* Call Quality Score */}
                   <Card>
                     <CardHeader className="pb-2">
@@ -1529,7 +1529,7 @@ const CallLogs = () => {
                   </Card>
                 </TabsContent>
 
-                <TabsContent value="metadata" className="p-1">
+                <TabsContent value="metadata" className="p-1 sm:p-2 overflow-hidden">
                   <Card>
                     <CardHeader className="pb-2">
                       <CardTitle className="text-base">Raw Metadata</CardTitle>
