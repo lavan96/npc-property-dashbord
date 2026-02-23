@@ -7,9 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Calendar, Clock, Plus, Loader2, Keyboard, User, Search, Phone, Mail, Video, PhoneCall } from 'lucide-react';
+import { Calendar, Clock, Plus, Loader2, Keyboard, User, Search, Phone, Mail, Video, PhoneCall, Globe } from 'lucide-react';
 import { format, addMinutes } from 'date-fns';
-import { toSydneyISO } from '@/lib/sydneyTime';
+import { toTimezoneISO } from '@/lib/sydneyTime';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { GHLCalendar, GHLContact } from '@/hooks/useGHLCalendar';
@@ -47,6 +47,24 @@ const APPOINTMENT_TYPES = [
   { value: 'in-person', label: 'In Person', icon: User },
 ];
 
+const TIMEZONE_OPTIONS = [
+  { value: 'Australia/Sydney', label: 'Sydney (AEST/AEDT)' },
+  { value: 'Australia/Melbourne', label: 'Melbourne (AEST/AEDT)' },
+  { value: 'Australia/Brisbane', label: 'Brisbane (AEST)' },
+  { value: 'Australia/Adelaide', label: 'Adelaide (ACST/ACDT)' },
+  { value: 'Australia/Perth', label: 'Perth (AWST)' },
+  { value: 'Australia/Darwin', label: 'Darwin (ACST)' },
+  { value: 'Australia/Hobart', label: 'Hobart (AEST/AEDT)' },
+  { value: 'Pacific/Auckland', label: 'Auckland (NZST/NZDT)' },
+  { value: 'Asia/Singapore', label: 'Singapore (SGT)' },
+  { value: 'Asia/Tokyo', label: 'Tokyo (JST)' },
+  { value: 'Asia/Hong_Kong', label: 'Hong Kong (HKT)' },
+  { value: 'Asia/Kolkata', label: 'India (IST)' },
+  { value: 'Europe/London', label: 'London (GMT/BST)' },
+  { value: 'America/New_York', label: 'New York (EST/EDT)' },
+  { value: 'America/Los_Angeles', label: 'Los Angeles (PST/PDT)' },
+];
+
 export function QuickAddAppointmentModal({
   open,
   onOpenChange,
@@ -65,6 +83,7 @@ export function QuickAddAppointmentModal({
   const [duration, setDuration] = useState('30');
   const [notes, setNotes] = useState('');
   const [appointmentType, setAppointmentType] = useState('call');
+  const [inputTimezone, setInputTimezone] = useState('Australia/Sydney');
   
   // Contact search state
   const [contactSearch, setContactSearch] = useState('');
@@ -214,9 +233,9 @@ export function QuickAddAppointmentModal({
     const endMins = endTotalMinutes % 60;
     const endTimeStr = `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}`;
 
-    // Treat selected time as Australia/Sydney wall-clock time
-    const startTimeISO = toSydneyISO(date, time);
-    const endTimeISO = toSydneyISO(date, endTimeStr);
+    // Treat selected time as wall-clock time in the chosen timezone
+    const startTimeISO = toTimezoneISO(date, time, inputTimezone);
+    const endTimeISO = toTimezoneISO(date, endTimeStr, inputTimezone);
 
     const success = await onSubmit({
       calendarId: selectedCalendarId,
@@ -403,8 +422,8 @@ export function QuickAddAppointmentModal({
                 required
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="time">Time * <span className="text-xs text-muted-foreground font-normal">(Sydney time)</span></Label>
+             <div className="space-y-2">
+              <Label htmlFor="time">Time *</Label>
               <div className="relative">
                 <Clock className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -417,6 +436,26 @@ export function QuickAddAppointmentModal({
                 />
               </div>
             </div>
+          </div>
+
+          {/* Timezone Selector */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-1">
+              <Globe className="h-3.5 w-3.5 text-muted-foreground" />
+              Timezone
+            </Label>
+            <Select value={inputTimezone} onValueChange={setInputTimezone}>
+              <SelectTrigger className="h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TIMEZONE_OPTIONS.map((tz) => (
+                  <SelectItem key={tz.value} value={tz.value}>
+                    {tz.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Duration with keyboard shortcuts */}
