@@ -1809,7 +1809,7 @@ export default function ReportQA() {
                   </div>
                 </div>
               ) : (
-                <div className="space-y-2 sm:space-y-4">
+              <div className="w-full space-y-2 sm:space-y-4">
                   {messages.map((message, index) => {
                     const previousMessage = index > 0 ? messages[index - 1] : null;
                     const showDateSep = shouldShowDateSeparator(
@@ -1818,139 +1818,142 @@ export default function ReportQA() {
                     );
                     
                     return (
-                      <div key={message.id}>
+                      <div key={message.id} className="w-full">
                         {showDateSep && <MessageDateSeparator date={message.timestamp} />}
-                        <div className={`flex gap-2 sm:gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={cn(
+                          "flex gap-2 sm:gap-3 w-full",
+                          message.role === 'user' ? 'justify-end' : 'justify-start'
+                        )}>
                           {message.role === 'assistant' && (
-                        <div className={cn("hidden sm:flex h-8 w-8 rounded-full items-center justify-center flex-shrink-0", getAccentClass())}>
-                          <Bot className="h-4 w-4 text-primary" />
-                        </div>
-                      )}
-                      <div 
-                        className={cn(
-                          "max-w-[95%] sm:max-w-[80%] rounded-lg sm:rounded-xl p-2 sm:p-3",
-                          message.role === 'user' ? 'qa-chat-bubble-user' : 'qa-chat-bubble-assistant',
-                          getMessageBgClass(message.role)
-                        )}
-                        role="article"
-                        aria-label={`${message.role === 'user' ? 'You' : 'Assistant'} said`}
-                      >
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xs opacity-60">
-                            {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                          <span className="text-xs opacity-40">
-                            {message.timestamp.toLocaleDateString([], { month: 'short', day: 'numeric' })}
-                          </span>
-                          {message.role === 'assistant' && message.modelProvider && (
-                            <ModelBadge provider={message.modelProvider} />
-                          )}
-                        </div>
-                        {message.role === 'assistant' ? (
-                          <div className="qa-markdown text-xs sm:text-sm break-words overflow-hidden">
-                            <ReactMarkdown 
-                              remarkPlugins={[remarkGfm]}
-                              components={{
-                                strong: ({ children, ...props }) => {
-                                  const text = String(children);
-                                  const stepMatch = text.match(/^(Step\s*\d+):?(.*)$/i);
-                                  if (stepMatch) {
-                                    const stepNumber = stepMatch[1];
-                                    const remainder = stepMatch[2];
-                                    return (
-                                      <>
-                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-primary/15 text-primary border border-primary/20 mr-1.5">
-                                          {stepNumber}
-                                        </span>
-                                        {remainder && <strong {...props}>{remainder}</strong>}
-                                      </>
-                                    );
-                                  }
-                                  return <strong {...props}>{children}</strong>;
-                                },
-                              }}
-                            >
-                              {message.content}
-                            </ReactMarkdown>
-                          </div>
-                        ) : (
-                          <div className="space-y-2">
-                            {message.audioUrl && (
-                              <VoiceMessagePlayer 
-                                audioUrl={message.audioUrl} 
-                                compact 
-                                waveColor="rgba(255, 255, 255, 0.4)"
-                                progressColor="rgba(255, 255, 255, 0.8)"
-                              />
-                            )}
-                            <p className="text-xs sm:text-sm whitespace-pre-wrap break-words">{message.content}</p>
-                          </div>
-                        )}
-                        {/* PDF Attachments */}
-                        {message.attachments && message.attachments.length > 0 && (
-                          <div className="mt-3 space-y-2">
-                            {message.attachments.map((attachment, idx) => (
-                              <PDFAttachmentMessage
-                                key={idx}
-                                attachment={attachment}
-                                onSendViaEmail={handleSendPDFViaEmail}
-                              />
-                            ))}
-                          </div>
-                        )}
-                        {message.role === 'assistant' && !message.attachments?.length && (
-                          <div className="space-y-2 mt-2 pt-2 border-t border-border/50">
-                            <div className="flex flex-wrap gap-1 sm:gap-2">
-                              <CopyWithFeedback content={message.content} />
-                              <TextToSpeech text={message.content} />
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-7 px-1.5 sm:px-2 text-xs"
-                                onClick={() => handleOpenEmailModal(message.content)}
-                              >
-                                <Mail className="h-3 w-3 sm:mr-1" />
-                                <span className="hidden sm:inline">Email</span>
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-7 px-1.5 sm:px-2 text-xs gap-1.5"
-                                onClick={() => {
-                                  setEditingMessage(message);
-                                  setMessageEditorOpen(true);
-                                }}
-                              >
-                                <Download className="h-3 w-3" />
-                                <span className="hidden sm:inline">PDF</span>
-                              </Button>
-                              <MessageReactions messageId={message.id} />
+                            <div className={cn("hidden sm:flex h-8 w-8 rounded-full items-center justify-center flex-shrink-0", getAccentClass())}>
+                              <Bot className="h-4 w-4 text-primary" />
                             </div>
-                            <MessageThreading
-                              messageId={message.id}
-                              messageContent={message.content}
-                              onReply={handleReply}
-                              replies={getReplies(message.id)}
-                            />
-                            {/* Follow-up suggestions for the last message */}
-                            {index === messages.length - 1 && (
-                              <FollowUpSuggestions
-                                lastAssistantMessage={message.content}
-                                reportContext={
-                                  uploadedReports.length > 1 ? 'comparison' : 
-                                  uploadedReports.length === 1 ? 'single' : 'none'
-                                }
-                                onSelect={(suggestion) => setInputMessage(suggestion)}
-                              />
+                          )}
+                          <div 
+                            className={cn(
+                              "min-w-0 max-w-[92%] sm:max-w-[80%] rounded-lg sm:rounded-xl p-2 sm:p-3",
+                              message.role === 'user' ? 'qa-chat-bubble-user' : 'qa-chat-bubble-assistant',
+                              getMessageBgClass(message.role)
+                            )}
+                            role="article"
+                            aria-label={`${message.role === 'user' ? 'You' : 'Assistant'} said`}
+                          >
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xs opacity-60">
+                                {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                              <span className="text-xs opacity-40 hidden sm:inline">
+                                {message.timestamp.toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                              </span>
+                              {message.role === 'assistant' && message.modelProvider && (
+                                <ModelBadge provider={message.modelProvider} />
+                              )}
+                            </div>
+                            {message.role === 'assistant' ? (
+                              <div className="qa-markdown text-xs sm:text-sm break-words overflow-hidden [overflow-wrap:anywhere]">
+                                <ReactMarkdown 
+                                  remarkPlugins={[remarkGfm]}
+                                  components={{
+                                    strong: ({ children, ...props }) => {
+                                      const text = String(children);
+                                      const stepMatch = text.match(/^(Step\s*\d+):?(.*)$/i);
+                                      if (stepMatch) {
+                                        const stepNumber = stepMatch[1];
+                                        const remainder = stepMatch[2];
+                                        return (
+                                          <>
+                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-primary/15 text-primary border border-primary/20 mr-1.5">
+                                              {stepNumber}
+                                            </span>
+                                            {remainder && <strong {...props}>{remainder}</strong>}
+                                          </>
+                                        );
+                                      }
+                                      return <strong {...props}>{children}</strong>;
+                                    },
+                                  }}
+                                >
+                                  {message.content}
+                                </ReactMarkdown>
+                              </div>
+                            ) : (
+                              <div className="space-y-2">
+                                {message.audioUrl && (
+                                  <VoiceMessagePlayer 
+                                    audioUrl={message.audioUrl} 
+                                    compact 
+                                    waveColor="rgba(255, 255, 255, 0.4)"
+                                    progressColor="rgba(255, 255, 255, 0.8)"
+                                  />
+                                )}
+                                <p className="text-xs sm:text-sm whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{message.content}</p>
+                              </div>
+                            )}
+                            {/* PDF Attachments */}
+                            {message.attachments && message.attachments.length > 0 && (
+                              <div className="mt-3 space-y-2">
+                                {message.attachments.map((attachment, idx) => (
+                                  <PDFAttachmentMessage
+                                    key={idx}
+                                    attachment={attachment}
+                                    onSendViaEmail={handleSendPDFViaEmail}
+                                  />
+                                ))}
+                              </div>
+                            )}
+                            {message.role === 'assistant' && !message.attachments?.length && (
+                              <div className="space-y-2 mt-2 pt-2 border-t border-border/50">
+                                <div className="flex flex-wrap gap-1 sm:gap-2">
+                                  <CopyWithFeedback content={message.content} />
+                                  <TextToSpeech text={message.content} />
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 px-1.5 sm:px-2 text-xs"
+                                    onClick={() => handleOpenEmailModal(message.content)}
+                                  >
+                                    <Mail className="h-3 w-3 sm:mr-1" />
+                                    <span className="hidden sm:inline">Email</span>
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 px-1.5 sm:px-2 text-xs gap-1.5"
+                                    onClick={() => {
+                                      setEditingMessage(message);
+                                      setMessageEditorOpen(true);
+                                    }}
+                                  >
+                                    <Download className="h-3 w-3" />
+                                    <span className="hidden sm:inline">PDF</span>
+                                  </Button>
+                                  <MessageReactions messageId={message.id} />
+                                </div>
+                                <MessageThreading
+                                  messageId={message.id}
+                                  messageContent={message.content}
+                                  onReply={handleReply}
+                                  replies={getReplies(message.id)}
+                                />
+                                {/* Follow-up suggestions for the last message */}
+                                {index === messages.length - 1 && (
+                                  <FollowUpSuggestions
+                                    lastAssistantMessage={message.content}
+                                    reportContext={
+                                      uploadedReports.length > 1 ? 'comparison' : 
+                                      uploadedReports.length === 1 ? 'single' : 'none'
+                                    }
+                                    onSelect={(suggestion) => setInputMessage(suggestion)}
+                                  />
+                                )}
+                              </div>
                             )}
                           </div>
-                        )}
-                      </div>
-                      {message.role === 'user' && (
-                        <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
-                          <User className="h-4 w-4" />
-                        </div>
-                      )}
+                          {message.role === 'user' && (
+                            <div className="hidden sm:flex h-8 w-8 rounded-full bg-secondary items-center justify-center flex-shrink-0">
+                              <User className="h-4 w-4" />
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
