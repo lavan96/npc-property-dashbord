@@ -1180,8 +1180,8 @@ const CallLogs = () => {
       {/* Call Detail Modal */}
       <Dialog open={showCallDetail} onOpenChange={handleModalOpenChange}>
         <DialogContent className={cn(
-          "max-h-[90vh] flex flex-col",
-          isMobile ? "w-full max-w-full h-[95vh] p-3 rounded-t-xl" : "max-w-4xl"
+          "flex flex-col",
+          isMobile ? "w-full max-w-full h-[95vh] max-h-[95vh] p-3 rounded-t-xl" : "max-w-4xl h-[85vh] max-h-[85vh]"
         )}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
