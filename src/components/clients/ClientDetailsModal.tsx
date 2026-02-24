@@ -679,7 +679,7 @@ NPC Team`
               />
             </TabsContent>
 
-            <TabsContent value="emails" className="mt-4">
+            <TabsContent value="emails" className="mt-4 max-w-full overflow-hidden">
               <ClientEmailsTab clientId={client.id} clientName={`${client.primary_first_name} ${client.primary_surname}`} />
             </TabsContent>
 
