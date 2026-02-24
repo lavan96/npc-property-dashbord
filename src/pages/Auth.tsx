@@ -12,6 +12,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp
 import { Database, AlertCircle, ArrowLeft, CheckCircle, Eye, EyeOff } from 'lucide-react';
 import { validatePassword } from '@/utils/passwordValidation';
 import { PasswordStrengthMeter } from '@/components/ui/password-strength-meter';
+import { TurnstileWidget } from '@/components/auth/TurnstileWidget';
 
 type AuthView = 'login' | 'forgot' | 'otp' | 'reset';
 
@@ -29,6 +30,7 @@ export default function Auth() {
   const [showPassword, setShowPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   
   const { signIn, user, loading } = useAuth();
   const { settings } = useWhiteLabel();
@@ -58,9 +60,14 @@ export default function Auth() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    if (!turnstileToken) {
+      setError('Please complete the security check');
+      return;
+    }
     setIsLoading(true);
-    const result = await signIn(username, password);
+    const result = await signIn(username, password, turnstileToken);
     if (result.error) {
+      setTurnstileToken(null); // Reset on failure
       setError(result.error);
     } else {
       navigate('/', { replace: true });
@@ -179,7 +186,12 @@ export default function Auth() {
                   </Button>
                 </div>
               </div>
-              <Button type="submit" className="w-full" disabled={isLoading}>{isLoading ? 'Signing in...' : 'Sign In'}</Button>
+              <TurnstileWidget
+                onVerify={setTurnstileToken}
+                onExpire={() => setTurnstileToken(null)}
+                onError={() => setTurnstileToken(null)}
+              />
+              <Button type="submit" className="w-full" disabled={isLoading || !turnstileToken}>{isLoading ? 'Signing in...' : 'Sign In'}</Button>
               <Button type="button" variant="link" className="w-full" onClick={() => { setView('forgot'); setError(''); }}>Forgot password?</Button>
             </form>
           )}
