@@ -26,6 +26,7 @@ import {
   UserCircle,
   Target,
   Cloud,
+  Gauge,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useWhiteLabel } from '@/contexts/WhiteLabelContext';
@@ -61,6 +62,7 @@ const adminItems = [
   { title: 'Branding', url: '/white-label', icon: Palette, moduleKey: 'white_label' },
   { title: 'Integrations', url: '/integrations', icon: Plug, moduleKey: 'integrations' },
   { title: 'Cloudflare', url: '/cloudflare', icon: Cloud, moduleKey: 'cloudflare' },
+  { title: 'API Usage', url: '/api-usage', icon: Gauge, moduleKey: 'api_usage' },
   { title: 'Monitoring', url: '/monitoring', icon: Activity, moduleKey: 'monitoring' },
   { title: 'Quality Assurance', url: '/quality-assurance', icon: ShieldCheck, moduleKey: 'quality_assurance' },
   { title: 'Data Import', url: '/data-import', icon: Upload, moduleKey: 'data_import' },

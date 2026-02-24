@@ -52,6 +52,7 @@ import CloudflareManagement from "./pages/CloudflareManagement";
 import ClientManagement from "./pages/ClientManagement";
 import ClientTracker from "./pages/ClientTracker";
 import PortfolioReports from "./pages/PortfolioReports";
+import ApiUsage from "./pages/ApiUsage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -132,6 +133,7 @@ const App = () => (
                           <Route path="admin/depreciation-comps" element={<DepreciationCompsAdmin />} />
                           <Route path="integrations" element={<Integrations />} />
                           <Route path="cloudflare" element={<CloudflareManagement />} />
+                          <Route path="api-usage" element={<ApiUsage />} />
                           <Route path="clients" element={<ClientManagement />} />
                           <Route path="client-tracker" element={<ClientTracker />} />
                           <Route path="portfolio-reports" element={<PortfolioReports />} />
