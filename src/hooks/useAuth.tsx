@@ -16,7 +16,7 @@ interface AuthContextType {
   isAdmin: boolean;
   roles: string[];
   accessToken: string | null;
-  signIn: (username: string, password: string) => Promise<{ error?: string }>;
+  signIn: (username: string, password: string, turnstileToken?: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
 }
 
@@ -136,11 +136,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAccessToken(null);
   };
 
-  const signIn = async (username: string, password: string) => {
+  const signIn = async (username: string, password: string, turnstileToken?: string) => {
     try {
       const { data, error } = await invokeEdgeFunction('custom-auth-login', { 
         username, 
-        password 
+        password,
+        turnstile_token: turnstileToken,
       });
 
       if (error || !data?.success) {

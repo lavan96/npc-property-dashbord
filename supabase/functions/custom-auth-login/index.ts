@@ -19,13 +19,43 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    const { username, password } = await req.json()
+    const { username, password, turnstile_token } = await req.json()
 
     if (!username || !password) {
       return new Response(
         JSON.stringify({ error: 'Username and password are required' }), 
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
+    }
+
+    // Verify Turnstile CAPTCHA token
+    const turnstileSecret = Deno.env.get('TURNSTILE_SECRET_KEY')
+    if (turnstileSecret) {
+      if (!turnstile_token) {
+        return new Response(
+          JSON.stringify({ error: 'Security verification required' }), 
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      const verifyRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          secret: turnstileSecret,
+          response: turnstile_token,
+        }),
+      })
+      const verifyData = await verifyRes.json()
+      
+      if (!verifyData.success) {
+        console.log('Turnstile verification failed:', verifyData)
+        return new Response(
+          JSON.stringify({ error: 'Security verification failed. Please try again.' }), 
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+      console.log('Turnstile verification passed')
     }
 
     // Query custom_users table for the user
