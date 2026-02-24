@@ -255,22 +255,20 @@ export function ClientEmailsTab({ clientId, clientName }: ClientEmailsTabProps) 
   }
 
   return (
-    <div className="flex flex-col h-full min-h-0">
-      {/* Sticky Search */}
-      <div className="sticky top-0 z-10 bg-background pb-3 flex-shrink-0">
-        <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search emails..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
-        </div>
+    <div className="space-y-3">
+      {/* Search */}
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search emails..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-9"
+        />
       </div>
 
       {/* Threaded Email List */}
-      <div className="flex-1 min-h-0 overflow-auto space-y-1">
+      <div className="space-y-1">
         {threads.map((thread) => {
           const isExpanded = expandedThreads.has(thread.conversationId);
           const isSingleEmail = thread.emails.length === 1;
@@ -367,7 +365,7 @@ export function ClientEmailsTab({ clientId, clientName }: ClientEmailsTabProps) 
       </div>
 
       {/* Summary */}
-      <p className="text-xs text-muted-foreground text-center pt-2 flex-shrink-0">
+      <p className="text-xs text-muted-foreground text-center pt-2">
         {threads.length} thread{threads.length !== 1 ? 's' : ''} · {emails.length} email{emails.length !== 1 ? 's' : ''} linked to this client
       </p>
     </div>
