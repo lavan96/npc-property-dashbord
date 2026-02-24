@@ -299,7 +299,7 @@ export function ClientEmailsTab({ clientId, clientName }: ClientEmailsTabProps) 
               onOpenChange={() => toggleThread(thread.conversationId)}
             >
               <CollapsibleTrigger asChild>
-                <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg border bg-card hover:bg-muted/50 cursor-pointer transition-colors group">
+                <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg border bg-card hover:bg-muted/50 cursor-pointer transition-colors group overflow-hidden">
                   <ChevronRight className={`h-4 w-4 text-muted-foreground flex-shrink-0 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
                   
                   {/* Stacked participant avatars */}
@@ -391,47 +391,49 @@ function SingleEmailRow({
   compact?: boolean;
 }) {
   return (
-    <div className={`relative flex items-center gap-2 px-3 rounded-lg hover:bg-muted/50 transition-colors group ${compact ? 'py-1.5' : 'py-2.5 border bg-card'}`}>
-      {/* Sender avatar */}
-      <div className={`rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 ${compact ? 'w-6 h-6' : 'w-8 h-8'}`}>
-        {email.folder === 'sent' ? (
-          <Send className={`text-primary ${compact ? 'h-3 w-3' : 'h-3.5 w-3.5'}`} />
-        ) : (
-          <span className={`font-semibold text-primary ${compact ? 'text-[8px]' : 'text-xs'}`}>
-            {extractSenderName(email.sender).slice(0, 2).toUpperCase()}
-          </span>
-        )}
-      </div>
-
-      {/* Email details */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5">
-          <span className={`truncate flex-shrink-0 ${compact ? 'text-xs max-w-[120px]' : 'text-sm font-medium max-w-[180px]'}`}>
-            {email.folder === 'sent' ? `To: ${email.to_recipients?.[0] ? extractSenderName(email.to_recipients[0]) : 'Unknown'}` : extractSenderName(email.sender)}
-          </span>
-          {!compact && <span className="text-xs text-muted-foreground">·</span>}
-          <p className={`truncate flex-1 min-w-0 ${compact ? 'text-xs text-muted-foreground' : 'text-sm'}`}>
-            {compact ? (email.body?.slice(0, 40).replace(/\n/g, ' ') + '…') : (email.subject || '(No Subject)')}
-          </p>
+    <div className={`relative rounded-lg hover:bg-muted/50 transition-colors group ${compact ? 'py-1.5' : 'py-2.5 border bg-card'}`}>
+      <div className={`flex items-center gap-2 px-3 overflow-hidden`}>
+        {/* Sender avatar */}
+        <div className={`rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 ${compact ? 'w-6 h-6' : 'w-8 h-8'}`}>
+          {email.folder === 'sent' ? (
+            <Send className={`text-primary ${compact ? 'h-3 w-3' : 'h-3.5 w-3.5'}`} />
+          ) : (
+            <span className={`font-semibold text-primary ${compact ? 'text-[8px]' : 'text-xs'}`}>
+              {extractSenderName(email.sender).slice(0, 2).toUpperCase()}
+            </span>
+          )}
         </div>
-        {!compact && (
-          <p className="text-xs text-muted-foreground truncate mt-0.5">
-            {email.body?.slice(0, 60).replace(/\n/g, ' ')}…
-          </p>
-        )}
+
+        {/* Email details */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            <span className={`truncate flex-shrink-0 ${compact ? 'text-xs max-w-[120px]' : 'text-sm font-medium max-w-[180px]'}`}>
+              {email.folder === 'sent' ? `To: ${email.to_recipients?.[0] ? extractSenderName(email.to_recipients[0]) : 'Unknown'}` : extractSenderName(email.sender)}
+            </span>
+            {!compact && <span className="text-xs text-muted-foreground">·</span>}
+            <p className={`truncate flex-1 min-w-0 ${compact ? 'text-xs text-muted-foreground' : 'text-sm'}`}>
+              {compact ? (email.body?.slice(0, 40).replace(/\n/g, ' ') + '…') : (email.subject || '(No Subject)')}
+            </p>
+          </div>
+          {!compact && (
+            <p className="text-xs text-muted-foreground truncate mt-0.5">
+              {email.body?.slice(0, 60).replace(/\n/g, ' ')}…
+            </p>
+          )}
+        </div>
+
+        {/* Status & date */}
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {getStatusBadge(email.status)}
+          {getUrgencyBadge(email.urgency_level)}
+          <span className={`text-muted-foreground whitespace-nowrap ${compact ? 'text-[11px]' : 'text-xs'}`}>
+            {format(new Date(email.received_at), compact ? 'MMM d' : 'MMM d, yyyy')}
+          </span>
+        </div>
       </div>
 
-      {/* Status & date */}
-      <div className="flex items-center gap-1.5 flex-shrink-0">
-        {getStatusBadge(email.status)}
-        {getUrgencyBadge(email.urgency_level)}
-        <span className={`text-muted-foreground whitespace-nowrap ${compact ? 'text-[11px]' : 'text-xs'}`}>
-          {format(new Date(email.received_at), compact ? 'MMM d' : 'MMM d, yyyy')}
-        </span>
-      </div>
-
-      {/* Hover overlay actions */}
-      <div className="absolute right-2 top-1/2 -translate-y-1/2 hidden group-hover:flex items-center gap-1 bg-background/95 backdrop-blur-sm border rounded-md shadow-sm px-1 py-0.5">
+      {/* Hover overlay actions - outside the overflow-hidden container */}
+      <div className="absolute right-2 top-1/2 -translate-y-1/2 hidden group-hover:flex items-center gap-1 bg-background/95 backdrop-blur-sm border rounded-md shadow-sm px-1 py-0.5 z-10">
         <Button
           variant="ghost"
           size="icon"
