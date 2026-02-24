@@ -48,6 +48,7 @@ import UserManagement from "./pages/admin/UserManagement";
 import ActivityLogs from "./pages/ActivityLogs";
 import { DepreciationCompsAdmin } from "./components/admin/DepreciationCompsAdmin";
 import Integrations from "./pages/Integrations";
+import CloudflareManagement from "./pages/CloudflareManagement";
 import ClientManagement from "./pages/ClientManagement";
 import ClientTracker from "./pages/ClientTracker";
 import PortfolioReports from "./pages/PortfolioReports";
@@ -130,6 +131,7 @@ const App = () => (
                           <Route path="admin/activity-logs" element={<ActivityLogs />} />
                           <Route path="admin/depreciation-comps" element={<DepreciationCompsAdmin />} />
                           <Route path="integrations" element={<Integrations />} />
+                          <Route path="cloudflare" element={<CloudflareManagement />} />
                           <Route path="clients" element={<ClientManagement />} />
                           <Route path="client-tracker" element={<ClientTracker />} />
                           <Route path="portfolio-reports" element={<PortfolioReports />} />

@@ -19,6 +19,7 @@ const integrationSecretMap: Record<string, string[]> = {
   'domain': ['DOMAIN_API_KEY'],
   'google': ['GOOGLE_MAPS_API_KEY'],
   'firecrawl': ['FIRECRAWL_API_KEY'],
+  'cloudflare': ['CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ZONE_ID', 'CLOUDFLARE_ACCOUNT_ID'],
 };
 
 serve(async (req) => {

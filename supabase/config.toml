@@ -377,3 +377,6 @@ request_timeout = 300
 [functions.parse-vownet-pdf]
 verify_jwt = false
 request_timeout = 120
+
+[functions.cloudflare-proxy]
+verify_jwt = true
