@@ -328,7 +328,7 @@ NPC Team`
         </div>
 
         <ScrollArea className="flex-1 min-h-0 w-full">
-          <div className="min-w-0 w-full" {...(isMobile ? tabSwipeHandlers : {})}>
+          <div className="w-0 min-w-full" {...(isMobile ? tabSwipeHandlers : {})}>
             <TabsContent value="overview" className="space-y-4 mt-4">
               {/* Contact Info */}
               <div className="grid gap-4 md:grid-cols-2">
@@ -679,7 +679,7 @@ NPC Team`
               />
             </TabsContent>
 
-            <TabsContent value="emails" className="mt-4 max-w-full overflow-hidden">
+            <TabsContent value="emails" className="mt-4 w-full min-w-0">
               <ClientEmailsTab clientId={client.id} clientName={`${client.primary_first_name} ${client.primary_surname}`} />
             </TabsContent>
 

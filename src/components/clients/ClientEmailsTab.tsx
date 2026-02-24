@@ -255,7 +255,7 @@ export function ClientEmailsTab({ clientId, clientName }: ClientEmailsTabProps) 
   }
 
   return (
-    <div className="space-y-3 max-w-full overflow-hidden">
+    <div className="space-y-3 w-full min-w-0">
       {/* Search */}
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -268,7 +268,7 @@ export function ClientEmailsTab({ clientId, clientName }: ClientEmailsTabProps) 
       </div>
 
       {/* Threaded Email List */}
-      <div className="space-y-1 max-w-full">
+      <div className="space-y-1 w-full min-w-0">
         {threads.map((thread) => {
           const isExpanded = expandedThreads.has(thread.conversationId);
           const isSingleEmail = thread.emails.length === 1;
@@ -297,7 +297,7 @@ export function ClientEmailsTab({ clientId, clientName }: ClientEmailsTabProps) 
               onOpenChange={() => toggleThread(thread.conversationId)}
             >
               <CollapsibleTrigger asChild>
-                <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg border bg-card hover:bg-muted/50 cursor-pointer transition-colors group overflow-hidden max-w-full">
+                <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg border bg-card hover:bg-muted/50 cursor-pointer transition-colors group w-full min-w-0">
                   <ChevronRight className={`h-4 w-4 text-muted-foreground flex-shrink-0 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
                   
                   {/* Stacked participant avatars */}
@@ -345,7 +345,7 @@ export function ClientEmailsTab({ clientId, clientName }: ClientEmailsTabProps) 
               </CollapsibleTrigger>
 
               <CollapsibleContent>
-                <div className="ml-6 border-l-2 border-muted pl-2 space-y-0.5 py-1 max-w-full overflow-hidden">
+                <div className="ml-6 border-l-2 border-muted pl-2 space-y-0.5 py-1 min-w-0">
                   {thread.emails.map((email) => (
                     <SingleEmailRow
                       key={email.id}
@@ -389,8 +389,8 @@ function SingleEmailRow({
   compact?: boolean;
 }) {
   return (
-    <div className={`relative rounded-lg hover:bg-muted/50 transition-colors group max-w-full ${compact ? 'py-1.5' : 'py-2.5 border bg-card'}`}>
-      <div className="flex items-center gap-2 px-3 overflow-hidden max-w-full">
+    <div className={`relative rounded-lg hover:bg-muted/50 transition-colors group w-full min-w-0 ${compact ? 'py-1.5' : 'py-2.5 border bg-card'}`}>
+      <div className="flex items-center gap-2 px-3 min-w-0">
         {/* Sender avatar */}
         <div className={`rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 ${compact ? 'w-6 h-6' : 'w-8 h-8'}`}>
           {email.folder === 'sent' ? (
