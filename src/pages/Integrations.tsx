@@ -26,7 +26,8 @@ import {
   Cloud,
   RefreshCw,
   Upload,
-  AlertCircle
+  AlertCircle,
+  Shield
 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { PlannedIntegrations } from '@/components/integrations/PlannedIntegrations';
@@ -130,6 +131,18 @@ const integrations: IntegrationConfig[] = [
     docsUrl: 'https://www.make.com/en/help',
     fields: [
       { key: 'MAKE_WEBHOOK_URL', label: 'Webhook URL', placeholder: 'https://hook.make.com/...', type: 'text' },
+    ],
+  },
+  {
+    id: 'cloudflare',
+    name: 'Cloudflare',
+    description: 'CDN, analytics, Workers, and firewall management',
+    icon: <Shield className="h-6 w-6" />,
+    docsUrl: 'https://developers.cloudflare.com/api',
+    fields: [
+      { key: 'CLOUDFLARE_API_TOKEN', label: 'API Token', placeholder: 'Enter Cloudflare API token', type: 'password', required: true },
+      { key: 'CLOUDFLARE_ZONE_ID', label: 'Zone ID', placeholder: 'Enter zone ID', type: 'text', required: true },
+      { key: 'CLOUDFLARE_ACCOUNT_ID', label: 'Account ID', placeholder: 'Enter account ID', type: 'text', required: true },
     ],
   },
 ];
