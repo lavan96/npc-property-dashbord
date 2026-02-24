@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useWhiteLabel } from '@/contexts/WhiteLabelContext';
@@ -31,6 +31,8 @@ export default function Auth() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  
+  const clearTurnstileToken = useCallback(() => setTurnstileToken(null), []);
   
   const { signIn, user, loading } = useAuth();
   const { settings } = useWhiteLabel();
@@ -188,8 +190,8 @@ export default function Auth() {
               </div>
               <TurnstileWidget
                 onVerify={setTurnstileToken}
-                onExpire={() => setTurnstileToken(null)}
-                onError={() => setTurnstileToken(null)}
+                onExpire={clearTurnstileToken}
+                onError={clearTurnstileToken}
               />
               <Button type="submit" className="w-full" disabled={isLoading || !turnstileToken}>{isLoading ? 'Signing in...' : 'Sign In'}</Button>
               <Button type="button" variant="link" className="w-full" onClick={() => { setView('forgot'); setError(''); }}>Forgot password?</Button>
