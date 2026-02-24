@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { logApiUsage } from '../_shared/logApiUsage.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -382,6 +383,20 @@ serve(async (req) => {
       hasPrice: typeof extractedDetails.extractedPrice === "number",
       markdownLength: markdown.length,
       citations: result.citations.length,
+    });
+
+    // Log Perplexity API usage
+    const rawUsage = result.raw?.usage;
+    await logApiUsage(supabase, {
+      service_name: 'perplexity',
+      endpoint: '/chat/completions',
+      model_used: 'sonar-pro',
+      prompt_tokens: rawUsage?.prompt_tokens || 0,
+      completion_tokens: rawUsage?.completion_tokens || 0,
+      tokens_used: rawUsage?.total_tokens || 0,
+      status: 'success',
+      user_id: userId || undefined,
+      metadata: { function: 'scrape-property-listing', url: formattedUrl },
     });
 
     return new Response(

@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { logApiUsage } from '../_shared/logApiUsage.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -127,6 +128,16 @@ ${knowledgeBase}`;
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Log Gemini API usage (streaming — no token count available)
+    await logApiUsage(supabase, {
+      service_name: 'gemini',
+      endpoint: '/v1/chat/completions',
+      model_used: 'google/gemini-3-flash-preview',
+      status: 'success',
+      user_id: userId || undefined,
+      metadata: { function: 'user-guide-assistant', messageCount: messages.length },
+    });
 
     // Return the stream directly
     return new Response(response.body, {

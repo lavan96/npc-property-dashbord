@@ -41,7 +41,7 @@ serve(async (req) => {
     const startDateStr = startDate.toISOString();
 
     if (mode === 'overview') {
-      // Summary stats
+      // ========== HEALTH LOGS (api_health_log) ==========
       const { data: allLogs, error: logsError } = await supabase
         .from('api_health_log')
         .select('*')
@@ -116,7 +116,7 @@ serve(async (req) => {
         qualityMap[q] = (qualityMap[q] || 0) + 1;
       }
 
-      // Recent logs (last 50)
+      // Recent health logs (last 50)
       const recentLogs = logs.slice(0, 50).map((l: any) => ({
         id: l.id,
         service: l.service_name,
@@ -128,11 +128,124 @@ serve(async (req) => {
         createdAt: l.created_at,
       }));
 
-      // Unique services
       const services = [...new Set(logs.map((l: any) => l.service_name))].filter(Boolean);
+
+      // ========== CONSUMPTION LOGS (api_usage_log) ==========
+      const { data: usageLogs, error: usageError } = await supabase
+        .from('api_usage_log')
+        .select('*')
+        .gte('created_at', startDateStr)
+        .order('created_at', { ascending: false })
+        .limit(1000);
+
+      if (usageError) {
+        console.warn('Failed to fetch api_usage_log:', usageError.message);
+      }
+
+      const uLogs = usageLogs || [];
+
+      // Consumption summary
+      const totalTokens = uLogs.reduce((sum: number, l: any) => sum + (l.tokens_used || 0), 0);
+      const totalCost = uLogs.reduce((sum: number, l: any) => sum + (l.cost_estimate_usd || 0), 0);
+      const totalUsageRequests = uLogs.length;
+
+      // Per-service consumption
+      const consumptionByService: Record<string, {
+        requests: number;
+        tokens: number;
+        promptTokens: number;
+        completionTokens: number;
+        cost: number;
+        models: Record<string, number>;
+      }> = {};
+
+      for (const log of uLogs) {
+        const svc = log.service_name;
+        if (!consumptionByService[svc]) {
+          consumptionByService[svc] = { requests: 0, tokens: 0, promptTokens: 0, completionTokens: 0, cost: 0, models: {} };
+        }
+        consumptionByService[svc].requests++;
+        consumptionByService[svc].tokens += log.tokens_used || 0;
+        consumptionByService[svc].promptTokens += log.prompt_tokens || 0;
+        consumptionByService[svc].completionTokens += log.completion_tokens || 0;
+        consumptionByService[svc].cost += log.cost_estimate_usd || 0;
+        if (log.model_used) {
+          consumptionByService[svc].models[log.model_used] = (consumptionByService[svc].models[log.model_used] || 0) + 1;
+        }
+      }
+
+      const consumptionBreakdown = Object.entries(consumptionByService).map(([service, stats]) => ({
+        service,
+        requests: stats.requests,
+        tokens: stats.tokens,
+        promptTokens: stats.promptTokens,
+        completionTokens: stats.completionTokens,
+        cost: Math.round(stats.cost * 10000) / 10000,
+        topModel: Object.entries(stats.models).sort((a, b) => b[1] - a[1])[0]?.[0] || 'unknown',
+        models: stats.models,
+      }));
+
+      // Daily token/cost trends
+      const dailyConsumptionMap: Record<string, Record<string, { tokens: number; cost: number; requests: number }>> = {};
+      for (const log of uLogs) {
+        const day = log.created_at.substring(0, 10);
+        const svc = log.service_name;
+        if (!dailyConsumptionMap[day]) dailyConsumptionMap[day] = {};
+        if (!dailyConsumptionMap[day][svc]) dailyConsumptionMap[day][svc] = { tokens: 0, cost: 0, requests: 0 };
+        dailyConsumptionMap[day][svc].tokens += log.tokens_used || 0;
+        dailyConsumptionMap[day][svc].cost += log.cost_estimate_usd || 0;
+        dailyConsumptionMap[day][svc].requests++;
+      }
+
+      const consumptionServices = [...new Set(uLogs.map((l: any) => l.service_name))].filter(Boolean);
+
+      const dailyConsumption = Object.entries(dailyConsumptionMap)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([date, services]) => {
+          const entry: Record<string, any> = { date };
+          let dayTotalTokens = 0;
+          let dayTotalCost = 0;
+          for (const [svc, stats] of Object.entries(services)) {
+            entry[`${svc}_tokens`] = stats.tokens;
+            entry[`${svc}_cost`] = Math.round(stats.cost * 10000) / 10000;
+            entry[`${svc}_requests`] = stats.requests;
+            dayTotalTokens += stats.tokens;
+            dayTotalCost += stats.cost;
+          }
+          entry.totalTokens = dayTotalTokens;
+          entry.totalCost = Math.round(dayTotalCost * 10000) / 10000;
+          return entry;
+        });
+
+      // Model usage distribution
+      const modelMap: Record<string, number> = {};
+      for (const log of uLogs) {
+        if (log.model_used) {
+          modelMap[log.model_used] = (modelMap[log.model_used] || 0) + 1;
+        }
+      }
+      const modelDistribution = Object.entries(modelMap)
+        .sort((a, b) => b[1] - a[1])
+        .map(([model, count]) => ({ model, count }));
+
+      // Recent usage logs (last 50)
+      const recentUsageLogs = uLogs.slice(0, 50).map((l: any) => ({
+        id: l.id,
+        service: l.service_name,
+        endpoint: l.endpoint,
+        model: l.model_used,
+        tokens: l.tokens_used,
+        promptTokens: l.prompt_tokens,
+        completionTokens: l.completion_tokens,
+        cost: l.cost_estimate_usd,
+        status: l.status,
+        createdAt: l.created_at,
+        metadata: l.metadata,
+      }));
 
       return new Response(JSON.stringify({
         success: true,
+        // Health data (V1)
         summary: {
           totalCalls,
           successCalls,
@@ -147,6 +260,20 @@ serve(async (req) => {
         dataQuality: qualityMap,
         services,
         recentLogs,
+        // Consumption data (V2)
+        consumption: {
+          summary: {
+            totalRequests: totalUsageRequests,
+            totalTokens,
+            totalCost: Math.round(totalCost * 10000) / 10000,
+            activeServices: consumptionServices.length,
+          },
+          breakdown: consumptionBreakdown,
+          dailyConsumption,
+          consumptionServices,
+          modelDistribution,
+          recentUsageLogs,
+        },
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
