@@ -136,6 +136,57 @@ export type Database = {
         }
         Relationships: []
       }
+      api_usage_log: {
+        Row: {
+          completion_tokens: number | null
+          cost_estimate_usd: number | null
+          created_at: string
+          endpoint: string | null
+          id: string
+          metadata: Json | null
+          model_used: string | null
+          prompt_tokens: number | null
+          request_count: number
+          response_time_ms: number | null
+          service_name: string
+          status: string
+          tokens_used: number | null
+          user_id: string | null
+        }
+        Insert: {
+          completion_tokens?: number | null
+          cost_estimate_usd?: number | null
+          created_at?: string
+          endpoint?: string | null
+          id?: string
+          metadata?: Json | null
+          model_used?: string | null
+          prompt_tokens?: number | null
+          request_count?: number
+          response_time_ms?: number | null
+          service_name: string
+          status?: string
+          tokens_used?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          completion_tokens?: number | null
+          cost_estimate_usd?: number | null
+          created_at?: string
+          endpoint?: string | null
+          id?: string
+          metadata?: Json | null
+          model_used?: string | null
+          prompt_tokens?: number | null
+          request_count?: number
+          response_time_ms?: number | null
+          service_name?: string
+          status?: string
+          tokens_used?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       auto_report_generation_log: {
         Row: {
           completed_at: string | null
