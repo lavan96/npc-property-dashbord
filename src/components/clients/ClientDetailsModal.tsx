@@ -322,6 +322,7 @@ NPC Team`
             <TabsTrigger value="vownet-forms" className="text-xs sm:text-sm">VowNet</TabsTrigger>
             <TabsTrigger value="files" className="text-xs sm:text-sm">Files</TabsTrigger>
             <TabsTrigger value="activity" className="text-xs sm:text-sm">Activity</TabsTrigger>
+            <TabsTrigger value="borrowing" className="text-xs sm:text-sm">Borrowing Capacity</TabsTrigger>
             <TabsTrigger value="insights" className="text-xs sm:text-sm">AI</TabsTrigger>
           </TabsList>
         </div>
@@ -720,13 +721,16 @@ NPC Team`
               <ClientActivityTimeline clientId={client.id} />
             </TabsContent>
 
-            <TabsContent value="insights" className="mt-4 space-y-4">
-              <ClientScoreCard clientId={client.id} />
+            <TabsContent value="borrowing" className="mt-4 space-y-4">
               <BorrowingCapacityCard 
                 clientId={client.id}
                 clientName={`${client.primary_first_name || ''} ${client.primary_surname || ''}`.trim()}
                 onOpenCalculator={() => setShowBorrowingCalculator(true)}
               />
+            </TabsContent>
+
+            <TabsContent value="insights" className="mt-4 space-y-4">
+              <ClientScoreCard clientId={client.id} />
               <ClientTags clientId={client.id} />
               <ClientAIInsights clientId={client.id} />
             </TabsContent>
