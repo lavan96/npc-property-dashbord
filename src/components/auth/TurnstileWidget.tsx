@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react';
+import { useTheme } from 'next-themes';
 
 const TURNSTILE_SITE_KEY = '0x4AAAAAAChQyb0ZxBORhxWq';
 
@@ -22,6 +23,7 @@ interface TurnstileWidgetProps {
 export function TurnstileWidget({ onVerify, onExpire, onError }: TurnstileWidgetProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
+  const { resolvedTheme } = useTheme();
 
   const renderWidget = useCallback(() => {
     if (!containerRef.current || !window.turnstile) return;
@@ -35,9 +37,9 @@ export function TurnstileWidget({ onVerify, onExpire, onError }: TurnstileWidget
       callback: onVerify,
       'expired-callback': onExpire,
       'error-callback': onError,
-      theme: 'auto',
+      theme: resolvedTheme === 'dark' ? 'dark' : 'light',
     });
-  }, [onVerify, onExpire, onError]);
+  }, [onVerify, onExpire, onError, resolvedTheme]);
 
   useEffect(() => {
     // Load script if not already loaded
@@ -60,5 +62,12 @@ export function TurnstileWidget({ onVerify, onExpire, onError }: TurnstileWidget
     };
   }, [renderWidget]);
 
-  return <div ref={containerRef} className="flex justify-center" />;
+  return (
+    <div className="flex justify-center py-2">
+      <div
+        ref={containerRef}
+        className="rounded-lg border border-border bg-card p-1 shadow-sm ring-1 ring-primary/10"
+      />
+    </div>
+  );
 }
