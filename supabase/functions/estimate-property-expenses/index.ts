@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from '../_shared/auth.ts';
+import { logApiUsage } from '../_shared/logApiUsage.ts';
 
 serve(async (req) => {
   const origin = req.headers.get('origin');
@@ -96,6 +97,20 @@ Respond with ONLY a valid JSON object in this exact format, no other text:
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content;
     const citations = data.citations || [];
+
+    // Log Perplexity API usage
+    const pUsage = data.usage;
+    await logApiUsage(supabase, {
+      service_name: 'perplexity',
+      endpoint: '/chat/completions',
+      model_used: 'sonar',
+      prompt_tokens: pUsage?.prompt_tokens || 0,
+      completion_tokens: pUsage?.completion_tokens || 0,
+      tokens_used: pUsage?.total_tokens || 0,
+      status: 'success',
+      user_id: userId || undefined,
+      metadata: { function: 'estimate-property-expenses', propertyAddress },
+    });
     
     if (!content) {
       throw new Error('No response from Perplexity');

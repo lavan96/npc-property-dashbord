@@ -2,6 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { logApiUsage, extractOpenAIUsage } from '../_shared/logApiUsage.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -83,6 +84,21 @@ Note type context: ${noteType || 'general'}`;
 
     const result = await response.json();
     const cleanedNote = result.choices?.[0]?.message?.content?.trim() || transcript;
+    
+    // Log API usage
+    const usage = extractOpenAIUsage(result);
+    await logApiUsage(supabase, {
+      service_name: 'openai',
+      endpoint: '/v1/chat/completions',
+      model_used: 'gpt-4o-mini',
+      prompt_tokens: usage.prompt_tokens,
+      completion_tokens: usage.completion_tokens,
+      tokens_used: usage.total_tokens,
+      response_time_ms: undefined,
+      status: 'success',
+      user_id: userId || undefined,
+      metadata: { function: 'clean-note-transcript', noteType },
+    });
     
     console.log('[Clean Note Transcript] Successfully cleaned transcript');
 

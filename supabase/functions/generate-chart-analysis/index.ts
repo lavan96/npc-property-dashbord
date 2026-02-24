@@ -2,6 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { logApiUsage, extractOpenAIUsage } from '../_shared/logApiUsage.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -402,6 +403,20 @@ serve(async (req) => {
 
     const openAIData = await openAIResponse.json();
     console.log('OpenAI response structure:', JSON.stringify(openAIData, null, 2));
+
+    // Log API usage
+    const usage = extractOpenAIUsage(openAIData);
+    await logApiUsage(supabase, {
+      service_name: 'openai',
+      endpoint: '/v1/chat/completions',
+      model_used: 'gpt-4o-mini',
+      prompt_tokens: usage.prompt_tokens,
+      completion_tokens: usage.completion_tokens,
+      tokens_used: usage.total_tokens,
+      status: 'success',
+      user_id: userId || undefined,
+      metadata: { function: 'generate-chart-analysis', chartType: chartData.type },
+    });
     
     const analysisText = openAIData.choices?.[0]?.message?.content;
 

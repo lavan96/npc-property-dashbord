@@ -19,6 +19,9 @@ import {
   TrendingDown,
   Server,
   AlertTriangle,
+  Coins,
+  Brain,
+  Hash,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -40,19 +43,19 @@ import {
 
 // Service colors using HSL tokens that align with the theme
 const SERVICE_COLORS: Record<string, string> = {
-  'abs-census': 'hsl(217, 91%, 60%)',       // blue
-  'crime-statistics': 'hsl(0, 84%, 60%)',    // red
-  'public-transport': 'hsl(142, 71%, 45%)',  // green
-  'climate-data': 'hsl(45, 93%, 47%)',       // amber
-  'domain-data': 'hsl(280, 67%, 55%)',       // purple
-  'openai': 'hsl(171, 77%, 44%)',            // teal
-  'perplexity': 'hsl(199, 89%, 48%)',        // sky
-  'gemini': 'hsl(31, 97%, 55%)',             // orange
-  'vapi': 'hsl(328, 73%, 56%)',              // pink
-  'twilio': 'hsl(262, 83%, 58%)',            // violet
-  'microsoft-graph': 'hsl(207, 90%, 54%)',   // ms-blue
-  'airtable': 'hsl(154, 60%, 50%)',          // mint
-  'cloudflare': 'hsl(25, 95%, 53%)',         // cf-orange
+  'abs-census': 'hsl(217, 91%, 60%)',
+  'crime-statistics': 'hsl(0, 84%, 60%)',
+  'public-transport': 'hsl(142, 71%, 45%)',
+  'climate-data': 'hsl(45, 93%, 47%)',
+  'domain-data': 'hsl(280, 67%, 55%)',
+  'openai': 'hsl(171, 77%, 44%)',
+  'perplexity': 'hsl(199, 89%, 48%)',
+  'gemini': 'hsl(31, 97%, 55%)',
+  'vapi': 'hsl(328, 73%, 56%)',
+  'twilio': 'hsl(262, 83%, 58%)',
+  'microsoft-graph': 'hsl(207, 90%, 54%)',
+  'airtable': 'hsl(154, 60%, 50%)',
+  'cloudflare': 'hsl(25, 95%, 53%)',
 };
 
 const getServiceColor = (service: string) =>
@@ -60,6 +63,41 @@ const getServiceColor = (service: string) =>
 
 const formatServiceName = (name: string) =>
   name.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+
+interface ConsumptionData {
+  summary: {
+    totalRequests: number;
+    totalTokens: number;
+    totalCost: number;
+    activeServices: number;
+  };
+  breakdown: Array<{
+    service: string;
+    requests: number;
+    tokens: number;
+    promptTokens: number;
+    completionTokens: number;
+    cost: number;
+    topModel: string;
+    models: Record<string, number>;
+  }>;
+  dailyConsumption: Array<Record<string, any>>;
+  consumptionServices: string[];
+  modelDistribution: Array<{ model: string; count: number }>;
+  recentUsageLogs: Array<{
+    id: string;
+    service: string;
+    endpoint: string;
+    model: string;
+    tokens: number;
+    promptTokens: number;
+    completionTokens: number;
+    cost: number;
+    status: string;
+    createdAt: string;
+    metadata: any;
+  }>;
+}
 
 interface ApiUsageData {
   summary: {
@@ -92,6 +130,7 @@ interface ApiUsageData {
     error: string | null;
     createdAt: string;
   }>;
+  consumption?: ConsumptionData;
 }
 
 export default function ApiUsage() {
@@ -122,7 +161,7 @@ export default function ApiUsage() {
 
   useEffect(() => { fetchData(); }, [timeRange]);
 
-  // Prepare chart data
+  // ========== Health chart data ==========
   const volumeChartData = useMemo(() => {
     if (!data) return [];
     return data.dailyVolume.map(entry => {
@@ -173,6 +212,39 @@ export default function ApiUsage() {
     }));
   }, [data]);
 
+  // ========== Consumption chart data ==========
+  const tokenChartData = useMemo(() => {
+    if (!data?.consumption) return [];
+    return data.consumption.dailyConsumption.map(entry => {
+      const row: Record<string, any> = { date: entry.date };
+      for (const svc of data.consumption!.consumptionServices) {
+        row[svc] = entry[`${svc}_tokens`] || 0;
+      }
+      return row;
+    });
+  }, [data]);
+
+  const costChartData = useMemo(() => {
+    if (!data?.consumption) return [];
+    return data.consumption.dailyConsumption.map(entry => ({
+      date: entry.date,
+      cost: entry.totalCost || 0,
+    }));
+  }, [data]);
+
+  const modelDonutData = useMemo(() => {
+    if (!data?.consumption) return [];
+    return data.consumption.modelDistribution.map(m => ({
+      name: m.model,
+      value: m.count,
+    }));
+  }, [data]);
+
+  const MODEL_COLORS = [
+    'hsl(171, 77%, 44%)', 'hsl(199, 89%, 48%)', 'hsl(31, 97%, 55%)',
+    'hsl(328, 73%, 56%)', 'hsl(262, 83%, 58%)', 'hsl(142, 71%, 45%)',
+    'hsl(45, 93%, 47%)', 'hsl(0, 84%, 60%)',
+  ];
   const QUALITY_COLORS = ['hsl(142, 71%, 45%)', 'hsl(45, 93%, 47%)', 'hsl(0, 84%, 60%)', 'hsl(217, 91%, 60%)'];
 
   if (loading) {
@@ -205,7 +277,7 @@ export default function ApiUsage() {
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">API Usage</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Monitor API health, response times, and usage across all integrations
+            Monitor API health, token consumption, and costs across all integrations
           </p>
         </div>
         <div className="flex items-center gap-2 self-start">
@@ -262,22 +334,30 @@ export default function ApiUsage() {
           <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
             <CardContent className="p-4 sm:p-6">
               <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                <Clock className="h-4 w-4 text-primary" />
-                <span className="text-xs font-medium uppercase tracking-wider">Avg Response</span>
+                <Hash className="h-4 w-4 text-primary" />
+                <span className="text-xs font-medium uppercase tracking-wider">Total Tokens</span>
               </div>
-              <p className="text-xl sm:text-2xl font-bold text-foreground">{data.summary.avgResponseTime}ms</p>
-              <p className="text-xs text-muted-foreground mt-1">across all services</p>
+              <p className="text-xl sm:text-2xl font-bold text-foreground">
+                {data.consumption ? data.consumption.summary.totalTokens.toLocaleString() : '—'}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {data.consumption ? `${data.consumption.summary.totalRequests} LLM calls` : 'No data yet'}
+              </p>
             </CardContent>
           </Card>
 
           <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
             <CardContent className="p-4 sm:p-6">
               <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                <Server className="h-4 w-4 text-primary" />
-                <span className="text-xs font-medium uppercase tracking-wider">Active Services</span>
+                <Coins className="h-4 w-4 text-primary" />
+                <span className="text-xs font-medium uppercase tracking-wider">Est. Cost</span>
               </div>
-              <p className="text-xl sm:text-2xl font-bold text-foreground">{data.summary.activeServices}</p>
-              <p className="text-xs text-muted-foreground mt-1">logging activity</p>
+              <p className="text-xl sm:text-2xl font-bold text-foreground">
+                ${data.consumption ? data.consumption.summary.totalCost.toFixed(2) : '0.00'}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {data.consumption ? `${data.consumption.summary.activeServices} services` : 'No data yet'}
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -287,12 +367,13 @@ export default function ApiUsage() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="bg-muted/50 overflow-x-auto">
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="consumption">Consumption</TabsTrigger>
           <TabsTrigger value="performance">Performance</TabsTrigger>
           <TabsTrigger value="services">Services</TabsTrigger>
           <TabsTrigger value="logs">Recent Logs</TabsTrigger>
         </TabsList>
 
-        {/* Overview Tab */}
+        {/* ==================== Overview Tab ==================== */}
         <TabsContent value="overview" className="space-y-4 mt-4">
           {data && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -320,22 +401,10 @@ export default function ApiUsage() {
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
                         <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={v => v.slice(5)} />
                         <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
-                        <Tooltip
-                          contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }}
-                          labelStyle={{ color: 'hsl(var(--foreground))' }}
-                        />
+                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: 'hsl(var(--foreground))' }} />
                         <Legend wrapperStyle={{ fontSize: '11px' }} />
                         {data.services.map(svc => (
-                          <Area
-                            key={svc}
-                            type="monotone"
-                            dataKey={svc}
-                            name={formatServiceName(svc)}
-                            stackId="1"
-                            stroke={getServiceColor(svc)}
-                            fill={`url(#gradient-${svc})`}
-                            strokeWidth={2}
-                          />
+                          <Area key={svc} type="monotone" dataKey={svc} name={formatServiceName(svc)} stackId="1" stroke={getServiceColor(svc)} fill={`url(#gradient-${svc})`} strokeWidth={2} />
                         ))}
                       </AreaChart>
                     </ResponsiveContainer>
@@ -343,7 +412,7 @@ export default function ApiUsage() {
                 </CardContent>
               </Card>
 
-              {/* Success vs Errors Bar Chart */}
+              {/* Success vs Errors */}
               <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base font-semibold flex items-center gap-2">
@@ -359,10 +428,7 @@ export default function ApiUsage() {
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
                         <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={v => v.slice(5)} />
                         <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
-                        <Tooltip
-                          contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }}
-                          labelStyle={{ color: 'hsl(var(--foreground))' }}
-                        />
+                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: 'hsl(var(--foreground))' }} />
                         <Legend wrapperStyle={{ fontSize: '11px' }} />
                         <Bar dataKey="success" name="Success" fill="hsl(142, 71%, 45%)" radius={[4, 4, 0, 0]} stackId="a" />
                         <Bar dataKey="errors" name="Errors" fill="hsl(0, 84%, 60%)" radius={[4, 4, 0, 0]} stackId="a" />
@@ -385,24 +451,10 @@ export default function ApiUsage() {
                   <div className="h-[280px] sm:h-[320px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
-                        <Pie
-                          data={donutData}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={60}
-                          outerRadius={100}
-                          paddingAngle={3}
-                          dataKey="value"
-                          label={({ name, percent }: any) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
-                          labelLine={{ stroke: 'hsl(var(--muted-foreground))' }}
-                        >
-                          {donutData.map((entry) => (
-                            <Cell key={entry.service} fill={getServiceColor(entry.service)} />
-                          ))}
+                        <Pie data={donutData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={3} dataKey="value" label={({ name, percent }: any) => `${name} ${((percent || 0) * 100).toFixed(0)}%`} labelLine={{ stroke: 'hsl(var(--muted-foreground))' }}>
+                          {donutData.map((entry) => (<Cell key={entry.service} fill={getServiceColor(entry.service)} />))}
                         </Pie>
-                        <Tooltip
-                          contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }}
-                        />
+                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }} />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
@@ -422,24 +474,10 @@ export default function ApiUsage() {
                   <div className="h-[280px] sm:h-[320px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
-                        <Pie
-                          data={qualityData}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={60}
-                          outerRadius={100}
-                          paddingAngle={3}
-                          dataKey="value"
-                          label={({ name, percent }: any) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
-                          labelLine={{ stroke: 'hsl(var(--muted-foreground))' }}
-                        >
-                          {qualityData.map((_, idx) => (
-                            <Cell key={idx} fill={QUALITY_COLORS[idx % QUALITY_COLORS.length]} />
-                          ))}
+                        <Pie data={qualityData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={3} dataKey="value" label={({ name, percent }: any) => `${name} ${((percent || 0) * 100).toFixed(0)}%`} labelLine={{ stroke: 'hsl(var(--muted-foreground))' }}>
+                          {qualityData.map((_, idx) => (<Cell key={idx} fill={QUALITY_COLORS[idx % QUALITY_COLORS.length]} />))}
                         </Pie>
-                        <Tooltip
-                          contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }}
-                        />
+                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }} />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
@@ -449,11 +487,216 @@ export default function ApiUsage() {
           )}
         </TabsContent>
 
-        {/* Performance Tab */}
+        {/* ==================== Consumption Tab (NEW - V2) ==================== */}
+        <TabsContent value="consumption" className="space-y-4 mt-4">
+          {data?.consumption && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Token Usage Stacked Area */}
+              <Card className="border-border/50 bg-card/80 backdrop-blur-sm lg:col-span-2">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-semibold flex items-center gap-2">
+                    <Brain className="h-4 w-4 text-primary" />
+                    Token Consumption Over Time
+                  </CardTitle>
+                  <CardDescription className="text-xs">Daily token usage per service (stacked)</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[320px] sm:h-[380px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={tokenChartData}>
+                        <defs>
+                          {data.consumption.consumptionServices.map(svc => (
+                            <linearGradient key={svc} id={`tok-gradient-${svc}`} x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor={getServiceColor(svc)} stopOpacity={0.4} />
+                              <stop offset="95%" stopColor={getServiceColor(svc)} stopOpacity={0} />
+                            </linearGradient>
+                          ))}
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                        <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={v => v.slice(5)} />
+                        <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
+                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: 'hsl(var(--foreground))' }} />
+                        <Legend wrapperStyle={{ fontSize: '11px' }} />
+                        {data.consumption.consumptionServices.map(svc => (
+                          <Area key={svc} type="monotone" dataKey={svc} name={formatServiceName(svc)} stackId="1" stroke={getServiceColor(svc)} fill={`url(#tok-gradient-${svc})`} strokeWidth={2} />
+                        ))}
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Cost Trend Line */}
+              <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-semibold flex items-center gap-2">
+                    <Coins className="h-4 w-4 text-primary" />
+                    Estimated Cost Trend
+                  </CardTitle>
+                  <CardDescription className="text-xs">Daily estimated spend (USD)</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[280px] sm:h-[320px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={costChartData}>
+                        <defs>
+                          <linearGradient id="costGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="hsl(142, 71%, 45%)" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="hsl(142, 71%, 45%)" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                        <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={v => v.slice(5)} />
+                        <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={v => `$${v}`} />
+                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }} formatter={(v: any) => [`$${Number(v).toFixed(4)}`, 'Cost']} />
+                        <Area type="monotone" dataKey="cost" stroke="hsl(142, 71%, 45%)" fill="url(#costGradient)" strokeWidth={2} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Model Distribution Donut */}
+              <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-semibold flex items-center gap-2">
+                    <Brain className="h-4 w-4 text-primary" />
+                    Model Distribution
+                  </CardTitle>
+                  <CardDescription className="text-xs">Which AI models are used most</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[280px] sm:h-[320px]">
+                    {modelDonutData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie data={modelDonutData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={3} dataKey="value" label={({ name, percent }: any) => `${name} ${((percent || 0) * 100).toFixed(0)}%`} labelLine={{ stroke: 'hsl(var(--muted-foreground))' }}>
+                            {modelDonutData.map((_, idx) => (<Cell key={idx} fill={MODEL_COLORS[idx % MODEL_COLORS.length]} />))}
+                          </Pie>
+                          <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="h-full flex items-center justify-center text-muted-foreground text-sm">No model data yet</div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Service Consumption Cards */}
+              <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {data.consumption.breakdown
+                  .sort((a, b) => b.tokens - a.tokens)
+                  .map(svc => (
+                    <Card key={svc.service} className="border-border/50 bg-card/80 backdrop-blur-sm">
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: getServiceColor(svc.service) }} />
+                            <span className="text-sm font-medium text-foreground">{formatServiceName(svc.service)}</span>
+                          </div>
+                          <Badge variant="secondary" className="text-[10px]">{svc.topModel}</Badge>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-center">
+                          <div>
+                            <p className="text-lg font-bold text-foreground">{svc.requests}</p>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Requests</p>
+                          </div>
+                          <div>
+                            <p className="text-lg font-bold text-foreground">{(svc.tokens / 1000).toFixed(1)}k</p>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Tokens</p>
+                          </div>
+                          <div>
+                            <p className="text-lg font-bold text-foreground">${svc.cost.toFixed(3)}</p>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Cost</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                {data.consumption.breakdown.length === 0 && (
+                  <div className="lg:col-span-3 p-8 text-center text-muted-foreground text-sm">
+                    No consumption data logged yet. Usage will appear here as API calls are made.
+                  </div>
+                )}
+              </div>
+
+              {/* Recent Usage Logs */}
+              <Card className="border-border/50 bg-card/80 backdrop-blur-sm lg:col-span-2">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-semibold flex items-center gap-2">
+                    <Activity className="h-4 w-4 text-primary" />
+                    Recent LLM Calls
+                  </CardTitle>
+                  <CardDescription className="text-xs">Last 50 external API consumption entries</CardDescription>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border/50">
+                          <th className="text-left p-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Service</th>
+                          <th className="text-left p-3 text-xs font-medium text-muted-foreground uppercase tracking-wider hidden sm:table-cell">Model</th>
+                          <th className="text-left p-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Tokens</th>
+                          <th className="text-left p-3 text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">Cost</th>
+                          <th className="text-left p-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
+                          <th className="text-left p-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Time</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.consumption.recentUsageLogs.map(log => (
+                          <tr key={log.id} className="border-b border-border/30 hover:bg-muted/30 transition-colors">
+                            <td className="p-3">
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: getServiceColor(log.service) }} />
+                                <span className="text-foreground text-xs sm:text-sm">{formatServiceName(log.service)}</span>
+                              </div>
+                            </td>
+                            <td className="p-3 text-muted-foreground text-xs font-mono hidden sm:table-cell">{log.model || '—'}</td>
+                            <td className="p-3 text-foreground text-xs font-medium">{(log.tokens || 0).toLocaleString()}</td>
+                            <td className="p-3 text-muted-foreground text-xs hidden md:table-cell">{log.cost ? `$${log.cost.toFixed(4)}` : '—'}</td>
+                            <td className="p-3">
+                              {log.status === 'success' ? (
+                                <Badge variant="outline" className="border-green-500/30 text-green-400 bg-green-500/10 text-[10px]">
+                                  <CheckCircle2 className="h-3 w-3 mr-1" /> OK
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="border-red-500/30 text-red-400 bg-red-500/10 text-[10px]">
+                                  <XCircle className="h-3 w-3 mr-1" /> Error
+                                </Badge>
+                              )}
+                            </td>
+                            <td className="p-3 text-muted-foreground text-xs whitespace-nowrap">
+                              {new Date(log.createdAt).toLocaleDateString('en-AU', { month: 'short', day: 'numeric' })}{' '}
+                              <span className="hidden sm:inline">{new Date(log.createdAt).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}</span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {data.consumption.recentUsageLogs.length === 0 && (
+                    <div className="p-8 text-center text-muted-foreground text-sm">
+                      No LLM usage logged yet. Start using AI features and data will appear here.
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+          {!data?.consumption && (
+            <div className="p-12 text-center text-muted-foreground">
+              <Brain className="h-12 w-12 mx-auto mb-3 opacity-30" />
+              <p className="text-lg font-medium">No consumption data available</p>
+              <p className="text-sm mt-1">Token and cost tracking will populate as API calls are made.</p>
+            </div>
+          )}
+        </TabsContent>
+
+        {/* ==================== Performance Tab ==================== */}
         <TabsContent value="performance" className="space-y-4 mt-4">
           {data && (
             <div className="grid grid-cols-1 gap-4">
-              {/* Response Time Line Chart */}
               <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base font-semibold flex items-center gap-2">
@@ -469,22 +712,10 @@ export default function ApiUsage() {
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
                         <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={v => v.slice(5)} />
                         <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} unit="ms" />
-                        <Tooltip
-                          contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }}
-                          labelStyle={{ color: 'hsl(var(--foreground))' }}
-                        />
+                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: 'hsl(var(--foreground))' }} />
                         <Legend wrapperStyle={{ fontSize: '11px' }} />
                         {data.services.map(svc => (
-                          <Line
-                            key={svc}
-                            type="monotone"
-                            dataKey={svc}
-                            name={formatServiceName(svc)}
-                            stroke={getServiceColor(svc)}
-                            strokeWidth={2}
-                            dot={false}
-                            activeDot={{ r: 4 }}
-                          />
+                          <Line key={svc} type="monotone" dataKey={svc} name={formatServiceName(svc)} stroke={getServiceColor(svc)} strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
                         ))}
                       </LineChart>
                     </ResponsiveContainer>
@@ -492,7 +723,6 @@ export default function ApiUsage() {
                 </CardContent>
               </Card>
 
-              {/* Service Performance Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {data.serviceBreakdown
                   .sort((a, b) => b.avgResponseTime - a.avgResponseTime)
@@ -504,10 +734,7 @@ export default function ApiUsage() {
                             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: getServiceColor(svc.service) }} />
                             <span className="text-sm font-medium text-foreground">{formatServiceName(svc.service)}</span>
                           </div>
-                          <Badge
-                            variant="outline"
-                            className={svc.successRate >= 95 ? 'border-green-500/30 text-green-400 bg-green-500/10' : svc.successRate >= 80 ? 'border-yellow-500/30 text-yellow-400 bg-yellow-500/10' : 'border-red-500/30 text-red-400 bg-red-500/10'}
-                          >
+                          <Badge variant="outline" className={svc.successRate >= 95 ? 'border-green-500/30 text-green-400 bg-green-500/10' : svc.successRate >= 80 ? 'border-yellow-500/30 text-yellow-400 bg-yellow-500/10' : 'border-red-500/30 text-red-400 bg-red-500/10'}>
                             {svc.successRate}%
                           </Badge>
                         </div>
@@ -533,7 +760,7 @@ export default function ApiUsage() {
           )}
         </TabsContent>
 
-        {/* Services Tab - Horizontal Bar */}
+        {/* ==================== Services Tab ==================== */}
         <TabsContent value="services" className="space-y-4 mt-4">
           {data && (
             <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
@@ -547,20 +774,11 @@ export default function ApiUsage() {
               <CardContent>
                 <div className="h-[400px] sm:h-[500px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={data.serviceBreakdown.sort((a, b) => b.total - a.total).map(s => ({
-                        ...s,
-                        name: formatServiceName(s.service),
-                      }))}
-                      layout="vertical"
-                    >
+                    <BarChart data={data.serviceBreakdown.sort((a, b) => b.total - a.total).map(s => ({ ...s, name: formatServiceName(s.service) }))} layout="vertical">
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
                       <XAxis type="number" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
                       <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} width={120} />
-                      <Tooltip
-                        contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }}
-                        labelStyle={{ color: 'hsl(var(--foreground))' }}
-                      />
+                      <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: 'hsl(var(--foreground))' }} />
                       <Legend wrapperStyle={{ fontSize: '11px' }} />
                       <Bar dataKey="success" name="Success" fill="hsl(142, 71%, 45%)" radius={[0, 4, 4, 0]} stackId="a" />
                       <Bar dataKey="errors" name="Errors" fill="hsl(0, 84%, 60%)" radius={[0, 4, 4, 0]} stackId="a" />
@@ -572,7 +790,7 @@ export default function ApiUsage() {
           )}
         </TabsContent>
 
-        {/* Logs Tab */}
+        {/* ==================== Logs Tab ==================== */}
         <TabsContent value="logs" className="space-y-4 mt-4">
           {data && (
             <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
@@ -581,7 +799,7 @@ export default function ApiUsage() {
                   <AlertTriangle className="h-4 w-4 text-primary" />
                   Recent API Calls
                 </CardTitle>
-                <CardDescription className="text-xs">Last 50 logged API interactions</CardDescription>
+                <CardDescription className="text-xs">Last 50 logged health check interactions</CardDescription>
               </CardHeader>
               <CardContent className="p-0">
                 <div className="overflow-x-auto">
