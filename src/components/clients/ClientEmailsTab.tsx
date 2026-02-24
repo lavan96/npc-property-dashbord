@@ -391,7 +391,7 @@ function SingleEmailRow({
   compact?: boolean;
 }) {
   return (
-    <div className={`relative flex items-center gap-2 px-3 rounded-lg hover:bg-muted/50 transition-colors group overflow-hidden ${compact ? 'py-1.5' : 'py-2.5 border bg-card'}`}>
+    <div className={`relative flex items-center gap-2 px-3 rounded-lg hover:bg-muted/50 transition-colors group ${compact ? 'py-1.5' : 'py-2.5 border bg-card'}`}>
       {/* Sender avatar */}
       <div className={`rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 ${compact ? 'w-6 h-6' : 'w-8 h-8'}`}>
         {email.folder === 'sent' ? (
