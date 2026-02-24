@@ -459,7 +459,7 @@ NPC Team`
               />
             </TabsContent>
 
-            <TabsContent value="properties" className="space-y-4 mt-4">
+            <TabsContent value="properties" className={cn("space-y-4 mt-4", !isMobile && "max-w-3xl mx-auto w-full")}>
               {/* Property Actions Bar */}
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div className="flex items-center gap-2">
@@ -639,11 +639,11 @@ NPC Team`
               )}
             </TabsContent>
 
-            <TabsContent value="employment" className="space-y-4 mt-4">
+            <TabsContent value="employment" className={cn("space-y-4 mt-4", !isMobile && "max-w-3xl mx-auto w-full")}>
               <EmploymentManualEntry clientId={client.id} contacts={contacts} onComplete={() => refetchClient()} />
             </TabsContent>
 
-            <TabsContent value="financials" className="space-y-6 mt-4">
+            <TabsContent value="financials" className={cn("space-y-6 mt-4", !isMobile && "max-w-3xl mx-auto w-full")}>
               {/* Income Section */}
               <IncomeManualEntry clientId={client.id} contacts={contacts} onComplete={() => refetchClient()} />
               
@@ -663,7 +663,7 @@ NPC Team`
               <LiabilityManualEntry clientId={client.id} onComplete={() => refetchClient()} />
             </TabsContent>
 
-            <TabsContent value="reports" className="mt-4 min-w-0 overflow-hidden">
+            <TabsContent value="reports" className={cn("mt-4 min-w-0 overflow-hidden", !isMobile && "max-w-3xl mx-auto w-full")}>
               <ClientReportsTab
                 clientId={client.id}
                 clientName={`${client.primary_first_name} ${client.primary_surname}`}
@@ -697,18 +697,18 @@ NPC Team`
               </Card>
             </TabsContent>
 
-            <TabsContent value="reminders" className="mt-4">
+            <TabsContent value="reminders" className={cn("mt-4", !isMobile && "max-w-3xl mx-auto w-full")}>
               <ClientReminders clientId={client.id} />
             </TabsContent>
 
-            <TabsContent value="vownet-forms" className="mt-4">
+            <TabsContent value="vownet-forms" className={cn("mt-4", !isMobile && "max-w-3xl mx-auto w-full")}>
               <ClientVownetForms 
                 clientId={client.id}
                 clientName={`${client.primary_first_name} ${client.primary_surname}`}
               />
             </TabsContent>
 
-            <TabsContent value="files" className="mt-4">
+            <TabsContent value="files" className={cn("mt-4", !isMobile && "max-w-3xl mx-auto w-full")}>
               <ClientFiles 
                 clientId={client.id} 
                 onSendEmail={(attachment) => {
@@ -717,7 +717,7 @@ NPC Team`
               />
             </TabsContent>
 
-            <TabsContent value="activity" className="mt-4">
+            <TabsContent value="activity" className={cn("mt-4", !isMobile && "max-w-3xl mx-auto w-full")}>
               <ClientActivityTimeline clientId={client.id} />
             </TabsContent>
 
