@@ -83,9 +83,9 @@ function AnalyticsTab() {
   ] : [];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Traffic Analytics</h3>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <h3 className="text-base sm:text-lg font-semibold">Traffic Analytics</h3>
         <div className="flex items-center gap-2">
           <Select value={period} onValueChange={setPeriod}>
             <SelectTrigger className="w-[120px]">
@@ -115,15 +115,15 @@ function AnalyticsTab() {
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       ) : stats.length > 0 ? (
-        <div className="grid gap-4 grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-3">
           {stats.map(stat => (
             <Card key={stat.label}>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <div className={`${stat.color}`}>{stat.icon}</div>
-                  <div>
-                    <p className="text-2xl font-bold">{stat.value}</p>
-                    <p className="text-xs text-muted-foreground">{stat.label}</p>
+              <CardContent className="p-4 sm:pt-6 sm:px-6">
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+                  <div className={`${stat.color} mb-1 sm:mb-0`}>{stat.icon}</div>
+                  <div className="min-w-0">
+                    <p className="text-xl sm:text-2xl font-bold truncate">{stat.value}</p>
+                    <p className="text-[11px] sm:text-xs text-muted-foreground">{stat.label}</p>
                   </div>
                 </div>
               </CardContent>
@@ -137,11 +137,11 @@ function AnalyticsTab() {
       {/* HTTP Status breakdown */}
       {totals?.requests?.http_status && (
         <Card>
-          <CardHeader>
+          <CardHeader className="pb-3 sm:pb-6">
             <CardTitle className="text-base">HTTP Status Codes</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-2 sm:gap-3">
               {Object.entries(totals.requests.http_status).map(([code, count]) => (
                 <Badge key={code} variant="outline" className={
                   code.startsWith('2') ? 'border-green-500/30 text-green-400' :
@@ -195,21 +195,21 @@ function CdnTab() {
   const settings = cacheSettings.data?.result || [];
 
   return (
-    <div className="space-y-6">
-      <h3 className="text-lg font-semibold">CDN & Caching</h3>
+    <div className="space-y-4 sm:space-y-6">
+      <h3 className="text-base sm:text-lg font-semibold">CDN & Caching</h3>
 
       {/* Cache Settings */}
       {settings.length > 0 && (
         <Card>
-          <CardHeader>
+          <CardHeader className="pb-3 sm:pb-6">
             <CardTitle className="text-base">Current Cache Settings</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-2 sm:gap-3 sm:grid-cols-2">
               {settings.map((s: any) => (
-                <div key={s.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
-                  <span className="text-sm font-medium capitalize">{s.id.replace(/_/g, ' ')}</span>
-                  <Badge variant="outline">
+                <div key={s.id} className="flex items-center justify-between gap-2 p-2.5 sm:p-3 rounded-lg border bg-muted/30">
+                  <span className="text-xs sm:text-sm font-medium capitalize truncate">{s.id.replace(/_/g, ' ')}</span>
+                  <Badge variant="outline" className="flex-shrink-0 text-[11px] sm:text-xs max-w-[120px] sm:max-w-none truncate">
                     {typeof s.value === 'object' ? JSON.stringify(s.value) : String(s.value)}
                   </Badge>
                 </div>
@@ -222,7 +222,7 @@ function CdnTab() {
       {/* Purge Controls */}
       <div className="grid gap-4 sm:grid-cols-2">
         <Card>
-          <CardHeader>
+          <CardHeader className="pb-3 sm:pb-6">
             <CardTitle className="text-base">Purge Everything</CardTitle>
             <CardDescription>Clear the entire CDN cache for your zone</CardDescription>
           </CardHeader>
@@ -240,7 +240,7 @@ function CdnTab() {
         </Card>
 
         <Card>
-          <CardHeader>
+          <CardHeader className="pb-3 sm:pb-6">
             <CardTitle className="text-base">Purge by URL</CardTitle>
             <CardDescription>Enter URLs to purge (one per line)</CardDescription>
           </CardHeader>
@@ -281,8 +281,8 @@ function WorkersTab() {
   const isLoading = workers.loading || pages.loading;
 
   return (
-    <div className="space-y-6">
-      <h3 className="text-lg font-semibold">Workers & Pages</h3>
+    <div className="space-y-4 sm:space-y-6">
+      <h3 className="text-base sm:text-lg font-semibold">Workers & Pages</h3>
 
       {isLoading && !workers.data && !pages.data ? (
         <div className="flex items-center justify-center py-12">
@@ -292,7 +292,7 @@ function WorkersTab() {
         <>
           {/* Workers */}
           <Card>
-            <CardHeader>
+            <CardHeader className="pb-3 sm:pb-6">
               <div className="flex items-center gap-2">
                 <Zap className="h-5 w-5 text-amber-400" />
                 <CardTitle className="text-base">Workers ({workersList.length})</CardTitle>
@@ -304,17 +304,17 @@ function WorkersTab() {
               ) : (
                 <div className="space-y-2">
                   {workersList.map((w: any) => (
-                    <div key={w.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
-                      <div className="flex items-center gap-3">
-                        <FileCode className="h-4 w-4 text-muted-foreground" />
-                        <div>
-                          <p className="text-sm font-medium">{w.id}</p>
-                          <p className="text-xs text-muted-foreground">
+                    <div key={w.id} className="flex items-center justify-between gap-2 p-2.5 sm:p-3 rounded-lg border bg-muted/30">
+                      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                        <FileCode className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-xs sm:text-sm font-medium truncate">{w.id}</p>
+                          <p className="text-[11px] sm:text-xs text-muted-foreground">
                             Modified: {w.modified_on ? new Date(w.modified_on).toLocaleDateString() : 'N/A'}
                           </p>
                         </div>
                       </div>
-                      <Badge variant="outline" className="bg-green-500/10 text-green-400 border-green-500/30">
+                      <Badge variant="outline" className="bg-green-500/10 text-green-400 border-green-500/30 flex-shrink-0 text-[11px] sm:text-xs">
                         Active
                       </Badge>
                     </div>
@@ -326,7 +326,7 @@ function WorkersTab() {
 
           {/* Pages */}
           <Card>
-            <CardHeader>
+            <CardHeader className="pb-3 sm:pb-6">
               <div className="flex items-center gap-2">
                 <Globe className="h-5 w-5 text-blue-400" />
                 <CardTitle className="text-base">Pages Projects ({pagesList.length})</CardTitle>
@@ -338,14 +338,14 @@ function WorkersTab() {
               ) : (
                 <div className="space-y-2">
                   {pagesList.map((p: any) => (
-                    <div key={p.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
-                      <div>
-                        <p className="text-sm font-medium">{p.name}</p>
-                        <p className="text-xs text-muted-foreground">
+                    <div key={p.id} className="flex items-center justify-between gap-2 p-2.5 sm:p-3 rounded-lg border bg-muted/30">
+                      <div className="min-w-0">
+                        <p className="text-xs sm:text-sm font-medium truncate">{p.name}</p>
+                        <p className="text-[11px] sm:text-xs text-muted-foreground truncate">
                           {p.subdomain}.pages.dev
                         </p>
                       </div>
-                      <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/30">
+                      <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/30 flex-shrink-0 text-[11px] sm:text-xs">
                         {p.latest_deployment?.environment || 'production'}
                       </Badge>
                     </div>
@@ -418,9 +418,9 @@ function FirewallTab() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Firewall Rules</h3>
+        <h3 className="text-base sm:text-lg font-semibold">Firewall Rules</h3>
         <Button onClick={() => setShowForm(!showForm)} size="sm">
           <Plus className="h-4 w-4 mr-1" />
           New Rule
@@ -429,21 +429,22 @@ function FirewallTab() {
 
       {/* Quick presets */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Quick Presets (Auth Page Protection)</CardTitle>
-          <CardDescription>One-click firewall rules for your auth page</CardDescription>
+        <CardHeader className="pb-3 sm:pb-6">
+          <CardTitle className="text-sm sm:text-base">Quick Presets (Auth Page Protection)</CardTitle>
+          <CardDescription className="text-xs sm:text-sm">One-click firewall rules for your auth page</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
             {presets.map((preset, i) => (
-              <div key={i} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
-                <div>
-                  <p className="text-sm font-medium">{preset.label}</p>
-                  <p className="text-xs text-muted-foreground font-mono truncate max-w-[400px]">{preset.expression}</p>
+              <div key={i} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-2.5 sm:p-3 rounded-lg border bg-muted/30">
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm font-medium">{preset.label}</p>
+                  <p className="text-[11px] sm:text-xs text-muted-foreground font-mono truncate">{preset.expression}</p>
                 </div>
                 <Button
                   size="sm"
                   variant="outline"
+                  className="self-end sm:self-auto flex-shrink-0"
                   onClick={async () => {
                     const result = await createRule.execute('create_firewall_rule', {
                       expression: preset.expression,
@@ -468,7 +469,7 @@ function FirewallTab() {
       {/* Create form */}
       {showForm && (
         <Card>
-          <CardHeader>
+          <CardHeader className="pb-3 sm:pb-6">
             <CardTitle className="text-base">Create Firewall Rule</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -505,9 +506,9 @@ function FirewallTab() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
-              <Button onClick={handleCreate} disabled={createRule.loading}>
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button variant="outline" onClick={() => setShowForm(false)} className="w-full sm:w-auto">Cancel</Button>
+              <Button onClick={handleCreate} disabled={createRule.loading} className="w-full sm:w-auto">
                 {createRule.loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Shield className="h-4 w-4 mr-2" />}
                 Create Rule
               </Button>
@@ -523,7 +524,7 @@ function FirewallTab() {
         </div>
       ) : (
         <Card>
-          <CardHeader>
+          <CardHeader className="pb-3 sm:pb-6">
             <CardTitle className="text-base">Active Rules ({rulesList.length})</CardTitle>
           </CardHeader>
           <CardContent>
@@ -532,20 +533,20 @@ function FirewallTab() {
             ) : (
               <div className="space-y-2">
                 {rulesList.map((rule: any) => (
-                  <div key={rule.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
-                    <div className="min-w-0 flex-1 mr-3">
-                      <p className="text-sm font-medium">{rule.description || 'Untitled Rule'}</p>
-                      <p className="text-xs text-muted-foreground font-mono truncate">
+                  <div key={rule.id} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-2.5 sm:p-3 rounded-lg border bg-muted/30">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs sm:text-sm font-medium">{rule.description || 'Untitled Rule'}</p>
+                      <p className="text-[11px] sm:text-xs text-muted-foreground font-mono truncate">
                         {rule.filter?.expression || 'N/A'}
                       </p>
                     </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <Badge variant="outline" className={
+                    <div className="flex items-center gap-2 self-end sm:self-auto flex-shrink-0">
+                      <Badge variant="outline" className={`text-[11px] sm:text-xs ${
                         rule.action === 'block' ? 'border-red-500/30 text-red-400' :
                         rule.action === 'challenge' ? 'border-yellow-500/30 text-yellow-400' :
                         rule.action === 'allow' ? 'border-green-500/30 text-green-400' :
                         'border-blue-500/30 text-blue-400'
-                      }>
+                      }`}>
                         {rule.action}
                       </Badge>
                       <Button
@@ -592,7 +593,7 @@ export default function CloudflareManagement() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Cloudflare</h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
             Manage CDN, analytics, Workers, and firewall rules
           </p>
         </div>
@@ -610,19 +611,20 @@ export default function CloudflareManagement() {
       </div>
 
       <Tabs defaultValue="analytics" className="w-full">
-        <div className="overflow-x-auto -mx-1 px-1 sm:mx-0 sm:px-0">
+        <div className="overflow-x-auto -mx-1 px-1 sm:mx-0 sm:px-0 scrollbar-hide">
           <TabsList className="inline-flex w-auto min-w-max">
             <TabsTrigger value="analytics" className="text-xs sm:text-sm gap-1.5">
               <BarChart3 className="h-3.5 w-3.5" />
-              Analytics
+              <span className="hidden xs:inline sm:inline">Analytics</span>
+              <span className="xs:hidden sm:hidden">Stats</span>
             </TabsTrigger>
             <TabsTrigger value="cdn" className="text-xs sm:text-sm gap-1.5">
               <HardDrive className="h-3.5 w-3.5" />
-              CDN & Cache
+              CDN
             </TabsTrigger>
             <TabsTrigger value="workers" className="text-xs sm:text-sm gap-1.5">
               <Zap className="h-3.5 w-3.5" />
-              Workers & Pages
+              Workers
             </TabsTrigger>
             <TabsTrigger value="firewall" className="text-xs sm:text-sm gap-1.5">
               <Shield className="h-3.5 w-3.5" />
@@ -631,16 +633,16 @@ export default function CloudflareManagement() {
           </TabsList>
         </div>
 
-        <TabsContent value="analytics" className="mt-6">
+        <TabsContent value="analytics" className="mt-4 sm:mt-6">
           <AnalyticsTab />
         </TabsContent>
-        <TabsContent value="cdn" className="mt-6">
+        <TabsContent value="cdn" className="mt-4 sm:mt-6">
           <CdnTab />
         </TabsContent>
-        <TabsContent value="workers" className="mt-6">
+        <TabsContent value="workers" className="mt-4 sm:mt-6">
           <WorkersTab />
         </TabsContent>
-        <TabsContent value="firewall" className="mt-6">
+        <TabsContent value="firewall" className="mt-4 sm:mt-6">
           <FirewallTab />
         </TabsContent>
       </Tabs>
