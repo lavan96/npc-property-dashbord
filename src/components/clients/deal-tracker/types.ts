@@ -1,6 +1,6 @@
 // Deal Lifecycle Tracker Types
 
-export type DealType = 'existing_property' | 'house_and_land';
+export type DealType = 'existing_property' | 'house_and_land' | 'refinance';
 export type RiskStatus = 'on_track' | 'needs_follow_up' | 'urgent';
 export type StageStatus = 'pending' | 'in_progress' | 'complete' | 'skipped';
 
@@ -14,7 +14,7 @@ export interface Deal {
   risk_status: RiskStatus;
   responsible_person: string | null;
 
-  // Financial
+  // Financial (shared)
   total_contract_price: number | null;
   land_price: number | null;
   build_price: number | null;
@@ -25,12 +25,32 @@ export interface Deal {
   lmi_applied: boolean;
   construction_loan_type: string | null;
 
-  // Dates
+  // Refinance-specific financial
+  existing_loan_amount: number | null;
+  new_loan_amount: number | null;
+  equity_released: number | null;
+  cash_out_purpose: string | null;
+  cash_out_verified: boolean;
+  commission_estimate: number | null;
+  trail_commission: number | null;
+  clawback_period_months: number | null;
+  clawback_expiry_date: string | null;
+  clawback_risk_active: boolean;
+
+  // Dates (shared)
   finance_clause_expiry: string | null;
   settlement_date: string | null;
   land_settlement_date: string | null;
   expected_build_start: string | null;
   estimated_completion: string | null;
+
+  // Refinance-specific dates
+  discharge_authority_date: string | null;
+  lodgement_date: string | null;
+  valuation_date: string | null;
+  conditional_approval_date: string | null;
+  formal_approval_date: string | null;
+  loan_docs_signed_date: string | null;
 
   notes: string | null;
   created_by: string | null;
@@ -137,6 +157,21 @@ export const HOUSE_AND_LAND_STAGES = [
   { stage_number: 7, stage_name: 'Land Settlement', stage_category: 'Settlement', responsible: 'Conveyancer', internal_action: 'Trigger Build Tracker', client_action: 'Completed' },
 ];
 
+export const REFINANCE_STAGES = [
+  { stage_number: 1, stage_name: 'Client Engaged (Exclusive)', stage_category: 'Onboarding', responsible: 'Admin', internal_action: 'Signed authority', client_action: 'Sign engagement' },
+  { stage_number: 2, stage_name: 'Fact Find Completed', stage_category: 'Advisory', responsible: 'Broker', internal_action: 'Upload servicing calc', client_action: 'Provide financials' },
+  { stage_number: 3, stage_name: 'Product Strategy Confirmed', stage_category: 'Advisory', responsible: 'Director/Broker', internal_action: 'Document restructure plan', client_action: 'Approve strategy' },
+  { stage_number: 4, stage_name: 'Application Lodged', stage_category: 'Finance', responsible: 'Broker', internal_action: 'CRM update', client_action: 'Await processing' },
+  { stage_number: 5, stage_name: 'Valuation Ordered', stage_category: 'Finance', responsible: 'Broker', internal_action: 'Monitor valuation', client_action: 'Provide access' },
+  { stage_number: 6, stage_name: 'Conditional Approval', stage_category: 'Finance', responsible: 'Broker', internal_action: 'Review conditions', client_action: 'Await approval' },
+  { stage_number: 7, stage_name: 'Discharge Authority Submitted', stage_category: 'Legal', responsible: 'Admin', internal_action: 'Track discharge timeframe', client_action: 'Sign discharge' },
+  { stage_number: 8, stage_name: 'Formal Approval', stage_category: 'Finance', responsible: 'Broker', internal_action: 'Confirm docs ready', client_action: 'Await formal' },
+  { stage_number: 9, stage_name: 'Loan Documents Signed', stage_category: 'Legal', responsible: 'Client/Admin', internal_action: 'Verify execution', client_action: 'Sign loan docs' },
+  { stage_number: 10, stage_name: 'Settlement Booked', stage_category: 'Settlement', responsible: 'Lender', internal_action: 'Confirm payout figure', client_action: 'Await settlement' },
+  { stage_number: 11, stage_name: 'Refinance Settlement Complete', stage_category: 'Finalised', responsible: 'Team', internal_action: 'Confirm old loan closed', client_action: 'Settlement complete' },
+  { stage_number: 12, stage_name: 'Commission Confirmed', stage_category: 'Commission', responsible: 'Accounts', internal_action: 'Track clawback', client_action: 'N/A' },
+];
+
 export const BUILD_PAYMENT_STAGES = [
   { stage_number: 1, stage_name: 'Deposit', percentage: 5, is_commission_trigger: false },
   { stage_number: 2, stage_name: 'Slab/Base', percentage: 15, is_commission_trigger: true },
@@ -150,4 +185,10 @@ export const RISK_STATUS_CONFIG: Record<RiskStatus, { label: string; color: stri
   on_track: { label: 'On Track', color: 'bg-green-500/10 text-green-700 border-green-500/30', emoji: '🟢' },
   needs_follow_up: { label: 'Needs Follow-Up', color: 'bg-amber-500/10 text-amber-700 border-amber-500/30', emoji: '🟠' },
   urgent: { label: 'Urgent', color: 'bg-red-500/10 text-red-700 border-red-500/30', emoji: '🔴' },
+};
+
+export const DEAL_TYPE_LABELS: Record<DealType, string> = {
+  existing_property: 'Existing Property',
+  house_and_land: 'House & Land',
+  refinance: 'Refinance',
 };

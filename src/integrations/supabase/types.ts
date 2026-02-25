@@ -1259,22 +1259,36 @@ export type Database = {
       client_deals: {
         Row: {
           build_price: number | null
+          cash_out_purpose: string | null
+          cash_out_verified: boolean | null
+          clawback_expiry_date: string | null
+          clawback_period_months: number | null
+          clawback_risk_active: boolean | null
           client_contribution_confirmed: boolean | null
           client_id: string
+          commission_estimate: number | null
+          conditional_approval_date: string | null
           construction_loan_type: string | null
           created_at: string
           created_by: string | null
           current_stage: string
           current_stage_number: number
           deal_type: Database["public"]["Enums"]["deal_type"]
+          discharge_authority_date: string | null
+          equity_released: number | null
           estimated_completion: string | null
+          existing_loan_amount: number | null
           expected_build_start: string | null
           finance_clause_expiry: string | null
+          formal_approval_date: string | null
           id: string
           land_price: number | null
           land_settlement_date: string | null
           lmi_applied: boolean | null
           loan_amount: number | null
+          loan_docs_signed_date: string | null
+          lodgement_date: string | null
+          new_loan_amount: number | null
           notes: string | null
           property_id: string | null
           responsible_person: string | null
@@ -1282,27 +1296,43 @@ export type Database = {
           settlement_date: string | null
           shortfall_required: number | null
           total_contract_price: number | null
+          trail_commission: number | null
           updated_at: string
           valuation_completed: boolean | null
+          valuation_date: string | null
         }
         Insert: {
           build_price?: number | null
+          cash_out_purpose?: string | null
+          cash_out_verified?: boolean | null
+          clawback_expiry_date?: string | null
+          clawback_period_months?: number | null
+          clawback_risk_active?: boolean | null
           client_contribution_confirmed?: boolean | null
           client_id: string
+          commission_estimate?: number | null
+          conditional_approval_date?: string | null
           construction_loan_type?: string | null
           created_at?: string
           created_by?: string | null
           current_stage?: string
           current_stage_number?: number
           deal_type?: Database["public"]["Enums"]["deal_type"]
+          discharge_authority_date?: string | null
+          equity_released?: number | null
           estimated_completion?: string | null
+          existing_loan_amount?: number | null
           expected_build_start?: string | null
           finance_clause_expiry?: string | null
+          formal_approval_date?: string | null
           id?: string
           land_price?: number | null
           land_settlement_date?: string | null
           lmi_applied?: boolean | null
           loan_amount?: number | null
+          loan_docs_signed_date?: string | null
+          lodgement_date?: string | null
+          new_loan_amount?: number | null
           notes?: string | null
           property_id?: string | null
           responsible_person?: string | null
@@ -1310,27 +1340,43 @@ export type Database = {
           settlement_date?: string | null
           shortfall_required?: number | null
           total_contract_price?: number | null
+          trail_commission?: number | null
           updated_at?: string
           valuation_completed?: boolean | null
+          valuation_date?: string | null
         }
         Update: {
           build_price?: number | null
+          cash_out_purpose?: string | null
+          cash_out_verified?: boolean | null
+          clawback_expiry_date?: string | null
+          clawback_period_months?: number | null
+          clawback_risk_active?: boolean | null
           client_contribution_confirmed?: boolean | null
           client_id?: string
+          commission_estimate?: number | null
+          conditional_approval_date?: string | null
           construction_loan_type?: string | null
           created_at?: string
           created_by?: string | null
           current_stage?: string
           current_stage_number?: number
           deal_type?: Database["public"]["Enums"]["deal_type"]
+          discharge_authority_date?: string | null
+          equity_released?: number | null
           estimated_completion?: string | null
+          existing_loan_amount?: number | null
           expected_build_start?: string | null
           finance_clause_expiry?: string | null
+          formal_approval_date?: string | null
           id?: string
           land_price?: number | null
           land_settlement_date?: string | null
           lmi_applied?: boolean | null
           loan_amount?: number | null
+          loan_docs_signed_date?: string | null
+          lodgement_date?: string | null
+          new_loan_amount?: number | null
           notes?: string | null
           property_id?: string | null
           responsible_person?: string | null
@@ -1338,8 +1384,10 @@ export type Database = {
           settlement_date?: string | null
           shortfall_required?: number | null
           total_contract_price?: number | null
+          trail_commission?: number | null
           updated_at?: string
           valuation_completed?: boolean | null
+          valuation_date?: string | null
         }
         Relationships: [
           {
@@ -5152,7 +5200,7 @@ export type Database = {
       app_role: "superadmin" | "admin" | "user"
       deal_risk_status: "on_track" | "needs_follow_up" | "urgent"
       deal_stage_status: "pending" | "in_progress" | "complete" | "skipped"
-      deal_type: "existing_property" | "house_and_land"
+      deal_type: "existing_property" | "house_and_land" | "refinance"
       depreciation_finish_standard: "low" | "medium" | "high"
       depreciation_nearest_city:
         | "sydney_nsw"
@@ -5402,7 +5450,7 @@ export const Constants = {
       app_role: ["superadmin", "admin", "user"],
       deal_risk_status: ["on_track", "needs_follow_up", "urgent"],
       deal_stage_status: ["pending", "in_progress", "complete", "skipped"],
-      deal_type: ["existing_property", "house_and_land"],
+      deal_type: ["existing_property", "house_and_land", "refinance"],
       depreciation_finish_standard: ["low", "medium", "high"],
       depreciation_nearest_city: [
         "sydney_nsw",

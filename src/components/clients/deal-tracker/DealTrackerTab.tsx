@@ -6,6 +6,7 @@ import {
   Building2,
   Home,
   TrendingUp,
+  RefreshCw,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,7 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Deal, DealType, RISK_STATUS_CONFIG } from './types';
+import { Deal, DealType, RISK_STATUS_CONFIG, DEAL_TYPE_LABELS } from './types';
 import { DealDetailView } from './DealDetailView';
 import { useDealActions } from './useDealActions';
 
@@ -56,6 +57,14 @@ export function DealTrackerTab({ clientId, deals, properties }: DealTrackerTabPr
     );
   }
 
+  const getDealIcon = (type: DealType) => {
+    switch (type) {
+      case 'house_and_land': return <Home className="h-4 w-4 text-primary shrink-0" />;
+      case 'refinance': return <RefreshCw className="h-4 w-4 text-primary shrink-0" />;
+      default: return <Building2 className="h-4 w-4 text-primary shrink-0" />;
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -89,7 +98,6 @@ export function DealTrackerTab({ clientId, deals, properties }: DealTrackerTabPr
             const completedStages = (deal.stages || []).filter(s => s.status === 'complete').length;
             const totalStages = (deal.stages || []).length;
             const progressPercent = totalStages > 0 ? (completedStages / totalStages) * 100 : 0;
-            const isHnL = deal.deal_type === 'house_and_land';
 
             return (
               <Card
@@ -100,9 +108,9 @@ export function DealTrackerTab({ clientId, deals, properties }: DealTrackerTabPr
                 <CardContent className="p-3 sm:p-4">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-                      {isHnL ? <Home className="h-4 w-4 text-primary shrink-0" /> : <Building2 className="h-4 w-4 text-primary shrink-0" />}
+                      {getDealIcon(deal.deal_type)}
                       <span className="font-medium text-xs sm:text-sm truncate">
-                        {isHnL ? 'House & Land' : 'Existing Property'}
+                        {DEAL_TYPE_LABELS[deal.deal_type]}
                       </span>
                       <Badge variant="outline" className="text-[10px] shrink-0">
                         S{deal.current_stage_number}
@@ -133,6 +141,9 @@ export function DealTrackerTab({ clientId, deals, properties }: DealTrackerTabPr
                     {deal.total_contract_price && (
                       <span>💰 {new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(deal.total_contract_price)}</span>
                     )}
+                    {deal.deal_type === 'refinance' && deal.new_loan_amount && (
+                      <span>🔁 {new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(deal.new_loan_amount)}</span>
+                    )}
                     {deal.settlement_date && (
                       <span className="hidden sm:inline">📅 {format(new Date(deal.settlement_date), 'dd MMM yyyy')}</span>
                     )}
@@ -147,7 +158,7 @@ export function DealTrackerTab({ clientId, deals, properties }: DealTrackerTabPr
 
       {/* Create Deal Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="w-[calc(100vw-24px)] sm:max-w-md">
+        <DialogContent className="w-[calc(100vw-24px)] sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Create New Deal</DialogTitle>
             <DialogDescription>
@@ -155,7 +166,7 @@ export function DealTrackerTab({ clientId, deals, properties }: DealTrackerTabPr
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid grid-cols-2 gap-3 py-4">
+          <div className="grid grid-cols-3 gap-3 py-4">
             <Card
               className={cn(
                 'cursor-pointer transition-all hover:border-primary/50',
@@ -181,6 +192,20 @@ export function DealTrackerTab({ clientId, deals, properties }: DealTrackerTabPr
                 <Home className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
                 <span className="font-medium text-xs sm:text-sm">House & Land</span>
                 <span className="text-[10px] sm:text-xs text-muted-foreground">7 land + 6 build</span>
+              </CardContent>
+            </Card>
+
+            <Card
+              className={cn(
+                'cursor-pointer transition-all hover:border-primary/50',
+                newDealType === 'refinance' && 'border-primary ring-2 ring-primary/20'
+              )}
+              onClick={() => setNewDealType('refinance')}
+            >
+              <CardContent className="flex flex-col items-center gap-2 p-3 sm:p-4 text-center">
+                <RefreshCw className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
+                <span className="font-medium text-xs sm:text-sm">Refinance</span>
+                <span className="text-[10px] sm:text-xs text-muted-foreground">12-stage workflow</span>
               </CardContent>
             </Card>
           </div>

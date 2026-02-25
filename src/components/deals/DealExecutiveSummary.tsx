@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   Building2,
   Home,
+  RefreshCw,
   Filter,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -25,7 +26,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { RISK_STATUS_CONFIG } from '@/components/clients/deal-tracker/types';
+import { RISK_STATUS_CONFIG, DEAL_TYPE_LABELS } from '@/components/clients/deal-tracker/types';
 import type { DealWithClient } from '@/hooks/useAllDeals';
 
 interface Props {
@@ -79,6 +80,22 @@ export function DealExecutiveSummary({ deals, isLoading, onDealClick }: Props) {
     if (days <= 5) return 'urgent';
     if (days <= 14) return 'warning';
     return 'ok';
+  }
+
+  function getDealTypeIcon(type: string) {
+    switch (type) {
+      case 'house_and_land': return <Home className="h-3.5 w-3.5 text-primary" />;
+      case 'refinance': return <RefreshCw className="h-3.5 w-3.5 text-primary" />;
+      default: return <Building2 className="h-3.5 w-3.5 text-primary" />;
+    }
+  }
+
+  function getDealTypeShortLabel(type: string) {
+    switch (type) {
+      case 'house_and_land': return 'H&L';
+      case 'refinance': return 'Refi';
+      default: return 'Existing';
+    }
   }
 
   if (isLoading) {
@@ -158,12 +175,13 @@ export function DealExecutiveSummary({ deals, isLoading, onDealClick }: Props) {
             <SelectItem value="all">All Types</SelectItem>
             <SelectItem value="existing_property">Existing Property</SelectItem>
             <SelectItem value="house_and_land">House & Land</SelectItem>
+            <SelectItem value="refinance">Refinance</SelectItem>
           </SelectContent>
         </Select>
         <span className="text-xs text-muted-foreground ml-auto">{filtered.length} deals</span>
       </div>
 
-      {/* Deal Table - scrollable on mobile */}
+      {/* Deal Table */}
       <Card>
         <CardContent className="p-0">
           <div className="overflow-auto max-w-full">
@@ -191,15 +209,14 @@ export function DealExecutiveSummary({ deals, isLoading, onDealClick }: Props) {
                   filtered.map(deal => {
                     const riskCfg = RISK_STATUS_CONFIG[deal.risk_status];
                     const dateUrgency = getDateUrgency(deal.settlement_date);
-                    const isHnL = deal.deal_type === 'house_and_land';
 
                     return (
                       <TableRow key={deal.id} className={cn(onDealClick && 'cursor-pointer hover:bg-muted/50')} onClick={() => onDealClick?.(deal)}>
                         <TableCell className="font-medium text-xs sm:text-sm whitespace-nowrap">{deal.client_name}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1 text-xs">
-                            {isHnL ? <Home className="h-3.5 w-3.5 text-primary" /> : <Building2 className="h-3.5 w-3.5 text-primary" />}
-                            <span className="hidden sm:inline">{isHnL ? 'H&L' : 'Existing'}</span>
+                            {getDealTypeIcon(deal.deal_type)}
+                            <span className="hidden sm:inline">{getDealTypeShortLabel(deal.deal_type)}</span>
                           </div>
                         </TableCell>
                         <TableCell>
