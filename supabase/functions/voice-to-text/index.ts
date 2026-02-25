@@ -1,5 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { logApiUsage } from '../_shared/logApiUsage.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -94,6 +96,16 @@ serve(async (req) => {
 
     const result = await response.json();
     console.log('[Voice to Text] Transcription complete, text length:', result.text?.length || 0);
+
+    // Log API usage
+    const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+    await logApiUsage(supabase, {
+      service_name: 'openai',
+      endpoint: '/v1/audio/transcriptions',
+      model_used: 'whisper-1',
+      status: 'success',
+      metadata: { function: 'voice-to-text', audioSize: binaryAudio.length },
+    });
 
     return new Response(
       JSON.stringify({ text: result.text }),

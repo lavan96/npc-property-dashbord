@@ -2,6 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { logApiUsage, extractOpenAIUsage } from '../_shared/logApiUsage.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -188,6 +189,22 @@ Return JSON format:
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || '';
     
+    // Log API usage
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    const visionUsage = extractOpenAIUsage(data);
+    await logApiUsage(supabase, {
+      service_name: 'openai',
+      endpoint: '/v1/chat/completions',
+      model_used: 'gpt-4o',
+      prompt_tokens: visionUsage.prompt_tokens,
+      completion_tokens: visionUsage.completion_tokens,
+      tokens_used: visionUsage.total_tokens,
+      status: 'success',
+      metadata: { function: 'parse-property-pdf', action: 'vision-extract', pages: images.length },
+    });
+
     console.log('📝 GPT-4o Vision response:', content);
     
     // Parse JSON from response
@@ -311,6 +328,22 @@ Extract ALL property information from this image including financial details lik
   const data = await response.json();
   const content = data.choices?.[0]?.message?.content || '';
   
+  // Log API usage for single image
+  const supabaseUrl2 = Deno.env.get('SUPABASE_URL')!;
+  const supabaseKey2 = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const sb2 = createClient(supabaseUrl2, supabaseKey2);
+  const singleUsage = extractOpenAIUsage(data);
+  await logApiUsage(sb2, {
+    service_name: 'openai',
+    endpoint: '/v1/chat/completions',
+    model_used: 'gpt-4o',
+    prompt_tokens: singleUsage.prompt_tokens,
+    completion_tokens: singleUsage.completion_tokens,
+    tokens_used: singleUsage.total_tokens,
+    status: 'success',
+    metadata: { function: 'parse-property-pdf', action: 'single-image-extract' },
+  });
+
   console.log('📝 Single image Vision response:', content);
   
   let jsonStr = content.trim();

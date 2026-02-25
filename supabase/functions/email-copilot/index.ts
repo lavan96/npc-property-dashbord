@@ -2,6 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { verifyAuth, createCorsHeaders as createAuthCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { logApiUsage, extractOpenAIUsage } from '../_shared/logApiUsage.ts';
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -146,6 +147,19 @@ ${email.body}`;
     const summaryContent = data.choices[0].message.content;
     const summary: SummaryOutput = JSON.parse(summaryContent);
 
+    // Log API usage
+    const usage = extractOpenAIUsage(data);
+    await logApiUsage(supabase, {
+      service_name: 'openai',
+      endpoint: '/v1/chat/completions',
+      model_used: 'gpt-4o-mini',
+      prompt_tokens: usage.prompt_tokens,
+      completion_tokens: usage.completion_tokens,
+      tokens_used: usage.total_tokens,
+      status: 'success',
+      metadata: { function: 'email-copilot', action: 'summarize' },
+    });
+
     console.log('[Email Copilot] Summary generated:', summary.urgencyLevel);
 
     // Update database if emailId provided
@@ -248,6 +262,19 @@ Please draft a suitable reply that addresses the sender's concerns or questions.
 
     const data = await response.json();
     const draftReply = data.choices[0].message.content;
+
+    // Log API usage
+    const draftUsage = extractOpenAIUsage(data);
+    await logApiUsage(supabase, {
+      service_name: 'openai',
+      endpoint: '/v1/chat/completions',
+      model_used: 'gpt-4o-mini',
+      prompt_tokens: draftUsage.prompt_tokens,
+      completion_tokens: draftUsage.completion_tokens,
+      tokens_used: draftUsage.total_tokens,
+      status: 'success',
+      metadata: { function: 'email-copilot', action: 'draft_reply' },
+    });
 
     console.log('[Email Copilot] Draft reply generated');
 

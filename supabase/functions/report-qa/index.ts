@@ -4,6 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { PDFDocument, rgb, StandardFonts, PDFPage, PDFFont } from "https://esm.sh/pdf-lib@1.17.1";
 import { verifyAuth, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { logApiUsage, extractOpenAIUsage } from '../_shared/logApiUsage.ts';
 
 // ============= PDF TEXT EXTRACTION HELPER =============
 // Optimized lightweight approach for Deno Edge Functions
@@ -654,6 +655,18 @@ serve(async (req) => {
       const result = await response.json();
       console.log(`[report-qa] Transcribed: ${result.text?.substring(0, 50)}...`);
 
+      // Log Whisper API usage
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      const sbLog = createClient(supabaseUrl, supabaseKey);
+      await logApiUsage(sbLog, {
+        service_name: 'openai',
+        endpoint: '/v1/audio/transcriptions',
+        model_used: 'whisper-1',
+        status: 'success',
+        metadata: { function: 'report-qa', action: 'voice_transcribe' },
+      });
+
       return new Response(
         JSON.stringify({ success: true, text: result.text }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -1157,6 +1170,23 @@ No investment report has been uploaded. You are having an open conversation abou
         console.error(`[report-qa] Empty response from AI. Full response:`, JSON.stringify(aiResponse));
         responseText = "I couldn't generate a response. Please try again.";
       }
+
+      // Log chat API usage (non-streaming)
+      const chatUsage = extractOpenAIUsage(aiResponse);
+      const modelName = modelProvider === 'perplexity' ? 'sonar-pro' 
+        : modelProvider === 'openai-direct' ? 'gpt-4.1'
+        : modelProvider === 'gemini' ? 'gemini-2.5-pro' : 'gpt-5.2';
+      const sbLogChat = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+      await logApiUsage(sbLogChat, {
+        service_name: modelProvider === 'perplexity' ? 'perplexity' : modelProvider === 'gemini' ? 'gemini' : 'openai',
+        endpoint: '/v1/chat/completions',
+        model_used: modelName,
+        prompt_tokens: chatUsage.prompt_tokens,
+        completion_tokens: chatUsage.completion_tokens,
+        tokens_used: chatUsage.total_tokens,
+        status: 'success',
+        metadata: { function: 'report-qa', action: 'chat', streaming: false, modelProvider },
+      });
 
       // Save messages to database if conversationId provided
       if (conversationId) {

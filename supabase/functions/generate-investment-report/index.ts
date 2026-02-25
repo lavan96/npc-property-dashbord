@@ -2,6 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { logApiUsage } from '../_shared/logApiUsage.ts';
 
 // ============================================================================
 // REPORT SECTION DEFINITIONS - SYNCED WITH DATABASE TEMPLATE STRUCTURE
@@ -936,6 +937,22 @@ Generate the ${sectionDef.name} sections now:`;
       const data = await response.json();
       const content = data.choices?.[0]?.message?.content || '';
       const citations = data.citations || [];
+      
+      // Log Perplexity API usage
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      const sbLog = createClient(supabaseUrl, supabaseKey);
+      const pUsage = data.usage;
+      await logApiUsage(sbLog, {
+        service_name: 'perplexity',
+        endpoint: '/chat/completions',
+        model_used: 'sonar-pro',
+        prompt_tokens: pUsage?.prompt_tokens || 0,
+        completion_tokens: pUsage?.completion_tokens || 0,
+        tokens_used: pUsage?.total_tokens || 0,
+        status: 'success',
+        metadata: { function: 'generate-investment-report', section: sectionDef.name },
+      });
       
       console.log(`✓ Section ${sectionDef.name} generated: ${content.length} chars`);
       

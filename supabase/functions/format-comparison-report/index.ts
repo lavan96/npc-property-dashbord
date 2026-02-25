@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { logApiUsage } from '../_shared/logApiUsage.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -319,6 +320,20 @@ Return ONLY the formatted markdown report. Do not include any commentary or expl
     if (!formattedContent) {
       throw new Error('No formatted content returned from Perplexity');
     }
+
+    // Log API usage
+    const pUsage = data.usage;
+    await logApiUsage(supabase, {
+      service_name: 'perplexity',
+      endpoint: '/chat/completions',
+      model_used: 'sonar',
+      prompt_tokens: pUsage?.prompt_tokens || 0,
+      completion_tokens: pUsage?.completion_tokens || 0,
+      tokens_used: pUsage?.total_tokens || 0,
+      status: 'success',
+      user_id: userId || undefined,
+      metadata: { function: 'format-comparison-report', propertyCount },
+    });
 
     // Apply post-processing to fix any remaining formatting issues
     formattedContent = sanitizeFormattedContent(formattedContent);
