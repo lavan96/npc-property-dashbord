@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 import { logApiUsage } from '../_shared/logApiUsage.ts';
+import { createUsageTrackingStream } from '../_shared/streamUsageLogger.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -103,6 +104,7 @@ ${knowledgeBase}`;
           ...messages,
         ],
         stream: true,
+        stream_options: { include_usage: true },
       }),
     });
 
@@ -129,18 +131,17 @@ ${knowledgeBase}`;
       );
     }
 
-    // Log Gemini API usage (fire-and-forget, streaming — no token count available)
-    logApiUsage(supabase, {
-      service_name: 'gemini',
-      endpoint: '/v1/chat/completions',
-      model_used: 'gemini-3-flash-preview',
-      status: 'success',
-      user_id: userId || undefined,
+    // Intercept stream to capture token usage from the final SSE chunk
+    const trackedStream = createUsageTrackingStream(response.body!, {
+      supabase,
+      serviceName: 'gemini',
+      modelUsed: 'gemini-3-flash-preview',
+      userId: userId || undefined,
       metadata: { function: 'user-guide-assistant', messageCount: messages.length },
-    }).catch(() => {}); // fire-and-forget, don't block the stream
+    });
 
-    // Return the stream directly
-    return new Response(response.body, {
+    // Return the tracked stream
+    return new Response(trackedStream, {
       headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' },
     });
 

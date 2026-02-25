@@ -5,6 +5,7 @@ import { Resend } from "https://esm.sh/resend@2.0.0";
 import { PDFDocument, rgb, StandardFonts, PDFPage, PDFFont } from "https://esm.sh/pdf-lib@1.17.1";
 import { verifyAuth, createUnauthorizedResponse } from '../_shared/auth.ts';
 import { logApiUsage, extractOpenAIUsage } from '../_shared/logApiUsage.ts';
+import { createUsageTrackingStream } from '../_shared/streamUsageLogger.ts';
 
 // ============= PDF TEXT EXTRACTION HELPER =============
 // Optimized lightweight approach for Deno Edge Functions
@@ -976,6 +977,7 @@ No investment report has been uploaded. You are having an open conversation abou
               messages,
               max_tokens: 4096,
               stream: true,
+              stream_options: { include_usage: true },
             }),
           });
         } else if (modelProvider === 'openai-direct') {
@@ -996,6 +998,7 @@ No investment report has been uploaded. You are having an open conversation abou
               messages,
               max_completion_tokens: 4096,
               stream: true,
+              stream_options: { include_usage: true },
             }),
           });
         } else if (modelProvider === 'gemini') {
@@ -1012,6 +1015,7 @@ No investment report has been uploaded. You are having an open conversation abou
               messages,
               max_tokens: 8192,
               stream: true,
+              stream_options: { include_usage: true },
             }),
           });
         } else {
@@ -1027,6 +1031,7 @@ No investment report has been uploaded. You are having an open conversation abou
               messages,
               max_completion_tokens: 4096,
               stream: true,
+              stream_options: { include_usage: true },
             }),
           });
         }
@@ -1051,22 +1056,22 @@ No investment report has been uploaded. You are having an open conversation abou
           throw new Error(`AI API error: ${response.status}`);
         }
 
-        // Log streaming LLM usage (fire-and-forget, no token counts available for streams)
+        // Intercept the stream to capture token usage from the final SSE chunk
         const streamModelName = modelProvider === 'perplexity' ? 'sonar-pro'
           : modelProvider === 'openai-direct' ? 'gpt-4.1'
           : modelProvider === 'gemini' ? 'gemini-2.5-pro' : 'gpt-5.2';
         const sbLogStream = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-        logApiUsage(sbLogStream, {
-          service_name: modelProvider === 'perplexity' ? 'perplexity' : modelProvider === 'gemini' ? 'gemini' : 'openai',
-          endpoint: '/v1/chat/completions',
-          model_used: streamModelName,
-          status: 'success',
-          user_id: userId || undefined,
-          metadata: { function: 'report-qa', action: 'chat', streaming: true, modelProvider },
-        }).catch(() => {}); // fire-and-forget
+        
+        const trackedStream = createUsageTrackingStream(response.body!, {
+          supabase: sbLogStream,
+          serviceName: modelProvider === 'perplexity' ? 'perplexity' : modelProvider === 'gemini' ? 'gemini' : 'openai',
+          modelUsed: streamModelName,
+          userId: userId || undefined,
+          metadata: { function: 'report-qa', action: 'chat', modelProvider },
+        });
 
-        // Return the streaming response directly
-        return new Response(response.body, {
+        // Return the tracked streaming response
+        return new Response(trackedStream, {
           headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
         });
       }
