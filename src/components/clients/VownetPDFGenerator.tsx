@@ -525,7 +525,7 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
   // Helper to calculate weekly rental from monthly
   const calculateWeeklyRental = (monthlyRental: number | null | undefined): number | null => {
     if (monthlyRental === null || monthlyRental === undefined || monthlyRental === 0) return null;
-    return Math.round(monthlyRental / 4.33);
+    return Math.round(monthlyRental * (12 / 52));
   };
 
   const generateInvestmentPropertyHTML = (prop: PropertyData, index: number) => {
@@ -913,7 +913,7 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
     // For rental properties, monthly_rental_income stores the rent they PAY (as expense)
     const totalMonthlyRent = rentalProperties.reduce((sum, p) => sum + (p.monthly_rental_income || 0), 0);
     const totalWeeklyRent = rentalProperties.reduce((sum, p) => {
-      const weekly = p.weekly_rental_income || (p.monthly_rental_income ? Math.round(p.monthly_rental_income / 4.33) : 0);
+      const weekly = p.weekly_rental_income || (p.monthly_rental_income ? Math.round(p.monthly_rental_income * (12 / 52)) : 0);
       return sum + weekly;
     }, 0);
     
@@ -943,7 +943,7 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
           </thead>
           <tbody>
             ${rentalProperties.map(prop => {
-              const weeklyRent = prop.weekly_rental_income || (prop.monthly_rental_income ? Math.round(prop.monthly_rental_income / 4.33) : 0);
+              const weeklyRent = prop.weekly_rental_income || (prop.monthly_rental_income ? Math.round(prop.monthly_rental_income * (12 / 52)) : 0);
               return `
                 <tr>
                   <td class="value">${prop.address?.substring(0, 30) || '-'}${(prop.address?.length || 0) > 30 ? '...' : ''}</td>

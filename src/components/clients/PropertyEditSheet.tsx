@@ -128,7 +128,7 @@ interface PropertyFormData {
 const convertToMonthly = (value: number, frequency: FrequencyType): number => {
   switch (frequency) {
     case 'weekly':
-      return value * 4.33;
+      return value * (52 / 12);
     case 'quarterly':
       return value / 3;
     case 'annually':
@@ -294,7 +294,7 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
         monthly_landlord_insurance: formData.landlord_insurance.monthlyValue,
         monthly_building_insurance: formData.building_insurance.monthlyValue,
         monthly_rental_income: monthlyRentalIncome,
-        weekly_rental_income: formData.rental_income.frequency === 'weekly' ? formData.rental_income.value : monthlyRentalIncome / 4.33,
+        weekly_rental_income: formData.rental_income.frequency === 'weekly' ? formData.rental_income.value : monthlyRentalIncome * (12 / 52),
         total_monthly_expenditure: totalMonthlyExpenditure,
         net_monthly_cashflow: netMonthlyCashflow,
         smsf_fund_name: formData.property_type === 'smsf' ? formData.smsf_fund_name : null,

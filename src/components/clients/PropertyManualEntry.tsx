@@ -94,7 +94,7 @@ const createExpenseField = (value = 0, frequency: FrequencyType = 'monthly'): Ex
 const convertToMonthly = (value: number, frequency: FrequencyType): number => {
   switch (frequency) {
     case 'weekly':
-      return value * 4.33; // Average weeks per month
+      return value * (52 / 12); // Precise weeks per month
     case 'quarterly':
       return value / 3;
     case 'annually':
@@ -222,7 +222,7 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
         monthly_building_insurance: isRental ? 0 : formData.building_insurance.monthlyValue,
         // For rental properties, this stores the rent PAID (expense), not income
         monthly_rental_income: isRental ? monthlyRentalIncome : monthlyRentalIncome,
-        weekly_rental_income: formData.rental_income.frequency === 'weekly' ? formData.rental_income.value : formData.rental_income.monthlyValue / 4.33,
+        weekly_rental_income: formData.rental_income.frequency === 'weekly' ? formData.rental_income.value : formData.rental_income.monthlyValue * (12 / 52),
         // For rental properties, total expenditure IS the rent paid
         total_monthly_expenditure: isRental ? monthlyRentalIncome : totalMonthlyExpenditure,
         // For rental properties, net cashflow is negative (expense)

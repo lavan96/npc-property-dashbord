@@ -185,7 +185,7 @@ export function generateVownetTemplate(data: VownetExportData): XLSX.WorkBook {
     rentalProps.forEach((prop, index) => {
       // For rental properties, monthly_rental_income stores the rent they PAY
       const monthlyRent = prop.monthly_rental_income || 0;
-      const weeklyRent = prop.weekly_rental_income || (monthlyRent ? Math.round(monthlyRent / 4.33) : 0);
+      const weeklyRent = prop.weekly_rental_income || (monthlyRent ? Math.round(monthlyRent * (12 / 52)) : 0);
       totalWeeklyRent += weeklyRent;
       totalMonthlyRent += monthlyRent;
       
