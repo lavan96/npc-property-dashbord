@@ -497,6 +497,164 @@ export type Database = {
           },
         ]
       }
+      build_progress_payments: {
+        Row: {
+          amount: number | null
+          builder_invoice_date: string | null
+          builder_invoice_received: boolean | null
+          commission_amount: number | null
+          commission_received: boolean | null
+          commission_received_date: string | null
+          created_at: string
+          deal_id: string
+          display_order: number
+          funds_released: boolean | null
+          funds_released_date: string | null
+          id: string
+          is_commission_trigger: boolean | null
+          notes: string | null
+          paid_to_builder: boolean | null
+          paid_to_builder_date: string | null
+          percentage: number
+          stage_name: string
+          stage_number: number
+          submitted_to_lender: boolean | null
+          submitted_to_lender_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount?: number | null
+          builder_invoice_date?: string | null
+          builder_invoice_received?: boolean | null
+          commission_amount?: number | null
+          commission_received?: boolean | null
+          commission_received_date?: string | null
+          created_at?: string
+          deal_id: string
+          display_order?: number
+          funds_released?: boolean | null
+          funds_released_date?: string | null
+          id?: string
+          is_commission_trigger?: boolean | null
+          notes?: string | null
+          paid_to_builder?: boolean | null
+          paid_to_builder_date?: string | null
+          percentage?: number
+          stage_name: string
+          stage_number: number
+          submitted_to_lender?: boolean | null
+          submitted_to_lender_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number | null
+          builder_invoice_date?: string | null
+          builder_invoice_received?: boolean | null
+          commission_amount?: number | null
+          commission_received?: boolean | null
+          commission_received_date?: string | null
+          created_at?: string
+          deal_id?: string
+          display_order?: number
+          funds_released?: boolean | null
+          funds_released_date?: string | null
+          id?: string
+          is_commission_trigger?: boolean | null
+          notes?: string | null
+          paid_to_builder?: boolean | null
+          paid_to_builder_date?: string | null
+          percentage?: number
+          stage_name?: string
+          stage_number?: number
+          submitted_to_lender?: boolean | null
+          submitted_to_lender_date?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "build_progress_payments_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "client_deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      builder_invoices: {
+        Row: {
+          build_payment_id: string | null
+          build_stage: string | null
+          client_name: string | null
+          commission_amount: number | null
+          commission_received: boolean | null
+          created_at: string
+          deal_id: string
+          funds_released: boolean | null
+          funds_released_date: string | null
+          id: string
+          invoice_amount: number | null
+          invoice_date: string | null
+          notes: string | null
+          paid_to_builder: boolean | null
+          paid_to_builder_date: string | null
+          submitted_date: string | null
+          submitted_to_lender: boolean | null
+        }
+        Insert: {
+          build_payment_id?: string | null
+          build_stage?: string | null
+          client_name?: string | null
+          commission_amount?: number | null
+          commission_received?: boolean | null
+          created_at?: string
+          deal_id: string
+          funds_released?: boolean | null
+          funds_released_date?: string | null
+          id?: string
+          invoice_amount?: number | null
+          invoice_date?: string | null
+          notes?: string | null
+          paid_to_builder?: boolean | null
+          paid_to_builder_date?: string | null
+          submitted_date?: string | null
+          submitted_to_lender?: boolean | null
+        }
+        Update: {
+          build_payment_id?: string | null
+          build_stage?: string | null
+          client_name?: string | null
+          commission_amount?: number | null
+          commission_received?: boolean | null
+          created_at?: string
+          deal_id?: string
+          funds_released?: boolean | null
+          funds_released_date?: string | null
+          id?: string
+          invoice_amount?: number | null
+          invoice_date?: string | null
+          notes?: string | null
+          paid_to_builder?: boolean | null
+          paid_to_builder_date?: string | null
+          submitted_date?: string | null
+          submitted_to_lender?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "builder_invoices_build_payment_id_fkey"
+            columns: ["build_payment_id"]
+            isOneToOne: false
+            referencedRelation: "build_progress_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "builder_invoices_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "client_deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bulk_generation_items: {
         Row: {
           completed_at: string | null
@@ -1094,6 +1252,108 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_deals: {
+        Row: {
+          build_price: number | null
+          client_contribution_confirmed: boolean | null
+          client_id: string
+          construction_loan_type: string | null
+          created_at: string
+          created_by: string | null
+          current_stage: string
+          current_stage_number: number
+          deal_type: Database["public"]["Enums"]["deal_type"]
+          estimated_completion: string | null
+          expected_build_start: string | null
+          finance_clause_expiry: string | null
+          id: string
+          land_price: number | null
+          land_settlement_date: string | null
+          lmi_applied: boolean | null
+          loan_amount: number | null
+          notes: string | null
+          property_id: string | null
+          responsible_person: string | null
+          risk_status: Database["public"]["Enums"]["deal_risk_status"]
+          settlement_date: string | null
+          shortfall_required: number | null
+          total_contract_price: number | null
+          updated_at: string
+          valuation_completed: boolean | null
+        }
+        Insert: {
+          build_price?: number | null
+          client_contribution_confirmed?: boolean | null
+          client_id: string
+          construction_loan_type?: string | null
+          created_at?: string
+          created_by?: string | null
+          current_stage?: string
+          current_stage_number?: number
+          deal_type?: Database["public"]["Enums"]["deal_type"]
+          estimated_completion?: string | null
+          expected_build_start?: string | null
+          finance_clause_expiry?: string | null
+          id?: string
+          land_price?: number | null
+          land_settlement_date?: string | null
+          lmi_applied?: boolean | null
+          loan_amount?: number | null
+          notes?: string | null
+          property_id?: string | null
+          responsible_person?: string | null
+          risk_status?: Database["public"]["Enums"]["deal_risk_status"]
+          settlement_date?: string | null
+          shortfall_required?: number | null
+          total_contract_price?: number | null
+          updated_at?: string
+          valuation_completed?: boolean | null
+        }
+        Update: {
+          build_price?: number | null
+          client_contribution_confirmed?: boolean | null
+          client_id?: string
+          construction_loan_type?: string | null
+          created_at?: string
+          created_by?: string | null
+          current_stage?: string
+          current_stage_number?: number
+          deal_type?: Database["public"]["Enums"]["deal_type"]
+          estimated_completion?: string | null
+          expected_build_start?: string | null
+          finance_clause_expiry?: string | null
+          id?: string
+          land_price?: number | null
+          land_settlement_date?: string | null
+          lmi_applied?: boolean | null
+          loan_amount?: number | null
+          notes?: string | null
+          property_id?: string | null
+          responsible_person?: string | null
+          risk_status?: Database["public"]["Enums"]["deal_risk_status"]
+          settlement_date?: string | null
+          shortfall_required?: number | null
+          total_contract_price?: number | null
+          updated_at?: string
+          valuation_completed?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_deals_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_deals_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "client_properties"
             referencedColumns: ["id"]
           },
         ]
@@ -2307,6 +2567,68 @@ export type Database = {
           sort_order?: number
         }
         Relationships: []
+      }
+      deal_stages: {
+        Row: {
+          client_action: string | null
+          completed_at: string | null
+          created_at: string
+          deal_id: string
+          display_order: number
+          id: string
+          internal_action: string | null
+          key_date: string | null
+          notes: string | null
+          percentage_or_amount: string | null
+          responsible: string | null
+          stage_category: string | null
+          stage_name: string
+          stage_number: number
+          status: Database["public"]["Enums"]["deal_stage_status"]
+        }
+        Insert: {
+          client_action?: string | null
+          completed_at?: string | null
+          created_at?: string
+          deal_id: string
+          display_order?: number
+          id?: string
+          internal_action?: string | null
+          key_date?: string | null
+          notes?: string | null
+          percentage_or_amount?: string | null
+          responsible?: string | null
+          stage_category?: string | null
+          stage_name: string
+          stage_number: number
+          status?: Database["public"]["Enums"]["deal_stage_status"]
+        }
+        Update: {
+          client_action?: string | null
+          completed_at?: string | null
+          created_at?: string
+          deal_id?: string
+          display_order?: number
+          id?: string
+          internal_action?: string | null
+          key_date?: string | null
+          notes?: string | null
+          percentage_or_amount?: string | null
+          responsible?: string | null
+          stage_category?: string | null
+          stage_name?: string
+          stage_number?: number
+          status?: Database["public"]["Enums"]["deal_stage_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_stages_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "client_deals"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       depreciation_comps: {
         Row: {
@@ -4828,6 +5150,9 @@ export type Database = {
         | "session"
         | "branding"
       app_role: "superadmin" | "admin" | "user"
+      deal_risk_status: "on_track" | "needs_follow_up" | "urgent"
+      deal_stage_status: "pending" | "in_progress" | "complete" | "skipped"
+      deal_type: "existing_property" | "house_and_land"
       depreciation_finish_standard: "low" | "medium" | "high"
       depreciation_nearest_city:
         | "sydney_nsw"
@@ -5075,6 +5400,9 @@ export const Constants = {
         "branding",
       ],
       app_role: ["superadmin", "admin", "user"],
+      deal_risk_status: ["on_track", "needs_follow_up", "urgent"],
+      deal_stage_status: ["pending", "in_progress", "complete", "skipped"],
+      deal_type: ["existing_property", "house_and_land"],
       depreciation_finish_standard: ["low", "medium", "high"],
       depreciation_nearest_city: [
         "sydney_nsw",

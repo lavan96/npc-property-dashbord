@@ -36,6 +36,7 @@ interface RequestBody {
     incomeSources?: boolean;
     additionalContacts?: boolean;
     scores?: boolean;
+    deals?: boolean;
   };
   session_token?: string;
 }
@@ -68,7 +69,7 @@ serve(async (req) => {
     const { clientId, clientIds, listMode, listOptions = {}, notesOptions = {}, include = {} } = body;
 
     // Support for querying other tables (portfolio_analysis_reports, etc.)
-    const allowedTables = ['clients', 'portfolio_analysis_reports', 'client_properties', 'client_files', 'client_additional_contacts'];
+    const allowedTables = ['clients', 'portfolio_analysis_reports', 'client_properties', 'client_files', 'client_additional_contacts', 'client_deals', 'deal_stages', 'build_progress_payments', 'builder_invoices'];
     const targetTable = listOptions.table || 'clients';
     
     if (listOptions.table && !allowedTables.includes(targetTable)) {
@@ -298,6 +299,58 @@ serve(async (req) => {
         fetchPromises.push(
           supabase.from('client_scores').select('*').eq('client_id', id).maybeSingle()
             .then(({ data }) => { clientResult.scores = data || null; })
+        );
+      }
+
+      if (include.deals) {
+        fetchPromises.push(
+          (async () => {
+            // Fetch deals
+            const { data: deals } = await supabase
+              .from('client_deals')
+              .select('*')
+              .eq('client_id', id)
+              .order('created_at', { ascending: false });
+            
+            if (deals && deals.length > 0) {
+              // Fetch stages and build payments for all deals in parallel
+              const dealIds = deals.map((d: any) => d.id);
+              
+              const [stagesRes, paymentsRes, invoicesRes] = await Promise.all([
+                supabase.from('deal_stages').select('*').in('deal_id', dealIds).order('display_order', { ascending: true }),
+                supabase.from('build_progress_payments').select('*').in('deal_id', dealIds).order('display_order', { ascending: true }),
+                supabase.from('builder_invoices').select('*').in('deal_id', dealIds).order('created_at', { ascending: false }),
+              ]);
+              
+              // Group by deal_id
+              const stagesByDeal: Record<string, any[]> = {};
+              const paymentsByDeal: Record<string, any[]> = {};
+              const invoicesByDeal: Record<string, any[]> = {};
+              
+              (stagesRes.data || []).forEach((s: any) => {
+                if (!stagesByDeal[s.deal_id]) stagesByDeal[s.deal_id] = [];
+                stagesByDeal[s.deal_id].push(s);
+              });
+              (paymentsRes.data || []).forEach((p: any) => {
+                if (!paymentsByDeal[p.deal_id]) paymentsByDeal[p.deal_id] = [];
+                paymentsByDeal[p.deal_id].push(p);
+              });
+              (invoicesRes.data || []).forEach((i: any) => {
+                if (!invoicesByDeal[i.deal_id]) invoicesByDeal[i.deal_id] = [];
+                invoicesByDeal[i.deal_id].push(i);
+              });
+              
+              // Attach to each deal
+              clientResult.deals = deals.map((d: any) => ({
+                ...d,
+                stages: stagesByDeal[d.id] || [],
+                buildPayments: paymentsByDeal[d.id] || [],
+                invoices: invoicesByDeal[d.id] || [],
+              }));
+            } else {
+              clientResult.deals = [];
+            }
+          })()
         );
       }
 
