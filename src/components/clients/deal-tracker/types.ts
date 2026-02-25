@@ -164,12 +164,13 @@ export const REFINANCE_STAGES = [
   { stage_number: 4, stage_name: 'Application Lodged', stage_category: 'Finance', responsible: 'Broker', internal_action: 'CRM update', client_action: 'Await processing' },
   { stage_number: 5, stage_name: 'Valuation Ordered', stage_category: 'Finance', responsible: 'Broker', internal_action: 'Monitor valuation', client_action: 'Provide access' },
   { stage_number: 6, stage_name: 'Conditional Approval', stage_category: 'Finance', responsible: 'Broker', internal_action: 'Review conditions', client_action: 'Await approval' },
-  { stage_number: 7, stage_name: 'Discharge Authority Submitted', stage_category: 'Legal', responsible: 'Admin', internal_action: 'Track discharge timeframe', client_action: 'Sign discharge' },
-  { stage_number: 8, stage_name: 'Formal Approval', stage_category: 'Finance', responsible: 'Broker', internal_action: 'Confirm docs ready', client_action: 'Await formal' },
-  { stage_number: 9, stage_name: 'Loan Documents Signed', stage_category: 'Legal', responsible: 'Client/Admin', internal_action: 'Verify execution', client_action: 'Sign loan docs' },
-  { stage_number: 10, stage_name: 'Settlement Booked', stage_category: 'Settlement', responsible: 'Lender', internal_action: 'Confirm payout figure', client_action: 'Await settlement' },
-  { stage_number: 11, stage_name: 'Refinance Settlement Complete', stage_category: 'Finalised', responsible: 'Team', internal_action: 'Confirm old loan closed', client_action: 'Settlement complete' },
-  { stage_number: 12, stage_name: 'Commission Confirmed', stage_category: 'Commission', responsible: 'Accounts', internal_action: 'Track clawback', client_action: 'N/A' },
+  { stage_number: 7, stage_name: 'Unconditional Approval', stage_category: 'Finance', responsible: 'Broker', internal_action: 'Confirm all conditions satisfied', client_action: 'Approval confirmed' },
+  { stage_number: 8, stage_name: 'Discharge Authority Submitted', stage_category: 'Legal', responsible: 'Admin', internal_action: 'Track discharge timeframe', client_action: 'Sign discharge' },
+  { stage_number: 9, stage_name: 'Formal Approval', stage_category: 'Finance', responsible: 'Broker', internal_action: 'Confirm docs ready', client_action: 'Await formal' },
+  { stage_number: 10, stage_name: 'Loan Documents Signed', stage_category: 'Legal', responsible: 'Client/Admin', internal_action: 'Verify execution', client_action: 'Sign loan docs' },
+  { stage_number: 11, stage_name: 'Settlement Booked', stage_category: 'Settlement', responsible: 'Lender', internal_action: 'Confirm payout figure', client_action: 'Await settlement' },
+  { stage_number: 12, stage_name: 'Refinance Settlement Complete', stage_category: 'Finalised', responsible: 'Team', internal_action: 'Confirm old loan closed', client_action: 'Settlement complete' },
+  { stage_number: 13, stage_name: 'Commission Confirmed', stage_category: 'Commission', responsible: 'Accounts', internal_action: 'Track clawback', client_action: 'N/A' },
 ];
 
 export const BUILD_PAYMENT_STAGES = [
