@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
+import { logApiUsage } from '../_shared/logApiUsage.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -1136,6 +1137,25 @@ serve(async (req) => {
     }
 
     console.log('[Vapi Webhook] Successfully saved call log:', data.id);
+
+    // Log VAPI usage for cost tracking
+    if (isEndOfCall) {
+      await logApiUsage(supabase, {
+        service_name: 'vapi',
+        endpoint: '/call/end',
+        cost_estimate_usd: cost || 0,
+        response_time_ms: durationSeconds ? durationSeconds * 1000 : undefined,
+        status: 'success',
+        model_used: agentName || 'vapi-voice',
+        metadata: {
+          call_id: call.id,
+          duration_seconds: durationSeconds,
+          call_direction: callLogData.call_direction,
+          is_squad_call: isSquadCall,
+          sentiment: sentiment,
+        },
+      });
+    }
 
     // If this is end-of-call and we don't have cost, schedule background fetch
     if (isEndOfCall && !callLogData.cost) {

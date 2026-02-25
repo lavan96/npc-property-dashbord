@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
+import { logApiUsage } from '../_shared/logApiUsage.ts';
 
 /**
  * Create CORS headers with credentials support for cookies
@@ -143,6 +144,18 @@ Deno.serve(async (req) => {
 
     const data: AirtableResponse = await airtableResponse.json();
     console.log(`Successfully fetched ${data.records.length} records from Airtable`);
+
+    // Log Airtable API usage
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    await logApiUsage(supabase, {
+      service_name: 'airtable',
+      endpoint: `/v0/${baseId}/${tableName}`,
+      status: 'success',
+      model_used: 'rest-api',
+      metadata: { records_fetched: data.records.length, has_offset: !!data.offset },
+    });
 
     // Transform the data to match the expected format
     console.log('Transforming record example:', data.records[0]?.fields);
