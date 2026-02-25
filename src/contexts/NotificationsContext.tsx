@@ -39,7 +39,13 @@ export type NotificationType =
   | 'new_user_invited'
   | 'system_maintenance'
   | 'data_import_complete'
-  | 'report_comment_added';
+  | 'report_comment_added'
+  // Phase 3 additions - Deal Lifecycle
+  | 'deal_finance_expiry_warning'
+  | 'deal_finance_expiry_overdue'
+  | 'deal_settlement_warning'
+  | 'deal_settlement_overdue'
+  | 'deal_build_date_warning';
 
 export interface Notification {
   id: string;
@@ -260,6 +266,18 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         break;
       case 'data_import_complete':
         navigate('/data-import');
+        break;
+      // Deal lifecycle notifications
+      case 'deal_finance_expiry_warning':
+      case 'deal_finance_expiry_overdue':
+      case 'deal_settlement_warning':
+      case 'deal_settlement_overdue':
+      case 'deal_build_date_warning':
+        if (notification.entityId) {
+          navigate(`/clients?highlight=${notification.entityId}`);
+        } else {
+          navigate('/deal-pipeline');
+        }
         break;
       case 'report_comment_added':
         if (notification.reportId || notification.entityId) {
