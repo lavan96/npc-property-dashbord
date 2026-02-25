@@ -158,7 +158,7 @@ serve(async (req) => {
     }
 
     // Tables that don't require clientId
-    const STANDALONE_TABLES = ['clients', 'report_qa_messages', 'report_qa_conversations'];
+    const STANDALONE_TABLES = ['clients', 'report_qa_messages', 'report_qa_conversations', 'deal_stages', 'build_progress_payments', 'builder_invoices'];
     
     // Validate clientId for client-related tables only
     if (!STANDALONE_TABLES.includes(table) && !clientId) {
