@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   Building2,
   Home,
+  RefreshCw,
   Trash2,
   ChevronDown,
 } from 'lucide-react';
@@ -38,7 +39,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { Deal, RiskStatus, RISK_STATUS_CONFIG } from './types';
+import { Deal, RiskStatus, RISK_STATUS_CONFIG, DEAL_TYPE_LABELS } from './types';
 import { DealStageTimeline } from './DealStageTimeline';
 import { BuildPaymentTracker } from './BuildPaymentTracker';
 import { DealFinancialControls } from './DealFinancialControls';
@@ -70,14 +71,27 @@ export function DealDetailView({ deal, clientId, onBack }: DealDetailViewProps) 
   };
 
   const isHnL = deal.deal_type === 'house_and_land';
+  const isRefinance = deal.deal_type === 'refinance';
   const riskConfig = RISK_STATUS_CONFIG[deal.risk_status];
 
   const completedStages = (deal.stages || []).filter(s => s.status === 'complete').length;
   const totalStages = (deal.stages || []).length;
 
+  const getDealIcon = () => {
+    if (isRefinance) return <RefreshCw className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />;
+    if (isHnL) return <Home className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />;
+    return <Building2 className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />;
+  };
+
+  const getStagesLabel = () => {
+    if (isRefinance) return 'Refinance Lifecycle Stages';
+    if (isHnL) return 'Land Acquisition Stages';
+    return 'Property Acquisition Stages';
+  };
+
   return (
     <div className="space-y-4">
-      {/* Header - stacks on mobile */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0 sm:justify-between">
         <div className="flex items-center gap-2 flex-wrap">
           <Button variant="ghost" size="sm" onClick={onBack} className="h-8 px-2">
@@ -85,9 +99,9 @@ export function DealDetailView({ deal, clientId, onBack }: DealDetailViewProps) 
             Back
           </Button>
           <div className="flex items-center gap-1.5">
-            {isHnL ? <Home className="h-4 w-4 sm:h-5 sm:w-5 text-primary" /> : <Building2 className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />}
+            {getDealIcon()}
             <h3 className="font-semibold text-sm sm:text-lg">
-              {isHnL ? 'House & Land' : 'Existing Property'} Deal
+              {DEAL_TYPE_LABELS[deal.deal_type]} Deal
             </h3>
           </div>
           <Badge variant="outline" className="text-[10px] sm:text-xs">
@@ -96,7 +110,6 @@ export function DealDetailView({ deal, clientId, onBack }: DealDetailViewProps) 
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Risk Status Selector */}
           <Select
             value={deal.risk_status}
             onValueChange={(v) => handleDealUpdate({ risk_status: v as RiskStatus })}
@@ -113,7 +126,6 @@ export function DealDetailView({ deal, clientId, onBack }: DealDetailViewProps) 
             </SelectContent>
           </Select>
 
-          {/* Responsible Person */}
           <Input
             key={deal.id + '-responsible'}
             defaultValue={deal.responsible_person || ''}
@@ -126,7 +138,6 @@ export function DealDetailView({ deal, clientId, onBack }: DealDetailViewProps) 
             className="h-8 text-xs w-full sm:w-[140px]"
           />
 
-          {/* Delete */}
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="ghost" size="sm" className="text-destructive h-8 shrink-0">
@@ -171,7 +182,7 @@ export function DealDetailView({ deal, clientId, onBack }: DealDetailViewProps) 
       <Collapsible open={openSections.stages} onOpenChange={() => toggleSection('stages')}>
         <CollapsibleTrigger asChild>
           <Button variant="ghost" className="w-full justify-between h-9 text-sm font-medium">
-            {isHnL ? 'Land Acquisition Stages' : 'Property Acquisition Stages'}
+            {getStagesLabel()}
             <ChevronDown className={cn('h-4 w-4 transition-transform', openSections.stages && 'rotate-180')} />
           </Button>
         </CollapsibleTrigger>

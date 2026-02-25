@@ -6,6 +6,7 @@ import {
   Deal,
   EXISTING_PROPERTY_STAGES,
   HOUSE_AND_LAND_STAGES,
+  REFINANCE_STAGES,
   BUILD_PAYMENT_STAGES,
 } from './types';
 
@@ -33,6 +34,13 @@ export function useDealActions(clientId: string) {
 
   const createDeal = useMutation({
     mutationFn: async ({ dealType, propertyId }: { dealType: DealType; propertyId?: string }) => {
+      // Determine initial stage name
+      const initialStage = dealType === 'existing_property'
+        ? 'Initial Holding Deposit (0.25%)'
+        : dealType === 'house_and_land'
+        ? 'Lot Secured'
+        : 'Client Engaged (Exclusive)';
+
       // 1. Create the deal record
       const deal = await manageDealData({
         operation: 'create',
@@ -41,7 +49,7 @@ export function useDealActions(clientId: string) {
         data: {
           deal_type: dealType,
           property_id: propertyId || null,
-          current_stage: dealType === 'existing_property' ? 'Initial Holding Deposit (0.25%)' : 'Lot Secured',
+          current_stage: initialStage,
           current_stage_number: 1,
         },
       });
@@ -49,7 +57,11 @@ export function useDealActions(clientId: string) {
       const dealId = deal.id;
 
       // 2. Create stage templates
-      const stageTemplates = dealType === 'existing_property' ? EXISTING_PROPERTY_STAGES : HOUSE_AND_LAND_STAGES;
+      const stageTemplates = dealType === 'existing_property'
+        ? EXISTING_PROPERTY_STAGES
+        : dealType === 'house_and_land'
+        ? HOUSE_AND_LAND_STAGES
+        : REFINANCE_STAGES;
       const stagesData = stageTemplates.map((s, i) => ({
         deal_id: dealId,
         stage_number: s.stage_number,

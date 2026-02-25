@@ -4,7 +4,7 @@ import { invokeSecureFunction } from '@/lib/secureInvoke';
 export interface DealWithClient {
   id: string;
   client_id: string;
-  deal_type: 'existing_property' | 'house_and_land';
+  deal_type: 'existing_property' | 'house_and_land' | 'refinance';
   current_stage: string;
   current_stage_number: number;
   risk_status: 'on_track' | 'needs_follow_up' | 'urgent';

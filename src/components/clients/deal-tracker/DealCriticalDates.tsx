@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { Deal } from './types';
+import { Deal, DealType } from './types';
 
 interface DealCriticalDatesProps {
   deal: Deal;
@@ -17,16 +17,26 @@ interface DealCriticalDatesProps {
 interface DateFieldConfig {
   key: keyof Deal;
   label: string;
-  showFor: 'all' | 'house_and_land';
+  showFor: DealType[] | 'all';
   isUrgent?: boolean;
 }
 
 const DATE_FIELDS: DateFieldConfig[] = [
-  { key: 'finance_clause_expiry', label: 'Finance Clause Expiry', showFor: 'all', isUrgent: true },
+  // Shared
+  { key: 'finance_clause_expiry', label: 'Finance Clause Expiry', showFor: ['existing_property', 'house_and_land'], isUrgent: true },
   { key: 'settlement_date', label: 'Settlement Date', showFor: 'all', isUrgent: true },
-  { key: 'land_settlement_date', label: 'Land Settlement Date', showFor: 'house_and_land' },
-  { key: 'expected_build_start', label: 'Expected Build Start', showFor: 'house_and_land' },
-  { key: 'estimated_completion', label: 'Estimated Completion', showFor: 'house_and_land' },
+  // H&L only
+  { key: 'land_settlement_date', label: 'Land Settlement Date', showFor: ['house_and_land'] },
+  { key: 'expected_build_start', label: 'Expected Build Start', showFor: ['house_and_land'] },
+  { key: 'estimated_completion', label: 'Estimated Completion', showFor: ['house_and_land'] },
+  // Refinance only
+  { key: 'lodgement_date', label: 'Lodgement Date', showFor: ['refinance'] },
+  { key: 'valuation_date', label: 'Valuation Date', showFor: ['refinance'] },
+  { key: 'conditional_approval_date', label: 'Conditional Approval', showFor: ['refinance'], isUrgent: true },
+  { key: 'discharge_authority_date', label: 'Discharge Authority Submitted', showFor: ['refinance'], isUrgent: true },
+  { key: 'formal_approval_date', label: 'Formal Approval', showFor: ['refinance'] },
+  { key: 'loan_docs_signed_date', label: 'Loan Documents Signed', showFor: ['refinance'] },
+  { key: 'clawback_expiry_date', label: 'Clawback Expiry', showFor: ['refinance'], isUrgent: true },
 ];
 
 function DateWarningBadge({ dateStr }: { dateStr: string }) {
@@ -78,9 +88,10 @@ function DatePickerField({ value, label, onChange }: { value: string | null; lab
 }
 
 export function DealCriticalDates({ deal, onUpdate }: DealCriticalDatesProps) {
-  const visibleFields = DATE_FIELDS.filter(
-    f => f.showFor === 'all' || deal.deal_type === f.showFor
-  );
+  const visibleFields = DATE_FIELDS.filter(f => {
+    if (f.showFor === 'all') return true;
+    return f.showFor.includes(deal.deal_type);
+  });
 
   const urgentDates = visibleFields.filter(f => {
     const val = deal[f.key] as string | null;
