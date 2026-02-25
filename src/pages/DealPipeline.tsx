@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TrendingUp, DollarSign, FileText, LayoutDashboard } from 'lucide-react';
 import { useAllDeals } from '@/hooks/useAllDeals';
+import { usePipelineMutations } from '@/hooks/usePipelineMutations';
 import { DealExecutiveSummary } from '@/components/deals/DealExecutiveSummary';
 import { CommissionDashboard } from '@/components/deals/CommissionDashboard';
 import { BuilderInvoiceLog } from '@/components/deals/BuilderInvoiceLog';
@@ -11,13 +12,17 @@ import type { DealWithClient } from '@/hooks/useAllDeals';
 
 export default function DealPipeline() {
   const { data: deals = [], isLoading, error } = useAllDeals();
+  const { updateBuildPayment } = usePipelineMutations();
   const [activeTab, setActiveTab] = useState('summary');
   const navigate = useNavigate();
 
   const handleDealClick = (deal: DealWithClient) => {
-    // Navigate to clients page with the client selected
     navigate(`/clients?clientId=${deal.client_id}&tab=deals`);
     toast.info(`Opening ${deal.client_name}'s deal`);
+  };
+
+  const handleUpdatePayment = (paymentId: string, clientId: string, data: any) => {
+    updateBuildPayment.mutate({ paymentId, clientId, data });
   };
 
   return (
@@ -53,11 +58,11 @@ export default function DealPipeline() {
         </TabsContent>
 
         <TabsContent value="commissions" className="mt-4">
-          <CommissionDashboard deals={deals} isLoading={isLoading} />
+          <CommissionDashboard deals={deals} isLoading={isLoading} onUpdatePayment={handleUpdatePayment} />
         </TabsContent>
 
         <TabsContent value="invoices" className="mt-4">
-          <BuilderInvoiceLog deals={deals} isLoading={isLoading} />
+          <BuilderInvoiceLog deals={deals} isLoading={isLoading} onUpdatePayment={handleUpdatePayment} />
         </TabsContent>
       </Tabs>
     </div>
