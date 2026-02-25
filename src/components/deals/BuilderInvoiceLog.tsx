@@ -83,8 +83,8 @@ export function BuilderInvoiceLog({ deals, isLoading }: Props) {
   if (invoiceRows.length === 0) {
     return (
       <Card className="border-dashed">
-        <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-          <FileText className="h-10 w-10 text-muted-foreground mb-3" />
+        <CardContent className="flex flex-col items-center justify-center py-8 sm:py-12 text-center">
+          <FileText className="h-8 w-8 sm:h-10 sm:w-10 text-muted-foreground mb-3" />
           <p className="text-sm text-muted-foreground">No build progress payments found.</p>
           <p className="text-xs text-muted-foreground">Builder invoice tracking appears when House & Land deals have build payment stages.</p>
         </CardContent>
@@ -95,51 +95,51 @@ export function BuilderInvoiceLog({ deals, isLoading }: Props) {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base flex items-center gap-2">
+        <CardTitle className="text-sm sm:text-base flex items-center gap-2">
           <FileText className="h-4 w-4 text-primary" />
           Builder Invoice Log
           <Badge variant="outline" className="text-xs ml-auto">{invoiceRows.length} stages</Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="p-0">
-        <div className="overflow-auto">
+        <div className="overflow-auto max-w-full">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Client</TableHead>
-                <TableHead>Stage</TableHead>
-                <TableHead className="text-right">%</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-                <TableHead className="text-center">Invoice Date</TableHead>
-                <TableHead className="text-center">Submitted</TableHead>
-                <TableHead className="text-center">Funds Released</TableHead>
-                <TableHead className="text-center">Paid to Builder</TableHead>
-                <TableHead className="text-center">Commission</TableHead>
+                <TableHead className="whitespace-nowrap">Client</TableHead>
+                <TableHead className="whitespace-nowrap">Stage</TableHead>
+                <TableHead className="text-right whitespace-nowrap hidden sm:table-cell">%</TableHead>
+                <TableHead className="text-right whitespace-nowrap hidden sm:table-cell">Amount</TableHead>
+                <TableHead className="text-center whitespace-nowrap">Invoice</TableHead>
+                <TableHead className="text-center whitespace-nowrap hidden md:table-cell">Submitted</TableHead>
+                <TableHead className="text-center whitespace-nowrap">Funds</TableHead>
+                <TableHead className="text-center whitespace-nowrap hidden md:table-cell">Paid</TableHead>
+                <TableHead className="text-center whitespace-nowrap">Comm.</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {invoiceRows.map((row, idx) => (
                 <TableRow key={`${row.dealId}-${row.stageNumber}-${idx}`}>
-                  <TableCell className="font-medium text-sm">{row.clientName}</TableCell>
-                  <TableCell className="text-sm">{row.stageName}</TableCell>
-                  <TableCell className="text-right font-mono text-sm">{row.percentage}%</TableCell>
-                  <TableCell className="text-right text-sm">{row.amount ? formatCurrency(row.amount) : '—'}</TableCell>
-                  <TableCell className="text-center text-sm">
+                  <TableCell className="font-medium text-xs sm:text-sm whitespace-nowrap">{row.clientName}</TableCell>
+                  <TableCell className="text-xs sm:text-sm whitespace-nowrap">{row.stageName}</TableCell>
+                  <TableCell className="text-right font-mono text-xs sm:text-sm hidden sm:table-cell">{row.percentage}%</TableCell>
+                  <TableCell className="text-right text-xs sm:text-sm hidden sm:table-cell">{row.amount ? formatCurrency(row.amount) : '—'}</TableCell>
+                  <TableCell className="text-center text-xs sm:text-sm">
                     {row.builderInvoiceDate ? format(new Date(row.builderInvoiceDate), 'dd/MM/yy') : (
                       <StatusIcon value={row.builderInvoiceReceived} />
                     )}
                   </TableCell>
-                  <TableCell className="text-center text-sm">
+                  <TableCell className="text-center text-xs sm:text-sm hidden md:table-cell">
                     {row.submittedDate ? format(new Date(row.submittedDate), 'dd/MM/yy') : (
                       <StatusIcon value={row.submittedToLender} />
                     )}
                   </TableCell>
-                  <TableCell className="text-center text-sm">
+                  <TableCell className="text-center text-xs sm:text-sm">
                     {row.fundsReleasedDate ? format(new Date(row.fundsReleasedDate), 'dd/MM/yy') : (
                       <StatusIcon value={row.fundsReleased} />
                     )}
                   </TableCell>
-                  <TableCell className="text-center text-sm">
+                  <TableCell className="text-center text-xs sm:text-sm hidden md:table-cell">
                     {row.paidToBuilderDate ? format(new Date(row.paidToBuilderDate), 'dd/MM/yy') : (
                       <StatusIcon value={row.paidToBuilder} />
                     )}

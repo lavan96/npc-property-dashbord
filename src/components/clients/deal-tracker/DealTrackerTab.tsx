@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -46,7 +46,6 @@ export function DealTrackerTab({ clientId, deals, properties }: DealTrackerTabPr
     );
   };
 
-  // If viewing a specific deal
   if (selectedDeal) {
     return (
       <DealDetailView
@@ -57,26 +56,26 @@ export function DealTrackerTab({ clientId, deals, properties }: DealTrackerTabPr
     );
   }
 
-  // Deal list view
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-lg flex items-center gap-2">
-          <TrendingUp className="h-5 w-5 text-primary" />
+        <h3 className="font-semibold text-base sm:text-lg flex items-center gap-2">
+          <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
           Deal Tracker
         </h3>
         <Button size="sm" onClick={() => setShowCreateDialog(true)}>
           <Plus className="h-4 w-4 mr-1.5" />
-          New Deal
+          <span className="hidden sm:inline">New Deal</span>
+          <span className="sm:hidden">New</span>
         </Button>
       </div>
 
       {deals.length === 0 ? (
         <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <Building2 className="h-10 w-10 text-muted-foreground mb-3" />
+          <CardContent className="flex flex-col items-center justify-center py-8 sm:py-12 text-center">
+            <Building2 className="h-8 w-8 sm:h-10 sm:w-10 text-muted-foreground mb-3" />
             <p className="text-sm text-muted-foreground mb-1">No deals yet</p>
-            <p className="text-xs text-muted-foreground mb-4">Create a deal to start tracking the client's property acquisition lifecycle.</p>
+            <p className="text-xs text-muted-foreground mb-4">Create a deal to start tracking the property acquisition lifecycle.</p>
             <Button size="sm" onClick={() => setShowCreateDialog(true)}>
               <Plus className="h-4 w-4 mr-1.5" />
               Create First Deal
@@ -98,25 +97,24 @@ export function DealTrackerTab({ clientId, deals, properties }: DealTrackerTabPr
                 className="cursor-pointer hover:border-primary/50 transition-colors"
                 onClick={() => setSelectedDealId(deal.id)}
               >
-                <CardContent className="p-4">
+                <CardContent className="p-3 sm:p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      {isHnL ? <Home className="h-4 w-4 text-primary" /> : <Building2 className="h-4 w-4 text-primary" />}
-                      <span className="font-medium text-sm">
+                    <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                      {isHnL ? <Home className="h-4 w-4 text-primary shrink-0" /> : <Building2 className="h-4 w-4 text-primary shrink-0" />}
+                      <span className="font-medium text-xs sm:text-sm truncate">
                         {isHnL ? 'House & Land' : 'Existing Property'}
                       </span>
-                      <Badge variant="outline" className="text-[10px]">
-                        Stage {deal.current_stage_number}
+                      <Badge variant="outline" className="text-[10px] shrink-0">
+                        S{deal.current_stage_number}
                       </Badge>
                     </div>
-                    <Badge className={cn('text-[10px] border', riskConfig.color)}>
+                    <Badge className={cn('text-[10px] border shrink-0', riskConfig.color)}>
                       {riskConfig.emoji} {riskConfig.label}
                     </Badge>
                   </div>
 
-                  <p className="text-sm text-muted-foreground mb-2">{deal.current_stage}</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground mb-2 truncate">{deal.current_stage}</p>
 
-                  {/* Progress */}
                   <div className="flex items-center gap-3 mb-2">
                     <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
                       <div
@@ -127,18 +125,18 @@ export function DealTrackerTab({ clientId, deals, properties }: DealTrackerTabPr
                     <span className="text-xs text-muted-foreground">{completedStages}/{totalStages}</span>
                   </div>
 
-                  {/* Key info */}
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                  {/* Key info - wrap on mobile */}
+                  <div className="flex items-center gap-2 sm:gap-4 text-xs text-muted-foreground flex-wrap">
                     {deal.responsible_person && (
-                      <span>👤 {deal.responsible_person}</span>
+                      <span className="truncate">👤 {deal.responsible_person}</span>
                     )}
                     {deal.total_contract_price && (
                       <span>💰 {new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(deal.total_contract_price)}</span>
                     )}
                     {deal.settlement_date && (
-                      <span>📅 Settlement: {format(new Date(deal.settlement_date), 'dd MMM yyyy')}</span>
+                      <span className="hidden sm:inline">📅 {format(new Date(deal.settlement_date), 'dd MMM yyyy')}</span>
                     )}
-                    <span className="ml-auto">Created {format(new Date(deal.created_at), 'dd MMM yyyy')}</span>
+                    <span className="ml-auto text-[10px] sm:text-xs">{format(new Date(deal.created_at), 'dd MMM yyyy')}</span>
                   </div>
                 </CardContent>
               </Card>
@@ -149,7 +147,7 @@ export function DealTrackerTab({ clientId, deals, properties }: DealTrackerTabPr
 
       {/* Create Deal Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="w-[calc(100vw-24px)] sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Create New Deal</DialogTitle>
             <DialogDescription>
@@ -165,10 +163,10 @@ export function DealTrackerTab({ clientId, deals, properties }: DealTrackerTabPr
               )}
               onClick={() => setNewDealType('existing_property')}
             >
-              <CardContent className="flex flex-col items-center gap-2 p-4 text-center">
-                <Building2 className="h-8 w-8 text-primary" />
-                <span className="font-medium text-sm">Existing Property</span>
-                <span className="text-xs text-muted-foreground">7-stage acquisition workflow</span>
+              <CardContent className="flex flex-col items-center gap-2 p-3 sm:p-4 text-center">
+                <Building2 className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
+                <span className="font-medium text-xs sm:text-sm">Existing Property</span>
+                <span className="text-[10px] sm:text-xs text-muted-foreground">7-stage workflow</span>
               </CardContent>
             </Card>
 
@@ -179,17 +177,17 @@ export function DealTrackerTab({ clientId, deals, properties }: DealTrackerTabPr
               )}
               onClick={() => setNewDealType('house_and_land')}
             >
-              <CardContent className="flex flex-col items-center gap-2 p-4 text-center">
-                <Home className="h-8 w-8 text-primary" />
-                <span className="font-medium text-sm">House & Land</span>
-                <span className="text-xs text-muted-foreground">7 land + 6 build stages</span>
+              <CardContent className="flex flex-col items-center gap-2 p-3 sm:p-4 text-center">
+                <Home className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
+                <span className="font-medium text-xs sm:text-sm">House & Land</span>
+                <span className="text-[10px] sm:text-xs text-muted-foreground">7 land + 6 build</span>
               </CardContent>
             </Card>
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreateDialog(false)}>Cancel</Button>
-            <Button onClick={handleCreate} disabled={createDeal.isPending}>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setShowCreateDialog(false)} className="w-full sm:w-auto">Cancel</Button>
+            <Button onClick={handleCreate} disabled={createDeal.isPending} className="w-full sm:w-auto">
               {createDeal.isPending ? 'Creating...' : 'Create Deal'}
             </Button>
           </DialogFooter>
