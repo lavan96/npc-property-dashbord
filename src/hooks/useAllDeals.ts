@@ -1,0 +1,126 @@
+import { useQuery } from '@tanstack/react-query';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
+
+export interface DealWithClient {
+  id: string;
+  client_id: string;
+  deal_type: 'existing_property' | 'house_and_land';
+  current_stage: string;
+  current_stage_number: number;
+  risk_status: 'on_track' | 'needs_follow_up' | 'urgent';
+  responsible_person: string | null;
+  total_contract_price: number | null;
+  land_price: number | null;
+  build_price: number | null;
+  loan_amount: number | null;
+  valuation_completed: boolean;
+  settlement_date: string | null;
+  finance_clause_expiry: string | null;
+  land_settlement_date: string | null;
+  expected_build_start: string | null;
+  estimated_completion: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  // Joined from client
+  client_name?: string;
+  // Nested
+  stages?: any[];
+  buildPayments?: any[];
+  invoices?: any[];
+}
+
+/**
+ * Fetches all deals across all clients via the get-client-data edge function
+ * using listMode with client_deals table
+ */
+export function useAllDeals() {
+  return useQuery({
+    queryKey: ['all-deals'],
+    queryFn: async (): Promise<DealWithClient[]> => {
+      // Fetch all deals
+      const { data: dealsData, error: dealsError } = await invokeSecureFunction('get-client-data', {
+        listMode: true,
+        listOptions: {
+          table: 'client_deals',
+          select: '*',
+          orderBy: 'created_at',
+          orderAsc: false,
+        },
+      });
+
+      if (dealsError || !dealsData?.success) {
+        throw new Error(dealsError?.message || 'Failed to fetch deals');
+      }
+
+      const deals = dealsData.records || [];
+      if (deals.length === 0) return [];
+
+      // Fetch client names for all unique client IDs
+      const clientIds = [...new Set(deals.map((d: any) => d.client_id))];
+      const { data: clientsData } = await invokeSecureFunction('get-client-data', {
+        clientIds,
+        include: { client: true, properties: false, employment: false, income: false, assets: false, liabilities: false, expenses: false },
+      });
+
+      const clientMap: Record<string, string> = {};
+      if (clientsData?.success && clientsData.clients) {
+        for (const c of clientsData.clients) {
+          if (c.client) {
+            const name = [c.client.primary_first_name, c.client.primary_surname].filter(Boolean).join(' ');
+            clientMap[c.id] = name || 'Unknown';
+          }
+        }
+      }
+
+      // Fetch stages & build payments for all deals
+      const dealIds = deals.map((d: any) => d.id);
+
+      const [stagesRes, paymentsRes, invoicesRes] = await Promise.all([
+        invokeSecureFunction('get-client-data', {
+          listMode: true,
+          listOptions: { table: 'deal_stages', select: '*', orderBy: 'display_order', orderAsc: true },
+        }),
+        invokeSecureFunction('get-client-data', {
+          listMode: true,
+          listOptions: { table: 'build_progress_payments', select: '*', orderBy: 'display_order', orderAsc: true },
+        }),
+        invokeSecureFunction('get-client-data', {
+          listMode: true,
+          listOptions: { table: 'builder_invoices', select: '*', orderBy: 'created_at', orderAsc: false },
+        }),
+      ]);
+
+      const stages = stagesRes.data?.records || [];
+      const payments = paymentsRes.data?.records || [];
+      const invoices = invoicesRes.data?.records || [];
+
+      // Group by deal_id
+      const stagesByDeal: Record<string, any[]> = {};
+      const paymentsByDeal: Record<string, any[]> = {};
+      const invoicesByDeal: Record<string, any[]> = {};
+
+      for (const s of stages) {
+        if (!stagesByDeal[s.deal_id]) stagesByDeal[s.deal_id] = [];
+        stagesByDeal[s.deal_id].push(s);
+      }
+      for (const p of payments) {
+        if (!paymentsByDeal[p.deal_id]) paymentsByDeal[p.deal_id] = [];
+        paymentsByDeal[p.deal_id].push(p);
+      }
+      for (const i of invoices) {
+        if (!invoicesByDeal[i.deal_id]) invoicesByDeal[i.deal_id] = [];
+        invoicesByDeal[i.deal_id].push(i);
+      }
+
+      return deals.map((d: any) => ({
+        ...d,
+        client_name: clientMap[d.client_id] || 'Unknown',
+        stages: stagesByDeal[d.id] || [],
+        buildPayments: paymentsByDeal[d.id] || [],
+        invoices: invoicesByDeal[d.id] || [],
+      }));
+    },
+    staleTime: 30000,
+  });
+}
