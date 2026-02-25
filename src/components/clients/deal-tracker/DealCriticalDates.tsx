@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { format, differenceInDays, isPast } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { CalendarIcon, AlertTriangle } from 'lucide-react';
@@ -44,6 +45,38 @@ function DateWarningBadge({ dateStr }: { dateStr: string }) {
   return <Badge variant="outline" className="text-[10px]">{daysAway}d away</Badge>;
 }
 
+function DatePickerField({ value, label, onChange }: { value: string | null; label: string; onChange: (v: string | null) => void }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <span className="text-xs text-muted-foreground truncate">{label}</span>
+      <div className="flex items-center gap-1.5 shrink-0">
+        {value && <DateWarningBadge dateStr={value} />}
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className="h-7 text-xs px-2">
+              <CalendarIcon className="h-3 w-3 mr-1" />
+              {value ? format(new Date(value), 'dd MMM yyyy') : 'Set'}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="end">
+            <Calendar
+              mode="single"
+              selected={value ? new Date(value) : undefined}
+              onSelect={(date) => {
+                onChange(date ? format(date, 'yyyy-MM-dd') : null);
+                setOpen(false);
+              }}
+              className="p-3 pointer-events-auto"
+            />
+          </PopoverContent>
+        </Popover>
+      </div>
+    </div>
+  );
+}
+
 export function DealCriticalDates({ deal, onUpdate }: DealCriticalDatesProps) {
   const visibleFields = DATE_FIELDS.filter(
     f => f.showFor === 'all' || deal.deal_type === f.showFor
@@ -75,28 +108,12 @@ export function DealCriticalDates({ deal, onUpdate }: DealCriticalDatesProps) {
           {visibleFields.map((field) => {
             const value = deal[field.key] as string | null;
             return (
-              <div key={field.key} className="flex items-center justify-between gap-2">
-                <span className="text-xs text-muted-foreground truncate">{field.label}</span>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {value && <DateWarningBadge dateStr={value} />}
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" size="sm" className="h-7 text-xs px-2">
-                        <CalendarIcon className="h-3 w-3 mr-1" />
-                        {value ? format(new Date(value), 'dd MMM yyyy') : 'Set'}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="end">
-                      <Calendar
-                        mode="single"
-                        selected={value ? new Date(value) : undefined}
-                        onSelect={(date) => onUpdate({ [field.key]: date ? format(date, 'yyyy-MM-dd') : null } as Partial<Deal>)}
-                        className="p-3 pointer-events-auto"
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              </div>
+              <DatePickerField
+                key={field.key}
+                value={value}
+                label={field.label}
+                onChange={(d) => onUpdate({ [field.key]: d } as Partial<Deal>)}
+              />
             );
           })}
         </div>

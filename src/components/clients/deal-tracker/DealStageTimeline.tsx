@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Check, Circle, Clock, SkipForward, CalendarIcon } from 'lucide-react';
@@ -33,6 +34,36 @@ const NEXT_STATUS: Record<StageStatus, StageStatus> = {
   complete: 'pending',
   skipped: 'pending',
 };
+
+function StageDatePicker({ stage, onUpdateStage }: { stage: DealStage; onUpdateStage: (id: string, data: Partial<DealStage>) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mt-1.5 flex items-center gap-3 text-xs flex-wrap">
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button variant="ghost" size="sm" className="h-6 text-xs px-2">
+            <CalendarIcon className="h-3 w-3 mr-1" />
+            {stage.key_date ? format(new Date(stage.key_date), 'dd MMM yyyy') : 'Set date'}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            mode="single"
+            selected={stage.key_date ? new Date(stage.key_date) : undefined}
+            onSelect={(date) => {
+              onUpdateStage(stage.id, { key_date: date ? format(date, 'yyyy-MM-dd') : null });
+              setOpen(false);
+            }}
+            className="p-3 pointer-events-auto"
+          />
+        </PopoverContent>
+      </Popover>
+      {stage.completed_at && (
+        <span className="text-green-600">✓ {format(new Date(stage.completed_at), 'dd MMM yyyy')}</span>
+      )}
+    </div>
+  );
+}
 
 export function DealStageTimeline({ stages, onUpdateStage }: DealStageTimelineProps) {
   const sorted = [...stages].sort((a, b) => a.display_order - b.display_order);
@@ -110,27 +141,10 @@ export function DealStageTimeline({ stages, onUpdateStage }: DealStageTimelinePr
                 </div>
               </div>
 
-              <div className="mt-1.5 flex items-center gap-3 text-xs flex-wrap">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-6 text-xs px-2">
-                      <CalendarIcon className="h-3 w-3 mr-1" />
-                      {stage.key_date ? format(new Date(stage.key_date), 'dd MMM yyyy') : 'Set date'}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={stage.key_date ? new Date(stage.key_date) : undefined}
-                      onSelect={(date) => onUpdateStage(stage.id, { key_date: date ? format(date, 'yyyy-MM-dd') : null })}
-                      className="p-3 pointer-events-auto"
-                    />
-                  </PopoverContent>
-                </Popover>
-                {stage.completed_at && (
-                  <span className="text-green-600">✓ {format(new Date(stage.completed_at), 'dd MMM yyyy')}</span>
-                )}
-              </div>
+              <StageDatePicker
+                stage={stage}
+                onUpdateStage={onUpdateStage}
+              />
             </div>
           </div>
         );

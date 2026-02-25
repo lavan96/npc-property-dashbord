@@ -31,9 +31,10 @@ import type { DealWithClient } from '@/hooks/useAllDeals';
 interface Props {
   deals: DealWithClient[];
   isLoading: boolean;
+  onDealClick?: (deal: DealWithClient) => void;
 }
 
-export function DealExecutiveSummary({ deals, isLoading }: Props) {
+export function DealExecutiveSummary({ deals, isLoading, onDealClick }: Props) {
   const [riskFilter, setRiskFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
 
@@ -193,7 +194,7 @@ export function DealExecutiveSummary({ deals, isLoading }: Props) {
                     const isHnL = deal.deal_type === 'house_and_land';
 
                     return (
-                      <TableRow key={deal.id}>
+                      <TableRow key={deal.id} className={cn(onDealClick && 'cursor-pointer hover:bg-muted/50')} onClick={() => onDealClick?.(deal)}>
                         <TableCell className="font-medium text-xs sm:text-sm whitespace-nowrap">{deal.client_name}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1 text-xs">
