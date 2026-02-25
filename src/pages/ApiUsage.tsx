@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
+import { MultiSelectFilter } from '@/components/api-usage/MultiSelectFilter';
 import {
   Activity,
   BarChart3,
@@ -30,6 +31,8 @@ import {
   CalendarDays,
   Mail,
   Database,
+  X,
+  Filter,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -177,6 +180,11 @@ export default function ApiUsage() {
   const [refreshing, setRefreshing] = useState(false);
   const [timeRange, setTimeRange] = useState('30');
   const [activeTab, setActiveTab] = useState('overview');
+  
+  // Multi-select filter state (empty array = all selected)
+  const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  const [selectedModels, setSelectedModels] = useState<string[]>([]);
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
 
   const fetchData = async (showRefresh = false) => {
     if (showRefresh) setRefreshing(true);
@@ -199,48 +207,92 @@ export default function ApiUsage() {
 
   useEffect(() => { fetchData(); }, [timeRange]);
 
-  // ========== Health chart data ==========
+  // ========== Filter Options ==========
+  const serviceFilterOptions = useMemo(() => {
+    if (!data) return [];
+    const allServices = new Set<string>();
+    data.services.forEach(s => allServices.add(s));
+    data.consumption?.consumptionServices.forEach(s => allServices.add(s));
+    data.consumption?.breakdown.forEach(b => allServices.add(b.service));
+    return [...allServices].sort().map(s => ({
+      value: s,
+      label: formatServiceName(s),
+      color: getServiceColor(s),
+      count: data.serviceBreakdown.find(b => b.service === s)?.total || 
+             data.consumption?.breakdown.find(b => b.service === s)?.requests || 0,
+    }));
+  }, [data]);
+
+  const modelFilterOptions = useMemo(() => {
+    if (!data?.consumption) return [];
+    return data.consumption.modelDistribution.map(m => ({
+      value: m.model,
+      label: m.model,
+      count: m.count,
+    }));
+  }, [data]);
+
+  const statusFilterOptions = useMemo(() => [
+    { value: 'success', label: 'Success', color: 'hsl(142, 71%, 45%)' },
+    { value: 'error', label: 'Error', color: 'hsl(0, 84%, 60%)' },
+  ], []);
+
+  // ========== Filtered data helpers ==========
+  const filteredHealthServices = useMemo(() => {
+    if (!data) return [];
+    if (selectedServices.length === 0) return data.services;
+    return data.services.filter(s => selectedServices.includes(s));
+  }, [data, selectedServices]);
+
+  const filteredConsumptionServices = useMemo(() => {
+    if (!data?.consumption) return [];
+    if (selectedServices.length === 0) return data.consumption.consumptionServices;
+    return data.consumption.consumptionServices.filter(s => selectedServices.includes(s));
+  }, [data, selectedServices]);
+
+  // ========== Health chart data (filtered) ==========
   const volumeChartData = useMemo(() => {
     if (!data) return [];
     return data.dailyVolume.map(entry => {
       const row: Record<string, any> = { date: entry.date };
-      for (const svc of data.services) {
+      for (const svc of filteredHealthServices) {
         row[svc] = entry[svc] || 0;
       }
       return row;
     });
-  }, [data]);
+  }, [data, filteredHealthServices]);
 
   const responseTimeData = useMemo(() => {
     if (!data) return [];
     return data.dailyVolume.map(entry => {
       const row: Record<string, any> = { date: entry.date };
-      for (const svc of data.services) {
+      for (const svc of filteredHealthServices) {
         row[svc] = entry[`${svc}_avgTime`] || 0;
       }
       return row;
     });
-  }, [data]);
+  }, [data, filteredHealthServices]);
 
   const successErrorData = useMemo(() => {
     if (!data) return [];
     return data.dailyVolume.map(entry => {
       let totalSuccess = 0;
       let totalErrors = 0;
-      for (const svc of data.services) {
+      for (const svc of filteredHealthServices) {
         totalSuccess += entry[`${svc}_success`] || 0;
         totalErrors += entry[`${svc}_errors`] || 0;
       }
       return { date: entry.date, success: totalSuccess, errors: totalErrors };
     });
-  }, [data]);
+  }, [data, filteredHealthServices]);
 
   const donutData = useMemo(() => {
     if (!data) return [];
     return data.serviceBreakdown
+      .filter(s => selectedServices.length === 0 || selectedServices.includes(s.service))
       .sort((a, b) => b.total - a.total)
       .map(s => ({ name: formatServiceName(s.service), value: s.total, service: s.service }));
-  }, [data]);
+  }, [data, selectedServices]);
 
   const qualityData = useMemo(() => {
     if (!data) return [];
@@ -250,33 +302,75 @@ export default function ApiUsage() {
     }));
   }, [data]);
 
-  // ========== Consumption chart data ==========
+  // ========== Consumption chart data (filtered) ==========
   const tokenChartData = useMemo(() => {
     if (!data?.consumption) return [];
     return data.consumption.dailyConsumption.map(entry => {
       const row: Record<string, any> = { date: entry.date };
-      for (const svc of data.consumption!.consumptionServices) {
+      for (const svc of filteredConsumptionServices) {
         row[svc] = entry[`${svc}_tokens`] || 0;
       }
       return row;
     });
-  }, [data]);
+  }, [data, filteredConsumptionServices]);
 
   const costChartData = useMemo(() => {
     if (!data?.consumption) return [];
-    return data.consumption.dailyConsumption.map(entry => ({
-      date: entry.date,
-      cost: entry.totalCost || 0,
-    }));
-  }, [data]);
+    return data.consumption.dailyConsumption.map(entry => {
+      let dayCost = 0;
+      if (selectedServices.length === 0) {
+        dayCost = entry.totalCost || 0;
+      } else {
+        for (const svc of filteredConsumptionServices) {
+          dayCost += entry[`${svc}_cost`] || 0;
+        }
+      }
+      return { date: entry.date, cost: Math.round(dayCost * 10000) / 10000 };
+    });
+  }, [data, filteredConsumptionServices, selectedServices]);
 
   const modelDonutData = useMemo(() => {
     if (!data?.consumption) return [];
-    return data.consumption.modelDistribution.map(m => ({
-      name: m.model,
-      value: m.count,
-    }));
-  }, [data]);
+    return data.consumption.modelDistribution
+      .filter(m => selectedModels.length === 0 || selectedModels.includes(m.model))
+      .map(m => ({
+        name: m.model,
+        value: m.count,
+      }));
+  }, [data, selectedModels]);
+
+  const filteredConsumptionBreakdown = useMemo(() => {
+    if (!data?.consumption) return [];
+    return data.consumption.breakdown
+      .filter(b => selectedServices.length === 0 || selectedServices.includes(b.service))
+      .sort((a, b) => b.tokens - a.tokens);
+  }, [data, selectedServices]);
+
+  const filteredUsageLogs = useMemo(() => {
+    if (!data?.consumption) return [];
+    return data.consumption.recentUsageLogs.filter(log => {
+      const serviceMatch = selectedServices.length === 0 || selectedServices.includes(log.service);
+      const modelMatch = selectedModels.length === 0 || (log.model && selectedModels.includes(log.model));
+      const statusMatch = selectedStatuses.length === 0 || selectedStatuses.includes(log.status);
+      return serviceMatch && modelMatch && statusMatch;
+    });
+  }, [data, selectedServices, selectedModels, selectedStatuses]);
+
+  const filteredHealthLogs = useMemo(() => {
+    if (!data) return [];
+    return data.recentLogs.filter(log => {
+      const serviceMatch = selectedServices.length === 0 || selectedServices.includes(log.service);
+      const statusMatch = selectedStatuses.length === 0 || selectedStatuses.includes(log.status);
+      return serviceMatch && statusMatch;
+    });
+  }, [data, selectedServices, selectedStatuses]);
+
+  const filteredServiceBreakdown = useMemo(() => {
+    if (!data) return [];
+    return data.serviceBreakdown
+      .filter(s => selectedServices.length === 0 || selectedServices.includes(s.service))
+      .sort((a, b) => b.total - a.total);
+  }, [data, selectedServices]);
 
   // Compute combined total cost for header
   const totalCombinedCost = useMemo(() => {
@@ -345,7 +439,46 @@ export default function ApiUsage() {
         </div>
       </div>
 
-      {/* Summary Cards - 5 columns */}
+      {/* Multi-Select Filters */}
+      {data && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider mr-1">Filters:</span>
+          <MultiSelectFilter
+            label="Services"
+            options={serviceFilterOptions}
+            selected={selectedServices}
+            onChange={setSelectedServices}
+            icon={<Server className="h-3.5 w-3.5" />}
+          />
+          {modelFilterOptions.length > 0 && (
+            <MultiSelectFilter
+              label="Models"
+              options={modelFilterOptions}
+              selected={selectedModels}
+              onChange={setSelectedModels}
+              icon={<Brain className="h-3.5 w-3.5" />}
+            />
+          )}
+          <MultiSelectFilter
+            label="Status"
+            options={statusFilterOptions}
+            selected={selectedStatuses}
+            onChange={setSelectedStatuses}
+            icon={<Activity className="h-3.5 w-3.5" />}
+          />
+          {(selectedServices.length > 0 || selectedModels.length > 0 || selectedStatuses.length > 0) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => { setSelectedServices([]); setSelectedModels([]); setSelectedStatuses([]); }}
+              className="text-xs text-muted-foreground hover:text-foreground gap-1 h-9"
+            >
+              <X className="h-3 w-3" /> Clear all
+            </Button>
+          )}
+        </div>
+      )}
+
       {data && (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
           <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
@@ -443,7 +576,7 @@ export default function ApiUsage() {
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={volumeChartData}>
                         <defs>
-                          {data.services.map(svc => (
+                          {filteredHealthServices.map(svc => (
                             <linearGradient key={svc} id={`gradient-${svc}`} x1="0" y1="0" x2="0" y2="1">
                               <stop offset="5%" stopColor={getServiceColor(svc)} stopOpacity={0.3} />
                               <stop offset="95%" stopColor={getServiceColor(svc)} stopOpacity={0} />
@@ -455,7 +588,7 @@ export default function ApiUsage() {
                         <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
                         <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: 'hsl(var(--foreground))' }} />
                         <Legend wrapperStyle={{ fontSize: '11px' }} />
-                        {data.services.map(svc => (
+                        {filteredHealthServices.map(svc => (
                           <Area key={svc} type="monotone" dataKey={svc} name={formatServiceName(svc)} stackId="1" stroke={getServiceColor(svc)} fill={`url(#gradient-${svc})`} strokeWidth={2} />
                         ))}
                       </AreaChart>
@@ -557,7 +690,7 @@ export default function ApiUsage() {
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={tokenChartData}>
                         <defs>
-                          {data.consumption.consumptionServices.map(svc => (
+                          {filteredConsumptionServices.map(svc => (
                             <linearGradient key={svc} id={`tok-gradient-${svc}`} x1="0" y1="0" x2="0" y2="1">
                               <stop offset="5%" stopColor={getServiceColor(svc)} stopOpacity={0.4} />
                               <stop offset="95%" stopColor={getServiceColor(svc)} stopOpacity={0} />
@@ -569,7 +702,7 @@ export default function ApiUsage() {
                         <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
                         <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: 'hsl(var(--foreground))' }} />
                         <Legend wrapperStyle={{ fontSize: '11px' }} />
-                        {data.consumption.consumptionServices.map(svc => (
+                        {filteredConsumptionServices.map(svc => (
                           <Area key={svc} type="monotone" dataKey={svc} name={formatServiceName(svc)} stackId="1" stroke={getServiceColor(svc)} fill={`url(#tok-gradient-${svc})`} strokeWidth={2} />
                         ))}
                       </AreaChart>
@@ -637,8 +770,7 @@ export default function ApiUsage() {
 
               {/* Service Consumption Cards */}
               <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {data.consumption.breakdown
-                  .sort((a, b) => b.tokens - a.tokens)
+                {filteredConsumptionBreakdown
                   .map(svc => (
                     <Card key={svc.service} className="border-border/50 bg-card/80 backdrop-blur-sm">
                       <CardContent className="p-4">
@@ -666,7 +798,7 @@ export default function ApiUsage() {
                       </CardContent>
                     </Card>
                   ))}
-                {data.consumption.breakdown.length === 0 && (
+                {filteredConsumptionBreakdown.length === 0 && (
                   <div className="lg:col-span-3 p-8 text-center text-muted-foreground text-sm">
                     No consumption data logged yet.
                   </div>
@@ -696,7 +828,7 @@ export default function ApiUsage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {data.consumption.recentUsageLogs.map(log => (
+                        {filteredUsageLogs.map(log => (
                           <tr key={log.id} className="border-b border-border/30 hover:bg-muted/30 transition-colors">
                             <td className="p-3">
                               <div className="flex items-center gap-2">
@@ -727,7 +859,7 @@ export default function ApiUsage() {
                       </tbody>
                     </table>
                   </div>
-                  {data.consumption.recentUsageLogs.length === 0 && (
+                  {filteredUsageLogs.length === 0 && (
                     <div className="p-8 text-center text-muted-foreground text-sm">
                       No LLM usage logged yet.
                     </div>
@@ -1011,7 +1143,7 @@ export default function ApiUsage() {
                         <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} unit="ms" />
                         <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: 'hsl(var(--foreground))' }} />
                         <Legend wrapperStyle={{ fontSize: '11px' }} />
-                        {data.services.map(svc => (
+                        {filteredHealthServices.map(svc => (
                           <Line key={svc} type="monotone" dataKey={svc} name={formatServiceName(svc)} stroke={getServiceColor(svc)} strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
                         ))}
                       </LineChart>
@@ -1021,7 +1153,7 @@ export default function ApiUsage() {
               </Card>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {data.serviceBreakdown
+                {filteredServiceBreakdown
                   .sort((a, b) => b.avgResponseTime - a.avgResponseTime)
                   .map(svc => (
                     <Card key={svc.service} className="border-border/50 bg-card/80 backdrop-blur-sm">
@@ -1071,7 +1203,7 @@ export default function ApiUsage() {
               <CardContent>
                 <div className="h-[400px] sm:h-[500px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={data.serviceBreakdown.sort((a, b) => b.total - a.total).map(s => ({ ...s, name: formatServiceName(s.service) }))} layout="vertical">
+                    <BarChart data={filteredServiceBreakdown.map(s => ({ ...s, name: formatServiceName(s.service) }))} layout="vertical">
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
                       <XAxis type="number" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
                       <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} width={120} />
@@ -1112,7 +1244,7 @@ export default function ApiUsage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {data.recentLogs.map(log => (
+                      {filteredHealthLogs.map(log => (
                         <tr key={log.id} className="border-b border-border/30 hover:bg-muted/30 transition-colors">
                           <td className="p-3">
                             <div className="flex items-center gap-2">
@@ -1145,7 +1277,7 @@ export default function ApiUsage() {
                     </tbody>
                   </table>
                 </div>
-                {data.recentLogs.length === 0 && (
+                {filteredHealthLogs.length === 0 && (
                   <div className="p-8 text-center text-muted-foreground text-sm">
                     No API calls logged in this period
                   </div>
