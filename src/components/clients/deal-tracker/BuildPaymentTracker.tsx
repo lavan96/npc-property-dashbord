@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { CalendarIcon, Bell } from 'lucide-react';
@@ -23,8 +24,10 @@ interface BuildPaymentTrackerProps {
 }
 
 function DateCell({ value, onChange, label }: { value: string | null; onChange: (v: string | null) => void; label?: string }) {
+  const [open, setOpen] = useState(false);
+
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="sm" className="h-7 text-xs px-1.5 w-full justify-start">
           <CalendarIcon className="h-3 w-3 mr-1 shrink-0" />
@@ -35,7 +38,10 @@ function DateCell({ value, onChange, label }: { value: string | null; onChange: 
         <Calendar
           mode="single"
           selected={value ? new Date(value) : undefined}
-          onSelect={(date) => onChange(date ? format(date, 'yyyy-MM-dd') : null)}
+          onSelect={(date) => {
+            onChange(date ? format(date, 'yyyy-MM-dd') : null);
+            setOpen(false);
+          }}
           className="p-3 pointer-events-auto"
         />
       </PopoverContent>

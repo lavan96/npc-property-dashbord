@@ -115,8 +115,13 @@ export function DealDetailView({ deal, clientId, onBack }: DealDetailViewProps) 
 
           {/* Responsible Person */}
           <Input
-            value={deal.responsible_person || ''}
-            onChange={(e) => handleDealUpdate({ responsible_person: e.target.value })}
+            key={deal.id + '-responsible'}
+            defaultValue={deal.responsible_person || ''}
+            onBlur={(e) => {
+              if (e.target.value !== (deal.responsible_person || '')) {
+                handleDealUpdate({ responsible_person: e.target.value });
+              }
+            }}
             placeholder="Responsible"
             className="h-8 text-xs w-full sm:w-[140px]"
           />
@@ -252,8 +257,13 @@ export function DealDetailView({ deal, clientId, onBack }: DealDetailViewProps) 
         </CollapsibleTrigger>
         <CollapsibleContent className="pt-2">
           <Textarea
-            value={deal.notes || ''}
-            onChange={(e) => handleDealUpdate({ notes: e.target.value })}
+            key={deal.id + '-notes'}
+            defaultValue={deal.notes || ''}
+            onBlur={(e) => {
+              if (e.target.value !== (deal.notes || '')) {
+                handleDealUpdate({ notes: e.target.value });
+              }
+            }}
             placeholder="Add deal notes..."
             rows={3}
             className="text-sm"

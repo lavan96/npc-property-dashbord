@@ -114,6 +114,7 @@ export default function ClientManagement() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [deepLinkTab, setDeepLinkTab] = useState<string | undefined>(undefined);
   const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
   const [filters, setFilters] = useState<ClientFiltersState>(defaultFilters);
   const [selectedClients, setSelectedClients] = useState<string[]>([]);
@@ -152,11 +153,13 @@ export default function ClientManagement() {
   // Deep-link: auto-open client modal from ?clientId= query param
   useEffect(() => {
     const clientId = searchParams.get('clientId');
+    const tab = searchParams.get('tab');
     if (!clientId || isLoading || clients.length === 0) return;
 
     const target = clients.find(c => c.id === clientId);
     if (target) {
       setSelectedClient(target);
+      setDeepLinkTab(tab || undefined);
       setShowDetailsModal(true);
     }
     // Clean URL
@@ -733,7 +736,11 @@ export default function ClientManagement() {
         <ClientDetailsModal
           client={selectedClient}
           open={showDetailsModal}
-          onOpenChange={setShowDetailsModal}
+          onOpenChange={(open) => {
+            setShowDetailsModal(open);
+            if (!open) setDeepLinkTab(undefined);
+          }}
+          initialTab={deepLinkTab}
         />
       )}
 

@@ -90,9 +90,10 @@ interface ClientDetailsModalProps {
   };
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initialTab?: string;
 }
 
-export function ClientDetailsModal({ client, open, onOpenChange }: ClientDetailsModalProps) {
+export function ClientDetailsModal({ client, open, onOpenChange, initialTab }: ClientDetailsModalProps) {
   const isMobile = useIsMobile();
   const [showEmailCompose, setShowEmailCompose] = useState(false);
   const [pdfAttachment, setPdfAttachment] = useState<{ blob: Blob; fileName: string } | null>(null);
@@ -104,7 +105,7 @@ export function ClientDetailsModal({ client, open, onOpenChange }: ClientDetails
   const [editingProperty, setEditingProperty] = useState<any>(null);
   const [showReviewWizard, setShowReviewWizard] = useState(false);
   const [showBorrowingCalculator, setShowBorrowingCalculator] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState(initialTab || 'overview');
 
   const tabOrder = ['overview', 'personal', 'properties', 'deals', 'employment', 'financials', 'reports', 'emails', 'notes', 'reminders', 'vownet-forms', 'files', 'activity', 'insights'];
 

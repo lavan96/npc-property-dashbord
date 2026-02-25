@@ -28,6 +28,7 @@ export function useDealActions(clientId: string) {
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['secure-client-data', clientId] });
     queryClient.invalidateQueries({ queryKey: ['client-deals', clientId] });
+    queryClient.invalidateQueries({ queryKey: ['all-deals'] });
   };
 
   const createDeal = useMutation({

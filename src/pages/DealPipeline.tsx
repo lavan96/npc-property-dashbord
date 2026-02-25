@@ -1,14 +1,24 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TrendingUp, DollarSign, FileText, LayoutDashboard } from 'lucide-react';
 import { useAllDeals } from '@/hooks/useAllDeals';
 import { DealExecutiveSummary } from '@/components/deals/DealExecutiveSummary';
 import { CommissionDashboard } from '@/components/deals/CommissionDashboard';
 import { BuilderInvoiceLog } from '@/components/deals/BuilderInvoiceLog';
+import { toast } from 'sonner';
+import type { DealWithClient } from '@/hooks/useAllDeals';
 
 export default function DealPipeline() {
   const { data: deals = [], isLoading, error } = useAllDeals();
   const [activeTab, setActiveTab] = useState('summary');
+  const navigate = useNavigate();
+
+  const handleDealClick = (deal: DealWithClient) => {
+    // Navigate to clients page with the client selected
+    navigate(`/clients?clientId=${deal.client_id}&tab=deals`);
+    toast.info(`Opening ${deal.client_name}'s deal`);
+  };
 
   return (
     <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
@@ -39,7 +49,7 @@ export default function DealPipeline() {
         </TabsList>
 
         <TabsContent value="summary" className="mt-4">
-          <DealExecutiveSummary deals={deals} isLoading={isLoading} />
+          <DealExecutiveSummary deals={deals} isLoading={isLoading} onDealClick={handleDealClick} />
         </TabsContent>
 
         <TabsContent value="commissions" className="mt-4">
