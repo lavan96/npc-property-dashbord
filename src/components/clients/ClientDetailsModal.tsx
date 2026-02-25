@@ -78,6 +78,7 @@ import { CGTCalculator } from './CGTCalculator';
 import { ClientPortfolioActions } from './ClientPortfolioActions';
 import { ReviewWizard } from './review-wizard';
 import { ClientEmailsTab } from './ClientEmailsTab';
+import { DealTrackerTab } from './deal-tracker';
 import { toast } from 'sonner';
 interface ClientDetailsModalProps {
   client: {
@@ -105,7 +106,7 @@ export function ClientDetailsModal({ client, open, onOpenChange }: ClientDetails
   const [showBorrowingCalculator, setShowBorrowingCalculator] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
 
-  const tabOrder = ['overview', 'personal', 'properties', 'employment', 'financials', 'reports', 'emails', 'notes', 'reminders', 'vownet-forms', 'files', 'activity', 'insights'];
+  const tabOrder = ['overview', 'personal', 'properties', 'deals', 'employment', 'financials', 'reports', 'emails', 'notes', 'reminders', 'vownet-forms', 'files', 'activity', 'insights'];
 
   const tabSwipeHandlers = useSwipeGesture(
     useCallback(() => {
@@ -209,6 +210,7 @@ NPC Team`
       assets: true,
       liabilities: true,
       additionalContacts: true,
+      deals: true,
     },
     enabled: open,
   });
@@ -310,6 +312,7 @@ NPC Team`
             <TabsTrigger value="overview" className="text-xs sm:text-sm">Overview</TabsTrigger>
             <TabsTrigger value="personal" className="text-xs sm:text-sm">Personal</TabsTrigger>
             <TabsTrigger value="properties" className="text-xs sm:text-sm">Properties ({properties.length})</TabsTrigger>
+            <TabsTrigger value="deals" className="text-xs sm:text-sm">Deals</TabsTrigger>
             <TabsTrigger value="employment" className="text-xs sm:text-sm">Employment</TabsTrigger>
             <TabsTrigger value="financials" className="text-xs sm:text-sm">Financials</TabsTrigger>
             <TabsTrigger value="reports" className="text-xs sm:text-sm">Reports</TabsTrigger>
@@ -637,6 +640,14 @@ NPC Team`
                   }}
                 />
               )}
+            </TabsContent>
+
+            <TabsContent value="deals" className="space-y-4 mt-4">
+              <DealTrackerTab
+                clientId={client.id}
+                deals={secureData?.deals || []}
+                properties={properties}
+              />
             </TabsContent>
 
             <TabsContent value="employment" className={cn("space-y-4 mt-4", !isMobile && "max-w-3xl mx-auto w-full")}>
