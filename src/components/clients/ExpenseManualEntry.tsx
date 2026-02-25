@@ -81,11 +81,11 @@ const expenseCategoryOptions = [
 ];
 
 const frequencyOptions = [
-  { value: 'weekly', label: 'Weekly', multiplier: 4.33 },
-  { value: 'fortnightly', label: 'Fortnightly', multiplier: 2.17 },
+  { value: 'weekly', label: 'Weekly', multiplier: 52 / 12 },
+  { value: 'fortnightly', label: 'Fortnightly', multiplier: 26 / 12 },
   { value: 'monthly', label: 'Monthly', multiplier: 1 },
-  { value: 'quarterly', label: 'Quarterly', multiplier: 0.33 },
-  { value: 'annually', label: 'Annually', multiplier: 0.083 },
+  { value: 'quarterly', label: 'Quarterly', multiplier: 1 / 3 },
+  { value: 'annually', label: 'Annually', multiplier: 1 / 12 },
 ];
 
 const defaultFormData: ExpenseFormData = {
