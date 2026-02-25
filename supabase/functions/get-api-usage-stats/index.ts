@@ -34,7 +34,7 @@ serve(async (req) => {
       return createForbiddenResponse('Superadmin access required', corsHeaders);
     }
 
-    const { mode = 'overview', days = 30, service_filter } = body;
+    const { mode = 'overview', days = 30, service_filter, budget_thresholds } = body;
 
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
@@ -228,6 +228,53 @@ serve(async (req) => {
         .sort((a, b) => b[1] - a[1])
         .map(([model, count]) => ({ model, count }));
 
+      // ========== VAPI CALL STATS ==========
+      const { data: vapiCalls } = await supabase
+        .from('vapi_call_logs')
+        .select('id, duration_seconds, cost, started_at, call_direction, sentiment')
+        .gte('created_at', startDateStr)
+        .order('created_at', { ascending: false })
+        .limit(1000);
+
+      const vCalls = vapiCalls || [];
+      const totalVapiCalls = vCalls.length;
+      const totalVapiMinutes = Math.round(vCalls.reduce((s: number, c: any) => s + (c.duration_seconds || 0), 0) / 60);
+      const totalVapiCost = vCalls.reduce((s: number, c: any) => s + (c.cost || 0), 0);
+      const vapiInbound = vCalls.filter((c: any) => c.call_direction === 'inbound').length;
+      const vapiOutbound = vCalls.filter((c: any) => c.call_direction === 'outbound').length;
+
+      const vapiDailyMap: Record<string, { calls: number; minutes: number; cost: number }> = {};
+      for (const c of vCalls) {
+        const day = c.started_at?.substring(0, 10) || '';
+        if (!day) continue;
+        if (!vapiDailyMap[day]) vapiDailyMap[day] = { calls: 0, minutes: 0, cost: 0 };
+        vapiDailyMap[day].calls++;
+        vapiDailyMap[day].minutes += (c.duration_seconds || 0) / 60;
+        vapiDailyMap[day].cost += c.cost || 0;
+      }
+      const vapiDailyTrend = Object.entries(vapiDailyMap)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([date, stats]) => ({
+          date,
+          calls: stats.calls,
+          minutes: Math.round(stats.minutes * 10) / 10,
+          cost: Math.round(stats.cost * 100) / 100,
+        }));
+
+      // ========== BUDGET PROJECTIONS ==========
+      const daysElapsed = Math.max(1, days);
+      const dailyAvgCost = totalCost / daysElapsed;
+      const projectedMonthlyCost = Math.round(dailyAvgCost * 30 * 100) / 100;
+      const dailyAvgVapiCost = totalVapiCost / daysElapsed;
+      const projectedMonthlyVapi = Math.round(dailyAvgVapiCost * 30 * 100) / 100;
+
+      const serviceProjections = consumptionBreakdown.map(svc => ({
+        service: svc.service,
+        currentCost: svc.cost,
+        dailyAvg: Math.round((svc.cost / daysElapsed) * 10000) / 10000,
+        projectedMonthly: Math.round((svc.cost / daysElapsed) * 30 * 100) / 100,
+      }));
+
       // Recent usage logs (last 50)
       const recentUsageLogs = uLogs.slice(0, 50).map((l: any) => ({
         id: l.id,
@@ -245,7 +292,6 @@ serve(async (req) => {
 
       return new Response(JSON.stringify({
         success: true,
-        // Health data (V1)
         summary: {
           totalCalls,
           successCalls,
@@ -260,7 +306,6 @@ serve(async (req) => {
         dataQuality: qualityMap,
         services,
         recentLogs,
-        // Consumption data (V2)
         consumption: {
           summary: {
             totalRequests: totalUsageRequests,
@@ -273,6 +318,22 @@ serve(async (req) => {
           consumptionServices,
           modelDistribution,
           recentUsageLogs,
+        },
+        vapi: {
+          totalCalls: totalVapiCalls,
+          totalMinutes: totalVapiMinutes,
+          totalCost: Math.round(totalVapiCost * 100) / 100,
+          inbound: vapiInbound,
+          outbound: vapiOutbound,
+          avgCostPerCall: totalVapiCalls > 0 ? Math.round((totalVapiCost / totalVapiCalls) * 100) / 100 : 0,
+          dailyTrend: vapiDailyTrend,
+        },
+        projections: {
+          dailyAvgCost: Math.round(dailyAvgCost * 10000) / 10000,
+          projectedMonthlyCost,
+          projectedMonthlyVapi,
+          serviceProjections,
+          totalProjectedMonthly: Math.round((projectedMonthlyCost + projectedMonthlyVapi) * 100) / 100,
         },
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

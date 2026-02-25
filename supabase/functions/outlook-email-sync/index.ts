@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { decode as base64Decode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 import { createCorsHeaders, verifyAuth, createUnauthorizedResponse } from "../_shared/auth.ts";
+import { logApiUsage } from '../_shared/logApiUsage.ts';
 
 const MICROSOFT_CLIENT_ID = Deno.env.get('MICROSOFT_CLIENT_ID');
 const MICROSOFT_CLIENT_SECRET = Deno.env.get('MICROSOFT_CLIENT_SECRET');
@@ -551,6 +552,20 @@ serve(async (req) => {
 
     const totalInserted = inboxInserted + sentInserted;
     console.log(`[Outlook Sync] Inserted ${inboxInserted} inbox + ${sentInserted} sent = ${totalInserted} total new emails`);
+
+    // Log Microsoft Graph API usage
+    const serviceSupabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    await logApiUsage(serviceSupabase, {
+      service_name: 'microsoft-graph',
+      endpoint: '/v1.0/users/messages',
+      status: 'success',
+      model_used: 'graph-api',
+      metadata: {
+        inbox_fetched: inboxEmails.length,
+        sent_fetched: sentEmails.length,
+        total_inserted: totalInserted,
+      },
+    });
 
     return new Response(
       JSON.stringify({ 

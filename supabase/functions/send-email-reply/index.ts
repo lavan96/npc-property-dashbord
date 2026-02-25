@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { verifyAuth, createCorsHeaders as createAuthCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { logApiUsage } from '../_shared/logApiUsage.ts';
 
 // Dynamic CORS headers for credential-based requests
 function createCorsHeaders(origin: string | null): Record<string, string> {
@@ -299,6 +300,15 @@ serve(async (req) => {
     }
 
     console.log('[Send Email] Email sent successfully');
+
+    // Log Microsoft Graph API usage
+    await logApiUsage(supabase, {
+      service_name: 'microsoft-graph',
+      endpoint: '/v1.0/users/sendMail',
+      status: 'success',
+      model_used: 'graph-api',
+      metadata: { to, subject, has_attachments: !!(attachments?.length) },
+    });
 
     // Store attachment metadata (without contentBytes) for tracking
     const attachmentMetadata = attachments?.map(att => ({
