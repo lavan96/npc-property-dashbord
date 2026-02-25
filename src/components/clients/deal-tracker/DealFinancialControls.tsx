@@ -14,11 +14,11 @@ interface DealFinancialControlsProps {
 export function DealFinancialControls({ deal, onUpdate }: DealFinancialControlsProps) {
   const isHnL = deal.deal_type === 'house_and_land';
 
-  const formatForInput = (val: number | null) => val?.toString() || '';
-
-  const handleNumericChange = (field: keyof Deal, value: string) => {
+  const handleNumericBlur = (field: keyof Deal, value: string) => {
     const num = value ? parseFloat(value) : null;
-    onUpdate({ [field]: num } as Partial<Deal>);
+    if (num !== (deal[field] as number | null)) {
+      onUpdate({ [field]: num } as Partial<Deal>);
+    }
   };
 
   return (
@@ -34,9 +34,10 @@ export function DealFinancialControls({ deal, onUpdate }: DealFinancialControlsP
           <div className="space-y-1">
             <Label className="text-xs">Total Contract Price</Label>
             <Input
+              key={deal.id + '-tcp'}
               type="number"
-              value={formatForInput(deal.total_contract_price)}
-              onChange={(e) => handleNumericChange('total_contract_price', e.target.value)}
+              defaultValue={deal.total_contract_price ?? ''}
+              onBlur={(e) => handleNumericBlur('total_contract_price', e.target.value)}
               placeholder="$0"
               className="h-8 text-sm"
             />
@@ -46,9 +47,10 @@ export function DealFinancialControls({ deal, onUpdate }: DealFinancialControlsP
               <div className="space-y-1">
                 <Label className="text-xs">Land Price</Label>
                 <Input
+                  key={deal.id + '-lp'}
                   type="number"
-                  value={formatForInput(deal.land_price)}
-                  onChange={(e) => handleNumericChange('land_price', e.target.value)}
+                  defaultValue={deal.land_price ?? ''}
+                  onBlur={(e) => handleNumericBlur('land_price', e.target.value)}
                   placeholder="$0"
                   className="h-8 text-sm"
                 />
@@ -56,9 +58,10 @@ export function DealFinancialControls({ deal, onUpdate }: DealFinancialControlsP
               <div className="space-y-1">
                 <Label className="text-xs">Build Price</Label>
                 <Input
+                  key={deal.id + '-bp'}
                   type="number"
-                  value={formatForInput(deal.build_price)}
-                  onChange={(e) => handleNumericChange('build_price', e.target.value)}
+                  defaultValue={deal.build_price ?? ''}
+                  onBlur={(e) => handleNumericBlur('build_price', e.target.value)}
                   placeholder="$0"
                   className="h-8 text-sm"
                 />
@@ -79,9 +82,10 @@ export function DealFinancialControls({ deal, onUpdate }: DealFinancialControlsP
           <div className="space-y-1">
             <Label className="text-xs">Loan Amount</Label>
             <Input
+              key={deal.id + '-la'}
               type="number"
-              value={formatForInput(deal.loan_amount)}
-              onChange={(e) => handleNumericChange('loan_amount', e.target.value)}
+              defaultValue={deal.loan_amount ?? ''}
+              onBlur={(e) => handleNumericBlur('loan_amount', e.target.value)}
               placeholder="$0"
               className="h-8 text-sm"
             />
@@ -89,9 +93,10 @@ export function DealFinancialControls({ deal, onUpdate }: DealFinancialControlsP
           <div className="space-y-1">
             <Label className="text-xs">Shortfall Required</Label>
             <Input
+              key={deal.id + '-sr'}
               type="number"
-              value={formatForInput(deal.shortfall_required)}
-              onChange={(e) => handleNumericChange('shortfall_required', e.target.value)}
+              defaultValue={deal.shortfall_required ?? ''}
+              onBlur={(e) => handleNumericBlur('shortfall_required', e.target.value)}
               placeholder="$0"
               className="h-8 text-sm"
             />
@@ -124,28 +129,28 @@ export function DealFinancialControls({ deal, onUpdate }: DealFinancialControlsP
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-            <div className="flex items-center justify-between gap-2">
-              <Label className="text-xs">Valuation Completed</Label>
+          <div className="flex flex-wrap gap-x-6 gap-y-3">
+            <label className="flex items-center gap-2 cursor-pointer">
               <Switch
                 checked={deal.valuation_completed}
                 onCheckedChange={(v) => onUpdate({ valuation_completed: v })}
               />
-            </div>
-            <div className="flex items-center justify-between gap-2">
-              <Label className="text-xs">Client Contribution Confirmed</Label>
+              <span className="text-xs">Valuation Completed</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
               <Switch
                 checked={deal.client_contribution_confirmed}
                 onCheckedChange={(v) => onUpdate({ client_contribution_confirmed: v })}
               />
-            </div>
-            <div className="flex items-center justify-between gap-2">
-              <Label className="text-xs">LMI Applied</Label>
+              <span className="text-xs">Client Contribution Confirmed</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
               <Switch
                 checked={deal.lmi_applied}
                 onCheckedChange={(v) => onUpdate({ lmi_applied: v })}
               />
-            </div>
+              <span className="text-xs">LMI Applied</span>
+            </label>
           </div>
         </CardContent>
       </Card>
