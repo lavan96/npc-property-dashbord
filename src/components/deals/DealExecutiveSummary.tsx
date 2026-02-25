@@ -8,7 +8,7 @@ import {
   Filter,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select,
@@ -45,7 +45,6 @@ export function DealExecutiveSummary({ deals, isLoading }: Props) {
     });
   }, [deals, riskFilter, typeFilter]);
 
-  // Summary stats
   const stats = useMemo(() => {
     const total = deals.length;
     const onTrack = deals.filter(d => d.risk_status === 'on_track').length;
@@ -84,9 +83,9 @@ export function DealExecutiveSummary({ deals, isLoading }: Props) {
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[1, 2, 3, 4].map(i => (
-            <Skeleton key={i} className="h-24 rounded-lg" />
+            <Skeleton key={i} className="h-20 sm:h-24 rounded-lg" />
           ))}
         </div>
         <Skeleton className="h-64 rounded-lg" />
@@ -97,50 +96,50 @@ export function DealExecutiveSummary({ deals, isLoading }: Props) {
   return (
     <div className="space-y-4">
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
         <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold">{stats.total}</p>
-            <p className="text-xs text-muted-foreground">Total Deals</p>
+          <CardContent className="p-3 sm:p-4 text-center">
+            <p className="text-xl sm:text-2xl font-bold">{stats.total}</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground">Total Deals</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-green-600">{stats.onTrack}</p>
-            <p className="text-xs text-muted-foreground">🟢 On Track</p>
+          <CardContent className="p-3 sm:p-4 text-center">
+            <p className="text-xl sm:text-2xl font-bold text-green-600">{stats.onTrack}</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground">🟢 On Track</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-amber-600">{stats.needsFollowUp}</p>
-            <p className="text-xs text-muted-foreground">🟠 Follow-Up</p>
+          <CardContent className="p-3 sm:p-4 text-center">
+            <p className="text-xl sm:text-2xl font-bold text-amber-600">{stats.needsFollowUp}</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground">🟠 Follow-Up</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-red-600">{stats.urgent}</p>
-            <p className="text-xs text-muted-foreground">🔴 Urgent</p>
+          <CardContent className="p-3 sm:p-4 text-center">
+            <p className="text-xl sm:text-2xl font-bold text-red-600">{stats.urgent}</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground">🔴 Urgent</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold">{formatCurrency(stats.totalValue)}</p>
-            <p className="text-xs text-muted-foreground">Pipeline Value</p>
+          <CardContent className="p-3 sm:p-4 text-center">
+            <p className="text-lg sm:text-2xl font-bold">{formatCurrency(stats.totalValue)}</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground">Pipeline Value</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold">{stats.upcomingSettlements}</p>
-            <p className="text-xs text-muted-foreground">Settlements (30d)</p>
+          <CardContent className="p-3 sm:p-4 text-center">
+            <p className="text-xl sm:text-2xl font-bold">{stats.upcomingSettlements}</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground">Settlements (30d)</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-3">
-        <Filter className="h-4 w-4 text-muted-foreground" />
+      <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+        <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
         <Select value={riskFilter} onValueChange={setRiskFilter}>
-          <SelectTrigger className="w-[160px] h-8 text-xs">
+          <SelectTrigger className="w-[140px] sm:w-[160px] h-8 text-xs">
             <SelectValue placeholder="Risk Status" />
           </SelectTrigger>
           <SelectContent>
@@ -151,7 +150,7 @@ export function DealExecutiveSummary({ deals, isLoading }: Props) {
           </SelectContent>
         </Select>
         <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="w-[180px] h-8 text-xs">
+          <SelectTrigger className="w-[140px] sm:w-[180px] h-8 text-xs">
             <SelectValue placeholder="Deal Type" />
           </SelectTrigger>
           <SelectContent>
@@ -163,83 +162,82 @@ export function DealExecutiveSummary({ deals, isLoading }: Props) {
         <span className="text-xs text-muted-foreground ml-auto">{filtered.length} deals</span>
       </div>
 
-      {/* Deal Table */}
+      {/* Deal Table - scrollable on mobile */}
       <Card>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Client</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Current Stage</TableHead>
-                <TableHead>Next Action</TableHead>
-                <TableHead>Responsible</TableHead>
-                <TableHead className="text-right">Contract Value</TableHead>
-                <TableHead>Settlement</TableHead>
-                <TableHead>Risk</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.length === 0 ? (
+          <div className="overflow-auto max-w-full">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                    No deals found
-                  </TableCell>
+                  <TableHead className="whitespace-nowrap">Client</TableHead>
+                  <TableHead className="whitespace-nowrap">Type</TableHead>
+                  <TableHead className="whitespace-nowrap">Current Stage</TableHead>
+                  <TableHead className="whitespace-nowrap hidden sm:table-cell">Next Action</TableHead>
+                  <TableHead className="whitespace-nowrap hidden sm:table-cell">Responsible</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">Value</TableHead>
+                  <TableHead className="whitespace-nowrap hidden md:table-cell">Settlement</TableHead>
+                  <TableHead className="whitespace-nowrap">Risk</TableHead>
                 </TableRow>
-              ) : (
-                filtered.map(deal => {
-                  const riskCfg = RISK_STATUS_CONFIG[deal.risk_status];
-                  const dateUrgency = getDateUrgency(deal.settlement_date);
-                  const isHnL = deal.deal_type === 'house_and_land';
+              </TableHeader>
+              <TableBody>
+                {filtered.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      No deals found
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filtered.map(deal => {
+                    const riskCfg = RISK_STATUS_CONFIG[deal.risk_status];
+                    const dateUrgency = getDateUrgency(deal.settlement_date);
+                    const isHnL = deal.deal_type === 'house_and_land';
 
-                  return (
-                    <TableRow key={deal.id}>
-                      <TableCell className="font-medium text-sm">{deal.client_name}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1.5 text-xs">
-                          {isHnL ? <Home className="h-3.5 w-3.5 text-primary" /> : <Building2 className="h-3.5 w-3.5 text-primary" />}
-                          {isHnL ? 'H&L' : 'Existing'}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1.5">
-                          <Badge variant="outline" className="text-[10px]">S{deal.current_stage_number}</Badge>
-                          <span className="text-sm">{deal.current_stage}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
-                        {getNextAction(deal)}
-                      </TableCell>
-                      <TableCell className="text-sm">{deal.responsible_person || '—'}</TableCell>
-                      <TableCell className="text-right text-sm font-mono">
-                        {deal.total_contract_price ? formatCurrency(deal.total_contract_price) : '—'}
-                      </TableCell>
-                      <TableCell>
-                        {deal.settlement_date ? (
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-sm">{format(new Date(deal.settlement_date), 'dd MMM yy')}</span>
-                            {dateUrgency === 'overdue' && (
-                              <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
-                            )}
-                            {dateUrgency === 'urgent' && (
-                              <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
-                            )}
+                    return (
+                      <TableRow key={deal.id}>
+                        <TableCell className="font-medium text-xs sm:text-sm whitespace-nowrap">{deal.client_name}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1 text-xs">
+                            {isHnL ? <Home className="h-3.5 w-3.5 text-primary" /> : <Building2 className="h-3.5 w-3.5 text-primary" />}
+                            <span className="hidden sm:inline">{isHnL ? 'H&L' : 'Existing'}</span>
                           </div>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={cn('text-[10px] border', riskCfg.color)}>
-                          {riskCfg.emoji} {riskCfg.label}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Badge variant="outline" className="text-[10px]">S{deal.current_stage_number}</Badge>
+                            <span className="text-xs sm:text-sm truncate max-w-[100px] sm:max-w-none">{deal.current_stage}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-xs sm:text-sm text-muted-foreground max-w-[200px] truncate hidden sm:table-cell">
+                          {getNextAction(deal)}
+                        </TableCell>
+                        <TableCell className="text-xs sm:text-sm hidden sm:table-cell">{deal.responsible_person || '—'}</TableCell>
+                        <TableCell className="text-right text-xs sm:text-sm font-mono whitespace-nowrap">
+                          {deal.total_contract_price ? formatCurrency(deal.total_contract_price) : '—'}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          {deal.settlement_date ? (
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs sm:text-sm whitespace-nowrap">{format(new Date(deal.settlement_date), 'dd MMM yy')}</span>
+                              {(dateUrgency === 'overdue' || dateUrgency === 'urgent') && (
+                                <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={cn('text-[10px] border whitespace-nowrap', riskCfg.color)}>
+                            {riskCfg.emoji} <span className="hidden sm:inline">{riskCfg.label}</span>
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>

@@ -11,30 +11,30 @@ export default function DealPipeline() {
   const [activeTab, setActiveTab] = useState('summary');
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center gap-3">
-        <TrendingUp className="h-6 w-6 text-primary" />
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Deal Pipeline</h1>
-          <p className="text-sm text-muted-foreground">
+    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
+      <div className="flex items-center gap-2 sm:gap-3">
+        <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 text-primary shrink-0" />
+        <div className="min-w-0">
+          <h1 className="text-lg sm:text-2xl font-bold tracking-tight">Deal Pipeline</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground truncate">
             Cross-client deal tracking, commission monitoring, and builder invoice management.
           </p>
         </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="summary" className="gap-1.5">
-            <LayoutDashboard className="h-4 w-4" />
-            Executive Summary
+        <TabsList className="w-full inline-flex overflow-x-auto scrollbar-hide">
+          <TabsTrigger value="summary" className="gap-1 sm:gap-1.5 text-xs sm:text-sm whitespace-nowrap flex-shrink-0">
+            <LayoutDashboard className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Executive </span>Summary
           </TabsTrigger>
-          <TabsTrigger value="commissions" className="gap-1.5">
-            <DollarSign className="h-4 w-4" />
-            Commission Dashboard
+          <TabsTrigger value="commissions" className="gap-1 sm:gap-1.5 text-xs sm:text-sm whitespace-nowrap flex-shrink-0">
+            <DollarSign className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            Commissions
           </TabsTrigger>
-          <TabsTrigger value="invoices" className="gap-1.5">
-            <FileText className="h-4 w-4" />
-            Builder Invoice Log
+          <TabsTrigger value="invoices" className="gap-1 sm:gap-1.5 text-xs sm:text-sm whitespace-nowrap flex-shrink-0">
+            <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Builder </span>Invoices
           </TabsTrigger>
         </TabsList>
 

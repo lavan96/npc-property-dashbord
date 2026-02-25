@@ -1,4 +1,4 @@
-import { format, differenceInDays, isPast, isFuture } from 'date-fns';
+import { format, differenceInDays, isPast } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { CalendarIcon, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -49,7 +49,6 @@ export function DealCriticalDates({ deal, onUpdate }: DealCriticalDatesProps) {
     f => f.showFor === 'all' || deal.deal_type === f.showFor
   );
 
-  // Find urgent dates
   const urgentDates = visibleFields.filter(f => {
     const val = deal[f.key] as string | null;
     if (!val || !f.isUrgent) return false;
@@ -72,13 +71,13 @@ export function DealCriticalDates({ deal, onUpdate }: DealCriticalDatesProps) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {visibleFields.map((field) => {
             const value = deal[field.key] as string | null;
             return (
               <div key={field.key} className="flex items-center justify-between gap-2">
-                <span className="text-xs text-muted-foreground">{field.label}</span>
-                <div className="flex items-center gap-1.5">
+                <span className="text-xs text-muted-foreground truncate">{field.label}</span>
+                <div className="flex items-center gap-1.5 shrink-0">
                   {value && <DateWarningBadge dateStr={value} />}
                   <Popover>
                     <PopoverTrigger asChild>

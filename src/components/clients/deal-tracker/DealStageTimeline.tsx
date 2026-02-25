@@ -1,10 +1,8 @@
-import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Check, Circle, Clock, SkipForward, CalendarIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -55,7 +53,7 @@ export function DealStageTimeline({ stages, onUpdateStage }: DealStageTimelinePr
       {sorted.map((stage, idx) => {
         const isLast = idx === sorted.length - 1;
         return (
-          <div key={stage.id} className="flex gap-3">
+          <div key={stage.id} className="flex gap-2 sm:gap-3">
             {/* Timeline connector */}
             <div className="flex flex-col items-center">
               <TooltipProvider>
@@ -64,7 +62,7 @@ export function DealStageTimeline({ stages, onUpdateStage }: DealStageTimelinePr
                     <button
                       onClick={() => handleStatusToggle(stage)}
                       className={cn(
-                        'w-8 h-8 rounded-full border-2 flex items-center justify-center shrink-0 cursor-pointer transition-all hover:scale-110',
+                        'w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 flex items-center justify-center shrink-0 cursor-pointer transition-all hover:scale-110',
                         STATUS_COLORS[stage.status]
                       )}
                     >
@@ -86,11 +84,11 @@ export function DealStageTimeline({ stages, onUpdateStage }: DealStageTimelinePr
 
             {/* Stage content */}
             <div className={cn(
-              'flex-1 pb-3 pt-0.5',
+              'flex-1 pb-3 pt-0.5 min-w-0',
               stage.status === 'skipped' && 'opacity-60'
             )}>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-medium text-sm">{stage.stage_name}</span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="font-medium text-xs sm:text-sm">{stage.stage_name}</span>
                 {stage.stage_category && (
                   <Badge variant="outline" className="text-[10px] h-5">{stage.stage_category}</Badge>
                 )}
@@ -99,19 +97,20 @@ export function DealStageTimeline({ stages, onUpdateStage }: DealStageTimelinePr
                 )}
               </div>
 
-              <div className="mt-1 grid grid-cols-3 gap-2 text-xs text-muted-foreground">
-                <div>
+              {/* Details - stack vertically on mobile */}
+              <div className="mt-1 grid grid-cols-1 sm:grid-cols-3 gap-1 sm:gap-2 text-xs text-muted-foreground">
+                <div className="truncate">
                   <span className="font-medium">Responsible:</span> {stage.responsible || '—'}
                 </div>
-                <div>
+                <div className="truncate">
                   <span className="font-medium">Client:</span> {stage.client_action || '—'}
                 </div>
-                <div>
+                <div className="truncate">
                   <span className="font-medium">Internal:</span> {stage.internal_action || '—'}
                 </div>
               </div>
 
-              <div className="mt-1.5 flex items-center gap-3 text-xs">
+              <div className="mt-1.5 flex items-center gap-3 text-xs flex-wrap">
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button variant="ghost" size="sm" className="h-6 text-xs px-2">
@@ -129,7 +128,7 @@ export function DealStageTimeline({ stages, onUpdateStage }: DealStageTimelinePr
                   </PopoverContent>
                 </Popover>
                 {stage.completed_at && (
-                  <span className="text-green-600">✓ Completed {format(new Date(stage.completed_at), 'dd MMM yyyy')}</span>
+                  <span className="text-green-600">✓ {format(new Date(stage.completed_at), 'dd MMM yyyy')}</span>
                 )}
               </div>
             </div>

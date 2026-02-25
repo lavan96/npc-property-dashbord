@@ -1,11 +1,10 @@
-import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DollarSign, Landmark, Calculator } from 'lucide-react';
-import { Deal, DealType } from './types';
+import { Deal } from './types';
 
 interface DealFinancialControlsProps {
   deal: Deal;
@@ -23,7 +22,7 @@ export function DealFinancialControls({ deal, onUpdate }: DealFinancialControlsP
   };
 
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -117,7 +116,7 @@ export function DealFinancialControls({ deal, onUpdate }: DealFinancialControlsP
         </CardContent>
       </Card>
 
-      <Card className="col-span-2">
+      <Card className="sm:col-span-2">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <Calculator className="h-4 w-4 text-primary" />
@@ -125,7 +124,7 @@ export function DealFinancialControls({ deal, onUpdate }: DealFinancialControlsP
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             <div className="flex items-center justify-between gap-2">
               <Label className="text-xs">Valuation Completed</Label>
               <Switch

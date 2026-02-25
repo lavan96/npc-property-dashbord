@@ -77,31 +77,31 @@ export function DealDetailView({ deal, clientId, onBack }: DealDetailViewProps) 
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={onBack}>
+      {/* Header - stacks on mobile */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0 sm:justify-between">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="ghost" size="sm" onClick={onBack} className="h-8 px-2">
             <ArrowLeft className="h-4 w-4 mr-1" />
             Back
           </Button>
-          <div className="flex items-center gap-2">
-            {isHnL ? <Home className="h-5 w-5 text-primary" /> : <Building2 className="h-5 w-5 text-primary" />}
-            <h3 className="font-semibold text-lg">
+          <div className="flex items-center gap-1.5">
+            {isHnL ? <Home className="h-4 w-4 sm:h-5 sm:w-5 text-primary" /> : <Building2 className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />}
+            <h3 className="font-semibold text-sm sm:text-lg">
               {isHnL ? 'House & Land' : 'Existing Property'} Deal
             </h3>
           </div>
-          <Badge variant="outline" className="text-xs">
-            Stage {deal.current_stage_number}: {deal.current_stage}
+          <Badge variant="outline" className="text-[10px] sm:text-xs">
+            S{deal.current_stage_number}: {deal.current_stage}
           </Badge>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {/* Risk Status Selector */}
           <Select
             value={deal.risk_status}
             onValueChange={(v) => handleDealUpdate({ risk_status: v as RiskStatus })}
           >
-            <SelectTrigger className={cn('h-8 w-[180px] text-xs border', riskConfig.color)}>
+            <SelectTrigger className={cn('h-8 w-full sm:w-[180px] text-xs border', riskConfig.color)}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -118,17 +118,17 @@ export function DealDetailView({ deal, clientId, onBack }: DealDetailViewProps) 
             value={deal.responsible_person || ''}
             onChange={(e) => handleDealUpdate({ responsible_person: e.target.value })}
             placeholder="Responsible"
-            className="h-8 text-xs w-[140px]"
+            className="h-8 text-xs w-full sm:w-[140px]"
           />
 
           {/* Delete */}
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="sm" className="text-destructive h-8">
+              <Button variant="ghost" size="sm" className="text-destructive h-8 shrink-0">
                 <Trash2 className="h-4 w-4" />
               </Button>
             </AlertDialogTrigger>
-            <AlertDialogContent>
+            <AlertDialogContent className="w-[calc(100vw-24px)] sm:max-w-md">
               <AlertDialogHeader>
                 <AlertDialogTitle>Delete this deal?</AlertDialogTitle>
                 <AlertDialogDescription>
@@ -175,7 +175,6 @@ export function DealDetailView({ deal, clientId, onBack }: DealDetailViewProps) 
             stages={deal.stages || []}
             onUpdateStage={(stageId, data) => {
               updateStage.mutate({ stageId, data });
-              // Auto-update deal current_stage when a stage status changes
               if (data.status === 'complete' || data.status === 'in_progress') {
                 const stage = deal.stages?.find(s => s.id === stageId);
                 if (stage && data.status === 'in_progress') {
