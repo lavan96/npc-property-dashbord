@@ -79,6 +79,10 @@ export function DealStageTimeline({ stages, onUpdateStage }: DealStageTimelinePr
     onUpdateStage(stage.id, updates);
   };
 
+  const handleSkip = (stage: DealStage) => {
+    onUpdateStage(stage.id, { status: 'skipped', completed_at: null });
+  };
+
   return (
     <div className="space-y-1">
       {sorted.map((stage, idx) => {
@@ -125,6 +129,17 @@ export function DealStageTimeline({ stages, onUpdateStage }: DealStageTimelinePr
                 )}
                 {stage.percentage_or_amount && (
                   <Badge variant="secondary" className="text-[10px] h-5">{stage.percentage_or_amount}</Badge>
+                )}
+                {stage.status !== 'skipped' && stage.status !== 'complete' && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-5 px-1.5 text-[10px] text-muted-foreground hover:text-foreground"
+                    onClick={() => handleSkip(stage)}
+                  >
+                    <SkipForward className="h-3 w-3 mr-0.5" />
+                    Skip
+                  </Button>
                 )}
               </div>
 

@@ -1,27 +1,25 @@
 import { useMemo } from 'react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { DollarSign, Bell, CheckCircle, Clock } from 'lucide-react';
+import { DollarSign, Bell, CheckCircle, Clock, Circle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import type { DealWithClient } from '@/hooks/useAllDeals';
 
 interface Props {
   deals: DealWithClient[];
   isLoading: boolean;
+  onUpdatePayment?: (paymentId: string, clientId: string, data: any) => void;
 }
 
 interface CommissionRow {
+  paymentId: string;
   dealId: string;
+  clientId: string;
   clientName: string;
   stageName: string;
   stageNumber: number;
@@ -36,7 +34,7 @@ interface CommissionRow {
   buildPrice: number | null;
 }
 
-export function CommissionDashboard({ deals, isLoading }: Props) {
+export function CommissionDashboard({ deals, isLoading, onUpdatePayment }: Props) {
   const commissionRows = useMemo(() => {
     const rows: CommissionRow[] = [];
     for (const deal of deals) {
@@ -44,7 +42,9 @@ export function CommissionDashboard({ deals, isLoading }: Props) {
       for (const p of payments) {
         if (!p.is_commission_trigger) continue;
         rows.push({
+          paymentId: p.id,
           dealId: deal.id,
+          clientId: deal.client_id,
           clientName: deal.client_name || 'Unknown',
           stageName: p.stage_name,
           stageNumber: p.stage_number,
@@ -75,6 +75,41 @@ export function CommissionDashboard({ deals, isLoading }: Props) {
 
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(val);
+
+  function ToggleCheck({ value, field, row }: { value: boolean; field: string; row: CommissionRow }) {
+    if (!onUpdatePayment) {
+      return value ? (
+        <CheckCircle className="h-4 w-4 text-green-600 mx-auto" />
+      ) : (
+        <span className="text-xs text-muted-foreground">—</span>
+      );
+    }
+
+    const dateField = field === 'builder_invoice_received' ? 'builder_invoice_date'
+      : field === 'submitted_to_lender' ? 'submitted_to_lender_date'
+      : field === 'funds_released' ? 'funds_released_date'
+      : field === 'commission_received' ? 'commission_received_date'
+      : null;
+
+    const handleToggle = () => {
+      const newVal = !value;
+      const update: any = { [field]: newVal };
+      if (dateField) {
+        update[dateField] = newVal ? new Date().toISOString().split('T')[0] : null;
+      }
+      onUpdatePayment(row.paymentId, row.clientId, update);
+    };
+
+    return (
+      <button onClick={handleToggle} className="mx-auto block hover:scale-110 transition-transform" title={`Toggle ${field.replace(/_/g, ' ')}`}>
+        {value ? (
+          <CheckCircle className="h-4 w-4 text-green-600" />
+        ) : (
+          <Circle className="h-4 w-4 text-muted-foreground/40 hover:text-muted-foreground" />
+        )}
+      </button>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -166,36 +201,33 @@ export function CommissionDashboard({ deals, isLoading }: Props) {
                       <TableCell className="text-right font-mono text-xs sm:text-sm hidden sm:table-cell">{row.percentage}%</TableCell>
                       <TableCell className="text-right text-xs sm:text-sm hidden sm:table-cell">{row.amount ? formatCurrency(row.amount) : '—'}</TableCell>
                       <TableCell className="text-center">
-                        {row.builderInvoiceReceived ? (
-                          <CheckCircle className="h-4 w-4 text-green-600 mx-auto" />
-                        ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
-                        )}
+                        <ToggleCheck value={row.builderInvoiceReceived} field="builder_invoice_received" row={row} />
                       </TableCell>
                       <TableCell className="text-center hidden sm:table-cell">
-                        {row.submittedToLender ? (
-                          <CheckCircle className="h-4 w-4 text-green-600 mx-auto" />
-                        ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
-                        )}
+                        <ToggleCheck value={row.submittedToLender} field="submitted_to_lender" row={row} />
                       </TableCell>
                       <TableCell className="text-center">
-                        {row.fundsReleased ? (
-                          <CheckCircle className="h-4 w-4 text-green-600 mx-auto" />
-                        ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
-                        )}
+                        <ToggleCheck value={row.fundsReleased} field="funds_released" row={row} />
                       </TableCell>
                       <TableCell>
-                        {row.fundsReleased ? (
-                          <Badge className="text-[10px] bg-amber-500/10 text-amber-700 border-amber-500/30 border whitespace-nowrap">Awaiting</Badge>
-                        ) : row.submittedToLender ? (
-                          <Badge variant="outline" className="text-[10px] whitespace-nowrap">Submitted</Badge>
-                        ) : row.builderInvoiceReceived ? (
-                          <Badge variant="outline" className="text-[10px] whitespace-nowrap">Invoice</Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-[10px] text-muted-foreground whitespace-nowrap">—</Badge>
-                        )}
+                        <button
+                          onClick={() => onUpdatePayment?.(row.paymentId, row.clientId, {
+                            commission_received: true,
+                            commission_received_date: new Date().toISOString().split('T')[0],
+                          })}
+                          className="cursor-pointer"
+                          title="Mark commission as received"
+                        >
+                          {row.fundsReleased ? (
+                            <Badge className="text-[10px] bg-amber-500/10 text-amber-700 border-amber-500/30 border whitespace-nowrap hover:bg-amber-500/20 transition-colors">Awaiting</Badge>
+                          ) : row.submittedToLender ? (
+                            <Badge variant="outline" className="text-[10px] whitespace-nowrap">Submitted</Badge>
+                          ) : row.builderInvoiceReceived ? (
+                            <Badge variant="outline" className="text-[10px] whitespace-nowrap">Invoice</Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-[10px] text-muted-foreground whitespace-nowrap">—</Badge>
+                          )}
+                        </button>
                       </TableCell>
                     </TableRow>
                   ))

@@ -1,26 +1,24 @@
 import { useMemo } from 'react';
 import { format } from 'date-fns';
-import { CheckCircle, FileText } from 'lucide-react';
+import { CheckCircle, Circle, FileText } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import type { DealWithClient } from '@/hooks/useAllDeals';
 
 interface Props {
   deals: DealWithClient[];
   isLoading: boolean;
+  onUpdatePayment?: (paymentId: string, clientId: string, data: any) => void;
 }
 
 interface InvoiceRow {
+  paymentId: string;
   dealId: string;
+  clientId: string;
   clientName: string;
   stageName: string;
   stageNumber: number;
@@ -37,14 +35,16 @@ interface InvoiceRow {
   commissionReceived: boolean;
 }
 
-export function BuilderInvoiceLog({ deals, isLoading }: Props) {
+export function BuilderInvoiceLog({ deals, isLoading, onUpdatePayment }: Props) {
   const invoiceRows = useMemo(() => {
     const rows: InvoiceRow[] = [];
     for (const deal of deals) {
       const payments = deal.buildPayments || [];
       for (const p of payments) {
         rows.push({
+          paymentId: p.id,
           dealId: deal.id,
+          clientId: deal.client_id,
           clientName: deal.client_name || 'Unknown',
           stageName: p.stage_name,
           stageNumber: p.stage_number,
@@ -68,11 +68,32 @@ export function BuilderInvoiceLog({ deals, isLoading }: Props) {
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(val);
 
-  function StatusIcon({ value }: { value: boolean }) {
-    return value ? (
-      <CheckCircle className="h-4 w-4 text-green-600 mx-auto" />
-    ) : (
-      <span className="text-xs text-muted-foreground block text-center">—</span>
+  function ToggleCheck({ value, field, dateField, row }: { value: boolean; field: string; dateField?: string; row: InvoiceRow }) {
+    if (!onUpdatePayment) {
+      return value ? (
+        <CheckCircle className="h-4 w-4 text-green-600 mx-auto" />
+      ) : (
+        <span className="text-xs text-muted-foreground block text-center">—</span>
+      );
+    }
+
+    const handleToggle = () => {
+      const newVal = !value;
+      const update: any = { [field]: newVal };
+      if (dateField) {
+        update[dateField] = newVal ? new Date().toISOString().split('T')[0] : null;
+      }
+      onUpdatePayment(row.paymentId, row.clientId, update);
+    };
+
+    return (
+      <button onClick={handleToggle} className="mx-auto block hover:scale-110 transition-transform" title={`Toggle ${field.replace(/_/g, ' ')}`}>
+        {value ? (
+          <CheckCircle className="h-4 w-4 text-green-600" />
+        ) : (
+          <Circle className="h-4 w-4 text-muted-foreground/40 hover:text-muted-foreground" />
+        )}
+      </button>
     );
   }
 
@@ -125,30 +146,38 @@ export function BuilderInvoiceLog({ deals, isLoading }: Props) {
                   <TableCell className="text-right font-mono text-xs sm:text-sm hidden sm:table-cell">{row.percentage}%</TableCell>
                   <TableCell className="text-right text-xs sm:text-sm hidden sm:table-cell">{row.amount ? formatCurrency(row.amount) : '—'}</TableCell>
                   <TableCell className="text-center text-xs sm:text-sm">
-                    {row.builderInvoiceDate ? format(new Date(row.builderInvoiceDate), 'dd/MM/yy') : (
-                      <StatusIcon value={row.builderInvoiceReceived} />
+                    {row.builderInvoiceDate && row.builderInvoiceReceived ? (
+                      <span className="text-xs">{format(new Date(row.builderInvoiceDate), 'dd/MM/yy')}</span>
+                    ) : (
+                      <ToggleCheck value={row.builderInvoiceReceived} field="builder_invoice_received" dateField="builder_invoice_date" row={row} />
                     )}
                   </TableCell>
                   <TableCell className="text-center text-xs sm:text-sm hidden md:table-cell">
-                    {row.submittedDate ? format(new Date(row.submittedDate), 'dd/MM/yy') : (
-                      <StatusIcon value={row.submittedToLender} />
+                    {row.submittedDate && row.submittedToLender ? (
+                      <span className="text-xs">{format(new Date(row.submittedDate), 'dd/MM/yy')}</span>
+                    ) : (
+                      <ToggleCheck value={row.submittedToLender} field="submitted_to_lender" dateField="submitted_to_lender_date" row={row} />
                     )}
                   </TableCell>
                   <TableCell className="text-center text-xs sm:text-sm">
-                    {row.fundsReleasedDate ? format(new Date(row.fundsReleasedDate), 'dd/MM/yy') : (
-                      <StatusIcon value={row.fundsReleased} />
+                    {row.fundsReleasedDate && row.fundsReleased ? (
+                      <span className="text-xs">{format(new Date(row.fundsReleasedDate), 'dd/MM/yy')}</span>
+                    ) : (
+                      <ToggleCheck value={row.fundsReleased} field="funds_released" dateField="funds_released_date" row={row} />
                     )}
                   </TableCell>
                   <TableCell className="text-center text-xs sm:text-sm hidden md:table-cell">
-                    {row.paidToBuilderDate ? format(new Date(row.paidToBuilderDate), 'dd/MM/yy') : (
-                      <StatusIcon value={row.paidToBuilder} />
+                    {row.paidToBuilderDate && row.paidToBuilder ? (
+                      <span className="text-xs">{format(new Date(row.paidToBuilderDate), 'dd/MM/yy')}</span>
+                    ) : (
+                      <ToggleCheck value={row.paidToBuilder} field="paid_to_builder" dateField="paid_to_builder_date" row={row} />
                     )}
                   </TableCell>
                   <TableCell className="text-center">
                     {row.commissionReceived ? (
                       <Badge variant="outline" className="text-[10px] text-green-600 border-green-500/30">Paid</Badge>
                     ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
+                      <ToggleCheck value={row.commissionReceived} field="commission_received" dateField="commission_received_date" row={row} />
                     )}
                   </TableCell>
                 </TableRow>
