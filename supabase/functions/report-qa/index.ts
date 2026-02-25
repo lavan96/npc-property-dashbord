@@ -1051,6 +1051,20 @@ No investment report has been uploaded. You are having an open conversation abou
           throw new Error(`AI API error: ${response.status}`);
         }
 
+        // Log streaming LLM usage (fire-and-forget, no token counts available for streams)
+        const streamModelName = modelProvider === 'perplexity' ? 'sonar-pro'
+          : modelProvider === 'openai-direct' ? 'gpt-4.1'
+          : modelProvider === 'gemini' ? 'gemini-2.5-pro' : 'gpt-5.2';
+        const sbLogStream = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+        logApiUsage(sbLogStream, {
+          service_name: modelProvider === 'perplexity' ? 'perplexity' : modelProvider === 'gemini' ? 'gemini' : 'openai',
+          endpoint: '/v1/chat/completions',
+          model_used: streamModelName,
+          status: 'success',
+          user_id: userId || undefined,
+          metadata: { function: 'report-qa', action: 'chat', streaming: true, modelProvider },
+        }).catch(() => {}); // fire-and-forget
+
         // Return the streaming response directly
         return new Response(response.body, {
           headers: { ...corsHeaders, "Content-Type": "text/event-stream" },

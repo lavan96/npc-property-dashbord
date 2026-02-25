@@ -129,15 +129,15 @@ ${knowledgeBase}`;
       );
     }
 
-    // Log Gemini API usage (streaming — no token count available)
-    await logApiUsage(supabase, {
+    // Log Gemini API usage (fire-and-forget, streaming — no token count available)
+    logApiUsage(supabase, {
       service_name: 'gemini',
       endpoint: '/v1/chat/completions',
-      model_used: 'google/gemini-3-flash-preview',
+      model_used: 'gemini-3-flash-preview',
       status: 'success',
       user_id: userId || undefined,
       metadata: { function: 'user-guide-assistant', messageCount: messages.length },
-    });
+    }).catch(() => {}); // fire-and-forget, don't block the stream
 
     // Return the stream directly
     return new Response(response.body, {
