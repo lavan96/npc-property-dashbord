@@ -171,11 +171,14 @@ export function LiabilitiesSection({
 
                 {/* Assessment Note */}
                 <div className="p-3 rounded-lg bg-muted/50 text-xs text-muted-foreground">
-                  <p className="font-medium mb-1">Liability Assessment:</p>
+                  <p className="font-medium mb-1">Liability Assessment Rules:</p>
                   <ul className="space-y-0.5">
-                    <li>• Credit cards: 3% of limit (not balance)</li>
-                    <li>• HECS/HELP: Based on income thresholds</li>
-                    <li>• Loans: Actual monthly repayment</li>
+                    <li>• Credit cards: 3% of credit limit (not balance)</li>
+                    <li>• BNPL (Afterpay etc.): 5% of limit/balance</li>
+                    <li>• HECS/HELP: ATO repayment brackets based on income</li>
+                    <li>• Car loans: Est. P&I @ 8% / 5yr if no repayment entered</li>
+                    <li>• Personal loans: Est. P&I @ 10% / 7yr if no repayment entered</li>
+                    <li>• Property loans: Stress-tested at P&I @ 9.5%</li>
                   </ul>
                 </div>
               </>

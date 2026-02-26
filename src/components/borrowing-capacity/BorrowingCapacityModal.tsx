@@ -20,7 +20,7 @@ import { Calculator, Loader2, RefreshCw, FlaskConical, Clock, Save, Building2, S
 import { useIsMobile } from '@/hooks/use-mobile';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useBorrowingCapacity } from '@/hooks/useBorrowingCapacity';
-import { getHemBenchmark, getHemBreakdown, DEFAULT_DTI_CAP } from '@/utils/borrowingCapacityCalculations';
+import { getHemBenchmark, getHemBreakdown, getHecsRepayment, DEFAULT_DTI_CAP } from '@/utils/borrowingCapacityCalculations';
 import type { FullAssessmentResult, BorrowingCapacityInput, CalculationMode, HemBreakdown } from '@/utils/borrowingCapacityCalculations';
 import { toast } from 'sonner';
 import { Switch } from '@/components/ui/switch';
@@ -314,6 +314,23 @@ export function BorrowingCapacityModal({
 
   // Process liabilities breakdown with overrides
   const liabilitiesBreakdown: LiabilityBreakdownItem[] = useMemo(() => {
+    // Default assumed terms for estimating repayments when monthly_repayment is missing
+    const ASSUMED_TERMS: Record<string, { rate: number; years: number; label: string }> = {
+      car_loan: { rate: 0.08, years: 5, label: 'Est. P&I @ 8% / 5yr' },
+      personal_loan: { rate: 0.10, years: 7, label: 'Est. P&I @ 10% / 7yr' },
+      afterpay_bnpl: { rate: 0, years: 0, label: '5% of limit' },
+      other: { rate: 0.09, years: 5, label: 'Est. P&I @ 9% / 5yr' },
+    };
+
+    const estimatePIRepayment = (balance: number, annualRate: number, years: number): number => {
+      if (balance <= 0 || years <= 0) return 0;
+      const monthlyRate = annualRate / 12;
+      const periods = years * 12;
+      if (monthlyRate === 0) return balance / periods;
+      return balance * (monthlyRate * Math.pow(1 + monthlyRate, periods)) 
+             / (Math.pow(1 + monthlyRate, periods) - 1);
+    };
+
     const items: LiabilityBreakdownItem[] = (clientData?.liabilities || []).map(lib => {
       const override = liabilityOverrides.get(lib.id);
       const balance = override?.balance ?? (Number(lib.current_balance) || 0);
@@ -323,18 +340,28 @@ export function BorrowingCapacityModal({
       let calculationNote = '';
 
       if (lib.liability_type === 'credit_card') {
+        // Industry standard: 3% of credit limit
         monthlyServicing = creditLimit * 0.03;
         calculationNote = '3% of credit limit';
+      } else if (lib.liability_type === 'afterpay_bnpl') {
+        // BNPL: 5% of limit/balance (whichever is higher), similar to credit card treatment
+        const bnplBase = Math.max(creditLimit, balance);
+        monthlyServicing = bnplBase * 0.05;
+        calculationNote = '5% of limit/balance';
       } else if (lib.liability_type === 'hecs') {
-        const annualIncome = totalGrossIncome;
-        if (annualIncome > 51550) {
-          const rate = annualIncome > 151200 ? 0.10 : annualIncome > 100000 ? 0.08 : 0.05;
-          monthlyServicing = (annualIncome * rate) / 12;
-          calculationNote = `${(rate * 100).toFixed(0)}% of income threshold`;
+        // Use proper ATO brackets via getHecsRepayment()
+        monthlyServicing = getHecsRepayment(totalGrossIncome);
+        if (monthlyServicing > 0) {
+          const effectiveRate = ((monthlyServicing * 12) / totalGrossIncome * 100).toFixed(1);
+          calculationNote = `${effectiveRate}% of income (ATO brackets)`;
         } else {
-          monthlyServicing = 0;
           calculationNote = 'Below repayment threshold';
         }
+      } else if (monthlyServicing === 0 && balance > 0) {
+        // FIX: Estimate repayment for car/personal/other loans when monthly_repayment is missing
+        const assumed = ASSUMED_TERMS[lib.liability_type] || ASSUMED_TERMS.other;
+        monthlyServicing = estimatePIRepayment(balance, assumed.rate, assumed.years);
+        calculationNote = assumed.label;
       }
 
       return {
@@ -342,8 +369,8 @@ export function BorrowingCapacityModal({
         type: lib.liability_type,
         label: lib.provider_name || lib.liability_type,
         balance,
-        limit: lib.liability_type === 'credit_card' ? creditLimit : undefined,
-        monthlyServicing,
+        limit: (lib.liability_type === 'credit_card' || lib.liability_type === 'afterpay_bnpl') ? creditLimit : undefined,
+        monthlyServicing: Math.round(monthlyServicing * 100) / 100,
         calculationNote,
         sourceId: lib.id,
         sourceTable: 'client_liabilities' as const,
@@ -846,6 +873,10 @@ export function BorrowingCapacityModal({
                 dtiCapLimit={dtiCapLimit}
                 clientId={clientId}
                 clientName={clientData?.client ? `${clientData.client.primary_first_name || ''} ${clientData.client.primary_surname || ''}`.trim() : undefined}
+                proposedLoanAmount={proposedLoanAmount}
+                interestRate={interestRate}
+                bufferRate={effectiveBufferRate}
+                loanTermYears={loanTermYears}
               />
             </div>
           </ScrollArea>
@@ -869,6 +900,10 @@ export function BorrowingCapacityModal({
                     dtiCapLimit={dtiCapLimit}
                     clientId={clientId}
                     clientName={clientData?.client ? `${clientData.client.primary_first_name || ''} ${clientData.client.primary_surname || ''}`.trim() : undefined}
+                    proposedLoanAmount={proposedLoanAmount}
+                    interestRate={interestRate}
+                    bufferRate={effectiveBufferRate}
+                    loanTermYears={loanTermYears}
                   />
                 </div>
               </ScrollArea>

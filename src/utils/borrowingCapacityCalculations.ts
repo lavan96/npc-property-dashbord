@@ -497,27 +497,37 @@ export function calculateBorrowingCapacity(params: BorrowingCapacityInput): Borr
     borrowingCapacity = Math.round(maxNewRepayment * factor);
   }
   
-  // Calculate initial DTI ratio for potential capping
-  let totalAnnualDebt = (monthlyCommitments * 12) + (borrowingCapacity > 0 ? borrowingCapacity / loanTermYears : 0);
-  let dtiRatio = shadedAnnualIncome > 0 ? Math.round((totalAnnualDebt / shadedAnnualIncome) * 100) / 100 : 0;
+  // Calculate DTI ratio using actual annual debt servicing (not simple division)
+  // DTI = Total Annual Debt Servicing / Gross Annual Income
+  const newLoanAnnualServicing = maxNewRepayment * 12; // Actual P&I repayments per year
+  const existingAnnualServicing = monthlyCommitments * 12;
+  let totalAnnualDebtServicing = existingAnnualServicing + newLoanAnnualServicing;
+  let dtiRatio = shadedAnnualIncome > 0 ? Math.round((totalAnnualDebtServicing / shadedAnnualIncome) * 100) / 100 : 0;
   
   // Apply DTI cap if enabled or in conservative mode
   const effectiveDtiCap = isConservative ? CONSERVATIVE_MODE_ADJUSTMENTS.dtiHardCap : dtiCapLimit;
   const shouldApplyDtiCap = dtiCapEnabled || isConservative;
   
   if (shouldApplyDtiCap && dtiRatio > effectiveDtiCap && shadedAnnualIncome > 0) {
-    // Calculate max borrowing capacity to stay within DTI cap
-    const maxDebtForDtiCap = shadedAnnualIncome * effectiveDtiCap;
-    const existingAnnualDebt = monthlyCommitments * 12;
-    const maxNewAnnualDebt = Math.max(0, maxDebtForDtiCap - existingAnnualDebt);
-    const dtiCappedCapacity = maxNewAnnualDebt * loanTermYears;
+    // Calculate max annual servicing to stay within DTI cap
+    const maxTotalAnnualServicing = shadedAnnualIncome * effectiveDtiCap;
+    const maxNewAnnualServicing = Math.max(0, maxTotalAnnualServicing - existingAnnualServicing);
+    const maxNewMonthlyRepayment = maxNewAnnualServicing / 12;
     
-    // Use the lower of DTI-capped or serviceability-based capacity
-    if (dtiCappedCapacity < borrowingCapacity) {
-      borrowingCapacity = Math.round(dtiCappedCapacity);
-      // Recalculate DTI with capped capacity
-      totalAnnualDebt = existingAnnualDebt + (borrowingCapacity / loanTermYears);
-      dtiRatio = Math.round((totalAnnualDebt / shadedAnnualIncome) * 100) / 100;
+    // Reverse-calculate max loan from the DTI-capped monthly repayment
+    if (monthlyRate > 0 && maxNewMonthlyRepayment > 0) {
+      const factor = (1 - Math.pow(1 + monthlyRate, -periods)) / monthlyRate;
+      const dtiCappedCapacity = Math.round(maxNewMonthlyRepayment * factor);
+      
+      if (dtiCappedCapacity < borrowingCapacity) {
+        borrowingCapacity = dtiCappedCapacity;
+        // Recalculate DTI with capped capacity
+        totalAnnualDebtServicing = existingAnnualServicing + (maxNewMonthlyRepayment * 12);
+        dtiRatio = Math.round((totalAnnualDebtServicing / shadedAnnualIncome) * 100) / 100;
+      }
+    } else {
+      borrowingCapacity = 0;
+      dtiRatio = shadedAnnualIncome > 0 ? Math.round((existingAnnualServicing / shadedAnnualIncome) * 100) / 100 : 0;
     }
   }
   
