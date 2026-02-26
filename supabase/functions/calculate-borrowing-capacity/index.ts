@@ -752,8 +752,16 @@ Deno.serve(async (req) => {
       calculateLiabilityBreakdown(liabilities, properties, effectiveGrossIncome);
     
     // Calculate total outstanding debt balances for DTI (industry standard)
-    const totalDebtBalances = liabilityBreakdown.reduce((sum, item) => sum + (item.balance || 0), 0);
+    let totalDebtBalances = liabilityBreakdown.reduce((sum, item) => sum + (item.balance || 0), 0);
     console.log(`[calculate-borrowing-capacity] Total debt balances for DTI: $${totalDebtBalances}`);
+    
+    // debt_capitalised mode: Add LMI to total debt balances so it impacts DTI and capacity
+    const lmiMode = overrides?.lmiMode || 'none';
+    const lmiAmount = overrides?.lmiAmount || 0;
+    if (lmiMode === 'debt_capitalised' && lmiAmount > 0) {
+      totalDebtBalances += lmiAmount;
+      console.log(`[calculate-borrowing-capacity] LMI capitalised: +$${lmiAmount} → total debt now $${totalDebtBalances}`);
+    }
     
     const effectiveCommitments = overrides?.existingCommitments != null
       ? overrides.existingCommitments
