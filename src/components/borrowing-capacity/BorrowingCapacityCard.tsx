@@ -97,7 +97,7 @@ export function BorrowingCapacityCard({ clientId, clientName, onOpenCalculator }
             Calculate borrowing power based on income, expenses, and existing commitments.
           </p>
           <Button 
-            onClick={() => calculate({ bufferRate: 3.0, interestRate: 6.5, loanTermYears: 30 })}
+            onClick={() => calculate({})}
             disabled={isCalculating}
             size="sm"
             className="w-full"
