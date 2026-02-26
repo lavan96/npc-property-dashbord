@@ -49,7 +49,7 @@ export function BankRateSelector({
       // Find the best matching rate
       const bestRate = selectedLenderRates[0]; // Already sorted by rate
       setSelectedProductId(bestRate.productId);
-      onChange(bestRate.rate, bestRate.lenderName);
+      onChange(Math.round(bestRate.rate * 100) / 100, bestRate.lenderName);
     }
   }, [selectedLenderRates, onChange]);
 
@@ -58,7 +58,7 @@ export function BankRateSelector({
     setSelectedProductId(productId);
     const rate = selectedLenderRates?.find(r => r.productId === productId);
     if (rate) {
-      onChange(rate.rate, rate.lenderName);
+      onChange(Math.round(rate.rate * 100) / 100, rate.lenderName);
     }
   };
 
