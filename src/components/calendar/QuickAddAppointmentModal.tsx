@@ -7,12 +7,14 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Calendar, Clock, Plus, Loader2, Keyboard, User, Search, Phone, Mail, Video, PhoneCall, Globe } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Calendar, Clock, Plus, Loader2, Keyboard, User, Search, Phone, Mail, Video, PhoneCall, Globe, Users, X } from 'lucide-react';
 import { format, addMinutes } from 'date-fns';
 import { toTimezoneISO } from '@/lib/sydneyTime';
 import { getBookingTimezone, AUSTRALIAN_TIMEZONES } from '@/lib/bookingTimezone';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useFinanceContacts, FinanceContact } from '@/hooks/useFinanceContacts';
 import type { GHLCalendar, GHLContact } from '@/hooks/useGHLCalendar';
 
 interface QuickAddAppointmentModalProps {
@@ -29,6 +31,7 @@ interface QuickAddAppointmentModalProps {
     endTime: string;
     contactId?: string;
     notes?: string;
+    secondaryRecipients?: { financeContactId: string; name: string; email: string }[];
   }) => Promise<boolean>;
   onSearchContacts?: (query: string) => Promise<GHLContact[]>;
 }
@@ -59,6 +62,7 @@ export function QuickAddAppointmentModal({
   onSearchContacts,
 }: QuickAddAppointmentModalProps) {
   const isMobile = useIsMobile();
+  const { contacts: financeContacts, isLoading: isLoadingFinanceContacts } = useFinanceContacts();
   const [title, setTitle] = useState('');
   const [selectedCalendarId, setSelectedCalendarId] = useState<string>('');
   const [date, setDate] = useState('');
@@ -67,6 +71,7 @@ export function QuickAddAppointmentModal({
   const [notes, setNotes] = useState('');
   const [appointmentType, setAppointmentType] = useState('call');
   const [inputTimezone, setInputTimezone] = useState<string>(() => getBookingTimezone());
+  const [selectedFinanceContacts, setSelectedFinanceContacts] = useState<FinanceContact[]>([]);
   
   // Contact search state
   const [contactSearch, setContactSearch] = useState('');
@@ -88,6 +93,7 @@ export function QuickAddAppointmentModal({
       setSelectedContact(null);
       setSearchResults([]);
       setAppointmentType('call');
+      setSelectedFinanceContacts([]);
 
       const d = defaultDate || new Date();
       setDate(format(d, 'yyyy-MM-dd'));
@@ -220,6 +226,12 @@ export function QuickAddAppointmentModal({
     const startTimeISO = toTimezoneISO(date, time, inputTimezone);
     const endTimeISO = toTimezoneISO(date, endTimeStr, inputTimezone);
 
+    const secondaryRecipients = selectedFinanceContacts.map(fc => ({
+      financeContactId: fc.id,
+      name: fc.name,
+      email: fc.email,
+    }));
+
     const success = await onSubmit({
       calendarId: selectedCalendarId,
       title: title.trim(),
@@ -227,6 +239,7 @@ export function QuickAddAppointmentModal({
       endTime: endTimeISO,
       contactId: selectedContact?.id,
       notes: notes.trim() || undefined,
+      secondaryRecipients: secondaryRecipients.length > 0 ? secondaryRecipients : undefined,
     });
 
     if (success) {
@@ -476,7 +489,68 @@ export function QuickAddAppointmentModal({
         />
       </div>
 
-      {/* Keyboard Shortcuts Help - hidden on mobile */}
+      {/* Secondary Recipients (Finance Contacts) */}
+      <div className="space-y-2">
+        <Label className="flex items-center gap-1.5">
+          <Users className="h-3.5 w-3.5 text-muted-foreground" />
+          Notify Finance Contacts
+        </Label>
+        {isLoadingFinanceContacts ? (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground p-2">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            Loading contacts...
+          </div>
+        ) : financeContacts.length === 0 ? (
+          <p className="text-xs text-muted-foreground p-2">No finance contacts configured.</p>
+        ) : (
+          <div className="space-y-2">
+            {/* Selected contacts as badges */}
+            {selectedFinanceContacts.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {selectedFinanceContacts.map(fc => (
+                  <Badge key={fc.id} variant="secondary" className="flex items-center gap-1 pr-1">
+                    <span className="text-xs">{fc.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedFinanceContacts(prev => prev.filter(c => c.id !== fc.id))}
+                      className="ml-0.5 rounded-full hover:bg-muted-foreground/20 p-0.5"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            )}
+            {/* Available contacts to add */}
+            <div className="flex flex-wrap gap-1.5">
+              {financeContacts
+                .filter(fc => !selectedFinanceContacts.some(s => s.id === fc.id))
+                .map(fc => (
+                  <button
+                    key={fc.id}
+                    type="button"
+                    onClick={() => setSelectedFinanceContacts(prev => [...prev, fc])}
+                    className={cn(
+                      'flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all',
+                      'bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground',
+                      fc.is_default && 'ring-1 ring-primary/30'
+                    )}
+                  >
+                    <Mail className="h-3 w-3" />
+                    {fc.name}
+                    {fc.is_default && <span className="text-[10px] opacity-60">(Default)</span>}
+                  </button>
+                ))}
+            </div>
+            {selectedFinanceContacts.length > 0 && (
+              <p className="text-[11px] text-muted-foreground">
+                {selectedFinanceContacts.length} contact{selectedFinanceContacts.length > 1 ? 's' : ''} will receive an email with a .ics calendar invite.
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+
       {!isMobile && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-md p-2">
           <Keyboard className="h-3 w-3" />
