@@ -206,6 +206,20 @@ function formatLiabilityType(type: string): string {
   return labels[type] || type.replace(/[_-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
+/** Returns a short method description for how a liability is assessed */
+function getDefaultMethodNote(type: string): string {
+  const methods: Record<string, string> = {
+    credit_card: '3% of limit',
+    afterpay_bnpl: '5% of limit',
+    hecs: 'ATO brackets',
+    car_loan: 'P&I @ 8%/5yr',
+    personal_loan: 'P&I @ 10%/7yr',
+    home_loan: 'P&I @ 9.5%',
+    investment_loan: 'P&I @ 9.5%',
+  };
+  return methods[type] || '';
+}
+
 // ─── Page management ────────────────────────────────────────────────────────
 
 function addSectionFooter(doc: jsPDF, pageNum: number) {
@@ -396,10 +410,6 @@ export function drawBorrowingCapacitySections(
   doc.setFont('helvetica', 'normal');
   doc.text('SERVICEABILITY', b3x + 5, y + 10);
   drawBadge(doc, b3x + 5, y + 17, bandLabel(data.serviceabilityBand), bc);
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'normal');
-  setColor(doc, GRAY);
-  doc.text(sanitize(bandMessage(data.serviceabilityBand)), b3x + 5, y + 34);
 
   y += boxH + 10;
 
@@ -434,15 +444,19 @@ export function drawBorrowingCapacitySections(
 
   y += 8;
 
-  // Capacity gauge / progress bar
+  // Capacity gauge / progress bar — taller for better visibility
   const gaugePercent = Math.min(100, (data.borrowingCapacity / 1500000) * 100);
-  drawProgressBar(doc, MARGIN, y, CONTENT_W, 4, gaugePercent, bc);
+  drawProgressBar(doc, MARGIN, y, CONTENT_W, 6, gaugePercent, bc);
   doc.setFontSize(7);
   doc.setFont('helvetica', 'normal');
   setColor(doc, GRAY);
-  doc.text('$0', MARGIN, y + 8);
-  doc.text('$1.5M', MARGIN + CONTENT_W, y + 8, { align: 'right' });
-  y += 15;
+  doc.text(fmt(data.borrowingCapacity), MARGIN, y + 12);
+  doc.text('$1.5M', MARGIN + CONTENT_W, y + 12, { align: 'right' });
+  // Band message below gauge
+  doc.setFontSize(7);
+  setColor(doc, bandColor(data.serviceabilityBand));
+  doc.text(sanitize(bandMessage(data.serviceabilityBand)), MARGIN, y + 18);
+  y += 24;
 
   // ──────────────────────────────────────────────────────────────────────────
   // PROPOSED LOAN CHECK (if provided) — mirrors ResultsPanel proposed loan UI
@@ -501,7 +515,9 @@ export function drawBorrowingCapacitySections(
     setColor(doc, DARK);
     doc.text('Utilization', MARGIN + colW * 3 + 5, y + 16);
     doc.setFont('helvetica', 'bold');
-    doc.text(`${plc.utilizationPercent}%`, MARGIN + colW * 3 + 5, y + 22);
+    // Display "Over Capacity" when utilization exceeds 999%, otherwise show percentage
+    const utilDisplay = plc.utilizationPercent > 999 ? 'Over Capacity' : `${plc.utilizationPercent}%`;
+    doc.text(utilDisplay, MARGIN + colW * 3 + 5, y + 22);
 
     // Progress bar
     drawProgressBar(doc, MARGIN + 5, y + 30, CONTENT_W - 10, 3, plc.utilizationPercent, plc.isServiceable ? GREEN : RED);
@@ -578,27 +594,28 @@ export function drawBorrowingCapacitySections(
       { text: fmt(data.shadedAnnualIncome), x: MARGIN + CONTENT_W, align: 'right', bold: true, color: GREEN },
     ]);
 
-    // Shading info box
+    // Shading info box — dynamically sized to fit all rules
     y += 3;
-    y = checkBreak(doc, y, 30, pageNum);
-    setFill(doc, LGRAY);
-    doc.rect(MARGIN, y - 2, CONTENT_W, 26, 'F');
-    doc.setFontSize(7);
-    doc.setFont('helvetica', 'bold');
-    setColor(doc, MDARK);
-    doc.text('Income Shading Applied:', MARGIN + 4, y + 4);
-    doc.setFont('helvetica', 'normal');
-    setColor(doc, GRAY);
     const shadingRules = [
       'Base salary: 100%',
       'Bonus/Commission: 80%',
       'Positive property cash flow: 80%',
       'Non-essential overtime: 50%',
     ];
+    const shadingBoxH = 8 + shadingRules.length * 4 + 4;
+    y = checkBreak(doc, y, shadingBoxH + 8, pageNum);
+    setFill(doc, LGRAY);
+    doc.rect(MARGIN, y - 2, CONTENT_W, shadingBoxH, 'F');
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    setColor(doc, MDARK);
+    doc.text('Income Shading Applied:', MARGIN + 4, y + 4);
+    doc.setFont('helvetica', 'normal');
+    setColor(doc, GRAY);
     shadingRules.forEach((rule, i) => {
       doc.text(`- ${rule}`, MARGIN + 4, y + 10 + i * 4);
     });
-    y += 30;
+    y += shadingBoxH + 5;
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -709,13 +726,56 @@ export function drawBorrowingCapacitySections(
     y += 34;
   }
 
-  // Declared vs HEM comparison
+  // Declared vs HEM comparison with visual bars
   if (data.hemBenchmark !== undefined && data.declaredExpensesMonthly !== undefined) {
+    const maxExp = Math.max(data.hemBenchmark, data.declaredExpensesMonthly, 1);
+    const barMaxW = CONTENT_W - 60;
+    
+    // Declared expenses row
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
     setColor(doc, MDARK);
-    doc.text(`HEM Benchmark: ${fmt(data.hemBenchmark)}/mo`, MARGIN, y);
-    doc.text(`Declared Expenses: ${fmt(data.declaredExpensesMonthly)}/mo`, MARGIN + 70, y);
+    doc.text('Declared Expenses:', MARGIN, y);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`${fmt(data.declaredExpensesMonthly)}/mo`, MARGIN + 42, y);
+    y += 4;
+    // Bar for declared
+    const declBarW = data.declaredExpensesMonthly > 0 
+      ? Math.max(2, (data.declaredExpensesMonthly / maxExp) * barMaxW) 
+      : 0;
+    setFill(doc, { r: 230, g: 230, b: 230 });
+    doc.roundedRect(MARGIN, y, barMaxW, 3, 1.5, 1.5, 'F');
+    if (declBarW > 0) {
+      setFill(doc, BLUE);
+      doc.roundedRect(MARGIN, y, declBarW, 3, 1.5, 1.5, 'F');
+    } else {
+      // Show "No data" indicator for $0
+      doc.setFontSize(6);
+      setColor(doc, GRAY);
+      doc.text('No declared expenses', MARGIN + 3, y + 2.5);
+    }
+    y += 7;
+    
+    // HEM benchmark row
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    setColor(doc, MDARK);
+    doc.text('HEM Benchmark:', MARGIN, y);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`${fmt(data.hemBenchmark)}/mo`, MARGIN + 42, y);
+    y += 4;
+    const hemBarW = Math.max(2, (data.hemBenchmark / maxExp) * barMaxW);
+    setFill(doc, { r: 230, g: 230, b: 230 });
+    doc.roundedRect(MARGIN, y, barMaxW, 3, 1.5, 1.5, 'F');
+    setFill(doc, AMBER);
+    doc.roundedRect(MARGIN, y, hemBarW, 3, 1.5, 1.5, 'F');
+    y += 7;
+
+    // "Used for assessment" note
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'italic');
+    setColor(doc, GRAY);
+    doc.text(`Used for assessment: ${fmt(data.livingExpensesMonthly)}/mo (higher of the two)`, MARGIN, y);
     y += 8;
   }
 
@@ -803,13 +863,13 @@ export function drawBorrowingCapacitySections(
     doc.text('No existing liabilities', MARGIN, y);
     y += 10;
   } else {
-    // Table header
+    // Table header — includes Method column for servicing calculation notes
     const libCols = [
-      { text: 'Type', x: MARGIN, bold: true, color: NAVY },
-      { text: 'Provider', x: MARGIN + 35, bold: true, color: NAVY },
-      { text: 'Balance', x: MARGIN + 85, align: 'right' as const, bold: true, color: NAVY },
-      { text: 'Limit', x: MARGIN + 115, align: 'right' as const, bold: true, color: NAVY },
-      { text: 'Monthly', x: MARGIN + CONTENT_W, align: 'right' as const, bold: true, color: NAVY },
+      { text: 'Liability', x: MARGIN, bold: true, color: NAVY },
+      { text: 'Balance', x: MARGIN + 65, align: 'right' as const, bold: true, color: NAVY },
+      { text: 'Limit', x: MARGIN + 95, align: 'right' as const, bold: true, color: NAVY },
+      { text: 'Servicing', x: MARGIN + 130, align: 'right' as const, bold: true, color: NAVY },
+      { text: 'Method', x: MARGIN + CONTENT_W, align: 'right' as const, bold: true, color: NAVY },
     ];
 
     y = drawRow(doc, y, libCols);
@@ -821,33 +881,28 @@ export function drawBorrowingCapacitySections(
       const lib = data.liabilityBreakdown[i];
       const bg = i % 2 === 0 ? LGRAY : undefined;
 
-      let typeLabel = formatLiabilityType(lib.type);
+      // Build a combined label: "Type - Provider"
+      const typeLabel = formatLiabilityType(lib.type);
+      const rawLabel = sanitize(lib.label);
+      let combinedLabel = `${typeLabel} - ${rawLabel}`;
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
-      while (doc.getTextWidth(typeLabel) > 28 && typeLabel.length > 6) {
-        typeLabel = typeLabel.slice(0, -4) + '...';
+      while (doc.getTextWidth(combinedLabel) > 55 && combinedLabel.length > 10) {
+        combinedLabel = combinedLabel.slice(0, -4) + '...';
       }
-      let providerLabel = sanitize(lib.label);
-      while (doc.getTextWidth(providerLabel) > 40 && providerLabel.length > 6) {
-        providerLabel = providerLabel.slice(0, -4) + '...';
-      }
+
+      // Determine servicing method description
+      const methodNote = lib.calculationNote
+        ? sanitize(lib.calculationNote)
+        : getDefaultMethodNote(lib.type);
 
       y = drawRow(doc, y, [
-        { text: typeLabel, x: MARGIN },
-        { text: providerLabel, x: MARGIN + 35 },
-        { text: lib.balance > 0 ? fmt(lib.balance) : '-', x: MARGIN + 85, align: 'right' },
-        { text: lib.limit !== undefined ? fmt(lib.limit) : '-', x: MARGIN + 115, align: 'right' },
-        { text: fmt(lib.monthlyServicing), x: MARGIN + CONTENT_W, align: 'right', bold: true, color: RED },
+        { text: combinedLabel, x: MARGIN },
+        { text: lib.balance > 0 ? fmt(lib.balance) : '-', x: MARGIN + 65, align: 'right' },
+        { text: lib.limit !== undefined ? fmt(lib.limit) : '-', x: MARGIN + 95, align: 'right' },
+        { text: `${fmt(lib.monthlyServicing)}/mo`, x: MARGIN + 130, align: 'right', bold: true, color: RED },
+        { text: methodNote, x: MARGIN + CONTENT_W, align: 'right', color: GRAY },
       ], bg);
-
-      // Calculation note
-      if (lib.calculationNote) {
-        doc.setFontSize(7);
-        doc.setFont('helvetica', 'italic');
-        setColor(doc, GRAY);
-        doc.text(sanitize(lib.calculationNote), MARGIN + 35, y - 4);
-        y += 2;
-      }
     }
 
     // Total
@@ -856,11 +911,11 @@ export function drawBorrowingCapacitySections(
     doc.rect(MARGIN, y - 4, CONTENT_W, 0.5, 'F');
     y += 4;
     y = drawRow(doc, y, [
-      { text: 'Total Monthly Commitments', x: MARGIN, bold: true, color: NAVY },
-      { text: '', x: MARGIN + 35 },
-      { text: '', x: MARGIN + 85 },
-      { text: '', x: MARGIN + 115 },
-      { text: fmt(data.existingCommitmentsMonthly), x: MARGIN + CONTENT_W, align: 'right', bold: true, color: RED },
+      { text: 'Total Monthly Commitments:', x: MARGIN, bold: true, color: NAVY },
+      { text: '', x: MARGIN + 65 },
+      { text: '', x: MARGIN + 95 },
+      { text: `${fmt(data.existingCommitmentsMonthly)}/mo`, x: MARGIN + 130, align: 'right', bold: true, color: RED },
+      { text: '', x: MARGIN + CONTENT_W },
     ]);
 
     // Assessment rules box
@@ -1029,18 +1084,36 @@ export function drawBorrowingCapacitySections(
   }
 
   // ──────────────────────────────────────────────────────────────────────────
-  // DISCLAIMER
+  // DISCLAIMER — must stay on the SAME page as the last BC content
   // ──────────────────────────────────────────────────────────────────────────
-  y = checkBreak(doc, y, 25, pageNum);
+  const disclaimer = 'This is an estimate only and does not constitute a formal loan offer. Actual lending decisions are made by financial institutions. We recommend a formal broker assessment before making financial decisions. Actual borrowing capacity may vary depending on lender policies, credit history, and specific circumstances.';
+  // Pre-calculate height so we can ensure it fits on the current page
+  doc.setFontSize(7);
+  const dLines: string[] = doc.splitTextToSize(disclaimer, CONTENT_W - 8);
+  const disclaimerBoxH = dLines.length * 3.5 + 8;
+  y = checkBreak(doc, y, disclaimerBoxH + 5, pageNum);
+  y += 4;
+
+  // Draw disclaimer header label
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'bold');
+  setColor(doc, AMBER);
+  doc.text('DISCLAIMER', MARGIN, y);
+  y += 5;
+
   setFill(doc, LGRAY);
-  doc.rect(MARGIN, y - 2, CONTENT_W, 18, 'F');
+  doc.rect(MARGIN, y - 2, CONTENT_W, disclaimerBoxH, 'F');
+  doc.setDrawColor(AMBER.r, AMBER.g, AMBER.b);
+  doc.setLineWidth(0.4);
+  doc.rect(MARGIN, y - 2, CONTENT_W, disclaimerBoxH);
+  doc.setLineWidth(0.2);
+  doc.setDrawColor(0, 0, 0);
+
   doc.setFontSize(7);
   doc.setFont('helvetica', 'normal');
   setColor(doc, GRAY);
-  const disclaimer = 'This calculator is for indicative purposes only. We recommend a formal broker assessment before making financial decisions. Actual borrowing capacity may vary depending on lender policies, credit history, and specific circumstances.';
-  const dLines: string[] = doc.splitTextToSize(disclaimer, CONTENT_W - 8);
   doc.text(dLines, MARGIN + 4, y + 4);
-  y += 22;
+  y += disclaimerBoxH + 6;
 
   // Add footer to last page of this section
   addSectionFooter(doc, pageNum.value);
@@ -1202,12 +1275,14 @@ export function transformAssessmentToSectionData(
     const periods = (a.loan_term_years || 30) * 12;
     const monthlyRep = a.proposed_loan_amount * (rate * Math.pow(1 + rate, periods)) / (Math.pow(1 + rate, periods) - 1);
     const cap = a.borrowing_capacity || 0;
+    // Guard: when capacity is 0, utilization is meaningless — cap at 100%
+    const utilPct = cap <= 0 ? 100 : Math.min(Math.round((a.proposed_loan_amount / cap) * 100), 99999);
     proposedLoanCheck = {
       proposedAmount: a.proposed_loan_amount,
       monthlyRepayment: Math.round(monthlyRep),
       isServiceable: cap >= a.proposed_loan_amount,
       headroom: cap - a.proposed_loan_amount,
-      utilizationPercent: Math.round((a.proposed_loan_amount / Math.max(cap, 1)) * 100),
+      utilizationPercent: utilPct,
     };
   }
 
