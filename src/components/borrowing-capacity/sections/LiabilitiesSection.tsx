@@ -124,6 +124,7 @@ export function LiabilitiesSection({
                             onChange={(e) => onLiabilityChange?.(item.id, 'balance', Number(e.target.value))}
                             className="pl-7 h-8 text-sm"
                             placeholder="0"
+                            disabled={!onLiabilityChange || item.id.startsWith('prop-')}
                           />
                         </div>
                       </div>
@@ -138,6 +139,7 @@ export function LiabilitiesSection({
                               onChange={(e) => onLiabilityChange?.(item.id, 'limit', Number(e.target.value))}
                               className="pl-7 h-8 text-sm"
                               placeholder="0"
+                              disabled={!onLiabilityChange || item.id.startsWith('prop-')}
                             />
                           </div>
                         </div>
