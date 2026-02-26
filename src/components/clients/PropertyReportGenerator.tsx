@@ -130,7 +130,7 @@ export function PropertyReportGenerator({
 
 **PROPERTY DETAILS:**
 - Address: ${property.address}
-- Property Type: ${property.property_type === 'investment' ? 'Investment' : 'Owner Occupied'}
+- Property Type: ${property.property_type === 'investment' ? 'Investment' : property.property_type === 'owner_occupied' ? 'Owner Occupied' : property.property_type === 'smsf' ? 'SMSF' : property.property_type === 'rental' ? 'Rental (Tenant)' : property.property_type}
 - Current Value: ${formatCurrency(value)}
 - Loan Remaining: ${formatCurrency(loan)}
 - Equity: ${formatCurrency(equity)}

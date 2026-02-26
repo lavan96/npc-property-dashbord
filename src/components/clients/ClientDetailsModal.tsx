@@ -521,8 +521,8 @@ NPC Team`
                       <div className="flex items-start justify-between">
                         <div>
                           <Badge 
-                            variant={property.property_type === 'owner_occupied' ? 'default' : property.property_type === 'smsf' ? 'outline' : 'secondary'}
-                            className={property.property_type === 'smsf' ? 'border-amber-500 text-amber-700 bg-amber-50' : ''}
+                            variant={property.property_type === 'owner_occupied' ? 'default' : property.property_type === 'smsf' ? 'outline' : property.property_type === 'rental' ? 'outline' : 'secondary'}
+                            className={property.property_type === 'smsf' ? 'border-amber-500 text-amber-700 bg-amber-50' : property.property_type === 'rental' ? 'border-blue-500 text-blue-700 bg-blue-50' : ''}
                           >
                             {property.property_type === 'owner_occupied' ? (
                               <>Owner Occupied</>
@@ -531,6 +531,8 @@ NPC Team`
                                 <Landmark className="h-3 w-3" />
                                 SMSF
                               </span>
+                            ) : property.property_type === 'rental' ? (
+                              'Rental (Tenant)'
                             ) : (
                               'Investment'
                             )}
