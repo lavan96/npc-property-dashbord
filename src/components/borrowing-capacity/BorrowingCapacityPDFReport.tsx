@@ -362,11 +362,12 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
   const assessmentRate = a.assessment_rate || a.interest_rate_used || 0;
   const expMethod = a.expense_method || 'hem';
   const expMethodLabel = expMethod === 'hem' ? 'HEM Benchmark' : expMethod === 'declared' ? 'Declared Expenses' : 'Hybrid';
+  const selectedLender = (a.assumptions as any)?.selectedLenderName || null;
 
   setFill(doc, GOLD_LIGHT);
   setDraw(doc, GOLD);
   doc.setLineWidth(0.3);
-  const assumptionsBoxH = 22;
+  const assumptionsBoxH = selectedLender ? 28 : 22;
   doc.roundedRect(MARGIN, y, CONTENT_W, assumptionsBoxH, 2, 2, 'FD');
 
   doc.setFontSize(8);
@@ -384,6 +385,12 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
   doc.text(`Buffer Rate: ${bufferRate.toFixed(1)}%`, col2, y + 15);
   doc.text(`Assessment Rate: ${assessmentRate.toFixed(2)}%`, col3, y + 15);
   doc.text(`Expense Method: ${expMethodLabel}`, col1, y + 20);
+  if (selectedLender) {
+    doc.setFont('helvetica', 'bold');
+    setColor(doc, NAVY);
+    doc.text(`Selected Lender: ${selectedLender}`, col2, y + 20);
+    doc.setFont('helvetica', 'normal');
+  }
 
   y += assumptionsBoxH + 10;
 
@@ -485,7 +492,7 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
     doc.setFont('helvetica', 'bold');
     setColor(doc, WHITE);
     doc.text('Type', MARGIN + 3, y + 1);
-    doc.text('Balance', MARGIN + 60, y + 1, { align: 'right' } as any);
+    doc.text('Balance', MARGIN + 110, y + 1, { align: 'right' } as any);
     doc.text('Monthly Repayment', MARGIN + CONTENT_W - 3, y + 1, { align: 'right' } as any);
     y += ROW_HEIGHT + 1;
 
@@ -499,7 +506,7 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
         doc.setFont('helvetica', 'bold');
         setColor(doc, WHITE);
         doc.text('Type', MARGIN + 3, y + 1);
-        doc.text('Balance', MARGIN + 60, y + 1, { align: 'right' } as any);
+        doc.text('Balance', MARGIN + 110, y + 1, { align: 'right' } as any);
         doc.text('Monthly Repayment', MARGIN + CONTENT_W - 3, y + 1, { align: 'right' } as any);
         y += ROW_HEIGHT + 1;
       }
@@ -507,9 +514,15 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
       const bg = i % 2 === 0 ? LIGHT_GRAY : undefined;
       let lType = l.type || l.liability_type || 'Liability';
       lType = formatLabel(lType);
+      // Also include provider/label info for clarity
+      const provider = l.label || l.provider_name || '';
+      if (provider && provider !== lType) {
+        lType = `${lType} (${provider})`;
+      }
       doc.setFontSize(8.5);
       doc.setFont('helvetica', 'normal');
-      const maxLiabW = 50;
+      // Smart truncation: allow up to 95mm for type column (was 50mm)
+      const maxLiabW = 95;
       while (doc.getTextWidth(lType) > maxLiabW && lType.length > 10) {
         lType = lType.slice(0, -4) + '...';
       }
@@ -517,7 +530,7 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
       const monthly = l.monthlyServicing || l.monthly_repayment || 0;
       y = drawTableRow(doc, y, [
         { text: lType, x: MARGIN + 3 },
-        { text: fmt(balance), x: MARGIN + 60, align: 'right' },
+        { text: fmt(balance), x: MARGIN + 110, align: 'right' },
         { text: fmt(monthly), x: MARGIN + CONTENT_W - 3, align: 'right', color: RED },
       ], bg);
     }
@@ -569,23 +582,53 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
   doc.text(fmt(a.borrowing_capacity || 0), MARGIN + CONTENT_W - 5, y + 4, { align: 'right' });
   y += 18;
 
-  // Detailed assumptions list (if available)
-  const assumptions = a.assumptions || [];
-  if (Array.isArray(assumptions) && assumptions.length > 0) {
-    y = checkPageBreak(doc, y, 20, pageNum);
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    setColor(doc, GRAY);
-    doc.text('Additional Assumptions:', MARGIN, y);
-    y += 6;
-    for (const assumption of assumptions) {
-      y = checkPageBreak(doc, y, 6, pageNum);
+  // Detailed assumptions list (if available) — styled card
+  const rawAssumptions = a.assumptions || [];
+  // Handle both old (array) and new (object with items) format
+  const assumptionItems: { key: string; value: string }[] = Array.isArray(rawAssumptions) 
+    ? rawAssumptions 
+    : (rawAssumptions.items && Array.isArray(rawAssumptions.items)) 
+      ? rawAssumptions.items 
+      : [];
+
+  if (assumptionItems.length > 0) {
+    y = checkPageBreak(doc, y, 30, pageNum);
+
+    // Section header
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    setColor(doc, NAVY);
+    doc.text('Additional Assumptions', MARGIN, y);
+    y += 8;
+
+    // Background card
+    const assumptionLineH = 7;
+    const cardH = assumptionItems.length * assumptionLineH + 10;
+    y = checkPageBreak(doc, y, cardH + 5, pageNum);
+    setFill(doc, LIGHT_GRAY);
+    setDraw(doc, { r: 220, g: 220, b: 220 });
+    doc.setLineWidth(0.3);
+    doc.roundedRect(MARGIN, y - 3, CONTENT_W, cardH, 2, 2, 'FD');
+    // Navy left accent bar
+    setFill(doc, NAVY);
+    doc.rect(MARGIN, y - 1, 2.5, cardH - 4, 'F');
+
+    let ay = y + 4;
+    for (const assumption of assumptionItems) {
       const key = assumption.key || assumption;
       const val = assumption.value || '';
-      doc.text(`  ${key}${val ? ': ' + val : ''}`, MARGIN + 3, y);
-      y += 5;
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      setColor(doc, NAVY);
+      doc.text(`${key}`, MARGIN + 8, ay);
+      if (val) {
+        doc.setFont('helvetica', 'normal');
+        setColor(doc, BODY_TEXT);
+        doc.text(`: ${val}`, MARGIN + 8 + doc.getTextWidth(`${key}`), ay);
+      }
+      ay += assumptionLineH;
     }
-    y += 5;
+    y += cardH + 8;
   }
 
   // ════════════════════════════════════════════════════════════════════════════

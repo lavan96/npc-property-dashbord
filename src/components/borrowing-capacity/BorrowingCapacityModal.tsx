@@ -480,6 +480,9 @@ export function BorrowingCapacityModal({
       if (assumptions.dtiCapLimit != null && assumptions.dtiCapLimit > 0) {
         setDtiCapLimit(assumptions.dtiCapLimit);
       }
+      if (assumptions.selectedLenderName) {
+        setSelectedLenderName(assumptions.selectedLenderName);
+      }
     }
   }, [clientData?.latestAssessment]);
 
@@ -689,6 +692,7 @@ export function BorrowingCapacityModal({
               calculationMode,
               dtiCapEnabled,
               dtiCapLimit,
+              selectedLenderName: selectedLenderName || undefined,
             });
             toast.success('Assessment saved');
           }}
