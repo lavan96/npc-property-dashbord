@@ -580,7 +580,8 @@ export default function Calendar() {
             data.newStartTime,
             data.newEndTime,
             data.originalStartTime,
-            data.originalEndTime
+            data.originalEndTime,
+            { overrideAvailability: data.overrideAvailability, assignedUserId }
           );
           
           if (result.success) {
