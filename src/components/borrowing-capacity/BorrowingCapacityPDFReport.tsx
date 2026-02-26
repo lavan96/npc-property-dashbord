@@ -279,6 +279,18 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
       narrative += ` The proposed loan of ${fmt(proposedLoan)} represents ${util}% utilisation of the available capacity and ${withinCapacity ? 'falls within' : 'exceeds'} the assessed borrowing limit.`;
     }
 
+    // LMI mention in narrative
+    const narrativeLmi = a.lmi_amount || 0;
+    const narrativeLmiMode = a.lmi_mode || 'none';
+    if (narrativeLmiMode !== 'none' && narrativeLmi > 0) {
+      const netForPurchase = Math.max(0, capacity - narrativeLmi);
+      if (narrativeLmiMode === 'display_deduction') {
+        narrative += ` An estimated Lenders Mortgage Insurance premium of ${fmt(narrativeLmi)} applies, reducing the net amount available for property purchase to ${fmt(netForPurchase)}.`;
+      } else {
+        narrative += ` An estimated Lenders Mortgage Insurance premium of ${fmt(narrativeLmi)} has been capitalised onto the loan, increasing total debt obligations and factored into the DTI calculation.`;
+      }
+    }
+
     doc.setFontSize(8.5);
     doc.setFont('helvetica', 'normal');
     setColor(doc, BODY_TEXT);
@@ -459,6 +471,58 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
   }
 
   y += assumptionsBoxH + 10;
+
+  // ── LMI Section (if applicable) ────────────────────────────────────────────
+  const lmiAmountVal = a.lmi_amount || 0;
+  const lmiModeVal = a.lmi_mode || 'none';
+  const lmiLvr = a.lmi_lvr_trigger || 0;
+  const propVal = a.property_value_estimate || 0;
+  const depositVal = a.deposit_amount || 0;
+  const netPurchase = a.net_purchase_capacity || 0;
+
+  if (lmiModeVal !== 'none' && lmiAmountVal > 0) {
+    y = checkPageBreak(doc, y, 45, pageNum);
+    const lmiBoxH = 32;
+    setFill(doc, AMBER_LIGHT);
+    setDraw(doc, AMBER);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(MARGIN, y, CONTENT_W, lmiBoxH, 2, 2, 'FD');
+    setFill(doc, AMBER);
+    doc.rect(MARGIN, y + 2, 2.5, lmiBoxH - 4, 'F');
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    setColor(doc, NAVY);
+    doc.text('LENDERS MORTGAGE INSURANCE (LMI)', MARGIN + 8, y + 7);
+    const lmiModeLabel = lmiModeVal === 'display_deduction' ? 'Display Deduction' : 'Capitalised to Loan';
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    setColor(doc, AMBER);
+    doc.text(lmiModeLabel, PAGE_W - MARGIN - 5, y + 7, { align: 'right' });
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'normal');
+    setColor(doc, BODY_TEXT);
+    const lCol1 = MARGIN + 8;
+    const lCol2 = MARGIN + 60;
+    const lCol3 = MARGIN + 115;
+    doc.text('LMI Premium: ' + fmt(lmiAmountVal), lCol1, y + 15);
+    doc.text('LVR: ' + (lmiLvr > 0 ? lmiLvr.toFixed(1) + '%' : 'N/A'), lCol2, y + 15);
+    if (propVal > 0) {
+      doc.text('Property Value: ' + fmt(propVal), lCol3, y + 15);
+    }
+    const netVal = netPurchase > 0 ? netPurchase : Math.max(0, (a.borrowing_capacity || 0) - lmiAmountVal);
+    doc.text('Net for Purchase: ' + fmt(netVal), lCol1, y + 21);
+    if (depositVal > 0) {
+      doc.text('Deposit: ' + fmt(depositVal), lCol2, y + 21);
+    }
+    doc.setFontSize(6.5);
+    setColor(doc, GRAY);
+    if (lmiModeVal === 'display_deduction') {
+      doc.text('LMI deducted from usable capacity — serviceability unchanged.', lCol1, y + 28);
+    } else {
+      doc.text('LMI capitalised onto loan — total debt increased, impacting DTI ratio.', lCol1, y + 28);
+    }
+    y += lmiBoxH + 8;
+  }
 
   // ════════════════════════════════════════════════════════════════════════════
   // INCOME ANALYSIS
