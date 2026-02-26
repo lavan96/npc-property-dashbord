@@ -2723,7 +2723,7 @@ export function PortfolioAnalysisPDFGenerator({
           }
           yPos = drawSubsectionHeader(page, 'Optimisation Scenarios', yPos, PRIMARY_COLOR);
           ({ page, yPos } = drawBulletList(page, optimisationScenarios, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9, 15, '12-Month Action Plan (continued)'));
-          yPos -= SECTION_SPACING;
+          yPos -= SUBSECTION_SPACING;
         }
         
         console.log('✓ 12-month action plan complete');
