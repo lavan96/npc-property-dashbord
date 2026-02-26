@@ -517,7 +517,8 @@ export function BorrowingCapacityModal({
           invokeSecureFunction('manage-client-data', {
             operation: 'update',
             table: update.table,
-            id: sourceId,
+            clientId,
+            recordId: sourceId,
             data: update.fields,
           })
         );
@@ -537,7 +538,8 @@ export function BorrowingCapacityModal({
           invokeSecureFunction('manage-client-data', {
             operation: 'update',
             table: 'client_liabilities',
-            id: sourceId,
+            clientId,
+            recordId: sourceId,
             data: fields,
           })
         );
