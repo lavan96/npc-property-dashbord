@@ -47,6 +47,7 @@ async function fetchBorrowingCapacityData(clientId: string) {
       incomeSources: true,
       liabilities: true,
       expenses: true,
+      borrowingCapacity: true,
     },
   });
 
@@ -63,6 +64,10 @@ async function fetchBorrowingCapacityData(clientId: string) {
     0
   );
 
+  // Get the latest assessment (sorted by created_at desc from the edge function)
+  const assessments = data.borrowingCapacity || [];
+  const latestAssessment = assessments.length > 0 ? assessments[0] : null;
+
   return {
     client: data.client,
     income: data.income || [],
@@ -71,6 +76,7 @@ async function fetchBorrowingCapacityData(clientId: string) {
     properties: data.properties || [],
     expenses: data.expenses || [],
     totalDeclaredExpenses: totalDeclaredFromDB,
+    latestAssessment,
   };
 }
 
@@ -436,6 +442,46 @@ export function BorrowingCapacityModal({
       setDeclaredExpenses(clientData.totalDeclaredExpenses);
     }
   }, [clientData?.totalDeclaredExpenses]);
+
+  // Pre-populate calculator fields from the latest saved assessment
+  useEffect(() => {
+    const assessment = clientData?.latestAssessment;
+    if (!assessment) return;
+
+    // Restore loan parameters
+    if (assessment.proposed_loan_amount != null && assessment.proposed_loan_amount > 0) {
+      setProposedLoanAmount(assessment.proposed_loan_amount);
+    }
+    if (assessment.interest_rate_used != null && assessment.interest_rate_used > 0) {
+      setInterestRate(assessment.interest_rate_used);
+    }
+    if (assessment.loan_term_years != null && assessment.loan_term_years > 0) {
+      setLoanTermYears(assessment.loan_term_years);
+    }
+    if (assessment.buffer_rate != null) {
+      setBufferEnabled(assessment.buffer_rate > 0);
+    }
+    if (assessment.expense_method) {
+      const method = assessment.expense_method as 'hem' | 'declared' | 'hybrid';
+      if (['hem', 'declared', 'hybrid'].includes(method)) {
+        setExpenseMethod(method);
+      }
+    }
+
+    // Restore advanced settings from assumptions JSON
+    const assumptions = assessment.assumptions as Record<string, any> | null;
+    if (assumptions) {
+      if (assumptions.calculationMode) {
+        setCalculationMode(assumptions.calculationMode as CalculationMode);
+      }
+      if (assumptions.dtiCapEnabled != null) {
+        setDtiCapEnabled(!!assumptions.dtiCapEnabled);
+      }
+      if (assumptions.dtiCapLimit != null && assumptions.dtiCapLimit > 0) {
+        setDtiCapLimit(assumptions.dtiCapLimit);
+      }
+    }
+  }, [clientData?.latestAssessment]);
 
   // Effective expenses
   const baseExpenses = expenseMethod === 'hem' 
