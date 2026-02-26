@@ -20,6 +20,7 @@ import { fetchGlobalReportSettings } from '@/hooks/useGlobalReportSettings';
 import { drawJsPDFDisclaimerPage } from '@/utils/pdfDisclaimerPage';
 import { fetchLatestBorrowingCapacity } from '@/lib/fetchLatestBorrowingCapacity';
 import { format } from 'date-fns';
+import { smartCapitalize } from '@/utils/nameFormatting';
 
 // ─── Design tokens ───────────────────────────────────────────────────────────
 const GOLD = { r: 191, g: 155, b: 80 };
@@ -46,6 +47,9 @@ const fmt = (v: number) => {
   const s = abs.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
   return v < 0 ? `-$${s}` : `$${s}`;
 };
+
+/** Round a number to 2 decimal places safely */
+const round2 = (v: number): number => Math.round(v * 100) / 100;
 
 const bandColor = (band: string): RGB => {
   if (band === 'green') return GREEN;
@@ -234,7 +238,8 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
   doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
   setColor(doc, NAVY);
-  doc.text(data.clientName, MARGIN, y + 5);
+  const displayName = smartCapitalize(data.clientName);
+  doc.text(displayName, MARGIN, y + 5);
 
   // Assessment date on the right
   const assessmentDate = a.created_at
@@ -260,10 +265,10 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
     const surplus = a.monthly_surplus || 0;
     const dti = a.dti_ratio || 0;
     const proposedLoan = a.proposed_loan_amount || 0;
-    const assessRate = a.assessment_rate || a.interest_rate_used || 0;
+    const assessRate = round2(a.assessment_rate || a.interest_rate_used || 0);
     const bandWord = band === 'green' ? 'strong' : band === 'amber' ? 'moderate' : 'limited';
 
-    let narrative = `Based on the financial information provided, ${data.clientName} has an estimated maximum borrowing capacity of ${fmt(capacity)}. `;
+    let narrative = `Based on the financial information provided, ${displayName} has an estimated maximum borrowing capacity of ${fmt(capacity)}. `;
     narrative += `This assessment was conducted using an assessment rate of ${assessRate.toFixed(2)}% over a ${a.loan_term_years || 30}-year loan term, `;
     narrative += `resulting in a monthly surplus of ${fmt(surplus)} and a debt-to-income ratio of ${dti.toFixed(1)}x. `;
     narrative += `The overall serviceability position is assessed as ${bandWord}.`;
@@ -405,7 +410,7 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
   doc.text('Assessment Rate:', MARGIN + metricColW * 2, y);
   doc.setFont('helvetica', 'bold');
   setColor(doc, NAVY);
-  doc.text(`${(a.assessment_rate || a.interest_rate_used || 0).toFixed(2)}%`, MARGIN + metricColW * 2 + 35, y);
+  doc.text(`${round2(a.assessment_rate || a.interest_rate_used || 0).toFixed(2)}%`, MARGIN + metricColW * 2 + 35, y);
 
   y += 10;
 
@@ -413,7 +418,7 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
   const loanTerm = a.loan_term_years || 30;
   const bufferRate = a.buffer_rate ?? 3.0;
   const bufferIncluded = bufferRate > 0;
-  const assessmentRate = a.assessment_rate || a.interest_rate_used || 0;
+  const assessmentRate = round2(a.assessment_rate || a.interest_rate_used || 0);
   const expMethod = a.expense_method || 'hem';
   const expMethodLabel = expMethod === 'hem' ? 'HEM Benchmark' : expMethod === 'declared' ? 'Declared Expenses' : 'Hybrid';
   const selectedLender = (a.assumptions as any)?.selectedLenderName || null;
@@ -487,7 +492,7 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
     for (let i = 0; i < incomeBreakdown.length; i++) {
       const item = incomeBreakdown[i];
       const prevY = y;
-      y = checkPageBreak(doc, y, 12, pageNum);
+      y = checkPageBreak(doc, y, 20, pageNum);
       if (y < prevY) {
         // Re-draw header after page break
         setFill(doc, NAVY);
@@ -553,7 +558,7 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
 
     for (let i = 0; i < liabilities.length; i++) {
       const prevY = y;
-      y = checkPageBreak(doc, y, 12, pageNum);
+      y = checkPageBreak(doc, y, 20, pageNum);
       if (y < prevY) {
         setFill(doc, NAVY);
         doc.rect(MARGIN, y - 5, CONTENT_W, ROW_HEIGHT, 'F');
@@ -596,7 +601,7 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
     { label: 'Living Expenses (Monthly)', value: `-${fmt(a.living_expenses_monthly || 0)}`, color: RED },
     { label: 'Existing Commitments (Monthly)', value: `-${fmt(a.existing_commitments_monthly || 0)}`, color: RED },
     { label: 'Monthly Surplus', value: fmt(a.monthly_surplus || 0), color: (a.monthly_surplus || 0) >= 0 ? GREEN : RED },
-    { label: 'Assessment Rate Applied', value: `${(a.assessment_rate || a.interest_rate_used || 0).toFixed(2)}%`, color: NAVY },
+    { label: 'Assessment Rate Applied', value: `${round2(a.assessment_rate || a.interest_rate_used || 0).toFixed(2)}%`, color: NAVY },
     { label: 'Loan Term', value: `${a.loan_term_years || 30} years`, color: NAVY },
   ];
 
