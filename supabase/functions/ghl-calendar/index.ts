@@ -4,13 +4,19 @@ import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_s
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 
+interface GHLTeamMember {
+  userId: string;
+  name?: string;
+  email?: string;
+}
+
 interface GHLCalendar {
   id: string;
   name: string;
   description?: string;
   calendarType: string;
   isActive: boolean;
-  teamMembers?: number;
+  teamMembers?: GHLTeamMember[];
   slug?: string;
   eventColor?: string;
 }

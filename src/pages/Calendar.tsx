@@ -1332,7 +1332,12 @@ export default function Calendar() {
         isLoading={isUpdating}
         onSubmit={async (data) => {
           const { secondaryRecipients, overrideAvailability, ...appointmentData } = data;
-          const result = await createAppointment({ ...appointmentData, overrideAvailability });
+          
+          // Auto-assign the first team member from the selected calendar if not already set
+          const selectedCal = calendars.find(c => c.id === data.calendarId);
+          const assignedUserId = selectedCal?.teamMembers?.[0]?.userId || undefined;
+          
+          const result = await createAppointment({ ...appointmentData, overrideAvailability, assignedUserId });
           
           // Send notifications to secondary recipients after successful creation
           if (result.success && secondaryRecipients && secondaryRecipients.length > 0) {
@@ -1415,10 +1420,10 @@ export default function Calendar() {
                         )}
                       </div>
                     </div>
-                    {calendar.teamMembers && (
+                    {calendar.teamMembers && calendar.teamMembers.length > 0 && (
                       <div className="text-xs text-muted-foreground flex items-center gap-1">
                         <Users className="h-3 w-3" />
-                        {calendar.teamMembers}
+                        {calendar.teamMembers.length} member{calendar.teamMembers.length !== 1 ? 's' : ''}
                       </div>
                     )}
                   </div>
