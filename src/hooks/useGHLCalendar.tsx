@@ -265,17 +265,22 @@ export function useGHLCalendar() {
     newStartTime: string,
     newEndTime: string,
     originalStartTime?: string,
-    originalEndTime?: string
+    originalEndTime?: string,
+    options?: { overrideAvailability?: boolean; assignedUserId?: string }
   ): Promise<{ success: boolean; undo?: () => Promise<boolean> }> => {
     setIsUpdating(true);
 
     try {
-      const { data, error: updateError } = await invokeSecureFunction('ghl-calendar', {
+      const payload: Record<string, unknown> = {
         action: 'update',
         eventId,
         newStartTime,
         newEndTime,
-      });
+      };
+      if (options?.overrideAvailability) payload.overrideAvailability = true;
+      if (options?.assignedUserId) payload.assignedUserId = options.assignedUserId;
+
+      const { data, error: updateError } = await invokeSecureFunction('ghl-calendar', payload);
 
       if (updateError) {
         throw new Error(updateError.message);

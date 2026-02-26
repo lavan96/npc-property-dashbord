@@ -874,7 +874,8 @@ export default function ClientTracker() {
             data.newStartTime,
             data.newEndTime,
             data.originalStartTime,
-            data.originalEndTime
+            data.originalEndTime,
+            { overrideAvailability: data.overrideAvailability, assignedUserId: data.assignedUserId }
           );
           return result;
         }}

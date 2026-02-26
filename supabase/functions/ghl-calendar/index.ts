@@ -327,7 +327,7 @@ serve(async (req) => {
 
     // Update/reschedule an event
     if (action === 'update') {
-      const { eventId, newStartTime, newEndTime, title, notes, appointmentStatus } = body;
+      const { eventId, newStartTime, newEndTime, title, notes, appointmentStatus, overrideAvailability, assignedUserId } = body;
 
       if (!eventId) {
         return new Response(JSON.stringify({
@@ -339,7 +339,7 @@ serve(async (req) => {
         });
       }
 
-      console.log(`Updating event ${eventId}`);
+      console.log(`Updating event ${eventId}, overrideAvailability: ${!!overrideAvailability}`);
 
       const updatePayload: Record<string, unknown> = {};
       if (newStartTime) updatePayload.startTime = newStartTime;
@@ -347,6 +347,15 @@ serve(async (req) => {
       if (title !== undefined) updatePayload.title = title;
       if (notes !== undefined) updatePayload.notes = notes;
       if (appointmentStatus) updatePayload.appointmentStatus = appointmentStatus;
+      if (assignedUserId) updatePayload.assignedUserId = assignedUserId;
+      // When overrideAvailability is true, tell GHL to skip free-slot validation
+      if (overrideAvailability) {
+        updatePayload.ignoreFreeSlotValidation = true;
+        if (newStartTime) {
+          updatePayload.selectedSlot = newStartTime;
+          updatePayload.selectedTimezone = 'Australia/Sydney';
+        }
+      }
 
       const updateResponse = await fetch(`${GHL_API_BASE}/calendars/events/appointments/${eventId}`, {
         method: 'PUT',
