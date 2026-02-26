@@ -81,8 +81,8 @@ const expenseCategoryOptions = [
 ];
 
 const frequencyOptions = [
-  { value: 'weekly', label: 'Weekly', multiplier: 52 / 12 },
-  { value: 'fortnightly', label: 'Fortnightly', multiplier: 26 / 12 },
+  { value: 'weekly', label: 'Weekly', multiplier: 4 },
+  { value: 'fortnightly', label: 'Fortnightly', multiplier: 2 },
   { value: 'monthly', label: 'Monthly', multiplier: 1 },
   { value: 'quarterly', label: 'Quarterly', multiplier: 1 / 3 },
   { value: 'annually', label: 'Annually', multiplier: 1 / 12 },
