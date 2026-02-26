@@ -763,11 +763,23 @@ Deno.serve(async (req) => {
       console.log(`[calculate-borrowing-capacity] LMI capitalised: +$${lmiAmount} → total debt now $${totalDebtBalances}`);
     }
     
+    // Calculate monthly servicing cost of capitalised LMI
+    // When LMI is added to the loan, it must be serviced at the assessment rate
+    let lmiMonthlyServicing = 0;
+    if (lmiMode === 'debt_capitalised' && lmiAmount > 0) {
+      const lmiAssessmentRate = ((overrides?.interestRate ?? 6.50) + (overrides?.bufferRate ?? 3.00)) / 100;
+      const lmiMonthlyRate = lmiAssessmentRate / 12;
+      const lmiPeriods = (overrides?.loanTermYears ?? 30) * 12;
+      lmiMonthlyServicing = lmiAmount * (lmiMonthlyRate * Math.pow(1 + lmiMonthlyRate, lmiPeriods)) 
+                            / (Math.pow(1 + lmiMonthlyRate, lmiPeriods) - 1);
+      console.log(`[calculate-borrowing-capacity] LMI monthly servicing: $${lmiMonthlyServicing.toFixed(2)}/mo at ${(lmiAssessmentRate * 100).toFixed(2)}%`);
+    }
+
     const effectiveCommitments = overrides?.existingCommitments != null
-      ? overrides.existingCommitments
+      ? overrides.existingCommitments + lmiMonthlyServicing
       : overrides?.additionalLiabilities 
-        ? liabilityServicing + overrides.additionalLiabilities 
-        : liabilityServicing;
+        ? liabilityServicing + overrides.additionalLiabilities + lmiMonthlyServicing
+        : liabilityServicing + lmiMonthlyServicing;
 
     // Set calculation parameters
     const interestRate = overrides?.interestRate ?? 6.50;
