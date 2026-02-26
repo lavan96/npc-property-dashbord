@@ -16,12 +16,14 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Calculator, Loader2, RefreshCw, FlaskConical, Clock, Save, Building2, Shield, ShieldAlert, Upload } from 'lucide-react';
+import { Calculator, Loader2, RefreshCw, FlaskConical, Clock, Save, Building2, Shield, ShieldAlert, Upload, ShieldCheck } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useBorrowingCapacity } from '@/hooks/useBorrowingCapacity';
 import { getHemBenchmark, getHemBreakdown, getHecsRepayment, DEFAULT_DTI_CAP } from '@/utils/borrowingCapacityCalculations';
 import type { FullAssessmentResult, BorrowingCapacityInput, CalculationMode, HemBreakdown } from '@/utils/borrowingCapacityCalculations';
+import type { LmiMode, LmiEstimate } from '@/utils/lmiCalculations';
+import { calculateLmiImpact } from '@/utils/lmiCalculations';
 import { toast } from 'sonner';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -35,6 +37,7 @@ import { ScenarioModeling } from './ScenarioModeling';
 import { CapacityHistoryChart } from './CapacityHistoryChart';
 import { BankRateSelector } from './BankRateSelector';
 import { BankRateComparisonModal } from './BankRateComparisonModal';
+import { LmiSection } from './sections/LmiSection';
 
 // Secure data fetching via HttpOnly cookies
 async function fetchBorrowingCapacityData(clientId: string) {
@@ -151,6 +154,14 @@ export function BorrowingCapacityModal({
   const [dtiCapEnabled, setDtiCapEnabled] = useState(false);
   const [dtiCapLimit, setDtiCapLimit] = useState(DEFAULT_DTI_CAP);
   const [bufferEnabled, setBufferEnabled] = useState(true);
+  
+  // === LMI STATE ===
+  const [lmiMode, setLmiMode] = useState<LmiMode>('none');
+  const [lmiPropertyValue, setLmiPropertyValue] = useState(0);
+  const [lmiDepositAmount, setLmiDepositAmount] = useState(0);
+  const [lmiManualOverride, setLmiManualOverride] = useState<number | null>(null);
+  const [isFirstHomeBuyer, setIsFirstHomeBuyer] = useState(false);
+  const [lmiEstimate, setLmiEstimate] = useState<LmiEstimate | null>(null);
   
   // === TWO-WAY SYNC STATE ===
   // Local overrides for income items (keyed by breakdown item id)
@@ -483,6 +494,33 @@ export function BorrowingCapacityModal({
       if (assumptions.selectedLenderName) {
         setSelectedLenderName(assumptions.selectedLenderName);
       }
+      // Restore LMI settings
+      if (assumptions.lmiMode) {
+        setLmiMode(assumptions.lmiMode as LmiMode);
+      }
+      if (assumptions.lmiPropertyValue != null) {
+        setLmiPropertyValue(assumptions.lmiPropertyValue);
+      }
+      if (assumptions.lmiDepositAmount != null) {
+        setLmiDepositAmount(assumptions.lmiDepositAmount);
+      }
+      if (assumptions.isFirstHomeBuyer != null) {
+        setIsFirstHomeBuyer(!!assumptions.isFirstHomeBuyer);
+      }
+    }
+
+    // Restore LMI amount from assessment columns
+    if (assessment.lmi_amount != null && assessment.lmi_amount > 0) {
+      setLmiManualOverride(assessment.lmi_amount);
+    }
+    if (assessment.property_value_estimate != null) {
+      setLmiPropertyValue(assessment.property_value_estimate);
+    }
+    if (assessment.deposit_amount != null) {
+      setLmiDepositAmount(assessment.deposit_amount);
+    }
+    if (assessment.lmi_mode && assessment.lmi_mode !== 'none') {
+      setLmiMode(assessment.lmi_mode as LmiMode);
     }
   }, [clientData?.latestAssessment]);
 
@@ -626,6 +664,14 @@ export function BorrowingCapacityModal({
   const handleCalculate = useCallback(async () => {
     setIsLocalCalculating(true);
     try {
+      const lmiOverrides = lmiMode !== 'none' && lmiEstimate ? {
+        lmiAmount: lmiEstimate.lmiAmount,
+        lmiMode,
+        lmiPropertyValue,
+        lmiDepositAmount,
+        isFirstHomeBuyer,
+      } : {};
+
       const calcResult = await quickCalculate({
         grossAnnualIncome: totalGrossIncome,
         shadedAnnualIncome: totalShadedIncome,
@@ -638,6 +684,7 @@ export function BorrowingCapacityModal({
         calculationMode,
         dtiCapEnabled,
         dtiCapLimit,
+        ...lmiOverrides,
       });
       setResult(calcResult);
     } catch (error) {
@@ -645,14 +692,14 @@ export function BorrowingCapacityModal({
     } finally {
       setIsLocalCalculating(false);
     }
-  }, [quickCalculate, totalGrossIncome, totalShadedIncome, totalMonthlyCommitments, effectiveExpenses, interestRate, loanTermYears, proposedLoanAmount, calculationMode, dtiCapEnabled, dtiCapLimit, effectiveBufferRate]);
+  }, [quickCalculate, totalGrossIncome, totalShadedIncome, totalMonthlyCommitments, effectiveExpenses, interestRate, loanTermYears, proposedLoanAmount, calculationMode, dtiCapEnabled, dtiCapLimit, effectiveBufferRate, lmiMode, lmiEstimate, lmiPropertyValue, lmiDepositAmount, isFirstHomeBuyer]);
 
   // Auto-calculate on mount and when key inputs change
   useEffect(() => {
     if (open && clientData) {
       handleCalculate();
     }
-  }, [open, clientData, effectiveExpenses, interestRate, loanTermYears, calculationMode, dtiCapEnabled, dtiCapLimit, effectiveBufferRate, incomeOverrides, liabilityOverrides]);
+  }, [open, clientData, effectiveExpenses, interestRate, loanTermYears, calculationMode, dtiCapEnabled, dtiCapLimit, effectiveBufferRate, incomeOverrides, liabilityOverrides, lmiMode, lmiEstimate]);
 
   const headerContent = (
     <div className="flex items-center justify-between flex-wrap gap-2">
@@ -693,6 +740,13 @@ export function BorrowingCapacityModal({
               dtiCapEnabled,
               dtiCapLimit,
               selectedLenderName: selectedLenderName || undefined,
+              ...(lmiMode !== 'none' && lmiEstimate ? {
+                lmiAmount: lmiEstimate.lmiAmount,
+                lmiMode,
+                lmiPropertyValue,
+                lmiDepositAmount,
+                isFirstHomeBuyer,
+              } : {}),
             });
             toast.success('Assessment saved');
           }}
@@ -763,6 +817,22 @@ export function BorrowingCapacityModal({
         onProposedLoanChange={setProposedLoanAmount}
         onInterestRateChange={setInterestRate}
         onLoanTermChange={setLoanTermYears}
+      />
+
+      {/* LMI Section */}
+      <LmiSection
+        propertyValue={lmiPropertyValue}
+        depositAmount={lmiDepositAmount}
+        loanAmount={result?.borrowingCapacity || proposedLoanAmount}
+        lmiMode={lmiMode}
+        lmiManualOverride={lmiManualOverride}
+        isFirstHomeBuyer={isFirstHomeBuyer}
+        onPropertyValueChange={setLmiPropertyValue}
+        onDepositAmountChange={setLmiDepositAmount}
+        onLmiModeChange={setLmiMode}
+        onLmiManualOverrideChange={setLmiManualOverride}
+        onFirstHomeBuyerChange={setIsFirstHomeBuyer}
+        onLmiEstimateChange={setLmiEstimate}
       />
 
       {/* Bank Rate Selector - CDR Integration */}
@@ -937,6 +1007,8 @@ export function BorrowingCapacityModal({
                 interestRate={interestRate}
                 bufferRate={effectiveBufferRate}
                 loanTermYears={loanTermYears}
+                lmiMode={lmiMode}
+                lmiEstimate={lmiEstimate}
               />
             </div>
           </ScrollArea>
@@ -964,6 +1036,8 @@ export function BorrowingCapacityModal({
                     interestRate={interestRate}
                     bufferRate={effectiveBufferRate}
                     loanTermYears={loanTermYears}
+                    lmiMode={lmiMode}
+                    lmiEstimate={lmiEstimate}
                   />
                 </div>
               </ScrollArea>

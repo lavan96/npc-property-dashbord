@@ -18,12 +18,15 @@ import {
   Info,
   Receipt,
   FileText,
+  ShieldAlert,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { fetchAndGenerateBorrowingCapacityPDF } from './BorrowingCapacityPDFReport';
 import { useState, useMemo } from 'react';
 import type { FullAssessmentResult, ServiceabilityBand, CalculationMode, TaxBreakdown } from '@/utils/borrowingCapacityCalculations';
 import { getTaxBreakdown } from '@/utils/borrowingCapacityCalculations';
+import type { LmiMode, LmiEstimate } from '@/utils/lmiCalculations';
+import { formatLmiMode, calculateLmiImpact } from '@/utils/lmiCalculations';
 
 interface ResultsPanelProps {
   result: FullAssessmentResult | null;
@@ -37,9 +40,11 @@ interface ResultsPanelProps {
   interestRate?: number;
   bufferRate?: number;
   loanTermYears?: number;
+  lmiMode?: LmiMode;
+  lmiEstimate?: LmiEstimate | null;
 }
 
-export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', dtiCapEnabled, dtiCapLimit, clientId, clientName, proposedLoanAmount, interestRate, bufferRate, loanTermYears }: ResultsPanelProps) {
+export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', dtiCapEnabled, dtiCapLimit, clientId, clientName, proposedLoanAmount, interestRate, bufferRate, loanTermYears, lmiMode = 'none', lmiEstimate }: ResultsPanelProps) {
   const [showRecommendations, setShowRecommendations] = useState(true);
   const [showAssumptions, setShowAssumptions] = useState(false);
   const [showTaxBreakdown, setShowTaxBreakdown] = useState(false);
@@ -194,6 +199,44 @@ export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', 
         )}
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* LMI Impact Section */}
+        {lmiMode !== 'none' && lmiEstimate && lmiEstimate.lmiAmount > 0 && result && (
+          <div className="p-4 rounded-lg border-2 border-warning/30 bg-warning/5">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-medium text-muted-foreground">LENDERS MORTGAGE INSURANCE</p>
+              <Badge variant="outline" className="text-warning border-warning/50 text-xs">
+                {formatLmiMode(lmiMode)}
+              </Badge>
+            </div>
+            <div className="grid grid-cols-3 gap-3 text-sm">
+              <div>
+                <p className="text-xs text-muted-foreground">LMI Premium</p>
+                <p className="font-bold text-warning">{formatCurrency(lmiEstimate.lmiAmount)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">LVR</p>
+                <p className="font-semibold">{lmiEstimate.lvr.toFixed(1)}%</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Net for Purchase</p>
+                <p className="font-bold text-foreground">
+                  {formatCurrency(Math.max(0, result.borrowingCapacity - lmiEstimate.lmiAmount))}
+                </p>
+              </div>
+            </div>
+            {lmiMode === 'display_deduction' && (
+              <p className="text-xs text-muted-foreground mt-2">
+                Max capacity unchanged — {formatCurrency(lmiEstimate.lmiAmount)} allocated to LMI from loan proceeds.
+              </p>
+            )}
+            {lmiMode === 'debt_capitalised' && (
+              <p className="text-xs text-muted-foreground mt-2">
+                LMI capitalised onto loan — total debt increased by {formatCurrency(lmiEstimate.lmiAmount)}.
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Main Borrowing Capacity */}
         <div className={`p-4 rounded-lg border-2 ${bandConfig.borderColor} ${bandConfig.bgLight}`}>
           <p className="text-sm font-medium text-muted-foreground mb-1">BORROWING CAPACITY</p>
