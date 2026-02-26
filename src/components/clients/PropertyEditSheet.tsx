@@ -276,27 +276,28 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
 
   const updatePropertyMutation = useMutation({
     mutationFn: async () => {
+      const isRental = formData.property_type === 'rental';
       const updateData = {
         property_type: formData.property_type,
         address: formData.address,
-        value: formData.value,
-        purchase_price: formData.purchase_price || null,
-        purchase_date: formData.purchase_date || null,
-        loan_remaining: formData.loan_remaining,
-        interest_rate: formData.interest_rate,
-        ownership_percentage: formData.ownership_percentage,
-        monthly_interest_repayment: formData.monthly_interest_repayment,
-        monthly_body_corporate: formData.body_corporate.monthlyValue,
-        monthly_council_rates: formData.council_rates.monthlyValue,
-        monthly_water_rates: formData.water_rates.monthlyValue,
-        monthly_repairs_maintenance: formData.repairs_maintenance.monthlyValue,
-        monthly_property_management: monthlyPropertyManagement,
-        monthly_landlord_insurance: formData.landlord_insurance.monthlyValue,
-        monthly_building_insurance: formData.building_insurance.monthlyValue,
+        value: isRental ? 0 : formData.value,
+        purchase_price: isRental ? null : (formData.purchase_price || null),
+        purchase_date: isRental ? null : (formData.purchase_date || null),
+        loan_remaining: isRental ? 0 : formData.loan_remaining,
+        interest_rate: isRental ? 0 : formData.interest_rate,
+        ownership_percentage: isRental ? 0 : formData.ownership_percentage,
+        monthly_interest_repayment: isRental ? 0 : formData.monthly_interest_repayment,
+        monthly_body_corporate: isRental ? 0 : formData.body_corporate.monthlyValue,
+        monthly_council_rates: isRental ? 0 : formData.council_rates.monthlyValue,
+        monthly_water_rates: isRental ? 0 : formData.water_rates.monthlyValue,
+        monthly_repairs_maintenance: isRental ? 0 : formData.repairs_maintenance.monthlyValue,
+        monthly_property_management: isRental ? 0 : monthlyPropertyManagement,
+        monthly_landlord_insurance: isRental ? 0 : formData.landlord_insurance.monthlyValue,
+        monthly_building_insurance: isRental ? 0 : formData.building_insurance.monthlyValue,
         monthly_rental_income: monthlyRentalIncome,
         weekly_rental_income: formData.rental_income.frequency === 'weekly' ? formData.rental_income.value : monthlyRentalIncome * (12 / 52),
-        total_monthly_expenditure: totalMonthlyExpenditure,
-        net_monthly_cashflow: netMonthlyCashflow,
+        total_monthly_expenditure: isRental ? monthlyRentalIncome : totalMonthlyExpenditure,
+        net_monthly_cashflow: isRental ? -monthlyRentalIncome : netMonthlyCashflow,
         smsf_fund_name: formData.property_type === 'smsf' ? formData.smsf_fund_name : null,
         smsf_trustee_name: formData.property_type === 'smsf' ? formData.smsf_trustee_name : null,
         smsf_trustee_type: formData.property_type === 'smsf' ? formData.smsf_trustee_type : null,
@@ -641,6 +642,25 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
               </Card>
             )}
 
+            {/* Rental Details - Only shown when Rental is selected */}
+            {formData.property_type === 'rental' && (
+              <Card className="border-blue-500/30 bg-blue-500/5">
+                <CardContent className="pt-4">
+                  <div className="space-y-4">
+                    <h4 className="text-sm font-medium flex items-center gap-2 text-blue-600">
+                      <Key className="h-4 w-4" />
+                      Rental Details (You Are a Tenant)
+                    </h4>
+                    <p className="text-xs text-muted-foreground">
+                      This property is where you currently live and pay rent. The rent you pay will be treated as a personal expense in borrowing capacity calculations.
+                    </p>
+                    
+                    <ExpenseInput label="Rent You Pay" field="rental_income" />
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Deal Sourcing */}
             <Card className="border-primary/20">
               <CardContent className="pt-4">
@@ -694,7 +714,8 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
               </CardContent>
             </Card>
 
-            {/* Financial Details */}
+            {/* Financial Details - Not shown for Rental properties */}
+            {formData.property_type !== 'rental' && (
             <div className="space-y-4">
               <h4 className="text-sm font-medium flex items-center gap-2">
                 <DollarSign className="h-4 w-4" />
@@ -827,6 +848,7 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
                 </div>
               </div>
             </div>
+            )}
 
             {/* Rental Income - Only for investment/smsf */}
             {(formData.property_type === 'investment' || formData.property_type === 'smsf') && (
