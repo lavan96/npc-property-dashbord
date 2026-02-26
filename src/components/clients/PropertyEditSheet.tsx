@@ -33,7 +33,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent } from '@/components/ui/card';
-import { Building2, Loader2, DollarSign, Percent, Home, Calculator, Info, Landmark, Shield, Trash2, Trophy } from 'lucide-react';
+import { Building2, Loader2, DollarSign, Percent, Home, Calculator, Info, Landmark, Shield, Trash2, Trophy, Key } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { useNotifications } from '@/contexts/NotificationsContext';
@@ -96,7 +96,7 @@ interface ExpenseField {
 }
 
 interface PropertyFormData {
-  property_type: 'owner_occupied' | 'investment' | 'smsf';
+  property_type: 'owner_occupied' | 'investment' | 'smsf' | 'rental';
   address: string;
   value: number;
   purchase_price: number;
@@ -183,7 +183,7 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
   useEffect(() => {
     if (open && property) {
       setFormData({
-        property_type: (property.property_type as 'owner_occupied' | 'investment' | 'smsf') || 'investment',
+        property_type: (property.property_type as 'owner_occupied' | 'investment' | 'smsf' | 'rental') || 'investment',
         address: property.address || '',
         value: Number(property.value) || 0,
         purchase_price: Number(property.purchase_price) || 0,
@@ -487,7 +487,7 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
                     <Label>Property Type</Label>
                     <Select
                       value={formData.property_type}
-                      onValueChange={(v) => updateField('property_type', v as 'owner_occupied' | 'investment' | 'smsf')}
+                      onValueChange={(v) => updateField('property_type', v as 'owner_occupied' | 'investment' | 'smsf' | 'rental')}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -509,6 +509,12 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
                           <div className="flex items-center gap-2">
                             <Landmark className="h-4 w-4" />
                             SMSF (Self-Managed Super Fund)
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="rental">
+                          <div className="flex items-center gap-2">
+                            <Key className="h-4 w-4" />
+                            Rental Property (Tenant)
                           </div>
                         </SelectItem>
                       </SelectContent>

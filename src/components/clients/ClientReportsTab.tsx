@@ -277,7 +277,7 @@ export function ClientReportsTab({
                           {property.address}
                         </span>
                         <span className="text-xs text-muted-foreground">
-                          {property.property_type === 'investment' ? 'Investment' : 'Owner Occupied'}
+                          {property.property_type === 'investment' ? 'Investment' : property.property_type === 'owner_occupied' ? 'Owner Occupied' : property.property_type === 'smsf' ? 'SMSF' : property.property_type === 'rental' ? 'Rental (Tenant)' : property.property_type}
                         </span>
                       </div>
                     </DropdownMenuItem>
