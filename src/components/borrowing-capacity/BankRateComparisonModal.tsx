@@ -7,6 +7,14 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
+import { useIsMobile } from '@/hooks/use-mobile';
+import {
   Table,
   TableBody,
   TableCell,
@@ -63,6 +71,7 @@ export function BankRateComparisonModal({
   defaultRepaymentType = 'PRINCIPAL_AND_INTEREST',
   defaultLvr = 80,
 }: BankRateComparisonModalProps) {
+  const isMobile = useIsMobile();
   const [loanPurpose, setLoanPurpose] = useState<'OWNER_OCCUPIED' | 'INVESTMENT'>(defaultLoanPurpose);
   const [repaymentType, setRepaymentType] = useState<'PRINCIPAL_AND_INTEREST' | 'INTEREST_ONLY'>(defaultRepaymentType);
   const [lvr, setLvr] = useState(defaultLvr);
@@ -152,21 +161,10 @@ export function BankRateComparisonModal({
     );
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Building2 className="h-5 w-5" />
-            Bank Rate Comparison
-          </DialogTitle>
-          <DialogDescription>
-            Compare live interest rates from major Australian lenders via CDR Open Banking API
-          </DialogDescription>
-        </DialogHeader>
-
-        {/* Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 py-4 border-b">
+  const modalContent = (
+    <>
+      {/* Filters */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 py-4 border-b">
           <div className="space-y-1">
             <Label className="text-xs">Loan Purpose</Label>
             <Select value={loanPurpose} onValueChange={(v: any) => setLoanPurpose(v)}>
@@ -457,6 +455,43 @@ export function BankRateComparisonModal({
           Rates sourced from Australia's Consumer Data Right (CDR) Open Banking APIs.
           Data is cached for 24 hours. Click on a lender to view all products.
         </div>
+      </>
+  );
+
+  if (isMobile) {
+    return (
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent side="bottom" className="h-[90vh] p-0 flex flex-col rounded-t-xl">
+          <SheetHeader className="p-4 pb-3 border-b flex-shrink-0">
+            <SheetTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5" />
+              Bank Rate Comparison
+            </SheetTitle>
+            <SheetDescription className="text-xs">
+              Compare live rates from major Australian lenders
+            </SheetDescription>
+          </SheetHeader>
+          <div className="flex-1 overflow-auto p-4">
+            {modalContent}
+          </div>
+        </SheetContent>
+      </Sheet>
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Building2 className="h-5 w-5" />
+            Bank Rate Comparison
+          </DialogTitle>
+          <DialogDescription>
+            Compare live interest rates from major Australian lenders via CDR Open Banking API
+          </DialogDescription>
+        </DialogHeader>
+        {modalContent}
       </DialogContent>
     </Dialog>
   );
