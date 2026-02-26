@@ -13,8 +13,10 @@ import { toast } from 'sonner';
 
 interface BorrowingCapacityOverrides {
   grossAnnualIncome?: number;
+  shadedAnnualIncome?: number;
   additionalIncome?: number;
   livingExpenses?: number;
+  existingCommitments?: number;
   additionalLiabilities?: number;
   interestRate?: number;
   bufferRate?: number;

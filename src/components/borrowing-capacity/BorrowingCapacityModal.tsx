@@ -631,7 +631,9 @@ export function BorrowingCapacityModal({
           onClick={() => {
             calculate({
               grossAnnualIncome: totalGrossIncome,
+              shadedAnnualIncome: totalShadedIncome,
               livingExpenses: effectiveExpenses,
+              existingCommitments: totalMonthlyCommitments,
               interestRate,
               bufferRate: effectiveBufferRate,
               loanTermYears,

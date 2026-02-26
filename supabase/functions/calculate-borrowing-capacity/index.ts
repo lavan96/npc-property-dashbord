@@ -655,9 +655,11 @@ Deno.serve(async (req) => {
     
     // Apply overrides if provided
     const effectiveGrossIncome = overrides?.grossAnnualIncome ?? grossTotal;
-    const effectiveShadedIncome = overrides?.additionalIncome 
-      ? shadedTotal + (overrides.additionalIncome * 0.8) 
-      : shadedTotal;
+    const effectiveShadedIncome = overrides?.shadedAnnualIncome 
+      ? overrides.shadedAnnualIncome
+      : overrides?.additionalIncome 
+        ? shadedTotal + (overrides.additionalIncome * 0.8) 
+        : shadedTotal;
 
     // Calculate living expenses (HEM or override) - use income-scaled HEM
     const hemBenchmark = getHemBenchmark(client.marital_status, client.dependents_count, effectiveGrossIncome);
@@ -698,9 +700,11 @@ Deno.serve(async (req) => {
     const totalDebtBalances = liabilityBreakdown.reduce((sum, item) => sum + (item.balance || 0), 0);
     console.log(`[calculate-borrowing-capacity] Total debt balances for DTI: $${totalDebtBalances}`);
     
-    const effectiveCommitments = overrides?.additionalLiabilities 
-      ? liabilityServicing + overrides.additionalLiabilities 
-      : liabilityServicing;
+    const effectiveCommitments = overrides?.existingCommitments != null
+      ? overrides.existingCommitments
+      : overrides?.additionalLiabilities 
+        ? liabilityServicing + overrides.additionalLiabilities 
+        : liabilityServicing;
 
     // Set calculation parameters
     const interestRate = overrides?.interestRate ?? 6.50;
