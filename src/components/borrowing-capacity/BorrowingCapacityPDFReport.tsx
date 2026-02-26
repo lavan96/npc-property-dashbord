@@ -552,7 +552,7 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
     doc.setFont('helvetica', 'bold');
     setColor(doc, WHITE);
     doc.text('Type', MARGIN + 3, y + 1);
-    doc.text('Balance', MARGIN + 125, y + 1, { align: 'right' } as any);
+    doc.text('Balance', MARGIN + 140, y + 1, { align: 'right' } as any);
     doc.text('Monthly Repayment', MARGIN + CONTENT_W - 3, y + 1, { align: 'right' } as any);
     y += ROW_HEIGHT + 1;
 
@@ -566,7 +566,7 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
         doc.setFont('helvetica', 'bold');
         setColor(doc, WHITE);
         doc.text('Type', MARGIN + 3, y + 1);
-        doc.text('Balance', MARGIN + 125, y + 1, { align: 'right' } as any);
+        doc.text('Balance', MARGIN + 140, y + 1, { align: 'right' } as any);
         doc.text('Monthly Repayment', MARGIN + CONTENT_W - 3, y + 1, { align: 'right' } as any);
         y += ROW_HEIGHT + 1;
       }
@@ -581,8 +581,8 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
       const balance = l.balance || l.current_balance || 0;
       const monthly = l.monthlyServicing || l.monthly_repayment || 0;
       y = drawTableRow(doc, y, [
-        { text: lType, x: MARGIN + 3, maxWidth: 105 },
-        { text: fmt(balance), x: MARGIN + 125, align: 'right' },
+        { text: lType, x: MARGIN + 3, maxWidth: 120 },
+        { text: fmt(balance), x: MARGIN + 140, align: 'right' },
         { text: fmt(monthly), x: MARGIN + CONTENT_W - 3, align: 'right', color: RED },
       ], bg);
     }
