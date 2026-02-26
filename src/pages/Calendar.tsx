@@ -1331,11 +1331,13 @@ export default function Calendar() {
         defaultHour={quickAddDefaultHour}
         isLoading={isUpdating}
         onSubmit={async (data) => {
-          const { secondaryRecipients, overrideAvailability, ...appointmentData } = data;
+          const { secondaryRecipients, overrideAvailability, assignedUserId: manualAssignedUserId, ...appointmentData } = data;
           
-          // Auto-assign the first team member from the selected calendar if not already set
+          // Use manually selected team member, or auto-assign first member as fallback
           const selectedCal = calendars.find(c => c.id === data.calendarId);
-          const assignedUserId = selectedCal?.teamMembers?.[0]?.userId || undefined;
+          const assignedUserId = (manualAssignedUserId && manualAssignedUserId !== 'auto') 
+            ? manualAssignedUserId 
+            : selectedCal?.teamMembers?.[0]?.userId || undefined;
           
           const result = await createAppointment({ ...appointmentData, overrideAvailability, assignedUserId });
           

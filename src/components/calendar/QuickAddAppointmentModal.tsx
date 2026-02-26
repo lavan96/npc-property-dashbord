@@ -15,7 +15,7 @@ import { getBookingTimezone, AUSTRALIAN_TIMEZONES } from '@/lib/bookingTimezone'
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useFinanceContacts, FinanceContact } from '@/hooks/useFinanceContacts';
-import type { GHLCalendar, GHLContact } from '@/hooks/useGHLCalendar';
+import type { GHLCalendar, GHLContact, GHLTeamMember } from '@/hooks/useGHLCalendar';
 
 interface QuickAddAppointmentModalProps {
   open: boolean;
@@ -32,6 +32,7 @@ interface QuickAddAppointmentModalProps {
     contactId?: string;
     notes?: string;
     overrideAvailability?: boolean;
+    assignedUserId?: string;
     secondaryRecipients?: { financeContactId: string; name: string; email: string }[];
   }) => Promise<boolean>;
   onSearchContacts?: (query: string) => Promise<GHLContact[]>;
@@ -74,6 +75,7 @@ export function QuickAddAppointmentModal({
   const [inputTimezone, setInputTimezone] = useState<string>(() => getBookingTimezone());
   const [selectedFinanceContacts, setSelectedFinanceContacts] = useState<FinanceContact[]>([]);
   const [overrideAvailability, setOverrideAvailability] = useState(false);
+  const [selectedTeamMemberId, setSelectedTeamMemberId] = useState<string>('');
   
   // Contact search state
   const [contactSearch, setContactSearch] = useState('');
@@ -97,6 +99,7 @@ export function QuickAddAppointmentModal({
       setAppointmentType('call');
       setSelectedFinanceContacts([]);
       setOverrideAvailability(false);
+      setSelectedTeamMemberId('');
 
       const d = defaultDate || new Date();
       setDate(format(d, 'yyyy-MM-dd'));
@@ -243,6 +246,7 @@ export function QuickAddAppointmentModal({
       contactId: selectedContact?.id,
       notes: notes.trim() || undefined,
       overrideAvailability: overrideAvailability || undefined,
+      assignedUserId: selectedTeamMemberId || undefined,
       secondaryRecipients: secondaryRecipients.length > 0 ? secondaryRecipients : undefined,
     });
 
@@ -409,6 +413,45 @@ export function QuickAddAppointmentModal({
               </SelectContent>
             </Select>
           </div>
+
+          {/* Team Member Selector (for round-robin calendars) */}
+          {(() => {
+            const selectedCal = calendars.find(c => c.id === selectedCalendarId);
+            const members = selectedCal?.teamMembers;
+            const isRoundRobin = selectedCal?.calendarType?.toLowerCase().includes('round_robin') || 
+                                 selectedCal?.calendarType?.toLowerCase().includes('round-robin') ||
+                                 selectedCal?.calendarType?.toLowerCase() === 'round_robin';
+            if (isRoundRobin && members && members.length > 1) {
+              return (
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1.5">
+                    <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                    Assign Team Member
+                  </Label>
+                  <Select value={selectedTeamMemberId} onValueChange={setSelectedTeamMemberId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Auto-assign (round robin)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="auto">Auto-assign (round robin)</SelectItem>
+                      {members.map((member) => (
+                        <SelectItem key={member.userId} value={member.userId}>
+                          <div className="flex items-center gap-2">
+                            <User className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span>{member.name || member.email || member.userId}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-muted-foreground">
+                    This is a round-robin calendar. Select a specific team member or leave as auto-assign.
+                  </p>
+                </div>
+              );
+            }
+            return null;
+          })()}
 
           {/* Date and Time */}
           <div className="grid grid-cols-2 gap-4">
