@@ -382,16 +382,18 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
 
   // ── Key Assumptions Callout Box ────────────────────────────────────────────
   const loanTerm = a.loan_term_years || 30;
-  const bufferRate = a.buffer_rate || 3.0;
+  const bufferRate = a.buffer_rate ?? 3.0;
+  const bufferIncluded = bufferRate > 0;
   const assessmentRate = a.assessment_rate || a.interest_rate_used || 0;
   const expMethod = a.expense_method || 'hem';
   const expMethodLabel = expMethod === 'hem' ? 'HEM Benchmark' : expMethod === 'declared' ? 'Declared Expenses' : 'Hybrid';
   const selectedLender = (a.assumptions as any)?.selectedLenderName || null;
+  const bufferLabel = bufferIncluded ? 'Included' : 'Excluded';
 
   setFill(doc, GOLD_LIGHT);
   setDraw(doc, GOLD);
   doc.setLineWidth(0.3);
-  const assumptionsBoxH = selectedLender ? 28 : 22;
+  const assumptionsBoxH = selectedLender ? 34 : 28;
   doc.roundedRect(MARGIN, y, CONTENT_W, assumptionsBoxH, 2, 2, 'FD');
 
   doc.setFontSize(8);
@@ -408,11 +410,17 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
   doc.text(`Loan Term: ${loanTerm} years`, col1, y + 15);
   doc.text(`Buffer Rate: ${bufferRate.toFixed(1)}%`, col2, y + 15);
   doc.text(`Assessment Rate: ${assessmentRate.toFixed(2)}%`, col3, y + 15);
-  doc.text(`Expense Method: ${expMethodLabel}`, col1, y + 20);
+  // Buffer inclusion indicator on the next line
+  doc.setFont('helvetica', 'bold');
+  setColor(doc, bufferIncluded ? GREEN : AMBER);
+  doc.text(`Buffer: ${bufferLabel}`, col1, y + 21);
+  doc.setFont('helvetica', 'normal');
+  setColor(doc, BODY_TEXT);
+  doc.text(`Expense Method: ${expMethodLabel}`, col2, y + 21);
   if (selectedLender) {
     doc.setFont('helvetica', 'bold');
     setColor(doc, NAVY);
-    doc.text(`Selected Lender: ${selectedLender}`, col2, y + 20);
+    doc.text(`Selected Lender: ${selectedLender}`, col3, y + 21);
     doc.setFont('helvetica', 'normal');
   }
 
