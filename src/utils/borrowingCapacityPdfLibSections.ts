@@ -309,18 +309,18 @@ export function drawBorrowingCapacityPdfLib(
   page.drawText('Assessment Rate:', { x: MARGIN_LEFT + metricW * 2, y, size: 9, font, color: MUTED });
   page.drawText(`${data.assessmentRate.toFixed(2)}%`, { x: MARGIN_LEFT + metricW * 2 + 85, y, size: 9, font: boldFont, color: NPC_NAVY });
 
-  y -= 20;
+  y -= 24;
 
   // Capacity gauge
   const gaugePercent = Math.min(100, (data.borrowingCapacity / 1500000) * 100);
   drawProgressBar(page, MARGIN_LEFT, y, CONTENT_WIDTH, 6, gaugePercent, bc);
-  page.drawText('$0', { x: MARGIN_LEFT, y: y - 12, size: 7, font, color: MUTED });
-  page.drawText('$1.5M', { x: MARGIN_LEFT + CONTENT_WIDTH - 25, y: y - 12, size: 7, font, color: MUTED });
-  y -= 22;
+  page.drawText('$0', { x: MARGIN_LEFT, y: y - 14, size: 7, font, color: MUTED });
+  page.drawText('$1.5M', { x: MARGIN_LEFT + CONTENT_WIDTH - 25, y: y - 14, size: 7, font, color: MUTED });
+  y -= 26;
 
   // Band message
   page.drawText(sanitize(bandMessage(data.serviceabilityBand)), { x: MARGIN_LEFT, y, size: 9, font, color: bc });
-  y -= 25;
+  y -= 28;
 
   // ── PROPOSED LOAN CHECK ───────────────────────────────────────────────────
   if (data.proposedLoanCheck) {
@@ -353,12 +353,13 @@ export function drawBorrowingCapacityPdfLib(
     page.drawText(`${plc.headroom >= 0 ? '+' : ''}${fmt(plc.headroom)}`, { x: MARGIN_LEFT + colW * 2 + 10, y: metricsY - 12, size: 10, font: boldFont, color: headroomColor });
 
     page.drawText('Utilization', { x: MARGIN_LEFT + colW * 3 + 10, y: metricsY, size: 7, font, color: MUTED });
-    page.drawText(`${plc.utilizationPercent}%`, { x: MARGIN_LEFT + colW * 3 + 10, y: metricsY - 12, size: 10, font: boldFont, color: NPC_NAVY });
+    const utilDisplayStr = plc.utilizationPercent > 9999 ? '>999%' : `${plc.utilizationPercent}%`;
+    page.drawText(utilDisplayStr, { x: MARGIN_LEFT + colW * 3 + 10, y: metricsY - 12, size: 10, font: boldFont, color: NPC_NAVY });
 
     // Progress bar
     drawProgressBar(page, MARGIN_LEFT + 10, y - 58, CONTENT_WIDTH - 20, 4, plc.utilizationPercent, plcBorder);
 
-    y -= 80;
+    y -= 85;
   }
 
   // ── INCOME ANALYSIS ───────────────────────────────────────────────────────
@@ -422,7 +423,7 @@ export function drawBorrowingCapacityPdfLib(
     rules.forEach((r, i) => {
       page.drawText(`- ${r}`, { x: MARGIN_LEFT + 6, y: y - 18 - i * 6, size: 6, font, color: MUTED });
     });
-    y -= 42;
+    y -= 48;
   }
 
   // ── TAX BREAKDOWN ─────────────────────────────────────────────────────────
@@ -599,7 +600,7 @@ export function drawBorrowingCapacityPdfLib(
     page.drawText('Total Monthly Commitments:', { x: MARGIN_LEFT, y, size: 9, font: boldFont, color: NPC_NAVY });
     const totalStr = `${fmt(totalServicing)}/mo`;
     page.drawText(totalStr, { x: lCol4, y, size: 9, font: boldFont, color: DANGER });
-    y -= 22;
+    y -= 28;
   }
 
   // ── CAPACITY WATERFALL ────────────────────────────────────────────────────
@@ -664,9 +665,9 @@ export function drawBorrowingCapacityPdfLib(
         let text = sanitize(rec);
         if (text.length > 90) text = text.slice(0, 87) + '...';
         page.drawText(text, { x: MARGIN_LEFT + 12, y, size: 8, font, color: DARK_TEXT });
-        y -= 14;
+        y -= 16;
       }
-      y -= 8;
+      y -= 10;
     }
 
     if (warns.length > 0) {
@@ -677,9 +678,9 @@ export function drawBorrowingCapacityPdfLib(
         let text = sanitize(warn);
         if (text.length > 90) text = text.slice(0, 87) + '...';
         page.drawText(text, { x: MARGIN_LEFT + 14, y, size: 8, font, color: DARK_TEXT });
-        y -= 14;
+        y -= 16;
       }
-      y -= 8;
+      y -= 10;
     }
   }
 
