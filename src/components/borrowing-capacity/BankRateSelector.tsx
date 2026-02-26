@@ -8,7 +8,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useBankLendingRates, LendingRate } from '@/hooks/useBankLendingRates';
 
@@ -95,14 +94,12 @@ export function BankRateSelector({
                 const lowestRate = getLowestRateForLender(lender.id);
                 return (
                   <SelectItem key={lender.id} value={lender.id}>
-                    <div className="flex items-center justify-between w-full gap-4">
-                      <span>{lender.name}</span>
-                      {lowestRate !== null && (
-                        <Badge variant="secondary" className="text-xs">
-                          from {lowestRate.toFixed(2)}%
-                        </Badge>
-                      )}
-                    </div>
+                    <span>{lender.name}</span>
+                    {lowestRate !== null && (
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        from {lowestRate.toFixed(2)}%
+                      </span>
+                    )}
                   </SelectItem>
                 );
               })}
@@ -134,19 +131,15 @@ export function BankRateSelector({
               <SelectContent>
                 {selectedLenderRates.map((rate) => (
                   <SelectItem key={rate.productId} value={rate.productId}>
-                    <div className="flex flex-col gap-0.5">
-                      <div className="flex items-center justify-between gap-4">
-                        <span className="font-medium">{rate.rate.toFixed(2)}%</span>
-                        <span className="text-xs text-muted-foreground truncate max-w-[200px]">
-                          {rate.productName}
-                        </span>
-                      </div>
-                      {rate.comparisonRate && (
-                        <span className="text-xs text-muted-foreground">
-                          Comparison: {rate.comparisonRate.toFixed(2)}%
-                        </span>
-                      )}
-                    </div>
+                    <span className="font-medium">{rate.rate.toFixed(2)}%</span>
+                    <span className="ml-2 text-xs text-muted-foreground truncate">
+                      {rate.productName}
+                    </span>
+                    {rate.comparisonRate && (
+                      <span className="ml-1 text-xs text-muted-foreground">
+                        (comp: {rate.comparisonRate.toFixed(2)}%)
+                      </span>
+                    )}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -169,7 +162,7 @@ export function BankRateSelector({
           {lowestOverallRate !== null && value > lowestOverallRate && (
             <div className="text-right">
               <p className="text-xs text-muted-foreground">Lowest available</p>
-              <p className="text-sm font-medium text-green-500 flex items-center gap-1">
+              <p className="text-sm font-medium text-success flex items-center gap-1">
                 <TrendingDown className="h-3 w-3" />
                 {lowestOverallRate.toFixed(2)}%
               </p>
