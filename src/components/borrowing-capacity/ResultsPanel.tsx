@@ -33,12 +33,34 @@ interface ResultsPanelProps {
   dtiCapLimit?: number;
   clientId?: string;
   clientName?: string;
+  proposedLoanAmount?: number;
+  interestRate?: number;
+  bufferRate?: number;
+  loanTermYears?: number;
 }
 
-export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', dtiCapEnabled, dtiCapLimit, clientId, clientName }: ResultsPanelProps) {
+export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', dtiCapEnabled, dtiCapLimit, clientId, clientName, proposedLoanAmount, interestRate, bufferRate, loanTermYears }: ResultsPanelProps) {
   const [showRecommendations, setShowRecommendations] = useState(true);
   const [showAssumptions, setShowAssumptions] = useState(false);
   const [showTaxBreakdown, setShowTaxBreakdown] = useState(false);
+
+  // Proposed loan serviceability check
+  const proposedLoanCheck = useMemo(() => {
+    if (!result || !proposedLoanAmount || proposedLoanAmount <= 0) return null;
+    const assessmentRate = (interestRate || 6.5) + (bufferRate ?? 3);
+    const monthlyRate = (assessmentRate / 100) / 12;
+    const periods = (loanTermYears || 30) * 12;
+    const monthlyRepayment = proposedLoanAmount * (monthlyRate * Math.pow(1 + monthlyRate, periods)) 
+                              / (Math.pow(1 + monthlyRate, periods) - 1);
+    const isServiceable = result.borrowingCapacity >= proposedLoanAmount;
+    const headroom = result.borrowingCapacity - proposedLoanAmount;
+    return {
+      monthlyRepayment: Math.round(monthlyRepayment),
+      isServiceable,
+      headroom,
+      utilizationPercent: Math.round((proposedLoanAmount / Math.max(result.borrowingCapacity, 1)) * 100),
+    };
+  }, [result, proposedLoanAmount, interestRate, bufferRate, loanTermYears]);
 
   // Calculate tax breakdown based on gross income
   const taxBreakdown: TaxBreakdown | null = useMemo(() => {
@@ -128,6 +150,46 @@ export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', 
             </Button>
           )}
         </div>
+
+        {/* Proposed Loan Serviceability Check */}
+        {proposedLoanCheck && (
+          <div className={`p-4 rounded-lg border-2 ${
+            proposedLoanCheck.isServiceable 
+              ? 'border-success/30 bg-success/5' 
+              : 'border-destructive/30 bg-destructive/5'
+          }`}>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-medium text-muted-foreground">PROPOSED LOAN CHECK</p>
+              <Badge className={proposedLoanCheck.isServiceable ? 'bg-success text-white' : 'bg-destructive text-white'}>
+                {proposedLoanCheck.isServiceable ? '✅ Serviceable' : '❌ Not Serviceable'}
+              </Badge>
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <p className="text-xs text-muted-foreground">Proposed Loan</p>
+                <p className="font-semibold">{formatCurrency(proposedLoanAmount!)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Est. Repayment</p>
+                <p className="font-semibold">{formatCurrency(proposedLoanCheck.monthlyRepayment)}/mo</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Headroom</p>
+                <p className={`font-semibold ${proposedLoanCheck.headroom >= 0 ? 'text-success' : 'text-destructive'}`}>
+                  {proposedLoanCheck.headroom >= 0 ? '+' : ''}{formatCurrency(proposedLoanCheck.headroom)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Utilization</p>
+                <p className="font-semibold">{proposedLoanCheck.utilizationPercent}%</p>
+              </div>
+            </div>
+            <Progress 
+              value={Math.min(proposedLoanCheck.utilizationPercent, 100)} 
+              className="h-2 mt-3"
+            />
+          </div>
+        )}
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Main Borrowing Capacity */}
