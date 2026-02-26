@@ -7,6 +7,7 @@ import { invokeSecureFunction } from '@/lib/secureInvoke';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { drawBorrowingCapacitySections, transformAssessmentToSectionData } from '@/utils/borrowingCapacityPdfSections';
+import { fetchLatestBorrowingCapacity } from '@/lib/fetchLatestBorrowingCapacity';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -238,15 +239,10 @@ export function VownetPDFGenerator({
       if (includeBorrowingCapacity && data.client.id) {
         try {
           console.log('📊 Fetching borrowing capacity data for Vownet PDF...');
-          const { data: bcDataArr, error: bcError } = await supabase
-            .from('borrowing_capacity_assessments')
-            .select('*')
-            .eq('client_id', data.client.id)
-            .order('created_at', { ascending: false })
-            .limit(1);
+          const { latestAssessment } = await fetchLatestBorrowingCapacity(data.client.id);
 
-          if (!bcError && bcDataArr && bcDataArr.length > 0) {
-            const bcPdfData = transformAssessmentToSectionData(bcDataArr[0]);
+          if (latestAssessment) {
+            const bcPdfData = transformAssessmentToSectionData(latestAssessment);
             const pageNum = { value: pdf.getNumberOfPages() + 1 };
             
             // Add a new page and draw all BC sections

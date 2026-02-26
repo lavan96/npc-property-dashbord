@@ -15,7 +15,7 @@ import jsPDF from 'jspdf';
 import { toast } from 'sonner';
 import { fetchGlobalReportSettings } from '@/hooks/useGlobalReportSettings';
 import { drawJsPDFDisclaimerPage } from '@/utils/pdfDisclaimerPage';
-import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { fetchLatestBorrowingCapacity } from '@/lib/fetchLatestBorrowingCapacity';
 import { format } from 'date-fns';
 
 // ─── Design tokens ───────────────────────────────────────────────────────────
@@ -577,25 +577,10 @@ export async function fetchAndGenerateBorrowingCapacityPDF(clientId: string, cli
   toast.loading('Generating Borrowing Capacity Snapshot...', { id: 'bc-pdf' });
 
   try {
-    // Fetch all data via secure edge function
-    const { data, error } = await invokeSecureFunction('get-client-data', {
-      clientId,
-      include: {
-        client: true,
-        properties: true,
-        income: true,
-        incomeSources: true,
-        liabilities: true,
-        expenses: true,
-        borrowingCapacity: true,
-      },
-    });
+    const { latestAssessment, assessmentHistory, incomeSources, liabilities, expenses, properties, client } = 
+      await fetchLatestBorrowingCapacity(clientId);
 
-    if (error) throw new Error(error.message);
-    if (!data?.success) throw new Error('Failed to fetch client data');
-
-    const assessments = data.borrowingCapacity || [];
-    if (assessments.length === 0) {
+    if (!latestAssessment) {
       toast.error('No borrowing capacity assessment found. Please calculate capacity first.', { id: 'bc-pdf' });
       return;
     }
@@ -603,13 +588,13 @@ export async function fetchAndGenerateBorrowingCapacityPDF(clientId: string, cli
     await generateBorrowingCapacityPDF({
       clientId,
       clientName,
-      assessment: assessments[0],
-      incomeSources: data.incomeSources || [],
-      liabilities: data.liabilities || [],
-      expenses: data.expenses || [],
-      properties: data.properties || [],
-      client: data.client,
-      assessmentHistory: assessments.slice(0, 10),
+      assessment: latestAssessment,
+      incomeSources,
+      liabilities,
+      expenses,
+      properties,
+      client,
+      assessmentHistory,
     });
 
     toast.success('PDF downloaded successfully!', { id: 'bc-pdf' });
