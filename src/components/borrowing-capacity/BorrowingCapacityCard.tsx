@@ -6,7 +6,6 @@ import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
   DollarSign, 
-  RefreshCw, 
   Loader2, 
   TrendingUp,
   AlertTriangle,
@@ -139,22 +138,6 @@ export function BorrowingCapacityCard({ clientId, clientName, onOpenCalculator }
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Export Snapshot PDF</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-8 w-8"
-                    onClick={() => calculate({})}
-                    disabled={isCalculating}
-                  >
-                    <RefreshCw className={`h-4 w-4 ${isCalculating ? 'animate-spin' : ''}`} />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Recalculate</TooltipContent>
               </Tooltip>
             </TooltipProvider>
           </div>
