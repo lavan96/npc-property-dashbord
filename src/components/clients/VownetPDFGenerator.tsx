@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Download, FileText, Home, Loader2, Mail, Send, Users } from 'lucide-react';
+import { Download, FileText, Home, Loader2, Mail, Send, Users, Calculator } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
+import { drawBorrowingCapacitySections, transformAssessmentToSectionData } from '@/utils/borrowingCapacityPdfSections';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -179,6 +180,7 @@ export function VownetPDFGenerator({
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [includeOwnerOccupied, setIncludeOwnerOccupied] = useState(true);
+  const [includeBorrowingCapacity, setIncludeBorrowingCapacity] = useState(false);
   const { contacts, defaultContact, hasContacts } = useFinanceContacts();
   const { user } = useAuth();
   const { addNotification } = useNotifications();
@@ -230,6 +232,34 @@ export function VownetPDFGenerator({
         }
         
         pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+      }
+
+      // ── Append Borrowing Capacity pages (jsPDF-native) ──
+      if (includeBorrowingCapacity && data.client.id) {
+        try {
+          console.log('📊 Fetching borrowing capacity data for Vownet PDF...');
+          const { data: bcDataArr, error: bcError } = await supabase
+            .from('borrowing_capacity_assessments')
+            .select('*')
+            .eq('client_id', data.client.id)
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+          if (!bcError && bcDataArr && bcDataArr.length > 0) {
+            const bcPdfData = transformAssessmentToSectionData(bcDataArr[0]);
+            const pageNum = { value: pdf.getNumberOfPages() + 1 };
+            
+            // Add a new page and draw all BC sections
+            pdf.addPage();
+            drawBorrowingCapacitySections(pdf, bcPdfData, 20, pageNum, false);
+            
+            console.log('✓ Borrowing capacity pages appended to Vownet PDF');
+          } else {
+            console.log('ℹ No borrowing capacity data found — skipping BC pages');
+          }
+        } catch (bcErr) {
+          console.warn('Could not append borrowing capacity pages:', bcErr);
+        }
       }
 
       // Cleanup
@@ -378,6 +408,22 @@ export function VownetPDFGenerator({
             id="include-owner-occupied"
             checked={includeOwnerOccupied}
             onCheckedChange={setIncludeOwnerOccupied}
+          />
+        </div>
+
+        {/* Borrowing Capacity Toggle */}
+        <div className="flex items-center justify-between px-2 py-2 border-b">
+          <div className="flex items-center gap-2">
+            <Calculator className="h-4 w-4 text-muted-foreground" />
+            <Label htmlFor="include-bc-vownet" className="text-sm cursor-pointer leading-tight">
+              <span className="block">Borrowing Capacity</span>
+              <span className="text-xs text-muted-foreground">Append detailed BC assessment</span>
+            </Label>
+          </div>
+          <Switch
+            id="include-bc-vownet"
+            checked={includeBorrowingCapacity}
+            onCheckedChange={setIncludeBorrowingCapacity}
           />
         </div>
         
