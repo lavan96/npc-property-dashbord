@@ -658,7 +658,7 @@ serve(async (req) => {
 
     // Create a new appointment
     if (action === 'create') {
-      const { calendarId: targetCalendarId, title, startTime: appointmentStart, endTime: appointmentEnd, contactId: appointmentContactId, notes, address, assignedUserId } = body;
+      const { calendarId: targetCalendarId, title, startTime: appointmentStart, endTime: appointmentEnd, contactId: appointmentContactId, notes, address, assignedUserId, overrideAvailability } = body;
 
       if (!targetCalendarId || !appointmentStart || !appointmentEnd) {
         return new Response(JSON.stringify({
@@ -670,7 +670,7 @@ serve(async (req) => {
         });
       }
 
-      console.log(`Creating appointment on calendar ${targetCalendarId}: ${title || 'Untitled'}, contactId: ${appointmentContactId || 'none'}`);
+      console.log(`Creating appointment on calendar ${targetCalendarId}: ${title || 'Untitled'}, contactId: ${appointmentContactId || 'none'}, overrideAvailability: ${!!overrideAvailability}`);
 
       const createPayload: Record<string, unknown> = {
         calendarId: targetCalendarId,
@@ -683,6 +683,12 @@ serve(async (req) => {
       if (notes) createPayload.notes = notes;
       if (address) createPayload.address = address;
       if (assignedUserId) createPayload.assignedUserId = assignedUserId;
+      // When overrideAvailability is true, tell GHL to skip free-slot validation
+      if (overrideAvailability) {
+        createPayload.ignoreFreeSlotValidation = true;
+        createPayload.selectedSlot = appointmentStart;
+        createPayload.selectedTimezone = 'Australia/Sydney';
+      }
 
       console.log('[ghl-calendar] Create payload:', JSON.stringify(createPayload));
 

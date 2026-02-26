@@ -1331,8 +1331,8 @@ export default function Calendar() {
         defaultHour={quickAddDefaultHour}
         isLoading={isUpdating}
         onSubmit={async (data) => {
-          const { secondaryRecipients, ...appointmentData } = data;
-          const result = await createAppointment(appointmentData);
+          const { secondaryRecipients, overrideAvailability, ...appointmentData } = data;
+          const result = await createAppointment({ ...appointmentData, overrideAvailability });
           
           // Send notifications to secondary recipients after successful creation
           if (result.success && secondaryRecipients && secondaryRecipients.length > 0) {
