@@ -8,14 +8,21 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, Plus, Loader2, Keyboard, User, Search, Phone, Mail, Video, PhoneCall, Globe, Users, X } from 'lucide-react';
+import { Calendar, Clock, Plus, Loader2, Keyboard, User, Search, Phone, Mail, Video, PhoneCall, Globe, Users, X, UserPlus } from 'lucide-react';
 import { format, addMinutes } from 'date-fns';
 import { toTimezoneISO } from '@/lib/sydneyTime';
 import { getBookingTimezone, AUSTRALIAN_TIMEZONES } from '@/lib/bookingTimezone';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useFinanceContacts, FinanceContact } from '@/hooks/useFinanceContacts';
+import { supabase } from '@/integrations/supabase/client';
 import type { GHLCalendar, GHLContact, GHLTeamMember } from '@/hooks/useGHLCalendar';
+
+export interface BookingRecipient {
+  name: string;
+  email: string;
+  source: 'auto' | 'manual'; // auto = from client DB, manual = user typed
+}
 
 interface QuickAddAppointmentModalProps {
   open: boolean;
@@ -34,6 +41,7 @@ interface QuickAddAppointmentModalProps {
     overrideAvailability?: boolean;
     assignedUserId?: string;
     secondaryRecipients?: { financeContactId: string; name: string; email: string }[];
+    bookingRecipients?: { name: string; email: string }[];
   }) => Promise<boolean>;
   onSearchContacts?: (query: string) => Promise<GHLContact[]>;
 }
@@ -77,6 +85,11 @@ export function QuickAddAppointmentModal({
   const [overrideAvailability, setOverrideAvailability] = useState(false);
   const [selectedTeamMemberId, setSelectedTeamMemberId] = useState<string>('');
   
+  // Booking recipients state (secondary invite recipients)
+  const [bookingRecipients, setBookingRecipients] = useState<BookingRecipient[]>([]);
+  const [manualRecipientName, setManualRecipientName] = useState('');
+  const [manualRecipientEmail, setManualRecipientEmail] = useState('');
+  
   // Contact search state
   const [contactSearch, setContactSearch] = useState('');
   const [selectedContact, setSelectedContact] = useState<GHLContact | null>(null);
@@ -100,6 +113,9 @@ export function QuickAddAppointmentModal({
       setSelectedFinanceContacts([]);
       setOverrideAvailability(false);
       setSelectedTeamMemberId('');
+      setBookingRecipients([]);
+      setManualRecipientName('');
+      setManualRecipientEmail('');
 
       const d = defaultDate || new Date();
       setDate(format(d, 'yyyy-MM-dd'));
@@ -190,7 +206,7 @@ export function QuickAddAppointmentModal({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [open, title, selectedCalendarId]);
 
-  const handleSelectContact = (contact: GHLContact) => {
+  const handleSelectContact = async (contact: GHLContact) => {
     setSelectedContact(contact);
     setContactSearch('');
     setShowContactDropdown(false);
@@ -201,17 +217,95 @@ export function QuickAddAppointmentModal({
       const typeLabel = APPOINTMENT_TYPES.find(t => t.value === appointmentType)?.label || 'Appointment';
       setTitle(`${typeLabel} with ${contactName}`);
     }
+
+    // Auto-populate secondary contacts from client database
+    // Match by email to find the client record
+    const contactEmail = contact.email?.toLowerCase()?.trim();
+    if (contactEmail) {
+      try {
+        const { data: clientData } = await supabase
+          .from('clients')
+          .select('id, secondary_first_name, secondary_surname, secondary_email')
+          .or(`primary_email.ilike.${contactEmail},secondary_email.ilike.${contactEmail}`)
+          .limit(1)
+          .single();
+        
+        if (clientData) {
+          const autoRecipients: BookingRecipient[] = [];
+
+          // Add secondary contact if exists
+          if (clientData.secondary_email && clientData.secondary_first_name) {
+            const secName = [clientData.secondary_first_name, clientData.secondary_surname].filter(Boolean).join(' ');
+            // Don't add if already in the list
+            if (!bookingRecipients.some(r => r.email.toLowerCase() === clientData.secondary_email!.toLowerCase())) {
+              autoRecipients.push({
+                name: secName,
+                email: clientData.secondary_email,
+                source: 'auto',
+              });
+            }
+          }
+
+          // Also check for additional contacts
+          const { data: additionalContacts } = await supabase
+            .from('client_additional_contacts')
+            .select('first_name, surname, email')
+            .eq('client_id', clientData.id)
+            .not('email', 'is', null);
+
+          if (additionalContacts) {
+            for (const ac of additionalContacts) {
+              if (ac.email && !bookingRecipients.some(r => r.email.toLowerCase() === ac.email!.toLowerCase())) {
+                autoRecipients.push({
+                  name: [ac.first_name, ac.surname].filter(Boolean).join(' '),
+                  email: ac.email,
+                  source: 'auto',
+                });
+              }
+            }
+          }
+
+          if (autoRecipients.length > 0) {
+            setBookingRecipients(prev => [...prev, ...autoRecipients]);
+          }
+        }
+      } catch (err) {
+        // Silently fail - auto-populate is best-effort
+        console.log('Could not auto-populate secondary contacts:', err);
+      }
+    }
   };
 
   const handleClearContact = () => {
     setSelectedContact(null);
     setContactSearch('');
+    // Remove auto-populated recipients when clearing the contact
+    setBookingRecipients(prev => prev.filter(r => r.source === 'manual'));
   };
 
   const getContactDisplayName = (contact: GHLContact): string => {
     if (contact.name) return contact.name;
     const fullName = `${contact.firstName || ''} ${contact.lastName || ''}`.trim();
     return fullName || contact.email || contact.phone || 'Unknown Contact';
+  };
+
+  const handleAddManualRecipient = () => {
+    const email = manualRecipientEmail.trim().toLowerCase();
+    const name = manualRecipientName.trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
+    if (bookingRecipients.some(r => r.email.toLowerCase() === email)) return;
+    
+    setBookingRecipients(prev => [...prev, {
+      name: name || email.split('@')[0],
+      email,
+      source: 'manual',
+    }]);
+    setManualRecipientName('');
+    setManualRecipientEmail('');
+  };
+
+  const handleRemoveBookingRecipient = (email: string) => {
+    setBookingRecipients(prev => prev.filter(r => r.email !== email));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -238,6 +332,11 @@ export function QuickAddAppointmentModal({
       email: fc.email,
     }));
 
+    const bookingRecipientsPayload = bookingRecipients.map(r => ({
+      name: r.name,
+      email: r.email,
+    }));
+
     const success = await onSubmit({
       calendarId: selectedCalendarId,
       title: title.trim(),
@@ -248,6 +347,7 @@ export function QuickAddAppointmentModal({
       overrideAvailability: overrideAvailability || undefined,
       assignedUserId: selectedTeamMemberId || undefined,
       secondaryRecipients: secondaryRecipients.length > 0 ? secondaryRecipients : undefined,
+      bookingRecipients: bookingRecipientsPayload.length > 0 ? bookingRecipientsPayload : undefined,
     });
 
     if (success) {
@@ -377,7 +477,72 @@ export function QuickAddAppointmentModal({
             )}
           </div>
 
-          {/* Title */}
+          {/* Secondary Booking Recipients */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-1.5">
+              <UserPlus className="h-3.5 w-3.5 text-muted-foreground" />
+              Additional Invite Recipients
+            </Label>
+            <p className="text-[11px] text-muted-foreground">
+              Add extra people to receive the booking invite (e.g. spouse, co-applicant).
+            </p>
+
+            {/* Current recipients as badges */}
+            {bookingRecipients.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {bookingRecipients.map((r) => (
+                  <Badge key={r.email} variant="secondary" className="flex items-center gap-1 pr-1">
+                    <span className="text-xs">{r.name}</span>
+                    <span className="text-[10px] text-muted-foreground">({r.email})</span>
+                    {r.source === 'auto' && (
+                      <span className="text-[9px] text-primary/70 ml-0.5">Auto</span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveBookingRecipient(r.email)}
+                      className="ml-0.5 rounded-full hover:bg-muted-foreground/20 p-0.5"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            )}
+
+            {/* Manual entry */}
+            <div className="flex gap-2">
+              <Input
+                placeholder="Name"
+                value={manualRecipientName}
+                onChange={(e) => setManualRecipientName(e.target.value)}
+                className="flex-1"
+              />
+              <Input
+                placeholder="Email *"
+                type="email"
+                value={manualRecipientEmail}
+                onChange={(e) => setManualRecipientEmail(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddManualRecipient();
+                  }
+                }}
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={handleAddManualRecipient}
+                disabled={!manualRecipientEmail.trim()}
+                className="shrink-0"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="title">Title *</Label>
             <Input

@@ -1331,7 +1331,7 @@ export default function Calendar() {
         defaultHour={quickAddDefaultHour}
         isLoading={isUpdating}
         onSubmit={async (data) => {
-          const { secondaryRecipients, overrideAvailability, assignedUserId: manualAssignedUserId, ...appointmentData } = data;
+          const { secondaryRecipients, bookingRecipients, overrideAvailability, assignedUserId: manualAssignedUserId, ...appointmentData } = data;
           
           // Use manually selected team member, or auto-assign first member as fallback
           const selectedCal = calendars.find(c => c.id === data.calendarId);
@@ -1341,31 +1341,44 @@ export default function Calendar() {
           
           const result = await createAppointment({ ...appointmentData, overrideAvailability, assignedUserId });
           
-          // Send notifications to secondary recipients after successful creation
-          if (result.success && secondaryRecipients && secondaryRecipients.length > 0) {
+          if (result.success) {
             const calendarName = calendars.find(c => c.id === data.calendarId)?.name;
-            try {
-              await invokeSecureFunction('send-appointment-notification', {
-                appointmentGhlId: result.event?.id || `temp-${Date.now()}`,
-                appointmentTitle: data.title,
-                appointmentStart: data.startTime,
-                appointmentEnd: data.endTime,
-                appointmentType: 'call', // from the type selection in the modal
-                appointmentNotes: data.notes,
-                calendarName,
-                recipients: secondaryRecipients,
-              });
-              toast({
-                title: 'Notifications sent',
-                description: `${secondaryRecipients.length} finance contact(s) notified with calendar invite.`,
-              });
-            } catch (err: any) {
-              console.error('Failed to send appointment notifications:', err);
-              toast({
-                title: 'Appointment created, but notifications failed',
-                description: err.message || 'Could not send email notifications.',
-                variant: 'destructive',
-              });
+            const appointmentId = result.event?.id || `temp-${Date.now()}`;
+            
+            // Combine all notification recipients: finance contacts + booking recipients
+            const allNotificationRecipients = [
+              ...(secondaryRecipients || []),
+              ...(bookingRecipients || []).map(br => ({
+                financeContactId: `booking-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                name: br.name,
+                email: br.email,
+              })),
+            ];
+
+            if (allNotificationRecipients.length > 0) {
+              try {
+                await invokeSecureFunction('send-appointment-notification', {
+                  appointmentGhlId: appointmentId,
+                  appointmentTitle: data.title,
+                  appointmentStart: data.startTime,
+                  appointmentEnd: data.endTime,
+                  appointmentType: 'call',
+                  appointmentNotes: data.notes,
+                  calendarName,
+                  recipients: allNotificationRecipients,
+                });
+                toast({
+                  title: 'Notifications sent',
+                  description: `${allNotificationRecipients.length} recipient(s) notified with calendar invite.`,
+                });
+              } catch (err: any) {
+                console.error('Failed to send appointment notifications:', err);
+                toast({
+                  title: 'Appointment created, but notifications failed',
+                  description: err.message || 'Could not send email notifications.',
+                  variant: 'destructive',
+                });
+              }
             }
           }
           
