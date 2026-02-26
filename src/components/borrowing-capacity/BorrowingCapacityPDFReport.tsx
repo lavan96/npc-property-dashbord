@@ -121,26 +121,50 @@ function drawSectionHeader(doc: jsPDF, title: string, y: number): number {
   return y + 22;
 }
 
-// ─── Enhanced table row helper (more vertical padding) ───────────────────────
+// ─── Enhanced table row helper with text wrapping ────────────────────────────
 const ROW_HEIGHT = 10;
+const MIN_ROW_HEIGHT = 10;
+const LINE_H = 4;
 
+/**
+ * Draw a table row with automatic text wrapping for the first column.
+ * Returns the new y position after the row.
+ */
 function drawTableRow(
   doc: jsPDF,
   y: number,
-  cols: { text: string; x: number; align?: 'left' | 'right'; bold?: boolean; color?: RGB }[],
+  cols: { text: string; x: number; align?: 'left' | 'right'; bold?: boolean; color?: RGB; maxWidth?: number }[],
   bg?: RGB
-) {
+): number {
+  // Calculate actual row height based on first column text wrapping
+  let rowH = MIN_ROW_HEIGHT;
+  let wrappedLines: string[] | null = null;
+
+  if (cols.length > 0 && cols[0].maxWidth) {
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', cols[0].bold ? 'bold' : 'normal');
+    wrappedLines = doc.splitTextToSize(cols[0].text, cols[0].maxWidth);
+    if (wrappedLines.length > 1) {
+      rowH = Math.max(MIN_ROW_HEIGHT, wrappedLines.length * LINE_H + 6);
+    }
+  }
+
   if (bg) {
     setFill(doc, bg);
-    doc.rect(MARGIN, y - 5, CONTENT_W, ROW_HEIGHT, 'F');
+    doc.rect(MARGIN, y - 5, CONTENT_W, rowH, 'F');
   }
   doc.setFontSize(8.5);
-  for (const col of cols) {
+  for (let ci = 0; ci < cols.length; ci++) {
+    const col = cols[ci];
     doc.setFont('helvetica', col.bold ? 'bold' : 'normal');
     setColor(doc, col.color || BODY_TEXT);
-    doc.text(col.text, col.x, y + 1, { align: col.align || 'left' });
+    if (ci === 0 && wrappedLines && wrappedLines.length > 1) {
+      doc.text(wrappedLines, col.x, y + 1);
+    } else {
+      doc.text(col.text, col.x, y + 1, { align: col.align || 'left' });
+    }
   }
-  return y + ROW_HEIGHT + 1;
+  return y + rowH + 1;
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -411,7 +435,6 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
   // Income breakdown table
   const incomeBreakdown = a.income_breakdown || data.incomeSources;
   if (incomeBreakdown && Array.isArray(incomeBreakdown) && incomeBreakdown.length > 0) {
-    const srcColW = 80;
     // Header row with navy background
     setFill(doc, NAVY);
     doc.rect(MARGIN, y - 5, CONTENT_W, ROW_HEIGHT, 'F');
@@ -442,17 +465,12 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
         y += ROW_HEIGHT + 1;
       }
       const bg = i % 2 === 0 ? LIGHT_GRAY : undefined;
-      let sourceName = item.component || item.source_name || item.source_type || 'Income';
-      doc.setFontSize(8.5);
-      doc.setFont('helvetica', 'normal');
-      while (doc.getTextWidth(sourceName) > srcColW && sourceName.length > 10) {
-        sourceName = sourceName.slice(0, -4) + '...';
-      }
+      const sourceName = item.component || item.source_name || item.source_type || 'Income';
       const gross = item.grossAmount || item.gross_annual_amount || item.input_amount || 0;
       const rate = item.shadingRate || item.custom_shading_rate || item.default_shading_rate || 1;
       const shaded = item.shadedAmount || gross * rate;
       y = drawTableRow(doc, y, [
-        { text: sourceName, x: MARGIN + 3 },
+        { text: sourceName, x: MARGIN + 3, maxWidth: 80 },
         { text: fmt(gross), x: MARGIN + 105, align: 'right' },
         { text: `${(rate * 100).toFixed(0)}%`, x: MARGIN + 132, align: 'right' },
         { text: fmt(shaded), x: MARGIN + CONTENT_W - 3, align: 'right', bold: true },
@@ -514,22 +532,14 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
       const bg = i % 2 === 0 ? LIGHT_GRAY : undefined;
       let lType = l.type || l.liability_type || 'Liability';
       lType = formatLabel(lType);
-      // Also include provider/label info for clarity
       const provider = l.label || l.provider_name || '';
       if (provider && provider !== lType) {
         lType = `${lType} (${provider})`;
       }
-      doc.setFontSize(8.5);
-      doc.setFont('helvetica', 'normal');
-      // Smart truncation: allow up to 105mm for type column
-      const maxLiabW = 105;
-      while (doc.getTextWidth(lType) > maxLiabW && lType.length > 10) {
-        lType = lType.slice(0, -4) + '...';
-      }
       const balance = l.balance || l.current_balance || 0;
       const monthly = l.monthlyServicing || l.monthly_repayment || 0;
       y = drawTableRow(doc, y, [
-        { text: lType, x: MARGIN + 3 },
+        { text: lType, x: MARGIN + 3, maxWidth: 105 },
         { text: fmt(balance), x: MARGIN + 125, align: 'right' },
         { text: fmt(monthly), x: MARGIN + CONTENT_W - 3, align: 'right', color: RED },
       ], bg);

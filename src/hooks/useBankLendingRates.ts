@@ -93,7 +93,12 @@ export function useBankLendingRates(options?: UseBankLendingRatesOptions) {
       repayment: options?.repaymentType,
       lvr: options?.lvr,
     });
-    return result as LendingRate[];
+    // Round rates to 2 decimal places to avoid floating point artifacts
+    return (result as LendingRate[]).map(r => ({
+      ...r,
+      rate: Math.round(r.rate * 100) / 100,
+      comparisonRate: r.comparisonRate !== null ? Math.round(r.comparisonRate * 100) / 100 : null,
+    }));
   }, [options?.loanPurpose, options?.repaymentType, options?.lvr]);
 
   // Query for selected lender's rates
@@ -121,7 +126,11 @@ export function useBankLendingRates(options?: UseBankLendingRatesOptions) {
         repayment: options?.repaymentType,
         lvr: options?.lvr,
       });
-      return result as LendingRate[];
+      return (result as LendingRate[]).map(r => ({
+        ...r,
+        rate: Math.round(r.rate * 100) / 100,
+        comparisonRate: r.comparisonRate !== null ? Math.round(r.comparisonRate * 100) / 100 : null,
+      }));
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
