@@ -32,6 +32,7 @@ The 10-year cash flow projection table implements **chained cascade logic** wher
 | **Principal Payment** | Direct override, doesn't affect subsequent years |
 | **Depreciation** | Uses schedule or direct override |
 | **Land Tax** | Direct override |
+| **LMI** | One-off Year 1 acquisition cost; impacts initial investment, ROI, and break-even |
 
 ## Dependency Graph
 
