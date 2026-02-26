@@ -8,6 +8,7 @@ import { PDFDocument, rgb, StandardFonts, PDFPage, PDFFont } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import { fetchGlobalReportSettings, type GlobalReportSettings } from '@/hooks/useGlobalReportSettings';
 import { drawPdfLibDisclaimerPage } from '@/utils/pdfDisclaimerPage';
+import { drawBorrowingCapacityPdfLib, transformEdgeFunctionBCData } from '@/utils/borrowingCapacityPdfLibSections';
 import {
   Dialog,
   DialogContent,
@@ -2339,298 +2340,32 @@ export function PortfolioAnalysisPDFGenerator({
       
       console.log('✓ Financial health page complete');
       
-      // ============= PAGE: BORROWING CAPACITY ASSESSMENT =============
+      // ============= PAGES: COMPREHENSIVE BORROWING CAPACITY ASSESSMENT =============
       // Only include if borrowing capacity data exists AND includeBorrowingCapacity is true
       if (analysisData.borrowingCapacity && includeBorrowingCapacity) {
-        console.log('📝 Creating borrowing capacity page...');
-        page = addContentPage();
-        yPos = PAGE_HEIGHT - MARGIN_TOP;
+        console.log('📝 Creating comprehensive borrowing capacity pages...');
         
-        // Section header with gold accent bar
-        page.drawRectangle({
-          x: MARGIN_LEFT,
-          y: yPos - 5,
-          width: 4,
-          height: 18,
-          color: PRIMARY_COLOR,
-        });
+        // Transform the edge function data into the structured format
+        const bcPdfData = transformEdgeFunctionBCData(analysisData.borrowingCapacity);
         
-        page.drawText('Borrowing Capacity Assessment', {
-          x: MARGIN_LEFT + 12,
-          y: yPos,
-          size: 14,
-          font: helveticaBold,
-          color: SECONDARY_COLOR,
-        });
+        // Draw all borrowing capacity sections using the shared pdf-lib renderer
+        const bcResult = drawBorrowingCapacityPdfLib(
+          {
+            pdfDoc,
+            font: helveticaFont,
+            boldFont: helveticaBold,
+            addContentPage,
+          },
+          bcPdfData,
+          page,
+          yPos,
+        );
         
-        yPos -= 45;
+        // Update page and yPos from the renderer
+        page = bcResult.page;
+        yPos = bcResult.yPos;
         
-        const bcData = analysisData.borrowingCapacity;
-        const bcBoxWidth = (CONTENT_WIDTH - 20) / 3;
-        const bcBoxHeight = 70; // Increased from 55 for better bottom padding
-        const bcBoxPadding = 8;
-        
-        // Box 1: Borrowing Capacity
-        page.drawRectangle({
-          x: MARGIN_LEFT,
-          y: yPos - bcBoxHeight,
-          width: bcBoxWidth,
-          height: bcBoxHeight,
-          color: rgb(0.97, 0.97, 0.97),
-          borderColor: rgb(0.9, 0.9, 0.9),
-          borderWidth: 1,
-        });
-        
-        page.drawText('BORROWING CAPACITY', {
-          x: MARGIN_LEFT + bcBoxPadding,
-          y: yPos - 16,
-          size: 7,
-          font: helveticaFont,
-          color: MUTED_COLOR,
-        });
-        
-        page.drawText(formatCurrency(bcData.borrowingCapacity), {
-          x: MARGIN_LEFT + bcBoxPadding,
-          y: yPos - 38,
-          size: 16,
-          font: helveticaBold,
-          color: SECONDARY_COLOR,
-        });
-        
-        // Add "Estimate" label below the capacity figure
-        page.drawText('Estimate', {
-          x: MARGIN_LEFT + bcBoxPadding,
-          y: yPos - 52,
-          size: 8,
-          font: helveticaFont,
-          color: MUTED_COLOR,
-        });
-        
-        // Box 2: Monthly Surplus
-        const bc2X = MARGIN_LEFT + bcBoxWidth + 10;
-        const surplusColor = bcData.monthlySurplus >= 0 ? SUCCESS_COLOR : DANGER_COLOR;
-        
-        page.drawRectangle({
-          x: bc2X,
-          y: yPos - bcBoxHeight,
-          width: bcBoxWidth,
-          height: bcBoxHeight,
-          color: rgb(0.97, 0.97, 0.97),
-          borderColor: rgb(0.9, 0.9, 0.9),
-          borderWidth: 1,
-        });
-        
-        page.drawText('MONTHLY SURPLUS', {
-          x: bc2X + bcBoxPadding,
-          y: yPos - 16,
-          size: 7,
-          font: helveticaFont,
-          color: MUTED_COLOR,
-        });
-        
-        page.drawText(formatCurrency(bcData.monthlySurplus), {
-          x: bc2X + bcBoxPadding,
-          y: yPos - 38,
-          size: 16,
-          font: helveticaBold,
-          color: surplusColor,
-        });
-        
-        // Box 3: Serviceability Band
-        const bc3X = MARGIN_LEFT + (bcBoxWidth + 10) * 2;
-        const bandLabel = bcData.serviceabilityBand === 'green' ? 'STRONG' :
-                         bcData.serviceabilityBand === 'amber' ? 'MODERATE' : 'LIMITED';
-        const bandColor = bcData.serviceabilityBand === 'green' ? SUCCESS_COLOR :
-                         bcData.serviceabilityBand === 'amber' ? WARNING_COLOR : DANGER_COLOR;
-        
-        page.drawRectangle({
-          x: bc3X,
-          y: yPos - bcBoxHeight,
-          width: bcBoxWidth,
-          height: bcBoxHeight,
-          color: rgb(0.97, 0.97, 0.97),
-          borderColor: rgb(0.9, 0.9, 0.9),
-          borderWidth: 1,
-        });
-        
-        page.drawText('SERVICEABILITY', {
-          x: bc3X + bcBoxPadding,
-          y: yPos - 16,
-          size: 7,
-          font: helveticaFont,
-          color: MUTED_COLOR,
-        });
-        
-        // Draw colored badge
-        const badgeWidth = helveticaBold.widthOfTextAtSize(bandLabel, 10) + 16;
-        page.drawRectangle({
-          x: bc3X + bcBoxPadding,
-          y: yPos - 45,
-          width: badgeWidth,
-          height: 20,
-          color: bandColor,
-        });
-        
-        page.drawText(bandLabel, {
-          x: bc3X + bcBoxPadding + 8,
-          y: yPos - 39,
-          size: 10,
-          font: helveticaBold,
-          color: rgb(1, 1, 1),
-        });
-        
-        yPos -= bcBoxHeight + 25;
-        
-        // Secondary metrics row
-        const bcColWidth = CONTENT_WIDTH / 3;
-        const dtiColor = bcData.dtiRatio < 6 ? SUCCESS_COLOR : bcData.dtiRatio < 8 ? WARNING_COLOR : DANGER_COLOR;
-        
-        page.drawText('DTI Ratio:', {
-          x: MARGIN_LEFT,
-          y: yPos,
-          size: 9,
-          font: helveticaFont,
-          color: MUTED_COLOR,
-        });
-        page.drawText(`${bcData.dtiRatio.toFixed(1)}x`, {
-          x: MARGIN_LEFT + 55,
-          y: yPos,
-          size: 9,
-          font: helveticaBold,
-          color: dtiColor,
-        });
-        
-        page.drawText('Stress Tested:', {
-          x: MARGIN_LEFT + bcColWidth,
-          y: yPos,
-          size: 9,
-          font: helveticaFont,
-          color: MUTED_COLOR,
-        });
-        page.drawText(formatCurrency(bcData.stressTestedCapacity), {
-          x: MARGIN_LEFT + bcColWidth + 70,
-          y: yPos,
-          size: 9,
-          font: helveticaBold,
-          color: SECONDARY_COLOR,
-        });
-        
-        page.drawText('Assessment Rate:', {
-          x: MARGIN_LEFT + bcColWidth * 2,
-          y: yPos,
-          size: 9,
-          font: helveticaFont,
-          color: MUTED_COLOR,
-        });
-        page.drawText(`${bcData.assessmentRate.toFixed(2)}%`, {
-          x: MARGIN_LEFT + bcColWidth * 2 + 85,
-          y: yPos,
-          size: 9,
-          font: helveticaBold,
-          color: SECONDARY_COLOR,
-        });
-        
-        yPos -= 35;
-        
-        // Income breakdown row
-        page.drawText('Gross Income:', {
-          x: MARGIN_LEFT,
-          y: yPos,
-          size: 9,
-          font: helveticaFont,
-          color: MUTED_COLOR,
-        });
-        page.drawText(formatCurrency(bcData.grossAnnualIncome) + '/yr', {
-          x: MARGIN_LEFT + 72,
-          y: yPos,
-          size: 9,
-          font: helveticaBold,
-          color: SECONDARY_COLOR,
-        });
-        
-        page.drawText('Shaded Income:', {
-          x: MARGIN_LEFT + bcColWidth,
-          y: yPos,
-          size: 9,
-          font: helveticaFont,
-          color: MUTED_COLOR,
-        });
-        page.drawText(formatCurrency(bcData.shadedAnnualIncome) + '/yr', {
-          x: MARGIN_LEFT + bcColWidth + 80,
-          y: yPos,
-          size: 9,
-          font: helveticaBold,
-          color: SECONDARY_COLOR,
-        });
-        
-        yPos -= 35;
-        
-        // Recommendations
-        const bcRecs = safeArray(bcData.recommendations);
-        if (bcRecs.length > 0) {
-          page.drawText('Recommendations:', {
-            x: MARGIN_LEFT,
-            y: yPos,
-            size: 10,
-            font: helveticaBold,
-            color: SECONDARY_COLOR,
-          });
-          yPos -= 18;
-          
-          for (const rec of bcRecs.slice(0, 4)) {
-            page.drawText('•', {
-              x: MARGIN_LEFT,
-              y: yPos,
-              size: 9,
-              font: helveticaFont,
-              color: SUCCESS_COLOR,
-            });
-            const displayText = stripEmojis(rec.length > 85 ? rec.slice(0, 82) + '...' : rec);
-            page.drawText(displayText, {
-              x: MARGIN_LEFT + 12,
-              y: yPos,
-              size: 9,
-              font: helveticaFont,
-              color: rgb(0.2, 0.2, 0.2),
-            });
-            yPos -= 16;
-          }
-          yPos -= 10;
-        }
-        
-        // Warnings
-        const bcWarnings = safeArray(bcData.warnings);
-        if (bcWarnings.length > 0) {
-          page.drawText('Warnings:', {
-            x: MARGIN_LEFT,
-            y: yPos,
-            size: 10,
-            font: helveticaBold,
-            color: DANGER_COLOR,
-          });
-          yPos -= 18;
-          
-          for (const warning of bcWarnings.slice(0, 3)) {
-            page.drawText('!', {
-              x: MARGIN_LEFT,
-              y: yPos,
-              size: 9,
-              font: helveticaBold,
-              color: WARNING_COLOR,
-            });
-            const displayText = stripEmojis(warning.length > 85 ? warning.slice(0, 82) + '...' : warning);
-            page.drawText(displayText, {
-              x: MARGIN_LEFT + 12,
-              y: yPos,
-              size: 9,
-              font: helveticaFont,
-              color: rgb(0.3, 0.2, 0.1),
-            });
-            yPos -= 16;
-          }
-        }
-        
-        console.log('✓ Borrowing capacity page complete');
+        console.log('✓ Comprehensive borrowing capacity pages complete');
       }
       
       // ============= PAGE: RISK ASSESSMENT =============

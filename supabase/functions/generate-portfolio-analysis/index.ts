@@ -696,6 +696,7 @@ Format your response as valid JSON with this structure:
     console.log(`✅ Portfolio analysis completed in ${processingTime}ms`);
 
     // Build borrowing capacity response object from already-fetched data
+    // Return the full assessment data including breakdowns for comprehensive PDF rendering
     let borrowingCapacity = null;
     if (bcData) {
       borrowingCapacity = {
@@ -712,8 +713,19 @@ Format your response as valid JSON with this structure:
         recommendations: Array.isArray(bcData.recommendations) ? bcData.recommendations : [],
         warnings: Array.isArray(bcData.warnings) ? bcData.warnings : [],
         calculatedAt: bcData.created_at,
+        // Full assessment data for comprehensive PDF rendering
+        incomeBreakdown: bcData.income_breakdown || [],
+        expenseBreakdown: bcData.expense_breakdown || {},
+        liabilityBreakdown: bcData.liability_breakdown || [],
+        expenseMethod: bcData.expense_method || 'hybrid',
+        interestRateUsed: bcData.interest_rate_used || null,
+        bufferRate: bcData.buffer_rate || null,
+        loanTermYears: bcData.loan_term_years || 30,
+        proposedLoanAmount: bcData.proposed_loan_amount || null,
+        proposedLvr: bcData.proposed_lvr || null,
+        assumptions: bcData.assumptions || [],
       };
-      console.log('✓ Borrowing capacity assessment found');
+      console.log('✓ Borrowing capacity assessment found (with full breakdowns)');
     } else {
       console.log('ℹ No borrowing capacity assessment found for client');
     }
