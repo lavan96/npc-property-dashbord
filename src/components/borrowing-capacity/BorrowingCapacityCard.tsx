@@ -148,7 +148,7 @@ export function BorrowingCapacityCard({ clientId, clientName, onOpenCalculator }
                     variant="ghost" 
                     size="icon" 
                     className="h-8 w-8"
-                    onClick={() => calculate({ bufferRate: 3.0, interestRate: 6.5, loanTermYears: 30 })}
+                    onClick={() => calculate({})}
                     disabled={isCalculating}
                   >
                     <RefreshCw className={`h-4 w-4 ${isCalculating ? 'animate-spin' : ''}`} />

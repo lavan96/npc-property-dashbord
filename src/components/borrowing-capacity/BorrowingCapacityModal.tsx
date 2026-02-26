@@ -579,7 +579,9 @@ export function BorrowingCapacityModal({
     try {
       const calcResult = await quickCalculate({
         grossAnnualIncome: totalGrossIncome,
+        shadedAnnualIncome: totalShadedIncome,
         livingExpenses: effectiveExpenses,
+        existingCommitments: totalMonthlyCommitments,
         interestRate,
         bufferRate: effectiveBufferRate,
         loanTermYears,
@@ -594,7 +596,7 @@ export function BorrowingCapacityModal({
     } finally {
       setIsLocalCalculating(false);
     }
-  }, [quickCalculate, totalGrossIncome, effectiveExpenses, interestRate, loanTermYears, proposedLoanAmount, calculationMode, dtiCapEnabled, dtiCapLimit, effectiveBufferRate]);
+  }, [quickCalculate, totalGrossIncome, totalShadedIncome, totalMonthlyCommitments, effectiveExpenses, interestRate, loanTermYears, proposedLoanAmount, calculationMode, dtiCapEnabled, dtiCapLimit, effectiveBufferRate]);
 
   // Auto-calculate on mount and when key inputs change
   useEffect(() => {
