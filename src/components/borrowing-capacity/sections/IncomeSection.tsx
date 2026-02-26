@@ -83,9 +83,9 @@ export function IncomeSection({
                         type="number"
                         value={item.grossAmount || ''}
                         onChange={(e) => onIncomeChange?.(item.id, Number(e.target.value))}
-                        className="pl-7 h-9"
+                        className={`pl-7 h-9 ${item.editable && onIncomeChange ? '' : 'opacity-70'}`}
                         placeholder="0"
-                        disabled={!item.editable && !onIncomeChange}
+                        disabled={!item.editable || !onIncomeChange}
                       />
                     </div>
                   </div>

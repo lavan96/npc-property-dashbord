@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Dialog,
   DialogContent,
@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Calculator, Loader2, RefreshCw, FlaskConical, Clock, Save, Building2, Shield, ShieldAlert } from 'lucide-react';
+import { Calculator, Loader2, RefreshCw, FlaskConical, Clock, Save, Building2, Shield, ShieldAlert, Upload } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useBorrowingCapacity } from '@/hooks/useBorrowingCapacity';
@@ -87,6 +87,10 @@ interface IncomeBreakdownItem {
   shadingRate: number;
   shadedAmount: number;
   editable?: boolean;
+  // Track source for sync-back
+  sourceId?: string;
+  sourceField?: string;
+  sourceTable?: 'client_income_sources' | 'client_income';
 }
 
 interface LiabilityBreakdownItem {
@@ -97,6 +101,16 @@ interface LiabilityBreakdownItem {
   limit?: number;
   monthlyServicing: number;
   calculationNote?: string;
+  // Track source for sync-back
+  sourceId?: string;
+  sourceTable?: 'client_liabilities' | 'client_properties';
+}
+
+// Track which fields have been modified
+interface PendingChanges {
+  incomeSources: Map<string, { field: string; value: number; sourceId: string; sourceTable: string }>;
+  liabilities: Map<string, { field: string; value: number; sourceId: string; sourceTable: string }>;
+  expenses: { declaredTotal?: number; items: Map<string, { value: number; sourceId: string }> };
 }
 
 export function BorrowingCapacityModal({ 
@@ -105,6 +119,7 @@ export function BorrowingCapacityModal({
   onOpenChange 
 }: BorrowingCapacityModalProps) {
   const isMobile = useIsMobile();
+  const queryClient = useQueryClient();
   const { 
     quickCalculate, 
     isCalculating, 
@@ -129,209 +144,251 @@ export function BorrowingCapacityModal({
   const [calculationMode, setCalculationMode] = useState<CalculationMode>('bank');
   const [dtiCapEnabled, setDtiCapEnabled] = useState(false);
   const [dtiCapLimit, setDtiCapLimit] = useState(DEFAULT_DTI_CAP);
-  const [bufferEnabled, setBufferEnabled] = useState(true); // APRA 3% buffer toggle
+  const [bufferEnabled, setBufferEnabled] = useState(true);
+  
+  // === TWO-WAY SYNC STATE ===
+  // Local overrides for income items (keyed by breakdown item id)
+  const [incomeOverrides, setIncomeOverrides] = useState<Map<string, number>>(new Map());
+  // Local overrides for liability items
+  const [liabilityOverrides, setLiabilityOverrides] = useState<Map<string, { balance?: number; limit?: number }>>(new Map());
+  // Track if there are unsaved changes
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isSavingToProfile, setIsSavingToProfile] = useState(false);
+  // Pending changes tracker for sync-back
+  const [pendingChanges, setPendingChanges] = useState<PendingChanges>({
+    incomeSources: new Map(),
+    liabilities: new Map(),
+    expenses: { items: new Map() },
+  });
   
   // Computed buffer rate based on toggle
   const effectiveBufferRate = bufferEnabled ? 3.0 : 0;
 
   // Fetch client data using secure function with fallback
-  const { data: clientData } = useQuery({
+  const { data: clientData, refetch: refetchClientData } = useQuery({
     queryKey: ['borrowing-capacity-client-data', clientId],
     queryFn: () => fetchBorrowingCapacityData(clientId),
     enabled: open,
   });
 
+  // Reset overrides when client data refreshes
+  useEffect(() => {
+    if (clientData) {
+      setIncomeOverrides(new Map());
+      setLiabilityOverrides(new Map());
+      setHasUnsavedChanges(false);
+      setPendingChanges({
+        incomeSources: new Map(),
+        liabilities: new Map(),
+        expenses: { items: new Map() },
+      });
+    }
+  }, [clientData]);
+
   // Process income breakdown - prefer new income sources, fall back to legacy
   const hasIncomeSources = (clientData?.incomeSources || []).length > 0;
   
-  const incomeBreakdown: IncomeBreakdownItem[] = hasIncomeSources
-    ? (clientData?.incomeSources || []).flatMap((src: any) => {
-        const items: IncomeBreakdownItem[] = [];
-        const contactLabel = src.contact_type === 'primary' ? 'Primary' : 'Secondary';
-        const effectiveShading = src.custom_shading_rate ?? src.default_shading_rate ?? 1.0;
-        const sourceName = src.source_name || src.source_type || 'Income';
+  const incomeBreakdown: IncomeBreakdownItem[] = useMemo(() => {
+    const items: IncomeBreakdownItem[] = hasIncomeSources
+      ? (clientData?.incomeSources || []).flatMap((src: any) => {
+          const result: IncomeBreakdownItem[] = [];
+          const contactLabel = src.contact_type === 'primary' ? 'Primary' : 'Secondary';
+          const effectiveShading = src.custom_shading_rate ?? src.default_shading_rate ?? 1.0;
+          const sourceName = src.source_name || src.source_type || 'Income';
 
-        const grossAnnual = Number(src.gross_annual_amount) || 0;
-        if (grossAnnual > 0) {
-          items.push({
-            id: `${src.id}-base`,
-            label: `${contactLabel} ${sourceName}`,
-            grossAmount: grossAnnual,
-            shadingRate: effectiveShading,
-            shadedAmount: grossAnnual * effectiveShading,
-          });
-        }
-        // Employment sub-fields with their own shading
-        const subFields = [
-          { key: 'bonus', label: 'Bonus', shading: 0.8 },
-          { key: 'commission', label: 'Commission', shading: 0.8 },
-          { key: 'overtime_essential', label: 'Essential OT', shading: 1.0 },
-          { key: 'overtime_non_essential', label: 'Non-Essential OT', shading: 0.5 },
-          { key: 'allowance', label: 'Allowance', shading: 0.8 },
-        ];
-        for (const { key, label, shading } of subFields) {
-          const val = Number(src[key]) || 0;
-          if (val > 0) {
-            items.push({
-              id: `${src.id}-${key}`,
-              label: `${contactLabel} ${label}`,
-              grossAmount: val,
-              shadingRate: shading,
-              shadedAmount: val * shading,
+          const grossAnnual = incomeOverrides.has(`${src.id}-base`) 
+            ? incomeOverrides.get(`${src.id}-base`)! 
+            : (Number(src.gross_annual_amount) || 0);
+          if (grossAnnual > 0 || incomeOverrides.has(`${src.id}-base`)) {
+            result.push({
+              id: `${src.id}-base`,
+              label: `${contactLabel} ${sourceName}`,
+              grossAmount: grossAnnual,
+              shadingRate: effectiveShading,
+              shadedAmount: grossAnnual * effectiveShading,
+              editable: true,
+              sourceId: src.id,
+              sourceField: 'gross_annual_amount',
+              sourceTable: 'client_income_sources',
             });
           }
-        }
-        return items;
-      })
-    : (clientData?.income || []).flatMap((inc: any) => {
-        const items: IncomeBreakdownItem[] = [];
-        const contactLabel = inc.contact_type === 'primary' ? 'Primary' : 'Secondary';
-        if (inc.gross_salary) {
-          items.push({ id: `${inc.id}-salary`, label: `${contactLabel} Base Salary`, grossAmount: Number(inc.gross_salary), shadingRate: 1.0, shadedAmount: Number(inc.gross_salary) });
-        }
-        if (inc.bonus) {
-          items.push({ id: `${inc.id}-bonus`, label: `${contactLabel} Bonus`, grossAmount: Number(inc.bonus), shadingRate: 0.8, shadedAmount: Number(inc.bonus) * 0.8 });
-        }
-        if (inc.commission) {
-          items.push({ id: `${inc.id}-commission`, label: `${contactLabel} Commission`, grossAmount: Number(inc.commission), shadingRate: 0.8, shadedAmount: Number(inc.commission) * 0.8 });
-        }
-        if (inc.overtime_essential) {
-          items.push({ id: `${inc.id}-ot-essential`, label: `${contactLabel} Essential Overtime`, grossAmount: Number(inc.overtime_essential), shadingRate: 1.0, shadedAmount: Number(inc.overtime_essential) });
-        }
-        if (inc.overtime_non_essential) {
-          items.push({ id: `${inc.id}-ot-non-essential`, label: `${contactLabel} Non-Essential Overtime`, grossAmount: Number(inc.overtime_non_essential), shadingRate: 0.5, shadedAmount: Number(inc.overtime_non_essential) * 0.5 });
-        }
-        if (inc.allowance) {
-          items.push({ id: `${inc.id}-allowance`, label: `${contactLabel} Allowances`, grossAmount: Number(inc.allowance), shadingRate: 0.8, shadedAmount: Number(inc.allowance) * 0.8 });
-        }
-        return items;
-      });
+          const subFields = [
+            { key: 'bonus', label: 'Bonus', shading: 0.8, dbField: 'bonus' },
+            { key: 'commission', label: 'Commission', shading: 0.8, dbField: 'commission' },
+            { key: 'overtime_essential', label: 'Essential OT', shading: 1.0, dbField: 'overtime_essential' },
+            { key: 'overtime_non_essential', label: 'Non-Essential OT', shading: 0.5, dbField: 'overtime_non_essential' },
+            { key: 'allowance', label: 'Allowance', shading: 0.8, dbField: 'allowance' },
+          ];
+          for (const { key, label, shading, dbField } of subFields) {
+            const overrideKey = `${src.id}-${key}`;
+            const val = incomeOverrides.has(overrideKey)
+              ? incomeOverrides.get(overrideKey)!
+              : (Number(src[key]) || 0);
+            if (val > 0 || incomeOverrides.has(overrideKey)) {
+              result.push({
+                id: overrideKey,
+                label: `${contactLabel} ${label}`,
+                grossAmount: val,
+                shadingRate: shading,
+                shadedAmount: val * shading,
+                editable: true,
+                sourceId: src.id,
+                sourceField: dbField,
+                sourceTable: 'client_income_sources',
+              });
+            }
+          }
+          return result;
+        })
+      : (clientData?.income || []).flatMap((inc: any) => {
+          const result: IncomeBreakdownItem[] = [];
+          const contactLabel = inc.contact_type === 'primary' ? 'Primary' : 'Secondary';
+          const fields = [
+            { key: 'salary', dbField: 'gross_salary', label: 'Base Salary', shading: 1.0, val: inc.gross_salary },
+            { key: 'bonus', dbField: 'bonus', label: 'Bonus', shading: 0.8, val: inc.bonus },
+            { key: 'commission', dbField: 'commission', label: 'Commission', shading: 0.8, val: inc.commission },
+            { key: 'ot-essential', dbField: 'overtime_essential', label: 'Essential Overtime', shading: 1.0, val: inc.overtime_essential },
+            { key: 'ot-non-essential', dbField: 'overtime_non_essential', label: 'Non-Essential Overtime', shading: 0.5, val: inc.overtime_non_essential },
+            { key: 'allowance', dbField: 'allowance', label: 'Allowances', shading: 0.8, val: inc.allowance },
+          ];
+          for (const { key, dbField, label, shading, val } of fields) {
+            const overrideKey = `${inc.id}-${key}`;
+            const amount = incomeOverrides.has(overrideKey) ? incomeOverrides.get(overrideKey)! : (Number(val) || 0);
+            if (amount > 0 || incomeOverrides.has(overrideKey)) {
+              result.push({
+                id: overrideKey,
+                label: `${contactLabel} ${label}`,
+                grossAmount: amount,
+                shadingRate: shading,
+                shadedAmount: amount * shading,
+                editable: true,
+                sourceId: inc.id,
+                sourceField: dbField,
+                sourceTable: 'client_income',
+              });
+            }
+          }
+          return result;
+        });
 
-  // Add POSITIVE property cash flows as income (NOT rental income - only net cash flow)
-  // Properties with negative cash flow are handled in expenses
-  clientData?.properties.forEach(prop => {
-    const propertyType = prop.property_type?.toLowerCase() || '';
-    
-    // Skip rental properties where client is tenant (this is an expense, not income)
-    if (propertyType === 'rental') return;
-    
-    const netMonthlyCashflow = Number(prop.net_monthly_cashflow) || 0;
-    
-    // Only add property cash flow if it's POSITIVE
-    if (netMonthlyCashflow > 0) {
-      const annualPositiveCashflow = netMonthlyCashflow * 12;
-      // Apply 80% shading to positive property cash flow (conservative bank approach)
-      const shadedAmount = annualPositiveCashflow * 0.8;
-      
-      incomeBreakdown.push({
-        id: `prop-${prop.id}-cashflow`,
-        label: `Positive Cash Flow: ${(prop.address || 'Property').slice(0, 25)}...`,
-        grossAmount: annualPositiveCashflow,
-        shadingRate: 0.8,
-        shadedAmount: shadedAmount,
-      });
-    }
-  });
+    // Add POSITIVE property cash flows as income
+    clientData?.properties.forEach(prop => {
+      const propertyType = prop.property_type?.toLowerCase() || '';
+      if (propertyType === 'rental') return;
+      const netMonthlyCashflow = Number(prop.net_monthly_cashflow) || 0;
+      if (netMonthlyCashflow > 0) {
+        const annualPositiveCashflow = netMonthlyCashflow * 12;
+        items.push({
+          id: `prop-${prop.id}-cashflow`,
+          label: `Positive Cash Flow: ${(prop.address || 'Property').slice(0, 25)}...`,
+          grossAmount: annualPositiveCashflow,
+          shadingRate: 0.8,
+          shadedAmount: annualPositiveCashflow * 0.8,
+          editable: false,
+        });
+      }
+    });
+
+    return items;
+  }, [clientData, incomeOverrides, hasIncomeSources]);
   
-  // Calculate NEGATIVE property cash flows (to be added as expense layer)
-  const negativePropertyCashFlows: { address: string; monthlyCashflow: number }[] = [];
-  let totalNegativeCashFlows = 0;
-  
-  clientData?.properties.forEach(prop => {
-    const propertyType = prop.property_type?.toLowerCase() || '';
-    if (propertyType === 'rental') return; // Skip rental properties (tenant)
-    
-    const netMonthlyCashflow = Number(prop.net_monthly_cashflow) || 0;
-    
-    if (netMonthlyCashflow < 0) {
-      const absoluteCashflow = Math.abs(netMonthlyCashflow);
-      totalNegativeCashFlows += absoluteCashflow;
-      negativePropertyCashFlows.push({
-        address: (prop.address || 'Investment Property').slice(0, 40),
-        monthlyCashflow: absoluteCashflow,
-      });
-    }
-  });
+  // Calculate NEGATIVE property cash flows
+  const { negativePropertyCashFlows, totalNegativeCashFlows } = useMemo(() => {
+    const flows: { address: string; monthlyCashflow: number }[] = [];
+    let total = 0;
+    clientData?.properties.forEach(prop => {
+      const propertyType = prop.property_type?.toLowerCase() || '';
+      if (propertyType === 'rental') return;
+      const netMonthlyCashflow = Number(prop.net_monthly_cashflow) || 0;
+      if (netMonthlyCashflow < 0) {
+        const abs = Math.abs(netMonthlyCashflow);
+        total += abs;
+        flows.push({ address: (prop.address || 'Investment Property').slice(0, 40), monthlyCashflow: abs });
+      }
+    });
+    return { negativePropertyCashFlows: flows, totalNegativeCashFlows: total };
+  }, [clientData]);
 
   const totalGrossIncome = incomeBreakdown.reduce((sum, item) => sum + item.grossAmount, 0);
   const totalShadedIncome = incomeBreakdown.reduce((sum, item) => sum + item.shadedAmount, 0);
 
-  // Process liabilities breakdown
-  const liabilitiesBreakdown: LiabilityBreakdownItem[] = clientData?.liabilities.map(lib => {
-    let monthlyServicing = Number(lib.monthly_repayment) || 0;
-    let calculationNote = '';
+  // Process liabilities breakdown with overrides
+  const liabilitiesBreakdown: LiabilityBreakdownItem[] = useMemo(() => {
+    const items: LiabilityBreakdownItem[] = (clientData?.liabilities || []).map(lib => {
+      const override = liabilityOverrides.get(lib.id);
+      const balance = override?.balance ?? (Number(lib.current_balance) || 0);
+      const creditLimit = override?.limit ?? (Number(lib.credit_limit) || 0);
+      
+      let monthlyServicing = Number(lib.monthly_repayment) || 0;
+      let calculationNote = '';
 
-    if (lib.liability_type === 'credit_card') {
-      monthlyServicing = (Number(lib.credit_limit) || 0) * 0.03;
-      calculationNote = '3% of credit limit';
-    } else if (lib.liability_type === 'hecs') {
-      // Simplified HECS calculation
-      const annualIncome = totalGrossIncome;
-      if (annualIncome > 51550) {
-        const rate = annualIncome > 151200 ? 0.10 : annualIncome > 100000 ? 0.08 : 0.05;
-        monthlyServicing = (annualIncome * rate) / 12;
-        calculationNote = `${(rate * 100).toFixed(0)}% of income threshold`;
-      } else {
-        monthlyServicing = 0;
-        calculationNote = 'Below repayment threshold';
+      if (lib.liability_type === 'credit_card') {
+        monthlyServicing = creditLimit * 0.03;
+        calculationNote = '3% of credit limit';
+      } else if (lib.liability_type === 'hecs') {
+        const annualIncome = totalGrossIncome;
+        if (annualIncome > 51550) {
+          const rate = annualIncome > 151200 ? 0.10 : annualIncome > 100000 ? 0.08 : 0.05;
+          monthlyServicing = (annualIncome * rate) / 12;
+          calculationNote = `${(rate * 100).toFixed(0)}% of income threshold`;
+        } else {
+          monthlyServicing = 0;
+          calculationNote = 'Below repayment threshold';
+        }
       }
-    }
 
-    return {
-      id: lib.id,
-      type: lib.liability_type,
-      label: lib.provider_name || lib.liability_type,
-      balance: Number(lib.current_balance) || 0,
-      limit: lib.liability_type === 'credit_card' ? Number(lib.credit_limit) : undefined,
-      monthlyServicing,
-      calculationNote,
-    };
-  }) || [];
+      return {
+        id: lib.id,
+        type: lib.liability_type,
+        label: lib.provider_name || lib.liability_type,
+        balance,
+        limit: lib.liability_type === 'credit_card' ? creditLimit : undefined,
+        monthlyServicing,
+        calculationNote,
+        sourceId: lib.id,
+        sourceTable: 'client_liabilities' as const,
+      };
+    });
 
-  // Add existing property loans - STRESS-TESTED at P&I assessment rate
-  // Banks assess existing loans at P&I even if currently interest-only
-  const LOAN_ASSESSMENT_RATE = 0.095; // 9.5% (approx 6.5% + 3% buffer)
-  const LOAN_TERM_MONTHS = 30 * 12; // 30 year term for calculation
-  
-  clientData?.properties.forEach(prop => {
-    const propertyType = prop.property_type?.toLowerCase() || '';
+    // Add existing property loans
+    const LOAN_ASSESSMENT_RATE = 0.095;
+    const LOAN_TERM_MONTHS = 30 * 12;
     
-    // Handle rental properties (where client is tenant paying rent)
-    if (propertyType === 'rental') {
-      const monthlyRentPaid = Number(prop.monthly_rental_income) || 0;
-      if (monthlyRentPaid > 0) {
-        liabilitiesBreakdown.push({
-          id: `prop-${prop.id}-rent-expense`,
-          type: 'rent_expense',
-          label: `Rent Expense: ${prop.address?.slice(0, 20)}...`,
-          balance: 0,
-          monthlyServicing: monthlyRentPaid,
-          calculationNote: 'Rent paid as tenant',
+    clientData?.properties.forEach(prop => {
+      const propertyType = prop.property_type?.toLowerCase() || '';
+      if (propertyType === 'rental') {
+        const monthlyRentPaid = Number(prop.monthly_rental_income) || 0;
+        if (monthlyRentPaid > 0) {
+          items.push({
+            id: `prop-${prop.id}-rent-expense`,
+            type: 'rent_expense',
+            label: `Rent Expense: ${prop.address?.slice(0, 20)}...`,
+            balance: 0,
+            monthlyServicing: monthlyRentPaid,
+            calculationNote: 'Rent paid as tenant',
+          });
+        }
+      } else if (prop.loan_remaining && prop.loan_remaining > 0) {
+        const loanBalance = Number(prop.loan_remaining);
+        const monthlyRate = LOAN_ASSESSMENT_RATE / 12;
+        const piRepayment = loanBalance * (monthlyRate * Math.pow(1 + monthlyRate, LOAN_TERM_MONTHS)) 
+                            / (Math.pow(1 + monthlyRate, LOAN_TERM_MONTHS) - 1);
+        const actualRepayment = Number(prop.monthly_interest_repayment) || 0;
+        const monthlyServicing = Math.max(piRepayment, actualRepayment);
+        
+        items.push({
+          id: `prop-${prop.id}-loan`,
+          type: prop.property_type === 'owner_occupied' ? 'home_loan' : 'investment_loan',
+          label: `Loan: ${prop.address?.slice(0, 25)}...`,
+          balance: loanBalance,
+          monthlyServicing: Math.round(monthlyServicing * 100) / 100,
+          calculationNote: piRepayment > actualRepayment ? 'Stress-tested P&I @ 9.5%' : 'Actual repayment',
         });
       }
-    } else if (prop.loan_remaining && prop.loan_remaining > 0) {
-      // Calculate P&I servicing at assessment rate (stress-tested)
-      const loanBalance = Number(prop.loan_remaining);
-      const monthlyRate = LOAN_ASSESSMENT_RATE / 12;
-      
-      // P&I repayment formula: M = P * [r(1+r)^n] / [(1+r)^n - 1]
-      const piRepayment = loanBalance * (monthlyRate * Math.pow(1 + monthlyRate, LOAN_TERM_MONTHS)) 
-                          / (Math.pow(1 + monthlyRate, LOAN_TERM_MONTHS) - 1);
-      
-      // Use the HIGHER of: P&I calculated OR actual recorded repayment
-      const actualRepayment = Number(prop.monthly_interest_repayment) || 0;
-      const monthlyServicing = Math.max(piRepayment, actualRepayment);
-      
-      liabilitiesBreakdown.push({
-        id: `prop-${prop.id}-loan`,
-        type: prop.property_type === 'owner_occupied' ? 'home_loan' : 'investment_loan',
-        label: `Loan: ${prop.address?.slice(0, 25)}...`,
-        balance: loanBalance,
-        monthlyServicing: Math.round(monthlyServicing * 100) / 100,
-        calculationNote: piRepayment > actualRepayment ? 'Stress-tested P&I @ 9.5%' : 'Actual repayment',
-      });
-    }
-  });
+    });
+
+    return items;
+  }, [clientData, liabilityOverrides, totalGrossIncome]);
 
   const totalMonthlyCommitments = liabilitiesBreakdown.reduce(
     (sum, item) => sum + item.monthlyServicing, 
@@ -353,16 +410,139 @@ export function BorrowingCapacityModal({
     }
   }, [clientData?.totalDeclaredExpenses]);
 
-  // Effective expenses - use the appropriate method
-  // CRITICAL: This is the "hybrid" logic that banks use
+  // Effective expenses
   const baseExpenses = expenseMethod === 'hem' 
     ? hemBenchmark 
     : expenseMethod === 'declared' 
       ? declaredExpenses 
       : Math.max(hemBenchmark, declaredExpenses);
   
-  // Total living expenses = base expenses + negative property cash flows
   const effectiveExpenses = baseExpenses + totalNegativeCashFlows;
+
+  // === TWO-WAY SYNC HANDLERS ===
+  const handleIncomeChange = useCallback((id: string, value: number) => {
+    setIncomeOverrides(prev => {
+      const next = new Map(prev);
+      next.set(id, value);
+      return next;
+    });
+    setHasUnsavedChanges(true);
+    
+    // Track the change for sync-back
+    // Find the source info from the breakdown
+    const item = incomeBreakdown.find(i => i.id === id);
+    if (item?.sourceId && item.sourceField && item.sourceTable) {
+      setPendingChanges(prev => {
+        const next = { ...prev, incomeSources: new Map(prev.incomeSources) };
+        next.incomeSources.set(id, {
+          field: item.sourceField!,
+          value,
+          sourceId: item.sourceId!,
+          sourceTable: item.sourceTable!,
+        });
+        return next;
+      });
+    }
+  }, [incomeBreakdown]);
+
+  const handleLiabilityChange = useCallback((id: string, field: 'balance' | 'limit', value: number) => {
+    setLiabilityOverrides(prev => {
+      const next = new Map(prev);
+      const existing = next.get(id) || {};
+      next.set(id, { ...existing, [field]: value });
+      return next;
+    });
+    setHasUnsavedChanges(true);
+    
+    // Track for sync-back (only for direct liabilities, not property loans)
+    if (!id.startsWith('prop-')) {
+      setPendingChanges(prev => {
+        const next = { ...prev, liabilities: new Map(prev.liabilities) };
+        const dbField = field === 'balance' ? 'current_balance' : 'credit_limit';
+        next.liabilities.set(`${id}-${field}`, {
+          field: dbField,
+          value,
+          sourceId: id,
+          sourceTable: 'client_liabilities',
+        });
+        return next;
+      });
+    }
+  }, []);
+
+  // Save changes back to the client profile
+  const handleSaveToProfile = useCallback(async () => {
+    setIsSavingToProfile(true);
+    try {
+      const promises: Promise<any>[] = [];
+
+      // Group income changes by sourceId to batch updates
+      const incomeUpdates = new Map<string, Record<string, any>>();
+      pendingChanges.incomeSources.forEach(({ field, value, sourceId, sourceTable }) => {
+        if (!incomeUpdates.has(sourceId)) {
+          incomeUpdates.set(sourceId, { table: sourceTable, fields: {} });
+        }
+        incomeUpdates.get(sourceId)!.fields[field] = value;
+      });
+
+      incomeUpdates.forEach((update, sourceId) => {
+        promises.push(
+          invokeSecureFunction('manage-client-data', {
+            operation: 'update',
+            table: update.table,
+            id: sourceId,
+            data: update.fields,
+          })
+        );
+      });
+
+      // Group liability changes by sourceId
+      const liabilityUpdates = new Map<string, Record<string, any>>();
+      pendingChanges.liabilities.forEach(({ field, value, sourceId }) => {
+        if (!liabilityUpdates.has(sourceId)) {
+          liabilityUpdates.set(sourceId, {});
+        }
+        liabilityUpdates.get(sourceId)![field] = value;
+      });
+
+      liabilityUpdates.forEach((fields, sourceId) => {
+        promises.push(
+          invokeSecureFunction('manage-client-data', {
+            operation: 'update',
+            table: 'client_liabilities',
+            id: sourceId,
+            data: fields,
+          })
+        );
+      });
+
+      const results = await Promise.all(promises);
+      const errors = results.filter(r => r.error);
+      
+      if (errors.length > 0) {
+        toast.error(`Some updates failed: ${errors[0].error.message}`);
+      } else {
+        toast.success('Changes saved to client profile');
+        setHasUnsavedChanges(false);
+        setPendingChanges({
+          incomeSources: new Map(),
+          liabilities: new Map(),
+          expenses: { items: new Map() },
+        });
+        
+        // Invalidate all related queries to sync other views
+        queryClient.invalidateQueries({ queryKey: ['borrowing-capacity-client-data', clientId] });
+        queryClient.invalidateQueries({ queryKey: ['client-data', clientId] });
+        queryClient.invalidateQueries({ queryKey: ['get-client-data'] });
+        // Refetch local data
+        refetchClientData();
+      }
+    } catch (error: any) {
+      toast.error(`Failed to save: ${error.message}`);
+    } finally {
+      setIsSavingToProfile(false);
+    }
+  }, [pendingChanges, clientId, queryClient, refetchClientData]);
 
   // Calculate borrowing capacity
   const handleCalculate = useCallback(async () => {
@@ -375,7 +555,6 @@ export function BorrowingCapacityModal({
         bufferRate: effectiveBufferRate,
         loanTermYears,
         proposedLoanAmount,
-        // Pass mode settings
         calculationMode,
         dtiCapEnabled,
         dtiCapLimit,
@@ -393,7 +572,7 @@ export function BorrowingCapacityModal({
     if (open && clientData) {
       handleCalculate();
     }
-  }, [open, clientData, effectiveExpenses, interestRate, loanTermYears, calculationMode, dtiCapEnabled, dtiCapLimit, effectiveBufferRate]);
+  }, [open, clientData, effectiveExpenses, interestRate, loanTermYears, calculationMode, dtiCapEnabled, dtiCapLimit, effectiveBufferRate, incomeOverrides, liabilityOverrides]);
 
   const headerContent = (
     <div className="flex items-center justify-between flex-wrap gap-2">
@@ -402,6 +581,22 @@ export function BorrowingCapacityModal({
         <span className="text-base sm:text-xl">Borrowing Capacity</span>
       </div>
       <div className="flex gap-2">
+        {hasUnsavedChanges && (
+          <Button 
+            variant="outline"
+            onClick={handleSaveToProfile}
+            disabled={isSavingToProfile}
+            size="sm"
+            className="border-warning text-warning hover:bg-warning/10"
+          >
+            {isSavingToProfile ? (
+              <Loader2 className="h-4 w-4 mr-1 sm:mr-2 animate-spin" />
+            ) : (
+              <Upload className="h-4 w-4 mr-1 sm:mr-2" />
+            )}
+            Sync to Profile
+          </Button>
+        )}
         <Button 
           variant="outline"
           onClick={() => {
@@ -436,6 +631,187 @@ export function BorrowingCapacityModal({
     </div>
   );
 
+  // Unsaved changes banner
+  const unsavedBanner = hasUnsavedChanges ? (
+    <div className="mx-4 sm:mx-6 mt-2 p-2 rounded-lg bg-warning/10 border border-warning/30 flex items-center justify-between text-xs">
+      <span className="text-warning font-medium">
+        ⚡ You have unsaved changes. Click "Sync to Profile" to update client data.
+      </span>
+    </div>
+  ) : null;
+
+  // Shared input sections (to avoid duplication)
+  const inputSections = (
+    <>
+      <IncomeSection
+        incomeBreakdown={incomeBreakdown}
+        totalGross={totalGrossIncome}
+        totalShaded={totalShadedIncome}
+        onIncomeChange={handleIncomeChange}
+      />
+      <ExpensesSection
+        expenseMethod={expenseMethod}
+        hemBenchmark={hemBenchmark}
+        hemBreakdown={hemBreakdown}
+        declaredExpenses={declaredExpenses}
+        baseExpenses={baseExpenses}
+        negativePropertyCashFlows={negativePropertyCashFlows}
+        totalNegativeCashFlows={totalNegativeCashFlows}
+        effectiveExpenses={effectiveExpenses}
+        onMethodChange={setExpenseMethod}
+        onDeclaredExpensesChange={setDeclaredExpenses}
+      />
+      <LiabilitiesSection
+        liabilities={liabilitiesBreakdown}
+        totalMonthlyCommitments={totalMonthlyCommitments}
+        onLiabilityChange={handleLiabilityChange}
+      />
+      <ProposedLoanSection
+        proposedLoanAmount={proposedLoanAmount}
+        interestRate={interestRate}
+        bufferRate={effectiveBufferRate}
+        bufferEnabled={bufferEnabled}
+        onBufferEnabledChange={setBufferEnabled}
+        loanTermYears={loanTermYears}
+        onProposedLoanChange={setProposedLoanAmount}
+        onInterestRateChange={setInterestRate}
+        onLoanTermChange={setLoanTermYears}
+      />
+
+      {/* Bank Rate Selector - CDR Integration */}
+      <div className="rounded-lg border p-4 bg-card">
+        <h3 className="font-medium mb-3 flex items-center gap-2">
+          <Building2 className="h-4 w-4 text-primary" />
+          Live Bank Rates (CDR)
+        </h3>
+        <BankRateSelector
+          value={interestRate}
+          onChange={(rate, lenderName) => {
+            setInterestRate(rate);
+            if (lenderName) setSelectedLenderName(lenderName);
+          }}
+          loanPurpose="INVESTMENT"
+          repaymentType="PRINCIPAL_AND_INTEREST"
+          onOpenComparison={() => setShowRateComparison(true)}
+        />
+        {selectedLenderName && (
+          <p className="text-xs text-muted-foreground mt-2">
+            Using rate from: {selectedLenderName}
+          </p>
+        )}
+      </div>
+
+      {/* Calculation Mode Controls */}
+      <div className="rounded-lg border p-4 bg-card space-y-4">
+        <h3 className="font-medium flex items-center gap-2">
+          {calculationMode === 'conservative' ? (
+            <ShieldAlert className="h-4 w-4 text-warning" />
+          ) : (
+            <Shield className="h-4 w-4 text-primary" />
+          )}
+          Calculation Mode
+        </h3>
+        
+        {/* Conservative Mode Toggle */}
+        <div className="flex items-center justify-between">
+          <div className="space-y-0.5">
+            <Label htmlFor={`conservative-mode-${isMobile ? 'm' : 'd'}`} className="text-sm font-medium">
+              Conservative Mode
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Quickli-style with surplus floors & DTI cap
+            </p>
+          </div>
+          <Switch
+            id={`conservative-mode-${isMobile ? 'm' : 'd'}`}
+            checked={calculationMode === 'conservative'}
+            onCheckedChange={(checked) => {
+              setCalculationMode(checked ? 'conservative' : 'bank');
+              if (checked) {
+                setDtiCapEnabled(true);
+                setDtiCapLimit(6);
+              }
+            }}
+          />
+        </div>
+
+        <Separator />
+
+        {/* DTI Cap Controls */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor={`dti-cap-${isMobile ? 'm' : 'd'}`} className="text-sm font-medium">
+                Enforce DTI Cap
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Limit capacity based on debt-to-income ratio
+              </p>
+            </div>
+            <Switch
+              id={`dti-cap-${isMobile ? 'm' : 'd'}`}
+              checked={dtiCapEnabled || calculationMode === 'conservative'}
+              onCheckedChange={setDtiCapEnabled}
+              disabled={calculationMode === 'conservative'}
+            />
+          </div>
+          
+          {(dtiCapEnabled || calculationMode === 'conservative') && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs text-muted-foreground">DTI Limit</Label>
+                <span className="text-sm font-medium">{dtiCapLimit}x</span>
+              </div>
+              <div className="flex gap-2">
+                {[5, 6, 7, 8].map((cap) => (
+                  <button
+                    key={cap}
+                    onClick={() => setDtiCapLimit(cap)}
+                    disabled={calculationMode === 'conservative'}
+                    className={`flex-1 py-1.5 px-2 rounded text-xs font-medium transition-colors min-h-[44px] touch-manipulation ${
+                      dtiCapLimit === cap
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-secondary hover:bg-secondary/80'
+                    } ${calculationMode === 'conservative' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    {cap}x
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {calculationMode === 'conservative' 
+                  ? 'Conservative mode enforces 6x DTI cap'
+                  : `Capacity will be capped to maintain DTI ≤ ${dtiCapLimit}x`
+                }
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Mode Description */}
+        <div className={`p-3 rounded-lg text-xs ${
+          calculationMode === 'conservative' 
+            ? 'bg-warning/10 border border-warning/30 text-warning'
+            : 'bg-primary/10 border border-primary/30 text-primary'
+        }`}>
+          {calculationMode === 'conservative' ? (
+            <p>
+              <strong>Conservative Mode:</strong> Uses minimum surplus floors ($1,000/mo), 
+              residual income requirements, 85% surplus utilization, and hard 6x DTI cap. 
+              Results align with consumer-focused tools like Quickli.
+            </p>
+          ) : (
+            <p>
+              <strong>Bank Mode:</strong> Full serviceability calculation without artificial 
+              constraints. Shows maximum theoretical lending capacity similar to major lender 
+              assessments.
+            </p>
+          )}
+        </div>
+      </div>
+    </>
+  );
+
   const tabsContent = (
     <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="flex-1 flex flex-col overflow-hidden">
       <div className="px-4 sm:px-6 border-b">
@@ -455,177 +831,13 @@ export function BorrowingCapacityModal({
         </TabsList>
       </div>
 
+      {unsavedBanner}
+
       <TabsContent value="calculator" className="flex-1 overflow-hidden m-0">
         {isMobile ? (
-          /* Mobile: single scrollable column */
           <ScrollArea className="h-[calc(95vh-160px)]">
             <div className="p-4 space-y-4">
-              <IncomeSection
-                incomeBreakdown={incomeBreakdown}
-                totalGross={totalGrossIncome}
-                totalShaded={totalShadedIncome}
-              />
-              <ExpensesSection
-                expenseMethod={expenseMethod}
-                hemBenchmark={hemBenchmark}
-                hemBreakdown={hemBreakdown}
-                declaredExpenses={declaredExpenses}
-                baseExpenses={baseExpenses}
-                negativePropertyCashFlows={negativePropertyCashFlows}
-                totalNegativeCashFlows={totalNegativeCashFlows}
-                effectiveExpenses={effectiveExpenses}
-                onMethodChange={setExpenseMethod}
-                onDeclaredExpensesChange={setDeclaredExpenses}
-              />
-              <LiabilitiesSection
-                liabilities={liabilitiesBreakdown}
-                totalMonthlyCommitments={totalMonthlyCommitments}
-              />
-              <ProposedLoanSection
-                proposedLoanAmount={proposedLoanAmount}
-                interestRate={interestRate}
-                bufferRate={effectiveBufferRate}
-                bufferEnabled={bufferEnabled}
-                onBufferEnabledChange={setBufferEnabled}
-                loanTermYears={loanTermYears}
-                onProposedLoanChange={setProposedLoanAmount}
-                onInterestRateChange={setInterestRate}
-                onLoanTermChange={setLoanTermYears}
-              />
-
-              {/* Bank Rate Selector - CDR Integration */}
-              <div className="rounded-lg border p-4 bg-card">
-                <h3 className="font-medium mb-3 flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-primary" />
-                  Live Bank Rates (CDR)
-                </h3>
-                <BankRateSelector
-                  value={interestRate}
-                  onChange={(rate, lenderName) => {
-                    setInterestRate(rate);
-                    if (lenderName) setSelectedLenderName(lenderName);
-                  }}
-                  loanPurpose="INVESTMENT"
-                  repaymentType="PRINCIPAL_AND_INTEREST"
-                  onOpenComparison={() => setShowRateComparison(true)}
-                />
-                {selectedLenderName && (
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Using rate from: {selectedLenderName}
-                  </p>
-                )}
-              </div>
-
-              {/* Calculation Mode Controls */}
-              <div className="rounded-lg border p-4 bg-card space-y-4">
-                <h3 className="font-medium flex items-center gap-2">
-                  {calculationMode === 'conservative' ? (
-                    <ShieldAlert className="h-4 w-4 text-warning" />
-                  ) : (
-                    <Shield className="h-4 w-4 text-primary" />
-                  )}
-                  Calculation Mode
-                </h3>
-                
-                {/* Conservative Mode Toggle */}
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="conservative-mode-m" className="text-sm font-medium">
-                      Conservative Mode
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      Quickli-style with surplus floors & DTI cap
-                    </p>
-                  </div>
-                  <Switch
-                    id="conservative-mode-m"
-                    checked={calculationMode === 'conservative'}
-                    onCheckedChange={(checked) => {
-                      setCalculationMode(checked ? 'conservative' : 'bank');
-                      if (checked) {
-                        setDtiCapEnabled(true);
-                        setDtiCapLimit(6);
-                      }
-                    }}
-                  />
-                </div>
-
-                <Separator />
-
-                {/* DTI Cap Controls */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="dti-cap-m" className="text-sm font-medium">
-                        Enforce DTI Cap
-                      </Label>
-                      <p className="text-xs text-muted-foreground">
-                        Limit capacity based on debt-to-income ratio
-                      </p>
-                    </div>
-                    <Switch
-                      id="dti-cap-m"
-                      checked={dtiCapEnabled || calculationMode === 'conservative'}
-                      onCheckedChange={setDtiCapEnabled}
-                      disabled={calculationMode === 'conservative'}
-                    />
-                  </div>
-                  
-                  {(dtiCapEnabled || calculationMode === 'conservative') && (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-xs text-muted-foreground">DTI Limit</Label>
-                        <span className="text-sm font-medium">{dtiCapLimit}x</span>
-                      </div>
-                      <div className="flex gap-2">
-                        {[5, 6, 7, 8].map((cap) => (
-                          <button
-                            key={cap}
-                            onClick={() => setDtiCapLimit(cap)}
-                            disabled={calculationMode === 'conservative'}
-                            className={`flex-1 py-1.5 px-2 rounded text-xs font-medium transition-colors min-h-[44px] touch-manipulation ${
-                              dtiCapLimit === cap
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-secondary hover:bg-secondary/80'
-                            } ${calculationMode === 'conservative' ? 'opacity-50 cursor-not-allowed' : ''}`}
-                          >
-                            {cap}x
-                          </button>
-                        ))}
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {calculationMode === 'conservative' 
-                          ? 'Conservative mode enforces 6x DTI cap'
-                          : `Capacity will be capped to maintain DTI ≤ ${dtiCapLimit}x`
-                        }
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Mode Description */}
-                <div className={`p-3 rounded-lg text-xs ${
-                  calculationMode === 'conservative' 
-                    ? 'bg-warning/10 border border-warning/30 text-warning'
-                    : 'bg-primary/10 border border-primary/30 text-primary'
-                }`}>
-                  {calculationMode === 'conservative' ? (
-                    <p>
-                      <strong>Conservative Mode:</strong> Uses minimum surplus floors ($1,000/mo), 
-                      residual income requirements, 85% surplus utilization, and hard 6x DTI cap. 
-                      Results align with consumer-focused tools like Quickli.
-                    </p>
-                  ) : (
-                    <p>
-                      <strong>Bank Mode:</strong> Full serviceability calculation without artificial 
-                      constraints. Shows maximum theoretical lending capacity similar to major lender 
-                      assessments.
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Results */}
+              {inputSections}
               <ResultsPanel 
                 result={result} 
                 isCalculating={isLocalCalculating || isCalculating}
@@ -638,180 +850,14 @@ export function BorrowingCapacityModal({
             </div>
           </ScrollArea>
         ) : (
-          /* Desktop: side-by-side */
           <div className="flex flex-row flex-1 h-full overflow-hidden">
-            {/* Left Panel - Inputs */}
             <div className="w-1/2 border-r">
               <ScrollArea className="h-[calc(90vh-140px)]">
                 <div className="p-6 space-y-4">
-                  <IncomeSection
-                    incomeBreakdown={incomeBreakdown}
-                    totalGross={totalGrossIncome}
-                    totalShaded={totalShadedIncome}
-                  />
-                  <ExpensesSection
-                    expenseMethod={expenseMethod}
-                    hemBenchmark={hemBenchmark}
-                    hemBreakdown={hemBreakdown}
-                    declaredExpenses={declaredExpenses}
-                    baseExpenses={baseExpenses}
-                    negativePropertyCashFlows={negativePropertyCashFlows}
-                    totalNegativeCashFlows={totalNegativeCashFlows}
-                    effectiveExpenses={effectiveExpenses}
-                    onMethodChange={setExpenseMethod}
-                    onDeclaredExpensesChange={setDeclaredExpenses}
-                  />
-                  <LiabilitiesSection
-                    liabilities={liabilitiesBreakdown}
-                    totalMonthlyCommitments={totalMonthlyCommitments}
-                  />
-                  <ProposedLoanSection
-                    proposedLoanAmount={proposedLoanAmount}
-                    interestRate={interestRate}
-                    bufferRate={effectiveBufferRate}
-                    bufferEnabled={bufferEnabled}
-                    onBufferEnabledChange={setBufferEnabled}
-                    loanTermYears={loanTermYears}
-                    onProposedLoanChange={setProposedLoanAmount}
-                    onInterestRateChange={setInterestRate}
-                    onLoanTermChange={setLoanTermYears}
-                  />
-
-                  {/* Bank Rate Selector - CDR Integration */}
-                  <div className="rounded-lg border p-4 bg-card">
-                    <h3 className="font-medium mb-3 flex items-center gap-2">
-                      <Building2 className="h-4 w-4 text-primary" />
-                      Live Bank Rates (CDR)
-                    </h3>
-                    <BankRateSelector
-                      value={interestRate}
-                      onChange={(rate, lenderName) => {
-                        setInterestRate(rate);
-                        if (lenderName) setSelectedLenderName(lenderName);
-                      }}
-                      loanPurpose="INVESTMENT"
-                      repaymentType="PRINCIPAL_AND_INTEREST"
-                      onOpenComparison={() => setShowRateComparison(true)}
-                    />
-                    {selectedLenderName && (
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Using rate from: {selectedLenderName}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Calculation Mode Controls */}
-                  <div className="rounded-lg border p-4 bg-card space-y-4">
-                    <h3 className="font-medium flex items-center gap-2">
-                      {calculationMode === 'conservative' ? (
-                        <ShieldAlert className="h-4 w-4 text-warning" />
-                      ) : (
-                        <Shield className="h-4 w-4 text-primary" />
-                      )}
-                      Calculation Mode
-                    </h3>
-                    
-                    {/* Conservative Mode Toggle */}
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label htmlFor="conservative-mode" className="text-sm font-medium">
-                          Conservative Mode
-                        </Label>
-                        <p className="text-xs text-muted-foreground">
-                          Quickli-style with surplus floors & DTI cap
-                        </p>
-                      </div>
-                      <Switch
-                        id="conservative-mode"
-                        checked={calculationMode === 'conservative'}
-                        onCheckedChange={(checked) => {
-                          setCalculationMode(checked ? 'conservative' : 'bank');
-                          if (checked) {
-                            setDtiCapEnabled(true);
-                            setDtiCapLimit(6);
-                          }
-                        }}
-                      />
-                    </div>
-
-                    <Separator />
-
-                    {/* DTI Cap Controls */}
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-0.5">
-                          <Label htmlFor="dti-cap" className="text-sm font-medium">
-                            Enforce DTI Cap
-                          </Label>
-                          <p className="text-xs text-muted-foreground">
-                            Limit capacity based on debt-to-income ratio
-                          </p>
-                        </div>
-                        <Switch
-                          id="dti-cap"
-                          checked={dtiCapEnabled || calculationMode === 'conservative'}
-                          onCheckedChange={setDtiCapEnabled}
-                          disabled={calculationMode === 'conservative'}
-                        />
-                      </div>
-                      
-                      {(dtiCapEnabled || calculationMode === 'conservative') && (
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <Label className="text-xs text-muted-foreground">DTI Limit</Label>
-                            <span className="text-sm font-medium">{dtiCapLimit}x</span>
-                          </div>
-                          <div className="flex gap-2">
-                            {[5, 6, 7, 8].map((cap) => (
-                              <button
-                                key={cap}
-                                onClick={() => setDtiCapLimit(cap)}
-                                disabled={calculationMode === 'conservative'}
-                                className={`flex-1 py-1.5 px-2 rounded text-xs font-medium transition-colors min-h-[44px] touch-manipulation ${
-                                  dtiCapLimit === cap
-                                    ? 'bg-primary text-primary-foreground'
-                                    : 'bg-secondary hover:bg-secondary/80'
-                                } ${calculationMode === 'conservative' ? 'opacity-50 cursor-not-allowed' : ''}`}
-                              >
-                                {cap}x
-                              </button>
-                            ))}
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            {calculationMode === 'conservative' 
-                              ? 'Conservative mode enforces 6x DTI cap'
-                              : `Capacity will be capped to maintain DTI ≤ ${dtiCapLimit}x`
-                            }
-                          </p>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Mode Description */}
-                    <div className={`p-3 rounded-lg text-xs ${
-                      calculationMode === 'conservative' 
-                        ? 'bg-warning/10 border border-warning/30 text-warning'
-                        : 'bg-primary/10 border border-primary/30 text-primary'
-                    }`}>
-                      {calculationMode === 'conservative' ? (
-                        <p>
-                          <strong>Conservative Mode:</strong> Uses minimum surplus floors ($1,000/mo), 
-                          residual income requirements, 85% surplus utilization, and hard 6x DTI cap. 
-                          Results align with consumer-focused tools like Quickli.
-                        </p>
-                      ) : (
-                        <p>
-                          <strong>Bank Mode:</strong> Full serviceability calculation without artificial 
-                          constraints. Shows maximum theoretical lending capacity similar to major lender 
-                          assessments.
-                        </p>
-                      )}
-                    </div>
-                  </div>
+                  {inputSections}
                 </div>
               </ScrollArea>
             </div>
-            {/* Right Panel - Results */}
             <div className="w-1/2">
               <ScrollArea className="h-[calc(90vh-140px)]">
                 <div className="p-6">
