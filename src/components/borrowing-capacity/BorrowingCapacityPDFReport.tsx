@@ -3,11 +3,14 @@
  * 
  * Generates a branded jsPDF report with:
  * - Cover page
- * - Executive summary (KPIs)
+ * - Client summary header with assessment date
+ * - Executive summary (KPIs with gold-accented boxes)
+ * - Capacity utilisation gauge bar
+ * - Key assumptions callout box
  * - Income analysis with shading
  * - Expenses & liabilities breakdown
  * - Capacity breakdown
- * - Scenario comparison (conditional, only if 2+ assessments exist)
+ * - Enhanced recommendations & warnings
  * - Standardised disclaimer/contact page
  */
 
@@ -20,14 +23,20 @@ import { format } from 'date-fns';
 
 // ─── Design tokens ───────────────────────────────────────────────────────────
 const GOLD = { r: 191, g: 155, b: 80 };
+const GOLD_LIGHT = { r: 245, g: 235, b: 210 };
 const NAVY = { r: 13, g: 38, b: 77 };
 const DARK_BG = { r: 20, g: 20, b: 20 };
 const WHITE = { r: 255, g: 255, b: 255 };
 const GRAY = { r: 128, g: 128, b: 128 };
-const LIGHT_GRAY = { r: 245, g: 245, b: 245 };
+const LIGHT_GRAY = { r: 248, g: 248, b: 248 };
+const ALT_ROW = { r: 252, g: 252, b: 252 };
 const GREEN = { r: 22, g: 163, b: 74 };
+const GREEN_LIGHT = { r: 220, g: 252, b: 231 };
 const RED = { r: 239, g: 68, b: 68 };
+const RED_LIGHT = { r: 254, g: 226, b: 226 };
 const AMBER = { r: 245, g: 158, b: 11 };
+const AMBER_LIGHT = { r: 255, g: 243, b: 205 };
+const BODY_TEXT = { r: 55, g: 55, b: 55 };
 
 type RGB = { r: number; g: number; b: number };
 
@@ -62,6 +71,10 @@ function setFill(doc: jsPDF, c: RGB) {
   doc.setFillColor(c.r, c.g, c.b);
 }
 
+function setDraw(doc: jsPDF, c: RGB) {
+  doc.setDrawColor(c.r, c.g, c.b);
+}
+
 // ─── Page management ─────────────────────────────────────────────────────────
 const PAGE_W = 210; // A4 mm
 const PAGE_H = 297;
@@ -69,15 +82,17 @@ const MARGIN = 20;
 const CONTENT_W = PAGE_W - MARGIN * 2;
 const FOOTER_Y = PAGE_H - 15;
 
+let totalPages = 0; // Will be set after generation for "Page X of Y"
+
 function addFooter(doc: jsPDF, pageNum: number) {
   doc.setFontSize(7);
   setColor(doc, GRAY);
   doc.setFont('helvetica', 'normal');
-  doc.text('Borrowing Capacity Snapshot', MARGIN, FOOTER_Y);
+  doc.text('Borrowing Capacity Snapshot  |  Confidential', MARGIN, FOOTER_Y);
   doc.text(`Page ${pageNum}`, PAGE_W - MARGIN, FOOTER_Y, { align: 'right' });
   // Gold line
   setFill(doc, GOLD);
-  doc.rect(MARGIN, FOOTER_Y - 4, CONTENT_W, 0.5, 'F');
+  doc.rect(MARGIN, FOOTER_Y - 4, CONTENT_W, 0.4, 'F');
 }
 
 function checkPageBreak(doc: jsPDF, y: number, needed: number, pageNum: { value: number }): number {
@@ -90,18 +105,25 @@ function checkPageBreak(doc: jsPDF, y: number, needed: number, pageNum: { value:
   return y;
 }
 
-// ─── Section header ──────────────────────────────────────────────────────────
+// ─── Section header (enhanced with full gold accent bar) ─────────────────────
 function drawSectionHeader(doc: jsPDF, title: string, y: number): number {
+  // Gold accent bar
   setFill(doc, GOLD);
-  doc.rect(MARGIN, y - 1, 3, 14, 'F');
-  doc.setFontSize(13);
+  doc.rect(MARGIN, y, 3, 12, 'F');
+  // Title
+  doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
   setColor(doc, NAVY);
   doc.text(title, MARGIN + 8, y + 9);
+  // Subtle underline
+  setFill(doc, { r: 230, g: 230, b: 230 });
+  doc.rect(MARGIN, y + 14, CONTENT_W, 0.3, 'F');
   return y + 22;
 }
 
-// ─── Table row helper ────────────────────────────────────────────────────────
+// ─── Enhanced table row helper (more vertical padding) ───────────────────────
+const ROW_HEIGHT = 10;
+
 function drawTableRow(
   doc: jsPDF,
   y: number,
@@ -110,15 +132,15 @@ function drawTableRow(
 ) {
   if (bg) {
     setFill(doc, bg);
-    doc.rect(MARGIN, y - 4, CONTENT_W, 8, 'F');
+    doc.rect(MARGIN, y - 5, CONTENT_W, ROW_HEIGHT, 'F');
   }
-  doc.setFontSize(9);
+  doc.setFontSize(8.5);
   for (const col of cols) {
     doc.setFont('helvetica', col.bold ? 'bold' : 'normal');
-    setColor(doc, col.color || { r: 50, g: 50, b: 50 });
-    doc.text(col.text, col.x, y, { align: col.align || 'left' });
+    setColor(doc, col.color || BODY_TEXT);
+    doc.text(col.text, col.x, y + 1, { align: col.align || 'left' });
   }
-  return y + 10;
+  return y + ROW_HEIGHT + 1;
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -128,7 +150,7 @@ function drawTableRow(
 export interface BorrowingCapacityExportData {
   clientId: string;
   clientName: string;
-  assessment: any; // latest borrowing_capacity_assessment row
+  assessment: any;
   incomeSources?: any[];
   liabilities?: any[];
   expenses?: any[];
@@ -182,65 +204,130 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
   // ════════════════════════════════════════════════════════════════════════════
   doc.addPage();
   pageNum.value++;
-  let y = 30;
+  let y = 25;
+
+  // ── Client Summary Header ──────────────────────────────────────────────────
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  setColor(doc, NAVY);
+  doc.text(data.clientName, MARGIN, y + 5);
+
+  // Assessment date on the right
+  const assessmentDate = a.created_at
+    ? format(new Date(a.created_at), 'dd MMMM yyyy')
+    : format(new Date(), 'dd MMMM yyyy');
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  setColor(doc, GRAY);
+  doc.text(`Assessment Date: ${assessmentDate}`, PAGE_W - MARGIN, y + 5, { align: 'right' });
+
+  // Gold divider below client header
+  y += 12;
+  setFill(doc, GOLD);
+  doc.rect(MARGIN, y, CONTENT_W, 0.8, 'F');
+  y += 10;
 
   y = drawSectionHeader(doc, 'Executive Summary', y);
 
-  // KPI boxes
+  // ── KPI Boxes (with gold left-border accent) ───────────────────────────────
   const boxW = (CONTENT_W - 10) / 3;
-  const boxH = 35;
+  const boxH = 38;
 
   // Box 1: Borrowing Capacity
   setFill(doc, LIGHT_GRAY);
-  doc.rect(MARGIN, y, boxW, boxH, 'F');
+  doc.roundedRect(MARGIN, y, boxW, boxH, 2, 2, 'F');
+  setFill(doc, GOLD);
+  doc.rect(MARGIN, y + 2, 2.5, boxH - 4, 'F'); // gold left accent
   doc.setFontSize(7);
   doc.setFont('helvetica', 'normal');
   setColor(doc, GRAY);
-  doc.text('BORROWING CAPACITY', MARGIN + 5, y + 10);
+  doc.text('BORROWING CAPACITY', MARGIN + 8, y + 10);
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
   setColor(doc, NAVY);
-  doc.text(fmt(a.borrowing_capacity || 0), MARGIN + 5, y + 22);
+  doc.text(fmt(a.borrowing_capacity || 0), MARGIN + 8, y + 23);
   doc.setFontSize(7);
   doc.setFont('helvetica', 'normal');
   setColor(doc, GRAY);
-  doc.text('Estimate', MARGIN + 5, y + 29);
+  doc.text('Estimate', MARGIN + 8, y + 30);
 
   // Box 2: Monthly Surplus
   const b2x = MARGIN + boxW + 5;
   const surplusColor = (a.monthly_surplus || 0) >= 0 ? GREEN : RED;
   setFill(doc, LIGHT_GRAY);
-  doc.rect(b2x, y, boxW, boxH, 'F');
+  doc.roundedRect(b2x, y, boxW, boxH, 2, 2, 'F');
+  setFill(doc, surplusColor);
+  doc.rect(b2x, y + 2, 2.5, boxH - 4, 'F'); // colored left accent
   doc.setFontSize(7);
+  doc.setFont('helvetica', 'normal');
   setColor(doc, GRAY);
-  doc.text('MONTHLY SURPLUS', b2x + 5, y + 10);
+  doc.text('MONTHLY SURPLUS', b2x + 8, y + 10);
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
   setColor(doc, surplusColor);
-  doc.text(fmt(a.monthly_surplus || 0), b2x + 5, y + 22);
+  doc.text(fmt(a.monthly_surplus || 0), b2x + 8, y + 23);
 
   // Box 3: Serviceability Band
   const b3x = MARGIN + (boxW + 5) * 2;
   const bc = bandColor(a.serviceability_band || 'red');
   setFill(doc, LIGHT_GRAY);
-  doc.rect(b3x, y, boxW, boxH, 'F');
+  doc.roundedRect(b3x, y, boxW, boxH, 2, 2, 'F');
+  setFill(doc, bc);
+  doc.rect(b3x, y + 2, 2.5, boxH - 4, 'F'); // colored left accent
   doc.setFontSize(7);
   setColor(doc, GRAY);
   doc.setFont('helvetica', 'normal');
-  doc.text('SERVICEABILITY', b3x + 5, y + 10);
+  doc.text('SERVICEABILITY', b3x + 8, y + 10);
   // Badge
   const bl = bandLabel(a.serviceability_band || 'red');
-  const badgeW = doc.getTextWidth(bl) + 10;
+  const badgeW = doc.getTextWidth(bl) + 12;
   setFill(doc, bc);
-  doc.roundedRect(b3x + 5, y + 14, badgeW > 30 ? badgeW : 30, 10, 2, 2, 'F');
+  doc.roundedRect(b3x + 8, y + 15, badgeW > 32 ? badgeW : 32, 10, 2, 2, 'F');
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
   setColor(doc, WHITE);
-  doc.text(bl, b3x + 10, y + 21);
+  doc.text(bl, b3x + 14, y + 22);
 
-  y += boxH + 12;
+  y += boxH + 10;
 
-  // Secondary metrics row
+  // ── Capacity Utilisation Gauge Bar ─────────────────────────────────────────
+  const proposedLoan = a.proposed_loan_amount || 0;
+  const borrowingCap = a.borrowing_capacity || 0;
+  if (proposedLoan > 0 && borrowingCap > 0) {
+    const utilPct = Math.min((proposedLoan / borrowingCap) * 100, 120);
+    const barW = CONTENT_W - 60;
+    const barH = 6;
+    const barX = MARGIN;
+
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    setColor(doc, NAVY);
+    doc.text('Capacity Utilisation', barX, y);
+    doc.setFont('helvetica', 'normal');
+    setColor(doc, GRAY);
+    doc.text(`${fmt(proposedLoan)} of ${fmt(borrowingCap)}`, barX + barW + 5, y);
+    y += 5;
+
+    // Background track
+    setFill(doc, { r: 230, g: 230, b: 230 });
+    doc.roundedRect(barX, y, barW, barH, 2, 2, 'F');
+
+    // Filled portion
+    const fillW = Math.min((utilPct / 100) * barW, barW);
+    const gaugeColor = utilPct <= 70 ? GREEN : utilPct <= 90 ? AMBER : RED;
+    setFill(doc, gaugeColor);
+    doc.roundedRect(barX, y, fillW, barH, 2, 2, 'F');
+
+    // Percentage label
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    setColor(doc, gaugeColor);
+    doc.text(`${Math.round(utilPct)}%`, barX + barW + 5, y + 5);
+
+    y += barH + 8;
+  }
+
+  // ── Secondary Metrics Row ──────────────────────────────────────────────────
   const metricColW = CONTENT_W / 3;
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
@@ -267,55 +354,89 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
   setColor(doc, NAVY);
   doc.text(`${(a.assessment_rate || a.interest_rate_used || 0).toFixed(2)}%`, MARGIN + metricColW * 2 + 35, y);
 
-  y += 15;
+  y += 10;
+
+  // ── Key Assumptions Callout Box ────────────────────────────────────────────
+  const loanTerm = a.loan_term_years || 30;
+  const bufferRate = a.buffer_rate || 3.0;
+  const assessmentRate = a.assessment_rate || a.interest_rate_used || 0;
+  const expMethod = a.expense_method || 'hem';
+  const expMethodLabel = expMethod === 'hem' ? 'HEM Benchmark' : expMethod === 'declared' ? 'Declared Expenses' : 'Hybrid';
+
+  setFill(doc, GOLD_LIGHT);
+  setDraw(doc, GOLD);
+  doc.setLineWidth(0.3);
+  const assumptionsBoxH = 22;
+  doc.roundedRect(MARGIN, y, CONTENT_W, assumptionsBoxH, 2, 2, 'FD');
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  setColor(doc, NAVY);
+  doc.text('KEY ASSUMPTIONS', MARGIN + 5, y + 7);
+
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'normal');
+  setColor(doc, BODY_TEXT);
+  const col1 = MARGIN + 5;
+  const col2 = MARGIN + 55;
+  const col3 = MARGIN + 110;
+  doc.text(`Loan Term: ${loanTerm} years`, col1, y + 15);
+  doc.text(`Buffer Rate: ${bufferRate.toFixed(1)}%`, col2, y + 15);
+  doc.text(`Assessment Rate: ${assessmentRate.toFixed(2)}%`, col3, y + 15);
+  doc.text(`Expense Method: ${expMethodLabel}`, col1, y + 20);
+
+  y += assumptionsBoxH + 10;
 
   // ════════════════════════════════════════════════════════════════════════════
   // INCOME ANALYSIS
   // ════════════════════════════════════════════════════════════════════════════
+  y = checkPageBreak(doc, y, 40, pageNum);
   y = drawSectionHeader(doc, 'Income Analysis', y);
 
   // Summary row
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  setColor(doc, { r: 80, g: 80, b: 80 });
+  setColor(doc, BODY_TEXT);
   doc.text(`Gross Annual Income: ${fmt(a.gross_annual_income || 0)}`, MARGIN, y);
   doc.text(`Shaded Annual Income: ${fmt(a.shaded_annual_income || 0)}`, MARGIN + 80, y);
-  y += 10;
+  y += 12;
 
   // Income breakdown table
   const incomeBreakdown = a.income_breakdown || data.incomeSources;
   if (incomeBreakdown && Array.isArray(incomeBreakdown) && incomeBreakdown.length > 0) {
-    // Header
-    const srcColW = 65; // max width for source name before truncation
-    y = drawTableRow(doc, y, [
-      { text: 'Source', x: MARGIN, bold: true, color: NAVY },
-      { text: 'Gross Amount', x: MARGIN + 90, align: 'right', bold: true, color: NAVY },
-      { text: 'Shading', x: MARGIN + 120, align: 'right', bold: true, color: NAVY },
-      { text: 'Shaded Amount', x: MARGIN + CONTENT_W, align: 'right', bold: true, color: NAVY },
-    ]);
-
-    setFill(doc, GOLD);
-    doc.rect(MARGIN, y - 9, CONTENT_W, 0.5, 'F');
+    const srcColW = 65;
+    // Header row with navy background
+    setFill(doc, NAVY);
+    doc.rect(MARGIN, y - 5, CONTENT_W, ROW_HEIGHT, 'F');
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    setColor(doc, WHITE);
+    doc.text('Source', MARGIN + 3, y + 1);
+    doc.text('Gross Amount', MARGIN + 90, y + 1, { align: 'right' } as any);
+    doc.text('Shading', MARGIN + 120, y + 1, { align: 'right' } as any);
+    doc.text('Shaded Amount', MARGIN + CONTENT_W - 3, y + 1, { align: 'right' } as any);
+    y += ROW_HEIGHT + 1;
 
     for (let i = 0; i < incomeBreakdown.length; i++) {
       const item = incomeBreakdown[i];
       const prevY = y;
-      y = checkPageBreak(doc, y, 10, pageNum);
-      // Re-draw table header after page break
+      y = checkPageBreak(doc, y, 12, pageNum);
       if (y < prevY) {
-        y = drawTableRow(doc, y, [
-          { text: 'Source', x: MARGIN, bold: true, color: NAVY },
-          { text: 'Gross Amount', x: MARGIN + 90, align: 'right', bold: true, color: NAVY },
-          { text: 'Shading', x: MARGIN + 120, align: 'right', bold: true, color: NAVY },
-          { text: 'Shaded Amount', x: MARGIN + CONTENT_W, align: 'right', bold: true, color: NAVY },
-        ]);
-        setFill(doc, GOLD);
-        doc.rect(MARGIN, y - 9, CONTENT_W, 0.5, 'F');
+        // Re-draw header after page break
+        setFill(doc, NAVY);
+        doc.rect(MARGIN, y - 5, CONTENT_W, ROW_HEIGHT, 'F');
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'bold');
+        setColor(doc, WHITE);
+        doc.text('Source', MARGIN + 3, y + 1);
+        doc.text('Gross Amount', MARGIN + 90, y + 1, { align: 'right' } as any);
+        doc.text('Shading', MARGIN + 120, y + 1, { align: 'right' } as any);
+        doc.text('Shaded Amount', MARGIN + CONTENT_W - 3, y + 1, { align: 'right' } as any);
+        y += ROW_HEIGHT + 1;
       }
       const bg = i % 2 === 0 ? LIGHT_GRAY : undefined;
       let sourceName = item.component || item.source_name || item.source_type || 'Income';
-      // Truncate long source names to prevent overlap with amount columns
-      doc.setFontSize(9);
+      doc.setFontSize(8.5);
       doc.setFont('helvetica', 'normal');
       while (doc.getTextWidth(sourceName) > srcColW && sourceName.length > 10) {
         sourceName = sourceName.slice(0, -4) + '...';
@@ -324,10 +445,10 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
       const rate = item.shadingRate || item.custom_shading_rate || item.default_shading_rate || 1;
       const shaded = item.shadedAmount || gross * rate;
       y = drawTableRow(doc, y, [
-        { text: sourceName, x: MARGIN },
+        { text: sourceName, x: MARGIN + 3 },
         { text: fmt(gross), x: MARGIN + 90, align: 'right' },
         { text: `${(rate * 100).toFixed(0)}%`, x: MARGIN + 120, align: 'right' },
-        { text: fmt(shaded), x: MARGIN + CONTENT_W, align: 'right', bold: true },
+        { text: fmt(shaded), x: MARGIN + CONTENT_W - 3, align: 'right', bold: true },
       ], bg);
     }
     y += 5;
@@ -339,16 +460,14 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
   y = checkPageBreak(doc, y, 40, pageNum);
   y = drawSectionHeader(doc, 'Expenses & Liabilities', y);
 
-  // Expense method
-  const expMethod = a.expense_method || 'hem';
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  setColor(doc, { r: 80, g: 80, b: 80 });
-  doc.text(`Expense Method: ${expMethod === 'hem' ? 'HEM Benchmark' : expMethod === 'declared' ? 'Declared Expenses' : 'Hybrid (Higher of HEM/Declared)'}`, MARGIN, y);
+  setColor(doc, BODY_TEXT);
+  doc.text(`Expense Method: ${expMethodLabel}`, MARGIN, y);
   y += 8;
   doc.text(`Monthly Living Expenses: ${fmt(a.living_expenses_monthly || 0)}`, MARGIN, y);
   doc.text(`Monthly Commitments: ${fmt(a.existing_commitments_monthly || 0)}`, MARGIN + 80, y);
-  y += 12;
+  y += 14;
 
   // Liabilities breakdown
   const liabilities = a.liability_breakdown || data.liabilities;
@@ -357,35 +476,38 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
     doc.setFont('helvetica', 'bold');
     setColor(doc, NAVY);
     doc.text('Existing Liabilities', MARGIN, y);
-    y += 8;
+    y += 10;
 
-    y = drawTableRow(doc, y, [
-      { text: 'Type', x: MARGIN, bold: true, color: NAVY },
-      { text: 'Balance', x: MARGIN + 60, align: 'right', bold: true, color: NAVY },
-      { text: 'Monthly Repayment', x: MARGIN + CONTENT_W, align: 'right', bold: true, color: NAVY },
-    ]);
-    setFill(doc, GOLD);
-    doc.rect(MARGIN, y - 9, CONTENT_W, 0.5, 'F');
+    // Header row with navy background
+    setFill(doc, NAVY);
+    doc.rect(MARGIN, y - 5, CONTENT_W, ROW_HEIGHT, 'F');
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    setColor(doc, WHITE);
+    doc.text('Type', MARGIN + 3, y + 1);
+    doc.text('Balance', MARGIN + 60, y + 1, { align: 'right' } as any);
+    doc.text('Monthly Repayment', MARGIN + CONTENT_W - 3, y + 1, { align: 'right' } as any);
+    y += ROW_HEIGHT + 1;
 
     for (let i = 0; i < liabilities.length; i++) {
       const prevY = y;
-      y = checkPageBreak(doc, y, 10, pageNum);
-      // Re-draw table header after page break
+      y = checkPageBreak(doc, y, 12, pageNum);
       if (y < prevY) {
-        y = drawTableRow(doc, y, [
-          { text: 'Type', x: MARGIN, bold: true, color: NAVY },
-          { text: 'Balance', x: MARGIN + 60, align: 'right', bold: true, color: NAVY },
-          { text: 'Monthly Repayment', x: MARGIN + CONTENT_W, align: 'right', bold: true, color: NAVY },
-        ]);
-        setFill(doc, GOLD);
-        doc.rect(MARGIN, y - 9, CONTENT_W, 0.5, 'F');
+        setFill(doc, NAVY);
+        doc.rect(MARGIN, y - 5, CONTENT_W, ROW_HEIGHT, 'F');
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'bold');
+        setColor(doc, WHITE);
+        doc.text('Type', MARGIN + 3, y + 1);
+        doc.text('Balance', MARGIN + 60, y + 1, { align: 'right' } as any);
+        doc.text('Monthly Repayment', MARGIN + CONTENT_W - 3, y + 1, { align: 'right' } as any);
+        y += ROW_HEIGHT + 1;
       }
       const l = liabilities[i];
       const bg = i % 2 === 0 ? LIGHT_GRAY : undefined;
       let lType = l.type || l.liability_type || 'Liability';
       lType = formatLabel(lType);
-      // Truncate long liability names (e.g. "Existing Loan P&I (address...)")
-      doc.setFontSize(9);
+      doc.setFontSize(8.5);
       doc.setFont('helvetica', 'normal');
       const maxLiabW = 50;
       while (doc.getTextWidth(lType) > maxLiabW && lType.length > 10) {
@@ -394,9 +516,9 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
       const balance = l.balance || l.current_balance || 0;
       const monthly = l.monthlyServicing || l.monthly_repayment || 0;
       y = drawTableRow(doc, y, [
-        { text: lType, x: MARGIN },
+        { text: lType, x: MARGIN + 3 },
         { text: fmt(balance), x: MARGIN + 60, align: 'right' },
-        { text: fmt(monthly), x: MARGIN + CONTENT_W, align: 'right', color: RED },
+        { text: fmt(monthly), x: MARGIN + CONTENT_W - 3, align: 'right', color: RED },
       ], bg);
     }
     y += 5;
@@ -408,8 +530,6 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
   y = checkPageBreak(doc, y, 80, pageNum);
   y = drawSectionHeader(doc, 'Capacity Breakdown', y);
 
-  // Waterfall-style breakdown
-  const afterTaxMonthly = ((a.gross_annual_income || 0) * 0.68) / 12; // rough after-tax estimate
   const breakdownItems = [
     { label: 'Gross Annual Income', value: fmt(a.gross_annual_income || 0), color: NAVY },
     { label: 'Shaded Annual Income', value: fmt(a.shaded_annual_income || 0), color: NAVY },
@@ -418,82 +538,107 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
     { label: 'Monthly Surplus', value: fmt(a.monthly_surplus || 0), color: (a.monthly_surplus || 0) >= 0 ? GREEN : RED },
     { label: 'Assessment Rate Applied', value: `${(a.assessment_rate || a.interest_rate_used || 0).toFixed(2)}%`, color: NAVY },
     { label: 'Loan Term', value: `${a.loan_term_years || 30} years`, color: NAVY },
-    { label: 'Maximum Borrowing Capacity', value: fmt(a.borrowing_capacity || 0), color: GREEN },
   ];
 
-  for (const item of breakdownItems) {
-    y = checkPageBreak(doc, y, 10, pageNum);
+  for (let i = 0; i < breakdownItems.length; i++) {
+    const item = breakdownItems[i];
+    y = checkPageBreak(doc, y, 12, pageNum);
+    const bg = i % 2 === 0 ? LIGHT_GRAY : undefined;
+    if (bg) {
+      setFill(doc, bg);
+      doc.rect(MARGIN, y - 4, CONTENT_W, 10, 'F');
+    }
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    setColor(doc, { r: 80, g: 80, b: 80 });
-    doc.text(item.label, MARGIN, y);
+    setColor(doc, BODY_TEXT);
+    doc.text(item.label, MARGIN + 3, y + 1);
     doc.setFont('helvetica', 'bold');
     setColor(doc, item.color);
-    doc.text(item.value, MARGIN + CONTENT_W, y, { align: 'right' });
-    y += 9;
+    doc.text(item.value, MARGIN + CONTENT_W - 3, y + 1, { align: 'right' });
+    y += 11;
   }
 
-  // Gold separator before capacity
+  // Final capacity row with gold background
+  y += 2;
   setFill(doc, GOLD);
-  doc.rect(MARGIN, y - 4, CONTENT_W, 1, 'F');
-  y += 8;
+  doc.roundedRect(MARGIN, y - 5, CONTENT_W, 14, 2, 2, 'F');
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  setColor(doc, WHITE);
+  doc.text('Maximum Borrowing Capacity', MARGIN + 5, y + 4);
+  doc.text(fmt(a.borrowing_capacity || 0), MARGIN + CONTENT_W - 5, y + 4, { align: 'right' });
+  y += 18;
 
-  // Assumptions box
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'normal');
-  setColor(doc, GRAY);
+  // Detailed assumptions list (if available)
   const assumptions = a.assumptions || [];
   if (Array.isArray(assumptions) && assumptions.length > 0) {
-    doc.text('Assumptions:', MARGIN, y);
+    y = checkPageBreak(doc, y, 20, pageNum);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    setColor(doc, GRAY);
+    doc.text('Additional Assumptions:', MARGIN, y);
     y += 6;
     for (const assumption of assumptions) {
       y = checkPageBreak(doc, y, 6, pageNum);
       const key = assumption.key || assumption;
       const val = assumption.value || '';
-      doc.text(`• ${key}${val ? ': ' + val : ''}`, MARGIN + 5, y);
+      doc.text(`  ${key}${val ? ': ' + val : ''}`, MARGIN + 3, y);
       y += 5;
     }
     y += 5;
   }
 
-  // Recommendations
+  // ════════════════════════════════════════════════════════════════════════════
+  // RECOMMENDATIONS (enhanced with green dot indicators)
+  // ════════════════════════════════════════════════════════════════════════════
   const recs = a.recommendations || [];
   if (Array.isArray(recs) && recs.length > 0) {
-    y = checkPageBreak(doc, y, 20, pageNum);
+    y = checkPageBreak(doc, y, 25, pageNum);
     y = drawSectionHeader(doc, 'Recommendations', y);
     for (const rec of recs) {
-      y = checkPageBreak(doc, y, 8, pageNum);
+      y = checkPageBreak(doc, y, 12, pageNum);
       const recText = typeof rec === 'string' ? rec : rec.text || JSON.stringify(rec);
-      doc.setFontSize(9);
+
+      // Green circle indicator
+      setFill(doc, GREEN);
+      doc.circle(MARGIN + 3, y - 1, 1.5, 'F');
+
+      doc.setFontSize(8.5);
       doc.setFont('helvetica', 'normal');
-      setColor(doc, GREEN);
-      doc.text('•', MARGIN, y);
-      setColor(doc, { r: 50, g: 50, b: 50 });
-      const lines: string[] = doc.splitTextToSize(recText, CONTENT_W - 8);
-      doc.text(lines, MARGIN + 5, y);
-      y += lines.length * 5 + 3;
+      setColor(doc, BODY_TEXT);
+      const lines: string[] = doc.splitTextToSize(recText, CONTENT_W - 14);
+      doc.text(lines, MARGIN + 9, y);
+      y += lines.length * 4.5 + 5;
     }
   }
 
-  // Warnings
+  // ════════════════════════════════════════════════════════════════════════════
+  // WARNINGS (enhanced with amber triangle indicators)
+  // ════════════════════════════════════════════════════════════════════════════
   const warnings = a.warnings || [];
   if (Array.isArray(warnings) && warnings.length > 0) {
-    y = checkPageBreak(doc, y, 20, pageNum);
+    y = checkPageBreak(doc, y, 25, pageNum);
     y = drawSectionHeader(doc, 'Warnings', y);
+
+    // Subtle amber background box for warnings
+    const warningsStartY = y;
     for (const w of warnings) {
-      y = checkPageBreak(doc, y, 8, pageNum);
-      doc.setFontSize(9);
+      y = checkPageBreak(doc, y, 12, pageNum);
+
+      // Amber triangle indicator
+      setFill(doc, AMBER);
+      const triX = MARGIN + 3;
+      const triY = y - 2.5;
+      doc.triangle(triX, triY, triX - 1.5, triY + 3, triX + 1.5, triY + 3, 'F');
+
+      doc.setFontSize(8.5);
       doc.setFont('helvetica', 'normal');
-      setColor(doc, AMBER);
-      doc.text('!', MARGIN, y);
-      setColor(doc, { r: 80, g: 50, b: 20 });
-      const lines: string[] = doc.splitTextToSize(w, CONTENT_W - 8);
-      doc.text(lines, MARGIN + 5, y);
-      y += lines.length * 5 + 3;
+      setColor(doc, { r: 100, g: 65, b: 20 });
+      const lines: string[] = doc.splitTextToSize(w, CONTENT_W - 14);
+      doc.text(lines, MARGIN + 9, y);
+      y += lines.length * 4.5 + 5;
     }
   }
-
-  // Assessment History section removed — not included in final PDF export
 
   // Add footer to last content page
   addFooter(doc, pageNum.value);
@@ -506,6 +651,22 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
     drawJsPDFDisclaimerPage(doc, globalSettings.contactDetails, globalSettings.disclaimer);
   } catch (e) {
     console.warn('Could not fetch global settings for disclaimer page:', e);
+  }
+
+  // ── Update all footers to show "Page X of Y" ──────────────────────────────
+  const totalPgs = doc.getNumberOfPages();
+  for (let i = 2; i <= totalPgs - 1; i++) {
+    // Skip cover (page 1) and disclaimer (last page)
+    doc.setPage(i);
+    doc.setFontSize(7);
+    setColor(doc, GRAY);
+    doc.setFont('helvetica', 'normal');
+    // Overwrite the right-aligned page number with "Page X of Y"
+    // White-out the old text first
+    setFill(doc, WHITE);
+    doc.rect(PAGE_W - MARGIN - 30, FOOTER_Y - 3, 30, 6, 'F');
+    setColor(doc, GRAY);
+    doc.text(`Page ${i - 1} of ${totalPgs - 2}`, PAGE_W - MARGIN, FOOTER_Y, { align: 'right' });
   }
 
   // Save
