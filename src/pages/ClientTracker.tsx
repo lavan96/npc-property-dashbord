@@ -868,7 +868,16 @@ export default function ClientTracker() {
         fetchContact={fetchContact}
         onUpdateEvent={updateEvent}
         onDeleteEvent={deleteEvent}
-        onRescheduleEvent={rescheduleEvent}
+        onRescheduleEvent={async (eventId, data) => {
+          const result = await rescheduleEvent(
+            eventId,
+            data.newStartTime,
+            data.newEndTime,
+            data.originalStartTime,
+            data.originalEndTime
+          );
+          return result;
+        }}
       />
 
       {/* Filters */}

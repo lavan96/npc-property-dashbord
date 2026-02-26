@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -8,13 +8,17 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, Clock, User, MapPin, FileText, Phone, Mail, Trash2, Edit2, Save, X, CalendarClock, RefreshCw, Globe } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Calendar, Clock, User, MapPin, FileText, Phone, Mail, Trash2, Edit2, Save, X, CalendarClock, RefreshCw, Globe, Users, UserPlus, Plus, Loader2 } from 'lucide-react';
 import { format, parseISO, addMinutes, differenceInMinutes } from 'date-fns';
 import { toTimezoneISO } from '@/lib/sydneyTime';
 import { formatInSydney, formatDateInSydney, getSydneyTzAbbr, getSydneyDateTimeParts, isNonSydneyTimezone, formatInLocal } from '@/lib/timezoneUtils';
 import { getBookingTimezone, AUSTRALIAN_TIMEZONES } from '@/lib/bookingTimezone';
-import { GHLEvent } from '@/hooks/useGHLCalendar';
+import { GHLEvent, GHLCalendar, GHLContact } from '@/hooks/useGHLCalendar';
+import { useFinanceContacts, FinanceContact } from '@/hooks/useFinanceContacts';
+import { supabase } from '@/integrations/supabase/client';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import type { BookingRecipient } from './QuickAddAppointmentModal';
 
 interface ContactDetails {
   id: string;
@@ -26,6 +30,17 @@ interface ContactDetails {
   companyName?: string;
 }
 
+export interface RescheduleData {
+  newStartTime: string;
+  newEndTime: string;
+  originalStartTime?: string;
+  originalEndTime?: string;
+  overrideAvailability?: boolean;
+  assignedUserId?: string;
+  secondaryRecipients?: { financeContactId: string; name: string; email: string }[];
+  bookingRecipients?: { name: string; email: string }[];
+}
+
 interface EventDetailsModalProps {
   event: GHLEvent | null;
   open: boolean;
@@ -34,7 +49,8 @@ interface EventDetailsModalProps {
   fetchContact?: (contactId: string) => Promise<ContactDetails | null>;
   onUpdateEvent?: (eventId: string, updates: { title?: string; notes?: string; appointmentStatus?: string }) => Promise<{ success: boolean }>;
   onDeleteEvent?: (eventId: string) => Promise<{ success: boolean }>;
-  onRescheduleEvent?: (eventId: string, newStartTime: string, newEndTime: string, originalStartTime?: string, originalEndTime?: string) => Promise<{ success: boolean; undo?: () => Promise<boolean> }>;
+  onRescheduleEvent?: (eventId: string, rescheduleData: RescheduleData) => Promise<{ success: boolean; undo?: () => Promise<boolean> }>;
+  calendars?: GHLCalendar[];
 }
 
 const APPOINTMENT_STATUSES = [
@@ -63,7 +79,9 @@ export function EventDetailsModal({
   onUpdateEvent,
   onDeleteEvent,
   onRescheduleEvent,
+  calendars = [],
 }: EventDetailsModalProps) {
+  const { contacts: financeContacts, isLoading: isLoadingFinanceContacts } = useFinanceContacts();
   const [contact, setContact] = useState<ContactDetails | null>(null);
   const [loadingContact, setLoadingContact] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -78,6 +96,14 @@ export function EventDetailsModal({
   const [rescheduleTime, setRescheduleTime] = useState('');
   const [rescheduleDuration, setRescheduleDuration] = useState(30);
   const [rescheduleTimezone, setRescheduleTimezone] = useState<string>(() => getBookingTimezone());
+  
+  // New: Override availability, team member, finance contacts, booking recipients
+  const [overrideAvailability, setOverrideAvailability] = useState(false);
+  const [selectedTeamMemberId, setSelectedTeamMemberId] = useState<string>('');
+  const [selectedFinanceContacts, setSelectedFinanceContacts] = useState<FinanceContact[]>([]);
+  const [bookingRecipients, setBookingRecipients] = useState<BookingRecipient[]>([]);
+  const [manualRecipientName, setManualRecipientName] = useState('');
+  const [manualRecipientEmail, setManualRecipientEmail] = useState('');
 
   useEffect(() => {
     if (open && event?.contactId && fetchContact) {
@@ -93,6 +119,62 @@ export function EventDetailsModal({
     }
   }, [open, event?.contactId, fetchContact]);
 
+  // Auto-populate booking recipients from client DB when contact loads
+  useEffect(() => {
+    if (!contact?.email || !isRescheduling) return;
+    
+    const autoPopulate = async () => {
+      const contactEmail = contact.email?.toLowerCase()?.trim();
+      if (!contactEmail) return;
+      
+      try {
+        const { data: clientData } = await supabase
+          .from('clients')
+          .select('id, secondary_first_name, secondary_surname, secondary_email')
+          .or(`primary_email.ilike.${contactEmail},secondary_email.ilike.${contactEmail}`)
+          .limit(1)
+          .single();
+        
+        if (clientData) {
+          const autoRecipients: BookingRecipient[] = [];
+          
+          if (clientData.secondary_email && clientData.secondary_first_name) {
+            const secName = [clientData.secondary_first_name, clientData.secondary_surname].filter(Boolean).join(' ');
+            if (!bookingRecipients.some(r => r.email.toLowerCase() === clientData.secondary_email!.toLowerCase())) {
+              autoRecipients.push({ name: secName, email: clientData.secondary_email, source: 'auto' });
+            }
+          }
+          
+          const { data: additionalContacts } = await supabase
+            .from('client_additional_contacts')
+            .select('first_name, surname, email')
+            .eq('client_id', clientData.id)
+            .not('email', 'is', null);
+          
+          if (additionalContacts) {
+            for (const ac of additionalContacts) {
+              if (ac.email && !bookingRecipients.some(r => r.email.toLowerCase() === ac.email!.toLowerCase())) {
+                autoRecipients.push({
+                  name: [ac.first_name, ac.surname].filter(Boolean).join(' '),
+                  email: ac.email,
+                  source: 'auto',
+                });
+              }
+            }
+          }
+          
+          if (autoRecipients.length > 0) {
+            setBookingRecipients(prev => [...prev, ...autoRecipients]);
+          }
+        }
+      } catch (err) {
+        console.log('Could not auto-populate secondary contacts for reschedule:', err);
+      }
+    };
+    
+    autoPopulate();
+  }, [contact?.email, isRescheduling]);
+
   useEffect(() => {
     if (event) {
       setEditTitle(event.title || '');
@@ -101,7 +183,6 @@ export function EventDetailsModal({
       
       // Initialize reschedule form with current event times in Sydney timezone
       const sydneyStart = getSydneyDateTimeParts(event.startTime);
-      const sydneyEnd = getSydneyDateTimeParts(event.endTime);
       setRescheduleDate(sydneyStart.dateStr);
       setRescheduleTime(sydneyStart.timeStr);
       
@@ -126,6 +207,14 @@ export function EventDetailsModal({
       ? `${contact?.firstName || ''} ${contact?.lastName || ''}`.trim() 
       : null);
 
+  // Determine if event's calendar is round-robin
+  const eventCalendar = calendars.find(c => c.id === event.calendarId);
+  const isRoundRobin = eventCalendar?.calendarType?.toLowerCase().includes('round_robin') || 
+                       eventCalendar?.calendarType?.toLowerCase().includes('round-robin') ||
+                       eventCalendar?.calendarType?.toLowerCase() === 'round_robin';
+  const teamMembers = eventCalendar?.teamMembers;
+  const showTeamMemberSelector = isRoundRobin && teamMembers && teamMembers.length > 1;
+
   const handleSave = async () => {
     if (!onUpdateEvent) return;
     setIsSaving(true);
@@ -145,7 +234,6 @@ export function EventDetailsModal({
     
     setIsSaving(true);
     
-    // Convert selected Sydney wall-clock time to correct UTC
     const newStartISO = toTimezoneISO(rescheduleDate, rescheduleTime, rescheduleTimezone);
     
     const [hours, minutes] = rescheduleTime.split(':').map(Number);
@@ -154,18 +242,39 @@ export function EventDetailsModal({
     const endMins = endTotalMinutes % 60;
     const endTimeStr = `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}`;
     const newEndISO = toTimezoneISO(rescheduleDate, endTimeStr, rescheduleTimezone);
+
+    const secondaryRecipients = selectedFinanceContacts.map(fc => ({
+      financeContactId: fc.id,
+      name: fc.name,
+      email: fc.email,
+    }));
+
+    const bookingRecipientsPayload = bookingRecipients.map(r => ({
+      name: r.name,
+      email: r.email,
+    }));
     
-    const result = await onRescheduleEvent(
-      event.id,
-      newStartISO,
-      newEndISO,
-      event.startTime,
-      event.endTime
-    );
+    const result = await onRescheduleEvent(event.id, {
+      newStartTime: newStartISO,
+      newEndTime: newEndISO,
+      originalStartTime: event.startTime,
+      originalEndTime: event.endTime,
+      overrideAvailability: overrideAvailability || undefined,
+      assignedUserId: (selectedTeamMemberId && selectedTeamMemberId !== 'auto') ? selectedTeamMemberId : undefined,
+      secondaryRecipients: secondaryRecipients.length > 0 ? secondaryRecipients : undefined,
+      bookingRecipients: bookingRecipientsPayload.length > 0 ? bookingRecipientsPayload : undefined,
+    });
     
     setIsSaving(false);
     if (result.success) {
       setIsRescheduling(false);
+      // Reset reschedule-specific state
+      setOverrideAvailability(false);
+      setSelectedTeamMemberId('');
+      setSelectedFinanceContacts([]);
+      setBookingRecipients([]);
+      setManualRecipientName('');
+      setManualRecipientEmail('');
     }
   };
 
@@ -192,11 +301,41 @@ export function EventDetailsModal({
     setRescheduleTime(sydneyStart.timeStr);
     setRescheduleDuration(differenceInMinutes(endDate, startDate));
     setIsRescheduling(false);
+    setOverrideAvailability(false);
+    setSelectedTeamMemberId('');
+    setSelectedFinanceContacts([]);
+    setBookingRecipients([]);
+    setManualRecipientName('');
+    setManualRecipientEmail('');
+  };
+
+  const handleStartRescheduling = () => {
+    setIsRescheduling(true);
+    // Auto-populate will trigger via the useEffect when isRescheduling becomes true
+  };
+
+  const handleAddManualRecipient = () => {
+    const email = manualRecipientEmail.trim().toLowerCase();
+    const name = manualRecipientName.trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
+    if (bookingRecipients.some(r => r.email.toLowerCase() === email)) return;
+    
+    setBookingRecipients(prev => [...prev, {
+      name: name || email.split('@')[0],
+      email,
+      source: 'manual',
+    }]);
+    setManualRecipientName('');
+    setManualRecipientEmail('');
+  };
+
+  const handleRemoveBookingRecipient = (email: string) => {
+    setBookingRecipients(prev => prev.filter(r => r.email !== email));
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] w-[95vw]">
+      <DialogContent className="sm:max-w-[520px] w-[95vw] max-h-[90vh] flex flex-col">
         <DialogHeader>
           <div className="flex items-start justify-between gap-3">
             {isEditing ? (
@@ -232,7 +371,8 @@ export function EventDetailsModal({
           )}
         </DialogHeader>
 
-        <div className="space-y-4 pt-2">
+        <ScrollArea className="flex-1 min-h-0">
+          <div className="space-y-4 pt-2 pr-4">
           {/* Date & Time - with reschedule form */}
           {isRescheduling ? (
             <div className="space-y-4 p-4 bg-muted/50 rounded-lg border">
@@ -303,6 +443,179 @@ export function EventDetailsModal({
                   ))}
                 </div>
               </div>
+
+              {/* Team Member Selector (for round-robin calendars) */}
+              {showTeamMemberSelector && (
+                <div className="space-y-2">
+                  <Label className="text-xs flex items-center gap-1.5">
+                    <Users className="h-3 w-3 text-muted-foreground" />
+                    Assign Team Member
+                  </Label>
+                  <Select value={selectedTeamMemberId} onValueChange={setSelectedTeamMemberId}>
+                    <SelectTrigger className="h-9 text-xs">
+                      <SelectValue placeholder="Auto-assign (round robin)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="auto">Auto-assign (round robin)</SelectItem>
+                      {teamMembers!.map((member) => (
+                        <SelectItem key={member.userId} value={member.userId}>
+                          <div className="flex items-center gap-2">
+                            <User className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span>{member.name || member.email || member.userId}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[10px] text-muted-foreground">
+                    Round-robin calendar — select a specific team member or leave as auto-assign.
+                  </p>
+                </div>
+              )}
+
+              {/* Additional Invite Recipients (Booking Recipients) */}
+              <div className="space-y-2">
+                <Label className="text-xs flex items-center gap-1.5">
+                  <UserPlus className="h-3 w-3 text-muted-foreground" />
+                  Additional Invite Recipients
+                </Label>
+                <p className="text-[10px] text-muted-foreground">
+                  Extra people to receive the updated booking invite.
+                </p>
+                
+                {bookingRecipients.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {bookingRecipients.map((r) => (
+                      <Badge key={r.email} variant="secondary" className="flex items-center gap-1 pr-1">
+                        <span className="text-xs">{r.name}</span>
+                        <span className="text-[10px] text-muted-foreground">({r.email})</span>
+                        {r.source === 'auto' && (
+                          <span className="text-[9px] text-primary/70 ml-0.5">Auto</span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveBookingRecipient(r.email)}
+                          className="ml-0.5 rounded-full hover:bg-muted-foreground/20 p-0.5"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+                
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Name"
+                    value={manualRecipientName}
+                    onChange={(e) => setManualRecipientName(e.target.value)}
+                    className="flex-1 h-8 text-xs"
+                  />
+                  <Input
+                    placeholder="Email *"
+                    type="email"
+                    value={manualRecipientEmail}
+                    onChange={(e) => setManualRecipientEmail(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddManualRecipient();
+                      }
+                    }}
+                    className="flex-1 h-8 text-xs"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={handleAddManualRecipient}
+                    disabled={!manualRecipientEmail.trim()}
+                    className="shrink-0 h-8 w-8"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Finance Contacts */}
+              <div className="space-y-2">
+                <Label className="text-xs flex items-center gap-1.5">
+                  <Users className="h-3 w-3 text-muted-foreground" />
+                  Notify Finance Contacts
+                </Label>
+                {isLoadingFinanceContacts ? (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground p-2">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Loading contacts...
+                  </div>
+                ) : financeContacts.length === 0 ? (
+                  <p className="text-[10px] text-muted-foreground p-1">No finance contacts configured.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {selectedFinanceContacts.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {selectedFinanceContacts.map(fc => (
+                          <Badge key={fc.id} variant="secondary" className="flex items-center gap-1 pr-1">
+                            <span className="text-xs">{fc.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedFinanceContacts(prev => prev.filter(c => c.id !== fc.id))}
+                              className="ml-0.5 rounded-full hover:bg-muted-foreground/20 p-0.5"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex flex-wrap gap-1.5">
+                      {financeContacts
+                        .filter(fc => !selectedFinanceContacts.some(s => s.id === fc.id))
+                        .map(fc => (
+                          <button
+                            key={fc.id}
+                            type="button"
+                            onClick={() => setSelectedFinanceContacts(prev => [...prev, fc])}
+                            className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium transition-all bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground"
+                          >
+                            <Mail className="h-3 w-3" />
+                            {fc.name}
+                            {fc.is_default && <span className="text-[10px] opacity-60">(Default)</span>}
+                          </button>
+                        ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Override Availability Toggle */}
+              <div className="flex items-center justify-between p-2.5 rounded-lg border border-border bg-background">
+                <div className="space-y-0.5">
+                  <Label htmlFor="reschedule-override" className="text-xs font-medium cursor-pointer flex items-center gap-1.5">
+                    <Clock className="h-3 w-3 text-muted-foreground" />
+                    Override availability
+                  </Label>
+                  <p className="text-[10px] text-muted-foreground">
+                    Book outside configured availability window
+                  </p>
+                </div>
+                <button
+                  id="reschedule-override"
+                  type="button"
+                  role="switch"
+                  aria-checked={overrideAvailability}
+                  onClick={() => setOverrideAvailability(prev => !prev)}
+                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
+                    overrideAvailability ? 'bg-primary' : 'bg-muted-foreground/30'
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none block h-4 w-4 rounded-full bg-background shadow-sm transition-transform ${
+                      overrideAvailability ? 'translate-x-4' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
               
               <div className="flex gap-2 pt-2">
                 <Button
@@ -345,7 +658,7 @@ export function EventDetailsModal({
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={() => setIsRescheduling(true)}
+                  onClick={handleStartRescheduling}
                   className="h-8 px-2"
                 >
                   <CalendarClock className="h-4 w-4" />
@@ -458,6 +771,7 @@ export function EventDetailsModal({
             Event ID: {event.id}
           </div>
         </div>
+        </ScrollArea>
 
         {/* Footer with actions */}
         {(onUpdateEvent || onDeleteEvent) && !isRescheduling && (

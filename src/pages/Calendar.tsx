@@ -569,7 +569,61 @@ export default function Calendar() {
         fetchContact={fetchContact}
         onUpdateEvent={updateEvent}
         onDeleteEvent={deleteEvent}
-        onRescheduleEvent={rescheduleEvent}
+        calendars={calendars}
+        onRescheduleEvent={async (eventId, data) => {
+          const selectedCal = calendars.find(c => c.id === selectedEvent?.calendarId);
+          const assignedUserId = data.assignedUserId || selectedCal?.teamMembers?.[0]?.userId || undefined;
+          
+          // Call the GHL reschedule (update action)
+          const result = await rescheduleEvent(
+            eventId,
+            data.newStartTime,
+            data.newEndTime,
+            data.originalStartTime,
+            data.originalEndTime
+          );
+          
+          if (result.success) {
+            // Send notifications to recipients if any
+            const allNotificationRecipients = [
+              ...(data.secondaryRecipients || []),
+              ...(data.bookingRecipients || []).map(br => ({
+                financeContactId: `booking-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                name: br.name,
+                email: br.email,
+              })),
+            ];
+            
+            if (allNotificationRecipients.length > 0) {
+              try {
+                const calendarName = selectedCal?.name;
+                await invokeSecureFunction('send-appointment-notification', {
+                  appointmentGhlId: eventId,
+                  appointmentTitle: selectedEvent?.title || 'Appointment',
+                  appointmentStart: data.newStartTime,
+                  appointmentEnd: data.newEndTime,
+                  appointmentType: 'reschedule',
+                  appointmentNotes: selectedEvent?.notes,
+                  calendarName,
+                  recipients: allNotificationRecipients,
+                });
+                toast({
+                  title: 'Notifications sent',
+                  description: `${allNotificationRecipients.length} recipient(s) notified of reschedule.`,
+                });
+              } catch (err: any) {
+                console.error('Failed to send reschedule notifications:', err);
+                toast({
+                  title: 'Rescheduled, but notifications failed',
+                  description: err.message || 'Could not send email notifications.',
+                  variant: 'destructive',
+                });
+              }
+            }
+          }
+          
+          return result;
+        }}
       />
 
       {/* Batch Actions Bar */}
