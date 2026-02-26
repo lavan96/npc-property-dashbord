@@ -25,6 +25,7 @@ interface BorrowingCapacityOverrides {
   calculationMode?: 'bank' | 'conservative';
   dtiCapEnabled?: boolean;
   dtiCapLimit?: number;
+  selectedLenderName?: string;
 }
 
 interface UseBorrowingCapacityOptions {
