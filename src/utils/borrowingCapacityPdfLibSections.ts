@@ -44,6 +44,12 @@ const MARGIN_TOP = 72;
 const MARGIN_BOTTOM = 72;
 const CONTENT_WIDTH = PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT;
 
+// ─── Spacing constants (matching PPR generator) ─────────────────────────────
+const SECTION_SPACING = 35;        // Space after major sections
+const SUBSECTION_SPACING = 24;     // Space after subsections
+const PARAGRAPH_SPACING = 18;      // Space between paragraphs
+const TABLE_ROW_HEIGHT = 18;       // Consistent row height for tables
+
 // ─── Types ──────────────────────────────────────────────────────────────────
 export interface BCPdfLibIncomeItem {
   label: string;
@@ -176,12 +182,12 @@ function drawSectionTitle(page: PDFPage, title: string, y: number, boldFont: PDF
   // Gold accent bar
   page.drawRectangle({ x: MARGIN_LEFT, y: y - 5, width: 4, height: 18, color: NPC_GOLD });
   page.drawText(sanitize(title), { x: MARGIN_LEFT + 12, y, size: 13, font: boldFont, color: NPC_NAVY });
-  return y - 28;
+  return y - SECTION_SPACING;
 }
 
 function drawSubTitle(page: PDFPage, title: string, y: number, boldFont: PDFFont): number {
   page.drawText(sanitize(title), { x: MARGIN_LEFT, y, size: 10, font: boldFont, color: NPC_NAVY });
-  return y - 16;
+  return y - SUBSECTION_SPACING;
 }
 
 function drawKpiBox(
@@ -211,7 +217,7 @@ function drawProgressBar(
 
 function drawTableRow(
   page: PDFPage, y: number, cols: { text: string; x: number; font: PDFFont; color?: Color; size?: number }[],
-  bg?: Color, rowH = 16,
+  bg?: Color, rowH = TABLE_ROW_HEIGHT,
 ): number {
   if (bg) {
     page.drawRectangle({ x: MARGIN_LEFT, y: y - rowH + 4, width: CONTENT_WIDTH, height: rowH, color: bg });
@@ -263,12 +269,12 @@ export function drawBorrowingCapacityPdfLib(
   // Navy title bar
   page.drawRectangle({ x: MARGIN_LEFT, y: y - 8, width: CONTENT_WIDTH, height: 28, color: NPC_NAVY });
   page.drawText('BORROWING CAPACITY ASSESSMENT', { x: MARGIN_LEFT + 12, y: y - 1, size: 14, font: boldFont, color: NPC_GOLD });
-  y -= 50;
+  y -= 55;
 
   // Date stamp
   if (data.calculatedAt) {
     page.drawText(`Assessment Date: ${sanitize(data.calculatedAt)}`, { x: MARGIN_LEFT, y, size: 8, font, color: MUTED });
-    y -= 18;
+    y -= SUBSECTION_SPACING;
   }
 
   // ── EXECUTIVE KPI BOXES (3-column) ────────────────────────────────────────
@@ -294,7 +300,7 @@ export function drawBorrowingCapacityPdfLib(
   page.drawRectangle({ x: MARGIN_LEFT + (boxW + 10) * 2 + 8, y: y - 45, width: badgeW, height: 20, color: bc });
   page.drawText(bl, { x: MARGIN_LEFT + (boxW + 10) * 2 + 16, y: y - 39, size: 10, font: boldFont, color: NPC_WHITE });
 
-  y -= boxH + 20;
+  y -= boxH + SUBSECTION_SPACING;
 
   // Secondary metrics row
   const metricW = CONTENT_WIDTH / 3;
@@ -309,22 +315,22 @@ export function drawBorrowingCapacityPdfLib(
   page.drawText('Assessment Rate:', { x: MARGIN_LEFT + metricW * 2, y, size: 9, font, color: MUTED });
   page.drawText(`${data.assessmentRate.toFixed(2)}%`, { x: MARGIN_LEFT + metricW * 2 + 85, y, size: 9, font: boldFont, color: NPC_NAVY });
 
-  y -= 24;
+  y -= SUBSECTION_SPACING;
 
   // Capacity gauge
   const gaugePercent = Math.min(100, (data.borrowingCapacity / 1500000) * 100);
   drawProgressBar(page, MARGIN_LEFT, y, CONTENT_WIDTH, 6, gaugePercent, bc);
   page.drawText('$0', { x: MARGIN_LEFT, y: y - 14, size: 7, font, color: MUTED });
   page.drawText('$1.5M', { x: MARGIN_LEFT + CONTENT_WIDTH - 25, y: y - 14, size: 7, font, color: MUTED });
-  y -= 26;
+  y -= 28;
 
   // Band message
   page.drawText(sanitize(bandMessage(data.serviceabilityBand)), { x: MARGIN_LEFT, y, size: 9, font, color: bc });
-  y -= 28;
+  y -= SECTION_SPACING;
 
   // ── PROPOSED LOAN CHECK ───────────────────────────────────────────────────
   if (data.proposedLoanCheck) {
-    ensureSpace(80);
+    ensureSpace(100);
     const plc = data.proposedLoanCheck;
     const plcBg = plc.isServiceable ? GREEN_BG : RED_BG;
     const plcBorder = plc.isServiceable ? SUCCESS : DANGER;
@@ -359,17 +365,17 @@ export function drawBorrowingCapacityPdfLib(
     // Progress bar
     drawProgressBar(page, MARGIN_LEFT + 10, y - 58, CONTENT_WIDTH - 20, 4, plc.utilizationPercent, plcBorder);
 
-    y -= 85;
+    y -= 85 + PARAGRAPH_SPACING;
   }
 
   // ── INCOME ANALYSIS ───────────────────────────────────────────────────────
-  ensureSpace(80);
+  ensureSpace(100);
   y = drawSectionTitle(page, 'Income Analysis', y, boldFont);
 
   // Summary line
   page.drawText(`Gross Annual Income: ${fmt(data.grossAnnualIncome)}`, { x: MARGIN_LEFT, y, size: 9, font, color: DARK_TEXT });
   page.drawText(`Shaded Annual Income: ${fmt(data.shadedAnnualIncome)}`, { x: MARGIN_LEFT + 170, y, size: 9, font, color: DARK_TEXT });
-  y -= 18;
+  y -= SUBSECTION_SPACING;
 
   if (data.incomeBreakdown.length > 0) {
     // Table header
@@ -386,7 +392,7 @@ export function drawBorrowingCapacityPdfLib(
     ]);
     // Gold separator
     page.drawRectangle({ x: MARGIN_LEFT, y: y + 2, width: CONTENT_WIDTH, height: 1, color: NPC_GOLD });
-    y -= 4;
+    y -= 6;
 
     for (let i = 0; i < data.incomeBreakdown.length; i++) {
       ensureSpace(18);
@@ -406,7 +412,7 @@ export function drawBorrowingCapacityPdfLib(
 
     // Total row
     page.drawRectangle({ x: MARGIN_LEFT, y: y + 2, width: CONTENT_WIDTH, height: 1, color: NPC_GOLD });
-    y -= 4;
+    y -= 6;
     y = drawTableRow(page, y, [
       { text: 'Total', x: col1, font: boldFont, color: NPC_NAVY },
       { text: fmt(data.grossAnnualIncome), x: col2, font: boldFont, color: NPC_NAVY },
@@ -415,7 +421,7 @@ export function drawBorrowingCapacityPdfLib(
     ]);
 
     // Shading info box
-    y -= 8;
+    y -= PARAGRAPH_SPACING;
     ensureSpace(40);
     page.drawRectangle({ x: MARGIN_LEFT, y: y - 32, width: CONTENT_WIDTH, height: 32, color: LIGHT_BG });
     page.drawText('Income Shading Applied:', { x: MARGIN_LEFT + 6, y: y - 10, size: 7, font: boldFont, color: DARK_TEXT });
@@ -423,12 +429,12 @@ export function drawBorrowingCapacityPdfLib(
     rules.forEach((r, i) => {
       page.drawText(`- ${r}`, { x: MARGIN_LEFT + 6, y: y - 18 - i * 6, size: 6, font, color: MUTED });
     });
-    y -= 48;
+    y -= 48 + PARAGRAPH_SPACING;
   }
 
   // ── TAX BREAKDOWN ─────────────────────────────────────────────────────────
   if (data.taxBreakdown) {
-    ensureSpace(100);
+    ensureSpace(120);
     y = drawSectionTitle(page, 'Tax Breakdown (2025-26)', y, boldFont);
     const tb = data.taxBreakdown;
 
@@ -442,41 +448,41 @@ export function drawBorrowingCapacityPdfLib(
     for (const item of taxItems) {
       page.drawText(item.label, { x: MARGIN_LEFT, y, size: 9, font, color: DARK_TEXT });
       page.drawText(item.value, { x: MARGIN_LEFT + CONTENT_WIDTH - 10 - boldFont.widthOfTextAtSize(item.value, 9), y, size: 9, font: boldFont, color: item.color });
-      y -= 14;
+      y -= PARAGRAPH_SPACING;
     }
 
     // Gold separator
     page.drawRectangle({ x: MARGIN_LEFT, y: y + 4, width: CONTENT_WIDTH, height: 1, color: NPC_GOLD });
-    y -= 8;
+    y -= 10;
 
     // After-tax
     const afterTaxStr = `${fmt(tb.afterTaxIncome)}/yr`;
     page.drawText('After-Tax Income:', { x: MARGIN_LEFT, y, size: 10, font: boldFont, color: NPC_NAVY });
     page.drawText(afterTaxStr, { x: MARGIN_LEFT + CONTENT_WIDTH - 10 - boldFont.widthOfTextAtSize(afterTaxStr, 10), y, size: 10, font: boldFont, color: SUCCESS });
-    y -= 16;
+    y -= PARAGRAPH_SPACING;
 
     // Rates
     page.drawText(`Effective Rate: ${(tb.effectiveTaxRate * 100).toFixed(1)}%`, { x: MARGIN_LEFT, y, size: 8, font, color: DARK_TEXT });
     page.drawText(`Marginal Rate: ${(tb.marginalTaxRate * 100).toFixed(0)}%`, { x: MARGIN_LEFT + 120, y, size: 8, font, color: DARK_TEXT });
-    y -= 12;
-    page.drawText(`Tax Bracket: ${sanitize(tb.marginalBracket)}`, { x: MARGIN_LEFT, y, size: 7, font, color: MUTED });
     y -= 14;
+    page.drawText(`Tax Bracket: ${sanitize(tb.marginalBracket)}`, { x: MARGIN_LEFT, y, size: 7, font, color: MUTED });
+    y -= PARAGRAPH_SPACING;
 
     // Monthly take-home highlight
     page.drawRectangle({ x: MARGIN_LEFT, y: y - 12, width: CONTENT_WIDTH, height: 18, color: rgb(0.92, 0.96, 1) });
     page.drawText('After-tax income is used for serviceability assessment', { x: MARGIN_LEFT + 6, y: y - 5, size: 8, font, color: BLUE_ACCENT });
     const monthlyStr = `Monthly Take-Home: ${fmt(tb.monthlyTakeHome)}`;
     page.drawText(monthlyStr, { x: MARGIN_LEFT + CONTENT_WIDTH - 10 - boldFont.widthOfTextAtSize(monthlyStr, 8), y: y - 5, size: 8, font: boldFont, color: BLUE_ACCENT });
-    y -= 25;
+    y -= SECTION_SPACING;
   }
 
   // ── LIVING EXPENSES ───────────────────────────────────────────────────────
-  ensureSpace(80);
+  ensureSpace(100);
   y = drawSectionTitle(page, 'Living Expenses', y, boldFont);
 
   const methodLabels: Record<string, string> = { hem: 'HEM Benchmark', declared: 'Declared Expenses', hybrid: 'Higher of HEM / Declared' };
   page.drawText(`Method: ${methodLabels[data.expenseMethod] || data.expenseMethod}`, { x: MARGIN_LEFT, y, size: 9, font, color: DARK_TEXT });
-  y -= 14;
+  y -= PARAGRAPH_SPACING;
 
   // HEM breakdown
   if (data.hemBreakdown) {
@@ -490,7 +496,7 @@ export function drawBorrowingCapacityPdfLib(
     if (hb.multiplier !== 1) {
       page.drawText(`Multiplier: ${hb.multiplier.toFixed(2)}x`, { x: MARGIN_LEFT + 200, y: y - 32, size: 7, font, color: MUTED });
     }
-    y -= 52;
+    y -= 52 + PARAGRAPH_SPACING;
   }
 
   // Declared vs HEM comparison
@@ -503,52 +509,52 @@ export function drawBorrowingCapacityPdfLib(
     page.drawText('Declared Expenses:', { x: MARGIN_LEFT, y, size: 8, font, color: DARK_TEXT });
     page.drawText(`${fmt(data.declaredExpensesMonthly)}/mo`, { x: MARGIN_LEFT + 100, y, size: 8, font: boldFont, color: isHemHigher ? MUTED : DANGER });
     drawProgressBar(page, MARGIN_LEFT + 180, y - 2, 150, 5, declPct, isHemHigher ? rgb(0.8, 0.8, 0.8) : DANGER);
-    y -= 16;
+    y -= PARAGRAPH_SPACING;
 
     page.drawText('HEM Benchmark:', { x: MARGIN_LEFT, y, size: 8, font, color: DARK_TEXT });
     page.drawText(`${fmt(data.hemBenchmark)}/mo`, { x: MARGIN_LEFT + 100, y, size: 8, font: boldFont, color: isHemHigher ? SUCCESS : MUTED });
     drawProgressBar(page, MARGIN_LEFT + 180, y - 2, 150, 5, hemPct, isHemHigher ? SUCCESS : rgb(0.8, 0.8, 0.8));
-    y -= 16;
+    y -= PARAGRAPH_SPACING;
 
     page.drawText(`Used for assessment: ${fmt(Math.max(data.declaredExpensesMonthly, data.hemBenchmark))}/mo (higher of the two)`, { x: MARGIN_LEFT, y, size: 7, font, color: MUTED });
-    y -= 16;
+    y -= SUBSECTION_SPACING;
   } else {
     page.drawText(`Monthly Living Expenses: ${fmt(data.livingExpensesMonthly)}`, { x: MARGIN_LEFT, y, size: 9, font: boldFont, color: DARK_TEXT });
-    y -= 16;
+    y -= SUBSECTION_SPACING;
   }
 
   // ── NEGATIVE PROPERTY CASH FLOWS ──────────────────────────────────────────
   if (data.negativePropertyCashFlows && data.negativePropertyCashFlows.length > 0) {
-    ensureSpace(40 + data.negativePropertyCashFlows.length * 16);
+    ensureSpace(40 + data.negativePropertyCashFlows.length * TABLE_ROW_HEIGHT);
     y = drawSubTitle(page, 'Negative Property Cash Flows', y, boldFont);
 
     page.drawText('Properties with negative cash flow are added to your expense obligations:', { x: MARGIN_LEFT, y, size: 7, font, color: MUTED });
-    y -= 14;
+    y -= PARAGRAPH_SPACING;
 
     for (const ncf of data.negativePropertyCashFlows) {
       let addr = sanitize(ncf.address);
       if (addr.length > 50) addr = addr.slice(0, 47) + '...';
       page.drawText(addr, { x: MARGIN_LEFT + 8, y, size: 8, font, color: DARK_TEXT });
       page.drawText(fmt(ncf.monthlyCashflow) + '/mo', { x: MARGIN_LEFT + CONTENT_WIDTH - 60, y, size: 8, font: boldFont, color: DANGER });
-      y -= 14;
+      y -= TABLE_ROW_HEIGHT;
     }
 
     page.drawRectangle({ x: MARGIN_LEFT, y: y + 2, width: CONTENT_WIDTH, height: 1, color: BORDER_COLOR });
-    y -= 4;
+    y -= 6;
     page.drawText(`Total Negative Cash Flows: ${fmt(data.totalNegativeCashFlows || 0)}/mo`, { x: MARGIN_LEFT, y, size: 8, font: boldFont, color: DANGER });
-    y -= 10;
+    y -= PARAGRAPH_SPACING;
 
     if (data.effectiveExpensesMonthly) {
       page.drawText(`Effective Monthly Expenses (Living + Neg CF): ${fmt(data.effectiveExpensesMonthly)}/mo`, { x: MARGIN_LEFT, y, size: 8, font: boldFont, color: NPC_NAVY });
-      y -= 16;
+      y -= SUBSECTION_SPACING;
     }
   }
 
   // ── LIABILITIES SCHEDULE ──────────────────────────────────────────────────
   if (data.liabilityBreakdown.length > 0) {
-    ensureSpace(60);
+    ensureSpace(80);
     // New page for liabilities if tight
-    if (needsNewPage(y, 60 + data.liabilityBreakdown.length * 18)) {
+    if (needsNewPage(y, 80 + data.liabilityBreakdown.length * TABLE_ROW_HEIGHT)) {
       page = addContentPage();
       y = PAGE_HEIGHT - MARGIN_TOP;
     }
@@ -570,7 +576,7 @@ export function drawBorrowingCapacityPdfLib(
       { text: 'Method', x: lCol5 - 55, font: boldFont, color: NPC_NAVY, size: 8 },
     ]);
     page.drawRectangle({ x: MARGIN_LEFT, y: y + 2, width: CONTENT_WIDTH, height: 1, color: NPC_GOLD });
-    y -= 4;
+    y -= 6;
 
     let totalServicing = 0;
     for (let i = 0; i < data.liabilityBreakdown.length; i++) {
@@ -596,15 +602,15 @@ export function drawBorrowingCapacityPdfLib(
 
     // Total
     page.drawRectangle({ x: MARGIN_LEFT, y: y + 2, width: CONTENT_WIDTH, height: 1, color: NPC_GOLD });
-    y -= 4;
+    y -= 6;
     page.drawText('Total Monthly Commitments:', { x: MARGIN_LEFT, y, size: 9, font: boldFont, color: NPC_NAVY });
     const totalStr = `${fmt(totalServicing)}/mo`;
     page.drawText(totalStr, { x: lCol4, y, size: 9, font: boldFont, color: DANGER });
-    y -= 28;
+    y -= SECTION_SPACING;
   }
 
   // ── CAPACITY WATERFALL ────────────────────────────────────────────────────
-  ensureSpace(120);
+  ensureSpace(140);
   y = drawSectionTitle(page, 'Capacity Waterfall', y, boldFont);
 
   const afterTaxMonthly = data.taxBreakdown ? data.taxBreakdown.monthlyTakeHome : Math.round(data.shadedAnnualIncome / 12);
@@ -624,86 +630,86 @@ export function drawBorrowingCapacityPdfLib(
     const valStr = item.value >= 0 ? fmt(item.value) : `-${fmt(Math.abs(item.value))}`;
     page.drawText(sanitize(item.label), { x: MARGIN_LEFT, y, size: 9, font, color: DARK_TEXT });
     page.drawText(valStr, { x: MARGIN_LEFT + CONTENT_WIDTH - 10 - boldFont.widthOfTextAtSize(valStr, 9), y, size: 9, font: boldFont, color: item.color });
-    y -= 14;
+    y -= PARAGRAPH_SPACING;
   }
 
   // Separator
   page.drawRectangle({ x: MARGIN_LEFT, y: y + 4, width: CONTENT_WIDTH, height: 1, color: NPC_GOLD });
-  y -= 8;
+  y -= 10;
 
   // Monthly surplus
   const surplusStr = fmt(data.monthlySurplus);
   const surplusColor = data.monthlySurplus >= 0 ? SUCCESS : DANGER;
   page.drawText('= Monthly Surplus', { x: MARGIN_LEFT, y, size: 10, font: boldFont, color: NPC_NAVY });
   page.drawText(surplusStr, { x: MARGIN_LEFT + CONTENT_WIDTH - 10 - boldFont.widthOfTextAtSize(surplusStr, 12), y, size: 12, font: boldFont, color: surplusColor });
-  y -= 18;
+  y -= SUBSECTION_SPACING;
 
   // Explanation
   page.drawText('Maximum borrowing capacity is derived from this surplus at the assessment rate.', { x: MARGIN_LEFT, y, size: 7, font, color: MUTED });
-  y -= 16;
+  y -= PARAGRAPH_SPACING;
 
   // Capacity figure
   const capStr = fmt(data.borrowingCapacity);
   page.drawRectangle({ x: MARGIN_LEFT, y: y - 22, width: CONTENT_WIDTH, height: 28, color: LIGHT_BG, borderColor: NPC_GOLD, borderWidth: 1 });
   page.drawText('Estimated Borrowing Capacity:', { x: MARGIN_LEFT + 8, y: y - 5, size: 9, font, color: NPC_NAVY });
   page.drawText(capStr, { x: MARGIN_LEFT + CONTENT_WIDTH - 10 - boldFont.widthOfTextAtSize(capStr, 14), y: y - 8, size: 14, font: boldFont, color: NPC_NAVY });
-  y -= 38;
+  y -= SECTION_SPACING + PARAGRAPH_SPACING;
 
   // ── RECOMMENDATIONS & WARNINGS ────────────────────────────────────────────
   const recs = data.recommendations.filter(r => r && r.trim());
   const warns = data.warnings.filter(w => w && w.trim());
 
   if (recs.length > 0 || warns.length > 0) {
-    ensureSpace(60);
+    ensureSpace(80);
     y = drawSectionTitle(page, 'Recommendations & Warnings', y, boldFont);
 
     if (recs.length > 0) {
       y = drawSubTitle(page, 'Recommendations', y, boldFont);
       for (const rec of recs.slice(0, 6)) {
-        ensureSpace(16);
+        ensureSpace(20);
         page.drawText('\u2022', { x: MARGIN_LEFT, y, size: 9, font, color: SUCCESS });
         let text = sanitize(rec);
         if (text.length > 90) text = text.slice(0, 87) + '...';
         page.drawText(text, { x: MARGIN_LEFT + 12, y, size: 8, font, color: DARK_TEXT });
-        y -= 16;
+        y -= PARAGRAPH_SPACING;
       }
-      y -= 10;
+      y -= PARAGRAPH_SPACING;
     }
 
     if (warns.length > 0) {
       y = drawSubTitle(page, 'Warnings', y, boldFont);
       for (const warn of warns.slice(0, 5)) {
-        ensureSpace(16);
+        ensureSpace(20);
         page.drawText('!', { x: MARGIN_LEFT + 2, y, size: 9, font: boldFont, color: WARNING });
         let text = sanitize(warn);
         if (text.length > 90) text = text.slice(0, 87) + '...';
         page.drawText(text, { x: MARGIN_LEFT + 14, y, size: 8, font, color: DARK_TEXT });
-        y -= 16;
+        y -= PARAGRAPH_SPACING;
       }
-      y -= 10;
+      y -= PARAGRAPH_SPACING;
     }
   }
 
   // ── ASSUMPTIONS ───────────────────────────────────────────────────────────
   if (data.assumptions && data.assumptions.length > 0) {
-    ensureSpace(40);
+    ensureSpace(60);
     y = drawSubTitle(page, 'Assessment Assumptions', y, boldFont);
-    page.drawRectangle({ x: MARGIN_LEFT, y: y - (data.assumptions.length * 12 + 8), width: CONTENT_WIDTH, height: data.assumptions.length * 12 + 8, color: LIGHT_BG });
+    page.drawRectangle({ x: MARGIN_LEFT, y: y - (data.assumptions.length * 14 + 10), width: CONTENT_WIDTH, height: data.assumptions.length * 14 + 10, color: LIGHT_BG });
 
     for (const a of data.assumptions) {
       page.drawText(sanitize(a.key) + ':', { x: MARGIN_LEFT + 6, y: y - 4, size: 8, font, color: DARK_TEXT });
       page.drawText(sanitize(a.value), { x: MARGIN_LEFT + 120, y: y - 4, size: 8, font: boldFont, color: NPC_NAVY });
-      y -= 12;
+      y -= 14;
     }
-    y -= 12;
+    y -= PARAGRAPH_SPACING;
   }
 
   // Disclaimer
-  ensureSpace(30);
-  page.drawRectangle({ x: MARGIN_LEFT, y: y - 26, width: CONTENT_WIDTH, height: 26, color: rgb(1, 0.98, 0.94), borderColor: WARNING, borderWidth: 0.5 });
-  page.drawText('DISCLAIMER', { x: MARGIN_LEFT + 6, y: y - 8, size: 7, font: boldFont, color: WARNING });
-  page.drawText('This is an estimate only and does not constitute a formal loan offer. Actual lending decisions are made by financial institutions.', { x: MARGIN_LEFT + 6, y: y - 18, size: 6, font, color: MUTED });
-  y -= 36;
+  ensureSpace(40);
+  page.drawRectangle({ x: MARGIN_LEFT, y: y - 30, width: CONTENT_WIDTH, height: 30, color: rgb(1, 0.98, 0.94), borderColor: WARNING, borderWidth: 0.5 });
+  page.drawText('DISCLAIMER', { x: MARGIN_LEFT + 6, y: y - 10, size: 7, font: boldFont, color: WARNING });
+  page.drawText('This is an estimate only and does not constitute a formal loan offer. Actual lending decisions are made by financial institutions.', { x: MARGIN_LEFT + 6, y: y - 22, size: 6, font, color: MUTED });
+  y -= SECTION_SPACING + PARAGRAPH_SPACING;
 
   return { page, yPos: y };
 }
