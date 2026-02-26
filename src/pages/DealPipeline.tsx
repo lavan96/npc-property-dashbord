@@ -4,6 +4,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TrendingUp, DollarSign, FileText, LayoutDashboard } from 'lucide-react';
 import { useAllDeals } from '@/hooks/useAllDeals';
 import { usePipelineMutations } from '@/hooks/usePipelineMutations';
+import { usePipelineFilters } from '@/hooks/usePipelineFilters';
+import { PipelineToolbar, DEFAULT_FILTERS } from '@/components/deals/PipelineToolbar';
+import type { PipelineFilters } from '@/components/deals/PipelineToolbar';
 import { DealExecutiveSummary } from '@/components/deals/DealExecutiveSummary';
 import { CommissionDashboard } from '@/components/deals/CommissionDashboard';
 import { BuilderInvoiceLog } from '@/components/deals/BuilderInvoiceLog';
@@ -14,7 +17,12 @@ export default function DealPipeline() {
   const { data: deals = [], isLoading, error } = useAllDeals();
   const { updateBuildPayment } = usePipelineMutations();
   const [activeTab, setActiveTab] = useState('summary');
+  const [filters, setFilters] = useState<PipelineFilters>(DEFAULT_FILTERS);
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
   const navigate = useNavigate();
+
+  // Apply global filters to deals
+  const filteredDeals = usePipelineFilters(deals, filters);
 
   const handleDealClick = (deal: DealWithClient) => {
     navigate(`/clients?clientId=${deal.client_id}&tab=deals`);
@@ -37,6 +45,16 @@ export default function DealPipeline() {
         </div>
       </div>
 
+      {/* Global Pipeline Toolbar */}
+      <PipelineToolbar
+        deals={deals}
+        filters={filters}
+        onFiltersChange={setFilters}
+        filteredCount={filteredDeals.length}
+        isExpanded={filtersExpanded}
+        onExpandedChange={setFiltersExpanded}
+      />
+
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="w-full inline-flex overflow-x-auto scrollbar-hide">
           <TabsTrigger value="summary" className="gap-1 sm:gap-1.5 text-xs sm:text-sm whitespace-nowrap flex-shrink-0">
@@ -54,15 +72,15 @@ export default function DealPipeline() {
         </TabsList>
 
         <TabsContent value="summary" className="mt-4">
-          <DealExecutiveSummary deals={deals} isLoading={isLoading} onDealClick={handleDealClick} />
+          <DealExecutiveSummary deals={filteredDeals} allDeals={deals} isLoading={isLoading} onDealClick={handleDealClick} />
         </TabsContent>
 
         <TabsContent value="commissions" className="mt-4">
-          <CommissionDashboard deals={deals} isLoading={isLoading} onUpdatePayment={handleUpdatePayment} />
+          <CommissionDashboard deals={filteredDeals} isLoading={isLoading} onUpdatePayment={handleUpdatePayment} />
         </TabsContent>
 
         <TabsContent value="invoices" className="mt-4">
-          <BuilderInvoiceLog deals={deals} isLoading={isLoading} onUpdatePayment={handleUpdatePayment} />
+          <BuilderInvoiceLog deals={filteredDeals} isLoading={isLoading} onUpdatePayment={handleUpdatePayment} />
         </TabsContent>
       </Tabs>
     </div>

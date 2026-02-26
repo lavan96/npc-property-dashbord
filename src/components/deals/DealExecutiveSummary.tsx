@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { format, differenceInDays, isPast } from 'date-fns';
 import { cn } from '@/lib/utils';
 import {
@@ -6,18 +6,10 @@ import {
   Building2,
   Home,
   RefreshCw,
-  Filter,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -26,40 +18,33 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { RISK_STATUS_CONFIG, DEAL_TYPE_LABELS } from '@/components/clients/deal-tracker/types';
+import { RISK_STATUS_CONFIG } from '@/components/clients/deal-tracker/types';
 import type { DealWithClient } from '@/hooks/useAllDeals';
 
 interface Props {
   deals: DealWithClient[];
+  allDeals?: DealWithClient[];
   isLoading: boolean;
   onDealClick?: (deal: DealWithClient) => void;
 }
 
-export function DealExecutiveSummary({ deals, isLoading, onDealClick }: Props) {
-  const [riskFilter, setRiskFilter] = useState<string>('all');
-  const [typeFilter, setTypeFilter] = useState<string>('all');
-
-  const filtered = useMemo(() => {
-    return deals.filter(d => {
-      if (riskFilter !== 'all' && d.risk_status !== riskFilter) return false;
-      if (typeFilter !== 'all' && d.deal_type !== typeFilter) return false;
-      return true;
-    });
-  }, [deals, riskFilter, typeFilter]);
+export function DealExecutiveSummary({ deals, allDeals, isLoading, onDealClick }: Props) {
+  // Use allDeals for stats if provided (so KPIs reflect full pipeline), otherwise use deals
+  const statsSource = allDeals || deals;
 
   const stats = useMemo(() => {
-    const total = deals.length;
-    const onTrack = deals.filter(d => d.risk_status === 'on_track').length;
-    const needsFollowUp = deals.filter(d => d.risk_status === 'needs_follow_up').length;
-    const urgent = deals.filter(d => d.risk_status === 'urgent').length;
-    const totalValue = deals.reduce((sum, d) => sum + (d.total_contract_price || 0), 0);
-    const upcomingSettlements = deals.filter(d => {
+    const total = statsSource.length;
+    const onTrack = statsSource.filter(d => d.risk_status === 'on_track').length;
+    const needsFollowUp = statsSource.filter(d => d.risk_status === 'needs_follow_up').length;
+    const urgent = statsSource.filter(d => d.risk_status === 'urgent').length;
+    const totalValue = statsSource.reduce((sum, d) => sum + (d.total_contract_price || 0), 0);
+    const upcomingSettlements = statsSource.filter(d => {
       if (!d.settlement_date) return false;
       const days = differenceInDays(new Date(d.settlement_date), new Date());
       return days >= 0 && days <= 30;
     }).length;
     return { total, onTrack, needsFollowUp, urgent, totalValue, upcomingSettlements };
-  }, [deals]);
+  }, [statsSource]);
 
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(val);
@@ -153,35 +138,7 @@ export function DealExecutiveSummary({ deals, isLoading, onDealClick }: Props) {
         </Card>
       </div>
 
-      {/* Filters */}
-      <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-        <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
-        <Select value={riskFilter} onValueChange={setRiskFilter}>
-          <SelectTrigger className="w-[140px] sm:w-[160px] h-8 text-xs">
-            <SelectValue placeholder="Risk Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="on_track">🟢 On Track</SelectItem>
-            <SelectItem value="needs_follow_up">🟠 Needs Follow-Up</SelectItem>
-            <SelectItem value="urgent">🔴 Urgent</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="w-[140px] sm:w-[180px] h-8 text-xs">
-            <SelectValue placeholder="Deal Type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Types</SelectItem>
-            <SelectItem value="existing_property">Existing Property</SelectItem>
-            <SelectItem value="house_and_land">House & Land</SelectItem>
-            <SelectItem value="refinance">Refinance</SelectItem>
-          </SelectContent>
-        </Select>
-        <span className="text-xs text-muted-foreground ml-auto">{filtered.length} deals</span>
-      </div>
-
-      {/* Deal Table */}
+      {/* Deal Table — filters now handled by parent toolbar */}
       <Card>
         <CardContent className="p-0">
           <div className="overflow-auto max-w-full">
@@ -199,14 +156,14 @@ export function DealExecutiveSummary({ deals, isLoading, onDealClick }: Props) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.length === 0 ? (
+                {deals.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                       No deals found
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filtered.map(deal => {
+                  deals.map(deal => {
                     const riskCfg = RISK_STATUS_CONFIG[deal.risk_status];
                     const dateUrgency = getDateUrgency(deal.settlement_date);
 
