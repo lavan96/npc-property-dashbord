@@ -26,6 +26,12 @@ interface BorrowingCapacityOverrides {
   dtiCapEnabled?: boolean;
   dtiCapLimit?: number;
   selectedLenderName?: string;
+  // LMI fields
+  lmiAmount?: number;
+  lmiMode?: string;
+  lmiPropertyValue?: number;
+  lmiDepositAmount?: number;
+  isFirstHomeBuyer?: boolean;
 }
 
 interface UseBorrowingCapacityOptions {

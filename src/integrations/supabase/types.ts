@@ -458,6 +458,7 @@ export type Database = {
           calculated_by: string | null
           client_id: string
           created_at: string
+          deposit_amount: number | null
           dti_ratio: number | null
           existing_commitments_monthly: number
           expense_breakdown: Json | null
@@ -468,8 +469,13 @@ export type Database = {
           interest_rate_used: number | null
           liability_breakdown: Json | null
           living_expenses_monthly: number
+          lmi_amount: number | null
+          lmi_lvr_trigger: number | null
+          lmi_mode: string | null
           loan_term_years: number | null
           monthly_surplus: number
+          net_purchase_capacity: number | null
+          property_value_estimate: number | null
           proposed_loan_amount: number | null
           proposed_lvr: number | null
           recommendations: Json | null
@@ -487,6 +493,7 @@ export type Database = {
           calculated_by?: string | null
           client_id: string
           created_at?: string
+          deposit_amount?: number | null
           dti_ratio?: number | null
           existing_commitments_monthly?: number
           expense_breakdown?: Json | null
@@ -497,8 +504,13 @@ export type Database = {
           interest_rate_used?: number | null
           liability_breakdown?: Json | null
           living_expenses_monthly?: number
+          lmi_amount?: number | null
+          lmi_lvr_trigger?: number | null
+          lmi_mode?: string | null
           loan_term_years?: number | null
           monthly_surplus?: number
+          net_purchase_capacity?: number | null
+          property_value_estimate?: number | null
           proposed_loan_amount?: number | null
           proposed_lvr?: number | null
           recommendations?: Json | null
@@ -516,6 +528,7 @@ export type Database = {
           calculated_by?: string | null
           client_id?: string
           created_at?: string
+          deposit_amount?: number | null
           dti_ratio?: number | null
           existing_commitments_monthly?: number
           expense_breakdown?: Json | null
@@ -526,8 +539,13 @@ export type Database = {
           interest_rate_used?: number | null
           liability_breakdown?: Json | null
           living_expenses_monthly?: number
+          lmi_amount?: number | null
+          lmi_lvr_trigger?: number | null
+          lmi_mode?: string | null
           loan_term_years?: number | null
           monthly_surplus?: number
+          net_purchase_capacity?: number | null
+          property_value_estimate?: number | null
           proposed_loan_amount?: number | null
           proposed_lvr?: number | null
           recommendations?: Json | null

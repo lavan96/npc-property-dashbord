@@ -844,7 +844,14 @@ Deno.serve(async (req) => {
         dtiCapEnabled: overrides?.dtiCapEnabled || false,
         dtiCapLimit: overrides?.dtiCapLimit || DEFAULT_DTI_CAP,
         selectedLenderName: overrides?.selectedLenderName || null,
+        lmiMode: overrides?.lmiMode || 'none',
+        lmiPropertyValue: overrides?.lmiPropertyValue || null,
+        lmiDepositAmount: overrides?.lmiDepositAmount || null,
+        isFirstHomeBuyer: overrides?.isFirstHomeBuyer || false,
       },
+      lmiAmount: overrides?.lmiAmount || 0,
+      lmiMode: overrides?.lmiMode || 'none',
+      netPurchaseCapacity: overrides?.lmiAmount ? Math.max(0, result.borrowingCapacity - (overrides.lmiAmount || 0)) : result.borrowingCapacity,
       calculatedAt: new Date().toISOString(),
     };
 
@@ -876,6 +883,17 @@ Deno.serve(async (req) => {
           recommendations: result.recommendations,
           warnings: result.warnings,
           assumptions: responseData.assumptions,
+          // LMI fields
+          lmi_amount: overrides?.lmiAmount || 0,
+          lmi_mode: overrides?.lmiMode || 'none',
+          lmi_lvr_trigger: overrides?.lmiPropertyValue && overrides?.lmiDepositAmount 
+            ? Math.round(((overrides.lmiPropertyValue - overrides.lmiDepositAmount) / overrides.lmiPropertyValue) * 10000) / 100 
+            : null,
+          property_value_estimate: overrides?.lmiPropertyValue || null,
+          deposit_amount: overrides?.lmiDepositAmount || null,
+          net_purchase_capacity: overrides?.lmiAmount 
+            ? Math.max(0, result.borrowingCapacity - (overrides.lmiAmount || 0)) 
+            : null,
         })
         .select("id")
         .single();
