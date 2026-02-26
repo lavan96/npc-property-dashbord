@@ -134,7 +134,6 @@ export interface BorrowingCapacityExportData {
   expenses?: any[];
   properties?: any[];
   client?: any;
-  assessmentHistory?: any[];
 }
 
 export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExportData) {
@@ -494,64 +493,7 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
     }
   }
 
-  // ════════════════════════════════════════════════════════════════════════════
-  // SCENARIO COMPARISON (conditional)
-  // ════════════════════════════════════════════════════════════════════════════
-  const history = data.assessmentHistory || [];
-  if (history.length >= 2) {
-    addFooter(doc, pageNum.value);
-    doc.addPage();
-    pageNum.value++;
-    y = 30;
-
-    y = drawSectionHeader(doc, 'Assessment History', y);
-
-    // Summary line
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
-    setColor(doc, { r: 80, g: 80, b: 80 });
-    doc.text(`${history.length} assessment${history.length > 1 ? 's' : ''} on record`, MARGIN, y);
-    y += 10;
-
-    // Table header
-    y = drawTableRow(doc, y, [
-      { text: 'Date', x: MARGIN, bold: true, color: NAVY },
-      { text: 'Capacity', x: MARGIN + 50, align: 'right', bold: true, color: NAVY },
-      { text: 'Change', x: MARGIN + 80, align: 'right', bold: true, color: NAVY },
-      { text: 'Band', x: MARGIN + 110, bold: true, color: NAVY },
-      { text: 'Surplus', x: MARGIN + CONTENT_W, align: 'right', bold: true, color: NAVY },
-    ]);
-    setFill(doc, GOLD);
-    doc.rect(MARGIN, y - 9, CONTENT_W, 0.5, 'F');
-
-    for (let i = 0; i < Math.min(history.length, 10); i++) {
-      const h = history[i];
-      const bg = i % 2 === 0 ? LIGHT_GRAY : undefined;
-      const dateStr = h.created_at ? format(new Date(h.created_at), 'dd MMM yyyy') : '-';
-      const band = h.serviceability_band || h.serviceabilityBand || '-';
-      const surplus = h.monthly_surplus || h.monthlySurplus || 0;
-      const cap = h.borrowing_capacity || h.borrowingCapacity || 0;
-      // Change vs previous entry
-      let changeText = '-';
-      let changeColor = GRAY;
-      if (i < history.length - 1) {
-        const prevCap = history[i + 1]?.borrowing_capacity || history[i + 1]?.borrowingCapacity || 0;
-        if (prevCap > 0) {
-          const diff = cap - prevCap;
-          const pct = ((diff / prevCap) * 100).toFixed(1);
-          changeText = diff >= 0 ? `+${pct}%` : `${pct}%`;
-          changeColor = diff >= 0 ? GREEN : RED;
-        }
-      }
-      y = drawTableRow(doc, y, [
-        { text: dateStr, x: MARGIN },
-        { text: fmt(cap), x: MARGIN + 50, align: 'right', bold: true },
-        { text: changeText, x: MARGIN + 80, align: 'right', color: changeColor },
-        { text: bandLabel(band), x: MARGIN + 110, color: bandColor(band) },
-        { text: fmt(surplus), x: MARGIN + CONTENT_W, align: 'right', color: surplus >= 0 ? GREEN : RED },
-      ], bg);
-    }
-  }
+  // Assessment History section removed — not included in final PDF export
 
   // Add footer to last content page
   addFooter(doc, pageNum.value);
@@ -594,7 +536,6 @@ export async function fetchAndGenerateBorrowingCapacityPDF(clientId: string, cli
       expenses,
       properties,
       client,
-      assessmentHistory,
     });
 
     toast.success('PDF downloaded successfully!', { id: 'bc-pdf' });
