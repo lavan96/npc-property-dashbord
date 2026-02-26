@@ -94,7 +94,7 @@ const createExpenseField = (value = 0, frequency: FrequencyType = 'monthly'): Ex
 const convertToMonthly = (value: number, frequency: FrequencyType): number => {
   switch (frequency) {
     case 'weekly':
-      return value * 4;
+      return value * (52 / 12); // Precise weeks per month
     case 'quarterly':
       return value / 3;
     case 'annually':

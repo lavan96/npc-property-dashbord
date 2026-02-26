@@ -1259,7 +1259,7 @@ function parseProperties(sheet: XLSX.WorkSheet): ParsedProperty[] {
 
     // Reconcile weekly vs monthly rental income
     if (prop.weeklyRentalIncome > 0) {
-      const calculatedMonthly = prop.weeklyRentalIncome * 4;
+      const calculatedMonthly = prop.weeklyRentalIncome * (52 / 12);
       if (prop.monthlyRentalIncome === 0 || 
           Math.abs(prop.monthlyRentalIncome - calculatedMonthly) / calculatedMonthly > 0.05) {
         prop.monthlyRentalIncome = Math.round(calculatedMonthly * 100) / 100;

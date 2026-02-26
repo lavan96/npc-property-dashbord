@@ -281,7 +281,7 @@ export function useReviewWizard(
       // Rental properties are expenses, not assets - give them a neutral/informational score
       if (rental) {
         const weeklyRent = prop.monthlyRentalIncome; // This stores weekly rent for rental properties
-        const monthlyRent = weeklyRent * 4;
+        const monthlyRent = weeklyRent * (52 / 12);
         
         return {
           propertyId: prop.propertyId,

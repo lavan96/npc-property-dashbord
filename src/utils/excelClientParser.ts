@@ -418,7 +418,7 @@ function parseSheetToClient(sheet: XLSX.WorkSheet): ParsedClient | null {
         
         // Verify and reconcile weekly vs monthly rental income
         if (weeklyRental > 0) {
-          const calculatedMonthly = weeklyRental * 4;
+          const calculatedMonthly = weeklyRental * (52 / 12); // 4.333...
           // If monthly wasn't captured or differs significantly (>5%), use calculated
           if (monthlyRental === 0 || 
               Math.abs(monthlyRental - calculatedMonthly) / calculatedMonthly > 0.05) {

@@ -128,7 +128,7 @@ interface PropertyFormData {
 const convertToMonthly = (value: number, frequency: FrequencyType): number => {
   switch (frequency) {
     case 'weekly':
-      return value * 4;
+      return value * (52 / 12);
     case 'quarterly':
       return value / 3;
     case 'annually':
