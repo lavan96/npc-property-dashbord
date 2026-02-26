@@ -213,8 +213,13 @@ export function VownetPDFGenerator({
       });
 
       const pages = container.querySelectorAll('.page');
+      const totalHtmlPages = pages.length;
+      // The last HTML page is the disclaimer/contact page — render it AFTER BC pages
+      const contentPages = totalHtmlPages > 1 ? totalHtmlPages - 1 : totalHtmlPages;
+      const hasDisclaimerPage = totalHtmlPages > 1;
       
-      for (let i = 0; i < pages.length; i++) {
+      // Render all content pages (everything except the final disclaimer page)
+      for (let i = 0; i < contentPages; i++) {
         const page = pages[i] as HTMLElement;
         
         const canvas = await html2canvas(page, {
@@ -235,7 +240,7 @@ export function VownetPDFGenerator({
         pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
       }
 
-      // ── Append Borrowing Capacity pages (jsPDF-native) ──
+      // ── Append Borrowing Capacity pages BEFORE disclaimer ──
       if (includeBorrowingCapacity && data.client.id) {
         try {
           console.log('📊 Fetching borrowing capacity data for Vownet PDF...');
@@ -256,6 +261,22 @@ export function VownetPDFGenerator({
         } catch (bcErr) {
           console.warn('Could not append borrowing capacity pages:', bcErr);
         }
+      }
+
+      // ── Render the disclaimer/contact page LAST (always the final page) ──
+      if (hasDisclaimerPage) {
+        const disclaimerPage = pages[totalHtmlPages - 1] as HTMLElement;
+        const disclaimerCanvas = await html2canvas(disclaimerPage, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#141414',
+          width: 794,
+          height: 1123,
+        });
+        const disclaimerImg = disclaimerCanvas.toDataURL('image/jpeg', 0.95);
+        pdf.addPage();
+        pdf.addImage(disclaimerImg, 'JPEG', 0, 0, 210, 297);
       }
 
       // Cleanup

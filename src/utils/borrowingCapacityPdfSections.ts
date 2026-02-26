@@ -1015,6 +1015,7 @@ export function drawBorrowingCapacitySections(
     y += 6;
 
     for (const a of assumptions) {
+      y = checkBreak(doc, y, 8, pageNum);
       doc.setFontSize(8);
       doc.setFont('helvetica', 'normal');
       setColor(doc, GRAY);
