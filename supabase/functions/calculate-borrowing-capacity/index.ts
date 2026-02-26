@@ -468,6 +468,16 @@ function calculateLiabilityBreakdown(liabilities: any[], properties: any[], annu
   return { totalMonthly, breakdown };
 }
 
+// Conservative mode adjustments (matches client-side logic)
+const CONSERVATIVE_MODE_ADJUSTMENTS = {
+  minimumSurplusFloor: 1000,
+  residualIncomeFloor: 1500,
+  surplusBufferMultiplier: 0.85,
+  dtiHardCap: 6,
+};
+
+const DEFAULT_DTI_CAP = 6.0;
+
 function calculateBorrowingCapacity(params: {
   grossAnnualIncome: number;
   shadedAnnualIncome: number;
@@ -477,29 +487,46 @@ function calculateBorrowingCapacity(params: {
   bufferRate: number;
   loanTermYears: number;
   totalDebtBalances: number;
+  calculationMode?: 'bank' | 'conservative';
+  dtiCapEnabled?: boolean;
+  dtiCapLimit?: number;
 }): CalculationResult & { afterTaxAnnualIncome: number; monthlyAfterTaxIncome: number } {
   const { grossAnnualIncome, shadedAnnualIncome, monthlyLivingExpenses, monthlyCommitments, 
-          interestRate, bufferRate, loanTermYears } = params;
+          interestRate, bufferRate, loanTermYears,
+          calculationMode = 'bank', dtiCapEnabled = false, dtiCapLimit = DEFAULT_DTI_CAP } = params;
+  
+  const isConservative = calculationMode === 'conservative';
   
   // Assessment rate = current rate + APRA buffer
   const assessmentRate = interestRate + bufferRate;
   const monthlyRate = (assessmentRate / 100) / 12;
   
-  // *** KEY CHANGE: Calculate after-tax income for serviceability ***
-  // Banks assess serviceability based on after-tax income, not gross
+  // Calculate after-tax income for serviceability
   const taxBreakdown = getTaxBreakdown(grossAnnualIncome);
   const afterTaxAnnualIncome = taxBreakdown.afterTaxIncome;
   const monthlyAfterTaxIncome = afterTaxAnnualIncome / 12;
   
-  // Monthly net income available = after-tax income (what they actually take home)
   const monthlyIncome = monthlyAfterTaxIncome;
-  const monthlySurplus = monthlyIncome - monthlyLivingExpenses - monthlyCommitments;
+  let monthlySurplus = monthlyIncome - monthlyLivingExpenses - monthlyCommitments;
+  
+  // Conservative mode adjustments (mirrors client-side logic exactly)
+  if (isConservative) {
+    monthlySurplus = monthlySurplus * CONSERVATIVE_MODE_ADJUSTMENTS.surplusBufferMultiplier;
+    
+    if (monthlySurplus < CONSERVATIVE_MODE_ADJUSTMENTS.minimumSurplusFloor) {
+      monthlySurplus = Math.max(0, monthlySurplus);
+    }
+    
+    const residualIncome = monthlyIncome - monthlyCommitments;
+    if (residualIncome < CONSERVATIVE_MODE_ADJUSTMENTS.residualIncomeFloor) {
+      monthlySurplus = Math.max(0, monthlySurplus - (CONSERVATIVE_MODE_ADJUSTMENTS.residualIncomeFloor - residualIncome));
+    }
+  }
   
   // Max new repayment = available surplus
-  const maxNewRepayment = Math.max(0, monthlySurplus);
+  let maxNewRepayment = Math.max(0, monthlySurplus);
   
   // Reverse-calculate max loan from repayment using P&I formula
-  // Loan = Payment × [(1 - (1 + r)^-n) / r]
   const periods = loanTermYears * 12;
   let borrowingCapacity = 0;
   
@@ -508,17 +535,35 @@ function calculateBorrowingCapacity(params: {
     borrowingCapacity = Math.round(maxNewRepayment * factor);
   }
   
+  // DTI ratio - Industry standard: Total Outstanding Debt Balances / Gross Annual Income
+  const totalDebtWithNewLoan = params.totalDebtBalances + borrowingCapacity;
+  let dtiRatio = params.grossAnnualIncome > 0 ? Math.round((totalDebtWithNewLoan / params.grossAnnualIncome) * 100) / 100 : 0;
+  
+  // Apply DTI cap if enabled or in conservative mode
+  const effectiveDtiCap = isConservative ? CONSERVATIVE_MODE_ADJUSTMENTS.dtiHardCap : dtiCapLimit;
+  const shouldApplyDtiCap = dtiCapEnabled || isConservative;
+  
+  if (shouldApplyDtiCap && dtiRatio > effectiveDtiCap && grossAnnualIncome > 0) {
+    const maxTotalDebt = grossAnnualIncome * effectiveDtiCap;
+    const maxNewLoan = Math.max(0, maxTotalDebt - params.totalDebtBalances);
+    
+    if (maxNewLoan < borrowingCapacity) {
+      borrowingCapacity = Math.round(maxNewLoan);
+      dtiRatio = Math.round(((params.totalDebtBalances + borrowingCapacity) / grossAnnualIncome) * 100) / 100;
+    }
+  }
+  
   // Stress test at +1% above assessment
   const stressRate = ((assessmentRate + 1) / 100) / 12;
   let stressTestedCapacity = 0;
   if (stressRate > 0 && maxNewRepayment > 0) {
     const stressFactor = (1 - Math.pow(1 + stressRate, -periods)) / stressRate;
     stressTestedCapacity = Math.round(maxNewRepayment * stressFactor);
+    
+    if (shouldApplyDtiCap && stressTestedCapacity > borrowingCapacity) {
+      stressTestedCapacity = Math.min(stressTestedCapacity, borrowingCapacity);
+    }
   }
-  
-  // DTI ratio - Industry standard: Total Outstanding Debt Balances / Gross Annual Income
-  const totalDebtWithNewLoan = params.totalDebtBalances + borrowingCapacity;
-  const dtiRatio = params.grossAnnualIncome > 0 ? Math.round((totalDebtWithNewLoan / params.grossAnnualIncome) * 100) / 100 : 0;
   
   // Determine band
   let serviceabilityBand: 'green' | 'amber' | 'red';
@@ -533,6 +578,10 @@ function calculateBorrowingCapacity(params: {
   // Generate recommendations
   const recommendations: string[] = [];
   const warnings: string[] = [];
+  
+  if (isConservative) {
+    recommendations.push("Conservative mode: Capacity adjusted with minimum surplus floors and DTI cap");
+  }
   
   if (serviceabilityBand === 'green') {
     recommendations.push("Strong borrowing position - ready for property acquisition");
@@ -556,6 +605,9 @@ function calculateBorrowingCapacity(params: {
   }
   
   // Add warnings
+  if (shouldApplyDtiCap && dtiRatio >= effectiveDtiCap * 0.9) {
+    warnings.push(`DTI ratio approaching ${effectiveDtiCap}x cap limit`);
+  }
   if (dtiRatio >= 7) {
     warnings.push("DTI ratio exceeds most lender thresholds");
   }
@@ -564,6 +616,9 @@ function calculateBorrowingCapacity(params: {
   }
   if (borrowingCapacity < 100000 && shadedAnnualIncome > 50000) {
     warnings.push("Borrowing capacity constrained by existing commitments");
+  }
+  if (isConservative && monthlySurplus < CONSERVATIVE_MODE_ADJUSTMENTS.minimumSurplusFloor) {
+    warnings.push(`Surplus below conservative minimum floor of $${CONSERVATIVE_MODE_ADJUSTMENTS.minimumSurplusFloor}/mo`);
   }
   
   return {
@@ -722,6 +777,9 @@ Deno.serve(async (req) => {
       bufferRate,
       loanTermYears,
       totalDebtBalances,
+      calculationMode: overrides?.calculationMode || 'bank',
+      dtiCapEnabled: overrides?.dtiCapEnabled || false,
+      dtiCapLimit: overrides?.dtiCapLimit || DEFAULT_DTI_CAP,
     });
 
     console.log(`[calculate-borrowing-capacity] Result: Capacity $${result.borrowingCapacity}, Band: ${result.serviceabilityBand}`);
