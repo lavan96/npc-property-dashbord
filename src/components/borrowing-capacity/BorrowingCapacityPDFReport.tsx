@@ -253,6 +253,35 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
 
   y = drawSectionHeader(doc, 'Executive Summary', y);
 
+  // ── Executive Summary Narrative ────────────────────────────────────────────
+  {
+    const capacity = a.borrowing_capacity || 0;
+    const band = a.serviceability_band || 'red';
+    const surplus = a.monthly_surplus || 0;
+    const dti = a.dti_ratio || 0;
+    const proposedLoan = a.proposed_loan_amount || 0;
+    const assessRate = a.assessment_rate || a.interest_rate_used || 0;
+    const bandWord = band === 'green' ? 'strong' : band === 'amber' ? 'moderate' : 'limited';
+
+    let narrative = `Based on the financial information provided, ${data.clientName} has an estimated maximum borrowing capacity of ${fmt(capacity)}. `;
+    narrative += `This assessment was conducted using an assessment rate of ${assessRate.toFixed(2)}% over a ${a.loan_term_years || 30}-year loan term, `;
+    narrative += `resulting in a monthly surplus of ${fmt(surplus)} and a debt-to-income ratio of ${dti.toFixed(1)}x. `;
+    narrative += `The overall serviceability position is assessed as ${bandWord}.`;
+
+    if (proposedLoan > 0) {
+      const util = Math.round((proposedLoan / (capacity || 1)) * 100);
+      const withinCapacity = proposedLoan <= capacity;
+      narrative += ` The proposed loan of ${fmt(proposedLoan)} represents ${util}% utilisation of the available capacity and ${withinCapacity ? 'falls within' : 'exceeds'} the assessed borrowing limit.`;
+    }
+
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'normal');
+    setColor(doc, BODY_TEXT);
+    const narrativeLines: string[] = doc.splitTextToSize(narrative, CONTENT_W - 4);
+    doc.text(narrativeLines, MARGIN + 2, y);
+    y += narrativeLines.length * 4 + 8;
+  }
+
   // ── KPI Boxes (with gold left-border accent) ───────────────────────────────
   const boxW = (CONTENT_W - 10) / 3;
   const boxH = 38;
