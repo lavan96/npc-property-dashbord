@@ -4,13 +4,19 @@ import { useToast } from '@/hooks/use-toast';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { formatInSydney, formatDateInSydney } from '@/lib/timezoneUtils';
 
+export interface GHLTeamMember {
+  userId: string;
+  name?: string;
+  email?: string;
+}
+
 export interface GHLCalendar {
   id: string;
   name: string;
   description?: string;
   calendarType: string;
   isActive: boolean;
-  teamMembers?: number;
+  teamMembers?: GHLTeamMember[];
   slug?: string;
   eventColor?: string;
 }
@@ -172,7 +178,7 @@ export function useGHLCalendar() {
           description: cal.description ? String(cal.description) : undefined,
           calendarType: String(cal.calendarType || ''),
           isActive: Boolean(cal.isActive),
-          teamMembers: Array.isArray(cal.teamMembers) ? cal.teamMembers.length : (typeof cal.teamMembers === 'number' ? cal.teamMembers : 0),
+          teamMembers: Array.isArray(cal.teamMembers) ? cal.teamMembers.map((tm: any) => ({ userId: String(tm.userId || tm.id || ''), name: tm.name || tm.firstName || undefined, email: tm.email || undefined })) : undefined,
           slug: cal.widgetSlug ? String(cal.widgetSlug) : (cal.slug ? String(cal.slug) : undefined),
           eventColor: cal.eventColor ? String(cal.eventColor) : undefined,
         }));
