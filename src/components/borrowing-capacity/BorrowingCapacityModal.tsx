@@ -633,8 +633,12 @@ export function BorrowingCapacityModal({
               grossAnnualIncome: totalGrossIncome,
               livingExpenses: effectiveExpenses,
               interestRate,
+              bufferRate: effectiveBufferRate,
               loanTermYears,
               proposedLoanAmount,
+              calculationMode,
+              dtiCapEnabled,
+              dtiCapLimit,
             });
             toast.success('Assessment saved');
           }}

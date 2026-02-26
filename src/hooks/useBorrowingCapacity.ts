@@ -107,8 +107,14 @@ export function useBorrowingCapacity({ clientId, autoFetch = true }: UseBorrowin
       return data.data as FullAssessmentResult;
     },
     onSuccess: (data) => {
+      // Invalidate BC-specific queries
       queryClient.invalidateQueries({ queryKey: ['borrowing-capacity', clientId] });
       queryClient.invalidateQueries({ queryKey: ['borrowing-capacity-history', clientId] });
+      // Invalidate broader client queries so BC tab card, PDF exports, and other views pick up the new value
+      queryClient.invalidateQueries({ queryKey: ['borrowing-capacity-client-data', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['client-data', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['get-client-data'] });
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
       toast.success('Borrowing capacity calculated successfully');
     },
     onError: (error: Error) => {

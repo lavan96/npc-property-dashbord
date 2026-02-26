@@ -476,6 +476,7 @@ function calculateBorrowingCapacity(params: {
   interestRate: number;
   bufferRate: number;
   loanTermYears: number;
+  totalDebtBalances: number;
 }): CalculationResult & { afterTaxAnnualIncome: number; monthlyAfterTaxIncome: number } {
   const { grossAnnualIncome, shadedAnnualIncome, monthlyLivingExpenses, monthlyCommitments, 
           interestRate, bufferRate, loanTermYears } = params;
@@ -515,9 +516,9 @@ function calculateBorrowingCapacity(params: {
     stressTestedCapacity = Math.round(maxNewRepayment * stressFactor);
   }
   
-  // DTI ratio
-  const totalAnnualDebt = (monthlyCommitments * 12) + (borrowingCapacity > 0 ? borrowingCapacity / loanTermYears : 0);
-  const dtiRatio = shadedAnnualIncome > 0 ? Math.round((totalAnnualDebt / shadedAnnualIncome) * 100) / 100 : 0;
+  // DTI ratio - Industry standard: Total Outstanding Debt Balances / Gross Annual Income
+  const totalDebtWithNewLoan = params.totalDebtBalances + borrowingCapacity;
+  const dtiRatio = params.grossAnnualIncome > 0 ? Math.round((totalDebtWithNewLoan / params.grossAnnualIncome) * 100) / 100 : 0;
   
   // Determine band
   let serviceabilityBand: 'green' | 'amber' | 'red';
@@ -693,6 +694,10 @@ Deno.serve(async (req) => {
     const { totalMonthly: liabilityServicing, breakdown: liabilityBreakdown } = 
       calculateLiabilityBreakdown(liabilities, properties, effectiveGrossIncome);
     
+    // Calculate total outstanding debt balances for DTI (industry standard)
+    const totalDebtBalances = liabilityBreakdown.reduce((sum, item) => sum + (item.balance || 0), 0);
+    console.log(`[calculate-borrowing-capacity] Total debt balances for DTI: $${totalDebtBalances}`);
+    
     const effectiveCommitments = overrides?.additionalLiabilities 
       ? liabilityServicing + overrides.additionalLiabilities 
       : liabilityServicing;
@@ -712,6 +717,7 @@ Deno.serve(async (req) => {
       interestRate,
       bufferRate,
       loanTermYears,
+      totalDebtBalances,
     });
 
     console.log(`[calculate-borrowing-capacity] Result: Capacity $${result.borrowingCapacity}, Band: ${result.serviceabilityBand}`);
