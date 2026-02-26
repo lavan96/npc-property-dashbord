@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Users, Filter, RefreshCw, GripVertical, LayoutList, Zap, Flame, BarChart3, TrendingUp, AlertTriangle, Sparkles, Plus, Layers, Repeat, Bell, X, PanelLeftClose, PanelLeft, Menu } from 'lucide-react';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
@@ -1330,7 +1331,37 @@ export default function Calendar() {
         defaultHour={quickAddDefaultHour}
         isLoading={isUpdating}
         onSubmit={async (data) => {
-          const result = await createAppointment(data);
+          const { secondaryRecipients, ...appointmentData } = data;
+          const result = await createAppointment(appointmentData);
+          
+          // Send notifications to secondary recipients after successful creation
+          if (result.success && secondaryRecipients && secondaryRecipients.length > 0) {
+            const calendarName = calendars.find(c => c.id === data.calendarId)?.name;
+            try {
+              await invokeSecureFunction('send-appointment-notification', {
+                appointmentGhlId: result.event?.id || `temp-${Date.now()}`,
+                appointmentTitle: data.title,
+                appointmentStart: data.startTime,
+                appointmentEnd: data.endTime,
+                appointmentType: 'call', // from the type selection in the modal
+                appointmentNotes: data.notes,
+                calendarName,
+                recipients: secondaryRecipients,
+              });
+              toast({
+                title: 'Notifications sent',
+                description: `${secondaryRecipients.length} finance contact(s) notified with calendar invite.`,
+              });
+            } catch (err: any) {
+              console.error('Failed to send appointment notifications:', err);
+              toast({
+                title: 'Appointment created, but notifications failed',
+                description: err.message || 'Could not send email notifications.',
+                variant: 'destructive',
+              });
+            }
+          }
+          
           return result.success;
         }}
         onSearchContacts={searchContacts}

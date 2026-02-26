@@ -187,6 +187,63 @@ export type Database = {
         }
         Relationships: []
       }
+      appointment_secondary_recipients: {
+        Row: {
+          appointment_end: string | null
+          appointment_ghl_id: string
+          appointment_notes: string | null
+          appointment_start: string | null
+          appointment_title: string | null
+          appointment_type: string | null
+          calendar_name: string | null
+          contact_email: string
+          contact_name: string
+          created_at: string
+          finance_contact_id: string
+          id: string
+          notification_error: string | null
+          notification_sent: boolean
+          notification_sent_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          appointment_end?: string | null
+          appointment_ghl_id: string
+          appointment_notes?: string | null
+          appointment_start?: string | null
+          appointment_title?: string | null
+          appointment_type?: string | null
+          calendar_name?: string | null
+          contact_email: string
+          contact_name: string
+          created_at?: string
+          finance_contact_id: string
+          id?: string
+          notification_error?: string | null
+          notification_sent?: boolean
+          notification_sent_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          appointment_end?: string | null
+          appointment_ghl_id?: string
+          appointment_notes?: string | null
+          appointment_start?: string | null
+          appointment_title?: string | null
+          appointment_type?: string | null
+          calendar_name?: string | null
+          contact_email?: string
+          contact_name?: string
+          created_at?: string
+          finance_contact_id?: string
+          id?: string
+          notification_error?: string | null
+          notification_sent?: boolean
+          notification_sent_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       auto_report_generation_log: {
         Row: {
           completed_at: string | null

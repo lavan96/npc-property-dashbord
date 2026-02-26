@@ -383,3 +383,6 @@ request_timeout = 120
 
 [functions.cloudflare-proxy]
 verify_jwt = true
+
+[functions.send-appointment-notification]
+verify_jwt = true
