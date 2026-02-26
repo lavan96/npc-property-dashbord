@@ -58,7 +58,9 @@ export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', 
       monthlyRepayment: Math.round(monthlyRepayment),
       isServiceable,
       headroom,
-      utilizationPercent: Math.round((proposedLoanAmount / Math.max(result.borrowingCapacity, 1)) * 100),
+      utilizationPercent: result.borrowingCapacity > 0 
+        ? Math.min(Math.round((proposedLoanAmount / result.borrowingCapacity) * 100), 100)
+        : 0,
     };
   }, [result, proposedLoanAmount, interestRate, bufferRate, loanTermYears]);
 
