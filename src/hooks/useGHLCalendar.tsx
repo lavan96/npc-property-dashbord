@@ -570,6 +570,7 @@ export function useGHLCalendar() {
     notes?: string;
     address?: string;
     assignedUserId?: string;
+    overrideAvailability?: boolean;
   }): Promise<{ success: boolean; event?: GHLEvent }> => {
     setIsUpdating(true);
 

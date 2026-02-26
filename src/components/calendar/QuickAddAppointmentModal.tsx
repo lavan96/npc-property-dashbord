@@ -31,6 +31,7 @@ interface QuickAddAppointmentModalProps {
     endTime: string;
     contactId?: string;
     notes?: string;
+    overrideAvailability?: boolean;
     secondaryRecipients?: { financeContactId: string; name: string; email: string }[];
   }) => Promise<boolean>;
   onSearchContacts?: (query: string) => Promise<GHLContact[]>;
@@ -72,6 +73,7 @@ export function QuickAddAppointmentModal({
   const [appointmentType, setAppointmentType] = useState('call');
   const [inputTimezone, setInputTimezone] = useState<string>(() => getBookingTimezone());
   const [selectedFinanceContacts, setSelectedFinanceContacts] = useState<FinanceContact[]>([]);
+  const [overrideAvailability, setOverrideAvailability] = useState(false);
   
   // Contact search state
   const [contactSearch, setContactSearch] = useState('');
@@ -94,6 +96,7 @@ export function QuickAddAppointmentModal({
       setSearchResults([]);
       setAppointmentType('call');
       setSelectedFinanceContacts([]);
+      setOverrideAvailability(false);
 
       const d = defaultDate || new Date();
       setDate(format(d, 'yyyy-MM-dd'));
@@ -239,6 +242,7 @@ export function QuickAddAppointmentModal({
       endTime: endTimeISO,
       contactId: selectedContact?.id,
       notes: notes.trim() || undefined,
+      overrideAvailability: overrideAvailability || undefined,
       secondaryRecipients: secondaryRecipients.length > 0 ? secondaryRecipients : undefined,
     });
 
@@ -549,6 +553,37 @@ export function QuickAddAppointmentModal({
             )}
           </div>
         )}
+      </div>
+
+      {/* Override Availability Toggle */}
+      <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30">
+        <div className="space-y-0.5">
+          <Label htmlFor="override-availability" className="text-sm font-medium cursor-pointer flex items-center gap-1.5">
+            <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+            Override availability
+          </Label>
+          <p className="text-[11px] text-muted-foreground">
+            Book outside the calendar's configured availability window
+          </p>
+        </div>
+        <button
+          id="override-availability"
+          type="button"
+          role="switch"
+          aria-checked={overrideAvailability}
+          onClick={() => setOverrideAvailability(prev => !prev)}
+          className={cn(
+            'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors',
+            overrideAvailability ? 'bg-primary' : 'bg-muted-foreground/30'
+          )}
+        >
+          <span
+            className={cn(
+              'pointer-events-none block h-4 w-4 rounded-full bg-background shadow-sm transition-transform',
+              overrideAvailability ? 'translate-x-4' : 'translate-x-0'
+            )}
+          />
+        </button>
       </div>
 
       {!isMobile && (
