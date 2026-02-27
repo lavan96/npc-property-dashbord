@@ -4,6 +4,7 @@ import { Download, FileText, Home, Loader2, Mail, Send, Users, Calculator } from
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { secureStorageUpload } from '@/hooks/useSecureStorage';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { drawBorrowingCapacitySections, transformAssessmentToSectionData } from '@/utils/borrowingCapacityPdfSections';
@@ -186,6 +187,36 @@ export function VownetPDFGenerator({
   const { user } = useAuth();
   const { addNotification } = useNotifications();
 
+  // Persist Vownet PDF to storage + client_files in background
+  const persistVownetPdf = async (blob: Blob, fileName: string, clientIdVal: string) => {
+    try {
+      const storagePath = `vownet-forms/${clientIdVal}/${fileName}`;
+      const file = new File([blob], fileName, { type: 'application/pdf' });
+      const uploadedPath = await secureStorageUpload('client-files', storagePath, file);
+
+      if (uploadedPath) {
+        await invokeSecureFunction('manage-client-data', {
+          operation: 'create',
+          table: 'client_files',
+          clientId: clientIdVal,
+          data: {
+            category: 'vownet',
+            file_name: fileName,
+            file_path: uploadedPath,
+            file_type: 'application/pdf',
+            file_size: blob.size,
+            is_vownet_form: true,
+            description: `Client Details Form - ${new Date().toLocaleDateString('en-AU')}`,
+          },
+        });
+        console.log('✓ Vownet PDF persisted to storage + client_files');
+      }
+    } catch (err) {
+      console.error('Failed to persist Vownet PDF:', err);
+      // Non-blocking — the user already has their download
+    }
+  };
+
   const generatePDF = async (forEmail: boolean = false): Promise<Blob | null> => {
     setIsGenerating(true);
     
@@ -282,15 +313,26 @@ export function VownetPDFGenerator({
       // Cleanup
       document.body.removeChild(container);
 
-      const fileName = `Vownet_Form_${clientName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+      const generatedStamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const fileName = `Vownet_Form_${clientName.replace(/\s+/g, '_')}_${generatedStamp}.pdf`;
       
       if (forEmail) {
         const pdfBlob = pdf.output('blob');
+        // Also persist in background when emailing
+        persistVownetPdf(pdfBlob, fileName, data.client.id);
         return pdfBlob;
       } else {
         // Download directly
-        pdf.save(fileName);
-        toast.success('Vownet PDF generated successfully');
+        const pdfBlob = pdf.output('blob');
+        const url = URL.createObjectURL(pdfBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        a.click();
+        URL.revokeObjectURL(url);
+        // Persist to storage + database
+        persistVownetPdf(pdfBlob, fileName, data.client.id);
+        toast.success('Vownet PDF downloaded & saved to Reports');
         return null;
       }
     } catch (error) {
@@ -309,7 +351,7 @@ export function VownetPDFGenerator({
   const handleEmailSend = async () => {
     const pdfBlob = await generatePDF(true);
     if (pdfBlob && onEmailClick) {
-      const fileName = `Vownet_Form_${clientName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+      const fileName = `Vownet_Form_${clientName.replace(/\s+/g, '_')}_${new Date().toISOString().replace(/[:.]/g, '-')}.pdf`;
       onEmailClick(pdfBlob, fileName);
     }
   };
