@@ -6,6 +6,8 @@ import { secureStorageDownload } from '@/hooks/useSecureStorage';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,6 +27,12 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
   FileText,
   Download,
   Mail,
@@ -42,6 +50,9 @@ import {
   MoreVertical,
   Loader2,
   SortAsc,
+  Landmark,
+  Home,
+  Info,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { VownetPDFGenerator, type VownetPDFData } from './VownetPDFGenerator';
@@ -100,7 +111,12 @@ export function ClientReportsTab({
   const [activeFilter, setActiveFilter] = useState<ReportType>('all');
   const [sortMode, setSortMode] = useState<SortMode>('newest');
   const [reportToDelete, setReportToDelete] = useState<UnifiedReport | null>(null);
+  const [includeBorrowingCapacity, setIncludeBorrowingCapacity] = useState(true);
+  const [includeOwnerOccupied, setIncludeOwnerOccupied] = useState(true);
   const queryClient = useQueryClient();
+
+  const ownerOccupiedCount = properties.filter(p => p.property_type === 'owner_occupied').length;
+  const investmentCount = properties.filter(p => p.property_type !== 'owner_occupied').length;
 
   // Fetch client files that are reports
   const { data: reportFiles = [] } = useQuery({
@@ -407,6 +423,8 @@ export function ClientReportsTab({
           <PortfolioAnalysisPDFGenerator
             clientId={clientId}
             clientName={clientName}
+            includeBorrowingCapacity={includeBorrowingCapacity}
+            includeOwnerOccupied={includeOwnerOccupied}
           />
         )}
 
@@ -444,6 +462,59 @@ export function ClientReportsTab({
           </DropdownMenu>
         )}
       </div>
+
+      {/* ─── Portfolio Report Settings ─── */}
+      {properties.length > 0 && (
+        <div className="flex items-center gap-4 flex-wrap px-1">
+          {ownerOccupiedCount > 0 && (
+            <TooltipProvider>
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="reports-include-oo"
+                  checked={includeOwnerOccupied}
+                  onCheckedChange={setIncludeOwnerOccupied}
+                  className="scale-90"
+                />
+                <Label htmlFor="reports-include-oo" className="text-xs text-muted-foreground cursor-pointer flex items-center gap-1">
+                  <Home className="h-3.5 w-3.5" />
+                  Owner-Occupied
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-3 w-3 text-muted-foreground/60" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs text-xs">
+                      When disabled, owner-occupied properties are excluded from portfolio-level calculations but still listed for reference.
+                    </TooltipContent>
+                  </Tooltip>
+                </Label>
+              </div>
+            </TooltipProvider>
+          )}
+
+          <TooltipProvider>
+            <div className="flex items-center gap-2">
+              <Switch
+                id="reports-include-bc"
+                checked={includeBorrowingCapacity}
+                onCheckedChange={setIncludeBorrowingCapacity}
+                className="scale-90"
+              />
+              <Label htmlFor="reports-include-bc" className="text-xs text-muted-foreground cursor-pointer flex items-center gap-1">
+                <Landmark className="h-3.5 w-3.5" />
+                Borrowing Capacity
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="h-3 w-3 text-muted-foreground/60" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs text-xs">
+                    Control whether the Borrowing Capacity section is included in the Portfolio Performance Report PDF.
+                  </TooltipContent>
+                </Tooltip>
+              </Label>
+            </div>
+          </TooltipProvider>
+        </div>
+      )}
 
       {/* Selected Property Inline Generator */}
       {selectedProperty && (() => {
