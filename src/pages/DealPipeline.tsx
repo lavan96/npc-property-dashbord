@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { TrendingUp, DollarSign, FileText, LayoutDashboard, Kanban, BarChart3, CalendarDays } from 'lucide-react';
+import { TrendingUp, DollarSign, FileText, LayoutDashboard, Kanban, BarChart3, CalendarDays, ShieldAlert } from 'lucide-react';
 import { useAllDeals } from '@/hooks/useAllDeals';
 import { usePipelineMutations } from '@/hooks/usePipelineMutations';
 import { usePipelineFilters } from '@/hooks/usePipelineFilters';
@@ -13,6 +13,7 @@ import { BuilderInvoiceLog } from '@/components/deals/BuilderInvoiceLog';
 import { PipelineKanbanBoard } from '@/components/deals/PipelineKanbanBoard';
 import { PipelineAnalytics } from '@/components/deals/PipelineAnalytics';
 import { PipelineTimeline } from '@/components/deals/PipelineTimeline';
+import { ClawbackRiskMonitor } from '@/components/deals/ClawbackRiskMonitor';
 import { toast } from 'sonner';
 import type { DealWithClient } from '@/hooks/useAllDeals';
 
@@ -80,6 +81,10 @@ export default function DealPipeline() {
             <CalendarDays className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             Timeline
           </TabsTrigger>
+          <TabsTrigger value="clawback" className="gap-1 sm:gap-1.5 text-xs sm:text-sm whitespace-nowrap flex-shrink-0">
+            <ShieldAlert className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            Clawback
+          </TabsTrigger>
           <TabsTrigger value="invoices" className="gap-1 sm:gap-1.5 text-xs sm:text-sm whitespace-nowrap flex-shrink-0">
             <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             <span className="hidden sm:inline">Builder </span>Invoices
@@ -104,6 +109,10 @@ export default function DealPipeline() {
 
         <TabsContent value="timeline" className="mt-4">
           <PipelineTimeline deals={filteredDeals} isLoading={isLoading} onDealClick={handleDealClick} />
+        </TabsContent>
+
+        <TabsContent value="clawback" className="mt-4">
+          <ClawbackRiskMonitor deals={filteredDeals} isLoading={isLoading} onDealClick={handleDealClick} />
         </TabsContent>
 
         <TabsContent value="invoices" className="mt-4">
