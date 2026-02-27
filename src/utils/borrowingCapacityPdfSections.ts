@@ -957,25 +957,37 @@ export function drawBorrowingCapacitySections(
     { label: 'Monthly Surplus', value: fmt(data.monthlySurplus), color: data.monthlySurplus >= 0 ? GREEN : RED },
     { label: 'Assessment Rate Applied', value: `${data.assessmentRate.toFixed(2)}%`, color: NAVY },
     { label: 'Loan Term', value: `${data.loanTermYears || 30} years`, color: NAVY },
-    { label: 'Maximum Borrowing Capacity', value: fmt(data.borrowingCapacity), color: GREEN },
   ];
 
-  for (const item of breakdownItems) {
-    y = checkBreak(doc, y, 10, pageNum);
+  const LIGHT_GRAY = { r: 245, g: 245, b: 245 };
+  for (let i = 0; i < breakdownItems.length; i++) {
+    const item = breakdownItems[i];
+    y = checkBreak(doc, y, 12, pageNum);
+    // Alternating row background
+    if (i % 2 === 0) {
+      setFill(doc, LIGHT_GRAY);
+      doc.rect(MARGIN, y - 4, CONTENT_W, 10, 'F');
+    }
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     setColor(doc, MDARK);
-    doc.text(sanitize(item.label), MARGIN, y);
+    doc.text(sanitize(item.label), MARGIN + 3, y + 1);
     doc.setFont('helvetica', 'bold');
     setColor(doc, item.color);
-    doc.text(item.value, MARGIN + CONTENT_W, y, { align: 'right' });
-    y += 9;
+    doc.text(item.value, MARGIN + CONTENT_W - 3, y + 1, { align: 'right' });
+    y += 11;
   }
 
-  // Gold separator
+  // Gold "Maximum Borrowing Capacity" bar
+  y += 2;
   setFill(doc, GOLD);
-  doc.rect(MARGIN, y - 4, CONTENT_W, 1, 'F');
-  y += 8;
+  doc.roundedRect(MARGIN, y - 5, CONTENT_W, 14, 2, 2, 'F');
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  setColor(doc, { r: 255, g: 255, b: 255 });
+  doc.text('Maximum Borrowing Capacity', MARGIN + 5, y + 4);
+  doc.text(fmt(data.borrowingCapacity), MARGIN + CONTENT_W - 5, y + 4, { align: 'right' });
+  y += 18;
 
   // ──────────────────────────────────────────────────────────────────────────
   // SERVICEABILITY VERDICT — large visual band
