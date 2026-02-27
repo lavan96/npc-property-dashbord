@@ -358,6 +358,20 @@ export default function ClientManagement() {
     const syncStatus = client.ghl_sync_status || 'not_synced';
     if (filters.syncStatus !== 'all' && syncStatus !== filters.syncStatus) return false;
 
+    // Follow-up status filter
+    if (filters.followUpStatus !== 'all') {
+      const now = new Date();
+      const followUp = client.follow_up_date ? new Date(client.follow_up_date) : null;
+      if (filters.followUpStatus === 'flagged' && !followUp) return false;
+      if (filters.followUpStatus === 'overdue' && (!followUp || followUp >= now)) return false;
+      if (filters.followUpStatus === 'upcoming') {
+        if (!followUp) return false;
+        const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+        if (followUp < now || followUp > weekFromNow) return false;
+      }
+      if (filters.followUpStatus === 'none' && followUp) return false;
+    }
+
     return true;
   });
 

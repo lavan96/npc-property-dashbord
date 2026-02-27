@@ -24,6 +24,7 @@ export interface ClientFiltersState {
   syncStatus: 'all' | 'synced' | 'pending' | 'error' | 'not_synced';
   reviewStatus: 'all' | 'overdue' | 'due_soon' | 'upcoming' | 'no_review';
   reviewFrequency: 'all' | 'quarterly' | 'bi_annual' | 'annual';
+  followUpStatus: 'all' | 'flagged' | 'overdue' | 'upcoming' | 'none';
 }
 
 interface ClientFiltersProps {
@@ -38,6 +39,7 @@ export const defaultFilters: ClientFiltersState = {
   syncStatus: 'all',
   reviewStatus: 'all',
   reviewFrequency: 'all',
+  followUpStatus: 'all',
 };
 
 export function ClientFilters({ filters, onFiltersChange }: ClientFiltersProps) {
@@ -49,6 +51,7 @@ export function ClientFilters({ filters, onFiltersChange }: ClientFiltersProps) 
     filters.syncStatus !== 'all',
     filters.reviewStatus !== 'all',
     filters.reviewFrequency !== 'all',
+    filters.followUpStatus !== 'all',
   ].filter(Boolean).length;
 
   const handleReset = () => {
@@ -189,6 +192,28 @@ export function ClientFilters({ filters, onFiltersChange }: ClientFiltersProps) 
                 <SelectItem value="quarterly">Quarterly</SelectItem>
                 <SelectItem value="bi_annual">Bi-Annual</SelectItem>
                 <SelectItem value="annual">Annual</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Follow-Up Status */}
+          <div className="space-y-2">
+            <Label className="text-sm">Follow-Up Status</Label>
+            <Select
+              value={filters.followUpStatus}
+              onValueChange={(value: 'all' | 'flagged' | 'overdue' | 'upcoming' | 'none') => 
+                onFiltersChange({ ...filters, followUpStatus: value })
+              }
+            >
+              <SelectTrigger className="h-8">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="flagged">Has Follow-Up</SelectItem>
+                <SelectItem value="overdue">Overdue</SelectItem>
+                <SelectItem value="upcoming">Upcoming (7 days)</SelectItem>
+                <SelectItem value="none">No Follow-Up</SelectItem>
               </SelectContent>
             </Select>
           </div>

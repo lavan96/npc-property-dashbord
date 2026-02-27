@@ -41,6 +41,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { VoiceNoteRecorder } from './VoiceNoteRecorder';
+import { FollowUpFlag } from './FollowUpFlag';
 
 interface ClientNote {
   id: string;
@@ -61,6 +62,7 @@ interface TrackedClient {
   is_favorite?: boolean;
   deal_status?: string;
   first_deal_closed_at?: string | null;
+  follow_up_date?: string | null;
 }
 
 interface StageInfo {
@@ -363,7 +365,7 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
     <Card className={cn("flex flex-col", client.is_favorite && "ring-2 ring-yellow-400/50")}>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-2.5 min-w-0 flex-1">
+          <div className="flex items-start gap-1 min-w-0 flex-1">
             <Button
               variant="ghost"
               size="icon"
@@ -380,6 +382,11 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
                 )} 
               />
             </Button>
+            <FollowUpFlag
+              clientId={client.id}
+              followUpDate={client.follow_up_date}
+              invalidateKeys={[['active-client-notes', client.id]]}
+            />
             <div className="min-w-0 flex-1">
               <CardTitle className="text-lg truncate">
                 {formatFullName(client.primary_first_name, client.primary_surname)}
