@@ -60,7 +60,7 @@ export function useAuthenticatedSupabase() {
  * Note: Prefer useAuthenticatedSupabase hook inside React components.
  */
 export function getAuthenticatedSupabaseClient(): SupabaseClient<Database> {
-  const accessToken = sessionStorage.getItem('supabase_access_token');
+  const accessToken = sessionStorage.getItem('supabase_access_token') || localStorage.getItem('supabase_access_token');
   
   if (accessToken) {
     return createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {

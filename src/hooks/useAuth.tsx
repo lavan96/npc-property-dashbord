@@ -26,8 +26,47 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const SUPABASE_URL = "https://dduzbchuswwbefdunfct.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkdXpiY2h1c3d3YmVmZHVuZmN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0NDM4NzksImV4cCI6MjA3MTAxOTg3OX0.eSYU6fxIc3tBQuGLsdBRff0alBMkNfvv7OpW0efNjxk";
 
-// Access token storage key
+// Access token storage keys
 const ACCESS_TOKEN_KEY = 'supabase_access_token';
+const SESSION_TOKEN_KEY = 'session_token';
+
+const getStoredValue = (key: string): string | null => {
+  try {
+    return sessionStorage.getItem(key) || localStorage.getItem(key);
+  } catch {
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  }
+};
+
+const persistStoredValue = (key: string, value: string) => {
+  try {
+    sessionStorage.setItem(key, value);
+  } catch {
+    // ignore
+  }
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // ignore
+  }
+};
+
+const clearStoredValue = (key: string) => {
+  try {
+    sessionStorage.removeItem(key);
+  } catch {
+    // ignore
+  }
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // ignore
+  }
+};
 
 /**
  * Invoke edge function with credentials for HttpOnly cookies
@@ -37,8 +76,8 @@ async function invokeEdgeFunction(
   body?: Record<string, any>
 ): Promise<{ data: any; error: any }> {
   try {
-    // Get session token from sessionStorage for authentication fallback
-    const sessionToken = sessionStorage.getItem('session_token');
+    // Get session token from storage for authentication fallback
+    const sessionToken = getStoredValue(SESSION_TOKEN_KEY);
     
     // Include session token in body as fallback if cookies fail
     const requestBody = body 
@@ -76,7 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [roles, setRoles] = useState<string[]>([]);
   const [accessToken, setAccessToken] = useState<string | null>(() => {
     // Initialize from storage on mount
-    return sessionStorage.getItem(ACCESS_TOKEN_KEY);
+    return getStoredValue(ACCESS_TOKEN_KEY);
   });
 
   // Super admin check: either has superadmin role in user_roles OR has super_admin in custom_users.role
@@ -109,7 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         // Store access token for Supabase client
         if (data.access_token) {
-          sessionStorage.setItem(ACCESS_TOKEN_KEY, data.access_token);
+          persistStoredValue(ACCESS_TOKEN_KEY, data.access_token);
           setAccessToken(data.access_token);
         }
         
@@ -130,7 +169,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const clearAuthState = () => {
     sessionStorage.removeItem('current_user');
-    sessionStorage.removeItem(ACCESS_TOKEN_KEY);
+    clearStoredValue(ACCESS_TOKEN_KEY);
+    clearStoredValue(SESSION_TOKEN_KEY);
     setUser(null);
     setRoles([]);
     setAccessToken(null);
@@ -151,14 +191,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Session cookie is set automatically by the server response
       // Store access token for Supabase client
       if (data.access_token) {
-        sessionStorage.setItem(ACCESS_TOKEN_KEY, data.access_token);
+        persistStoredValue(ACCESS_TOKEN_KEY, data.access_token);
         setAccessToken(data.access_token);
       }
       
       // Store session token as fallback for cross-origin cookie issues
       // This is needed because HttpOnly cookies may not be sent cross-origin in some browsers
       if (data.session_token) {
-        sessionStorage.setItem('session_token', data.session_token);
+        persistStoredValue(SESSION_TOKEN_KEY, data.session_token);
       }
       
       // Cache user data in sessionStorage for activity logging

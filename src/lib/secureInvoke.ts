@@ -9,32 +9,37 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 // Matches src/hooks/useAuth.tsx
 const ACCESS_TOKEN_KEY = 'supabase_access_token';
+const SESSION_TOKEN_KEY = 'session_token';
 
 export interface InvokeResult<T = any> {
   data: T | null;
   error: { message: string } | null;
 }
 
-/**
- * Get session token from sessionStorage (stored during login as fallback for cross-origin cookie issues)
- */
-function getSessionToken(): string | null {
+function getStoredToken(key: string): string | null {
   try {
-    return sessionStorage.getItem('session_token');
+    return sessionStorage.getItem(key) || localStorage.getItem(key);
   } catch {
-    return null;
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      return null;
+    }
   }
 }
 
 /**
- * Get access token from sessionStorage (set by custom auth flow)
+ * Get session token fallback for custom auth flow
+ */
+function getSessionToken(): string | null {
+  return getStoredToken(SESSION_TOKEN_KEY);
+}
+
+/**
+ * Get access token from storage (sessionStorage first, localStorage fallback)
  */
 function getAccessToken(): string | null {
-  try {
-    return sessionStorage.getItem(ACCESS_TOKEN_KEY);
-  } catch {
-    return null;
-  }
+  return getStoredToken(ACCESS_TOKEN_KEY);
 }
 
 /**

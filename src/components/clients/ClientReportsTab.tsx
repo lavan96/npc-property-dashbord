@@ -2,7 +2,6 @@ import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { secureStorageDownload } from '@/hooks/useSecureStorage';
-import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -62,6 +61,7 @@ import { toast } from 'sonner';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { fetchAndGenerateBorrowingCapacityPDF } from '@/components/borrowing-capacity/BorrowingCapacityPDFReport';
+import { useAuth } from '@/hooks/useAuth';
 
 interface ClientReportsTabProps {
   clientId: string;
@@ -115,30 +115,29 @@ export function ClientReportsTab({
   const [includeBorrowingCapacity, setIncludeBorrowingCapacity] = useState(true);
   const [includeOwnerOccupied, setIncludeOwnerOccupied] = useState(true);
   const queryClient = useQueryClient();
+  const { user, loading: authLoading } = useAuth();
+  const canFetchReports = !authLoading && !!user;
 
   const ownerOccupiedCount = properties.filter(p => p.property_type === 'owner_occupied').length;
   const investmentCount = properties.filter(p => p.property_type !== 'owner_occupied').length;
 
-  // Fetch client files that are reports (with direct Supabase fallback)
+  // Fetch client files that are reports
   const { data: reportFiles = [] } = useQuery({
     queryKey: ['client-report-files', clientId],
+    enabled: canFetchReports,
+    retry: false,
     queryFn: async () => {
-      // Try secure function first
       const { data, error } = await invokeSecureFunction('get-client-data', {
         clientId,
         include: { files: true },
       });
-      if (!error && data?.success) {
-        return (data.files || []).filter((f: any) => f.is_vownet_form || f.report_type);
+
+      if (error || !data?.success) {
+        console.warn('[ClientReportsTab] Failed to fetch client files:', error?.message || 'unknown error');
+        return [];
       }
-      // Fallback: direct Supabase query
-      console.warn('[ClientReportsTab] Secure function failed, using direct query for files');
-      const { data: files } = await supabase
-        .from('client_files')
-        .select('*')
-        .eq('client_id', clientId)
-        .order('uploaded_at', { ascending: false });
-      return (files || []).filter((f: any) => f.is_vownet_form || f.report_type);
+
+      return (data.files || []).filter((f: any) => f.is_vownet_form || f.report_type);
     },
   });
 
@@ -146,9 +145,11 @@ export function ClientReportsTab({
   const propertyIds = properties.map((p) => p.id);
   const { data: investmentReports = [] } = useQuery({
     queryKey: ['client-investment-reports', clientId, propertyIds],
+    enabled: canFetchReports && propertyIds.length > 0,
+    retry: false,
     queryFn: async () => {
       if (propertyIds.length === 0) return [];
-      // Try secure function first
+
       const { data, error } = await invokeSecureFunction('get-investment-reports', {
         listMode: true,
         listOptions: {
@@ -159,22 +160,21 @@ export function ClientReportsTab({
           orderAsc: false,
         }
       });
-      if (!error && data?.reports) return data.reports;
-      // Fallback: direct Supabase query
-      console.warn('[ClientReportsTab] Secure function failed, using direct query for investment reports');
-      const { data: reports } = await supabase
-        .from('investment_reports')
-        .select('id,property_address,status,created_at,client_property_id')
-        .in('client_property_id', propertyIds)
-        .order('created_at', { ascending: false });
-      return reports || [];
+
+      if (error) {
+        console.warn('[ClientReportsTab] Failed to fetch investment reports:', error.message);
+        return [];
+      }
+
+      return data?.reports || [];
     },
-    enabled: propertyIds.length > 0,
   });
 
-  // Fetch borrowing capacity assessments for this client (with fallback)
+  // Fetch borrowing capacity assessments for this client
   const { data: bcAssessments = [] } = useQuery({
     queryKey: ['client-bc-assessments', clientId],
+    enabled: canFetchReports,
+    retry: false,
     queryFn: async () => {
       const { data, error } = await invokeSecureFunction('get-client-data', {
         listMode: true,
@@ -186,21 +186,21 @@ export function ClientReportsTab({
           filters: { client_id: clientId }
         }
       });
-      if (!error && data?.records) return data.records as any[];
-      // Fallback
-      console.warn('[ClientReportsTab] Secure function failed, using direct query for BC assessments');
-      const { data: records } = await supabase
-        .from('borrowing_capacity_assessments')
-        .select('id,created_at,borrowing_capacity,serviceability_band,updated_at')
-        .eq('client_id', clientId)
-        .order('created_at', { ascending: false });
-      return (records || []) as any[];
+
+      if (error) {
+        console.warn('[ClientReportsTab] Failed to fetch BC assessments:', error.message);
+        return [] as any[];
+      }
+
+      return (data?.records || []) as any[];
     },
   });
 
-  // Fetch portfolio analysis reports (with fallback)
+  // Fetch portfolio analysis reports
   const { data: portfolioReports = [], isLoading: portfolioLoading } = useQuery({
     queryKey: ['portfolio-analysis-reports', clientId],
+    enabled: canFetchReports,
+    retry: false,
     queryFn: async () => {
       const { data, error } = await invokeSecureFunction('get-client-data', {
         listMode: true,
@@ -212,15 +212,13 @@ export function ClientReportsTab({
           filters: { client_id: clientId }
         }
       });
-      if (!error && data?.records) return data.records as any[];
-      // Fallback
-      console.warn('[ClientReportsTab] Secure function failed, using direct query for portfolio reports');
-      const { data: records } = await supabase
-        .from('portfolio_analysis_reports' as any)
-        .select('*')
-        .eq('client_id', clientId)
-        .order('created_at', { ascending: false });
-      return (records || []) as any[];
+
+      if (error) {
+        console.warn('[ClientReportsTab] Failed to fetch portfolio reports:', error.message);
+        return [] as any[];
+      }
+
+      return (data?.records || []) as any[];
     },
   });
 
@@ -655,7 +653,12 @@ export function ClientReportsTab({
       </div>
 
       {/* ─── Unified Report Library ─── */}
-      {portfolioLoading ? (
+      {!canFetchReports ? (
+        <div className="text-center py-12 text-muted-foreground">
+          <FileText className="h-10 w-10 mx-auto mb-3 opacity-40" />
+          <p className="text-sm font-medium">Please sign in to view client reports</p>
+        </div>
+      ) : authLoading || portfolioLoading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
