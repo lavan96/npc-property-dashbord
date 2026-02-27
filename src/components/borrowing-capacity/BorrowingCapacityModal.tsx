@@ -876,7 +876,7 @@ export function BorrowingCapacityModal({
               Conservative Mode
             </Label>
             <p className="text-xs text-muted-foreground">
-              Quickli-style with surplus floors & DTI cap
+              Stricter assessment with surplus floors & DTI cap
             </p>
           </div>
           <Switch
@@ -955,7 +955,7 @@ export function BorrowingCapacityModal({
             <p>
               <strong>Conservative Mode:</strong> Uses minimum surplus floors ($1,000/mo), 
               residual income requirements, 85% surplus utilization, and hard 6x DTI cap. 
-              Results align with consumer-focused tools like Quickli.
+              Results align with stricter consumer-focused serviceability models.
             </p>
           ) : (
             <p>

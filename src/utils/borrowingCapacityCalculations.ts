@@ -294,7 +294,7 @@ export const DEFAULT_CALCULATION_PARAMS = {
   loanTermYears: 30,
 };
 
-// Conservative mode adjustments (Quickli-style)
+// Conservative mode adjustments (stricter serviceability model)
 export const CONSERVATIVE_MODE_ADJUSTMENTS = {
   minimumSurplusFloor: 1000, // Enforce $1,000/mo minimum surplus
   residualIncomeFloor: 1500, // Minimum residual income requirement
