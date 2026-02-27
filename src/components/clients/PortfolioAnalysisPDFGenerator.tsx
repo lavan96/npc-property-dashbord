@@ -411,7 +411,7 @@ export function PortfolioAnalysisPDFGenerator({
 
       setAnalysisData(data);
       setShowPreview(true);
-      toast.success('Portfolio analysis generated successfully');
+      toast.success('Analysis ready. Click "Download & Save PDF" to store it in Reports.');
       
     } catch (error: any) {
       console.error('Portfolio analysis error:', error);
@@ -3024,7 +3024,8 @@ export function PortfolioAnalysisPDFGenerator({
       const pdfBytes = await pdfDoc.save();
       
       const blob = new Blob([pdfBytes as BlobPart], { type: 'application/pdf' });
-      const fileName = `Portfolio_Analysis_${clientName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+      const generatedStamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const fileName = `Portfolio_Analysis_${clientName.replace(/\s+/g, '_')}_${generatedStamp}.pdf`;
       const storagePath = `portfolio-reports/${clientId}/${fileName}`;
       
       // Upload PDF to Supabase Storage via secure function
@@ -3060,7 +3061,8 @@ export function PortfolioAnalysisPDFGenerator({
       URL.revokeObjectURL(url);
       
       // Save report metadata to database via secure function
-      console.log('📊 Saving report to database...');
+      console.log('📊 Saving report metadata to database...');
+      let reportPersisted = false;
       try {
         const { error: insertError } = await invokeSecureFunction('manage-client-data', {
           operation: 'create',
@@ -3082,18 +3084,45 @@ export function PortfolioAnalysisPDFGenerator({
             status: 'completed',
           }
         });
-        
+
         if (insertError) {
-          console.error('Failed to save report metadata:', insertError);
+          console.error('Failed to save portfolio_analysis_reports metadata:', insertError);
+          toast.error('PDF downloaded, but failed to save report history.');
         } else {
-          console.log('✓ Report saved to database with PDF path:', uploadedFilePath);
+          reportPersisted = true;
+          console.log('✓ Report saved to portfolio_analysis_reports with PDF path:', uploadedFilePath);
+
+          if (uploadedFilePath) {
+            const { error: fileIndexError } = await invokeSecureFunction('manage-client-data', {
+              operation: 'create',
+              table: 'client_files',
+              clientId,
+              data: {
+                category: 'report',
+                file_name: fileName,
+                file_path: uploadedFilePath,
+                file_type: 'application/pdf',
+                file_size: blob.size,
+                description: `Portfolio Performance Analysis - ${new Date().toLocaleDateString('en-AU')}`,
+                report_type: 'portfolio',
+              },
+            });
+
+            if (fileIndexError) {
+              console.error('Failed to index report in client_files:', fileIndexError);
+              toast.error('Report saved, but file indexing failed.');
+            } else {
+              console.log('✓ Report indexed in client_files');
+            }
+          }
         }
       } catch (dbError) {
         console.error('Database save error:', dbError);
+        toast.error('PDF downloaded, but report save failed.');
       }
-      
+
       console.log('✅ PDF generation complete!');
-      toast.success('PDF downloaded successfully');
+      toast.success(reportPersisted ? 'PDF downloaded and report saved' : 'PDF downloaded locally');
       onComplete?.();
       
     } catch (error: any) {
@@ -3135,7 +3164,7 @@ export function PortfolioAnalysisPDFGenerator({
                 ) : (
                   <Download className="h-4 w-4 mr-2" />
                 )}
-                Download PDF
+                Download & Save PDF
               </Button>
             </DialogTitle>
             <DialogDescription>
