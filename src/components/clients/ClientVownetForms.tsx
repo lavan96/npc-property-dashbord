@@ -108,7 +108,7 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
       }
       
       if (!parsedData) {
-        throw new Error('Could not parse VowNet form. Please check the file format.');
+        throw new Error('Could not parse client detail form. Please check the file format.');
       }
 
       setUploadStatus('importing');
@@ -412,20 +412,20 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
       queryClient.invalidateQueries({ queryKey: ['client-assets', clientId] });
       queryClient.invalidateQueries({ queryKey: ['client-liabilities', clientId] });
 
-      toast.success('VowNet form imported successfully');
+      toast.success('Client detail form imported successfully');
       
       addNotification({
         type: 'vownet_form_uploaded',
-        title: 'VowNet Form Imported',
+        title: 'Client Detail Form Imported',
         message: `Client data imported for ${clientName}`,
         entityId: clientId
       });
 
     } catch (error: any) {
-      console.error('VowNet import error:', error);
+      console.error('Client detail form import error:', error);
       setErrorMessage(error.message);
       setUploadStatus('error');
-      toast.error('Failed to import VowNet form: ' + error.message);
+      toast.error('Failed to import client detail form: ' + error.message);
     }
   };
 
@@ -482,7 +482,7 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
       queryClient.invalidateQueries({ queryKey: ['client-income', clientId] });
       queryClient.invalidateQueries({ queryKey: ['client-assets', clientId] });
       queryClient.invalidateQueries({ queryKey: ['client-liabilities', clientId] });
-      toast.success('VowNet form and associated data deleted');
+      toast.success('Client detail form and associated data deleted');
     },
     onError: (error: any) => {
       toast.error('Failed to delete: ' + error.message);
@@ -548,7 +548,7 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <FileUp className="h-4 w-4" />
-            Upload & Import VowNet Form
+            Upload & Import Client Detail Form
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -565,13 +565,13 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
               {isDragActive ? (
                 <div className="flex flex-col items-center gap-2">
                   <Upload className="h-8 w-8 text-primary" />
-                  <p className="text-sm text-primary">Drop VowNet form here</p>
+                  <p className="text-sm text-primary">Drop client detail form here</p>
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-2">
                   <FileSpreadsheet className="h-8 w-8 text-muted-foreground" />
                   <p className="text-sm font-medium text-foreground">
-                    Drag & drop VowNet form to import all client data (Excel or PDF)
+                    Drag & drop client detail form to import all client data (Excel or PDF)
                   </p>
                   <p className="text-xs text-muted-foreground">
                     Automatically populates personal details, employment, income, assets, liabilities & properties
@@ -587,7 +587,7 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
                 <Loader2 className="h-5 w-5 animate-spin text-primary" />
                 <div>
                   <p className="font-medium text-sm">
-                    {uploadStatus === 'parsing' ? 'Parsing VowNet form...' : 'Importing data...'}
+                    {uploadStatus === 'parsing' ? 'Parsing client detail form...' : 'Importing data...'}
                   </p>
                   <p className="text-xs text-muted-foreground">Please wait</p>
                 </div>
@@ -678,7 +678,7 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
       <div>
         <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
           <FileSpreadsheet className="h-4 w-4" />
-          Imported VowNet Forms ({vownetForms.length})
+          Imported Client Detail Forms ({vownetForms.length})
         </h4>
 
         {isLoading ? (
@@ -689,8 +689,8 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
           <Card>
             <CardContent className="py-8 text-center text-muted-foreground">
               <FileSpreadsheet className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p>No VowNet forms imported yet</p>
-              <p className="text-xs mt-1">Upload a VowNet form to import client data</p>
+              <p>No client detail forms imported yet</p>
+              <p className="text-xs mt-1">Upload a client detail form to import client data</p>
             </CardContent>
           </Card>
         ) : (

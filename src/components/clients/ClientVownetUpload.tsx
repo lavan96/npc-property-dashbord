@@ -303,8 +303,8 @@ export function ClientVownetUpload({
       // Send notifications
       addNotification({
         type: 'vownet_form_uploaded',
-        title: 'Vownet Form Uploaded',
-        message: `Vownet form uploaded for ${clientName}`,
+        title: 'Client Detail Form Uploaded',
+        message: `Client detail form uploaded for ${clientName}`,
         entityId: clientId
       });
       
@@ -357,7 +357,7 @@ export function ClientVownetUpload({
           <input {...getInputProps()} />
           <FileSpreadsheet className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
           <p className="text-sm font-medium text-foreground">
-            {isDragActive ? 'Drop Vownet form here' : 'Upload Vownet Form'}
+            {isDragActive ? 'Drop client detail form here' : 'Upload Client Detail Form'}
           </p>
           <p className="text-xs text-muted-foreground mt-1">
             Drag & drop or click to update {clientName}'s portfolio (Excel or PDF)
