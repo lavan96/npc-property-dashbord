@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { secureStorageDownload } from '@/hooks/useSecureStorage';
 import { Button } from '@/components/ui/button';
@@ -61,6 +60,7 @@ import { PropertyReportGenerator } from './PropertyReportGenerator';
 import { toast } from 'sonner';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
+import { fetchAndGenerateBorrowingCapacityPDF } from '@/components/borrowing-capacity/BorrowingCapacityPDFReport';
 
 interface ClientReportsTabProps {
   clientId: string;
@@ -76,18 +76,18 @@ interface ClientReportsTabProps {
   onOpenEmailCompose: () => void;
 }
 
-type ReportType = 'all' | 'portfolio' | 'vownet' | 'investment' | 'property';
+type ReportType = 'all' | 'portfolio' | 'vownet' | 'investment' | 'property' | 'borrowing';
 type SortMode = 'newest' | 'oldest' | 'name';
 
 interface UnifiedReport {
   id: string;
-  type: 'vownet' | 'portfolio' | 'property' | 'investment';
+  type: 'vownet' | 'portfolio' | 'property' | 'investment' | 'borrowing';
   name: string;
   generatedAt: string;
   status: 'completed' | 'pending' | 'failed';
   fileUrl?: string | null;
   propertyAddress?: string;
-  source: 'file' | 'investment_report' | 'portfolio_report';
+  source: 'file' | 'investment_report' | 'portfolio_report' | 'borrowing_assessment';
   // Portfolio-specific fields
   healthScore?: number | null;
   overallHealth?: string | null;
@@ -132,22 +132,51 @@ export function ClientReportsTab({
     },
   });
 
-  // Fetch investment reports linked to client properties
+  // Fetch investment reports linked to client properties via secure function
   const propertyIds = properties.map((p) => p.id);
   const { data: investmentReports = [] } = useQuery({
     queryKey: ['client-investment-reports', clientId, propertyIds],
     queryFn: async () => {
       if (propertyIds.length === 0) return [];
-      const { data, error } = await supabase
-        .from('investment_reports')
-        .select('id, property_address, status, created_at, client_property_id')
-        .eq('is_client_report', true)
-        .in('client_property_id', propertyIds)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data || [];
+      const { data, error } = await invokeSecureFunction('get-investment-reports', {
+        listMode: true,
+        listOptions: {
+          isClientReport: true,
+          clientPropertyIds: propertyIds,
+          select: 'id,property_address,status,created_at,client_property_id',
+          orderBy: 'created_at',
+          orderAsc: false,
+        }
+      });
+      if (error) {
+        console.error('Failed to fetch client investment reports:', error.message);
+        return [];
+      }
+      return data?.reports || [];
     },
     enabled: propertyIds.length > 0,
+  });
+
+  // Fetch borrowing capacity assessments for this client
+  const { data: bcAssessments = [] } = useQuery({
+    queryKey: ['client-bc-assessments', clientId],
+    queryFn: async () => {
+      const { data, error } = await invokeSecureFunction('get-client-data', {
+        listMode: true,
+        listOptions: {
+          table: 'borrowing_capacity_assessments',
+          select: 'id,created_at,borrowing_capacity,serviceability_band,updated_at',
+          orderBy: 'created_at',
+          order_asc: false,
+          filters: { client_id: clientId }
+        }
+      });
+      if (error) {
+        console.error('Failed to fetch BC assessments:', error.message);
+        return [];
+      }
+      return (data?.records || []) as any[];
+    },
   });
 
   // Fetch portfolio analysis reports
@@ -253,8 +282,23 @@ export function ClientReportsTab({
       });
     });
 
+    // Borrowing capacity assessments
+    bcAssessments.forEach((r: any) => {
+      const formattedCap = r.borrowing_capacity
+        ? `$${Number(r.borrowing_capacity).toLocaleString('en-AU', { maximumFractionDigits: 0 })}`
+        : '';
+      reports.push({
+        id: r.id,
+        type: 'borrowing',
+        name: `Borrowing Capacity${formattedCap ? ` – ${formattedCap}` : ''} (${r.serviceability_band || 'N/A'})`,
+        generatedAt: r.created_at,
+        status: 'completed',
+        source: 'borrowing_assessment',
+      });
+    });
+
     return reports;
-  }, [reportFiles, investmentReports, portfolioReports]);
+  }, [reportFiles, investmentReports, portfolioReports, bcAssessments]);
 
   // Filter + sort
   const filteredReports = useMemo(() => {
@@ -276,12 +320,14 @@ export function ClientReportsTab({
     vownet: allReports.filter(r => r.type === 'vownet').length,
     investment: allReports.filter(r => r.type === 'investment').length,
     property: allReports.filter(r => r.type === 'property').length,
+    borrowing: allReports.filter(r => r.type === 'borrowing').length,
   }), [allReports]);
 
   const getReportIcon = (type: string) => {
     switch (type) {
       case 'vownet': return <FileSpreadsheet className="h-4 w-4" />;
       case 'portfolio': return <PieChart className="h-4 w-4" />;
+      case 'borrowing': return <Landmark className="h-4 w-4" />;
       case 'property':
       case 'investment': return <Building2 className="h-4 w-4" />;
       default: return <FileText className="h-4 w-4" />;
@@ -293,6 +339,7 @@ export function ClientReportsTab({
       case 'vownet': return 'bg-primary/10 text-primary border-primary/20';
       case 'portfolio': return 'bg-accent/50 text-accent-foreground border-accent';
       case 'investment': return 'bg-secondary/50 text-secondary-foreground border-secondary';
+      case 'borrowing': return 'bg-primary/15 text-primary border-primary/25';
       case 'property': return 'bg-muted text-muted-foreground border-border';
       default: return '';
     }
@@ -325,11 +372,9 @@ export function ClientReportsTab({
       console.error('Download error:', error);
       // Fallback to investment-reports bucket for older files
       try {
-        const { data, error: sbError } = await supabase.storage
-          .from('investment-reports')
-          .download(fileUrl);
-        if (sbError) throw sbError;
-        const url = URL.createObjectURL(data);
+        const fallbackResult = await secureStorageDownload('investment-reports', fileUrl);
+        if (!fallbackResult.success || !fallbackResult.blob) throw new Error('Fallback download failed');
+        const url = URL.createObjectURL(fallbackResult.blob);
         const a = document.createElement('a');
         a.href = url;
         a.download = fileName;
@@ -391,6 +436,7 @@ export function ClientReportsTab({
   const filterChips: { key: ReportType; label: string }[] = [
     { key: 'all', label: 'All' },
     { key: 'portfolio', label: 'Portfolio' },
+    { key: 'borrowing', label: 'Borrowing' },
     { key: 'vownet', label: 'Vownet' },
     { key: 'investment', label: 'Investment' },
     { key: 'property', label: 'Property' },
@@ -646,6 +692,19 @@ export function ClientReportsTab({
                     title="View Report"
                   >
                     <ExternalLink className="h-4 w-4" />
+                  </Button>
+                )}
+
+                {/* Download PDF for borrowing capacity assessments */}
+                {report.type === 'borrowing' && report.source === 'borrowing_assessment' && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => fetchAndGenerateBorrowingCapacityPDF(clientId, clientName)}
+                    title="Download PDF"
+                  >
+                    <Download className="h-4 w-4" />
                   </Button>
                 )}
 
