@@ -25,6 +25,7 @@ import {
   Target
 } from 'lucide-react';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { FollowUpFlag } from './FollowUpFlag';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -173,7 +174,7 @@ export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComp
     <Card className={`hover:shadow-md transition-shadow ${client.is_favorite ? 'ring-2 ring-yellow-400/50' : ''}`}>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
-          <div className="flex items-start gap-2">
+          <div className="flex items-start gap-1">
             <Button
               variant="ghost"
               size="icon"
@@ -189,6 +190,11 @@ export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComp
                 }`} 
               />
             </Button>
+            <FollowUpFlag
+              clientId={client.id}
+              followUpDate={client.follow_up_date}
+              size="sm"
+            />
             <div className="space-y-1">
               <h3 className="font-semibold text-foreground leading-tight">{fullName}</h3>
               {secondaryName && (
