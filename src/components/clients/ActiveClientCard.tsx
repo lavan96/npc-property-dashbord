@@ -364,7 +364,25 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
   return (
     <Card className={cn("flex flex-col", client.is_favorite && "ring-2 ring-yellow-400/50")}>
       <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Badge 
+              className="text-xs sm:text-sm max-w-full truncate"
+              style={{ 
+                backgroundColor: stageInfo.color + '20',
+                color: stageInfo.color,
+                borderColor: stageInfo.color 
+              }}
+              variant="outline"
+            >
+              {stageInfo.name}
+            </Badge>
+            {client.deal_status === 'closed' && (
+              <Badge variant="default" className="text-xs bg-emerald-600 hover:bg-emerald-700">
+                🏆 Deal Closed
+              </Badge>
+            )}
+          </div>
           <div className="flex items-start gap-1 min-w-0 flex-1">
             <Button
               variant="ghost"
@@ -406,24 +424,6 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
                 )}
               </div>
             </div>
-          </div>
-          <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-            <Badge 
-              className="text-sm"
-              style={{ 
-                backgroundColor: stageInfo.color + '20',
-                color: stageInfo.color,
-                borderColor: stageInfo.color 
-              }}
-              variant="outline"
-            >
-              {stageInfo.name}
-            </Badge>
-            {client.deal_status === 'closed' && (
-              <Badge variant="default" className="text-xs bg-emerald-600 hover:bg-emerald-700">
-                🏆 Deal Closed
-              </Badge>
-            )}
           </div>
         </div>
       </CardHeader>
