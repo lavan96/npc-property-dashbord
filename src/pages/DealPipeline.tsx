@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { TrendingUp, DollarSign, FileText, LayoutDashboard } from 'lucide-react';
+import { TrendingUp, DollarSign, FileText, LayoutDashboard, Kanban } from 'lucide-react';
 import { useAllDeals } from '@/hooks/useAllDeals';
 import { usePipelineMutations } from '@/hooks/usePipelineMutations';
 import { usePipelineFilters } from '@/hooks/usePipelineFilters';
@@ -10,6 +10,7 @@ import type { PipelineFilters } from '@/components/deals/PipelineToolbar';
 import { DealExecutiveSummary } from '@/components/deals/DealExecutiveSummary';
 import { CommissionDashboard } from '@/components/deals/CommissionDashboard';
 import { BuilderInvoiceLog } from '@/components/deals/BuilderInvoiceLog';
+import { PipelineKanbanBoard } from '@/components/deals/PipelineKanbanBoard';
 import { toast } from 'sonner';
 import type { DealWithClient } from '@/hooks/useAllDeals';
 
@@ -61,6 +62,10 @@ export default function DealPipeline() {
             <LayoutDashboard className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             <span className="hidden sm:inline">Executive </span>Summary
           </TabsTrigger>
+          <TabsTrigger value="kanban" className="gap-1 sm:gap-1.5 text-xs sm:text-sm whitespace-nowrap flex-shrink-0">
+            <Kanban className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Pipeline </span>Board
+          </TabsTrigger>
           <TabsTrigger value="commissions" className="gap-1 sm:gap-1.5 text-xs sm:text-sm whitespace-nowrap flex-shrink-0">
             <DollarSign className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             Commissions
@@ -73,6 +78,10 @@ export default function DealPipeline() {
 
         <TabsContent value="summary" className="mt-4">
           <DealExecutiveSummary deals={filteredDeals} allDeals={deals} isLoading={isLoading} onDealClick={handleDealClick} />
+        </TabsContent>
+
+        <TabsContent value="kanban" className="mt-4">
+          <PipelineKanbanBoard deals={filteredDeals} isLoading={isLoading} onDealClick={handleDealClick} />
         </TabsContent>
 
         <TabsContent value="commissions" className="mt-4">
