@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { TrendingUp, DollarSign, FileText, LayoutDashboard, Kanban } from 'lucide-react';
+import { TrendingUp, DollarSign, FileText, LayoutDashboard, Kanban, BarChart3 } from 'lucide-react';
 import { useAllDeals } from '@/hooks/useAllDeals';
 import { usePipelineMutations } from '@/hooks/usePipelineMutations';
 import { usePipelineFilters } from '@/hooks/usePipelineFilters';
@@ -11,6 +11,7 @@ import { DealExecutiveSummary } from '@/components/deals/DealExecutiveSummary';
 import { CommissionDashboard } from '@/components/deals/CommissionDashboard';
 import { BuilderInvoiceLog } from '@/components/deals/BuilderInvoiceLog';
 import { PipelineKanbanBoard } from '@/components/deals/PipelineKanbanBoard';
+import { PipelineAnalytics } from '@/components/deals/PipelineAnalytics';
 import { toast } from 'sonner';
 import type { DealWithClient } from '@/hooks/useAllDeals';
 
@@ -70,6 +71,10 @@ export default function DealPipeline() {
             <DollarSign className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             Commissions
           </TabsTrigger>
+          <TabsTrigger value="analytics" className="gap-1 sm:gap-1.5 text-xs sm:text-sm whitespace-nowrap flex-shrink-0">
+            <BarChart3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            Analytics
+          </TabsTrigger>
           <TabsTrigger value="invoices" className="gap-1 sm:gap-1.5 text-xs sm:text-sm whitespace-nowrap flex-shrink-0">
             <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             <span className="hidden sm:inline">Builder </span>Invoices
@@ -86,6 +91,10 @@ export default function DealPipeline() {
 
         <TabsContent value="commissions" className="mt-4">
           <CommissionDashboard deals={filteredDeals} isLoading={isLoading} onUpdatePayment={handleUpdatePayment} />
+        </TabsContent>
+
+        <TabsContent value="analytics" className="mt-4">
+          <PipelineAnalytics deals={filteredDeals} isLoading={isLoading} />
         </TabsContent>
 
         <TabsContent value="invoices" className="mt-4">
