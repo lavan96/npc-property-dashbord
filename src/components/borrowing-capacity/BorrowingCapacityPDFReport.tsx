@@ -687,7 +687,8 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
     y += 11;
   }
 
-  // Final capacity row with gold background
+  // Final capacity row with gold background — ensure it doesn't overlap footer
+  y = checkPageBreak(doc, y, 25, pageNum);
   y += 2;
   setFill(doc, GOLD);
   doc.roundedRect(MARGIN, y - 5, CONTENT_W, 14, 2, 2, 'F');
