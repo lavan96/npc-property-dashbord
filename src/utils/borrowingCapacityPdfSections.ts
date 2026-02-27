@@ -978,7 +978,8 @@ export function drawBorrowingCapacitySections(
     y += 11;
   }
 
-  // Gold "Maximum Borrowing Capacity" bar
+  // Gold "Maximum Borrowing Capacity" bar — ensure it doesn't overlap footer
+  y = checkBreak(doc, y, 25, pageNum);
   y += 2;
   setFill(doc, GOLD);
   doc.roundedRect(MARGIN, y - 5, CONTENT_W, 14, 2, 2, 'F');
