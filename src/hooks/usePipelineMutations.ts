@@ -44,5 +44,43 @@ export function usePipelineMutations() {
     },
   });
 
-  return { updateBuildPayment };
+  const updateDeal = useMutation({
+    mutationFn: async ({ dealId, clientId, data }: { dealId: string; clientId: string; data: any }) => {
+      return manageDealData({
+        operation: 'update',
+        table: 'client_deals',
+        clientId,
+        recordId: dealId,
+        data,
+      });
+    },
+    onSuccess: () => {
+      invalidate();
+      toast.success('Deal updated');
+    },
+    onError: (err: any) => {
+      toast.error('Failed to update deal: ' + err.message);
+    },
+  });
+
+  const updateDealStage = useMutation({
+    mutationFn: async ({ stageId, clientId, data }: { stageId: string; clientId: string; data: any }) => {
+      return manageDealData({
+        operation: 'update',
+        table: 'deal_stages',
+        clientId,
+        recordId: stageId,
+        data,
+      });
+    },
+    onSuccess: () => {
+      invalidate();
+      toast.success('Stage updated');
+    },
+    onError: (err: any) => {
+      toast.error('Failed to update stage: ' + err.message);
+    },
+  });
+
+  return { updateBuildPayment, updateDeal, updateDealStage };
 }
