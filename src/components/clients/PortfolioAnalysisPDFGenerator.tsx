@@ -3145,7 +3145,7 @@ export function PortfolioAnalysisPDFGenerator({
 
           <ScrollArea className="max-h-[calc(90vh-120px)]">
             {analysisData && (
-              <div id="portfolio-analysis-content" className="p-6 bg-white space-y-6">
+              <div id="portfolio-analysis-content" className="p-6 bg-background space-y-6">
                 {/* Header */}
                 <div className="text-center border-b pb-4">
                   <h1 className="text-2xl font-bold text-primary">Portfolio Performance Analysis</h1>
