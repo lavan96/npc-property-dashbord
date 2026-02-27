@@ -90,7 +90,8 @@ serve(async (req) => {
           role: session.custom_users.role
         },
         roles,
-        access_token: accessToken  // Supabase-compatible JWT for direct queries
+        access_token: accessToken,  // Supabase-compatible JWT for direct queries
+        session_token: sessionToken // Fallback token for secure function calls when JWT is unavailable
       }),
       { 
         status: 200, 

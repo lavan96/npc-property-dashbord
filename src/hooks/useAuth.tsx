@@ -151,6 +151,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           persistStoredValue(ACCESS_TOKEN_KEY, data.access_token);
           setAccessToken(data.access_token);
         }
+
+        // Persist session token from verify response as fallback for secure edge calls
+        if (data.session_token) {
+          persistStoredValue(SESSION_TOKEN_KEY, data.session_token);
+        }
         
         // Cache user data in sessionStorage for activity logging
         sessionStorage.setItem('current_user', JSON.stringify({
