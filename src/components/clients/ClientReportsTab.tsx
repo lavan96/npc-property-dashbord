@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { secureStorageDownload } from '@/hooks/useSecureStorage';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -15,10 +15,19 @@ import {
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   FileText,
   Download,
   Mail,
-  Send,
   Plus,
   Building2,
   PieChart,
@@ -28,13 +37,19 @@ import {
   AlertCircle,
   ExternalLink,
   ChevronDown,
+  Eye,
+  Trash2,
+  MoreVertical,
+  Loader2,
+  SortAsc,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { VownetPDFGenerator, type VownetPDFData } from './VownetPDFGenerator';
 import { PortfolioAnalysisPDFGenerator } from './PortfolioAnalysisPDFGenerator';
-import { PortfolioAnalysisReportsList } from './PortfolioAnalysisReportsList';
 import { PropertyReportGenerator } from './PropertyReportGenerator';
 import { toast } from 'sonner';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { cn } from '@/lib/utils';
 
 interface ClientReportsTabProps {
   clientId: string;
@@ -50,14 +65,22 @@ interface ClientReportsTabProps {
   onOpenEmailCompose: () => void;
 }
 
-interface GeneratedReport {
+type ReportType = 'all' | 'portfolio' | 'vownet' | 'investment' | 'property';
+type SortMode = 'newest' | 'oldest' | 'name';
+
+interface UnifiedReport {
   id: string;
   type: 'vownet' | 'portfolio' | 'property' | 'investment';
   name: string;
   generatedAt: string;
   status: 'completed' | 'pending' | 'failed';
-  fileUrl?: string;
+  fileUrl?: string | null;
   propertyAddress?: string;
+  source: 'file' | 'investment_report' | 'portfolio_report';
+  // Portfolio-specific fields
+  healthScore?: number | null;
+  overallHealth?: string | null;
+  portfolioValue?: number | null;
 }
 
 export function ClientReportsTab({
@@ -74,8 +97,12 @@ export function ClientReportsTab({
   onOpenEmailCompose,
 }: ClientReportsTabProps) {
   const [selectedProperty, setSelectedProperty] = useState<string | null>(null);
+  const [activeFilter, setActiveFilter] = useState<ReportType>('all');
+  const [sortMode, setSortMode] = useState<SortMode>('newest');
+  const [reportToDelete, setReportToDelete] = useState<UnifiedReport | null>(null);
+  const queryClient = useQueryClient();
 
-  // Fetch client files that are reports (Vownet forms, etc.)
+  // Fetch client files that are reports
   const { data: reportFiles = [] } = useQuery({
     queryKey: ['client-report-files', clientId],
     queryFn: async () => {
@@ -83,11 +110,8 @@ export function ClientReportsTab({
         clientId,
         include: { files: true },
       });
-      
       if (error) throw new Error(error.message);
       if (!data?.success) throw new Error(data?.error || 'Failed to fetch report files');
-      
-      // Filter for report files
       return (data.files || []).filter((f: any) => f.is_vownet_form || f.report_type);
     },
   });
@@ -110,95 +134,169 @@ export function ClientReportsTab({
     enabled: propertyIds.length > 0,
   });
 
-  // Note: Portfolio analyses are stored as files in client_files with report_type='portfolio'
-  // The cash_flow_analyses table is for comparison analyses, not client-specific reports
+  // Fetch portfolio analysis reports
+  const { data: portfolioReports = [], isLoading: portfolioLoading } = useQuery({
+    queryKey: ['portfolio-analysis-reports', clientId],
+    queryFn: async () => {
+      const { data, error } = await invokeSecureFunction('get-client-data', {
+        listMode: true,
+        listOptions: {
+          table: 'portfolio_analysis_reports',
+          select: '*',
+          orderBy: 'created_at',
+          order_asc: false,
+          filters: { client_id: clientId }
+        }
+      });
+      if (error) throw new Error(error.message);
+      return (data?.records || []) as any[];
+    },
+  });
 
-  // Combine all reports into a unified list
-  const allReports: GeneratedReport[] = [
+  // Delete portfolio report mutation
+  const deletePortfolioMutation = useMutation({
+    mutationFn: async (reportId: string) => {
+      const { error } = await invokeSecureFunction('manage-client-data', {
+        operation: 'delete',
+        table: 'portfolio_analysis_reports',
+        recordId: reportId
+      });
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['portfolio-analysis-reports', clientId] });
+      toast.success('Report deleted');
+      setReportToDelete(null);
+    },
+    onError: (error) => {
+      toast.error('Failed to delete: ' + error.message);
+    },
+  });
+
+  // Unified report list — merges all sources, deduplicates portfolio reports
+  const allReports: UnifiedReport[] = useMemo(() => {
+    const reports: UnifiedReport[] = [];
+
     // Vownet forms from files
-    ...reportFiles
+    reportFiles
       .filter((f: any) => f.is_vownet_form)
-      .map((f: any) => ({
-        id: f.id,
-        type: 'vownet' as const,
-        name: f.file_name || 'Vownet Form',
-        generatedAt: f.uploaded_at,
-        status: 'completed' as const,
-        fileUrl: f.file_path,
-      })),
-    // Other report types from files
-    ...reportFiles
-      .filter((f: any) => f.report_type && !f.is_vownet_form)
-      .map((f: any) => ({
-        id: f.id,
-        type: f.report_type as 'portfolio' | 'property' | 'investment',
-        name: f.file_name || `${f.report_type} Report`,
-        generatedAt: f.uploaded_at,
-        status: 'completed' as const,
-        fileUrl: f.file_path,
-        propertyAddress: f.description,
-      })),
+      .forEach((f: any) => {
+        reports.push({
+          id: f.id,
+          type: 'vownet',
+          name: f.file_name || 'Vownet Form',
+          generatedAt: f.uploaded_at,
+          status: 'completed',
+          fileUrl: f.file_path,
+          source: 'file',
+        });
+      });
+
+    // Other report files (property reports etc) — exclude portfolio type (handled below)
+    reportFiles
+      .filter((f: any) => f.report_type && !f.is_vownet_form && f.report_type !== 'portfolio')
+      .forEach((f: any) => {
+        reports.push({
+          id: f.id,
+          type: f.report_type as 'property' | 'investment',
+          name: f.file_name || `${f.report_type} Report`,
+          generatedAt: f.uploaded_at,
+          status: 'completed',
+          fileUrl: f.file_path,
+          propertyAddress: f.description,
+          source: 'file',
+        });
+      });
+
     // Investment reports from investment_reports table
-    ...investmentReports.map((r: any) => ({
-      id: r.id,
-      type: 'investment' as const,
-      name: `Investment Report - ${r.property_address}`,
-      generatedAt: r.created_at,
-      status: (r.status === 'completed' ? 'completed' : r.status === 'failed' ? 'failed' : 'pending') as 'completed' | 'pending' | 'failed',
-      propertyAddress: r.property_address,
-    })),
-  ];
+    investmentReports.forEach((r: any) => {
+      reports.push({
+        id: r.id,
+        type: 'investment',
+        name: `Investment Report - ${r.property_address}`,
+        generatedAt: r.created_at,
+        status: (r.status === 'completed' ? 'completed' : r.status === 'failed' ? 'failed' : 'pending') as any,
+        propertyAddress: r.property_address,
+        source: 'investment_report',
+      });
+    });
+
+    // Portfolio analysis reports from portfolio_analysis_reports table
+    portfolioReports.forEach((r: any) => {
+      reports.push({
+        id: r.id,
+        type: 'portfolio',
+        name: `Portfolio Analysis - ${format(new Date(r.created_at), 'dd MMM yyyy')}`,
+        generatedAt: r.created_at,
+        status: 'completed',
+        fileUrl: r.pdf_file_path,
+        source: 'portfolio_report',
+        healthScore: r.health_score,
+        overallHealth: r.overall_health,
+        portfolioValue: r.portfolio_value,
+      });
+    });
+
+    return reports;
+  }, [reportFiles, investmentReports, portfolioReports]);
+
+  // Filter + sort
+  const filteredReports = useMemo(() => {
+    let filtered = activeFilter === 'all' ? allReports : allReports.filter(r => r.type === activeFilter);
+
+    filtered.sort((a, b) => {
+      if (sortMode === 'newest') return new Date(b.generatedAt).getTime() - new Date(a.generatedAt).getTime();
+      if (sortMode === 'oldest') return new Date(a.generatedAt).getTime() - new Date(b.generatedAt).getTime();
+      return a.name.localeCompare(b.name);
+    });
+
+    return filtered;
+  }, [allReports, activeFilter, sortMode]);
+
+  // Type counts for filter chips
+  const typeCounts = useMemo(() => ({
+    all: allReports.length,
+    portfolio: allReports.filter(r => r.type === 'portfolio').length,
+    vownet: allReports.filter(r => r.type === 'vownet').length,
+    investment: allReports.filter(r => r.type === 'investment').length,
+    property: allReports.filter(r => r.type === 'property').length,
+  }), [allReports]);
 
   const getReportIcon = (type: string) => {
     switch (type) {
-      case 'vownet':
-        return <FileSpreadsheet className="h-4 w-4" />;
-      case 'portfolio':
-        return <PieChart className="h-4 w-4" />;
+      case 'vownet': return <FileSpreadsheet className="h-4 w-4" />;
+      case 'portfolio': return <PieChart className="h-4 w-4" />;
       case 'property':
-      case 'investment':
-        return <Building2 className="h-4 w-4" />;
-      default:
-        return <FileText className="h-4 w-4" />;
+      case 'investment': return <Building2 className="h-4 w-4" />;
+      default: return <FileText className="h-4 w-4" />;
     }
   };
 
-  const getReportBadgeVariant = (type: string) => {
+  const getTypeBadgeClass = (type: string) => {
     switch (type) {
-      case 'vownet':
-        return 'default';
-      case 'portfolio':
-        return 'secondary';
-      case 'property':
-      case 'investment':
-        return 'outline';
-      default:
-        return 'default';
+      case 'vownet': return 'bg-primary/10 text-primary border-primary/20';
+      case 'portfolio': return 'bg-accent/50 text-accent-foreground border-accent';
+      case 'investment': return 'bg-secondary/50 text-secondary-foreground border-secondary';
+      case 'property': return 'bg-muted text-muted-foreground border-border';
+      default: return '';
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'completed':
-        return <CheckCircle2 className="h-4 w-4 text-green-500" />;
-      case 'pending':
-        return <Clock className="h-4 w-4 text-yellow-500" />;
-      case 'failed':
-        return <AlertCircle className="h-4 w-4 text-red-500" />;
-      default:
-        return null;
+      case 'completed': return <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />;
+      case 'pending': return <Clock className="h-3.5 w-3.5 text-yellow-500" />;
+      case 'failed': return <AlertCircle className="h-3.5 w-3.5 text-red-500" />;
+      default: return null;
     }
   };
 
   const handleDownloadFile = async (fileUrl: string, fileName: string) => {
     try {
-      const { data, error } = await supabase.storage
-        .from('investment-reports')
-        .download(fileUrl);
-      
-      if (error) throw error;
-      
-      const url = URL.createObjectURL(data);
+      const result = await secureStorageDownload('client-files', fileUrl);
+      if (!result.success || !result.blob) throw new Error(result.error || 'Download failed');
+
+      const url = URL.createObjectURL(result.blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = fileName;
@@ -206,270 +304,357 @@ export function ClientReportsTab({
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      
       toast.success('Report downloaded');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Download error:', error);
-      toast.error('Failed to download report');
+      // Fallback to investment-reports bucket for older files
+      try {
+        const { data, error: sbError } = await supabase.storage
+          .from('investment-reports')
+          .download(fileUrl);
+        if (sbError) throw sbError;
+        const url = URL.createObjectURL(data);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast.success('Report downloaded');
+      } catch {
+        toast.error('Failed to download report');
+      }
     }
   };
 
+  const handleViewFile = async (fileUrl: string) => {
+    try {
+      const result = await secureStorageDownload('client-files', fileUrl);
+      if (!result.success || !result.blob) throw new Error(result.error || 'Failed');
+      const url = URL.createObjectURL(result.blob);
+      window.open(url, '_blank');
+    } catch {
+      // Fallback
+      window.open(
+        `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/investment-reports/${fileUrl}`,
+        '_blank'
+      );
+    }
+  };
+
+  const handleEmailReport = async (report: UnifiedReport) => {
+    if (!report.fileUrl) {
+      toast.error('No file available to attach');
+      return;
+    }
+    try {
+      const result = await secureStorageDownload('client-files', report.fileUrl);
+      if (!result.success || !result.blob) throw new Error('Download failed');
+      onEmailClick(result.blob, report.name);
+    } catch {
+      toast.error('Failed to prepare report for email');
+    }
+  };
+
+  const handleDelete = (report: UnifiedReport) => {
+    setReportToDelete(report);
+  };
+
+  const confirmDelete = () => {
+    if (!reportToDelete) return;
+    if (reportToDelete.source === 'portfolio_report') {
+      deletePortfolioMutation.mutate(reportToDelete.id);
+    } else {
+      // For now, only portfolio reports support deletion from this view
+      toast.info('This report type cannot be deleted from here');
+      setReportToDelete(null);
+    }
+  };
+
+  const filterChips: { key: ReportType; label: string }[] = [
+    { key: 'all', label: 'All' },
+    { key: 'portfolio', label: 'Portfolio' },
+    { key: 'vownet', label: 'Vownet' },
+    { key: 'investment', label: 'Investment' },
+    { key: 'property', label: 'Property' },
+  ];
+
   return (
-    <div className="space-y-6 overflow-hidden">
-      {/* Generate Report Actions */}
-      <Card className="overflow-hidden">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              Generate New Report
-            </CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-3">
-            {/* Vownet Form */}
-            {fullClient && (
-              <VownetPDFGenerator
-                data={{
-                  client: fullClient,
-                  properties,
-                  employment,
-                  income,
-                  assets,
-                  liabilities,
-                }}
-                clientName={clientName}
-                onEmailClick={onEmailClick}
-              />
-            )}
+    <div className="space-y-4 overflow-hidden">
+      {/* ─── Compact Toolbar: Generation Actions ─── */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs font-medium text-muted-foreground mr-1">Generate:</span>
 
-            {/* Portfolio Analysis */}
-            {properties.length > 0 && (
-              <PortfolioAnalysisPDFGenerator
-                clientId={clientId}
-                clientName={clientName}
-              />
-            )}
+        {/* Vownet Form */}
+        {fullClient && (
+          <VownetPDFGenerator
+            data={{
+              client: fullClient,
+              properties,
+              employment,
+              income,
+              assets,
+              liabilities,
+            }}
+            clientName={clientName}
+            onEmailClick={onEmailClick}
+          />
+        )}
 
-            {/* Individual Property Reports Dropdown */}
-            {properties.length > 0 && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <Building2 className="h-4 w-4 mr-2" />
-                    Property Report
-                    <ChevronDown className="h-4 w-4 ml-2" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-72">
-                  <DropdownMenuLabel>Select Property</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {properties.map((property) => (
-                    <DropdownMenuItem
-                      key={property.id}
-                      onClick={() => setSelectedProperty(property.id)}
-                      className="flex items-start gap-2 py-2"
-                    >
-                      <Building2 className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium truncate max-w-[200px]">
-                          {property.address}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {property.property_type === 'investment' ? 'Investment' : property.property_type === 'owner_occupied' ? 'Owner Occupied' : property.property_type === 'smsf' ? 'SMSF' : property.property_type === 'rental' ? 'Rental (Tenant)' : property.property_type}
-                        </span>
-                      </div>
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
+        {/* Portfolio Analysis */}
+        {properties.length > 0 && (
+          <PortfolioAnalysisPDFGenerator
+            clientId={clientId}
+            clientName={clientName}
+          />
+        )}
 
-            {/* Quick Email Button */}
-            <Button variant="outline" size="sm" onClick={onOpenEmailCompose}>
-              <Mail className="h-4 w-4 mr-2" />
-              Email Client
-            </Button>
-          </div>
-
-          {/* Selected Property Report Generator */}
-          {selectedProperty && (() => {
-            const selectedProp = properties.find(p => p.id === selectedProperty);
-            if (!selectedProp) return null;
-            return (
-              <div className="mt-4 p-3 bg-muted/50 rounded-lg flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">{selectedProp.address}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <PropertyReportGenerator
-                    property={selectedProp}
-                    clientName={clientName}
-                  />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setSelectedProperty(null)}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            );
-          })()}
-        </CardContent>
-      </Card>
-
-      {/* Portfolio Analysis Reports History */}
-      <Card className="overflow-hidden">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between gap-2 min-w-0">
-            <CardTitle className="text-sm font-medium flex items-center gap-2 min-w-0 truncate">
-              <PieChart className="h-4 w-4 flex-shrink-0" />
-              Portfolio Performance Reports
-            </CardTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex-shrink-0"
-              onClick={() => window.location.href = `/portfolio-reports?clientId=${clientId}`}
-            >
-              <ExternalLink className="h-4 w-4 mr-2" />
-              View All
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <PortfolioAnalysisReportsList clientId={clientId} showHeader={false} />
-        </CardContent>
-      </Card>
-
-      {/* Report History */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-            Report History
-            {allReports.length > 0 && (
-              <Badge variant="secondary" className="ml-2">
-                {allReports.length}
-              </Badge>
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {allReports.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">No reports generated yet</p>
-              <p className="text-xs mt-1">Use the buttons above to generate client reports</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {allReports.map((report) => (
-                <div
-                  key={report.id}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+        {/* Property Report Dropdown */}
+        {properties.length > 0 && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Building2 className="h-4 w-4 mr-1.5" />
+                Property
+                <ChevronDown className="h-3.5 w-3.5 ml-1" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-72">
+              <DropdownMenuLabel>Select Property</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {properties.map((property) => (
+                <DropdownMenuItem
+                  key={property.id}
+                  onClick={() => setSelectedProperty(property.id)}
+                  className="flex items-start gap-2 py-2"
                 >
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className="p-2 rounded-md bg-muted flex-shrink-0">
-                      {getReportIcon(report.type)}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-medium truncate">{report.name}</span>
-                        <Badge variant={getReportBadgeVariant(report.type)} className="text-xs flex-shrink-0">
-                          {report.type.charAt(0).toUpperCase() + report.type.slice(1)}
-                        </Badge>
-                        {getStatusIcon(report.status)}
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5 flex-wrap">
-                        <Clock className="h-3 w-3 flex-shrink-0" />
-                        <span className="flex-shrink-0">{format(new Date(report.generatedAt), 'dd MMM yyyy, HH:mm')}</span>
-                        {report.propertyAddress && (
-                          <>
-                            <span>•</span>
-                            <span className="truncate">{report.propertyAddress}</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
+                  <Building2 className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium truncate max-w-[200px]">
+                      {property.address}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {property.property_type === 'investment' ? 'Investment' : property.property_type === 'owner_occupied' ? 'Owner Occupied' : property.property_type === 'smsf' ? 'SMSF' : property.property_type === 'rental' ? 'Rental' : property.property_type}
+                    </span>
                   </div>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
 
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    {/* Investment reports from investment_reports table - open in viewer */}
-                    {report.type === 'investment' && !report.fileUrl && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => {
-                          // Open in investment report view page
-                          window.open(`/investment-report/${report.id}`, '_blank');
-                        }}
-                        title="View Report"
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                      </Button>
-                    )}
-                    {report.fileUrl && (
+      {/* Selected Property Inline Generator */}
+      {selectedProperty && (() => {
+        const selectedProp = properties.find(p => p.id === selectedProperty);
+        if (!selectedProp) return null;
+        return (
+          <div className="p-3 bg-muted/50 rounded-lg flex items-center justify-between">
+            <div className="flex items-center gap-2 min-w-0">
+              <Building2 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <span className="text-sm truncate">{selectedProp.address}</span>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <PropertyReportGenerator property={selectedProp} clientName={clientName} />
+              <Button variant="ghost" size="sm" onClick={() => setSelectedProperty(null)}>Cancel</Button>
+            </div>
+          </div>
+        );
+      })()}
+
+      <Separator />
+
+      {/* ─── Filter Chips + Sort ─── */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {filterChips.map(chip => {
+            const count = typeCounts[chip.key];
+            if (chip.key !== 'all' && count === 0) return null;
+            return (
+              <button
+                key={chip.key}
+                onClick={() => setActiveFilter(chip.key)}
+                className={cn(
+                  "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors border",
+                  activeFilter === chip.key
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
+                )}
+              >
+                {chip.label}
+                {count > 0 && (
+                  <span className={cn(
+                    "text-[10px] rounded-full px-1.5 min-w-[18px] text-center",
+                    activeFilter === chip.key ? "bg-primary-foreground/20" : "bg-muted-foreground/20"
+                  )}>
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground">
+              <SortAsc className="h-3.5 w-3.5 mr-1" />
+              {sortMode === 'newest' ? 'Newest' : sortMode === 'oldest' ? 'Oldest' : 'Name'}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => setSortMode('newest')}>Most Recent</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setSortMode('oldest')}>Oldest First</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setSortMode('name')}>Name A-Z</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      {/* ─── Unified Report Library ─── */}
+      {portfolioLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : filteredReports.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">
+          <FileText className="h-10 w-10 mx-auto mb-3 opacity-40" />
+          <p className="text-sm font-medium">
+            {activeFilter === 'all' ? 'No reports generated yet' : `No ${activeFilter} reports found`}
+          </p>
+          <p className="text-xs mt-1">Use the buttons above to generate your first report</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {filteredReports.map((report) => (
+            <div
+              key={`${report.source}-${report.id}`}
+              className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+            >
+              {/* Left: Icon + Info */}
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <div className="p-2 rounded-md bg-muted flex-shrink-0">
+                  {getReportIcon(report.type)}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-medium truncate">{report.name}</span>
+                    <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0", getTypeBadgeClass(report.type))}>
+                      {report.type.charAt(0).toUpperCase() + report.type.slice(1)}
+                    </Badge>
+                    {getStatusIcon(report.status)}
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5 flex-wrap">
+                    <Clock className="h-3 w-3 flex-shrink-0" />
+                    <span>{format(new Date(report.generatedAt), 'dd MMM yyyy, HH:mm')}</span>
+                    {report.propertyAddress && (
                       <>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => handleDownloadFile(report.fileUrl!, report.name)}
-                          title="Download"
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => {
-                            // Open in new tab
-                            window.open(
-                              `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/investment-reports/${report.fileUrl}`,
-                              '_blank'
-                            );
-                          }}
-                          title="Open in new tab"
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                        </Button>
+                        <span className="text-muted-foreground/50">·</span>
+                        <span className="truncate">{report.propertyAddress}</span>
+                      </>
+                    )}
+                    {report.overallHealth && (
+                      <>
+                        <span className="text-muted-foreground/50">·</span>
+                        <span>Health: {report.overallHealth}</span>
                       </>
                     )}
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              </div>
 
-      {/* Quick Send Section */}
-      {allReports.length > 0 && clientEmail && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Send className="h-4 w-4" />
-              Quick Send
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-3">
-              Send reports directly to {clientName} at {clientEmail}
-            </p>
-            <Button size="sm" onClick={onOpenEmailCompose}>
-              <Mail className="h-4 w-4 mr-2" />
-              Compose Email with Reports
-            </Button>
-          </CardContent>
-        </Card>
+              {/* Right: Actions */}
+              <div className="flex items-center gap-1 flex-shrink-0">
+                {/* View (for investment reports without file or any report with file) */}
+                {report.type === 'investment' && report.source === 'investment_report' && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => window.open(`/investment-report/${report.id}`, '_blank')}
+                    title="View Report"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                  </Button>
+                )}
+
+                {report.fileUrl && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => handleViewFile(report.fileUrl!)}
+                      title="View PDF"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => handleDownloadFile(report.fileUrl!, report.name)}
+                      title="Download"
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => handleEmailReport(report)}
+                      title="Email this report"
+                    >
+                      <Mail className="h-4 w-4" />
+                    </Button>
+                  </>
+                )}
+
+                {/* More actions (delete for portfolio reports) */}
+                {report.source === 'portfolio_report' && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        className="text-destructive"
+                        onClick={() => handleDelete(report)}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
       )}
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!reportToDelete} onOpenChange={() => setReportToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Report</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{reportToDelete?.name}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
