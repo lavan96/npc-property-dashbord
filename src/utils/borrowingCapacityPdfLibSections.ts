@@ -609,58 +609,51 @@ export function drawBorrowingCapacityPdfLib(
     y -= SECTION_SPACING;
   }
 
-  // ── CAPACITY BREAKDOWN ──────────────────────────────────────────────────
-  ensureSpace(180);
-  y = drawSectionTitle(page, 'Capacity Breakdown', y, boldFont);
+  // ── CAPACITY WATERFALL ────────────────────────────────────────────────────
+  ensureSpace(140);
+  y = drawSectionTitle(page, 'Capacity Waterfall', y, boldFont);
 
-  interface BreakdownRow {
-    label: string;
-    value: string;
-    color: Color;
-  }
-
-  const breakdownRows: BreakdownRow[] = [
-    { label: 'Gross Annual Income', value: fmt(data.grossAnnualIncome), color: NPC_NAVY },
-    { label: 'Shaded Annual Income', value: fmt(data.shadedAnnualIncome), color: NPC_NAVY },
-    { label: 'Living Expenses (Monthly)', value: `-${fmt(data.livingExpensesMonthly)}`, color: DANGER },
-    { label: 'Existing Commitments (Monthly)', value: `-${fmt(data.existingCommitmentsMonthly)}`, color: DANGER },
+  const afterTaxMonthly = data.taxBreakdown ? data.taxBreakdown.monthlyTakeHome : Math.round(data.shadedAnnualIncome / 12);
+  const waterfallItems = [
+    { label: 'After-Tax Monthly Income', value: afterTaxMonthly, color: SUCCESS },
+    { label: 'Less: Living Expenses', value: -data.livingExpensesMonthly, color: DANGER },
+    { label: 'Less: Existing Commitments', value: -data.existingCommitmentsMonthly, color: DANGER },
   ];
 
   if (data.totalNegativeCashFlows && data.totalNegativeCashFlows > 0) {
-    breakdownRows.push({ label: 'Negative Property Cash Flows (Monthly)', value: `-${fmt(data.totalNegativeCashFlows)}`, color: DANGER });
+    waterfallItems.push({ label: 'Less: Negative Property Cash Flows', value: -(data.totalNegativeCashFlows), color: DANGER });
   }
 
-  breakdownRows.push(
-    { label: 'Monthly Surplus', value: fmt(data.monthlySurplus), color: data.monthlySurplus >= 0 ? SUCCESS : DANGER },
-    { label: 'Assessment Rate Applied', value: `${(data.assessmentRate || 0).toFixed(2)}%`, color: NPC_NAVY },
-    { label: 'Loan Term', value: `${data.loanTermYears || 30} years`, color: NPC_NAVY },
-  );
-
-  const rowH = 16;
-  for (let i = 0; i < breakdownRows.length; i++) {
-    ensureSpace(rowH + 4);
-    const item = breakdownRows[i];
-    // Alternating row background
-    if (i % 2 === 0) {
-      page.drawRectangle({ x: MARGIN_LEFT, y: y - 4, width: CONTENT_WIDTH, height: rowH, color: LIGHT_BG });
-    }
-    page.drawText(sanitize(item.label), { x: MARGIN_LEFT + 4, y: y + 2, size: 9, font, color: DARK_TEXT });
-    const valWidth = boldFont.widthOfTextAtSize(item.value, 9);
-    page.drawText(item.value, { x: MARGIN_LEFT + CONTENT_WIDTH - 4 - valWidth, y: y + 2, size: 9, font: boldFont, color: item.color });
-    y -= rowH;
+  let runningTotal = 0;
+  for (const item of waterfallItems) {
+    runningTotal += item.value;
+    const valStr = item.value >= 0 ? fmt(item.value) : `-${fmt(Math.abs(item.value))}`;
+    page.drawText(sanitize(item.label), { x: MARGIN_LEFT, y, size: 9, font, color: DARK_TEXT });
+    page.drawText(valStr, { x: MARGIN_LEFT + CONTENT_WIDTH - 10 - boldFont.widthOfTextAtSize(valStr, 9), y, size: 9, font: boldFont, color: item.color });
+    y -= PARAGRAPH_SPACING;
   }
 
-  // Gold "Maximum Borrowing Capacity" bar
-  ensureSpace(30);
-  y -= 4;
-  const goldBarH = 22;
-  page.drawRectangle({ x: MARGIN_LEFT, y: y - goldBarH + 8, width: CONTENT_WIDTH, height: goldBarH, color: NPC_GOLD });
-  const capLabel = 'Maximum Borrowing Capacity';
+  // Separator
+  page.drawRectangle({ x: MARGIN_LEFT, y: y + 4, width: CONTENT_WIDTH, height: 1, color: NPC_GOLD });
+  y -= 10;
+
+  // Monthly surplus
+  const surplusStr = fmt(data.monthlySurplus);
+  const surplusColor = data.monthlySurplus >= 0 ? SUCCESS : DANGER;
+  page.drawText('= Monthly Surplus', { x: MARGIN_LEFT, y, size: 10, font: boldFont, color: NPC_NAVY });
+  page.drawText(surplusStr, { x: MARGIN_LEFT + CONTENT_WIDTH - 10 - boldFont.widthOfTextAtSize(surplusStr, 12), y, size: 12, font: boldFont, color: surplusColor });
+  y -= SUBSECTION_SPACING;
+
+  // Explanation
+  page.drawText('Maximum borrowing capacity is derived from this surplus at the assessment rate.', { x: MARGIN_LEFT, y, size: 7, font, color: MUTED });
+  y -= PARAGRAPH_SPACING;
+
+  // Capacity figure
   const capStr = fmt(data.borrowingCapacity);
-  page.drawText(capLabel, { x: MARGIN_LEFT + 8, y: y - 2, size: 11, font: boldFont, color: NPC_WHITE });
-  const capWidth = boldFont.widthOfTextAtSize(capStr, 11);
-  page.drawText(capStr, { x: MARGIN_LEFT + CONTENT_WIDTH - 8 - capWidth, y: y - 2, size: 11, font: boldFont, color: NPC_WHITE });
-  y -= goldBarH + PARAGRAPH_SPACING;
+  page.drawRectangle({ x: MARGIN_LEFT, y: y - 22, width: CONTENT_WIDTH, height: 28, color: LIGHT_BG, borderColor: NPC_GOLD, borderWidth: 1 });
+  page.drawText('Estimated Borrowing Capacity:', { x: MARGIN_LEFT + 8, y: y - 5, size: 9, font, color: NPC_NAVY });
+  page.drawText(capStr, { x: MARGIN_LEFT + CONTENT_WIDTH - 10 - boldFont.widthOfTextAtSize(capStr, 14), y: y - 8, size: 14, font: boldFont, color: NPC_NAVY });
+  y -= SECTION_SPACING + PARAGRAPH_SPACING;
 
   // ── RECOMMENDATIONS & WARNINGS ────────────────────────────────────────────
   const recs = data.recommendations.filter(r => r && r.trim());
