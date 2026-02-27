@@ -253,7 +253,7 @@ export function ClientReportsTab({
         reports.push({
           id: f.id,
           type: 'vownet',
-          name: f.file_name || 'Vownet Form',
+          name: f.file_name || 'Client Detail Form',
           generatedAt: f.uploaded_at,
           status: 'completed',
           fileUrl: f.file_path,
@@ -461,7 +461,7 @@ export function ClientReportsTab({
     { key: 'all', label: 'All' },
     { key: 'portfolio', label: 'Portfolio' },
     { key: 'borrowing', label: 'Borrowing' },
-    { key: 'vownet', label: 'Vownet' },
+    { key: 'vownet', label: 'Client Forms' },
     { key: 'investment', label: 'Investment' },
     { key: 'property', label: 'Property' },
   ];
@@ -472,7 +472,7 @@ export function ClientReportsTab({
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-xs font-medium text-muted-foreground mr-1">Generate:</span>
 
-        {/* Vownet Form */}
+        {/* Client Detail Form */}
         {fullClient && (
           <VownetPDFGenerator
             data={{

@@ -408,8 +408,8 @@ export function VownetPDFGenerator({
       // Send email via edge function
       const { error } = await invokeSecureFunction('send-email-reply', {
         to: targetContact.email,
-        subject: `Vownet Form - ${clientName}`,
-        body: `Hi ${targetContact.name.split(' ')[0]},\n\nPlease find attached the Vownet form for ${clientName}.\n\nKind regards`,
+      subject: `Client Detail Form - ${clientName}`,
+      body: `Hi ${targetContact.name.split(' ')[0]},\n\nPlease find attached the client detail form for ${clientName}.\n\nKind regards`,
         senderMailbox: userData.personal_mailbox,
         attachments: [{
           name: fileName,
@@ -420,12 +420,12 @@ export function VownetPDFGenerator({
 
       if (error) throw error;
 
-      toast.success(`Vownet form sent to ${targetContact.name}`);
+      toast.success(`Client detail form sent to ${targetContact.name}`);
       
       addNotification({
         type: 'finance_agent_notified',
         title: 'Finance Agent Notified',
-        message: `Vownet form for ${clientName} sent to ${targetContact.name}`,
+        message: `Client detail form for ${clientName} sent to ${targetContact.name}`,
         entityId: data.client.id
       });
       
@@ -488,7 +488,7 @@ export function VownetPDFGenerator({
         
         <DropdownMenuItem onClick={handleDownload} disabled={isDisabled} className="mt-1">
           <Download className="h-4 w-4 mr-2" />
-          Export VowNet as PDF
+          Export Client Details as PDF
         </DropdownMenuItem>
         {onEmailClick && (
           <>

@@ -323,7 +323,7 @@ NPC Team`
             </TabsTrigger>
             <TabsTrigger value="notes" className="text-xs sm:text-sm">Notes</TabsTrigger>
             <TabsTrigger value="reminders" className="text-xs sm:text-sm">Reminders</TabsTrigger>
-            <TabsTrigger value="vownet-forms" className="text-xs sm:text-sm">VowNet</TabsTrigger>
+            <TabsTrigger value="vownet-forms" className="text-xs sm:text-sm">Client Forms</TabsTrigger>
             <TabsTrigger value="files" className="text-xs sm:text-sm">Files</TabsTrigger>
             <TabsTrigger value="activity" className="text-xs sm:text-sm">Activity</TabsTrigger>
             <TabsTrigger value="borrowing" className="text-xs sm:text-sm">Borrowing Capacity</TabsTrigger>
@@ -480,7 +480,7 @@ NPC Team`
                 </div>
               </div>
 
-              {/* Vownet Upload Section */}
+              {/* Client Detail Form Upload Section */}
               <ClientVownetUpload
                 clientId={client.id}
                 clientName={`${client.primary_first_name} ${client.primary_surname}`}

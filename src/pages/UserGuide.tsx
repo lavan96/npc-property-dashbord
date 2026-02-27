@@ -586,8 +586,8 @@ export default function UserGuide() {
           ],
         },
         {
-          title: 'VowNet Forms',
-          description: 'Import client data from VowNet form submissions.',
+          title: 'Client Detail Forms',
+          description: 'Import client data from client detail form submissions.',
           features: [
             'Automatic form parsing',
             'Client profile creation',

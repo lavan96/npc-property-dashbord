@@ -78,12 +78,12 @@ export function ExportVownetButton({
       };
 
       downloadVownetTemplate(exportData);
-      toast.success('Vownet form exported successfully');
+      toast.success('Client detail form exported successfully');
       
       addNotification({
         type: 'vownet_form_exported',
-        title: 'Vownet Form Exported',
-        message: `Vownet form exported for ${clientName}`,
+        title: 'Client Detail Form Exported',
+        message: `Client detail form exported for ${clientName}`,
         entityId: clientId
       });
     } catch (error: any) {
@@ -96,7 +96,7 @@ export function ExportVownetButton({
 
   const handleExportBlank = () => {
     downloadBlankVownetTemplate();
-    toast.success('Blank Vownet template downloaded');
+    toast.success('Blank client detail template downloaded');
   };
 
   return (
@@ -115,7 +115,7 @@ export function ExportVownetButton({
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={handleExportPrefilled}>
           <FileSpreadsheet className="h-4 w-4 mr-2" />
-          Export Pre-filled Vownet Form
+          Export Pre-filled Client Detail Form
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleExportBlank}>
