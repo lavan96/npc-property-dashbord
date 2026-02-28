@@ -22,7 +22,8 @@ import {
   Home,
   Building2,
   Info,
-  Landmark
+  Landmark,
+  MessageSquareText
 } from 'lucide-react';
 import { useState } from 'react';
 import {
@@ -32,6 +33,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { PortfolioAnalysisConfig, PortfolioAnalysisSettings } from './PortfolioAnalysisConfig';
+import { VoiceNoteRecorder } from '../VoiceNoteRecorder';
 
 interface GenerateReportStepProps {
   clientId: string;
@@ -81,6 +83,7 @@ export function GenerateReportStep({
   isSaving
 }: GenerateReportStepProps) {
   const [notes, setNotes] = useState('');
+  const [customInstructions, setCustomInstructions] = useState('');
 
   const getNextReviewDate = () => {
     const days = reviewFrequency === 'quarterly' ? 90 : reviewFrequency === 'bi_annual' ? 180 : 365;
@@ -254,6 +257,53 @@ export function GenerateReportStep({
         onChange={onAnalysisConfigChange}
       />
 
+      {/* Custom Instructions for Report */}
+      <Card className="border-purple-200 bg-purple-50/50 dark:border-purple-900 dark:bg-purple-950/20">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <MessageSquareText className="h-5 w-5 text-purple-600" />
+            Custom Report Instructions
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Info className="h-4 w-4 text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p>Provide specific guidance on how the AI should phrase the report. For example, adjust the tone for the client's risk appetite, highlight specific concerns, or emphasise certain strategies.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Add any specific instructions to tailor the report's language and focus. The report structure stays the same — these instructions influence how findings are phrased and what's emphasised.
+          </p>
+          <div className="flex items-start gap-2">
+            <div className="flex-1">
+              <Textarea
+                placeholder="e.g. 'Client is very risk-averse — use cautious language and emphasise capital preservation over growth. Highlight the importance of maintaining low LVR across the portfolio.'"
+                value={customInstructions}
+                onChange={(e) => setCustomInstructions(e.target.value)}
+                rows={4}
+                className="text-sm"
+              />
+            </div>
+            <div className="flex-shrink-0 pt-1">
+              <VoiceNoteRecorder
+                noteType="report-instructions"
+                onTranscriptReady={(text) => setCustomInstructions(prev => prev ? `${prev}\n\n${text}` : text)}
+              />
+            </div>
+          </div>
+          {customInstructions && (
+            <p className="text-xs text-purple-600 dark:text-purple-400">
+              ✓ Custom instructions will be applied to the generated report
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Review Frequency */}
       <Card>
         <CardHeader className="pb-2">
@@ -322,6 +372,7 @@ export function GenerateReportStep({
             includeBorrowingCapacity={includeBorrowingCapacity}
             includeOwnerOccupied={includeOwnerOccupied}
             analysisConfig={analysisConfig}
+            customInstructions={customInstructions}
           />
         </CardContent>
       </Card>

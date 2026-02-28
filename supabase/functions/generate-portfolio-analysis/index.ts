@@ -77,7 +77,8 @@ serve(async (req) => {
       projectionYears = 10,
       includeOwnerOccupied = true,
       // New configuration parameters
-      analysisConfig = {}
+      analysisConfig = {},
+      customInstructions = ''
     } = body;
 
     // Extract configuration settings with defaults
@@ -470,6 +471,10 @@ ${configContext ? `**ANALYSIS CONFIGURATION:**
 The following preferences have been set to tailor this analysis:
 ${configContext}
 IMPORTANT: You MUST incorporate these preferences into your analysis, recommendations, and projections. Adjust your risk assessments, strategy suggestions, and growth assumptions accordingly.
+
+` : ''}${customInstructions ? `**CUSTOM INSTRUCTIONS FROM ADVISOR:**
+The advisor has provided the following specific instructions for this report. You MUST incorporate these preferences, tone adjustments, and specific guidance into the analysis and recommendations:
+${customInstructions}
 
 ` : ''}**PORTFOLIO SUMMARY:**
 - Total Properties: ${portfolioMetrics.totalProperties}
