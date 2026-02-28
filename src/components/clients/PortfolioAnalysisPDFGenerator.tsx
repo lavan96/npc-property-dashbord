@@ -195,6 +195,7 @@ interface PortfolioAnalysisPDFGeneratorProps {
   includeBorrowingCapacity?: boolean;
   includeOwnerOccupied?: boolean;
   analysisConfig?: PortfolioAnalysisSettings;
+  customInstructions?: string;
   onComplete?: () => void;
 }
 
@@ -385,6 +386,7 @@ export function PortfolioAnalysisPDFGenerator({
   includeBorrowingCapacity = true,
   includeOwnerOccupied = true,
   analysisConfig = {},
+  customInstructions = '',
   onComplete 
 }: PortfolioAnalysisPDFGeneratorProps) {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -403,7 +405,8 @@ export function PortfolioAnalysisPDFGenerator({
         includeProjections: true,
         projectionYears: analysisConfig?.projectionPeriod || 10,
         includeOwnerOccupied,
-        analysisConfig
+        analysisConfig,
+        customInstructions
       });
 
       if (error) throw error;
