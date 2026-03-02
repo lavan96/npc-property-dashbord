@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Bell, BellRing, X, Loader2, Plus, Phone, Users, FileText, MoreHorizontal } from 'lucide-react';
+import { VoiceToTextButton } from '@/components/ui/VoiceToTextButton';
 import { format, isPast, isToday } from 'date-fns';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
@@ -236,7 +237,14 @@ export function FollowUpFlag({ clientId, followUpDate, invalidateKeys = [], size
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs text-muted-foreground font-medium">Description</label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs text-muted-foreground font-medium">Description</label>
+              <VoiceToTextButton
+                size="sm"
+                onTranscript={(text) => setDescription(prev => prev ? `${prev} ${text}` : text)}
+                disabled={isPending}
+              />
+            </div>
             <Textarea
               placeholder="Notes (optional)..."
               value={description}

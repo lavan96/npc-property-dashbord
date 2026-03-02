@@ -34,6 +34,7 @@ import { format, formatDistanceToNow, isPast, isToday } from 'date-fns';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
+import { VoiceToTextButton } from '@/components/ui/VoiceToTextButton';
 
 interface ClientRemindersProps {
   clientId: string;
@@ -313,6 +314,13 @@ export function ClientReminders({ clientId, followUpDate }: ClientRemindersProps
               value={title}
               onChange={(e) => setTitle(e.target.value)}
             />
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs text-muted-foreground font-medium">Description</label>
+              <VoiceToTextButton
+                size="sm"
+                onTranscript={(text) => setDescription(prev => prev ? `${prev} ${text}` : text)}
+              />
+            </div>
             <Textarea
               placeholder="Description (optional)..."
               value={description}
