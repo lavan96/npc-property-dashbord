@@ -712,7 +712,7 @@ NPC Team`
             </TabsContent>
 
             <TabsContent value="reminders" className={cn("mt-4", !isMobile && "max-w-3xl mx-auto w-full")}>
-              <ClientReminders clientId={client.id} />
+              <ClientReminders clientId={client.id} followUpDate={fullClient?.follow_up_date} />
             </TabsContent>
 
             <TabsContent value="vownet-forms" className={cn("mt-4", !isMobile && "max-w-3xl mx-auto w-full")}>
