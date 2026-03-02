@@ -157,28 +157,56 @@ export function DealStageTimeline({ stages, onUpdateStage }: DealStageTimelinePr
                 </div>
               </div>
 
-              {/* Invoice received checkbox */}
-              <div className="mt-1.5 flex items-center gap-2">
-                <Checkbox
-                  id={`invoice-${stage.id}`}
-                  checked={stage.invoice_received || false}
-                  onCheckedChange={(checked) => {
-                    onUpdateStage(stage.id, {
-                      invoice_received: !!checked,
-                      invoice_received_date: checked ? new Date().toISOString() : null,
-                    });
-                  }}
-                  className="h-3.5 w-3.5"
-                />
-                <label htmlFor={`invoice-${stage.id}`} className="text-xs text-muted-foreground cursor-pointer flex items-center gap-1">
-                  <FileCheck className="h-3 w-3" />
-                  Invoice Received
-                  {stage.invoice_received && stage.invoice_received_date && (
-                    <span className="text-green-600 ml-1">
-                      ({format(new Date(stage.invoice_received_date), 'dd MMM yyyy')})
-                    </span>
-                  )}
-                </label>
+              {/* Stage completion & invoice checkboxes */}
+              <div className="mt-1.5 flex items-center gap-4 flex-wrap">
+                {/* Completed checkbox */}
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id={`completed-${stage.id}`}
+                    checked={stage.status === 'complete'}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        onUpdateStage(stage.id, { status: 'complete', completed_at: new Date().toISOString() });
+                      } else {
+                        onUpdateStage(stage.id, { status: 'pending', completed_at: null });
+                      }
+                    }}
+                    className="h-3.5 w-3.5"
+                  />
+                  <label htmlFor={`completed-${stage.id}`} className="text-xs text-muted-foreground cursor-pointer flex items-center gap-1">
+                    <Check className="h-3 w-3" />
+                    Completed
+                    {stage.status === 'complete' && stage.completed_at && (
+                      <span className="text-green-600 ml-1">
+                        ({format(new Date(stage.completed_at), 'dd MMM yyyy')})
+                      </span>
+                    )}
+                  </label>
+                </div>
+
+                {/* Invoice received checkbox */}
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id={`invoice-${stage.id}`}
+                    checked={stage.invoice_received || false}
+                    onCheckedChange={(checked) => {
+                      onUpdateStage(stage.id, {
+                        invoice_received: !!checked,
+                        invoice_received_date: checked ? new Date().toISOString() : null,
+                      });
+                    }}
+                    className="h-3.5 w-3.5"
+                  />
+                  <label htmlFor={`invoice-${stage.id}`} className="text-xs text-muted-foreground cursor-pointer flex items-center gap-1">
+                    <FileCheck className="h-3 w-3" />
+                    Invoice Received
+                    {stage.invoice_received && stage.invoice_received_date && (
+                      <span className="text-green-600 ml-1">
+                        ({format(new Date(stage.invoice_received_date), 'dd MMM yyyy')})
+                      </span>
+                    )}
+                  </label>
+                </div>
               </div>
 
               <StageDatePicker
