@@ -321,8 +321,7 @@ export default function Integrations() {
         return;
       }
 
-      // Use invokeSecureFunction for cookie-based auth
-      const { invokeSecureFunction } = await import('@/lib/secureInvoke');
+      // Use invokeSecureFunction for cookie-based auth (static import at top)
       const { data, error } = await invokeSecureFunction('update-integration-secret', { secrets });
 
       if (error) throw error;

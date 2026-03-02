@@ -39,6 +39,9 @@ import { CalendarLoadingSkeleton, StatsLoadingSkeleton, SidebarLoadingSkeleton }
 import { BatchActions } from '@/components/calendar/BatchActions';
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, startOfWeek, endOfWeek, isSameMonth, addWeeks, subWeeks, getHours, addHours, differenceInMilliseconds, addMinutes, setHours, setMinutes } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { toTimezoneISO } from '@/lib/sydneyTime';
+import { formatInSydney } from '@/lib/timezoneUtils';
+import { getBookingTimezone } from '@/lib/bookingTimezone';
 
 // Sidebar tab type
 type SidebarTab = 'events' | 'availability' | 'templates' | 'heatmap' | 'analytics' | 'summary' | 'conflicts' | 'optimize' | 'overlay' | 'patterns' | 'reminders';
@@ -297,9 +300,7 @@ export default function Calendar() {
     const duration = differenceInMilliseconds(originalEnd, originalStart);
 
     // Build new start time - interpret in configured booking timezone
-    const { toTimezoneISO } = await import('@/lib/sydneyTime');
-    const { formatInSydney } = await import('@/lib/timezoneUtils');
-    const { getBookingTimezone } = await import('@/lib/bookingTimezone');
+    // Using static imports from top of file
     const bookingTz = getBookingTimezone();
     
     let newStartDate: Date;
