@@ -11,6 +11,7 @@ export interface DealWithClient {
   responsible_person: string | null;
   total_contract_price: number | null;
   land_price: number | null;
+  property_address: string | null;
   build_price: number | null;
   loan_amount: number | null;
   valuation_completed: boolean;

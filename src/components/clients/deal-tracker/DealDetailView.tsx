@@ -165,6 +165,22 @@ export function DealDetailView({ deal, clientId, onBack }: DealDetailViewProps) 
         </div>
       </div>
 
+      {/* Property Address */}
+      <div className="flex items-center gap-2 px-1">
+        <Label className="text-xs text-muted-foreground whitespace-nowrap shrink-0">Property Address:</Label>
+        <Input
+          key={deal.id + '-property-address'}
+          defaultValue={deal.property_address || ''}
+          onBlur={(e) => {
+            if (e.target.value !== (deal.property_address || '')) {
+              handleDealUpdate({ property_address: e.target.value });
+            }
+          }}
+          placeholder="Enter property address..."
+          className="h-8 text-xs flex-1"
+        />
+      </div>
+
       {/* Progress bar */}
       <div className="flex items-center gap-3 px-1">
         <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">

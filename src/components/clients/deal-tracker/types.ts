@@ -8,6 +8,7 @@ export interface Deal {
   id: string;
   client_id: string;
   property_id: string | null;
+  property_address: string | null;
   deal_type: DealType;
   current_stage: string;
   current_stage_number: number;
@@ -76,6 +77,8 @@ export interface DealStage {
   key_date: string | null;
   completed_at: string | null;
   percentage_or_amount: string | null;
+  invoice_received: boolean;
+  invoice_received_date: string | null;
   notes: string | null;
   display_order: number;
   created_at: string;

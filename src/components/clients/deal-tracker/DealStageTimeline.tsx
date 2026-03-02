@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { Check, Circle, Clock, SkipForward, CalendarIcon } from 'lucide-react';
+import { Check, Circle, Clock, SkipForward, CalendarIcon, FileCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -154,6 +155,30 @@ export function DealStageTimeline({ stages, onUpdateStage }: DealStageTimelinePr
                 <div className="truncate">
                   <span className="font-medium">Internal:</span> {stage.internal_action || '—'}
                 </div>
+              </div>
+
+              {/* Invoice received checkbox */}
+              <div className="mt-1.5 flex items-center gap-2">
+                <Checkbox
+                  id={`invoice-${stage.id}`}
+                  checked={stage.invoice_received || false}
+                  onCheckedChange={(checked) => {
+                    onUpdateStage(stage.id, {
+                      invoice_received: !!checked,
+                      invoice_received_date: checked ? new Date().toISOString() : null,
+                    });
+                  }}
+                  className="h-3.5 w-3.5"
+                />
+                <label htmlFor={`invoice-${stage.id}`} className="text-xs text-muted-foreground cursor-pointer flex items-center gap-1">
+                  <FileCheck className="h-3 w-3" />
+                  Invoice Received
+                  {stage.invoice_received && stage.invoice_received_date && (
+                    <span className="text-green-600 ml-1">
+                      ({format(new Date(stage.invoice_received_date), 'dd MMM yyyy')})
+                    </span>
+                  )}
+                </label>
               </div>
 
               <StageDatePicker
