@@ -15,6 +15,10 @@ import { PipelineAnalytics } from '@/components/deals/PipelineAnalytics';
 import { PipelineTimeline } from '@/components/deals/PipelineTimeline';
 import { ClawbackRiskMonitor } from '@/components/deals/ClawbackRiskMonitor';
 import { DealManagement } from '@/components/deals/DealManagement';
+import { PipelineValueSummaryBar } from '@/components/deals/PipelineValueSummaryBar';
+import { SettlementCountdownCards } from '@/components/deals/SettlementCountdownCards';
+import { CommissionForecastWidget } from '@/components/deals/CommissionForecastWidget';
+import { AtRiskDealsPanel } from '@/components/deals/AtRiskDealsPanel';
 import { toast } from 'sonner';
 import type { DealWithClient } from '@/hooks/useAllDeals';
 
@@ -57,6 +61,18 @@ export default function DealPipeline() {
           </p>
         </div>
       </div>
+
+      {/* Pipeline Value Summary Bar */}
+      <PipelineValueSummaryBar deals={deals} />
+
+      {/* Settlement Countdown & At-Risk Panel */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <SettlementCountdownCards deals={filteredDeals} onDealClick={handleDealClick} />
+        <AtRiskDealsPanel deals={filteredDeals} onDealClick={handleDealClick} />
+      </div>
+
+      {/* Commission Forecast */}
+      <CommissionForecastWidget deals={deals} />
 
       {/* Global Pipeline Toolbar */}
       <PipelineToolbar

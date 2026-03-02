@@ -22,6 +22,10 @@ export interface DealWithClient {
   expected_build_start: string | null;
   estimated_completion: string | null;
   notes: string | null;
+  commission_estimate: number | null;
+  new_loan_amount: number | null;
+  clawback_expiry_date: string | null;
+  clawback_period_months: number | null;
   created_at: string;
   updated_at: string;
   // Joined from client
