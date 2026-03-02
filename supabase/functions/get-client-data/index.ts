@@ -37,6 +37,7 @@ interface RequestBody {
     additionalContacts?: boolean;
     scores?: boolean;
     deals?: boolean;
+    reminders?: boolean;
   };
   session_token?: string;
 }
@@ -69,7 +70,7 @@ serve(async (req) => {
     const { clientId, clientIds, listMode, listOptions = {}, notesOptions = {}, include = {} } = body;
 
     // Support for querying other tables (portfolio_analysis_reports, etc.)
-    const allowedTables = ['clients', 'portfolio_analysis_reports', 'client_properties', 'client_files', 'client_additional_contacts', 'client_deals', 'deal_stages', 'build_progress_payments', 'builder_invoices', 'borrowing_capacity_assessments'];
+    const allowedTables = ['clients', 'portfolio_analysis_reports', 'client_properties', 'client_files', 'client_additional_contacts', 'client_deals', 'deal_stages', 'build_progress_payments', 'builder_invoices', 'borrowing_capacity_assessments', 'client_reminders'];
     const targetTable = listOptions.table || 'clients';
     
     if (listOptions.table && !allowedTables.includes(targetTable)) {
@@ -299,6 +300,13 @@ serve(async (req) => {
         fetchPromises.push(
           supabase.from('client_scores').select('*').eq('client_id', id).maybeSingle()
             .then(({ data }) => { clientResult.scores = data || null; })
+        );
+      }
+
+      if (include.reminders) {
+        fetchPromises.push(
+          supabase.from('client_reminders').select('*').eq('client_id', id).order('due_date', { ascending: true })
+            .then(({ data }) => { clientResult.reminders = data || []; })
         );
       }
 

@@ -7,7 +7,7 @@ type TableName = 'clients' | 'client_properties' | 'client_income' | 'client_exp
                  'client_notes' | 'client_files' | 'client_activities' | 'client_additional_contacts' |
                  'report_qa_messages' | 'report_qa_conversations' | 'portfolio_reviews' | 'client_scores' |
                  'client_income_sources' | 'client_deals' | 'deal_stages' | 'build_progress_payments' | 'builder_invoices' |
-                 'portfolio_analysis_reports';
+                 'portfolio_analysis_reports' | 'client_reminders';
 
 type Operation = 'create' | 'update' | 'delete' | 'upsert' | 'bulkDelete';
 
@@ -42,6 +42,7 @@ const ALLOWED_TABLES: TableName[] = [
   'build_progress_payments',
   'builder_invoices',
   'portfolio_analysis_reports',
+  'client_reminders',
 ];
 
 // Map employment_type to income source_type and default shading
