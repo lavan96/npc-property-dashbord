@@ -91,9 +91,10 @@ interface ClientDetailsModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initialTab?: string;
+  initialDealId?: string;
 }
 
-export function ClientDetailsModal({ client, open, onOpenChange, initialTab }: ClientDetailsModalProps) {
+export function ClientDetailsModal({ client, open, onOpenChange, initialTab, initialDealId }: ClientDetailsModalProps) {
   const isMobile = useIsMobile();
   const [showEmailCompose, setShowEmailCompose] = useState(false);
   const [pdfAttachment, setPdfAttachment] = useState<{ blob: Blob; fileName: string } | null>(null);
@@ -650,6 +651,7 @@ NPC Team`
                 clientId={client.id}
                 deals={secureData?.deals || []}
                 properties={properties}
+                initialDealId={initialDealId}
               />
             </TabsContent>
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import {
@@ -27,13 +27,22 @@ interface DealTrackerTabProps {
   clientId: string;
   deals: Deal[];
   properties: any[];
+  initialDealId?: string;
 }
 
-export function DealTrackerTab({ clientId, deals, properties }: DealTrackerTabProps) {
-  const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
+export function DealTrackerTab({ clientId, deals, properties, initialDealId }: DealTrackerTabProps) {
+  const [selectedDealId, setSelectedDealId] = useState<string | null>(initialDealId || null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newDealType, setNewDealType] = useState<DealType>('existing_property');
   const { createDeal } = useDealActions(clientId);
+
+  // Auto-select deal when deep-linked and deals load
+  useEffect(() => {
+    if (initialDealId && deals.length > 0 && !selectedDealId) {
+      const found = deals.find(d => d.id === initialDealId);
+      if (found) setSelectedDealId(found.id);
+    }
+  }, [initialDealId, deals]);
 
   const selectedDeal = deals.find(d => d.id === selectedDealId);
 
