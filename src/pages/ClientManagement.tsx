@@ -115,6 +115,7 @@ export default function ClientManagement() {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [deepLinkTab, setDeepLinkTab] = useState<string | undefined>(undefined);
+  const [deepLinkDealId, setDeepLinkDealId] = useState<string | undefined>(undefined);
   const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
   const [filters, setFilters] = useState<ClientFiltersState>(defaultFilters);
   const [selectedClients, setSelectedClients] = useState<string[]>([]);
@@ -154,12 +155,14 @@ export default function ClientManagement() {
   useEffect(() => {
     const clientId = searchParams.get('clientId');
     const tab = searchParams.get('tab');
+    const dealId = searchParams.get('dealId');
     if (!clientId || isLoading || clients.length === 0) return;
 
     const target = clients.find(c => c.id === clientId);
     if (target) {
       setSelectedClient(target);
       setDeepLinkTab(tab || undefined);
+      setDeepLinkDealId(dealId || undefined);
       setShowDetailsModal(true);
     }
     // Clean URL
@@ -752,9 +755,13 @@ export default function ClientManagement() {
           open={showDetailsModal}
           onOpenChange={(open) => {
             setShowDetailsModal(open);
-            if (!open) setDeepLinkTab(undefined);
+            if (!open) {
+              setDeepLinkTab(undefined);
+              setDeepLinkDealId(undefined);
+            }
           }}
           initialTab={deepLinkTab}
+          initialDealId={deepLinkDealId}
         />
       )}
 

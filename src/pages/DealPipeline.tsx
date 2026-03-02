@@ -34,7 +34,7 @@ export default function DealPipeline() {
   const filteredDeals = usePipelineFilters(deals, filters);
 
   const handleDealClick = (deal: DealWithClient) => {
-    navigate(`/clients?clientId=${deal.client_id}&tab=deals`);
+    navigate(`/clients?clientId=${deal.client_id}&tab=deals&dealId=${deal.id}`);
     toast.info(`Opening ${deal.client_name}'s deal`);
   };
 
