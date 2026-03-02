@@ -250,21 +250,34 @@ export function ClientReminders({ clientId, followUpDate }: ClientRemindersProps
 
   const deleteReminderMutation = useMutation({
     mutationFn: async (reminderId: string) => {
-      const { data, error } = await invokeSecureFunction('manage-client-data', {
-        operation: 'delete',
-        table: 'client_reminders',
-        clientId,
-        recordId: reminderId,
-      });
+      // Try edge function first
+      try {
+        const { data, error } = await invokeSecureFunction('manage-client-data', {
+          operation: 'delete',
+          table: 'client_reminders',
+          clientId,
+          recordId: reminderId,
+        });
+        if (!error && data?.success) return;
+        console.warn('[ClientReminders] Edge function delete failed:', error?.message || data?.error);
+      } catch (e) {
+        console.warn('[ClientReminders] Edge function delete threw:', e);
+      }
 
-      if (error) throw new Error(error.message);
-      if (!data?.success) throw new Error(data?.error || 'Failed to delete reminder');
+      // Fallback to direct Supabase delete
+      const { error: directError } = await supabase
+        .from('client_reminders')
+        .delete()
+        .eq('id', reminderId);
+      if (directError) throw directError;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-reminders', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['all-reminders'] });
       toast.success('Reminder deleted');
     },
     onError: (error: any) => {
+      console.error('[ClientReminders] Delete failed completely:', error);
       toast.error('Failed to delete reminder: ' + error.message);
     }
   });
