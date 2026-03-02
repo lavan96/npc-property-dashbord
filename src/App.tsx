@@ -54,6 +54,7 @@ import ClientTracker from "./pages/ClientTracker";
 import PortfolioReports from "./pages/PortfolioReports";
 import ApiUsage from "./pages/ApiUsage";
 import DealPipeline from "./pages/DealPipeline";
+import RemindersHub from "./pages/RemindersHub";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -138,7 +139,8 @@ const App = () => (
                           <Route path="clients" element={<ClientManagement />} />
                           <Route path="client-tracker" element={<ClientTracker />} />
                           <Route path="portfolio-reports" element={<PortfolioReports />} />
-                          <Route path="deal-pipeline" element={<DealPipeline />} />
+                           <Route path="deal-pipeline" element={<DealPipeline />} />
+                           <Route path="reminders" element={<RemindersHub />} />
                         </Route>
                         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                         <Route path="*" element={<NotFound />} />
