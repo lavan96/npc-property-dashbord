@@ -652,17 +652,21 @@ export default function ReportQA() {
         ? [uploadedReports[activeReportIndex]]
         : uploadedReports;
       
-      // Get session token from sessionStorage for authentication
-      const sessionToken = sessionStorage.getItem('session_token');
+      // Get session token with dual-storage fallback (sessionStorage → localStorage)
+      const sessionToken = sessionStorage.getItem('session_token') || localStorage.getItem('session_token');
+      // Prefer real access token over anon key for Bearer header
+      const accessToken = sessionStorage.getItem('supabase_access_token') || localStorage.getItem('supabase_access_token');
+      const bearerToken = accessToken || SUPABASE_KEY;
       
       const response = await fetch(`${SUPABASE_URL}/functions/v1/report-qa`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${bearerToken}`,
           ...(sessionToken ? { 'x-session-token': sessionToken } : {}),
         },
-        credentials: 'include', // Required for HttpOnly cookies
+        credentials: 'omit', // Avoid CORS issues with wildcard origins
         body: JSON.stringify({
           action: 'chat',
           reportContents: reportsToUse.map(r => r.content),
