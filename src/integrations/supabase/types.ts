@@ -1365,6 +1365,7 @@ export type Database = {
           lodgement_date: string | null
           new_loan_amount: number | null
           notes: string | null
+          property_address: string | null
           property_id: string | null
           responsible_person: string | null
           risk_status: Database["public"]["Enums"]["deal_risk_status"]
@@ -1409,6 +1410,7 @@ export type Database = {
           lodgement_date?: string | null
           new_loan_amount?: number | null
           notes?: string | null
+          property_address?: string | null
           property_id?: string | null
           responsible_person?: string | null
           risk_status?: Database["public"]["Enums"]["deal_risk_status"]
@@ -1453,6 +1455,7 @@ export type Database = {
           lodgement_date?: string | null
           new_loan_amount?: number | null
           notes?: string | null
+          property_address?: string | null
           property_id?: string | null
           responsible_person?: string | null
           risk_status?: Database["public"]["Enums"]["deal_risk_status"]
@@ -2700,6 +2703,8 @@ export type Database = {
           display_order: number
           id: string
           internal_action: string | null
+          invoice_received: boolean | null
+          invoice_received_date: string | null
           key_date: string | null
           notes: string | null
           percentage_or_amount: string | null
@@ -2717,6 +2722,8 @@ export type Database = {
           display_order?: number
           id?: string
           internal_action?: string | null
+          invoice_received?: boolean | null
+          invoice_received_date?: string | null
           key_date?: string | null
           notes?: string | null
           percentage_or_amount?: string | null
@@ -2734,6 +2741,8 @@ export type Database = {
           display_order?: number
           id?: string
           internal_action?: string | null
+          invoice_received?: boolean | null
+          invoice_received_date?: string | null
           key_date?: string | null
           notes?: string | null
           percentage_or_amount?: string | null
