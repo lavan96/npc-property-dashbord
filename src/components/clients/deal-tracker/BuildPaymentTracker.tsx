@@ -57,7 +57,7 @@ export function BuildPaymentTracker({ payments, buildPrice, onUpdatePayment }: B
     return new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(val);
   };
 
-  const completedCount = sorted.filter(p => p.funds_released).length;
+  const completedCount = sorted.filter(p => p.paid_to_builder).length;
   const progressPercent = sorted.length > 0 ? (completedCount / sorted.length) * 100 : 0;
 
   return (
@@ -81,6 +81,7 @@ export function BuildPaymentTracker({ payments, buildPrice, onUpdatePayment }: B
               <TableHead>Stage</TableHead>
               <TableHead className="text-right">%</TableHead>
               <TableHead className="text-right">Amount</TableHead>
+              <TableHead className="text-center">Completed</TableHead>
               <TableHead className="text-center">Invoice Rcvd</TableHead>
               <TableHead className="text-center">Submitted</TableHead>
               <TableHead className="text-center">Funds Released</TableHead>
@@ -104,6 +105,22 @@ export function BuildPaymentTracker({ payments, buildPrice, onUpdatePayment }: B
                   </TableCell>
                   <TableCell className="text-right font-mono text-sm">{p.percentage}%</TableCell>
                   <TableCell className="text-right text-sm">{formatCurrency(stageAmount || null)}</TableCell>
+
+                  {/* Completed */}
+                  <TableCell className="text-center">
+                    <div className="flex flex-col items-center gap-0.5">
+                      <Checkbox
+                        checked={p.paid_to_builder}
+                        onCheckedChange={(checked) => onUpdatePayment(p.id, {
+                          paid_to_builder: !!checked,
+                          paid_to_builder_date: checked ? (p.paid_to_builder_date || format(new Date(), 'yyyy-MM-dd')) : null,
+                        })}
+                      />
+                      {p.paid_to_builder && p.paid_to_builder_date && (
+                        <span className="text-[10px] text-green-600">{format(new Date(p.paid_to_builder_date), 'dd/MM/yy')}</span>
+                      )}
+                    </div>
+                  </TableCell>
 
                   {/* Invoice Received */}
                   <TableCell className="text-center">

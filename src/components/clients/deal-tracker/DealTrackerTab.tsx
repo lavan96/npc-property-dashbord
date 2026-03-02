@@ -110,7 +110,7 @@ export function DealTrackerTab({ clientId, deals, properties }: DealTrackerTabPr
                     <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
                       {getDealIcon(deal.deal_type)}
                       <span className="font-medium text-xs sm:text-sm truncate">
-                        {DEAL_TYPE_LABELS[deal.deal_type]}
+                        {deal.property_address || DEAL_TYPE_LABELS[deal.deal_type]}
                       </span>
                       <Badge variant="outline" className="text-[10px] shrink-0">
                         S{deal.current_stage_number}
