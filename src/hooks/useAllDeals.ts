@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { formatFullName } from '@/utils/nameFormatting';
 
 export interface DealWithClient {
   id: string;
@@ -68,7 +69,7 @@ export function useAllDeals() {
       if (clientsData?.success && clientsData.clients) {
         for (const c of clientsData.clients) {
           if (c.client) {
-            const name = [c.client.primary_first_name, c.client.primary_surname].filter(Boolean).join(' ');
+            const name = formatFullName(c.client.primary_first_name, c.client.primary_surname);
             clientMap[c.id] = name || 'Unknown';
           }
         }
