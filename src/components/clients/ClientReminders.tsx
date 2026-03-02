@@ -13,24 +13,31 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { 
   Bell, 
+  BellRing,
   Plus, 
   Check, 
   Clock, 
-  Calendar,
+  Calendar as CalendarIcon,
   Phone,
   Users,
   FileText,
   MoreHorizontal,
   Loader2,
-  X
+  X,
+  Pin
 } from 'lucide-react';
 import { format, formatDistanceToNow, isPast, isToday } from 'date-fns';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ClientRemindersProps {
   clientId: string;
+  followUpDate?: string | null;
 }
 
 const reminderTypes = [
@@ -49,7 +56,122 @@ const priorityColors = {
   urgent: 'bg-red-500/10 text-red-600 border-red-500/20',
 };
 
-export function ClientReminders({ clientId }: ClientRemindersProps) {
+function FollowUpBanner({ clientId, followUpDate }: { clientId: string; followUpDate: string | null | undefined }) {
+  const [calOpen, setCalOpen] = useState(false);
+  const queryClient = useQueryClient();
+  const parsedDate = followUpDate ? new Date(followUpDate) : undefined;
+  const isOverdue = parsedDate && isPast(parsedDate) && !isToday(parsedDate);
+  const isDueToday = parsedDate && isToday(parsedDate);
+
+  const mutation = useMutation({
+    mutationFn: async (newDate: string | null) => {
+      try {
+        const { data, error } = await invokeSecureFunction('manage-client-data', {
+          operation: 'update',
+          table: 'clients',
+          clientId,
+          data: { follow_up_date: newDate },
+        });
+        if (!error && data?.success) return;
+      } catch {
+        // fallback
+      }
+      const { error } = await supabase
+        .from('clients')
+        .update({ follow_up_date: newDate })
+        .eq('id', clientId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      queryClient.invalidateQueries({ queryKey: ['client-tracker'] });
+      queryClient.invalidateQueries({ queryKey: ['client-detail', clientId] });
+      setCalOpen(false);
+    },
+    onError: (error: any) => {
+      toast.error('Failed to update follow-up: ' + error.message);
+    },
+  });
+
+  const statusConfig = isOverdue
+    ? { bg: 'bg-destructive/5 border-destructive/30', icon: 'text-destructive', label: 'Overdue', labelClass: 'text-destructive font-semibold' }
+    : isDueToday
+    ? { bg: 'bg-orange-500/5 border-orange-500/30', icon: 'text-orange-500', label: 'Due Today', labelClass: 'text-orange-600 font-semibold' }
+    : parsedDate
+    ? { bg: 'bg-amber-500/5 border-amber-500/30', icon: 'text-amber-500', label: formatDistanceToNow(parsedDate, { addSuffix: true }), labelClass: 'text-muted-foreground' }
+    : { bg: 'border-dashed border-muted-foreground/30', icon: 'text-muted-foreground', label: '', labelClass: '' };
+
+  return (
+    <Card className={cn('transition-all', statusConfig.bg)}>
+      <CardContent className="py-3 px-4">
+        <div className="flex items-center gap-3">
+          <div className={cn('rounded-full p-2', parsedDate ? (isOverdue ? 'bg-destructive/10' : 'bg-amber-500/10') : 'bg-muted')}>
+            {parsedDate ? (
+              <BellRing className={cn('h-4 w-4', statusConfig.icon)} />
+            ) : (
+              <Bell className="h-4 w-4 text-muted-foreground" />
+            )}
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <Pin className="h-3 w-3 text-muted-foreground shrink-0" />
+              <span className="text-sm font-medium">Follow-Up Reminder</span>
+              {isOverdue && <Badge variant="destructive" className="text-[10px] h-5">Overdue</Badge>}
+              {isDueToday && <Badge className="text-[10px] h-5 bg-orange-500/10 text-orange-600 border-orange-500/20">Today</Badge>}
+            </div>
+            {parsedDate ? (
+              <p className={cn('text-xs mt-0.5', statusConfig.labelClass)}>
+                {format(parsedDate, 'EEEE, MMM d, yyyy')} · {statusConfig.label}
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground mt-0.5">No follow-up date set — click to schedule</p>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1 shrink-0">
+            <Popover open={calOpen} onOpenChange={setCalOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5">
+                  <CalendarIcon className="h-3 w-3" />
+                  {parsedDate ? 'Change' : 'Set Date'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="single"
+                  selected={parsedDate}
+                  onSelect={(date) => {
+                    if (!date) return;
+                    mutation.mutate(format(date, 'yyyy-MM-dd'));
+                    toast.success(`Follow-up set for ${format(date, 'MMM d, yyyy')}`);
+                  }}
+                  className="p-3 pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
+            {parsedDate && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-destructive hover:text-destructive"
+                onClick={() => {
+                  mutation.mutate(null);
+                  toast.success('Follow-up cleared');
+                }}
+                disabled={mutation.isPending}
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+export function ClientReminders({ clientId, followUpDate }: ClientRemindersProps) {
   const [showAdd, setShowAdd] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -176,6 +298,9 @@ export function ClientReminders({ clientId }: ClientRemindersProps) {
 
   return (
     <div className="space-y-4">
+      {/* Pinned Follow-Up Banner */}
+      <FollowUpBanner clientId={clientId} followUpDate={followUpDate} />
+
       {/* Add Reminder */}
       {showAdd ? (
         <Card>
@@ -271,9 +396,10 @@ export function ClientReminders({ clientId }: ClientRemindersProps) {
         </div>
       ) : pendingReminders.length === 0 && completedReminders.length === 0 ? (
         <Card>
-          <CardContent className="py-8 text-center text-muted-foreground">
-            <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p>No reminders set</p>
+          <CardContent className="py-6 text-center text-muted-foreground">
+            <Bell className="h-7 w-7 mx-auto mb-2 opacity-50" />
+            <p className="text-sm">No additional reminders set</p>
+            <p className="text-xs mt-1">Use the button above to add task-specific reminders</p>
           </CardContent>
         </Card>
       ) : (
@@ -307,7 +433,7 @@ export function ClientReminders({ clientId }: ClientRemindersProps) {
                           </Badge>
                         </div>
                         <div className="flex items-center gap-2 mt-2">
-                          <Calendar className="h-3 w-3 text-muted-foreground" />
+                          <CalendarIcon className="h-3 w-3 text-muted-foreground" />
                           <span className={`text-xs ${dueStatus.className}`}>
                             {format(new Date(reminder.due_date), 'MMM d, yyyy h:mm a')} · {dueStatus.label}
                           </span>
