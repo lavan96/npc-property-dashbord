@@ -3589,9 +3589,9 @@ async function executeRecallMemories(sb: any, userId: string) {
 async function executeTriggerInvestmentReport(sb: any, args: any, userId: string) {
   const { property_address, client_id } = args;
   // Create a pending investment report record
-  const insertData: any = { property_address, status: 'pending', created_by: userId };
-  if (client_id) insertData.client_id = client_id;
-  const { data: report, error } = await sb.from('investment_reports').insert(insertData).select().single();
+  const insertData: any = { property_address, status: 'pending' };
+  if (client_id) insertData.client_property_id = client_id;
+  const { data: report, error } = await sb.from('investment_reports').insert(insertData).select().maybeSingle();
   if (error) return { error: `Failed to create report: ${error.message}` };
   return { success: true, message: `Investment report queued for "${property_address}". Report ID: ${report.id}. The report will be generated in the background — check the Reports section for progress.`, report_id: report.id };
 }
