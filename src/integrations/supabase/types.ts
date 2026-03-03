@@ -1103,6 +1103,227 @@ export type Database = {
           },
         ]
       }
+      checklist_instance_items: {
+        Row: {
+          checked_at: string | null
+          checked_by: string | null
+          created_at: string
+          display_order: number
+          id: string
+          instance_id: string
+          is_checked: boolean | null
+          label: string
+          section_icon: string | null
+          section_order: number
+          section_title: string
+        }
+        Insert: {
+          checked_at?: string | null
+          checked_by?: string | null
+          created_at?: string
+          display_order?: number
+          id?: string
+          instance_id: string
+          is_checked?: boolean | null
+          label: string
+          section_icon?: string | null
+          section_order?: number
+          section_title: string
+        }
+        Update: {
+          checked_at?: string | null
+          checked_by?: string | null
+          created_at?: string
+          display_order?: number
+          id?: string
+          instance_id?: string
+          is_checked?: boolean | null
+          label?: string
+          section_icon?: string | null
+          section_order?: number
+          section_title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_instance_items_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_instances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_instances: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          description: string | null
+          generated_by: string | null
+          icon: string | null
+          id: string
+          name: string
+          progress_percent: number | null
+          status: string
+          template_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          generated_by?: string | null
+          icon?: string | null
+          id?: string
+          name: string
+          progress_percent?: number | null
+          status?: string
+          template_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          generated_by?: string | null
+          icon?: string | null
+          id?: string
+          name?: string
+          progress_percent?: number | null
+          status?: string
+          template_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_instances_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_template_items: {
+        Row: {
+          created_at: string
+          display_order: number
+          id: string
+          is_pre_checked: boolean | null
+          label: string
+          section_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          is_pre_checked?: boolean | null
+          label: string
+          section_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          is_pre_checked?: boolean | null
+          label?: string
+          section_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_template_items_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_template_sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_template_sections: {
+        Row: {
+          created_at: string
+          display_order: number
+          icon: string | null
+          id: string
+          template_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          icon?: string | null
+          id?: string
+          template_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          icon?: string | null
+          id?: string
+          template_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_template_sections_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_templates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          cron_description: string | null
+          cron_enabled: boolean | null
+          cron_expression: string | null
+          description: string | null
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          last_generated_at: string | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          cron_description?: string | null
+          cron_enabled?: boolean | null
+          cron_expression?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_generated_at?: string | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          cron_description?: string | null
+          cron_enabled?: boolean | null
+          cron_expression?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_generated_at?: string | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       client_activities: {
         Row: {
           activity_type: string
