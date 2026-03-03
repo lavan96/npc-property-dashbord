@@ -2459,13 +2459,26 @@ async function executeShareConversation(sb: any, args: any, userId: string) {
   const targetId = target[0].id;
   if (targetId === userId) return { error: 'Cannot share with yourself.' };
   // Get most recent conversation for this user
-  const { data: convs } = await sb.from('agent_conversations').select('id').eq('user_id', userId).order('updated_at', { ascending: false }).limit(1);
+  const { data: convs } = await sb.from('agent_conversations').select('id, title').eq('user_id', userId).order('updated_at', { ascending: false }).limit(1);
   const convId = args.conversation_id || convs?.[0]?.id;
+  const convTitle = convs?.[0]?.title || 'Untitled conversation';
   if (!convId) return { error: 'No conversation to share.' };
   const { error } = await sb.from('agent_conversation_shares').insert({ conversation_id: convId, shared_by: userId, shared_with: targetId, permission: args.permission || 'view', handoff_note: args.handoff_note || null });
   if (error) return { error: error.message };
   // Log handoff
   await sb.from('agent_conversation_handoffs').insert({ conversation_id: convId, from_user_id: userId, to_user_id: targetId, handoff_type: args.handoff_type || 'collaborate', note: args.handoff_note || null });
+  // Get sharer's name for notification
+  const { data: sharerData } = await sb.from('custom_users').select('username').eq('id', userId).limit(1);
+  const sharerName = sharerData?.[0]?.username || 'A team member';
+  // Create in-app notification for the recipient
+  const noteText = args.handoff_note ? ` — "${args.handoff_note}"` : '';
+  await sb.from('notifications').insert({
+    type: 'conversation_shared',
+    title: 'Conversation Shared With You',
+    message: `${sharerName} shared "${convTitle}" with you${noteText}`,
+    entity_id: convId,
+    read: false,
+  });
   return { success: true, message: `Conversation shared with ${target[0].username}.` };
 }
 
