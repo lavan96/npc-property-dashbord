@@ -2491,6 +2491,86 @@ async function executeFindBestRates(sb: any, args: any) {
   return { lvr, loan_amount: args.loan_amount, property_value: args.property_value, loan_type: args.loan_type || 'variable', top_rates: ranked.slice(0, 5), total_lenders_checked: rates.length };
 }
 
+async function executeGetDashboardSummary(sb: any) {
+  const now = new Date().toISOString();
+  const [clients, deals, reminders, settlements, activities] = await Promise.all([
+    sb.from('clients').select('id, primary_first_name, primary_surname, pipeline_status, total_portfolio_value, net_monthly_cash_flow', { count: 'exact' }),
+    sb.from('client_deals').select('id, deal_name, current_stage, risk_status, settlement_date, finance_due_date, deal_amount', { count: 'exact' }),
+    sb.from('client_reminders').select('id, title, due_date, priority, status').eq('status', 'pending').order('due_date'),
+    sb.from('client_deals').select('id, deal_name, settlement_date, current_stage, deal_amount, clients:client_id(primary_first_name, primary_surname)').gte('settlement_date', now).order('settlement_date').limit(10),
+    sb.from('activity_logs').select('id, action_type, entity_type, entity_name, created_at').order('created_at', { ascending: false }).limit(10),
+  ]);
+
+  const clientData = clients.data || [];
+  const dealData = deals.data || [];
+  const reminderData = reminders.data || [];
+  const overdueReminders = reminderData.filter((r: any) => r.due_date && new Date(r.due_date) < new Date());
+  const urgentReminders = reminderData.filter((r: any) => r.priority === 'high' || r.priority === 'urgent');
+  const activeDeals = dealData.filter((d: any) => d.current_stage !== 'settled' && d.current_stage !== 'fallen_through');
+  const atRiskDeals = dealData.filter((d: any) => d.risk_status === 'at_risk' || d.risk_status === 'urgent');
+  const totalPipelineValue = activeDeals.reduce((s: number, d: any) => s + (Number(d.deal_amount) || 0), 0);
+  const totalAUM = clientData.reduce((s: number, c: any) => s + (Number(c.total_portfolio_value) || 0), 0);
+
+  return {
+    summary_date: new Date().toLocaleDateString('en-AU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+    clients: { total: clients.count || clientData.length, by_status: clientData.reduce((acc: any, c: any) => { acc[c.pipeline_status || 'unknown'] = (acc[c.pipeline_status || 'unknown'] || 0) + 1; return acc; }, {}) },
+    deals: { total: deals.count || dealData.length, active: activeDeals.length, at_risk: atRiskDeals.length, total_pipeline_value: totalPipelineValue },
+    reminders: { pending: reminderData.length, overdue: overdueReminders.length, urgent: urgentReminders.length },
+    upcoming_settlements: (settlements.data || []).slice(0, 5).map((s: any) => ({ deal: s.deal_name, date: s.settlement_date, amount: s.deal_amount, client: `${s.clients?.primary_first_name || ''} ${s.clients?.primary_surname || ''}`.trim() })),
+    total_aum: totalAUM,
+    recent_activity: (activities.data || []).slice(0, 5).map((a: any) => ({ type: a.action_type, entity: a.entity_name, when: a.created_at })),
+  };
+}
+
+async function executeGetCacheStatistics(sb: any) {
+  const [census, rates, health] = await Promise.all([
+    sb.from('abs_census_cache').select('id, dataset, postcode, expires_at', { count: 'exact' }),
+    sb.from('bank_lending_rates_cache').select('lender_id, lender_name, updated_at', { count: 'exact' }),
+    sb.from('api_health_log').select('service_name, status, created_at').order('created_at', { ascending: false }).limit(20),
+  ]);
+  const now = new Date();
+  const expiredCensus = (census.data || []).filter((c: any) => new Date(c.expires_at) < now).length;
+  return {
+    census_cache: { total_entries: census.count || 0, expired: expiredCensus, active: (census.count || 0) - expiredCensus },
+    lending_rates: { total_lenders: rates.count || 0, last_updated: rates.data?.[0]?.updated_at || null },
+    api_health_recent: (health.data || []).slice(0, 10),
+  };
+}
+
+async function executeGetApiHealth(sb: any, args: any) {
+  const limit = args?.limit || 20;
+  const { data } = await sb.from('api_health_log').select('*').order('created_at', { ascending: false }).limit(limit);
+  const entries = data || [];
+  const byService: Record<string, any> = {};
+  for (const e of entries) {
+    if (!byService[e.service_name]) byService[e.service_name] = { total: 0, success: 0, errors: 0, avg_response_ms: 0, times: [] };
+    byService[e.service_name].total++;
+    if (e.status === 'success') byService[e.service_name].success++;
+    else byService[e.service_name].errors++;
+    if (e.response_time_ms) byService[e.service_name].times.push(e.response_time_ms);
+  }
+  for (const svc of Object.keys(byService)) {
+    const t = byService[svc].times;
+    byService[svc].avg_response_ms = t.length ? Math.round(t.reduce((a: number, b: number) => a + b, 0) / t.length) : 0;
+    delete byService[svc].times;
+    byService[svc].success_rate = byService[svc].total ? Math.round((byService[svc].success / byService[svc].total) * 100) : 0;
+  }
+  return { services: byService, total_checked: entries.length };
+}
+
+async function executeGetBrandingProfiles(sb: any) {
+  const { data } = await sb.from('client_branding_profiles').select('*').order('is_default', { ascending: false }).order('created_at', { ascending: false });
+  return { profiles: data || [], total: data?.length || 0 };
+}
+
+async function executeGetUserPermissions(sb: any, args: any) {
+  const userId = args?.user_id;
+  if (!userId) return { error: 'user_id is required' };
+  const { data: user } = await sb.from('custom_users').select('id, username, role, is_active').eq('id', userId).maybeSingle();
+  if (!user) return { error: 'User not found' };
+  return { user_id: user.id, username: user.username, role: user.role, is_active: user.is_active };
+}
+
 //  TOOL DISPATCHER
 // ============================================================
 
