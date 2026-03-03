@@ -203,6 +203,21 @@ Return plain text/markdown only (no JSON).`,
   }
 }
 
+// ============= NULL BYTE SANITIZATION =============
+// PostgreSQL text columns cannot store \u0000 (null bytes).
+// PDF extraction and OCR can produce these characters.
+function sanitizeForPostgres(text: string | null | undefined): string {
+  if (!text) return text ?? '';
+  // Remove null bytes that PostgreSQL rejects (error 22P05)
+  // deno-lint-ignore no-control-regex
+  return text.replace(/\x00/g, '');
+}
+
+function sanitizeArray(arr: string[] | null | undefined): string[] {
+  if (!arr) return [];
+  return arr.map(s => sanitizeForPostgres(s));
+}
+
 
 /**
  * Extract text from PDF bytes using optimized single-pass parsing
@@ -1210,8 +1225,8 @@ No investment report has been uploaded. You are having an open conversation abou
       // Save messages to database if conversationId provided
       if (conversationId) {
         await supabase.from("report_qa_messages").insert([
-          { conversation_id: conversationId, role: "user", content: question },
-          { conversation_id: conversationId, role: "assistant", content: responseText, model_provider: modelProvider },
+          { conversation_id: conversationId, role: "user", content: sanitizeForPostgres(question) },
+          { conversation_id: conversationId, role: "assistant", content: sanitizeForPostgres(responseText), model_provider: modelProvider },
         ]);
 
         // Check if this is the first message and generate a dynamic title
@@ -1284,12 +1299,17 @@ No investment report has been uploaded. You are having an open conversation abou
     if (action === "create-conversation") {
       const { reportNames, reportContents, title } = body;
       
+      // Sanitize all text content to remove null bytes (PostgreSQL error 22P05)
+      const sanitizedContents = sanitizeArray(reportContents);
+      const sanitizedNames = sanitizeArray(reportNames);
+      const sanitizedTitle = sanitizeForPostgres(title || `Q&A: ${sanitizedNames.join(", ")}`);
+
       const { data, error } = await supabase
         .from("report_qa_conversations")
         .insert({
-          report_names: reportNames,
-          report_contents: reportContents,
-          title: title || `Q&A: ${reportNames.join(", ")}`,
+          report_names: sanitizedNames,
+          report_contents: sanitizedContents,
+          title: sanitizedTitle,
         })
         .select()
         .single();
