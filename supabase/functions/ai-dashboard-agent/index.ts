@@ -1579,40 +1579,40 @@ async function executeGetEmploymentDetails(sb: any, args: any) {
 
 async function executeGetClientEmails(sb: any, args: any) {
   const { data, error } = await sb.from('email_copilot_emails')
-    .select('id, subject, sender, received_at, snippet, is_read, mailbox_source')
+    .select('id, subject, sender, received_at, body, status, mailbox_source')
     .eq('client_id', args.client_id).order('received_at', { ascending: false }).limit(args.limit || 15);
   if (error) return { error: error.message };
   if (!data?.length) return { message: "No emails found." };
-  return data.map((e:any)=>({ id: e.id, subject: e.subject, from: e.sender, date: e.received_at, preview: e.snippet?.substring(0,150), read: e.is_read }));
+  return data.map((e:any)=>({ id: e.id, subject: e.subject, from: e.sender, date: e.received_at, preview: e.body?.substring(0,150), status: e.status }));
 }
 
 async function executeSearchEmails(sb: any, args: any) {
   const q = `%${args.query}%`;
   const { data, error } = await sb.from('email_copilot_emails')
-    .select('id, subject, sender, received_at, snippet, client_id')
-    .or(`subject.ilike.${q},sender.ilike.${q},snippet.ilike.${q}`)
+    .select('id, subject, sender, received_at, body, client_id')
+    .or(`subject.ilike.${q},sender.ilike.${q},body.ilike.${q}`)
     .order('received_at', { ascending: false }).limit(args.limit || 20);
   if (error) return { error: error.message };
   if (!data?.length) return { message: "No emails matching the search." };
-  return data;
+  return data.map((e:any)=>({ id: e.id, subject: e.subject, from: e.sender, date: e.received_at, preview: e.body?.substring(0,150), client_id: e.client_id }));
 }
 
 async function executeGetEmailThread(sb: any, args: any) {
   const { data, error } = await sb.from('email_copilot_emails')
-    .select('id, subject, sender, to_recipients, received_at, snippet, is_read')
+    .select('id, subject, sender, to_recipients, received_at, body, status')
     .eq('conversation_id', args.conversation_id).order('received_at', { ascending: true });
   if (error) return { error: error.message };
   if (!data?.length) return { message: "No emails in this thread." };
-  return data;
+  return data.map((e:any)=>({ id: e.id, subject: e.subject, from: e.sender, to: e.to_recipients, date: e.received_at, preview: e.body?.substring(0,200), status: e.status }));
 }
 
 async function executeGetUnlinkedEmails(sb: any, args: any) {
   const { data, error } = await sb.from('email_copilot_emails')
-    .select('id, subject, sender, received_at, snippet')
+    .select('id, subject, sender, received_at, body')
     .is('client_id', null).order('received_at', { ascending: false }).limit(args.limit || 20);
   if (error) return { error: error.message };
   if (!data?.length) return { message: "No unlinked emails." };
-  return data;
+  return data.map((e:any)=>({ id: e.id, subject: e.subject, from: e.sender, date: e.received_at, preview: e.body?.substring(0,150) }));
 }
 
 async function executeLinkEmailToClient(sb: any, args: any) {
