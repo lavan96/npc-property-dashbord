@@ -1256,6 +1256,202 @@ const TOOLS: any[] = [
       parameters: { type: "object", properties: {} },
     },
   },
+
+  // ═══════════════════════════════════════════════════════════
+  //  BATCH 3 TOOLS — Playbooks, Scheduled Tasks, Bulk Ops,
+  //  NL Chart Builder, Voice-to-Report
+  // ═══════════════════════════════════════════════════════════
+
+  // ─── SAVED PLAYBOOKS ───
+  {
+    type: "function",
+    function: {
+      name: "get_playbooks",
+      description: "List all saved playbooks (own and public). Playbooks are reusable multi-step sequences of agent tools.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_playbook",
+      description: "Save a reusable playbook (multi-step tool sequence). Steps are an array of {tool_name, arguments, description}. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Playbook name" },
+          description: { type: "string", description: "What this playbook does" },
+          icon: { type: "string", description: "Emoji icon (default 📋)" },
+          steps: { type: "array", items: { type: "object", properties: { tool_name: { type: "string" }, arguments: { type: "object" }, description: { type: "string" } } }, description: "Ordered steps" },
+          is_public: { type: "boolean", description: "Share with team (default false)" },
+        },
+        required: ["name", "steps"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "run_playbook",
+      description: "Execute a saved playbook by ID. Runs each step sequentially, collecting results. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          playbook_id: { type: "string", description: "UUID of the playbook" },
+          overrides: { type: "object", description: "Optional argument overrides for steps (keyed by step index)" },
+        },
+        required: ["playbook_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "delete_playbook",
+      description: "Delete a saved playbook. REQUIRES USER CONFIRMATION.",
+      parameters: { type: "object", properties: { playbook_id: { type: "string", description: "UUID of the playbook" } }, required: ["playbook_id"] },
+    },
+  },
+
+  // ─── SCHEDULED TASKS ───
+  {
+    type: "function",
+    function: {
+      name: "get_scheduled_tasks",
+      description: "List all scheduled tasks with their cron schedules, last run status, and next run time.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_scheduled_task",
+      description: "Schedule a playbook or single tool to run on a cron schedule. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Task name" },
+          description: { type: "string", description: "What this scheduled task does" },
+          task_type: { type: "string", enum: ["playbook", "single_tool"], description: "Type of task" },
+          playbook_id: { type: "string", description: "UUID of playbook (if task_type=playbook)" },
+          tool_name: { type: "string", description: "Tool name (if task_type=single_tool)" },
+          tool_arguments: { type: "object", description: "Tool arguments (if task_type=single_tool)" },
+          schedule_cron: { type: "string", description: "Cron expression (e.g. '0 8 * * 1-5' for weekdays at 8am)" },
+          schedule_description: { type: "string", description: "Human-readable schedule (e.g. 'Every weekday at 8am')" },
+        },
+        required: ["name", "schedule_cron"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "toggle_scheduled_task",
+      description: "Enable or disable a scheduled task. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          task_id: { type: "string", description: "UUID of the scheduled task" },
+          is_enabled: { type: "boolean", description: "Enable or disable" },
+        },
+        required: ["task_id", "is_enabled"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "delete_scheduled_task",
+      description: "Delete a scheduled task. REQUIRES USER CONFIRMATION.",
+      parameters: { type: "object", properties: { task_id: { type: "string", description: "UUID of the scheduled task" } }, required: ["task_id"] },
+    },
+  },
+
+  // ─── BULK OPERATIONS ───
+  {
+    type: "function",
+    function: {
+      name: "bulk_update_clients",
+      description: "Update a field on multiple clients at once. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          client_ids: { type: "array", items: { type: "string" }, description: "Array of client UUIDs" },
+          field: { type: "string", description: "Field to update" },
+          value: { type: "string", description: "New value" },
+        },
+        required: ["client_ids", "field", "value"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "bulk_create_reminders",
+      description: "Create the same reminder for multiple clients at once. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          client_ids: { type: "array", items: { type: "string" }, description: "Array of client UUIDs" },
+          title: { type: "string", description: "Reminder title" },
+          description: { type: "string", description: "Reminder description" },
+          due_date: { type: "string", description: "Due date (ISO format)" },
+          priority: { type: "string", enum: ["low", "medium", "high", "urgent"], description: "Priority" },
+          reminder_type: { type: "string", description: "Type: task, follow_up, call, meeting, document, general" },
+        },
+        required: ["client_ids", "title", "due_date"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "bulk_set_follow_up_dates",
+      description: "Set follow-up dates for multiple clients at once. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          client_ids: { type: "array", items: { type: "string" }, description: "Array of client UUIDs" },
+          follow_up_date: { type: "string", description: "Follow-up date (ISO format)" },
+        },
+        required: ["client_ids", "follow_up_date"],
+      },
+    },
+  },
+
+  // ─── NATURAL LANGUAGE CHART BUILDER ───
+  {
+    type: "function",
+    function: {
+      name: "generate_chart_data",
+      description: "Generate chart-ready data from a natural language query. Returns structured data with labels, values, chart_type, and title that can be rendered as a chart in the chat. Examples: 'deals by stage', 'monthly commission trend', 'client pipeline distribution', 'borrowing capacity comparison'.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Natural language description of the chart (e.g. 'deals by stage', 'commission by month')" },
+          chart_type: { type: "string", enum: ["bar", "pie", "line", "doughnut"], description: "Chart type (default: auto-detect)" },
+        },
+        required: ["query"],
+      },
+    },
+  },
+
+  // ─── VOICE-TO-REPORT ───
+  {
+    type: "function",
+    function: {
+      name: "generate_client_summary_report",
+      description: "Generate a comprehensive text-based client summary report covering profile, financials, deals, properties, and recent activity. Perfect for voice-dictated 'give me a report on [client]' requests.",
+      parameters: {
+        type: "object",
+        properties: {
+          client_id: { type: "string", description: "UUID of the client" },
+          sections: { type: "array", items: { type: "string", enum: ["profile", "financials", "deals", "properties", "reminders", "activities", "emails"] }, description: "Sections to include (default: all)" },
+        },
+        required: ["client_id"],
+      },
+    },
+  },
 ];
 
 // ============================================================
@@ -1278,6 +1474,10 @@ const WRITE_TOOLS = [
   'complete_deal_stage',
   'share_conversation', 'revoke_conversation_share',
   'set_user_preference', 'undo_action',
+  // Batch 3
+  'create_playbook', 'run_playbook', 'delete_playbook',
+  'create_scheduled_task', 'toggle_scheduled_task', 'delete_scheduled_task',
+  'bulk_update_clients', 'bulk_create_reminders', 'bulk_set_follow_up_dates',
 ];
 
 // ============================================================
@@ -1612,6 +1812,116 @@ async function executeRunSystemHealthCheck(sb: any) {
   };
 }
 
+// ─── BATCH 3 EXECUTORS ───
+
+async function executeGetPlaybooks(sb: any, userId: string) {
+  const { data } = await sb.from('agent_playbooks').select('*').or(`user_id.eq.${userId},is_public.eq.true`).order('updated_at', { ascending: false }).limit(30);
+  return { playbooks: data || [] };
+}
+async function executeCreatePlaybook(sb: any, args: any, userId: string) {
+  const { data, error } = await sb.from('agent_playbooks').insert({ user_id: userId, name: args.name, description: args.description || null, icon: args.icon || '📋', steps: args.steps, is_public: args.is_public || false }).select().single();
+  if (error) return { error: error.message };
+  return { success: true, message: `Playbook "${args.name}" saved with ${args.steps.length} steps.`, playbook: data };
+}
+async function executeRunPlaybook(sb: any, args: any, userId: string) {
+  const { data: pb } = await sb.from('agent_playbooks').select('*').eq('id', args.playbook_id).single();
+  if (!pb) return { error: 'Playbook not found.' };
+  const results: any[] = [];
+  for (let i = 0; i < (pb.steps || []).length; i++) {
+    const step = pb.steps[i];
+    const stepArgs = args.overrides?.[i] ? { ...step.arguments, ...args.overrides[i] } : (step.arguments || {});
+    try { results.push({ step: i+1, tool: step.tool_name, status: 'success', result: await executeTool(sb, step.tool_name, stepArgs, userId) }); }
+    catch (e: any) { results.push({ step: i+1, tool: step.tool_name, status: 'error', error: e.message }); }
+  }
+  await sb.from('agent_playbooks').update({ run_count: (pb.run_count||0)+1, last_run_at: new Date().toISOString() }).eq('id', args.playbook_id);
+  return { success: true, message: `Playbook "${pb.name}": ${results.filter(r=>r.status==='success').length}/${pb.steps.length} steps succeeded.`, results };
+}
+async function executeDeletePlaybook(sb: any, args: any) {
+  await sb.from('agent_playbooks').delete().eq('id', args.playbook_id);
+  return { success: true, message: 'Playbook deleted.' };
+}
+async function executeGetScheduledTasks(sb: any, userId: string) {
+  const { data } = await sb.from('agent_scheduled_tasks').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(30);
+  return { tasks: data || [] };
+}
+async function executeCreateScheduledTask(sb: any, args: any, userId: string) {
+  const { data, error } = await sb.from('agent_scheduled_tasks').insert({ user_id: userId, name: args.name, description: args.description||null, task_type: args.task_type||'single_tool', playbook_id: args.playbook_id||null, tool_name: args.tool_name||null, tool_arguments: args.tool_arguments||null, schedule_cron: args.schedule_cron, schedule_description: args.schedule_description||null }).select().single();
+  if (error) return { error: error.message };
+  return { success: true, message: `Scheduled task "${args.name}" created.`, task: data };
+}
+async function executeToggleScheduledTask(sb: any, args: any) {
+  await sb.from('agent_scheduled_tasks').update({ is_enabled: args.is_enabled }).eq('id', args.task_id);
+  return { success: true, message: `Task ${args.is_enabled?'enabled':'disabled'}.` };
+}
+async function executeDeleteScheduledTask(sb: any, args: any) {
+  await sb.from('agent_scheduled_tasks').delete().eq('id', args.task_id);
+  return { success: true, message: 'Scheduled task deleted.' };
+}
+async function executeBulkUpdateClients(sb: any, args: any) {
+  if (!args.client_ids?.length) return { error: 'No client IDs.' };
+  let ok = 0; for (const id of args.client_ids) { const { error } = await sb.from('clients').update({ [args.field]: args.value }).eq('id', id); if (!error) ok++; }
+  return { success: true, message: `Updated "${args.field}" on ${ok} client(s).` };
+}
+async function executeBulkCreateReminders(sb: any, args: any, userId: string) {
+  if (!args.client_ids?.length) return { error: 'No client IDs.' };
+  const { data: u } = await sb.from('custom_users').select('id').eq('id', userId).single();
+  let ok = 0; for (const cid of args.client_ids) { const { error } = await sb.from('client_reminders').insert({ client_id: cid, title: args.title, description: args.description||null, due_date: args.due_date, priority: args.priority||'medium', reminder_type: args.reminder_type||'task', status: 'pending', created_by: u?userId:null }); if (!error) ok++; }
+  return { success: true, message: `Created "${args.title}" for ${ok} client(s).` };
+}
+async function executeBulkSetFollowUpDates(sb: any, args: any) {
+  if (!args.client_ids?.length) return { error: 'No client IDs.' };
+  let ok = 0; for (const id of args.client_ids) { const { error } = await sb.from('clients').update({ follow_up_date: args.follow_up_date }).eq('id', id); if (!error) ok++; }
+  return { success: true, message: `Set follow-up for ${ok} client(s).` };
+}
+async function executeGenerateChartData(sb: any, args: any) {
+  const q = (args.query||'').toLowerCase(); let chartType = args.chart_type||'bar', title='', labels: string[]=[], values: number[]=[];
+  if (q.includes('pipeline')) {
+    title='Client Pipeline Distribution'; chartType=args.chart_type||'pie';
+    const { data } = await sb.from('clients').select('pipeline_status');
+    const c: Record<string,number>={}; (data||[]).forEach((d:any)=>{const s=d.pipeline_status||'unknown';c[s]=(c[s]||0)+1;}); labels=Object.keys(c); values=Object.values(c);
+  } else if (q.includes('commission')&&(q.includes('month')||q.includes('trend'))) {
+    title='Commission by Month'; chartType=args.chart_type||'line';
+    const { data } = await sb.from('client_deals').select('settlement_date,commission_estimate').not('settlement_date','is',null);
+    const m: Record<string,number>={}; (data||[]).forEach((d:any)=>{if(d.settlement_date){const mo=d.settlement_date.substring(0,7);m[mo]=(m[mo]||0)+(d.commission_estimate||0);}});
+    const s=Object.entries(m).sort((a,b)=>a[0].localeCompare(b[0])).slice(-12); labels=s.map(([k])=>k); values=s.map(([,v])=>v);
+  } else if (q.includes('risk')) {
+    title='Deal Risk Distribution'; chartType=args.chart_type||'doughnut';
+    const { data } = await sb.from('client_deals').select('risk_status');
+    const c: Record<string,number>={}; (data||[]).forEach((d:any)=>{const r=d.risk_status||'unknown';c[r]=(c[r]||0)+1;}); labels=Object.keys(c); values=Object.values(c);
+  } else {
+    title='Deals by Stage'; const { data } = await sb.from('client_deals').select('current_stage');
+    const c: Record<string,number>={}; (data||[]).forEach((d:any)=>{const s=d.current_stage||'Unknown';c[s]=(c[s]||0)+1;}); labels=Object.keys(c); values=Object.values(c);
+  }
+  const colors=['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4','#84cc16','#f97316','#6366f1'];
+  return { chart: { type: chartType, title, labels, datasets: [{ label: title, data: values, backgroundColor: colors.slice(0,labels.length) }] }, summary: `${title}: ${labels.map((l,i)=>`${l}(${values[i]})`).join(', ')}`, __chart_data: true };
+}
+async function executeGenerateClientSummaryReport(sb: any, args: any) {
+  const secs = args.sections||['profile','financials','deals','properties','reminders'];
+  const r: string[] = [];
+  const { data: client } = await sb.from('clients').select('*').eq('id', args.client_id).single();
+  if (!client) return { error: 'Client not found.' };
+  if (secs.includes('profile')) { r.push(`# Client Summary: ${client.primary_first_name||''} ${client.primary_surname||''}\n- Email: ${client.primary_email||'N/A'} | Phone: ${client.primary_mobile||'N/A'}\n- Pipeline: ${client.pipeline_status||'N/A'} | Follow-up: ${client.follow_up_date?.substring(0,10)||'None'}\n`); }
+  if (secs.includes('financials')) {
+    const [inc,exp,liab,ass,bc] = await Promise.all([sb.from('client_income').select('*').eq('client_id',args.client_id),sb.from('client_expenses').select('*').eq('client_id',args.client_id),sb.from('client_liabilities').select('*').eq('client_id',args.client_id),sb.from('client_assets').select('*').eq('client_id',args.client_id),sb.from('borrowing_capacity_assessments').select('borrowing_capacity,serviceability_band,monthly_surplus').eq('client_id',args.client_id).order('created_at',{ascending:false}).limit(1)]);
+    r.push(`## Financials\n- Income: $${(inc.data||[]).reduce((s:number,i:any)=>s+(i.annual_amount||i.amount||0),0).toLocaleString()}/yr\n- Assets: $${(ass.data||[]).reduce((s:number,a:any)=>s+(a.value||0),0).toLocaleString()}\n- Liabilities: $${(liab.data||[]).reduce((s:number,l:any)=>s+(l.balance||l.amount||0),0).toLocaleString()}`);
+    if (bc.data?.[0]) r.push(`- Borrowing Capacity: $${bc.data[0].borrowing_capacity?.toLocaleString()||'N/A'} (${bc.data[0].serviceability_band||'N/A'})\n`);
+  }
+  if (secs.includes('deals')) {
+    const { data: deals } = await sb.from('client_deals').select('deal_type,current_stage,risk_status,property_address,loan_amount,settlement_date').eq('client_id',args.client_id);
+    r.push('## Deals'); if (deals?.length) deals.forEach((d:any,i:number)=>r.push(`${i+1}. **${d.property_address||'N/A'}** — ${d.current_stage||'N/A'} | Loan: $${d.loan_amount?.toLocaleString()||'N/A'}`)); else r.push('_None._'); r.push('');
+  }
+  if (secs.includes('properties')) {
+    const { data: props } = await sb.from('client_properties').select('address,property_type,current_value').eq('client_id',args.client_id);
+    r.push('## Properties'); if (props?.length) props.forEach((p:any)=>r.push(`- ${p.address||'N/A'} (${p.property_type||'N/A'}) — $${p.current_value?.toLocaleString()||'N/A'}`)); else r.push('_None._'); r.push('');
+  }
+  if (secs.includes('reminders')) {
+    const { data: rems } = await sb.from('client_reminders').select('title,due_date,priority').eq('client_id',args.client_id).eq('status','pending').order('due_date').limit(10);
+    r.push('## Reminders'); if (rems?.length) rems.forEach((rem:any)=>r.push(`- ${rem.priority==='urgent'?'🔴':'🔵'} ${rem.title} — ${rem.due_date?.substring(0,10)}`)); else r.push('_None._');
+  }
+  r.push(`\n---\n*Generated ${new Date().toISOString().substring(0,16).replace('T',' ')} UTC*`);
+  return { report: r.join('\n'), sections_included: secs };
+}
+
 //  TOOL DISPATCHER
 // ============================================================
 
@@ -1695,74 +2005,85 @@ async function executeTool(sb: any, name: string, args: any, userId: string): Pr
     // Branding
     case 'get_branding_profiles': return executeGetBrandingProfiles(sb);
     case 'get_user_permissions': return executeGetUserPermissions(sb, args);
-    // Calculators (pure compute)
+    // Calculators
     case 'calculate_stamp_duty': return executeCalculateStampDuty(args);
     case 'calculate_lmi': return executeCalculateLMI(args);
     case 'calculate_loan_repayment': return executeCalculateLoanRepayment(args);
     case 'calculate_rental_yield': return executeCalculateRentalYield(args);
     case 'calculate_equity_position': return executeCalculateEquityPosition(args);
-
-    // New tools — Client lifecycle
+    // Client lifecycle
     case 'create_client': return executeCreateClient(sb, args, userId);
     case 'delete_client': return executeDeleteClient(sb, args);
     case 'get_clients_by_pipeline_status': return executeGetClientsByPipelineStatus(sb, args);
     case 'get_clients_needing_follow_up': return executeGetClientsNeedingFollowUp(sb, args);
-    // New tools — Client notes
+    // Client notes
     case 'get_client_notes': return executeGetClientNotes(sb, args);
     case 'create_client_note': return executeCreateClientNote(sb, args, userId);
     case 'update_client_note': return executeUpdateClientNote(sb, args);
     case 'delete_client_note': return executeDeleteClientNote(sb, args);
-    // New tools — Client scores & reviews
+    // Client scores
     case 'get_client_score': return executeGetClientScore(sb, args);
     case 'get_portfolio_review_details': return executeGetPortfolioReviewDetails(sb, args);
-    // New tools — Deals
+    // Deals
     case 'create_deal': return executeCreateDeal(sb, args, userId);
     case 'delete_deal': return executeDeleteDeal(sb, args);
-    // New tools — Pipeline analytics
+    // Pipeline analytics
     case 'get_conversion_funnel': return executeGetConversionFunnel(sb, args);
     case 'get_pipeline_velocity': return executeGetPipelineVelocity(sb);
     case 'get_commission_actuals': return executeGetCommissionActuals(sb, args);
-    // New tools — Additional contacts
+    // Additional contacts
     case 'add_additional_contact': return executeAddAdditionalContact(sb, args);
     case 'update_additional_contact': return executeUpdateAdditionalContact(sb, args);
     case 'remove_additional_contact': return executeRemoveAdditionalContact(sb, args);
-    // New tools — Cash flow
+    // Cash flow
     case 'get_cash_flow_analysis': return executeGetCashFlowAnalysis(sb, args);
-    // New tools — Automation
+    // Automation
     case 'get_auto_report_switches': return executeGetAutoReportSwitches(sb);
     case 'toggle_auto_report_switch': return executeToggleAutoReportSwitch(sb, args);
     case 'get_auto_report_log': return executeGetAutoReportLog(sb, args);
-    // New tools — Checklists
+    // Checklists ext
     case 'delete_checklist_instance': return executeDeleteChecklistInstance(sb, args);
-    // New tools — Calendar
+    // Calendar ext
     case 'get_todays_schedule': return executeGetTodaysSchedule(sb);
-    // New tools — Files
+    // Files
     case 'delete_client_file': return executeDeleteClientFile(sb, args);
-    // New tools — Bulk ops
+    // Bulk ops (legacy)
     case 'get_bulk_generation_status': return executeGetBulkGenerationStatus(sb, args);
-    // New tools — Lending rates
+    // Lending
     case 'get_lending_rates': return executeGetLendingRates(sb, args);
     case 'compare_lender_rates': return executeCompareLenderRates(sb, args);
-    // New tools — Deal stages
+    // Deal stages
     case 'complete_deal_stage': return executeCompleteDealStage(sb, args);
-    // New tools — Email stats
+    // Email stats
     case 'get_email_stats': return executeGetEmailStats(sb);
-    // Batch 1 — Collaboration & Sharing
+    // Batch 1
     case 'share_conversation': return executeShareConversation(sb, args, userId);
     case 'get_shared_conversations': return executeGetSharedConversations(sb, userId);
     case 'get_conversation_collaborators': return executeGetConversationCollaborators(sb, args);
     case 'revoke_conversation_share': return executeRevokeConversationShare(sb, args, userId);
-    // Batch 1 — User Preferences
     case 'get_user_preferences': return executeGetUserPreferences(sb, userId);
     case 'set_user_preference': return executeSetUserPreference(sb, args, userId);
-    // Batch 1 — Audit Trail
     case 'get_audit_trail': return executeGetAuditTrail(sb, args, userId);
     case 'undo_action': return executeUndoAction(sb, args, userId);
-    // Batch 2 — Proactive & Analytics
+    // Batch 2
     case 'get_proactive_insights': return executeGetProactiveInsights(sb);
     case 'compare_clients': return executeCompareClients(sb, args);
     case 'draft_follow_up': return executeDraftFollowUp(sb, args, userId);
     case 'run_system_health_check': return executeRunSystemHealthCheck(sb);
+    // Batch 3
+    case 'get_playbooks': return executeGetPlaybooks(sb, userId);
+    case 'create_playbook': return executeCreatePlaybook(sb, args, userId);
+    case 'run_playbook': return executeRunPlaybook(sb, args, userId);
+    case 'delete_playbook': return executeDeletePlaybook(sb, args);
+    case 'get_scheduled_tasks': return executeGetScheduledTasks(sb, userId);
+    case 'create_scheduled_task': return executeCreateScheduledTask(sb, args, userId);
+    case 'toggle_scheduled_task': return executeToggleScheduledTask(sb, args);
+    case 'delete_scheduled_task': return executeDeleteScheduledTask(sb, args);
+    case 'bulk_update_clients': return executeBulkUpdateClients(sb, args);
+    case 'bulk_create_reminders': return executeBulkCreateReminders(sb, args, userId);
+    case 'bulk_set_follow_up_dates': return executeBulkSetFollowUpDates(sb, args);
+    case 'generate_chart_data': return executeGenerateChartData(sb, args);
+    case 'generate_client_summary_report': return executeGenerateClientSummaryReport(sb, args);
 
     default: return { error: `Unknown tool: ${name}` };
   }

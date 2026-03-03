@@ -401,6 +401,134 @@ export type Database = {
           },
         ]
       }
+      agent_playbooks: {
+        Row: {
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          is_public: boolean | null
+          last_run_at: string | null
+          name: string
+          run_count: number | null
+          steps: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_public?: boolean | null
+          last_run_at?: string | null
+          name: string
+          run_count?: number | null
+          steps?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_public?: boolean | null
+          last_run_at?: string | null
+          name?: string
+          run_count?: number | null
+          steps?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_playbooks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_scheduled_tasks: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_enabled: boolean | null
+          last_run_at: string | null
+          last_run_result: Json | null
+          last_run_status: string | null
+          name: string
+          next_run_at: string | null
+          playbook_id: string | null
+          run_count: number | null
+          schedule_cron: string
+          schedule_description: string | null
+          task_type: string
+          tool_arguments: Json | null
+          tool_name: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          last_run_at?: string | null
+          last_run_result?: Json | null
+          last_run_status?: string | null
+          name: string
+          next_run_at?: string | null
+          playbook_id?: string | null
+          run_count?: number | null
+          schedule_cron: string
+          schedule_description?: string | null
+          task_type?: string
+          tool_arguments?: Json | null
+          tool_name?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          last_run_at?: string | null
+          last_run_result?: Json | null
+          last_run_status?: string | null
+          name?: string
+          next_run_at?: string | null
+          playbook_id?: string | null
+          run_count?: number | null
+          schedule_cron?: string
+          schedule_description?: string | null
+          task_type?: string
+          tool_arguments?: Json | null
+          tool_name?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_scheduled_tasks_playbook_id_fkey"
+            columns: ["playbook_id"]
+            isOneToOne: false
+            referencedRelation: "agent_playbooks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_scheduled_tasks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_user_preferences: {
         Row: {
           created_at: string
