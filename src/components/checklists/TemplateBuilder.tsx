@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Plus, Trash2, GripVertical, ChevronDown, ChevronRight, Clock, Pencil, Check, X, PlayCircle } from 'lucide-react';
-import { useChecklistTemplateSections, useChecklistTemplateItems, useChecklistMutations, type ChecklistTemplate, type ChecklistSection } from '@/hooks/useChecklists';
+import { useChecklistTemplates, useChecklistTemplateSections, useChecklistTemplateItems, useChecklistMutations, type ChecklistTemplate, type ChecklistSection } from '@/hooks/useChecklists';
 
 interface TemplateBuilderProps {
   template: ChecklistTemplate;
@@ -24,7 +24,11 @@ const CRON_PRESETS = [
   { label: 'Every 4 Hours', value: '0 */4 * * *', desc: 'Every 4 hours' },
 ];
 
-export function TemplateBuilder({ template, onBack }: TemplateBuilderProps) {
+export function TemplateBuilder({ template: initialTemplate, onBack }: TemplateBuilderProps) {
+  // Use live query data so cron toggle reflects immediately
+  const { data: templates = [] } = useChecklistTemplates();
+  const template = templates.find(t => t.id === initialTemplate.id) || initialTemplate;
+
   const { data: sections = [], isLoading: sectionsLoading } = useChecklistTemplateSections(template.id);
   const sectionIds = sections.map(s => s.id);
   const { data: allItems = [] } = useChecklistTemplateItems(sectionIds);

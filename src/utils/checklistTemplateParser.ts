@@ -149,8 +149,13 @@ function parseMarkdown(text: string): ParsedTemplate {
   // Filter out sections with no items (they were likely headings/groupings)
   const meaningful = sections.filter(s => s.items.length > 0);
 
-  if (!templateName && meaningful.length > 0) {
-    templateName = 'Imported Checklist';
+  // Try to derive a better name from the content structure
+  if (!templateName) {
+    // Check if empty sections (no items) exist before the first meaningful one — use those as the template name
+    const emptySections = sections.filter(s => s.items.length === 0);
+    if (emptySections.length > 0) {
+      templateName = emptySections[0].title;
+    }
   }
 
   if (meaningful.length === 0) {
