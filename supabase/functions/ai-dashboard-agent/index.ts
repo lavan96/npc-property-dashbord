@@ -1641,9 +1641,49 @@ async function executeLinkEmailToClient(sb: any, args: any) {
   return { success: true, message: `✅ Email linked to client.` };
 }
 
+function markdownToHtml(md: string): string {
+  let html = md
+    // Bold: **text** or __text__
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/__(.*?)__/g, '<strong>$1</strong>')
+    // Italic: *text* or _text_
+    .replace(/(?<!\*)\*(?!\*)(.*?)(?<!\*)\*(?!\*)/g, '<em>$1</em>')
+    // Headings
+    .replace(/^### (.*$)/gm, '<h3 style="margin: 0.5em 0;">$1</h3>')
+    .replace(/^## (.*$)/gm, '<h2 style="margin: 0.5em 0;">$1</h2>')
+    .replace(/^# (.*$)/gm, '<h1 style="margin: 0.5em 0;">$1</h1>')
+    // Horizontal rules
+    .replace(/^---$/gm, '<hr style="border: none; border-top: 1px solid #ddd; margin: 1em 0;">')
+    // Unordered lists
+    .replace(/^[\-\*] (.*$)/gm, '<li>$1</li>')
+    // Ordered lists
+    .replace(/^\d+\. (.*$)/gm, '<li>$1</li>')
+    // Links
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" style="color: #0066cc;">$1</a>');
+  
+  // Wrap consecutive <li> items in <ul>
+  html = html.replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul style="margin: 0.5em 0; padding-left: 1.5em;">$1</ul>');
+  
+  // Convert paragraphs: double newlines to paragraph breaks
+  html = html
+    .split(/\n\n+/)
+    .map(para => {
+      const trimmed = para.trim();
+      if (!trimmed) return '';
+      // Don't wrap block elements in <p>
+      if (trimmed.startsWith('<h') || trimmed.startsWith('<ul') || trimmed.startsWith('<hr') || trimmed.startsWith('<ol')) return trimmed;
+      return `<p style="margin: 0 0 1em 0;">${trimmed.replace(/\n/g, '<br>')}</p>`;
+    })
+    .join('');
+  
+  return html;
+}
+
 async function executeSendEmail(sb: any, args: any) {
   try {
-    // Call the existing send-email-reply edge function internally
+    // Convert markdown body to HTML for proper email formatting
+    const htmlBody = markdownToHtml(args.body || '');
+    
     const response = await fetch(`${SUPABASE_URL}/functions/v1/send-email-reply`, {
       method: 'POST',
       headers: {
@@ -1654,7 +1694,7 @@ async function executeSendEmail(sb: any, args: any) {
       body: JSON.stringify({
         to: args.to,
         subject: args.subject,
-        body: args.body,
+        body: htmlBody,
         cc: args.cc || [],
         bcc: args.bcc || [],
         originalEmailId: args.original_email_id || null,

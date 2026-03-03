@@ -427,17 +427,53 @@ export function AgentChatWidget() {
                     )}
                     {/* Email preview for send_email tool calls */}
                     {msg.requires_confirmation && msg.tool_calls?.some((tc: any) => tc.function?.name === 'send_email') && (
-                      <div className="mt-2 p-2.5 rounded-lg bg-primary/5 border border-primary/20 text-xs space-y-1">
+                      <div className="mt-2 rounded-lg border border-primary/20 overflow-hidden text-xs">
                         {msg.tool_calls.filter((tc: any) => tc.function?.name === 'send_email').map((tc: any, i: number) => {
                           const args = JSON.parse(tc.function.arguments || '{}');
                           return (
                             <div key={i}>
-                              <div className="flex items-center gap-1 font-semibold text-primary mb-1">📧 Email to send</div>
-                              <div><span className="text-muted-foreground">From:</span> {args.mailbox_source || 'admin'} mailbox</div>
-                              <div><span className="text-muted-foreground">To:</span> {args.to}</div>
-                              {args.cc?.length > 0 && <div><span className="text-muted-foreground">CC:</span> {args.cc.join(', ')}</div>}
-                              {args.bcc?.length > 0 && <div><span className="text-muted-foreground">BCC:</span> {args.bcc.join(', ')}</div>}
-                              <div><span className="text-muted-foreground">Subject:</span> {args.subject}</div>
+                              {/* Header */}
+                              <div className="flex items-center gap-1.5 font-semibold text-primary bg-primary/10 px-3 py-2">
+                                📧 Email Preview
+                              </div>
+                              <div className="p-3 space-y-2">
+                                {/* Mailbox selector */}
+                                <div className="flex items-center gap-2">
+                                  <span className="text-muted-foreground shrink-0">From:</span>
+                                  <div className="flex gap-1">
+                                    <span className={cn(
+                                      "px-2 py-0.5 rounded-full border text-[10px] font-medium",
+                                      (args.mailbox_source || 'admin') === 'admin'
+                                        ? "bg-primary/15 border-primary/30 text-primary"
+                                        : "bg-muted/50 border-border/50 text-muted-foreground"
+                                    )}>
+                                      🏢 Admin
+                                    </span>
+                                    <span className={cn(
+                                      "px-2 py-0.5 rounded-full border text-[10px] font-medium",
+                                      args.mailbox_source === 'personal'
+                                        ? "bg-primary/15 border-primary/30 text-primary"
+                                        : "bg-muted/50 border-border/50 text-muted-foreground"
+                                    )}>
+                                      👤 Personal
+                                    </span>
+                                  </div>
+                                </div>
+                                {/* Recipients */}
+                                <div><span className="text-muted-foreground">To:</span> <span className="font-medium">{args.to}</span></div>
+                                {args.cc?.length > 0 && <div><span className="text-muted-foreground">CC:</span> {args.cc.join(', ')}</div>}
+                                {args.bcc?.length > 0 && <div><span className="text-muted-foreground">BCC:</span> {args.bcc.join(', ')}</div>}
+                                <div><span className="text-muted-foreground">Subject:</span> <span className="font-medium">{args.subject}</span></div>
+                                {/* Email body preview */}
+                                {args.body && (
+                                  <div className="mt-2 pt-2 border-t border-border/30">
+                                    <div className="text-[10px] text-muted-foreground mb-1 uppercase tracking-wider">Body</div>
+                                    <div className="prose prose-xs dark:prose-invert max-w-none bg-background/50 rounded p-2 border border-border/20 max-h-[120px] overflow-y-auto [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+                                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{args.body}</ReactMarkdown>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           );
                         })}
