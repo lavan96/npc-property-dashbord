@@ -5,6 +5,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { VoiceToTextButton } from '@/components/ui/VoiceToTextButton';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -496,6 +497,12 @@ export function AgentChatWidget() {
                   className="min-h-[40px] max-h-[100px] resize-none text-sm rounded-xl"
                   rows={1}
                   disabled={loading}
+                />
+                <VoiceToTextButton
+                  onTranscript={(text) => setInput(prev => prev ? `${prev} ${text}` : text)}
+                  disabled={loading}
+                  size="sm"
+                  className="shrink-0"
                 />
                 <Button
                   size="icon"
