@@ -248,7 +248,7 @@ export function AgentChatWidget() {
         className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all hover:scale-105 group"
         aria-label="Open AI Assistant"
       >
-        <Diamond className="h-6 w-6 text-black group-hover:animate-pulse" />
+        <Diamond className="h-6 w-6 text-black dark:text-primary group-hover:animate-pulse" />
       </button>
     );
   }
@@ -265,7 +265,7 @@ export function AgentChatWidget() {
               <ChevronLeft className="h-4 w-4" />
             </Button>
           )}
-          <Diamond className="h-5 w-5 text-black" />
+          <Diamond className="h-5 w-5 text-black dark:text-primary" />
           <span className="font-semibold text-sm">Aurixa Agent</span>
           <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">Gemini</span>
         </div>
@@ -381,7 +381,7 @@ export function AgentChatWidget() {
             <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3">
               {messages.length === 0 && (
                 <div className="flex flex-col items-center justify-center h-full text-center px-4">
-                  <Diamond className="h-10 w-10 text-black/20 mb-3" />
+                  <Diamond className="h-10 w-10 text-black/20 dark:text-primary/20 mb-3" />
                   <p className="text-sm font-medium text-foreground/80 mb-1">How can I help?</p>
                   <p className="text-xs text-muted-foreground max-w-[280px]">
                     Ask about clients, deals, emails, reminders, pipeline status, calendar, or borrowing capacity.

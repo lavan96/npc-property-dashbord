@@ -430,6 +430,26 @@ const TOOLS: any[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "send_email",
+      description: "Send an email to a recipient via the connected Outlook mailbox. Supports replies to existing emails, CC/BCC, and HTML body content. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          to: { type: "string", description: "Recipient email address" },
+          subject: { type: "string", description: "Email subject line" },
+          body: { type: "string", description: "Email body content (plain text or HTML)" },
+          cc: { type: "array", items: { type: "string" }, description: "CC recipients (optional)" },
+          bcc: { type: "array", items: { type: "string" }, description: "BCC recipients (optional)" },
+          original_email_id: { type: "string", description: "Microsoft Graph email ID to reply to (optional, for replies)" },
+          mailbox_source: { type: "string", enum: ["admin", "personal"], description: "Which mailbox to send from (default: admin)" },
+        },
+        required: ["to", "subject", "body"],
+      },
+    },
+  },
 
   // ─── CALENDAR & APPOINTMENTS ───
   {
@@ -1092,7 +1112,7 @@ const WRITE_TOOLS = [
   'update_client_field', 'log_client_activity',
   'update_deal_stage', 'update_deal_risk_status', 'update_deal_field', 'update_build_payment',
   'create_reminder', 'update_reminder', 'delete_reminder', 'set_follow_up_date',
-  'link_email_to_client',
+  'link_email_to_client', 'send_email',
   'toggle_checklist_item', 'create_checklist_instance',
   // New write tools
   'create_client', 'delete_client',
@@ -1619,6 +1639,34 @@ async function executeLinkEmailToClient(sb: any, args: any) {
   const { error } = await sb.from('email_copilot_emails').update({ client_id: args.client_id }).eq('id', args.email_id);
   if (error) return { error: error.message };
   return { success: true, message: `✅ Email linked to client.` };
+}
+
+async function executeSendEmail(sb: any, args: any) {
+  try {
+    // Call the existing send-email-reply edge function internally
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/send-email-reply`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        'apikey': SUPABASE_SERVICE_ROLE_KEY,
+      },
+      body: JSON.stringify({
+        to: args.to,
+        subject: args.subject,
+        body: args.body,
+        cc: args.cc || [],
+        bcc: args.bcc || [],
+        originalEmailId: args.original_email_id || null,
+        mailboxSource: args.mailbox_source || 'admin',
+      }),
+    });
+    const result = await response.json();
+    if (!response.ok) return { error: result.error || `Failed to send email (${response.status})` };
+    return { success: true, message: `✅ Email sent to ${args.to} with subject "${args.subject}"` };
+  } catch (err: any) {
+    return { error: `Failed to send email: ${err.message}` };
+  }
 }
 
 // ─── CALENDAR & APPOINTMENTS ───
@@ -2574,6 +2622,7 @@ async function executeTool(sb: any, name: string, args: any, userId: string): Pr
     case 'get_email_thread': return executeGetEmailThread(sb, args);
     case 'get_unlinked_emails': return executeGetUnlinkedEmails(sb, args);
     case 'link_email_to_client': return executeLinkEmailToClient(sb, args);
+    case 'send_email': return executeSendEmail(sb, args);
     // Calendar
     case 'get_upcoming_calendar': return executeGetUpcomingCalendar(sb, args);
     case 'get_appointments_for_client': return executeGetAppointmentsForClient(sb, args);
@@ -2880,11 +2929,41 @@ async function handleChat(sb: any, body: any, userId: string, username: string, 
     await sb.from('agent_messages').insert({ conversation_id, role: 'assistant', content: finalResponse });
   }
 
-  // Auto-title
-  const { data: msgCount } = await sb.from('agent_messages').select('id', { count: 'exact', head: true }).eq('conversation_id', conversation_id);
-  if (msgCount !== null && (msgCount as any)?.length <= 2) {
-    const title = message.length > 60 ? message.substring(0, 57) + '...' : message;
-    await sb.from('agent_conversations').update({ title }).eq('id', conversation_id);
+  // Smart auto-title: use AI to generate concise title from first message
+  const { count: msgTotal } = await sb.from('agent_messages').select('id', { count: 'exact', head: true }).eq('conversation_id', conversation_id);
+  if (msgTotal !== null && msgTotal <= 2) {
+    try {
+      const titleResp = await fetch('https://api.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${LOVABLE_API_KEY}` },
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash-preview-05-20',
+          messages: [
+            { role: 'system', content: 'Generate a concise 3-6 word title for this chat conversation based on the user\'s message. No quotes, no punctuation at the end. Just the title words. Examples: "Pipeline Overview Request", "Graham Client Lookup", "Commission Forecast Q2", "Stamp Duty Calculation VIC"' },
+            { role: 'user', content: message },
+          ],
+          max_tokens: 20,
+          temperature: 0.3,
+        }),
+      });
+      if (titleResp.ok) {
+        const titleData = await titleResp.json();
+        const smartTitle = titleData.choices?.[0]?.message?.content?.trim();
+        if (smartTitle && smartTitle.length > 0 && smartTitle.length <= 80) {
+          await sb.from('agent_conversations').update({ title: smartTitle }).eq('id', conversation_id);
+        } else {
+          const fallback = message.length > 60 ? message.substring(0, 57) + '...' : message;
+          await sb.from('agent_conversations').update({ title: fallback }).eq('id', conversation_id);
+        }
+      } else {
+        const fallback = message.length > 60 ? message.substring(0, 57) + '...' : message;
+        await sb.from('agent_conversations').update({ title: fallback }).eq('id', conversation_id);
+      }
+    } catch (titleErr) {
+      console.error('[ai-dashboard-agent] Title generation error:', titleErr);
+      const fallback = message.length > 60 ? message.substring(0, 57) + '...' : message;
+      await sb.from('agent_conversations').update({ title: fallback }).eq('id', conversation_id);
+    }
   }
 
   return new Response(JSON.stringify({
