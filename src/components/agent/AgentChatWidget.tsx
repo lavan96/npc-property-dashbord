@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { MessageSquare, X, Plus, Trash2, Send, Check, XCircle, Loader2, ChevronLeft, Search, Pencil, RotateCcw, Sparkles, Diamond, BarChart3, Calendar, Zap } from 'lucide-react';
+import { MessageSquare, X, Plus, Trash2, Send, Check, XCircle, Loader2, ChevronLeft, Search, Pencil, RotateCcw, Sparkles, Diamond, BarChart3, Calendar, Zap, TrendingUp, Target, FileDown, Brain } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
@@ -411,11 +411,15 @@ export function AgentChatWidget() {
                        '📅 Upcoming appointments',
                        '💰 Commission forecast',
                        '🏥 System health check',
-                       '✅ Active checklists',
-                       '📋 My playbooks',
-                       '⏰ Scheduled tasks',
                        '📊 Chart: deals by stage',
-                       '📄 Bulk ops help',
+                       '📈 Weekly digest',
+                       '🏆 Top clients',
+                       '📊 Performance KPIs',
+                       '💹 Revenue forecast',
+                       '🔮 What-if: rates +0.5%',
+                       '📤 Export pipeline data',
+                       '📋 My playbooks',
+                       '🔎 Smart search',
                      ].map((prompt) => (
                        <button
                          key={prompt}
@@ -513,12 +517,27 @@ export function AgentChatWidget() {
                              </div>
                            );
                          })()}
-                         {/* Playbook badge */}
-                         {msg.content && msg.content.includes('Playbook "') && (
-                           <div className="mt-2 inline-flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-full bg-primary/10 text-primary">
-                             <Zap className="h-3 w-3" /> Playbook Executed
-                           </div>
-                         )}
+                          {/* Playbook / Digest / Export badges */}
+                          {msg.content && msg.content.includes('Playbook "') && (
+                            <div className="mt-2 inline-flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-full bg-primary/10 text-primary">
+                              <Zap className="h-3 w-3" /> Playbook Executed
+                            </div>
+                          )}
+                          {msg.content && msg.content.includes('Weekly Digest') && (
+                            <div className="mt-2 inline-flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-full bg-primary/10 text-primary">
+                              <TrendingUp className="h-3 w-3" /> Weekly Digest
+                            </div>
+                          )}
+                          {msg.content && (msg.content.includes('Pipeline Summary') || msg.content.includes('export')) && msg.content.includes('| Client') && (
+                            <div className="mt-2 inline-flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-full bg-primary/10 text-primary">
+                              <FileDown className="h-3 w-3" /> Exported Data
+                            </div>
+                          )}
+                          {msg.content && msg.content.includes('engagement_score') && (
+                            <div className="mt-2 inline-flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-full bg-primary/10 text-primary">
+                              <Brain className="h-3 w-3" /> Engagement Analysis
+                            </div>
+                          )}
                        </div>
                     ) : (
                       <p className="whitespace-pre-wrap">{msg.content}</p>

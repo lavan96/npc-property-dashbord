@@ -1452,6 +1452,170 @@ const TOOLS: any[] = [
       },
     },
   },
+
+  // ═══════════════════════════════════════════════════════════
+  //  BATCH 4 TOOLS — Smart Intelligence, Trend Analysis,
+  //  Data Export, Goal Tracking, Deal Timeline, Advanced Search
+  // ═══════════════════════════════════════════════════════════
+
+  // ─── TREND ANALYSIS ───
+  {
+    type: "function",
+    function: {
+      name: "get_pipeline_trends",
+      description: "Analyze pipeline trends over time: new clients/deals per week, conversion velocity changes, growth trajectory. Returns data for trend charts.",
+      parameters: { type: "object", properties: { weeks_back: { type: "number", description: "Weeks to analyze (default 12)" } } },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_revenue_forecast",
+      description: "Multi-scenario revenue forecast: optimistic, baseline, conservative based on current pipeline, conversion rates, and average deal values.",
+      parameters: { type: "object", properties: { months_ahead: { type: "number", description: "Months to forecast (default 6)" } } },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_client_engagement_score",
+      description: "Calculate a 0-100 engagement score for a client based on activity frequency, email responses, call frequency, deal progress, and reminder completion.",
+      parameters: { type: "object", properties: { client_id: { type: "string", description: "UUID of the client" } }, required: ["client_id"] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_top_clients",
+      description: "Rank clients by total loan value, deal count, commission potential, or engagement score.",
+      parameters: {
+        type: "object",
+        properties: {
+          sort_by: { type: "string", enum: ["loan_value", "deal_count", "commission", "engagement"], description: "Ranking criteria (default: loan_value)" },
+          limit: { type: "number", description: "Number of clients (default 10)" },
+        },
+      },
+    },
+  },
+
+  // ─── DEAL TIMELINE ───
+  {
+    type: "function",
+    function: {
+      name: "get_deal_timeline",
+      description: "Full chronological timeline of a deal: stage changes, key dates, milestones, activities, notes. Returns events with timestamps for visualization.",
+      parameters: { type: "object", properties: { deal_id: { type: "string", description: "UUID of the deal" } }, required: ["deal_id"] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_deal_health_score",
+      description: "Calculate a comprehensive health score (0-100) for a deal based on: days in stage, risk status, document completeness, milestone progress, clawback proximity.",
+      parameters: { type: "object", properties: { deal_id: { type: "string", description: "UUID of the deal" } }, required: ["deal_id"] },
+    },
+  },
+
+  // ─── DATA EXPORT ───
+  {
+    type: "function",
+    function: {
+      name: "export_pipeline_data",
+      description: "Export pipeline data as a formatted markdown table or CSV-style text. Includes all deals with client names, stages, loan amounts, risk status, and key dates.",
+      parameters: {
+        type: "object",
+        properties: {
+          format: { type: "string", enum: ["markdown_table", "csv_text", "summary"], description: "Export format (default: markdown_table)" },
+          filter_stage: { type: "string", description: "Filter to specific stage (optional)" },
+          filter_risk: { type: "string", description: "Filter to specific risk status (optional)" },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "export_client_portfolio",
+      description: "Export a client's complete portfolio: all properties, loans, borrowing capacity, income, and net position as a formatted report.",
+      parameters: { type: "object", properties: { client_id: { type: "string", description: "UUID of the client" } }, required: ["client_id"] },
+    },
+  },
+
+  // ─── GOAL TRACKING ───
+  {
+    type: "function",
+    function: {
+      name: "get_performance_metrics",
+      description: "Calculate KPIs: deals closed this month/quarter, total commission earned, average deal size, conversion rate, time-to-settlement.",
+      parameters: { type: "object", properties: { period: { type: "string", enum: ["week", "month", "quarter", "year"], description: "Time period (default: month)" } } },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_weekly_digest",
+      description: "Comprehensive weekly digest: new clients, deals progressed, settlements completed, commission earned, upcoming milestones, alerts triggered. Perfect for 'weekly summary' or 'what happened this week' queries.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+
+  // ─── SMART CONTEXTUAL SEARCH ───
+  {
+    type: "function",
+    function: {
+      name: "smart_search",
+      description: "Unified intelligent search across clients, deals, emails, calls, and notes. Returns categorized results with relevance. Use for broad 'find anything about X' queries.",
+      parameters: { type: "object", properties: { query: { type: "string", description: "Search term" }, categories: { type: "array", items: { type: "string", enum: ["clients", "deals", "emails", "calls", "notes"] }, description: "Categories to search (default: all)" } }, required: ["query"] },
+    },
+  },
+
+  // ─── WHAT-IF SCENARIOS ───
+  {
+    type: "function",
+    function: {
+      name: "what_if_analysis",
+      description: "Run what-if scenarios: 'What if interest rates increase by 0.5%?', 'What if client's income drops by 10%?'. Recalculates borrowing capacity and repayments with modified parameters.",
+      parameters: {
+        type: "object",
+        properties: {
+          client_id: { type: "string", description: "UUID of the client" },
+          scenario_type: { type: "string", enum: ["rate_change", "income_change", "expense_change", "deposit_change"], description: "Type of scenario" },
+          adjustment_value: { type: "number", description: "Adjustment value (e.g., 0.5 for +0.5% rate, -10 for -10% income)" },
+          adjustment_unit: { type: "string", enum: ["percentage", "absolute"], description: "Whether adjustment is % or absolute $ (default: percentage)" },
+        },
+        required: ["client_id", "scenario_type", "adjustment_value"],
+      },
+    },
+  },
+
+  // ─── DOCUMENT CHECKLIST ───
+  {
+    type: "function",
+    function: {
+      name: "get_document_readiness",
+      description: "Check document readiness for a deal: what's submitted, what's missing, what's expired. Returns a checklist of required documents with status.",
+      parameters: { type: "object", properties: { deal_id: { type: "string", description: "UUID of the deal" } }, required: ["deal_id"] },
+    },
+  },
+
+  // ─── COMPETITOR RATE ANALYSIS ───
+  {
+    type: "function",
+    function: {
+      name: "find_best_rates",
+      description: "Find the best lending rates for a specific loan scenario: amount, LVR, loan type, repayment type. Returns top 5 lenders with rates.",
+      parameters: {
+        type: "object",
+        properties: {
+          loan_amount: { type: "number", description: "Desired loan amount" },
+          property_value: { type: "number", description: "Property value" },
+          loan_type: { type: "string", enum: ["variable", "fixed_1yr", "fixed_2yr", "fixed_3yr", "fixed_5yr"], description: "Loan type preference" },
+          repayment_type: { type: "string", enum: ["pi", "io"], description: "P&I or Interest Only" },
+        },
+        required: ["loan_amount", "property_value"],
+      },
+    },
+  },
 ];
 
 // ============================================================
@@ -1922,6 +2086,342 @@ async function executeGenerateClientSummaryReport(sb: any, args: any) {
   return { report: r.join('\n'), sections_included: secs };
 }
 
+// ─── BATCH 4 EXECUTORS ───
+
+async function executeGetPipelineTrends(sb: any, args: any) {
+  const weeksBack = args.weeks_back || 12;
+  const cutoff = new Date(Date.now() - weeksBack * 7 * 86400000).toISOString();
+  const [clientsRes, dealsRes, settledRes] = await Promise.all([
+    sb.from('clients').select('id, created_at').gte('created_at', cutoff),
+    sb.from('client_deals').select('id, created_at, current_stage').gte('created_at', cutoff),
+    sb.from('client_deals').select('id, settlement_date, loan_amount, commission_estimate').not('settlement_date', 'is', null).gte('settlement_date', cutoff),
+  ]);
+  const weeklyData: Record<string, { new_clients: number; new_deals: number; settlements: number; commission: number }> = {};
+  const getWeek = (d: string) => { const dt = new Date(d); const start = new Date(dt); start.setDate(start.getDate() - start.getDay()); return start.toISOString().substring(0, 10); };
+  for (const c of (clientsRes.data || [])) { const w = getWeek(c.created_at); if (!weeklyData[w]) weeklyData[w] = { new_clients: 0, new_deals: 0, settlements: 0, commission: 0 }; weeklyData[w].new_clients++; }
+  for (const d of (dealsRes.data || [])) { const w = getWeek(d.created_at); if (!weeklyData[w]) weeklyData[w] = { new_clients: 0, new_deals: 0, settlements: 0, commission: 0 }; weeklyData[w].new_deals++; }
+  for (const s of (settledRes.data || [])) { if (s.settlement_date) { const w = getWeek(s.settlement_date); if (!weeklyData[w]) weeklyData[w] = { new_clients: 0, new_deals: 0, settlements: 0, commission: 0 }; weeklyData[w].settlements++; weeklyData[w].commission += (s.commission_estimate || 0); } }
+  const sorted = Object.entries(weeklyData).sort((a, b) => a[0].localeCompare(b[0]));
+  return { weeks: sorted.map(([week, data]) => ({ week, ...data })), total_weeks: sorted.length, period: `Last ${weeksBack} weeks` };
+}
+
+async function executeGetRevenueForecast(sb: any, args: any) {
+  const months = args.months_ahead || 6;
+  const { data: deals } = await sb.from('client_deals').select('id, current_stage, loan_amount, commission_estimate, settlement_date, risk_status').not('current_stage', 'ilike', '%settled%').not('current_stage', 'ilike', '%cancelled%');
+  const { data: settled } = await sb.from('client_deals').select('commission_estimate, settlement_date').ilike('current_stage', '%settled%').order('settlement_date', { ascending: false }).limit(50);
+  const avgCommission = settled?.length ? settled.reduce((s: number, d: any) => s + (d.commission_estimate || 0), 0) / settled.length : 15000;
+  const activePipeline = (deals || []).reduce((s: number, d: any) => s + (d.commission_estimate || 0), 0);
+  const forecast = [];
+  for (let i = 1; i <= months; i++) {
+    const dt = new Date(); dt.setMonth(dt.getMonth() + i);
+    const monthLabel = dt.toISOString().substring(0, 7);
+    const dealsThisMonth = (deals || []).filter((d: any) => d.settlement_date?.startsWith(monthLabel));
+    const confirmed = dealsThisMonth.reduce((s: number, d: any) => s + (d.commission_estimate || 0), 0);
+    forecast.push({
+      month: monthLabel,
+      optimistic: Math.round(confirmed + avgCommission * 2),
+      baseline: Math.round(confirmed + avgCommission * 0.8),
+      conservative: Math.round(confirmed * 0.7),
+    });
+  }
+  return { forecast, active_pipeline_value: activePipeline, active_deals: deals?.length || 0, avg_commission: Math.round(avgCommission) };
+}
+
+async function executeGetClientEngagementScore(sb: any, args: any) {
+  const cid = args.client_id;
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString();
+  const [activities, emails, calls, reminders, deals] = await Promise.all([
+    sb.from('client_activities').select('id, created_at').eq('client_id', cid).gte('created_at', thirtyDaysAgo),
+    sb.from('email_copilot_emails').select('id').eq('client_id', cid).gte('received_at', thirtyDaysAgo),
+    sb.from('vapi_call_logs').select('id').ilike('caller_phone', `%${cid.substring(0, 8)}%`).gte('created_at', thirtyDaysAgo),
+    sb.from('client_reminders').select('id, status').eq('client_id', cid).gte('created_at', thirtyDaysAgo),
+    sb.from('client_deals').select('id, updated_at, risk_status').eq('client_id', cid),
+  ]);
+  let score = 0;
+  score += Math.min(30, (activities.data?.length || 0) * 5); // Activity: max 30
+  score += Math.min(20, (emails.data?.length || 0) * 4); // Emails: max 20
+  score += Math.min(15, (calls.data?.length || 0) * 5); // Calls: max 15
+  const completed = (reminders.data || []).filter((r: any) => r.status === 'completed').length;
+  const total = reminders.data?.length || 0;
+  score += total > 0 ? Math.round((completed / total) * 15) : 0; // Reminder completion: max 15
+  const activeDeals = (deals.data || []).filter((d: any) => d.risk_status !== 'urgent');
+  score += Math.min(20, activeDeals.length * 10); // Deals health: max 20
+  const level = score >= 75 ? 'highly_engaged' : score >= 50 ? 'engaged' : score >= 25 ? 'moderate' : 'disengaged';
+  return { client_id: cid, engagement_score: Math.min(100, score), level, breakdown: { activity_score: Math.min(30, (activities.data?.length || 0) * 5), email_score: Math.min(20, (emails.data?.length || 0) * 4), call_score: Math.min(15, (calls.data?.length || 0) * 5), reminder_score: total > 0 ? Math.round((completed / total) * 15) : 0, deal_score: Math.min(20, activeDeals.length * 10) } };
+}
+
+async function executeGetTopClients(sb: any, args: any) {
+  const sortBy = args.sort_by || 'loan_value';
+  const lim = args.limit || 10;
+  const { data: clients } = await sb.from('clients').select('id, primary_first_name, primary_surname, pipeline_status, borrowing_capacity, created_at, updated_at').limit(200);
+  const { data: deals } = await sb.from('client_deals').select('client_id, loan_amount, commission_estimate, current_stage');
+  const clientMap: Record<string, any> = {};
+  for (const c of (clients || [])) {
+    clientMap[c.id] = { ...c, name: `${c.primary_first_name||''} ${c.primary_surname||''}`.trim(), total_loan: 0, deal_count: 0, total_commission: 0 };
+  }
+  for (const d of (deals || [])) { if (clientMap[d.client_id]) { clientMap[d.client_id].total_loan += (d.loan_amount || 0); clientMap[d.client_id].deal_count++; clientMap[d.client_id].total_commission += (d.commission_estimate || 0); } }
+  const list = Object.values(clientMap);
+  if (sortBy === 'loan_value') list.sort((a: any, b: any) => b.total_loan - a.total_loan);
+  else if (sortBy === 'deal_count') list.sort((a: any, b: any) => b.deal_count - a.deal_count);
+  else if (sortBy === 'commission') list.sort((a: any, b: any) => b.total_commission - a.total_commission);
+  return { top_clients: list.slice(0, lim).map((c: any, i: number) => ({ rank: i + 1, id: c.id, name: c.name, pipeline_status: c.pipeline_status, total_loan_value: c.total_loan, deal_count: c.deal_count, total_commission: c.total_commission })), sorted_by: sortBy };
+}
+
+async function executeGetDealTimeline(sb: any, args: any) {
+  const did = args.deal_id;
+  const [deal, stages, payments, activities] = await Promise.all([
+    sb.from('client_deals').select('*, clients:client_id(primary_first_name, primary_surname)').eq('id', did).single(),
+    sb.from('deal_stages').select('*').eq('deal_id', did).order('stage_number', { ascending: true }),
+    sb.from('build_progress_payments').select('*').eq('deal_id', did).order('stage_number', { ascending: true }),
+    sb.from('client_activities').select('id, title, description, activity_type, created_at').eq('entity_id', did).order('created_at', { ascending: false }).limit(20),
+  ]);
+  if (!deal.data) return { error: 'Deal not found.' };
+  const events: any[] = [];
+  events.push({ type: 'created', date: deal.data.created_at, title: 'Deal Created', detail: deal.data.deal_type });
+  for (const s of (stages.data || [])) { if (s.completed_at) events.push({ type: 'stage_complete', date: s.completed_at, title: `Stage Completed: ${s.stage_name}`, detail: `Stage ${s.stage_number}` }); }
+  for (const p of (payments.data || [])) { if (p.builder_invoice_date) events.push({ type: 'invoice', date: p.builder_invoice_date, title: `Invoice: ${p.stage_name}`, detail: `$${p.amount?.toLocaleString() || 'N/A'}` }); }
+  for (const a of (activities.data || [])) { events.push({ type: a.activity_type, date: a.created_at, title: a.title, detail: a.description }); }
+  if (deal.data.settlement_date) events.push({ type: 'milestone', date: deal.data.settlement_date, title: 'Settlement Date', detail: `$${deal.data.loan_amount?.toLocaleString() || 'N/A'}` });
+  events.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  return { deal: { id: did, address: deal.data.property_address, client: `${deal.data.clients?.primary_first_name||''} ${deal.data.clients?.primary_surname||''}`.trim() }, timeline: events, total_events: events.length };
+}
+
+async function executeGetDealHealthScore(sb: any, args: any) {
+  const did = args.deal_id;
+  const { data: deal } = await sb.from('client_deals').select('*').eq('id', did).single();
+  if (!deal) return { error: 'Deal not found.' };
+  let score = 100;
+  const now = Date.now();
+  // Days in current stage penalty
+  const daysInStage = Math.floor((now - new Date(deal.updated_at).getTime()) / 86400000);
+  if (daysInStage > 30) score -= 25;
+  else if (daysInStage > 14) score -= 15;
+  else if (daysInStage > 7) score -= 5;
+  // Risk status
+  if (deal.risk_status === 'urgent') score -= 30;
+  else if (deal.risk_status === 'needs_follow_up') score -= 15;
+  // Clawback proximity
+  if (deal.clawback_expiry_date) { const daysToClawback = Math.ceil((new Date(deal.clawback_expiry_date).getTime() - now) / 86400000); if (daysToClawback < 30) score -= 20; else if (daysToClawback < 90) score -= 10; }
+  // Finance expiry
+  if (deal.finance_clause_expiry) { const daysToFinance = Math.ceil((new Date(deal.finance_clause_expiry).getTime() - now) / 86400000); if (daysToFinance < 3) score -= 20; else if (daysToFinance < 7) score -= 10; }
+  score = Math.max(0, score);
+  const band = score >= 80 ? 'healthy' : score >= 50 ? 'needs_attention' : 'critical';
+  return { deal_id: did, health_score: score, band, factors: { days_in_stage: daysInStage, risk_status: deal.risk_status, clawback_expiry: deal.clawback_expiry_date, finance_expiry: deal.finance_clause_expiry } };
+}
+
+async function executeExportPipelineData(sb: any, args: any) {
+  let query = sb.from('client_deals').select('id, deal_type, current_stage, risk_status, property_address, loan_amount, commission_estimate, settlement_date, clients:client_id(primary_first_name, primary_surname)');
+  if (args.filter_stage) query = query.ilike('current_stage', `%${args.filter_stage}%`);
+  if (args.filter_risk) query = query.eq('risk_status', args.filter_risk);
+  const { data: deals } = await query.order('created_at', { ascending: false }).limit(200);
+  if (!deals?.length) return { export: 'No deals found matching filters.', count: 0 };
+  const fmt = args.format || 'markdown_table';
+  if (fmt === 'csv_text') {
+    const header = 'Client,Address,Stage,Risk,Loan Amount,Commission,Settlement';
+    const rows = deals.map((d: any) => `"${d.clients?.primary_first_name||''} ${d.clients?.primary_surname||''}","${d.property_address||''}","${d.current_stage||''}","${d.risk_status||''}","${d.loan_amount||''}","${d.commission_estimate||''}","${d.settlement_date?.substring(0,10)||''}"`);
+    return { export: [header, ...rows].join('\n'), count: deals.length, format: 'csv' };
+  }
+  if (fmt === 'summary') {
+    const total = deals.reduce((s: number, d: any) => s + (d.loan_amount || 0), 0);
+    const comm = deals.reduce((s: number, d: any) => s + (d.commission_estimate || 0), 0);
+    return { export: `**Pipeline Summary**: ${deals.length} deals | Total Loan: $${total.toLocaleString()} | Total Commission: $${comm.toLocaleString()}`, count: deals.length, format: 'summary' };
+  }
+  // markdown_table
+  const header = '| Client | Address | Stage | Risk | Loan | Commission | Settlement |\n|--------|---------|-------|------|------|------------|------------|';
+  const rows = deals.map((d: any) => `| ${d.clients?.primary_first_name||''} ${d.clients?.primary_surname||''} | ${d.property_address||'N/A'} | ${d.current_stage||'N/A'} | ${d.risk_status||'N/A'} | $${d.loan_amount?.toLocaleString()||'0'} | $${d.commission_estimate?.toLocaleString()||'0'} | ${d.settlement_date?.substring(0,10)||'N/A'} |`);
+  return { export: [header, ...rows].join('\n'), count: deals.length, format: 'markdown_table' };
+}
+
+async function executeExportClientPortfolio(sb: any, args: any) {
+  const cid = args.client_id;
+  const [client, deals, props, inc, liab, bc] = await Promise.all([
+    sb.from('clients').select('*').eq('id', cid).single(),
+    sb.from('client_deals').select('deal_type, current_stage, property_address, loan_amount, commission_estimate, settlement_date, risk_status').eq('client_id', cid),
+    sb.from('client_properties').select('address, property_type, current_value, loan_balance, rental_income_weekly').eq('client_id', cid),
+    sb.from('client_income').select('income_type, amount, frequency').eq('client_id', cid),
+    sb.from('client_liabilities').select('liability_type, balance, repayment_amount').eq('client_id', cid),
+    sb.from('borrowing_capacity_assessments').select('borrowing_capacity, serviceability_band, monthly_surplus').eq('client_id', cid).order('created_at', { ascending: false }).limit(1),
+  ]);
+  if (!client.data) return { error: 'Client not found.' };
+  const c = client.data;
+  const totalProperty = (props.data || []).reduce((s: number, p: any) => s + (p.current_value || 0), 0);
+  const totalLoans = (props.data || []).reduce((s: number, p: any) => s + (p.loan_balance || 0), 0);
+  const totalLiabilities = (liab.data || []).reduce((s: number, l: any) => s + (l.balance || 0), 0);
+  const netPosition = totalProperty - totalLoans - totalLiabilities;
+  return {
+    portfolio: {
+      client: `${c.primary_first_name||''} ${c.primary_surname||''}`.trim(),
+      pipeline_status: c.pipeline_status,
+      properties: props.data || [],
+      total_property_value: totalProperty,
+      total_loans: totalLoans,
+      net_equity: totalProperty - totalLoans,
+      total_liabilities: totalLiabilities,
+      net_position: netPosition,
+      borrowing_capacity: bc.data?.[0]?.borrowing_capacity || null,
+      serviceability: bc.data?.[0]?.serviceability_band || null,
+      active_deals: deals.data?.length || 0,
+      income_sources: inc.data || [],
+    },
+  };
+}
+
+async function executeGetPerformanceMetrics(sb: any, args: any) {
+  const period = args.period || 'month';
+  const now = new Date();
+  let cutoff: Date;
+  if (period === 'week') cutoff = new Date(now.getTime() - 7 * 86400000);
+  else if (period === 'quarter') { cutoff = new Date(now); cutoff.setMonth(cutoff.getMonth() - 3); }
+  else if (period === 'year') { cutoff = new Date(now); cutoff.setFullYear(cutoff.getFullYear() - 1); }
+  else { cutoff = new Date(now); cutoff.setMonth(cutoff.getMonth() - 1); }
+  const [settled, allDeals, newClients] = await Promise.all([
+    sb.from('client_deals').select('id, loan_amount, commission_estimate, settlement_date').ilike('current_stage', '%settled%').gte('settlement_date', cutoff.toISOString()),
+    sb.from('client_deals').select('id, current_stage, created_at').gte('created_at', cutoff.toISOString()),
+    sb.from('clients').select('id').gte('created_at', cutoff.toISOString()),
+  ]);
+  const settledDeals = settled.data || [];
+  const totalCommission = settledDeals.reduce((s: number, d: any) => s + (d.commission_estimate || 0), 0);
+  const avgDealSize = settledDeals.length > 0 ? settledDeals.reduce((s: number, d: any) => s + (d.loan_amount || 0), 0) / settledDeals.length : 0;
+  const totalDeals = allDeals.data?.length || 0;
+  const conversionRate = totalDeals > 0 ? Math.round((settledDeals.length / totalDeals) * 100) : 0;
+  return {
+    period, deals_closed: settledDeals.length, total_commission: totalCommission, avg_deal_size: Math.round(avgDealSize),
+    conversion_rate: conversionRate, new_clients: newClients.data?.length || 0, total_deals_created: totalDeals,
+  };
+}
+
+async function executeGetWeeklyDigest(sb: any) {
+  const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
+  const [newClients, newDeals, settlements, activities, remCompleted, alerts] = await Promise.all([
+    sb.from('clients').select('id, primary_first_name, primary_surname').gte('created_at', weekAgo),
+    sb.from('client_deals').select('id, property_address, deal_type').gte('created_at', weekAgo),
+    sb.from('client_deals').select('id, property_address, loan_amount, commission_estimate, clients:client_id(primary_first_name, primary_surname)').ilike('current_stage', '%settled%').gte('settlement_date', weekAgo),
+    sb.from('client_activities').select('id').gte('created_at', weekAgo),
+    sb.from('client_reminders').select('id').eq('status', 'completed').gte('updated_at', weekAgo),
+    sb.from('call_alert_history').select('id, is_positive').gte('triggered_at', weekAgo),
+  ]);
+  const totalComm = (settlements.data || []).reduce((s: number, d: any) => s + (d.commission_estimate || 0), 0);
+  return {
+    week_ending: new Date().toISOString().substring(0, 10),
+    new_clients: newClients.data?.length || 0,
+    new_deals: newDeals.data?.length || 0,
+    settlements_completed: settlements.data?.length || 0,
+    commission_earned: totalComm,
+    activities_logged: activities.data?.length || 0,
+    reminders_completed: remCompleted.data?.length || 0,
+    alerts_triggered: alerts.data?.length || 0,
+    positive_alerts: (alerts.data || []).filter((a: any) => a.is_positive).length,
+    settlement_details: (settlements.data || []).map((s: any) => ({ address: s.property_address, loan: s.loan_amount, commission: s.commission_estimate, client: `${s.clients?.primary_first_name||''} ${s.clients?.primary_surname||''}`.trim() })),
+  };
+}
+
+async function executeSmartSearch(sb: any, args: any) {
+  const q = args.query; const cats = args.categories || ['clients', 'deals', 'emails', 'calls', 'notes'];
+  const results: any = {};
+  if (cats.includes('clients')) {
+    const { data } = await sb.from('clients').select('id, primary_first_name, primary_surname, primary_email, pipeline_status').or(`primary_first_name.ilike.%${q}%,primary_surname.ilike.%${q}%,primary_email.ilike.%${q}%`).limit(10);
+    results.clients = (data || []).map((c: any) => ({ id: c.id, name: `${c.primary_first_name||''} ${c.primary_surname||''}`.trim(), email: c.primary_email, status: c.pipeline_status }));
+  }
+  if (cats.includes('deals')) {
+    const { data } = await sb.from('client_deals').select('id, property_address, current_stage, loan_amount, clients:client_id(primary_first_name, primary_surname)').ilike('property_address', `%${q}%`).limit(10);
+    results.deals = (data || []).map((d: any) => ({ id: d.id, address: d.property_address, stage: d.current_stage, client: `${d.clients?.primary_first_name||''} ${d.clients?.primary_surname||''}`.trim() }));
+  }
+  if (cats.includes('emails')) {
+    const { data } = await sb.from('email_copilot_emails').select('id, subject, sender, received_at').or(`subject.ilike.%${q}%,sender.ilike.%${q}%`).order('received_at', { ascending: false }).limit(10);
+    results.emails = data || [];
+  }
+  if (cats.includes('calls')) {
+    const { data } = await sb.from('vapi_call_logs').select('id, agent_name, summary, created_at').ilike('summary', `%${q}%`).order('created_at', { ascending: false }).limit(10);
+    results.calls = data || [];
+  }
+  if (cats.includes('notes')) {
+    const { data } = await sb.from('client_notes').select('id, content, note_type, created_at, client_id').ilike('content', `%${q}%`).order('created_at', { ascending: false }).limit(10);
+    results.notes = data || [];
+  }
+  const totalResults = Object.values(results).reduce((s: number, r: any) => s + (r?.length || 0), 0);
+  return { query: q, total_results: totalResults, results };
+}
+
+async function executeWhatIfAnalysis(sb: any, args: any) {
+  const { data: bc } = await sb.from('borrowing_capacity_assessments').select('*').eq('client_id', args.client_id).order('created_at', { ascending: false }).limit(1);
+  if (!bc?.[0]) return { error: 'No borrowing capacity assessment found for this client.' };
+  const current = bc[0];
+  const adj = args.adjustment_value;
+  const unit = args.adjustment_unit || 'percentage';
+  let newCapacity = current.borrowing_capacity;
+  let description = '';
+  switch (args.scenario_type) {
+    case 'rate_change': {
+      const currentRate = current.interest_rate_used || 6.5;
+      const newRate = unit === 'percentage' ? currentRate + adj : adj;
+      const rateRatio = (currentRate / newRate);
+      newCapacity = Math.round(current.borrowing_capacity * rateRatio);
+      description = `Interest rate ${adj > 0 ? 'increase' : 'decrease'} from ${currentRate}% to ${newRate.toFixed(2)}%`;
+      break;
+    }
+    case 'income_change': {
+      const factor = unit === 'percentage' ? (1 + adj / 100) : (current.gross_annual_income + adj) / current.gross_annual_income;
+      newCapacity = Math.round(current.borrowing_capacity * factor);
+      description = `Income ${adj > 0 ? 'increase' : 'decrease'} by ${unit === 'percentage' ? adj + '%' : '$' + Math.abs(adj).toLocaleString()}`;
+      break;
+    }
+    case 'expense_change': {
+      const monthlyChange = unit === 'percentage' ? current.living_expenses_monthly * (adj / 100) : adj;
+      const annualChange = monthlyChange * 12;
+      newCapacity = Math.round(current.borrowing_capacity - annualChange * 5);
+      description = `Expenses ${adj > 0 ? 'increase' : 'decrease'} by ${unit === 'percentage' ? adj + '%' : '$' + Math.abs(adj).toLocaleString()}/month`;
+      break;
+    }
+    case 'deposit_change': {
+      const depositChange = unit === 'percentage' ? (current.deposit_amount || 0) * (adj / 100) : adj;
+      newCapacity = Math.round(current.borrowing_capacity + depositChange);
+      description = `Deposit ${adj > 0 ? 'increase' : 'decrease'} by ${unit === 'percentage' ? adj + '%' : '$' + Math.abs(adj).toLocaleString()}`;
+      break;
+    }
+  }
+  const change = newCapacity - current.borrowing_capacity;
+  return {
+    scenario: description,
+    current_capacity: current.borrowing_capacity,
+    projected_capacity: newCapacity,
+    change_amount: change,
+    change_percentage: Math.round((change / current.borrowing_capacity) * 100),
+    impact: change > 0 ? 'positive' : change < 0 ? 'negative' : 'neutral',
+    current_band: current.serviceability_band,
+  };
+}
+
+async function executeGetDocumentReadiness(sb: any, args: any) {
+  const { data: deal } = await sb.from('client_deals').select('*, clients:client_id(primary_first_name, primary_surname)').eq('id', args.deal_id).single();
+  if (!deal) return { error: 'Deal not found.' };
+  const { data: files } = await sb.from('client_files').select('file_name, file_type, created_at').eq('client_id', deal.client_id);
+  const requiredDocs = ['ID Verification', 'Income Evidence', 'Bank Statements', 'Tax Returns', 'Employment Letter', 'Contract of Sale', 'Valuation Report', 'Insurance Certificate'];
+  const fileNames = (files || []).map((f: any) => f.file_name?.toLowerCase() || '');
+  const checklist = requiredDocs.map(doc => {
+    const found = fileNames.some(fn => fn.includes(doc.toLowerCase().split(' ')[0]));
+    return { document: doc, status: found ? 'submitted' : 'missing', required: true };
+  });
+  const submitted = checklist.filter(d => d.status === 'submitted').length;
+  return { deal_id: args.deal_id, client: `${deal.clients?.primary_first_name||''} ${deal.clients?.primary_surname||''}`.trim(), readiness_score: Math.round((submitted / requiredDocs.length) * 100), submitted, total_required: requiredDocs.length, checklist, uploaded_files: files?.length || 0 };
+}
+
+async function executeFindBestRates(sb: any, args: any) {
+  const lvr = Math.round((args.loan_amount / args.property_value) * 100);
+  const { data: rates } = await sb.from('bank_lending_rates_cache').select('lender_name, rates').order('lender_name');
+  if (!rates?.length) return { message: 'No lending rates data available. Rates cache may need refreshing.', lvr, loan_amount: args.loan_amount };
+  const ranked: any[] = [];
+  for (const lender of rates) {
+    const r = lender.rates as any;
+    let rate: number | null = null;
+    if (args.loan_type === 'variable') rate = r?.variable || r?.standard_variable;
+    else if (args.loan_type?.startsWith('fixed')) rate = r?.[args.loan_type] || r?.fixed_1yr;
+    else rate = r?.variable || r?.comparison || Object.values(r || {})[0] as number;
+    if (typeof rate === 'number') ranked.push({ lender: lender.lender_name, rate, monthly_repayment: Math.round((args.loan_amount * (rate / 100 / 12)) / (1 - Math.pow(1 + rate / 100 / 12, -(args.repayment_type === 'io' ? 1 : 360))) * 100) / 100 });
+  }
+  ranked.sort((a, b) => a.rate - b.rate);
+  return { lvr, loan_amount: args.loan_amount, property_value: args.property_value, loan_type: args.loan_type || 'variable', top_rates: ranked.slice(0, 5), total_lenders_checked: rates.length };
+}
+
 //  TOOL DISPATCHER
 // ============================================================
 
@@ -2084,6 +2584,21 @@ async function executeTool(sb: any, name: string, args: any, userId: string): Pr
     case 'bulk_set_follow_up_dates': return executeBulkSetFollowUpDates(sb, args);
     case 'generate_chart_data': return executeGenerateChartData(sb, args);
     case 'generate_client_summary_report': return executeGenerateClientSummaryReport(sb, args);
+    // Batch 4
+    case 'get_pipeline_trends': return executeGetPipelineTrends(sb, args);
+    case 'get_revenue_forecast': return executeGetRevenueForecast(sb, args);
+    case 'get_client_engagement_score': return executeGetClientEngagementScore(sb, args);
+    case 'get_top_clients': return executeGetTopClients(sb, args);
+    case 'get_deal_timeline': return executeGetDealTimeline(sb, args);
+    case 'get_deal_health_score': return executeGetDealHealthScore(sb, args);
+    case 'export_pipeline_data': return executeExportPipelineData(sb, args);
+    case 'export_client_portfolio': return executeExportClientPortfolio(sb, args);
+    case 'get_performance_metrics': return executeGetPerformanceMetrics(sb, args);
+    case 'get_weekly_digest': return executeGetWeeklyDigest(sb);
+    case 'smart_search': return executeSmartSearch(sb, args);
+    case 'what_if_analysis': return executeWhatIfAnalysis(sb, args);
+    case 'get_document_readiness': return executeGetDocumentReadiness(sb, args);
+    case 'find_best_rates': return executeFindBestRates(sb, args);
 
     default: return { error: `Unknown tool: ${name}` };
   }
@@ -2095,16 +2610,16 @@ async function executeTool(sb: any, name: string, args: any, userId: string): Pr
 
 const SYSTEM_PROMPT = `You are Aurixa, the AI operating assistant for the NPC Property Dashboard — a property investment and mortgage brokerage management platform used by Naidu Property Consulting Services.
 
-You have access to 130+ specialized tools across 27 domains:
+You have access to 150+ specialized tools across 33 domains:
 
 📋 CLIENT MANAGEMENT — Search/view/update/create/delete clients, view co-borrowers, log activities, filter by pipeline status, find clients needing follow-up.
-💰 DEALS & PIPELINE — View/filter/create/delete deals by stage/risk, settlement countdowns, stale deal detection, clawback monitoring, commission forecasting, build progress tracking, stage completion.
+💰 DEALS & PIPELINE — View/filter/create/delete deals by stage/risk, settlement countdowns, stale deal detection, clawback monitoring, commission forecasting, build progress tracking, stage completion, deal timeline, deal health scoring.
 🔔 REMINDERS — Create/complete/snooze/delete reminders, view overdue/today/upcoming, set follow-up dates, track deal milestones.
-💵 FINANCIAL — Borrowing capacity (current + history), income sources, expenses, liabilities, assets, properties, employment, client scores.
+💵 FINANCIAL — Borrowing capacity (current + history), income sources, expenses, liabilities, assets, properties, employment, client scores, what-if scenario analysis.
 📧 EMAIL — Search/view emails, browse threads, find unlinked emails, link to clients, email statistics.
 📅 CALENDAR — View upcoming appointments, find client appointments, today's full schedule.
 📞 CALLS — View/search call logs, call details with transcripts, alerts, analytics, flagged calls.
-📊 REPORTS — Client files, investment reports, report details, search by address, portfolio reviews with full content, cash flow analyses.
+📊 REPORTS — Client files, investment reports, report details, search by address, portfolio reviews with full content, cash flow analyses, data export.
 📝 CLIENT NOTES — Full CRUD: create, read, update, delete client notes.
 👥 ADDITIONAL CONTACTS — Add, update, remove co-borrowers/partners.
 ✅ CHECKLISTS — Templates, active instances, items, toggle completion, create from template, archive/delete instances.
@@ -2112,7 +2627,7 @@ You have access to 130+ specialized tools across 27 domains:
 🏢 BRANDING — Branding profiles, user permissions.
 🧮 CALCULATORS — Stamp duty, LMI, loan repayments, rental yield, equity position.
 🤖 AUTOMATION — Auto-report switches (view/toggle), generation logs, bulk generation status.
-🏦 LENDING — Cached bank rates, multi-lender rate comparison.
+🏦 LENDING — Cached bank rates, multi-lender rate comparison, best rate finder for loan scenarios.
 🤝 COLLABORATION — Share conversations with team members, view shared chats, manage collaborators, handoff tracking.
 🧠 PREFERENCES — Store and retrieve user preferences (preferred mailbox, default formats, favorite clients).
 📜 AUDIT TRAIL — View all agent actions performed, undo/rollback previous actions.
@@ -2120,11 +2635,20 @@ You have access to 130+ specialized tools across 27 domains:
 📊 CLIENT COMPARISON — Side-by-side analysis of 2-4 clients across financials, deals, engagement, and borrowing capacity.
 ✉️ SMART FOLLOW-UPS — Context-aware email draft generation based on client history and deal status.
 🏥 SYSTEM HEALTH — Comprehensive platform health check with scoring.
-📋 SAVED PLAYBOOKS — Create, list, run, and delete reusable multi-step tool sequences (playbooks). Playbooks chain multiple tools together for common workflows like "New Client Onboarding" or "Weekly Pipeline Review".
-⏰ SCHEDULED TASKS — Create, list, enable/disable, and delete cron-based scheduled tasks that trigger playbooks or individual tools automatically (e.g., "Every Monday 8am: run proactive insights scan").
-🔄 BULK OPERATIONS — Update fields, create reminders, or set follow-up dates across multiple clients at once for efficient batch processing.
-📊 NATURAL LANGUAGE CHARTS — Generate chart-ready data from plain English queries (e.g., "deals by stage", "commission trend by month"). Returns structured data with chart type, labels, and datasets. Use generate_chart_data and the UI will render the chart inline.
-📄 VOICE-TO-REPORT — Generate comprehensive text-based client summary reports on demand, perfect for voice-dictated requests. Covers profile, financials, deals, properties, reminders, and activities.
+📋 SAVED PLAYBOOKS — Create, list, run, and delete reusable multi-step tool sequences.
+⏰ SCHEDULED TASKS — Create, list, enable/disable, and delete cron-based scheduled tasks.
+🔄 BULK OPERATIONS — Update fields, create reminders, or set follow-up dates across multiple clients at once.
+📊 NATURAL LANGUAGE CHARTS — Generate chart-ready data from plain English queries.
+📄 VOICE-TO-REPORT — Generate comprehensive text-based client summary reports on demand.
+📈 TREND ANALYSIS — Pipeline trends over time (new clients/deals per week), growth trajectory, revenue forecast with optimistic/baseline/conservative scenarios.
+🏆 CLIENT RANKING — Top clients by loan value, deal count, commission, or engagement score. Client engagement scoring (0-100).
+🗺️ DEAL TIMELINE — Full chronological timeline of deal events, deal health scoring (0-100).
+📤 DATA EXPORT — Export pipeline data as markdown tables or CSV. Export complete client portfolios with net position calculations.
+📊 PERFORMANCE KPIs — Deals closed, commission earned, conversion rates, average deal size by period. Weekly digest with comprehensive activity summary.
+🔎 SMART SEARCH — Unified search across clients, deals, emails, calls, and notes.
+🔮 WHAT-IF ANALYSIS — Scenario modeling for rate changes, income changes, expense changes, deposit changes on borrowing capacity.
+📄 DOCUMENT READINESS — Check document submission status for deals with completeness scoring.
+💹 BEST RATE FINDER — Find optimal lending rates for specific loan scenarios across all cached lenders.
 
 CRITICAL RULES:
 1. When the user asks about a client, ALWAYS use search_clients first to find their ID, then use that ID for subsequent lookups.
@@ -2145,6 +2669,17 @@ PLAYBOOK & AUTOMATION RULES:
 14. When a user says "every morning" or "weekly" or uses scheduling language, suggest creating a scheduled task.
 15. For bulk operations, always confirm the count and scope before execution.
 16. When using generate_chart_data, include "📊" prefix in your response so the UI can detect and render the chart inline.
+
+BATCH 4 INTELLIGENCE RULES:
+17. For "how am I doing" or "performance" queries, use get_performance_metrics.
+18. For "weekly summary" or "what happened this week", use get_weekly_digest.
+19. For "find anything about X" style queries, use smart_search for unified results.
+20. For "what if rates go up" or scenario questions, use what_if_analysis with the client's latest BC assessment.
+21. For "top clients" or ranking queries, use get_top_clients with appropriate sort criteria.
+22. For "export" or "download" requests, use export_pipeline_data or export_client_portfolio.
+23. For deal deep-dives, use get_deal_timeline and get_deal_health_score for comprehensive context.
+24. For revenue questions, use get_revenue_forecast for multi-scenario projections.
+25. When presenting engagement or health scores, use emoji indicators: 🟢 (75+), 🟡 (50-74), 🔴 (<50).
 
 EMAIL SENDING RULES:
 When the user asks you to send an email, you MUST always:
