@@ -1727,6 +1727,170 @@ const TOOLS: any[] = [
       parameters: { type: "object", properties: {} },
     },
   },
+
+  // ═══════════════════════════════════════════════════════════
+  //  BATCH 6 TOOLS — Remaining Dashboard Pages (13 pages)
+  // ═══════════════════════════════════════════════════════════
+
+  // ─── SOURCES PAGE (Airtable listing sources) ───
+  {
+    type: "function",
+    function: {
+      name: "get_data_sources",
+      description: "List all data sources feeding the listings page: email hosts, agencies, agents. Shows source name, listing count, and latest activity. Powered by Airtable proxy.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+
+  // ─── CHARTS PAGE ───
+  {
+    type: "function",
+    function: {
+      name: "get_saved_charts",
+      description: "List saved chart visualisations from generated reports with title, chart type, and linked report ID.",
+      parameters: { type: "object", properties: { limit: { type: "number", description: "Max charts (default 20)" } } },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "search_charts",
+      description: "Search saved charts by title keyword.",
+      parameters: { type: "object", properties: { query: { type: "string", description: "Search term for chart title" } }, required: ["query"] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_chart_analysis",
+      description: "Retrieve the AI-generated analysis text for a specific chart.",
+      parameters: { type: "object", properties: { chart_id: { type: "string", description: "UUID of the chart" } }, required: ["chart_id"] },
+    },
+  },
+
+  // ─── TEMPLATES PAGE ───
+  {
+    type: "function",
+    function: {
+      name: "get_report_templates",
+      description: "List available report structural templates stored in Supabase Storage. Returns template names, report formats, and configuration.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+
+  // ─── DATA IMPORT PAGE ───
+  {
+    type: "function",
+    function: {
+      name: "get_import_history",
+      description: "Fetch recent bulk data import job history with status, row counts, and errors from bulk_generation_jobs.",
+      parameters: { type: "object", properties: { limit: { type: "number", description: "Max results (default 10)" } } },
+    },
+  },
+
+  // ─── MONITORING PAGE ───
+  {
+    type: "function",
+    function: {
+      name: "get_monitoring_dashboard",
+      description: "Comprehensive monitoring view: API success rates by service, cache freshness across all caches, data quality scores, and recent errors. Extends system health check with granular detail.",
+      parameters: { type: "object", properties: { days_back: { type: "number", description: "Days to analyze (default 7)" } } },
+    },
+  },
+
+  // ─── QUALITY ASSURANCE PAGE ───
+  {
+    type: "function",
+    function: {
+      name: "get_qa_queue",
+      description: "List investment reports pending QA review: reports with low quality scores, validation flags, or recent errors.",
+      parameters: { type: "object", properties: { min_quality_score: { type: "number", description: "Show reports below this quality score (default 80)" }, limit: { type: "number", description: "Max results (default 20)" } } },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_qa_stats",
+      description: "Aggregate QA metrics across all investment reports: average quality score, pass/fail distribution, common validation issues, reports by status.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+
+  // ─── REPORT QA PAGE ───
+  {
+    type: "function",
+    function: {
+      name: "get_report_qa_details",
+      description: "Fetch detailed QA breakdown for a specific investment report: quality score, validation flags, data source reliability, property specs completeness.",
+      parameters: { type: "object", properties: { report_id: { type: "string", description: "UUID of the investment report" } }, required: ["report_id"] },
+    },
+  },
+
+  // ─── ERROR LOGS PAGE ───
+  {
+    type: "function",
+    function: {
+      name: "get_error_logs",
+      description: "Fetch recent system errors from multiple sources: failed investment reports, bulk generation failures, API service errors. Returns unified error list with severity and source.",
+      parameters: { type: "object", properties: { days_back: { type: "number", description: "Days to look back (default 7)" }, source: { type: "string", enum: ["investment_report", "bulk_generation", "api_service", "all"], description: "Filter by error source (default: all)" }, limit: { type: "number", description: "Max results (default 30)" } } },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_error_summary",
+      description: "Aggregate error statistics: counts by source, severity distribution, error trends over time, most common error codes.",
+      parameters: { type: "object", properties: { days_back: { type: "number", description: "Days to analyze (default 7)" } } },
+    },
+  },
+
+  // ─── INTEGRATIONS PAGE ───
+  {
+    type: "function",
+    function: {
+      name: "get_integration_status",
+      description: "Check status of all configured integrations: GHL, VAPI, Outlook, Domain API, Airtable, AI models. Shows connection health and last sync time.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+
+  // ─── CLOUDFLARE PAGE ───
+  {
+    type: "function",
+    function: {
+      name: "get_cloudflare_status",
+      description: "Read-only Cloudflare status: domain list, SSL status, recent analytics (requests, bandwidth, threats blocked). Requires cloudflare-proxy edge function.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+
+  // ─── USER MANAGEMENT PAGE ───
+  {
+    type: "function",
+    function: {
+      name: "get_user_list",
+      description: "List all dashboard users with roles, active status, last login, and email. Extends get_team_members with full admin detail.",
+      parameters: { type: "object", properties: { include_inactive: { type: "boolean", description: "Include inactive users (default false)" } } },
+    },
+  },
+
+  // ─── DEPRECIATION COMPS PAGE ───
+  {
+    type: "function",
+    function: {
+      name: "get_depreciation_comps",
+      description: "Search depreciation schedule comparison data by property type, construction year, or asset category.",
+      parameters: { type: "object", properties: { property_type: { type: "string", description: "Filter by property type (e.g. house, apartment, townhouse)" }, limit: { type: "number", description: "Max results (default 20)" } } },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_depreciation_summary",
+      description: "Aggregate depreciation comps statistics: total records, breakdown by property type, average values.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
 ];
 
 // ============================================================
@@ -3432,6 +3596,246 @@ async function executeGetUserPermissions(sb: any, args: any) {
   return { user_id: user.id, username: user.username, role: user.role, is_active: user.is_active };
 }
 
+// ─── BATCH 6 EXECUTORS (13 pages) ───
+
+async function executeGetDataSources() {
+  try {
+    const data = await callAirtableProxy({ pageSize: 100, sortField: 'Created', sortDirection: 'desc' });
+    const listings = data.records || [];
+    const agencies: Record<string, { count: number; agents: Set<string>; latest: string }> = {};
+    const agents: Record<string, { count: number; agency: string; latest: string }> = {};
+    for (const l of listings) {
+      const agency = l.agencyName || l.agency || 'Unknown';
+      const agent = l.agentName || l.agent || 'Unknown';
+      const date = l.receivedAt || l.createdTime || '';
+      if (!agencies[agency]) agencies[agency] = { count: 0, agents: new Set(), latest: '' };
+      agencies[agency].count++; agencies[agency].agents.add(agent);
+      if (date > agencies[agency].latest) agencies[agency].latest = date;
+      if (!agents[agent]) agents[agent] = { count: 0, agency, latest: '' };
+      agents[agent].count++;
+      if (date > agents[agent].latest) agents[agent].latest = date;
+    }
+    return {
+      total_listings: listings.length,
+      agencies: Object.entries(agencies).sort((a, b) => b[1].count - a[1].count).map(([name, d]) => ({ name, listings: d.count, agents: [...d.agents], latest_listing: d.latest })),
+      agents: Object.entries(agents).sort((a, b) => b[1].count - a[1].count).slice(0, 20).map(([name, d]) => ({ name, listings: d.count, agency: d.agency, latest_listing: d.latest })),
+    };
+  } catch (err: any) { return { error: `Failed to fetch data sources: ${err.message}` }; }
+}
+
+async function executeGetSavedCharts(sb: any, args: any) {
+  const limit = args.limit || 20;
+  const { data } = await sb.from('charts').select('id, title, chart_type, report_id, created_at, updated_at').order('created_at', { ascending: false }).limit(limit);
+  return { charts: data || [], count: data?.length || 0 };
+}
+
+async function executeSearchCharts(sb: any, args: any) {
+  const { data } = await sb.from('charts').select('id, title, chart_type, report_id, created_at').ilike('title', `%${args.query}%`).order('created_at', { ascending: false }).limit(20);
+  return { charts: data || [], count: data?.length || 0, query: args.query };
+}
+
+async function executeGetChartAnalysis(sb: any, args: any) {
+  const { data } = await sb.from('chart_analysis').select('*').eq('chart_id', args.chart_id).order('created_at', { ascending: false }).limit(1);
+  if (!data?.length) return { error: 'No analysis found for this chart.' };
+  return { analysis: data[0] };
+}
+
+async function executeGetReportTemplates(sb: any) {
+  const { data } = await sb.from('chart_configurations').select('id, template_name, chart_type, created_at, updated_at').order('template_name');
+  return { templates: data || [], count: data?.length || 0, note: 'Report structural templates are stored in Supabase Storage. Chart configurations shown here define chart rendering templates.' };
+}
+
+async function executeGetImportHistory(sb: any, args: any) {
+  const limit = args.limit || 10;
+  const { data } = await sb.from('bulk_generation_jobs').select('id, status, total_reports, completed_reports, failed_reports, created_at, completed_at, created_by, property_addresses').order('created_at', { ascending: false }).limit(limit);
+  return { jobs: (data || []).map((j: any) => ({ ...j, property_count: j.property_addresses?.length || 0 })), count: data?.length || 0 };
+}
+
+async function executeGetMonitoringDashboard(sb: any, args: any) {
+  const daysBack = args.days_back || 7;
+  const cutoff = new Date(Date.now() - daysBack * 86400000).toISOString();
+  const [health, census, crime, transport, economic, climate, risk] = await Promise.all([
+    sb.from('api_health_log').select('service_name, status, response_time_ms, data_quality, error_message, created_at').gte('created_at', cutoff).order('created_at', { ascending: false }).limit(200),
+    sb.from('abs_census_cache').select('id, expires_at, data_quality', { count: 'exact' }),
+    sb.from('crime_statistics_cache').select('id, expires_at, data_quality', { count: 'exact' }),
+    sb.from('transport_data_cache').select('id, expires_at, data_quality', { count: 'exact' }),
+    sb.from('economic_data_cache').select('id, expires_at', { count: 'exact' }),
+    sb.from('climate_data_cache').select('id, expires_at, data_quality', { count: 'exact' }),
+    sb.from('risk_assessment_cache').select('id, expires_at, data_quality', { count: 'exact' }),
+  ]);
+  const now = new Date();
+  const byService: Record<string, any> = {};
+  for (const e of (health.data || [])) {
+    if (!byService[e.service_name]) byService[e.service_name] = { total: 0, success: 0, errors: 0, times: [], latest_error: null };
+    byService[e.service_name].total++;
+    if (e.status === 'success') byService[e.service_name].success++;
+    else { byService[e.service_name].errors++; if (!byService[e.service_name].latest_error) byService[e.service_name].latest_error = e.error_message; }
+    if (e.response_time_ms) byService[e.service_name].times.push(e.response_time_ms);
+  }
+  for (const svc of Object.keys(byService)) {
+    const t = byService[svc].times;
+    byService[svc].avg_response_ms = t.length ? Math.round(t.reduce((a: number, b: number) => a + b, 0) / t.length) : 0;
+    byService[svc].success_rate = byService[svc].total ? Math.round((byService[svc].success / byService[svc].total) * 100) : 0;
+    delete byService[svc].times;
+  }
+  const cacheStatus = (label: string, d: any) => {
+    const total = d.count || 0;
+    const expired = (d.data || []).filter((c: any) => new Date(c.expires_at) < now).length;
+    const live = (d.data || []).filter((c: any) => c.data_quality === 'live').length;
+    return { cache: label, total_entries: total, expired, active: total - expired, live_data: live };
+  };
+  return {
+    period: `Last ${daysBack} days`,
+    api_services: byService,
+    caches: [
+      cacheStatus('abs_census', census), cacheStatus('crime_statistics', crime),
+      cacheStatus('transport_data', transport), cacheStatus('economic_data', economic),
+      cacheStatus('climate_data', climate), cacheStatus('risk_assessment', risk),
+    ],
+  };
+}
+
+async function executeGetQAQueue(sb: any, args: any) {
+  const threshold = args.min_quality_score || 80;
+  const limit = args.limit || 20;
+  const { data } = await sb.from('investment_reports').select('id, property_address, status, investment_score, validation_flags, created_at, current_version')
+    .or(`investment_score.lt.${threshold},validation_flags.neq.[]`).order('created_at', { ascending: false }).limit(limit);
+  return { reports: (data || []).map((r: any) => ({ ...r, flag_count: Array.isArray(r.validation_flags) ? r.validation_flags.length : 0 })), count: data?.length || 0, threshold };
+}
+
+async function executeGetQAStats(sb: any) {
+  const { data: all } = await sb.from('investment_reports').select('id, status, investment_score, validation_flags').limit(500);
+  const reports = all || [];
+  const total = reports.length;
+  const completed = reports.filter((r: any) => r.status === 'completed').length;
+  const failed = reports.filter((r: any) => r.status === 'failed' || r.status === 'error').length;
+  const pending = reports.filter((r: any) => r.status === 'pending').length;
+  const scores = reports.filter((r: any) => r.investment_score != null).map((r: any) => r.investment_score);
+  const avgScore = scores.length ? Math.round(scores.reduce((a: number, b: number) => a + b, 0) / scores.length) : 0;
+  const highQuality = scores.filter((s: number) => s >= 80).length;
+  const lowQuality = scores.filter((s: number) => s < 50).length;
+  const flagged = reports.filter((r: any) => Array.isArray(r.validation_flags) && r.validation_flags.length > 0).length;
+  return { total_reports: total, by_status: { completed, failed, pending, other: total - completed - failed - pending }, average_score: avgScore, high_quality: highQuality, low_quality: lowQuality, flagged_reports: flagged };
+}
+
+async function executeGetReportQADetails(sb: any, args: any) {
+  const { data } = await sb.from('investment_reports').select('id, property_address, status, investment_score, validation_flags, property_specs, data_sources, demographics_data, financial_calculations, created_at, current_version').eq('id', args.report_id).single();
+  if (!data) return { error: 'Report not found.' };
+  const specs = data.property_specs || {};
+  const requiredFields = ['land_size_sqm', 'building_size_sqm', 'bedrooms', 'bathrooms', 'property_type'];
+  const missingSpecs = requiredFields.filter(f => !specs[f]);
+  return {
+    report_id: data.id, address: data.property_address, status: data.status, quality_score: data.investment_score,
+    validation_flags: data.validation_flags || [], flag_count: Array.isArray(data.validation_flags) ? data.validation_flags.length : 0,
+    specs_completeness: Math.round(((requiredFields.length - missingSpecs.length) / requiredFields.length) * 100),
+    missing_specs: missingSpecs, version: data.current_version,
+    has_demographics: !!data.demographics_data, has_financials: !!data.financial_calculations,
+  };
+}
+
+async function executeGetErrorLogs(sb: any, args: any) {
+  const daysBack = args.days_back || 7;
+  const source = args.source || 'all';
+  const limit = args.limit || 30;
+  const cutoff = new Date(Date.now() - daysBack * 86400000).toISOString();
+  const errors: any[] = [];
+
+  if (source === 'all' || source === 'investment_report') {
+    const { data } = await sb.from('auto_report_generation_log').select('id, listing_address, listing_id, report_id, status, error_message, created_at')
+      .eq('status', 'failed').gte('created_at', cutoff).order('created_at', { ascending: false }).limit(limit);
+    for (const e of (data || [])) errors.push({ id: e.id, source: 'investment_report', message: e.error_message, entity: e.listing_address, created_at: e.created_at });
+  }
+  if (source === 'all' || source === 'bulk_generation') {
+    const { data } = await sb.from('bulk_generation_items').select('id, property_address, error_message, created_at')
+      .eq('status', 'failed').gte('created_at', cutoff).order('created_at', { ascending: false }).limit(limit);
+    for (const e of (data || [])) errors.push({ id: e.id, source: 'bulk_generation', message: e.error_message, entity: e.property_address, created_at: e.created_at });
+  }
+  if (source === 'all' || source === 'api_service') {
+    const { data } = await sb.from('api_health_log').select('id, service_name, error_message, endpoint, created_at')
+      .eq('status', 'error').gte('created_at', cutoff).order('created_at', { ascending: false }).limit(limit);
+    for (const e of (data || [])) errors.push({ id: e.id, source: 'api_service', message: e.error_message, entity: e.service_name, created_at: e.created_at });
+  }
+  errors.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  return { errors: errors.slice(0, limit), total: errors.length, period: `Last ${daysBack} days` };
+}
+
+async function executeGetErrorSummary(sb: any, args: any) {
+  const daysBack = args.days_back || 7;
+  const cutoff = new Date(Date.now() - daysBack * 86400000).toISOString();
+  const [reportErrors, bulkErrors, apiErrors] = await Promise.all([
+    sb.from('auto_report_generation_log').select('id', { count: 'exact', head: true }).eq('status', 'failed').gte('created_at', cutoff),
+    sb.from('bulk_generation_items').select('id', { count: 'exact', head: true }).eq('status', 'failed').gte('created_at', cutoff),
+    sb.from('api_health_log').select('id, service_name', { count: 'exact' }).eq('status', 'error').gte('created_at', cutoff),
+  ]);
+  const apiByService: Record<string, number> = {};
+  for (const e of (apiErrors.data || [])) { apiByService[e.service_name] = (apiByService[e.service_name] || 0) + 1; }
+  return {
+    period: `Last ${daysBack} days`,
+    total_errors: (reportErrors.count || 0) + (bulkErrors.count || 0) + (apiErrors.count || 0),
+    by_source: { investment_report: reportErrors.count || 0, bulk_generation: bulkErrors.count || 0, api_service: apiErrors.count || 0 },
+    api_errors_by_service: apiByService,
+  };
+}
+
+async function executeGetIntegrationStatus(sb: any) {
+  const [apiHealth, vapiCalls, emails, rates] = await Promise.all([
+    sb.from('api_health_log').select('service_name, status, created_at').order('created_at', { ascending: false }).limit(50),
+    sb.from('vapi_call_logs').select('id, created_at').order('created_at', { ascending: false }).limit(1),
+    sb.from('email_copilot_emails').select('id, received_at').order('received_at', { ascending: false }).limit(1),
+    sb.from('bank_lending_rates_cache').select('lender_name, updated_at').order('updated_at', { ascending: false }).limit(1),
+  ]);
+  const serviceStatus: Record<string, any> = {};
+  for (const e of (apiHealth.data || [])) {
+    if (!serviceStatus[e.service_name]) serviceStatus[e.service_name] = { status: e.status === 'success' ? 'connected' : 'error', last_activity: e.created_at };
+  }
+  return {
+    integrations: {
+      ...serviceStatus,
+      vapi: { status: vapiCalls.data?.length ? 'connected' : 'no_data', last_call: vapiCalls.data?.[0]?.created_at || null },
+      outlook_email: { status: emails.data?.length ? 'connected' : 'no_data', last_sync: emails.data?.[0]?.received_at || null },
+      lending_rates: { status: rates.data?.length ? 'connected' : 'no_data', last_update: rates.data?.[0]?.updated_at || null },
+    },
+  };
+}
+
+async function executeGetCloudflareStatus() {
+  try {
+    const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
+    const url = `${SUPABASE_URL}/functions/v1/cloudflare-proxy`;
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`, 'apikey': ANON_KEY },
+      body: JSON.stringify({ action: 'get-analytics' }),
+    });
+    if (!resp.ok) return { status: 'unavailable', message: 'Cloudflare proxy returned an error. Check configuration.' };
+    const data = await resp.json();
+    return { status: 'connected', analytics: data };
+  } catch (err: any) { return { status: 'unavailable', message: `Cloudflare proxy error: ${err.message}` }; }
+}
+
+async function executeGetUserList(sb: any, args: any) {
+  let query = sb.from('custom_users').select('id, username, email, role, is_active, created_at, last_sign_in');
+  if (!args.include_inactive) query = query.eq('is_active', true);
+  const { data } = await query.order('username').limit(100);
+  return { users: data || [], count: data?.length || 0 };
+}
+
+async function executeGetDepreciationComps(sb: any, args: any) {
+  const limit = args.limit || 20;
+  let query = sb.from('depreciation_comps').select('*');
+  if (args.property_type) query = query.ilike('property_type', `%${args.property_type}%`);
+  const { data } = await query.order('created_at', { ascending: false }).limit(limit);
+  return { comps: data || [], count: data?.length || 0 };
+}
+
+async function executeGetDepreciationSummary(sb: any) {
+  const { data } = await sb.from('depreciation_comps').select('id, property_type').limit(500);
+  const records = data || [];
+  const byType: Record<string, number> = {};
+  for (const r of records) { const t = r.property_type || 'Unknown'; byType[t] = (byType[t] || 0) + 1; }
+  return { total_records: records.length, by_property_type: byType };
+}
+
 //  TOOL DISPATCHER
 // ============================================================
 
@@ -3620,6 +4024,24 @@ async function executeTool(sb: any, name: string, args: any, userId: string): Pr
     case 'get_listing_details': return executeGetListingDetails(args);
     case 'get_listings_summary': return executeGetListingsSummary();
     case 'get_recent_listings': return executeGetRecentListings(args);
+    // Batch 6 — Remaining pages
+    case 'get_data_sources': return executeGetDataSources();
+    case 'get_saved_charts': return executeGetSavedCharts(sb, args);
+    case 'search_charts': return executeSearchCharts(sb, args);
+    case 'get_chart_analysis': return executeGetChartAnalysis(sb, args);
+    case 'get_report_templates': return executeGetReportTemplates(sb);
+    case 'get_import_history': return executeGetImportHistory(sb, args);
+    case 'get_monitoring_dashboard': return executeGetMonitoringDashboard(sb, args);
+    case 'get_qa_queue': return executeGetQAQueue(sb, args);
+    case 'get_qa_stats': return executeGetQAStats(sb);
+    case 'get_report_qa_details': return executeGetReportQADetails(sb, args);
+    case 'get_error_logs': return executeGetErrorLogs(sb, args);
+    case 'get_error_summary': return executeGetErrorSummary(sb, args);
+    case 'get_integration_status': return executeGetIntegrationStatus(sb);
+    case 'get_cloudflare_status': return executeGetCloudflareStatus();
+    case 'get_user_list': return executeGetUserList(sb, args);
+    case 'get_depreciation_comps': return executeGetDepreciationComps(sb, args);
+    case 'get_depreciation_summary': return executeGetDepreciationSummary(sb);
 
     default: return { error: `Unknown tool: ${name}` };
   }
@@ -3689,7 +4111,7 @@ async function executeGetTeamMembers(sb: any, userId: string) {
 
 const SYSTEM_PROMPT = `You are Aurixa, the AI operating assistant for the NPC Property Dashboard — a property investment and mortgage brokerage management platform used by Naidu Property Consulting Services.
 
-You have access to 160+ specialized tools across 35 domains:
+You have access to 180+ specialized tools across 47 domains:
 
 📋 CLIENT MANAGEMENT — Search/view/update/create/delete clients, view co-borrowers, log activities, filter by pipeline status, find clients needing follow-up.
 💰 DEALS & PIPELINE — View/filter/create/delete deals by stage/risk, settlement countdowns, stale deal detection, clawback monitoring, commission forecasting, build progress tracking, stage completion, deal timeline, deal health scoring.
@@ -3732,6 +4154,17 @@ You have access to 160+ specialized tools across 35 domains:
 📝 REPORT GENERATION — Trigger investment report generation for any property address directly from chat.
 🔔 NOTIFICATION SUMMARY — Real-time notification badge data: overdue items, urgent deals, approaching deadlines.
 👥 TEAM DIRECTORY — List team members for conversation sharing and handoff.
+📡 DATA SOURCES — List listing data sources (agencies, agents) from Airtable feed.
+📊 SAVED CHARTS — Browse/search saved charts, retrieve AI chart analysis.
+📋 REPORT TEMPLATES — List report templates and chart configurations.
+📥 DATA IMPORT — View bulk import job history with status.
+🖥️ MONITORING — System monitoring: API rates, cache freshness, data quality.
+✅ QA — QA queue, aggregate QA stats, per-report QA details.
+🚨 ERROR LOGS — Unified errors from reports, bulk jobs, APIs with summaries.
+🔌 INTEGRATIONS — Connection status of all services.
+☁️ CLOUDFLARE — Read-only analytics via cloudflare-proxy.
+👤 USER MANAGEMENT — Full user list with roles and login history.
+🏗️ DEPRECIATION — Search/summarize depreciation comps by property type.
 
 CRITICAL RULES:
 1. When the user asks about a client, ALWAYS use search_clients first to find their ID, then use that ID for subsequent lookups.
