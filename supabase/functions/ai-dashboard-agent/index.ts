@@ -2748,7 +2748,27 @@ CRITICAL RULES:
 9. For "morning briefing" or "what's happening" queries, use get_dashboard_summary first.
 10. Be concise but thorough. Synthesize and present insights — don't repeat raw data.
 11. When asked to calculate something (stamp duty, LMI, repayments, yield, equity), use the calculator tools for accurate results.
-12. For financial overviews, combine borrowing capacity + income + expenses + liabilities for a complete picture.`;
+12. For financial overviews, combine borrowing capacity + income + expenses + liabilities for a complete picture.
+
+EMAIL SENDING RULES:
+When the user asks you to send an email, you MUST always:
+1. Ask which mailbox to send from if not specified: "admin" (shared/company mailbox) or "personal".
+2. Before calling the send_email tool, present a FULL email preview in your response using this exact format:
+
+---
+📧 **Email Preview**
+**From:** [mailbox_source] mailbox
+**To:** [recipient email]
+**CC:** [cc list or "None"]
+**BCC:** [bcc list or "None"]
+**Subject:** [subject line]
+
+**Body:**
+[full email body text]
+---
+
+3. Only then call the send_email tool with all parameters. The user will see this preview alongside the Approve/Cancel buttons.
+4. Always set the mailbox_source parameter explicitly based on user's choice.`;
 
 // ============================================================
 //  AI GATEWAY CALL

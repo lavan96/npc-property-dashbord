@@ -425,6 +425,24 @@ export function AgentChatWidget() {
                     ) : (
                       <p className="whitespace-pre-wrap">{msg.content}</p>
                     )}
+                    {/* Email preview for send_email tool calls */}
+                    {msg.requires_confirmation && msg.tool_calls?.some((tc: any) => tc.function?.name === 'send_email') && (
+                      <div className="mt-2 p-2.5 rounded-lg bg-primary/5 border border-primary/20 text-xs space-y-1">
+                        {msg.tool_calls.filter((tc: any) => tc.function?.name === 'send_email').map((tc: any, i: number) => {
+                          const args = JSON.parse(tc.function.arguments || '{}');
+                          return (
+                            <div key={i}>
+                              <div className="flex items-center gap-1 font-semibold text-primary mb-1">📧 Email to send</div>
+                              <div><span className="text-muted-foreground">From:</span> {args.mailbox_source || 'admin'} mailbox</div>
+                              <div><span className="text-muted-foreground">To:</span> {args.to}</div>
+                              {args.cc?.length > 0 && <div><span className="text-muted-foreground">CC:</span> {args.cc.join(', ')}</div>}
+                              {args.bcc?.length > 0 && <div><span className="text-muted-foreground">BCC:</span> {args.bcc.join(', ')}</div>}
+                              <div><span className="text-muted-foreground">Subject:</span> {args.subject}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                     {/* Confirmation buttons */}
                     {msg.requires_confirmation && msg.confirmation_status === 'pending' && (
                       <div className="flex gap-2 mt-3 pt-2.5 border-t border-border/50">

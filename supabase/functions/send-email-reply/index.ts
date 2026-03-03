@@ -171,10 +171,21 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
-    if (authError) {
-      console.log('[send-email-reply] Auth failed:', authError);
-      return createUnauthorizedResponse(authError, corsHeaders);
+    // Allow internal service-to-service calls with the service role key
+    const authHeader = req.headers.get('Authorization') || '';
+    const bearerToken = authHeader.replace('Bearer ', '').trim();
+    let userId: string | null = null;
+    
+    if (bearerToken === supabaseServiceKey) {
+      console.log('[send-email-reply] Service role token detected - internal call authorized');
+      userId = 'service_role';
+    } else {
+      const { error: authError, userId: authUserId } = await verifyAuth(supabase, req.headers, body);
+      if (authError) {
+        console.log('[send-email-reply] Auth failed:', authError);
+        return createUnauthorizedResponse(authError, corsHeaders);
+      }
+      userId = authUserId;
     }
     console.log('[send-email-reply] Authenticated user:', userId);
 
