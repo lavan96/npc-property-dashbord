@@ -386,3 +386,7 @@ verify_jwt = true
 
 [functions.send-appointment-notification]
 verify_jwt = true
+
+[functions.ai-dashboard-agent]
+verify_jwt = false
+request_timeout = 60
