@@ -1038,6 +1038,50 @@ const TOOLS: any[] = [
     },
   },
 
+  // ─── PROPERTY LISTINGS (Airtable) ───
+  {
+    type: "function",
+    function: {
+      name: "search_property_listings",
+      description: "Search property listings from the Airtable listings feed. Filter by suburb, property type, bedrooms, price range. Returns address, price, beds, baths, agent, inspection times, and more.",
+      parameters: {
+        type: "object",
+        properties: {
+          suburb: { type: "string", description: "Filter by suburb name (case-insensitive partial match)" },
+          property_type: { type: "string", description: "Filter by type: House, Apartment, Townhouse, Villa, Duplex, Land" },
+          min_bedrooms: { type: "number", description: "Minimum bedrooms" },
+          max_price: { type: "number", description: "Maximum price" },
+          min_price: { type: "number", description: "Minimum price" },
+          limit: { type: "number", description: "Max results (default 20, max 50)" },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_listing_details",
+      description: "Get full details of a specific property listing by its Airtable record ID.",
+      parameters: { type: "object", properties: { listing_id: { type: "string", description: "Airtable record ID of the listing" } }, required: ["listing_id"] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_listings_summary",
+      description: "Get aggregate statistics from all property listings: total count, avg price, price range, suburb distribution, property type breakdown, listings with inspections.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_recent_listings",
+      description: "Get the most recently received property listings, sorted by date.",
+      parameters: { type: "object", properties: { limit: { type: "number", description: "Max results (default 10, max 30)" } } },
+    },
+  },
+
   // ─── CLIENT FILE MANAGEMENT ───
   {
     type: "function",
@@ -3571,6 +3615,11 @@ async function executeTool(sb: any, name: string, args: any, userId: string): Pr
     case 'trigger_investment_report': return executeTriggerInvestmentReport(sb, args, userId);
     case 'get_notification_summary': return executeGetNotificationSummary(sb);
     case 'get_team_members': return executeGetTeamMembers(sb, userId);
+    // Property Listings
+    case 'search_property_listings': return executeSearchPropertyListings(args);
+    case 'get_listing_details': return executeGetListingDetails(args);
+    case 'get_listings_summary': return executeGetListingsSummary();
+    case 'get_recent_listings': return executeGetRecentListings(args);
 
     default: return { error: `Unknown tool: ${name}` };
   }
@@ -3991,6 +4040,146 @@ async function handleChat(sb: any, body: any, userId: string, username: string, 
     requires_confirmation: pendingConfirmation,
     pending_tool_calls: pendingConfirmation ? pendingToolCalls : undefined,
   }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+}
+
+// ─── PROPERTY LISTINGS (Airtable proxy) ───
+
+async function callAirtableProxy(body: any = {}) {
+  const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkdXpiY2h1c3d3YmVmZHVuZmN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0NDM4NzksImV4cCI6MjA3MTAxOTg3OX0.eSYU6fxIc3tBQuGLsdBRff0alBMkNfvv7OpW0efNjxk';
+  const url = `${SUPABASE_URL}/functions/v1/airtable-proxy`;
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      'apikey': ANON_KEY,
+    },
+    body: JSON.stringify(body),
+  });
+  if (!resp.ok) throw new Error(`Airtable proxy error: ${resp.status}`);
+  return resp.json();
+}
+
+async function executeSearchPropertyListings(args: any) {
+  try {
+    const data = await callAirtableProxy({ pageSize: 100, sortField: 'Created', sortDirection: 'desc' });
+    let listings = data.records || [];
+
+    // Apply filters
+    if (args.suburb) {
+      const sub = args.suburb.toLowerCase();
+      listings = listings.filter((l: any) => (l.suburb || l.location || '').toLowerCase().includes(sub));
+    }
+    if (args.property_type) {
+      const pt = args.property_type.toLowerCase();
+      listings = listings.filter((l: any) => (l.propertyType || '').toLowerCase().includes(pt));
+    }
+    if (args.min_bedrooms) {
+      listings = listings.filter((l: any) => (l.beds || l.bedrooms || 0) >= args.min_bedrooms);
+    }
+    if (args.min_price) {
+      listings = listings.filter((l: any) => (l.price || 0) >= args.min_price);
+    }
+    if (args.max_price) {
+      listings = listings.filter((l: any) => l.price && l.price <= args.max_price);
+    }
+
+    const limit = Math.min(args.limit || 20, 50);
+    const results = listings.slice(0, limit).map((l: any) => ({
+      id: l.id,
+      address: l.address || l.location,
+      suburb: l.suburb,
+      price: l.price,
+      beds: l.beds || l.bedrooms,
+      baths: l.baths || l.bathrooms,
+      carSpaces: l.carSpaces,
+      propertyType: l.propertyType,
+      agentName: l.agentName || l.agent,
+      agencyName: l.agencyName,
+      inspectionStart: l.inspectionStart,
+      inspectionNotes: l.inspectionNotes,
+      source: l.source,
+      receivedAt: l.receivedAt || l.createdTime,
+      summary: l.summary,
+    }));
+
+    return { listings: results, total_matched: listings.length, showing: results.length };
+  } catch (err: any) {
+    return { error: `Failed to fetch listings: ${err.message}` };
+  }
+}
+
+async function executeGetListingDetails(args: any) {
+  try {
+    const data = await callAirtableProxy({ pageSize: 100, sortField: 'Created', sortDirection: 'desc' });
+    const listing = (data.records || []).find((l: any) => l.id === args.listing_id);
+    if (!listing) return { error: 'Listing not found.' };
+    return { listing };
+  } catch (err: any) {
+    return { error: `Failed to fetch listing: ${err.message}` };
+  }
+}
+
+async function executeGetListingsSummary() {
+  try {
+    const data = await callAirtableProxy({ pageSize: 100, sortField: 'Created', sortDirection: 'desc' });
+    const listings = data.records || [];
+
+    const withPrice = listings.filter((l: any) => l.price && l.price > 0);
+    const prices = withPrice.map((l: any) => l.price);
+    const avgPrice = prices.length > 0 ? Math.round(prices.reduce((a: number, b: number) => a + b, 0) / prices.length) : 0;
+
+    // Suburb distribution
+    const suburbs: Record<string, number> = {};
+    listings.forEach((l: any) => {
+      const sub = l.suburb || l.location || 'Unknown';
+      suburbs[sub] = (suburbs[sub] || 0) + 1;
+    });
+
+    // Property type distribution
+    const types: Record<string, number> = {};
+    listings.forEach((l: any) => {
+      const t = l.propertyType || 'Unknown';
+      types[t] = (types[t] || 0) + 1;
+    });
+
+    const withInspections = listings.filter((l: any) => l.inspectionStart).length;
+
+    return {
+      total_listings: listings.length,
+      with_price: withPrice.length,
+      average_price: avgPrice,
+      min_price: prices.length > 0 ? Math.min(...prices) : null,
+      max_price: prices.length > 0 ? Math.max(...prices) : null,
+      suburbs: Object.entries(suburbs).sort((a, b) => b[1] - a[1]).slice(0, 15).map(([name, count]) => ({ name, count })),
+      property_types: Object.entries(types).sort((a, b) => b[1] - a[1]).map(([type, count]) => ({ type, count })),
+      with_inspections: withInspections,
+    };
+  } catch (err: any) {
+    return { error: `Failed to fetch listings summary: ${err.message}` };
+  }
+}
+
+async function executeGetRecentListings(args: any) {
+  try {
+    const limit = Math.min(args.limit || 10, 30);
+    const data = await callAirtableProxy({ pageSize: limit, sortField: 'Created', sortDirection: 'desc' });
+    const listings = (data.records || []).map((l: any) => ({
+      id: l.id,
+      address: l.address || l.location,
+      suburb: l.suburb,
+      price: l.price,
+      beds: l.beds || l.bedrooms,
+      baths: l.baths || l.bathrooms,
+      propertyType: l.propertyType,
+      agentName: l.agentName || l.agent,
+      receivedAt: l.receivedAt || l.createdTime,
+      source: l.source,
+    }));
+    return { listings, count: listings.length };
+  } catch (err: any) {
+    return { error: `Failed to fetch recent listings: ${err.message}` };
+  }
 }
 
 // ============================================================
