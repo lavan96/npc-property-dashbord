@@ -280,7 +280,7 @@ export function AgentChatWidget() {
         className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all hover:scale-105 group"
         aria-label="Open AI Assistant"
       >
-        <Diamond className="h-6 w-6 text-black dark:text-primary group-hover:animate-pulse" />
+        <Diamond className="h-6 w-6 text-black group-hover:animate-pulse" />
         {notifCount > 0 && (
           <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground animate-pulse">
             {notifCount > 9 ? '9+' : notifCount}
