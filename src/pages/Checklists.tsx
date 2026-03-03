@@ -13,6 +13,8 @@ import { ClipboardList, LayoutTemplate, Plus, PlayCircle, Trash2, Clock, CheckCi
 import { useChecklistTemplates, useChecklistInstances, useChecklistMutations, type ChecklistTemplate, type ChecklistInstance } from '@/hooks/useChecklists';
 import { TemplateBuilder } from '@/components/checklists/TemplateBuilder';
 import { ChecklistInstanceView } from '@/components/checklists/ChecklistInstanceView';
+import { TemplateImportDialog } from '@/components/checklists/TemplateImportDialog';
+import type { ParsedTemplate } from '@/utils/checklistTemplateParser';
 import { toast } from 'sonner';
 
 export default function Checklists() {
@@ -24,7 +26,7 @@ export default function Checklists() {
   const [newName, setNewName] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [newIcon, setNewIcon] = useState('📋');
-  const [uploadJson, setUploadJson] = useState('');
+  
 
   const { data: templates = [], isLoading: templatesLoading } = useChecklistTemplates();
   const { data: activeInstances = [], isLoading: instancesLoading } = useChecklistInstances('in_progress');
@@ -66,51 +68,38 @@ export default function Checklists() {
     );
   };
 
-  const handleUploadTemplate = async () => {
-    try {
-      const parsed = JSON.parse(uploadJson);
-      if (!parsed.name) throw new Error('Template must have a name');
+  const handleImportTemplate = async (parsed: ParsedTemplate) => {
+    // Create template
+    const result = await mutations.createTemplate.mutateAsync({
+      name: parsed.name,
+      description: parsed.description || null,
+      icon: parsed.icon || '📋',
+    });
 
-      // Create template
-      const result = await mutations.createTemplate.mutateAsync({
-        name: parsed.name,
-        description: parsed.description || null,
-        icon: parsed.icon || '📋',
+    const templateId = result?.record?.id;
+    if (!templateId) throw new Error('Failed to create template');
+
+    // Create sections and items
+    for (let si = 0; si < parsed.sections.length; si++) {
+      const sec = parsed.sections[si];
+      const sectionResult = await mutations.createSection.mutateAsync({
+        template_id: templateId,
+        title: sec.title,
+        icon: sec.icon || '▶️',
+        display_order: si,
       });
-
-      const templateId = result?.record?.id;
-      if (!templateId) throw new Error('Failed to create template');
-
-      // Create sections and items
-      if (parsed.sections && Array.isArray(parsed.sections)) {
-        for (let si = 0; si < parsed.sections.length; si++) {
-          const sec = parsed.sections[si];
-          const sectionResult = await mutations.createSection.mutateAsync({
-            template_id: templateId,
-            title: sec.title || `Section ${si + 1}`,
-            icon: sec.icon || '▶️',
-            display_order: si,
+      const sectionId = sectionResult?.record?.id;
+      if (sectionId && sec.items) {
+        for (let ii = 0; ii < sec.items.length; ii++) {
+          const item = sec.items[ii];
+          await mutations.createItem.mutateAsync({
+            section_id: sectionId,
+            label: item.label,
+            is_pre_checked: item.is_pre_checked || false,
+            display_order: ii,
           });
-          const sectionId = sectionResult?.record?.id;
-          if (sectionId && sec.items && Array.isArray(sec.items)) {
-            for (let ii = 0; ii < sec.items.length; ii++) {
-              const item = sec.items[ii];
-              await mutations.createItem.mutateAsync({
-                section_id: sectionId,
-                label: typeof item === 'string' ? item : item.label,
-                is_pre_checked: typeof item === 'object' ? item.is_pre_checked || false : false,
-                display_order: ii,
-              });
-            }
-          }
         }
       }
-
-      setUploadDialogOpen(false);
-      setUploadJson('');
-      toast.success('Template imported successfully');
-    } catch (e: any) {
-      toast.error(`Import failed: ${e.message}`);
     }
   };
 
@@ -238,32 +227,14 @@ export default function Checklists() {
               <p className="text-sm text-muted-foreground">Reusable blueprints for generating checklists</p>
             </div>
             <div className="flex items-center gap-2">
-              <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-1">
-                    <Upload className="h-3 w-3" /> Import JSON
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Import Template from JSON</DialogTitle>
-                    <DialogDescription>
-                      Paste a JSON template. Format: {`{ "name": "...", "icon": "📋", "sections": [{ "title": "...", "icon": "▶️", "items": ["item1", "item2"] }] }`}
-                    </DialogDescription>
-                  </DialogHeader>
-                  <Textarea
-                    rows={10}
-                    placeholder='{ "name": "Daily Operations", "sections": [...] }'
-                    value={uploadJson}
-                    onChange={e => setUploadJson(e.target.value)}
-                    className="font-mono text-xs"
-                  />
-                  <DialogFooter>
-                    <Button variant="ghost" onClick={() => setUploadDialogOpen(false)}>Cancel</Button>
-                    <Button onClick={handleUploadTemplate}>Import</Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+              <Button variant="outline" size="sm" className="gap-1" onClick={() => setUploadDialogOpen(true)}>
+                <Upload className="h-3 w-3" /> Import
+              </Button>
+              <TemplateImportDialog
+                open={uploadDialogOpen}
+                onOpenChange={setUploadDialogOpen}
+                onImport={handleImportTemplate}
+              />
 
               <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
                 <DialogTrigger asChild>
