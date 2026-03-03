@@ -205,12 +205,19 @@ export default function ReportQA() {
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
   const [showReportsPanel, setShowReportsPanel] = useState(true);
   
+  // Lazy loading for chat history
+  const [totalMessageCount, setTotalMessageCount] = useState(0);
+  const [hasOlderMessages, setHasOlderMessages] = useState(false);
+  const [isLoadingOlder, setIsLoadingOlder] = useState(false);
+  const MESSAGES_PER_PAGE = 50;
+  
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   
   // Custom hooks
   const { addReply, getReplies } = useMessageThreads();
@@ -560,13 +567,38 @@ export default function ReportQA() {
 
   const loadConversation = async (conv: SavedConversation) => {
     try {
+      // Load only the most recent messages initially
       const { data, error } = await invokeSecureFunction('report-qa', {
-        action: 'load-conversation', conversationId: conv.id,
+        action: 'load-conversation', 
+        conversationId: conv.id,
+        limit: MESSAGES_PER_PAGE,
+        offset: 0,
       });
 
       if (error) throw error;
 
+      const totalMsgCount = data.totalMessages || data.messages.length;
+      const loadedCount = data.messages.length;
+      
+      // If we loaded fewer than total, we need to load from the END (most recent)
+      // Re-fetch with correct offset if there are older messages
+      let messagesToSet = data.messages;
+      if (totalMsgCount > MESSAGES_PER_PAGE) {
+        const offsetForRecent = totalMsgCount - MESSAGES_PER_PAGE;
+        const { data: recentData, error: recentError } = await invokeSecureFunction('report-qa', {
+          action: 'load-conversation',
+          conversationId: conv.id,
+          limit: MESSAGES_PER_PAGE,
+          offset: offsetForRecent,
+        });
+        if (!recentError) {
+          messagesToSet = recentData.messages;
+        }
+      }
+
       setConversationId(conv.id);
+      setTotalMessageCount(totalMsgCount);
+      setHasOlderMessages(totalMsgCount > MESSAGES_PER_PAGE);
       setUploadedReports(
         conv.report_names.map((name, idx) => ({
           name,
@@ -575,7 +607,7 @@ export default function ReportQA() {
         }))
       );
       setMessages(
-        data.messages.map((m: any) => ({
+        messagesToSet.map((m: any) => ({
           id: m.id,
           role: m.role,
           content: m.content,
@@ -595,6 +627,52 @@ export default function ReportQA() {
         description: 'Could not load the conversation',
         variant: 'destructive',
       });
+    }
+  };
+
+  const loadOlderMessages = async () => {
+    if (!conversationId || isLoadingOlder || !hasOlderMessages) return;
+    
+    setIsLoadingOlder(true);
+    try {
+      const currentCount = messages.length;
+      const totalRemaining = totalMessageCount - currentCount;
+      const nextBatch = Math.min(MESSAGES_PER_PAGE, totalRemaining);
+      const offset = totalRemaining - nextBatch;
+      
+      const { data, error } = await invokeSecureFunction('report-qa', {
+        action: 'load-conversation',
+        conversationId,
+        limit: nextBatch,
+        offset: Math.max(0, offset),
+      });
+
+      if (error) throw error;
+
+      const olderMessages = data.messages.map((m: any) => ({
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        timestamp: new Date(m.created_at),
+      }));
+
+      // Prepend older messages, deduplicating by id
+      setMessages(prev => {
+        const existingIds = new Set(prev.map(m => m.id));
+        const newMessages = olderMessages.filter((m: any) => !existingIds.has(m.id));
+        return [...newMessages, ...prev];
+      });
+      
+      setHasOlderMessages(offset > 0);
+    } catch (error) {
+      console.error('Failed to load older messages:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load older messages',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoadingOlder(false);
     }
   };
 
@@ -1177,6 +1255,8 @@ export default function ReportQA() {
     setUploadedReports([]);
     setMessages([]);
     setConversationId(null);
+    setTotalMessageCount(0);
+    setHasOlderMessages(false);
     toast({
       title: 'New chat started',
       description: 'Upload reports or start chatting',
@@ -1796,7 +1876,25 @@ export default function ReportQA() {
           </CardHeader>
           <CardContent id="chat-main" className="flex-1 flex flex-col min-h-0 overflow-hidden px-2 sm:px-6">
             {/* Messages */}
-            <ScrollArea className="flex-1 pr-1 sm:pr-4 mb-2 sm:mb-4" aria-label="Chat messages" role="log" aria-live="polite">
+            <ScrollArea ref={scrollAreaRef} className="flex-1 pr-1 sm:pr-4 mb-2 sm:mb-4" aria-label="Chat messages" role="log" aria-live="polite">
+              {/* Load older messages button */}
+              {hasOlderMessages && messages.length > 0 && (
+                <div className="flex justify-center py-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={loadOlderMessages}
+                    disabled={isLoadingOlder}
+                    className="text-xs text-muted-foreground"
+                  >
+                    {isLoadingOlder ? (
+                      <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Loading older messages...</>
+                    ) : (
+                      <>↑ Load older messages ({totalMessageCount - messages.length} remaining)</>
+                    )}
+                  </Button>
+                </div>
+              )}
               {messages.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-center p-4 sm:p-8">
                   <div className="space-y-4">

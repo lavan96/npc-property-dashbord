@@ -975,7 +975,7 @@ No investment report has been uploaded. You are having an open conversation abou
             body: JSON.stringify({
               model: "sonar-pro",
               messages,
-              max_tokens: 4096,
+              max_tokens: 8192,
               stream: true,
               stream_options: { include_usage: true },
             }),
@@ -996,7 +996,7 @@ No investment report has been uploaded. You are having an open conversation abou
             body: JSON.stringify({
               model: "gpt-4.1",
               messages,
-              max_completion_tokens: 4096,
+              max_completion_tokens: 32768,
               stream: true,
               stream_options: { include_usage: true },
             }),
@@ -1013,7 +1013,7 @@ No investment report has been uploaded. You are having an open conversation abou
             body: JSON.stringify({
               model: "google/gemini-2.5-pro",
               messages,
-              max_tokens: 8192,
+              max_tokens: 65536,
               stream: true,
               stream_options: { include_usage: true },
             }),
@@ -1029,7 +1029,7 @@ No investment report has been uploaded. You are having an open conversation abou
             body: JSON.stringify({
               model: "openai/gpt-5.2",
               messages,
-              max_completion_tokens: 4096,
+              max_completion_tokens: 16384,
               stream: true,
               stream_options: { include_usage: true },
             }),
@@ -1095,7 +1095,7 @@ No investment report has been uploaded. You are having an open conversation abou
           body: JSON.stringify({
             model: "sonar-pro",
             messages,
-            max_tokens: 4096,
+            max_tokens: 8192,
           }),
         });
       } else if (modelProvider === 'openai-direct') {
@@ -1114,7 +1114,7 @@ No investment report has been uploaded. You are having an open conversation abou
           body: JSON.stringify({
             model: "gpt-4.1",
             messages,
-            max_completion_tokens: 4096,
+            max_completion_tokens: 32768,
           }),
         });
       } else if (modelProvider === 'gemini') {
@@ -1129,7 +1129,7 @@ No investment report has been uploaded. You are having an open conversation abou
           body: JSON.stringify({
             model: "google/gemini-2.5-pro",
             messages,
-            max_tokens: 8192,
+            max_tokens: 65536,
           }),
         });
       } else {
@@ -1143,7 +1143,7 @@ No investment report has been uploaded. You are having an open conversation abou
           body: JSON.stringify({
             model: "openai/gpt-5.2",
             messages,
-            max_completion_tokens: 4096,
+            max_completion_tokens: 16384,
           }),
         });
       }
@@ -1321,7 +1321,9 @@ No investment report has been uploaded. You are having an open conversation abou
 
     // Handle loading a specific conversation
     if (action === "load-conversation") {
-      const { conversationId } = body;
+      const { conversationId, limit, offset } = body;
+      const pageLimit = limit || 50;
+      const pageOffset = offset || 0;
       
       const { data: conversation, error: convError } = await supabase
         .from("report_qa_conversations")
@@ -1331,16 +1333,32 @@ No investment report has been uploaded. You are having an open conversation abou
 
       if (convError) throw convError;
 
+      // Get total message count
+      const { count: totalCount, error: countError } = await supabase
+        .from("report_qa_messages")
+        .select("*", { count: 'exact', head: true })
+        .eq("conversation_id", conversationId);
+
+      if (countError) throw countError;
+
+      // Fetch paginated messages (most recent first for offset, then reverse)
       const { data: messages, error: msgError } = await supabase
         .from("report_qa_messages")
         .select("*")
         .eq("conversation_id", conversationId)
-        .order("created_at", { ascending: true });
+        .order("created_at", { ascending: true })
+        .range(pageOffset, pageOffset + pageLimit - 1);
 
       if (msgError) throw msgError;
 
       return new Response(
-        JSON.stringify({ success: true, conversation, messages }),
+        JSON.stringify({ 
+          success: true, 
+          conversation, 
+          messages,
+          totalMessages: totalCount || 0,
+          hasMore: (pageOffset + pageLimit) < (totalCount || 0),
+        }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
