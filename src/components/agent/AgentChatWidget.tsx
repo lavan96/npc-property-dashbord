@@ -389,10 +389,14 @@ export function AgentChatWidget() {
                   {/* Quick actions */}
                   <div className="flex flex-wrap gap-1.5 mt-4 justify-center">
                     {[
+                      '☀️ Morning briefing',
                       '📊 Pipeline overview',
                       '⏰ Overdue reminders',
                       '📅 Upcoming appointments',
                       '🔍 Search a client',
+                      '💰 Commission forecast',
+                      '🧮 Calculate stamp duty',
+                      '✅ Active checklists',
                     ].map((prompt) => (
                       <button
                         key={prompt}
