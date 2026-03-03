@@ -29,6 +29,7 @@ import {
   Gauge,
   TrendingUp,
   Bell,
+  ClipboardList,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useWhiteLabel } from '@/contexts/WhiteLabelContext';
@@ -56,6 +57,7 @@ const navigationItems = [
   { title: 'Portfolio Reports', url: '/portfolio-reports', icon: FileText, moduleKey: 'portfolio_reports' },
   { title: 'Deal Pipeline', url: '/deal-pipeline', icon: TrendingUp, moduleKey: 'deal_pipeline' },
   { title: 'Reminders', url: '/reminders', icon: Bell, moduleKey: 'reminders' },
+  { title: 'Checklists', url: '/checklists', icon: ClipboardList, moduleKey: 'checklists' },
   { title: 'Charts', url: '/charts', icon: BarChart3, moduleKey: 'charts' },
   { title: 'User Guide', url: '/user-guide', icon: BookOpen, moduleKey: 'user_guide' },
 ];
