@@ -100,6 +100,82 @@ export type Database = {
           },
         ]
       }
+      agent_conversations: {
+        Row: {
+          created_at: string
+          id: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_conversations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_messages: {
+        Row: {
+          confirmation_status: string | null
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          requires_confirmation: boolean | null
+          role: string
+          tool_calls: Json | null
+          tool_results: Json | null
+        }
+        Insert: {
+          confirmation_status?: string | null
+          content?: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          requires_confirmation?: boolean | null
+          role: string
+          tool_calls?: Json | null
+          tool_results?: Json | null
+        }
+        Update: {
+          confirmation_status?: string | null
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          requires_confirmation?: boolean | null
+          role?: string
+          tool_calls?: Json | null
+          tool_results?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "agent_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       api_health_log: {
         Row: {
           created_at: string

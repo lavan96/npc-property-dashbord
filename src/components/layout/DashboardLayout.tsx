@@ -9,6 +9,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { Card, CardContent } from '@/components/ui/card';
 import { AlertTriangle } from 'lucide-react';
+import { AgentChatWidget } from '@/components/agent/AgentChatWidget';
 
 // Fallback for main content area errors
 const MainContentErrorFallback = () => (
@@ -100,6 +101,7 @@ export function DashboardLayout() {
         </main>
 
         <MobileNav />
+        <AgentChatWidget />
       </div>
     );
   }
@@ -125,6 +127,7 @@ export function DashboardLayout() {
           </main>
         </div>
       </div>
+      <AgentChatWidget />
     </SidebarProvider>
   );
 }
