@@ -818,10 +818,16 @@ async function executeGetClientActivities(sb: any, args: any) {
 }
 
 async function executeLogClientActivity(sb: any, args: any, userId: string) {
+  // Look up custom_users id to satisfy FK constraint
+  let createdBy: string | null = null;
+  if (userId && userId !== 'service_role') {
+    const { data: cu } = await sb.from('custom_users').select('id').eq('id', userId).maybeSingle();
+    if (cu) createdBy = cu.id;
+  }
   const { error } = await sb.from('client_activities').insert({
     client_id: args.client_id, title: args.title,
     description: args.description || null, activity_type: args.activity_type,
-    created_by: userId !== 'service_role' ? userId : null,
+    created_by: createdBy,
   });
   if (error) return { error: error.message };
   return { success: true, message: `✅ Activity "${args.title}" logged.` };
@@ -988,9 +994,17 @@ async function executeGetBuildProgress(sb: any, args: any) {
 
 async function executeUpdateBuildPayment(sb: any, args: any) {
   const updates: any = { [args.field]: args.value };
-  if (args.value && args.field.includes('date') === false) {
-    const dateField = args.field + '_date';
-    updates[dateField] = new Date().toISOString();
+  // Map boolean fields to their corresponding date columns
+  const dateFieldMap: Record<string, string> = {
+    builder_invoice_received: 'builder_invoice_date',
+    submitted_to_lender: 'submitted_to_lender_date',
+    funds_released: 'funds_released_date',
+    paid_to_builder: 'paid_to_builder_date',
+  };
+  if (args.value && dateFieldMap[args.field]) {
+    updates[dateFieldMap[args.field]] = new Date().toISOString();
+  } else if (!args.value && dateFieldMap[args.field]) {
+    updates[dateFieldMap[args.field]] = null;
   }
   const { error } = await sb.from('build_progress_payments').update(updates).eq('id', args.payment_id);
   if (error) return { error: error.message };
@@ -1052,10 +1066,16 @@ async function executeGetOverdueReminders(sb: any) {
 }
 
 async function executeCreateReminder(sb: any, args: any, userId: string) {
+  // Look up custom_users id to satisfy FK constraint on created_by
+  let createdBy: string | null = null;
+  if (userId && userId !== 'service_role') {
+    const { data: cu } = await sb.from('custom_users').select('id').eq('id', userId).maybeSingle();
+    if (cu) createdBy = cu.id;
+  }
   const { error } = await sb.from('client_reminders').insert({
     client_id: args.client_id, title: args.title, description: args.description || null,
     due_date: args.due_date, priority: args.priority || 'medium', status: 'pending',
-    reminder_type: args.reminder_type || 'task', created_by: userId !== 'service_role' ? userId : null,
+    reminder_type: args.reminder_type || 'task', created_by: createdBy,
   });
   if (error) return { error: error.message };
   return { success: true, message: `✅ Reminder "${args.title}" created.` };
@@ -1449,6 +1469,7 @@ async function executeCreateChecklistInstance(sb: any, args: any, userId: string
   const { data: template } = await sb.from('checklist_templates').select('id, name, description, icon').eq('id', args.template_id).single();
   if (!template) return { error: "Template not found." };
   // Create instance
+  // generated_by is a text field (no FK), safe to store userId directly
   const { data: instance, error: insError } = await sb.from('checklist_instances').insert({
     template_id: template.id, name: template.name, description: template.description,
     icon: template.icon, status: 'active', progress_percent: 0, generated_by: userId !== 'service_role' ? userId : null,
