@@ -1,7 +1,9 @@
 import { useState, useCallback } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
@@ -236,21 +238,40 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
         {/* ── Step 2: Preview ── */}
         {step === 'preview' && parsedTemplate && (
           <div className="space-y-4">
-            {/* Summary */}
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-              <span className="text-3xl">{parsedTemplate.icon}</span>
-              <div>
-                <h3 className="font-semibold">{parsedTemplate.name}</h3>
-                {parsedTemplate.description && (
-                  <p className="text-xs text-muted-foreground">{parsedTemplate.description}</p>
-                )}
-                <div className="flex gap-2 mt-1">
-                  <Badge variant="secondary" className="text-[10px]">{parsedTemplate.sections.length} sections</Badge>
-                  <Badge variant="secondary" className="text-[10px]">{totalItems} items</Badge>
-                  {preCheckedItems > 0 && (
-                    <Badge variant="outline" className="text-[10px]">{preCheckedItems} pre-checked</Badge>
-                  )}
+            {/* Editable name & icon */}
+            <div className="space-y-3 p-3 rounded-lg bg-muted/50">
+              <div className="flex gap-3">
+                <div className="w-20">
+                  <Label className="text-xs text-muted-foreground">Icon</Label>
+                  <Input
+                    value={parsedTemplate.icon}
+                    onChange={e => setParsedTemplate({ ...parsedTemplate, icon: e.target.value })}
+                    className="text-center text-xl"
+                  />
                 </div>
+                <div className="flex-1">
+                  <Label className="text-xs text-muted-foreground">Template Name</Label>
+                  <Input
+                    value={parsedTemplate.name}
+                    onChange={e => setParsedTemplate({ ...parsedTemplate, name: e.target.value })}
+                    placeholder="e.g. Daily Operations Checklist"
+                  />
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Description (optional)</Label>
+                <Input
+                  value={parsedTemplate.description || ''}
+                  onChange={e => setParsedTemplate({ ...parsedTemplate, description: e.target.value || undefined })}
+                  placeholder="What is this checklist for?"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Badge variant="secondary" className="text-[10px]">{parsedTemplate.sections.length} sections</Badge>
+                <Badge variant="secondary" className="text-[10px]">{totalItems} items</Badge>
+                {preCheckedItems > 0 && (
+                  <Badge variant="outline" className="text-[10px]">{preCheckedItems} pre-checked</Badge>
+                )}
               </div>
             </div>
 
