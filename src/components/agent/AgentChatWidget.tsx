@@ -17,6 +17,10 @@ interface Conversation {
   title: string;
   created_at: string;
   updated_at: string;
+  shared?: boolean;
+  shared_by?: string;
+  permission?: string;
+  handoff_note?: string;
 }
 
 interface Message {
@@ -53,7 +57,10 @@ export function AgentChatWidget() {
     setLoadingConvos(true);
     try {
       const { data } = await invokeSecureFunction('ai-dashboard-agent', { action: 'list-conversations' });
-      if (data?.conversations) setConversations(data.conversations);
+      if (data?.conversations) {
+        const shared = (data.shared_conversations || []).map((c: any) => ({ ...c, shared: true }));
+        setConversations([...data.conversations, ...shared]);
+      }
     } catch (err) {
       console.error('Failed to load conversations:', err);
     }
@@ -340,7 +347,14 @@ export function AgentChatWidget() {
                           )}
                         >
                           <div className="flex-1 min-w-0">
-                            <span className="truncate block text-xs font-medium">{conv.title}</span>
+                            <div className="flex items-center gap-1">
+                              <span className="truncate block text-xs font-medium">{conv.title}</span>
+                              {conv.shared && (
+                                <span className="shrink-0 text-[9px] px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                                  🤝 {conv.shared_by}
+                                </span>
+                              )}
+                            </div>
                             <span className="text-[10px] text-muted-foreground">
                               {new Date(conv.updated_at).toLocaleDateString()}
                             </span>

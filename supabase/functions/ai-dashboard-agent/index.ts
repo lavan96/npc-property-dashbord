@@ -1076,6 +1076,112 @@ const TOOLS: any[] = [
     },
   },
 
+  // ─── COLLABORATION & SHARING ───
+  {
+    type: "function",
+    function: {
+      name: "share_conversation",
+      description: "Share the current conversation with another team member. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          target_user_name: { type: "string", description: "Name or email of user to share with" },
+          permission: { type: "string", enum: ["view", "collaborate", "admin"], description: "Permission level (default: view)" },
+          handoff_note: { type: "string", description: "Optional note for the recipient about what this conversation covers" },
+          handoff_type: { type: "string", enum: ["transfer", "collaborate", "escalate", "return"], description: "Type of handoff (default: collaborate)" },
+        },
+        required: ["target_user_name"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_shared_conversations",
+      description: "List conversations shared with the current user by other team members.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_conversation_collaborators",
+      description: "See who has access to the current conversation and their permission levels.",
+      parameters: { type: "object", properties: { conversation_id: { type: "string", description: "Conversation UUID" } }, required: ["conversation_id"] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "revoke_conversation_share",
+      description: "Remove a user's access to a shared conversation. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          conversation_id: { type: "string", description: "Conversation UUID" },
+          user_id: { type: "string", description: "UUID of user to remove" },
+        },
+        required: ["conversation_id", "user_id"],
+      },
+    },
+  },
+
+  // ─── USER PREFERENCES / MEMORY ───
+  {
+    type: "function",
+    function: {
+      name: "get_user_preferences",
+      description: "Retrieve stored user preferences (preferred mailbox, default report format, favourite clients, etc.).",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "set_user_preference",
+      description: "Store a user preference for future sessions. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          key: { type: "string", description: "Preference key (e.g. preferred_mailbox, default_report_format, favorite_clients)" },
+          value: { type: "string", description: "Preference value (JSON string for complex values)" },
+        },
+        required: ["key", "value"],
+      },
+    },
+  },
+
+  // ─── AUDIT TRAIL ───
+  {
+    type: "function",
+    function: {
+      name: "get_audit_trail",
+      description: "View the audit trail of all agent actions performed by the current user or for a specific client.",
+      parameters: {
+        type: "object",
+        properties: {
+          client_id: { type: "string", description: "Filter by client UUID (optional)" },
+          limit: { type: "number", description: "Max records (default 20)" },
+          tool_name: { type: "string", description: "Filter by specific tool name (optional)" },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "undo_action",
+      description: "Undo/rollback a previously executed agent action using its audit log ID. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          action_id: { type: "string", description: "UUID of the action from the audit trail" },
+        },
+        required: ["action_id"],
+      },
+    },
+  },
+
   // ─── DEAL STAGE COMPLETION ───
   {
     type: "function",
@@ -1123,6 +1229,9 @@ const WRITE_TOOLS = [
   'delete_checklist_instance',
   'delete_client_file',
   'complete_deal_stage',
+  // Batch 1 write tools
+  'share_conversation', 'revoke_conversation_share',
+  'set_user_preference', 'undo_action',
 ];
 
 // ============================================================
@@ -2634,6 +2743,217 @@ function executeCalculateEquityPosition(args: any) {
 }
 
 // ============================================================
+// ============================================================
+//  BATCH 1 EXECUTORS — Collaboration, Preferences, Audit Trail
+// ============================================================
+
+async function executeShareConversation(sb: any, args: any, userId: string) {
+  // Resolve target user by name/email
+  const q = `%${args.target_user_name}%`;
+  const { data: users } = await sb.from('custom_users')
+    .select('id, username, email')
+    .or(`username.ilike.${q},email.ilike.${q}`)
+    .limit(5);
+  if (!users?.length) return { error: `No user found matching "${args.target_user_name}".` };
+  if (users.length > 1) return { error: `Multiple users match. Please be more specific: ${users.map((u: any) => `${u.username} (${u.email})`).join(', ')}` };
+  const targetUser = users[0];
+  if (targetUser.id === userId) return { error: 'You cannot share a conversation with yourself.' };
+
+  // Get the current conversation (from the chat context — we need the conversation_id from args or context)
+  const convId = args.conversation_id;
+  if (!convId) return { error: 'No conversation_id provided. This tool must be used within an active conversation.' };
+
+  const { error: shareErr } = await sb.from('agent_conversation_shares').upsert({
+    conversation_id: convId,
+    shared_by: userId,
+    shared_with: targetUser.id,
+    permission: args.permission || 'view',
+    handoff_note: args.handoff_note || null,
+    is_active: true,
+  }, { onConflict: 'conversation_id,shared_with' });
+  if (shareErr) return { error: shareErr.message };
+
+  // Log the handoff
+  await sb.from('agent_conversation_handoffs').insert({
+    conversation_id: convId,
+    from_user_id: userId,
+    to_user_id: targetUser.id,
+    handoff_type: args.handoff_type || 'collaborate',
+    note: args.handoff_note || null,
+  });
+
+  return { success: true, message: `✅ Conversation shared with **${targetUser.username}** (${args.permission || 'view'} access).${args.handoff_note ? ` Note: "${args.handoff_note}"` : ''}` };
+}
+
+async function executeGetSharedConversations(sb: any, userId: string) {
+  const { data, error } = await sb.from('agent_conversation_shares')
+    .select('id, conversation_id, shared_by, permission, handoff_note, created_at, agent_conversations(title, updated_at), custom_users!agent_conversation_shares_shared_by_fkey(username)')
+    .eq('shared_with', userId)
+    .eq('is_active', true)
+    .order('created_at', { ascending: false })
+    .limit(20);
+  if (error) return { error: error.message };
+  if (!data?.length) return { message: 'No conversations have been shared with you.' };
+  return data.map((s: any) => ({
+    share_id: s.id,
+    conversation_id: s.conversation_id,
+    title: s.agent_conversations?.title || 'Untitled',
+    shared_by: s.custom_users?.username || 'Unknown',
+    permission: s.permission,
+    handoff_note: s.handoff_note,
+    shared_at: s.created_at,
+    last_updated: s.agent_conversations?.updated_at,
+  }));
+}
+
+async function executeGetConversationCollaborators(sb: any, args: any) {
+  const { data, error } = await sb.from('agent_conversation_shares')
+    .select('id, shared_with, permission, handoff_note, created_at, custom_users!agent_conversation_shares_shared_with_fkey(username, email)')
+    .eq('conversation_id', args.conversation_id)
+    .eq('is_active', true);
+  if (error) return { error: error.message };
+  if (!data?.length) return { message: 'This conversation is not shared with anyone.' };
+
+  // Also get handoff history
+  const { data: handoffs } = await sb.from('agent_conversation_handoffs')
+    .select('from_user_id, to_user_id, handoff_type, note, created_at')
+    .eq('conversation_id', args.conversation_id)
+    .order('created_at', { ascending: false })
+    .limit(10);
+
+  return {
+    collaborators: data.map((s: any) => ({
+      user_id: s.shared_with,
+      username: s.custom_users?.username,
+      email: s.custom_users?.email,
+      permission: s.permission,
+      note: s.handoff_note,
+      shared_at: s.created_at,
+    })),
+    handoff_history: handoffs || [],
+  };
+}
+
+async function executeRevokeConversationShare(sb: any, args: any, userId: string) {
+  const { error } = await sb.from('agent_conversation_shares')
+    .update({ is_active: false })
+    .eq('conversation_id', args.conversation_id)
+    .eq('shared_with', args.user_id);
+  if (error) return { error: error.message };
+  return { success: true, message: '✅ Access revoked successfully.' };
+}
+
+async function executeGetUserPreferences(sb: any, userId: string) {
+  const { data, error } = await sb.from('agent_user_preferences')
+    .select('preference_key, preference_value, updated_at')
+    .eq('user_id', userId);
+  if (error) return { error: error.message };
+  if (!data?.length) return { message: 'No preferences saved yet. You can ask me to remember things like your preferred mailbox, report format, or favorite clients.' };
+  const prefs: Record<string, any> = {};
+  for (const p of data) prefs[p.preference_key] = { value: p.preference_value, updated: p.updated_at };
+  return prefs;
+}
+
+async function executeSetUserPreference(sb: any, args: any, userId: string) {
+  let value: any;
+  try { value = JSON.parse(args.value); } catch { value = args.value; }
+  const { error } = await sb.from('agent_user_preferences').upsert({
+    user_id: userId,
+    preference_key: args.key,
+    preference_value: typeof value === 'object' ? value : { value },
+  }, { onConflict: 'user_id,preference_key' });
+  if (error) return { error: error.message };
+  return { success: true, message: `✅ Preference "${args.key}" saved. I'll remember this for future conversations.` };
+}
+
+async function executeGetAuditTrail(sb: any, args: any, userId: string) {
+  let query = sb.from('agent_action_log')
+    .select('id, tool_name, tool_arguments, affected_table, affected_record_id, affected_client_id, is_rolled_back, confidence_score, status, created_at')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(args.limit || 20);
+  if (args.client_id) query = query.eq('affected_client_id', args.client_id);
+  if (args.tool_name) query = query.eq('tool_name', args.tool_name);
+  const { data, error } = await query;
+  if (error) return { error: error.message };
+  if (!data?.length) return { message: 'No actions found in the audit trail.' };
+  return data.map((a: any) => ({
+    id: a.id,
+    tool: a.tool_name,
+    args_summary: JSON.stringify(a.tool_arguments || {}).substring(0, 150),
+    table: a.affected_table,
+    record_id: a.affected_record_id,
+    rolled_back: a.is_rolled_back,
+    confidence: a.confidence_score,
+    status: a.status,
+    when: a.created_at,
+  }));
+}
+
+async function executeUndoAction(sb: any, args: any, userId: string) {
+  const { data: action, error } = await sb.from('agent_action_log')
+    .select('*')
+    .eq('id', args.action_id)
+    .eq('user_id', userId)
+    .single();
+  if (error || !action) return { error: 'Action not found or you do not have permission to undo it.' };
+  if (action.is_rolled_back) return { error: 'This action has already been rolled back.' };
+  if (!action.rollback_data && !action.rollback_sql) return { error: 'This action does not support rollback (no rollback data was captured).' };
+
+  // Execute rollback
+  if (action.rollback_data && action.affected_table && action.affected_record_id) {
+    const { error: rbErr } = await sb.from(action.affected_table)
+      .update(action.rollback_data)
+      .eq('id', action.affected_record_id);
+    if (rbErr) return { error: `Rollback failed: ${rbErr.message}` };
+  }
+
+  // Mark as rolled back
+  await sb.from('agent_action_log').update({
+    is_rolled_back: true,
+    rolled_back_at: new Date().toISOString(),
+    rolled_back_by: userId,
+    status: 'rolled_back',
+  }).eq('id', args.action_id);
+
+  return { success: true, message: `✅ Action "${action.tool_name}" has been rolled back successfully.` };
+}
+
+// Helper: Log an action to the audit trail
+async function logAgentAction(sb: any, params: {
+  conversationId?: string;
+  userId: string;
+  toolName: string;
+  toolArgs: any;
+  toolResult: any;
+  affectedTable?: string;
+  affectedRecordId?: string;
+  affectedClientId?: string;
+  rollbackData?: any;
+  confidenceScore?: number;
+  executionTimeMs?: number;
+  status?: string;
+}) {
+  try {
+    await sb.from('agent_action_log').insert({
+      conversation_id: params.conversationId || null,
+      user_id: params.userId,
+      tool_name: params.toolName,
+      tool_arguments: params.toolArgs,
+      tool_result: typeof params.toolResult === 'string' ? { raw: params.toolResult.substring(0, 2000) } : params.toolResult,
+      affected_table: params.affectedTable || null,
+      affected_record_id: params.affectedRecordId || null,
+      affected_client_id: params.affectedClientId || null,
+      rollback_data: params.rollbackData || null,
+      confidence_score: params.confidenceScore ?? null,
+      execution_time_ms: params.executionTimeMs || null,
+      status: params.status || 'success',
+    });
+  } catch (err) {
+    console.error('[ai-dashboard-agent] Failed to log action:', err);
+  }
+}
+
 //  TOOL DISPATCHER
 // ============================================================
 
@@ -2769,6 +3089,17 @@ async function executeTool(sb: any, name: string, args: any, userId: string): Pr
     case 'complete_deal_stage': return executeCompleteDealStage(sb, args);
     // New tools — Email stats
     case 'get_email_stats': return executeGetEmailStats(sb);
+    // Batch 1 — Collaboration & Sharing
+    case 'share_conversation': return executeShareConversation(sb, args, userId);
+    case 'get_shared_conversations': return executeGetSharedConversations(sb, userId);
+    case 'get_conversation_collaborators': return executeGetConversationCollaborators(sb, args);
+    case 'revoke_conversation_share': return executeRevokeConversationShare(sb, args, userId);
+    // Batch 1 — User Preferences
+    case 'get_user_preferences': return executeGetUserPreferences(sb, userId);
+    case 'set_user_preference': return executeSetUserPreference(sb, args, userId);
+    // Batch 1 — Audit Trail
+    case 'get_audit_trail': return executeGetAuditTrail(sb, args, userId);
+    case 'undo_action': return executeUndoAction(sb, args, userId);
 
     default: return { error: `Unknown tool: ${name}` };
   }
@@ -2780,7 +3111,7 @@ async function executeTool(sb: any, name: string, args: any, userId: string): Pr
 
 const SYSTEM_PROMPT = `You are Aurixa, the AI operating assistant for the NPC Property Dashboard — a property investment and mortgage brokerage management platform used by Naidu Property Consulting Services.
 
-You have access to 105 specialized tools across 16 domains:
+You have access to 115+ specialized tools across 19 domains:
 
 📋 CLIENT MANAGEMENT — Search/view/update/create/delete clients, view co-borrowers, log activities, filter by pipeline status, find clients needing follow-up.
 💰 DEALS & PIPELINE — View/filter/create/delete deals by stage/risk, settlement countdowns, stale deal detection, clawback monitoring, commission forecasting, build progress tracking, stage completion.
@@ -2798,6 +3129,9 @@ You have access to 105 specialized tools across 16 domains:
 🧮 CALCULATORS — Stamp duty, LMI, loan repayments, rental yield, equity position.
 🤖 AUTOMATION — Auto-report switches (view/toggle), generation logs, bulk generation status.
 🏦 LENDING — Cached bank rates, multi-lender rate comparison.
+🤝 COLLABORATION — Share conversations with team members, view shared chats, manage collaborators, handoff tracking.
+🧠 PREFERENCES — Store and retrieve user preferences (preferred mailbox, default formats, favorite clients).
+📜 AUDIT TRAIL — View all agent actions performed, undo/rollback previous actions.
 
 CRITICAL RULES:
 1. When the user asks about a client, ALWAYS use search_clients first to find their ID, then use that ID for subsequent lookups.
@@ -2889,10 +3223,28 @@ async function callAI(messages: any[], supabase: any, userId: string): Promise<{
 // ============================================================
 
 async function handleListConversations(sb: any, userId: string, cors: Record<string, string>) {
-  const { data, error } = await sb.from('agent_conversations').select('id, title, created_at, updated_at')
+  // Fetch own conversations
+  const { data: own, error } = await sb.from('agent_conversations').select('id, title, created_at, updated_at')
     .eq('user_id', userId).order('updated_at', { ascending: false }).limit(50);
   if (error) throw error;
-  return new Response(JSON.stringify({ success: true, conversations: data || [] }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+
+  // Fetch conversations shared with this user
+  const { data: shared } = await sb.from('agent_conversation_shares')
+    .select('conversation_id, permission, handoff_note, agent_conversations(id, title, created_at, updated_at), custom_users!agent_conversation_shares_shared_by_fkey(username)')
+    .eq('shared_with', userId)
+    .eq('is_active', true)
+    .order('created_at', { ascending: false })
+    .limit(20);
+
+  const sharedConvos = (shared || []).map((s: any) => ({
+    ...s.agent_conversations,
+    shared: true,
+    shared_by: s.custom_users?.username || 'Unknown',
+    permission: s.permission,
+    handoff_note: s.handoff_note,
+  }));
+
+  return new Response(JSON.stringify({ success: true, conversations: own || [], shared_conversations: sharedConvos }), { headers: { ...cors, 'Content-Type': 'application/json' } });
 }
 
 async function handleCreateConversation(sb: any, userId: string, title: string, cors: Record<string, string>) {
@@ -2952,14 +3304,21 @@ async function handleChat(sb: any, body: any, userId: string, username: string, 
     return new Response(JSON.stringify({ error: 'conversation_id and message are required' }), { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } });
   }
 
-  await sb.from('agent_messages').insert({ conversation_id, role: 'user', content: message });
+  await sb.from('agent_messages').insert({ conversation_id, role: 'user', content: message, sent_by: userId });
+
+  // Load user preferences to inject into context
+  const { data: prefs } = await sb.from('agent_user_preferences')
+    .select('preference_key, preference_value').eq('user_id', userId);
+  const prefsContext = prefs?.length
+    ? `\n\nUser Preferences:\n${prefs.map((p: any) => `- ${p.preference_key}: ${JSON.stringify(p.preference_value)}`).join('\n')}`
+    : '';
 
   const { data: history } = await sb.from('agent_messages')
     .select('role, content, tool_calls, tool_results')
     .eq('conversation_id', conversation_id).order('created_at', { ascending: true }).limit(30);
 
   const messages: any[] = [
-    { role: 'system', content: SYSTEM_PROMPT + `\n\nCurrent user: ${username} (ID: ${userId})\nCurrent time: ${new Date().toISOString()}` },
+    { role: 'system', content: SYSTEM_PROMPT + `\n\nCurrent user: ${username} (ID: ${userId})\nCurrent conversation_id: ${conversation_id}\nCurrent time: ${new Date().toISOString()}${prefsContext}` },
   ];
   for (const msg of (history || [])) {
     if (msg.role === 'user' || msg.role === 'assistant') {
