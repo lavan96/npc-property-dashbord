@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { MessageSquare, X, Plus, Trash2, Send, Check, XCircle, Loader2, ChevronLeft, Search, Pencil, RotateCcw, Sparkles, Diamond, BarChart3, Calendar, Zap, TrendingUp, Target, FileDown, Brain, Bell, Settings, Users, Share2, ClipboardList, Clock, Shield, ChevronRight } from 'lucide-react';
+import { MessageSquare, X, Plus, Trash2, Send, Check, XCircle, Loader2, ChevronLeft, Search, Pencil, RotateCcw, Sparkles, Diamond, BarChart3, Calendar, Zap, TrendingUp, Target, FileDown, Brain, Bell, Settings, Users, Share2, ClipboardList, Clock, Shield, ChevronRight, Info, Play, HelpCircle, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
@@ -329,8 +329,8 @@ export function AgentChatWidget() {
               <Share2 className={cn("h-4 w-4", panelView === 'share' && "text-primary")} />
             </Button>
           )}
-          {/* Settings */}
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setPanelView(panelView === 'settings' ? 'chat' : 'settings'); if (panelView !== 'settings') loadSettingsData('playbooks'); }} title="Settings">
+          {/* Settings - Playbooks, Schedules & Audit */}
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setPanelView(panelView === 'settings' ? 'chat' : 'settings'); if (panelView !== 'settings') loadSettingsData('playbooks'); }} title="Playbooks, Schedules & Audit Log">
             <Settings className={cn("h-4 w-4", panelView === 'settings' && "text-primary")} />
           </Button>
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={createConversation} title="New conversation">
@@ -389,13 +389,17 @@ export function AgentChatWidget() {
         {/* ═══ SETTINGS PANEL ═══ */}
         {panelView === 'settings' && (
           <div className="w-full flex flex-col">
+            {/* Tabs with descriptions */}
             <div className="flex border-b">
-              {([['playbooks', '📋', 'Playbooks'], ['tasks', '⏰', 'Tasks'], ['audit', '📜', 'Audit']] as const).map(([tab, icon, label]) => (
+              {([['playbooks', '📋', 'Playbooks'], ['tasks', '⏰', 'Schedules'], ['audit', '📜', 'Audit Log']] as const).map(([tab, icon, label]) => (
                 <button key={tab} onClick={() => { setSettingsTab(tab); loadSettingsData(tab); }}
-                  className={cn("flex-1 flex items-center justify-center gap-1 py-2.5 text-xs font-medium border-b-2 transition-colors",
+                  className={cn("flex-1 flex flex-col items-center gap-0.5 py-2.5 text-xs font-medium border-b-2 transition-colors",
                     settingsTab === tab ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
                   )}>
-                  <span>{icon}</span> {label}
+                  <span className="flex items-center gap-1"><span>{icon}</span> {label}</span>
+                  <span className="text-[9px] font-normal opacity-70">
+                    {tab === 'playbooks' ? 'Saved workflows' : tab === 'tasks' ? 'Auto-run timers' : 'Action history'}
+                  </span>
                 </button>
               ))}
             </div>
@@ -405,10 +409,36 @@ export function AgentChatWidget() {
               ) : settingsTab === 'playbooks' ? (
                 <div className="space-y-2">
                   {(settingsData.playbooks || []).length === 0 ? (
-                    <div className="text-center py-6 text-muted-foreground">
-                      <ClipboardList className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                      <p className="text-xs">No playbooks yet</p>
-                      <p className="text-[10px] mt-1">Ask Aurixa to "create a playbook for new client onboarding"</p>
+                    <div className="text-center py-4">
+                      <div className="mx-auto w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-3">
+                        <ClipboardList className="h-7 w-7 text-primary" />
+                      </div>
+                      <p className="text-sm font-semibold text-foreground">Playbooks</p>
+                      <p className="text-xs text-muted-foreground mt-1 max-w-[260px] mx-auto">
+                        Save multi-step workflows as reusable recipes. Run them anytime with one click instead of retyping instructions.
+                      </p>
+                      <div className="mt-3 space-y-1.5 text-left max-w-[240px] mx-auto">
+                        <div className="flex items-start gap-2 text-[11px] text-muted-foreground">
+                          <span className="text-primary mt-0.5">1.</span>
+                          <span>Ask Oryxa to perform a multi-step task</span>
+                        </div>
+                        <div className="flex items-start gap-2 text-[11px] text-muted-foreground">
+                          <span className="text-primary mt-0.5">2.</span>
+                          <span>Say <span className="font-medium text-foreground">"Save this as a playbook"</span></span>
+                        </div>
+                        <div className="flex items-start gap-2 text-[11px] text-muted-foreground">
+                          <span className="text-primary mt-0.5">3.</span>
+                          <span>Re-run it anytime from here or by name</span>
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-4 text-xs gap-1.5"
+                        onClick={() => { setPanelView('chat'); setShowSidebar(false); setInput('Create a playbook for '); }}
+                      >
+                        <Plus className="h-3 w-3" /> Create Your First Playbook
+                      </Button>
                     </div>
                   ) : (settingsData.playbooks || []).map((pb: any) => (
                     <div key={pb.id} className="rounded-lg border border-border/30 p-3 hover:border-primary/20 transition-colors">
@@ -428,10 +458,34 @@ export function AgentChatWidget() {
               ) : settingsTab === 'tasks' ? (
                 <div className="space-y-2">
                   {(settingsData.tasks || []).length === 0 ? (
-                    <div className="text-center py-6 text-muted-foreground">
-                      <Clock className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                      <p className="text-xs">No scheduled tasks</p>
-                      <p className="text-[10px] mt-1">Ask Aurixa to "schedule a morning briefing every weekday at 8am"</p>
+                    <div className="text-center py-4">
+                      <div className="mx-auto w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-3">
+                        <Clock className="h-7 w-7 text-primary" />
+                      </div>
+                      <p className="text-sm font-semibold text-foreground">Scheduled Tasks</p>
+                      <p className="text-xs text-muted-foreground mt-1 max-w-[260px] mx-auto">
+                        Set up automated timers so Oryxa runs playbooks or tools on a recurring schedule — like a cron job for your dashboard.
+                      </p>
+                      <div className="mt-3 space-y-1.5 text-left max-w-[260px] mx-auto">
+                        <p className="text-[10px] font-medium text-foreground mb-1">Example commands:</p>
+                        {[
+                          '"Schedule a morning briefing every weekday at 8am"',
+                          '"Run my weekly digest playbook every Friday"',
+                          '"Send me overdue reminders every day at 9am"',
+                        ].map((example, i) => (
+                          <button
+                            key={i}
+                            onClick={() => { setPanelView('chat'); setShowSidebar(false); setInput(example.replace(/"/g, '')); }}
+                            className="flex items-center gap-2 w-full text-left text-[11px] text-muted-foreground hover:text-foreground rounded-md px-2 py-1.5 hover:bg-muted/50 transition-colors"
+                          >
+                            <ArrowRight className="h-3 w-3 text-primary shrink-0" />
+                            <span className="italic">{example}</span>
+                          </button>
+                        ))}
+                      </div>
+                      <p className="mt-3 text-[10px] text-muted-foreground flex items-center justify-center gap-1">
+                        <Shield className="h-3 w-3" /> Write actions still require your approval
+                      </p>
                     </div>
                   ) : (settingsData.tasks || []).map((task: any) => (
                     <div key={task.id} className="rounded-lg border border-border/30 p-3">
@@ -450,9 +504,28 @@ export function AgentChatWidget() {
               ) : (
                 <div className="space-y-2">
                   {(settingsData.actions || []).length === 0 ? (
-                    <div className="text-center py-6 text-muted-foreground">
-                      <Shield className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                      <p className="text-xs">No recent actions</p>
+                    <div className="text-center py-4">
+                      <div className="mx-auto w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-3">
+                        <Shield className="h-7 w-7 text-primary" />
+                      </div>
+                      <p className="text-sm font-semibold text-foreground">Audit Log</p>
+                      <p className="text-xs text-muted-foreground mt-1 max-w-[260px] mx-auto">
+                        Every action Oryxa performs is logged here with full details. You can review what happened and undo write actions within 30 seconds.
+                      </p>
+                      <div className="mt-3 rounded-lg border border-border/30 p-2.5 max-w-[240px] mx-auto">
+                        <p className="text-[10px] font-medium text-foreground mb-1.5">What gets logged:</p>
+                        <div className="space-y-1">
+                          {['Client updates & creation', 'Email sends', 'Report generation', 'Reminder changes'].map((item) => (
+                            <div key={item} className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                              <Check className="h-3 w-3 text-primary shrink-0" />
+                              <span>{item}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <p className="mt-3 text-[10px] text-muted-foreground">
+                        Actions will appear here as you use the agent.
+                      </p>
                     </div>
                   ) : (settingsData.actions || []).map((action: any) => (
                     <div key={action.id} className="rounded-lg border border-border/30 p-2.5">
