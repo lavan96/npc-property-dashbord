@@ -733,6 +733,355 @@ const TOOLS: any[] = [
       },
     },
   },
+
+  // ═══════════════════════════════════════════════════════════
+  //  NEW TOOLS — Batch expansion (34 tools)
+  // ═══════════════════════════════════════════════════════════
+
+  // ─── CLIENT CREATION & LIFECYCLE ───
+  {
+    type: "function",
+    function: {
+      name: "create_client",
+      description: "Create a new client record with basic info (name, email, phone). REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          first_name: { type: "string", description: "First name" },
+          surname: { type: "string", description: "Surname" },
+          email: { type: "string", description: "Primary email" },
+          mobile: { type: "string", description: "Primary mobile" },
+          pipeline_status: { type: "string", description: "Pipeline status (default: lead)" },
+        },
+        required: ["first_name", "surname"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "delete_client",
+      description: "Permanently delete a client and all associated records. REQUIRES USER CONFIRMATION.",
+      parameters: { type: "object", properties: { client_id: { type: "string", description: "UUID of the client" } }, required: ["client_id"] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_clients_by_pipeline_status",
+      description: "Filter clients by pipeline status (lead, engaged, pre_approved, settled, etc.).",
+      parameters: { type: "object", properties: { status: { type: "string", description: "Pipeline status value" }, limit: { type: "number", description: "Max results (default 30)" } }, required: ["status"] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_clients_needing_follow_up",
+      description: "Find clients with overdue follow-up dates or no recent activity in N days.",
+      parameters: { type: "object", properties: { days_inactive: { type: "number", description: "Days without activity (default 14)" } } },
+    },
+  },
+
+  // ─── CLIENT NOTES CRUD ───
+  {
+    type: "function",
+    function: {
+      name: "get_client_notes",
+      description: "Fetch all notes for a client (distinct from activity log).",
+      parameters: { type: "object", properties: { client_id: { type: "string", description: "UUID of the client" }, limit: { type: "number", description: "Max notes (default 20)" } }, required: ["client_id"] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_client_note",
+      description: "Add a note to a client record. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          client_id: { type: "string", description: "UUID of the client" },
+          content: { type: "string", description: "Note content" },
+          note_type: { type: "string", description: "Type: general, call, meeting, strategy (default: general)" },
+        },
+        required: ["client_id", "content"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_client_note",
+      description: "Edit an existing client note. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          note_id: { type: "string", description: "UUID of the note" },
+          content: { type: "string", description: "Updated content" },
+        },
+        required: ["note_id", "content"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "delete_client_note",
+      description: "Remove a client note. REQUIRES USER CONFIRMATION.",
+      parameters: { type: "object", properties: { note_id: { type: "string", description: "UUID of the note" } }, required: ["note_id"] },
+    },
+  },
+
+  // ─── CLIENT SCORES & REVIEWS ───
+  {
+    type: "function",
+    function: {
+      name: "get_client_score",
+      description: "Fetch client scoring/readiness data: overall score, risk level, cash flow, growth potential, portfolio health.",
+      parameters: { type: "object", properties: { client_id: { type: "string", description: "UUID of the client" } }, required: ["client_id"] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_portfolio_review_details",
+      description: "Fetch full content of a specific portfolio review/analysis report.",
+      parameters: { type: "object", properties: { review_id: { type: "string", description: "UUID of the portfolio review" } }, required: ["review_id"] },
+    },
+  },
+
+  // ─── DEAL CREATION & DELETION ───
+  {
+    type: "function",
+    function: {
+      name: "create_deal",
+      description: "Create a new deal for a client (existing_property, house_and_land, or refinance). REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          client_id: { type: "string", description: "UUID of the client" },
+          deal_type: { type: "string", enum: ["existing_property", "house_and_land", "refinance"], description: "Type of deal" },
+          property_address: { type: "string", description: "Property address (optional)" },
+          loan_amount: { type: "number", description: "Loan amount (optional)" },
+        },
+        required: ["client_id", "deal_type"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "delete_deal",
+      description: "Remove a deal and its associated stages/payments. REQUIRES USER CONFIRMATION.",
+      parameters: { type: "object", properties: { deal_id: { type: "string", description: "UUID of the deal" } }, required: ["deal_id"] },
+    },
+  },
+
+  // ─── PIPELINE ANALYTICS ───
+  {
+    type: "function",
+    function: {
+      name: "get_conversion_funnel",
+      description: "Get stage-to-stage conversion rates across deals for pipeline analytics.",
+      parameters: { type: "object", properties: { deal_type: { type: "string", description: "Filter by deal type (optional)" } } },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_pipeline_velocity",
+      description: "Calculate average days per stage and identify bottleneck stages.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_commission_actuals",
+      description: "Get actual received commissions from build payments vs forecasted amounts.",
+      parameters: { type: "object", properties: { months_back: { type: "number", description: "Months to look back (default 6)" } } },
+    },
+  },
+
+  // ─── ADDITIONAL CONTACTS MANAGEMENT ───
+  {
+    type: "function",
+    function: {
+      name: "add_additional_contact",
+      description: "Add a co-borrower/partner to a client. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          client_id: { type: "string", description: "UUID of the client" },
+          first_name: { type: "string", description: "First name" },
+          surname: { type: "string", description: "Surname" },
+          relationship: { type: "string", description: "Relationship: spouse, partner, co_borrower, guarantor" },
+          email: { type: "string", description: "Email (optional)" },
+          mobile: { type: "string", description: "Mobile (optional)" },
+          dob: { type: "string", description: "Date of birth ISO format (optional)" },
+        },
+        required: ["client_id", "first_name", "surname"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_additional_contact",
+      description: "Update a co-borrower/partner's details. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          contact_id: { type: "string", description: "UUID of the additional contact" },
+          field: { type: "string", description: "Field to update (first_name, surname, email, mobile, dob, relationship)" },
+          value: { type: "string", description: "New value" },
+        },
+        required: ["contact_id", "field", "value"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "remove_additional_contact",
+      description: "Remove a co-borrower/partner from a client. REQUIRES USER CONFIRMATION.",
+      parameters: { type: "object", properties: { contact_id: { type: "string", description: "UUID of the additional contact" } }, required: ["contact_id"] },
+    },
+  },
+
+  // ─── CASH FLOW ANALYSIS ───
+  {
+    type: "function",
+    function: {
+      name: "get_cash_flow_analysis",
+      description: "Fetch stored 10-year cash flow analyses for a report, including comparison data.",
+      parameters: { type: "object", properties: { report_id: { type: "string", description: "UUID of the investment report (optional)" }, limit: { type: "number", description: "Max results (default 5)" } } },
+    },
+  },
+
+  // ─── AUTOMATION & AUTO-REPORTS ───
+  {
+    type: "function",
+    function: {
+      name: "get_auto_report_switches",
+      description: "List automation rules/switches for auto-report generation with enabled state and criteria.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "toggle_auto_report_switch",
+      description: "Enable or disable an automation switch. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          switch_id: { type: "string", description: "UUID of the switch" },
+          is_enabled: { type: "boolean", description: "Enable (true) or disable (false)" },
+        },
+        required: ["switch_id", "is_enabled"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_auto_report_log",
+      description: "Fetch recent auto-report generation results with status and errors.",
+      parameters: { type: "object", properties: { limit: { type: "number", description: "Max results (default 20)" } } },
+    },
+  },
+
+  // ─── CHECKLIST TEMPLATE MANAGEMENT ───
+  {
+    type: "function",
+    function: {
+      name: "delete_checklist_instance",
+      description: "Archive or delete a checklist instance. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          instance_id: { type: "string", description: "UUID of the checklist instance" },
+          action: { type: "string", enum: ["archive", "delete"], description: "Archive or permanently delete" },
+        },
+        required: ["instance_id"],
+      },
+    },
+  },
+
+  // ─── CALENDAR ENHANCEMENTS ───
+  {
+    type: "function",
+    function: {
+      name: "get_todays_schedule",
+      description: "Get today's full agenda: appointments, reminders due today, deal milestones.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+
+  // ─── CLIENT FILE MANAGEMENT ───
+  {
+    type: "function",
+    function: {
+      name: "delete_client_file",
+      description: "Remove a file record from a client. REQUIRES USER CONFIRMATION.",
+      parameters: { type: "object", properties: { file_id: { type: "string", description: "UUID of the file record" } }, required: ["file_id"] },
+    },
+  },
+
+  // ─── BULK OPERATIONS ───
+  {
+    type: "function",
+    function: {
+      name: "get_bulk_generation_status",
+      description: "Check status of bulk report generation jobs: completed, failed, in-progress.",
+      parameters: { type: "object", properties: { limit: { type: "number", description: "Max jobs (default 5)" } } },
+    },
+  },
+
+  // ─── LENDING RATES ───
+  {
+    type: "function",
+    function: {
+      name: "get_lending_rates",
+      description: "Fetch cached bank lending rates for comparison across lenders.",
+      parameters: { type: "object", properties: { lender_name: { type: "string", description: "Filter by lender name (optional)" } } },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "compare_lender_rates",
+      description: "Compare rates across multiple lenders side by side.",
+      parameters: { type: "object", properties: { loan_amount: { type: "number", description: "Loan amount for comparison" }, loan_type: { type: "string", description: "Filter by loan type (optional)" } } },
+    },
+  },
+
+  // ─── DEAL STAGE COMPLETION ───
+  {
+    type: "function",
+    function: {
+      name: "complete_deal_stage",
+      description: "Mark a specific deal stage as complete and optionally advance to the next stage. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          stage_id: { type: "string", description: "UUID of the deal stage" },
+          advance_deal: { type: "boolean", description: "Also advance the deal's current_stage to the next one (default true)" },
+        },
+        required: ["stage_id"],
+      },
+    },
+  },
+
+  // ─── EMAIL STATS ───
+  {
+    type: "function",
+    function: {
+      name: "get_email_stats",
+      description: "Get email statistics: total synced, unread count, unlinked count, by mailbox source.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
 ];
 
 // ============================================================
@@ -745,6 +1094,15 @@ const WRITE_TOOLS = [
   'create_reminder', 'update_reminder', 'delete_reminder', 'set_follow_up_date',
   'link_email_to_client',
   'toggle_checklist_item', 'create_checklist_instance',
+  // New write tools
+  'create_client', 'delete_client',
+  'create_client_note', 'update_client_note', 'delete_client_note',
+  'create_deal', 'delete_deal',
+  'add_additional_contact', 'update_additional_contact', 'remove_additional_contact',
+  'toggle_auto_report_switch',
+  'delete_checklist_instance',
+  'delete_client_file',
+  'complete_deal_stage',
 ];
 
 // ============================================================
@@ -1595,6 +1953,474 @@ async function executeGetUserPermissions(sb: any, args: any) {
   return { user: user.username, role: user.role, permissions: perms || [] };
 }
 
+// ═══════════════════════════════════════════════════════════
+//  NEW TOOL EXECUTORS — Batch expansion (34 tools)
+// ═══════════════════════════════════════════════════════════
+
+// ─── CLIENT CREATION & LIFECYCLE ───
+
+async function executeCreateClient(sb: any, args: any, userId: string) {
+  let createdBy: string | null = null;
+  if (userId && userId !== 'service_role') {
+    const { data: cu } = await sb.from('custom_users').select('id').eq('id', userId).maybeSingle();
+    if (cu) createdBy = cu.id;
+  }
+  const { data, error } = await sb.from('clients').insert({
+    primary_first_name: args.first_name,
+    primary_surname: args.surname,
+    primary_email: args.email || null,
+    primary_mobile: args.mobile || null,
+    pipeline_status: args.pipeline_status || 'lead',
+    created_by: createdBy,
+  }).select('id, primary_first_name, primary_surname').single();
+  if (error) return { error: error.message };
+  return { success: true, message: `✅ Client "${args.first_name} ${args.surname}" created.`, client_id: data.id };
+}
+
+async function executeDeleteClient(sb: any, args: any) {
+  const { error } = await sb.from('clients').delete().eq('id', args.client_id);
+  if (error) return { error: error.message };
+  return { success: true, message: `✅ Client and all associated records deleted.` };
+}
+
+async function executeGetClientsByPipelineStatus(sb: any, args: any) {
+  const { data, error } = await sb.from('clients')
+    .select('id, primary_first_name, primary_surname, primary_email, primary_mobile, pipeline_status, follow_up_date, created_at')
+    .eq('pipeline_status', args.status)
+    .order('created_at', { ascending: false }).limit(args.limit || 30);
+  if (error) return { error: error.message };
+  if (!data?.length) return { message: `No clients with pipeline status "${args.status}".` };
+  return data.map((c: any) => ({
+    id: c.id, name: `${c.primary_first_name || ''} ${c.primary_surname || ''}`.trim(),
+    email: c.primary_email, mobile: c.primary_mobile, pipeline_status: c.pipeline_status,
+    follow_up_date: c.follow_up_date, created_at: c.created_at,
+  }));
+}
+
+async function executeGetClientsNeedingFollowUp(sb: any, args: any) {
+  const daysInactive = args.days_inactive || 14;
+  const cutoff = new Date(Date.now() - daysInactive * 86400000).toISOString();
+  const now = new Date().toISOString();
+  
+  // Get clients with overdue follow-up dates
+  const { data: overdue } = await sb.from('clients')
+    .select('id, primary_first_name, primary_surname, pipeline_status, follow_up_date')
+    .not('follow_up_date', 'is', null).lt('follow_up_date', now)
+    .order('follow_up_date', { ascending: true }).limit(20);
+  
+  // Get clients with no recent activity
+  const { data: inactive } = await sb.from('clients')
+    .select('id, primary_first_name, primary_surname, pipeline_status, pipeline_updated_at')
+    .lt('pipeline_updated_at', cutoff)
+    .not('pipeline_status', 'in', '(settled,lost,archived)')
+    .order('pipeline_updated_at', { ascending: true }).limit(20);
+  
+  const formatClients = (list: any[]) => (list || []).map((c: any) => ({
+    id: c.id, name: `${c.primary_first_name || ''} ${c.primary_surname || ''}`.trim(),
+    pipeline_status: c.pipeline_status, follow_up_date: c.follow_up_date || null,
+    last_update: c.pipeline_updated_at || null,
+  }));
+  
+  return {
+    overdue_follow_ups: formatClients(overdue || []),
+    inactive_clients: formatClients(inactive || []),
+    total: (overdue?.length || 0) + (inactive?.length || 0),
+  };
+}
+
+// ─── CLIENT NOTES CRUD ───
+
+async function executeGetClientNotes(sb: any, args: any) {
+  const { data, error } = await sb.from('client_notes')
+    .select('id, content, note_type, created_at, updated_at, created_by')
+    .eq('client_id', args.client_id).order('created_at', { ascending: false }).limit(args.limit || 20);
+  if (error) return { error: error.message };
+  if (!data?.length) return { message: "No notes found for this client." };
+  return data;
+}
+
+async function executeCreateClientNote(sb: any, args: any, userId: string) {
+  let createdBy: string | null = null;
+  if (userId && userId !== 'service_role') {
+    const { data: cu } = await sb.from('custom_users').select('id').eq('id', userId).maybeSingle();
+    if (cu) createdBy = cu.id;
+  }
+  const { error } = await sb.from('client_notes').insert({
+    client_id: args.client_id, content: args.content,
+    note_type: args.note_type || 'general', created_by: createdBy,
+  });
+  if (error) return { error: error.message };
+  return { success: true, message: `✅ Note added to client.` };
+}
+
+async function executeUpdateClientNote(sb: any, args: any) {
+  const { error } = await sb.from('client_notes').update({ content: args.content }).eq('id', args.note_id);
+  if (error) return { error: error.message };
+  return { success: true, message: `✅ Note updated.` };
+}
+
+async function executeDeleteClientNote(sb: any, args: any) {
+  const { error } = await sb.from('client_notes').delete().eq('id', args.note_id);
+  if (error) return { error: error.message };
+  return { success: true, message: `✅ Note deleted.` };
+}
+
+// ─── CLIENT SCORES & REVIEWS ───
+
+async function executeGetClientScore(sb: any, args: any) {
+  const { data, error } = await sb.from('client_scores')
+    .select('*').eq('client_id', args.client_id).maybeSingle();
+  if (error) return { error: error.message };
+  if (!data) return { message: "No score data found for this client." };
+  return {
+    overall_score: data.overall_score, risk_level: data.risk_level,
+    cash_flow_score: data.cash_flow_score, growth_potential: data.growth_potential,
+    portfolio_health: data.portfolio_health, risk_factors: data.risk_factors,
+    calculation_notes: data.calculation_notes, last_calculated: data.last_calculated_at,
+  };
+}
+
+async function executeGetPortfolioReviewDetails(sb: any, args: any) {
+  const { data, error } = await sb.from('portfolio_analysis_reports')
+    .select('*').eq('id', args.review_id).single();
+  if (error) return { error: error.message };
+  if (!data) return { message: "Portfolio review not found." };
+  return data;
+}
+
+// ─── DEAL CREATION & DELETION ───
+
+async function executeCreateDeal(sb: any, args: any, userId: string) {
+  let createdBy: string | null = null;
+  if (userId && userId !== 'service_role') {
+    const { data: cu } = await sb.from('custom_users').select('id').eq('id', userId).maybeSingle();
+    if (cu) createdBy = cu.id;
+  }
+  const initialStage = args.deal_type === 'existing_property'
+    ? 'Initial Holding Deposit (0.25%)'
+    : args.deal_type === 'house_and_land'
+    ? 'Lot Secured'
+    : 'Client Engaged (Exclusive)';
+
+  const { data, error } = await sb.from('client_deals').insert({
+    client_id: args.client_id,
+    deal_type: args.deal_type,
+    current_stage: initialStage,
+    current_stage_number: 1,
+    property_address: args.property_address || null,
+    loan_amount: args.loan_amount || null,
+    created_by: createdBy,
+  }).select('id').single();
+  if (error) return { error: error.message };
+  return { success: true, message: `✅ ${args.deal_type.replace(/_/g,' ')} deal created.`, deal_id: data.id };
+}
+
+async function executeDeleteDeal(sb: any, args: any) {
+  // Delete child records first (stages, build payments)
+  await sb.from('deal_stages').delete().eq('deal_id', args.deal_id);
+  await sb.from('build_progress_payments').delete().eq('deal_id', args.deal_id);
+  await sb.from('builder_invoices').delete().eq('deal_id', args.deal_id);
+  const { error } = await sb.from('client_deals').delete().eq('id', args.deal_id);
+  if (error) return { error: error.message };
+  return { success: true, message: `✅ Deal and all associated stages/payments deleted.` };
+}
+
+// ─── PIPELINE ANALYTICS ───
+
+async function executeGetConversionFunnel(sb: any, args: any) {
+  let query = sb.from('deal_stages')
+    .select('stage_name, stage_number, status, deal_id, client_deals!inner(deal_type)')
+    .order('stage_number', { ascending: true });
+  
+  const { data, error } = await query;
+  if (error) return { error: error.message };
+  if (!data?.length) return { message: "No deal stage data available." };
+  
+  const stageStats: Record<string, { total: number; completed: number }> = {};
+  for (const s of data) {
+    if (args.deal_type && s.client_deals?.deal_type !== args.deal_type) continue;
+    const name = s.stage_name;
+    if (!stageStats[name]) stageStats[name] = { total: 0, completed: 0 };
+    stageStats[name].total++;
+    if (s.status === 'complete') stageStats[name].completed++;
+  }
+  
+  const funnel = Object.entries(stageStats).map(([name, stats]) => ({
+    stage: name, total: stats.total, completed: stats.completed,
+    conversion_rate: stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) + '%' : '0%',
+  }));
+  return { funnel, deal_type_filter: args.deal_type || 'all' };
+}
+
+async function executeGetPipelineVelocity(sb: any) {
+  const { data, error } = await sb.from('deal_stages')
+    .select('stage_name, stage_number, status, created_at, completed_at:checked_at')
+    .eq('status', 'complete');
+  if (error) return { error: error.message };
+  if (!data?.length) return { message: "No completed stages to analyze." };
+  
+  const stageAvg: Record<string, { totalDays: number; count: number }> = {};
+  for (const s of data) {
+    if (!s.completed_at || !s.created_at) continue;
+    const days = Math.max(0, Math.floor((new Date(s.completed_at).getTime() - new Date(s.created_at).getTime()) / 86400000));
+    if (!stageAvg[s.stage_name]) stageAvg[s.stage_name] = { totalDays: 0, count: 0 };
+    stageAvg[s.stage_name].totalDays += days;
+    stageAvg[s.stage_name].count++;
+  }
+  
+  const velocity = Object.entries(stageAvg)
+    .map(([name, stats]) => ({ stage: name, avg_days: Math.round(stats.totalDays / stats.count), sample_size: stats.count }))
+    .sort((a, b) => b.avg_days - a.avg_days);
+  
+  const bottleneck = velocity.length > 0 ? velocity[0] : null;
+  return { velocity, bottleneck: bottleneck ? `"${bottleneck.stage}" averages ${bottleneck.avg_days} days` : 'No data', total_stages_analyzed: data.length };
+}
+
+async function executeGetCommissionActuals(sb: any, args: any) {
+  const months = args.months_back || 6;
+  const since = new Date(Date.now() - months * 30 * 86400000).toISOString();
+  const { data, error } = await sb.from('build_progress_payments')
+    .select('commission_amount, commission_received, commission_received_date, stage_name, deal_id')
+    .eq('commission_received', true).gte('commission_received_date', since);
+  if (error) return { error: error.message };
+  
+  const received = (data || []).reduce((s: number, p: any) => s + (p.commission_amount || 0), 0);
+  
+  const { data: forecast } = await sb.from('client_deals')
+    .select('commission_estimate, settlement_date')
+    .gte('settlement_date', since).not('commission_estimate', 'is', null);
+  const forecasted = (forecast || []).reduce((s: number, d: any) => s + (d.commission_estimate || 0), 0);
+  
+  return {
+    actual_received: received, forecasted: forecasted,
+    variance: received - forecasted,
+    variance_pct: forecasted > 0 ? Math.round((received / forecasted) * 100) + '%' : 'N/A',
+    period_months: months, payments_count: data?.length || 0,
+  };
+}
+
+// ─── ADDITIONAL CONTACTS ───
+
+async function executeAddAdditionalContact(sb: any, args: any) {
+  const { data: maxOrder } = await sb.from('client_additional_contacts')
+    .select('display_order').eq('client_id', args.client_id)
+    .order('display_order', { ascending: false }).limit(1).maybeSingle();
+  const nextOrder = (maxOrder?.display_order || 0) + 1;
+  
+  const { error } = await sb.from('client_additional_contacts').insert({
+    client_id: args.client_id, first_name: args.first_name, surname: args.surname,
+    relationship: args.relationship || 'co_borrower',
+    email: args.email || null, mobile: args.mobile || null, dob: args.dob || null,
+    display_order: nextOrder,
+  });
+  if (error) return { error: error.message };
+  return { success: true, message: `✅ ${args.first_name} ${args.surname} added as ${args.relationship || 'co-borrower'}.` };
+}
+
+async function executeUpdateAdditionalContact(sb: any, args: any) {
+  const allowed = ['first_name', 'surname', 'email', 'mobile', 'dob', 'relationship', 'current_address', 'gender', 'notes'];
+  if (!allowed.includes(args.field)) return { error: `Field '${args.field}' not allowed for update.` };
+  const { error } = await sb.from('client_additional_contacts').update({ [args.field]: args.value }).eq('id', args.contact_id);
+  if (error) return { error: error.message };
+  return { success: true, message: `✅ Contact ${args.field} updated.` };
+}
+
+async function executeRemoveAdditionalContact(sb: any, args: any) {
+  const { error } = await sb.from('client_additional_contacts').delete().eq('id', args.contact_id);
+  if (error) return { error: error.message };
+  return { success: true, message: `✅ Additional contact removed.` };
+}
+
+// ─── CASH FLOW ANALYSIS ───
+
+async function executeGetCashFlowAnalysis(sb: any, args: any) {
+  let query = sb.from('cash_flow_analyses')
+    .select('id, primary_report_id, comparison_report_ids, investor_profile, created_at, updated_at')
+    .order('created_at', { ascending: false }).limit(args.limit || 5);
+  if (args.report_id) query = query.eq('primary_report_id', args.report_id);
+  const { data, error } = await query;
+  if (error) return { error: error.message };
+  if (!data?.length) return { message: "No cash flow analyses found." };
+  return data;
+}
+
+// ─── AUTOMATION & AUTO-REPORTS ───
+
+async function executeGetAutoReportSwitches(sb: any) {
+  const { data, error } = await sb.from('auto_report_switches')
+    .select('id, name, description, is_enabled, criteria, priority, created_at, updated_at')
+    .order('priority', { ascending: true });
+  if (error) return { error: error.message };
+  if (!data?.length) return { message: "No automation switches configured." };
+  return data;
+}
+
+async function executeToggleAutoReportSwitch(sb: any, args: any) {
+  const { error } = await sb.from('auto_report_switches')
+    .update({ is_enabled: args.is_enabled }).eq('id', args.switch_id);
+  if (error) return { error: error.message };
+  return { success: true, message: `✅ Switch ${args.is_enabled ? 'enabled' : 'disabled'}.` };
+}
+
+async function executeGetAutoReportLog(sb: any, args: any) {
+  const { data, error } = await sb.from('auto_report_generation_log')
+    .select('id, listing_address, listing_id, status, error_message, switch_name, created_at, completed_at')
+    .order('created_at', { ascending: false }).limit(args.limit || 20);
+  if (error) return { error: error.message };
+  if (!data?.length) return { message: "No auto-report generation logs found." };
+  return data;
+}
+
+// ─── CHECKLIST MANAGEMENT ───
+
+async function executeDeleteChecklistInstance(sb: any, args: any) {
+  const action = args.action || 'archive';
+  if (action === 'archive') {
+    const { error } = await sb.from('checklist_instances').update({ status: 'archived' }).eq('id', args.instance_id);
+    if (error) return { error: error.message };
+    return { success: true, message: `✅ Checklist archived.` };
+  } else {
+    await sb.from('checklist_instance_items').delete().eq('instance_id', args.instance_id);
+    const { error } = await sb.from('checklist_instances').delete().eq('id', args.instance_id);
+    if (error) return { error: error.message };
+    return { success: true, message: `✅ Checklist permanently deleted.` };
+  }
+}
+
+// ─── CALENDAR ENHANCEMENTS ───
+
+async function executeGetTodaysSchedule(sb: any) {
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
+  
+  // Appointments
+  const { data: appts } = await sb.from('appointment_secondary_recipients')
+    .select('appointment_title, appointment_start, appointment_end, contact_name, appointment_type')
+    .gte('appointment_start', todayStart).lt('appointment_start', todayEnd)
+    .order('appointment_start', { ascending: true });
+  
+  // Reminders due today
+  const { data: reminders } = await sb.from('client_reminders')
+    .select('title, priority, client_id, clients:client_id(primary_first_name, primary_surname)')
+    .gte('due_date', todayStart).lt('due_date', todayEnd).eq('status', 'pending');
+  
+  // Settlements today
+  const { data: settlements } = await sb.from('client_deals')
+    .select('property_address, loan_amount, client_id, clients:client_id(primary_first_name, primary_surname)')
+    .gte('settlement_date', todayStart).lt('settlement_date', todayEnd);
+  
+  return {
+    appointments: (appts || []).map((a: any) => ({ title: a.appointment_title, start: a.appointment_start, end: a.appointment_end, contact: a.contact_name, type: a.appointment_type })),
+    reminders: (reminders || []).map((r: any) => ({ title: r.title, priority: r.priority, client: r.clients ? `${r.clients.primary_first_name||''} ${r.clients.primary_surname||''}`.trim() : null })),
+    settlements: (settlements || []).map((s: any) => ({ address: s.property_address, amount: s.loan_amount, client: s.clients ? `${s.clients.primary_first_name||''} ${s.clients.primary_surname||''}`.trim() : null })),
+    total_items: (appts?.length || 0) + (reminders?.length || 0) + (settlements?.length || 0),
+  };
+}
+
+// ─── CLIENT FILE MANAGEMENT ───
+
+async function executeDeleteClientFile(sb: any, args: any) {
+  const { error } = await sb.from('client_files').delete().eq('id', args.file_id);
+  if (error) return { error: error.message };
+  return { success: true, message: `✅ File record removed.` };
+}
+
+// ─── BULK OPERATIONS ───
+
+async function executeGetBulkGenerationStatus(sb: any, args: any) {
+  const { data, error } = await sb.from('bulk_generation_jobs')
+    .select('id, status, total_reports, completed_reports, failed_reports, created_at, completed_at, error_message')
+    .order('created_at', { ascending: false }).limit(args.limit || 5);
+  if (error) return { error: error.message };
+  if (!data?.length) return { message: "No bulk generation jobs found." };
+  return data;
+}
+
+// ─── LENDING RATES ───
+
+async function executeGetLendingRates(sb: any, args: any) {
+  let query = sb.from('bank_lending_rates_cache')
+    .select('lender_id, lender_name, rates, fetched_at, expires_at')
+    .order('lender_name', { ascending: true });
+  if (args.lender_name) query = query.ilike('lender_name', `%${args.lender_name}%`);
+  const { data, error } = await query;
+  if (error) return { error: error.message };
+  if (!data?.length) return { message: "No lending rates cached." };
+  return data;
+}
+
+async function executeCompareLenderRates(sb: any, args: any) {
+  const { data, error } = await sb.from('bank_lending_rates_cache')
+    .select('lender_name, rates, fetched_at')
+    .order('lender_name', { ascending: true });
+  if (error) return { error: error.message };
+  if (!data?.length) return { message: "No lending rates available for comparison." };
+  
+  const comparison = data.map((l: any) => {
+    const rates = l.rates || {};
+    return {
+      lender: l.lender_name,
+      rates_summary: typeof rates === 'object' ? rates : {},
+      fetched: l.fetched_at,
+    };
+  });
+  return { lenders: comparison, loan_amount: args.loan_amount || null, count: data.length };
+}
+
+// ─── DEAL STAGE COMPLETION ───
+
+async function executeCompleteDealStage(sb: any, args: any) {
+  // Get the stage details
+  const { data: stage, error: stageErr } = await sb.from('deal_stages')
+    .select('id, deal_id, stage_name, stage_number, status')
+    .eq('id', args.stage_id).single();
+  if (stageErr || !stage) return { error: stageErr?.message || 'Stage not found.' };
+  
+  // Mark complete
+  const { error: upErr } = await sb.from('deal_stages').update({
+    status: 'complete',
+  }).eq('id', args.stage_id);
+  if (upErr) return { error: upErr.message };
+  
+  const advance = args.advance_deal !== false;
+  if (advance) {
+    // Find the next stage
+    const { data: nextStage } = await sb.from('deal_stages')
+      .select('stage_name, stage_number')
+      .eq('deal_id', stage.deal_id)
+      .gt('stage_number', stage.stage_number)
+      .order('stage_number', { ascending: true }).limit(1).maybeSingle();
+    
+    if (nextStage) {
+      await sb.from('client_deals').update({
+        current_stage: nextStage.stage_name,
+        current_stage_number: nextStage.stage_number,
+      }).eq('id', stage.deal_id);
+      return { success: true, message: `✅ Stage "${stage.stage_name}" completed. Deal advanced to "${nextStage.stage_name}".` };
+    }
+  }
+  return { success: true, message: `✅ Stage "${stage.stage_name}" marked complete.` };
+}
+
+// ─── EMAIL STATS ───
+
+async function executeGetEmailStats(sb: any) {
+  const { count: total } = await sb.from('email_copilot_emails').select('id', { count: 'exact', head: true });
+  const { count: unread } = await sb.from('email_copilot_emails').select('id', { count: 'exact', head: true }).eq('is_read', false);
+  const { count: unlinked } = await sb.from('email_copilot_emails').select('id', { count: 'exact', head: true }).is('client_id', null);
+  
+  const { data: sources } = await sb.from('email_copilot_emails')
+    .select('mailbox_source');
+  const bySource: Record<string, number> = {};
+  for (const e of (sources || [])) {
+    const src = e.mailbox_source || 'unknown';
+    bySource[src] = (bySource[src] || 0) + 1;
+  }
+  
+  return { total: total || 0, unread: unread || 0, unlinked: unlinked || 0, by_mailbox: bySource };
+}
+
 // ─── CALCULATORS (pure compute, no DB) ───
 
 function executeCalculateStampDuty(args: any) {
@@ -1786,6 +2612,52 @@ async function executeTool(sb: any, name: string, args: any, userId: string): Pr
     case 'calculate_rental_yield': return executeCalculateRentalYield(args);
     case 'calculate_equity_position': return executeCalculateEquityPosition(args);
 
+    // New tools — Client lifecycle
+    case 'create_client': return executeCreateClient(sb, args, userId);
+    case 'delete_client': return executeDeleteClient(sb, args);
+    case 'get_clients_by_pipeline_status': return executeGetClientsByPipelineStatus(sb, args);
+    case 'get_clients_needing_follow_up': return executeGetClientsNeedingFollowUp(sb, args);
+    // New tools — Client notes
+    case 'get_client_notes': return executeGetClientNotes(sb, args);
+    case 'create_client_note': return executeCreateClientNote(sb, args, userId);
+    case 'update_client_note': return executeUpdateClientNote(sb, args);
+    case 'delete_client_note': return executeDeleteClientNote(sb, args);
+    // New tools — Client scores & reviews
+    case 'get_client_score': return executeGetClientScore(sb, args);
+    case 'get_portfolio_review_details': return executeGetPortfolioReviewDetails(sb, args);
+    // New tools — Deals
+    case 'create_deal': return executeCreateDeal(sb, args, userId);
+    case 'delete_deal': return executeDeleteDeal(sb, args);
+    // New tools — Pipeline analytics
+    case 'get_conversion_funnel': return executeGetConversionFunnel(sb, args);
+    case 'get_pipeline_velocity': return executeGetPipelineVelocity(sb);
+    case 'get_commission_actuals': return executeGetCommissionActuals(sb, args);
+    // New tools — Additional contacts
+    case 'add_additional_contact': return executeAddAdditionalContact(sb, args);
+    case 'update_additional_contact': return executeUpdateAdditionalContact(sb, args);
+    case 'remove_additional_contact': return executeRemoveAdditionalContact(sb, args);
+    // New tools — Cash flow
+    case 'get_cash_flow_analysis': return executeGetCashFlowAnalysis(sb, args);
+    // New tools — Automation
+    case 'get_auto_report_switches': return executeGetAutoReportSwitches(sb);
+    case 'toggle_auto_report_switch': return executeToggleAutoReportSwitch(sb, args);
+    case 'get_auto_report_log': return executeGetAutoReportLog(sb, args);
+    // New tools — Checklists
+    case 'delete_checklist_instance': return executeDeleteChecklistInstance(sb, args);
+    // New tools — Calendar
+    case 'get_todays_schedule': return executeGetTodaysSchedule(sb);
+    // New tools — Files
+    case 'delete_client_file': return executeDeleteClientFile(sb, args);
+    // New tools — Bulk ops
+    case 'get_bulk_generation_status': return executeGetBulkGenerationStatus(sb, args);
+    // New tools — Lending rates
+    case 'get_lending_rates': return executeGetLendingRates(sb, args);
+    case 'compare_lender_rates': return executeCompareLenderRates(sb, args);
+    // New tools — Deal stages
+    case 'complete_deal_stage': return executeCompleteDealStage(sb, args);
+    // New tools — Email stats
+    case 'get_email_stats': return executeGetEmailStats(sb);
+
     default: return { error: `Unknown tool: ${name}` };
   }
 }
@@ -1796,20 +2668,24 @@ async function executeTool(sb: any, name: string, args: any, userId: string): Pr
 
 const SYSTEM_PROMPT = `You are Aurixa, the AI operating assistant for the NPC Property Dashboard — a property investment and mortgage brokerage management platform used by Naidu Property Consulting Services.
 
-You have access to 71 specialized tools across 12 domains:
+You have access to 105 specialized tools across 16 domains:
 
-📋 CLIENT MANAGEMENT — Search/view/update clients, view co-borrowers, log activities.
-💰 DEALS & PIPELINE — View/filter deals by stage/risk, settlement countdowns, stale deal detection, clawback monitoring, commission forecasting, build progress tracking.
+📋 CLIENT MANAGEMENT — Search/view/update/create/delete clients, view co-borrowers, log activities, filter by pipeline status, find clients needing follow-up.
+💰 DEALS & PIPELINE — View/filter/create/delete deals by stage/risk, settlement countdowns, stale deal detection, clawback monitoring, commission forecasting, build progress tracking, stage completion.
 🔔 REMINDERS — Create/complete/snooze/delete reminders, view overdue/today/upcoming, set follow-up dates, track deal milestones.
-💵 FINANCIAL — Borrowing capacity (current + history), income sources, expenses, liabilities, assets, properties, employment.
-📧 EMAIL — Search/view emails, browse threads, find unlinked emails, link to clients.
-📅 CALENDAR — View upcoming appointments, find client appointments.
+💵 FINANCIAL — Borrowing capacity (current + history), income sources, expenses, liabilities, assets, properties, employment, client scores.
+📧 EMAIL — Search/view emails, browse threads, find unlinked emails, link to clients, email statistics.
+📅 CALENDAR — View upcoming appointments, find client appointments, today's full schedule.
 📞 CALLS — View/search call logs, call details with transcripts, alerts, analytics, flagged calls.
-📊 REPORTS — Client files, investment reports, report details, search by address, portfolio reviews.
-✅ CHECKLISTS — Templates, active instances, items, toggle completion, create from template.
-📈 ANALYTICS — Activity logs, API usage, service health, cache stats, dashboard summary.
+📊 REPORTS — Client files, investment reports, report details, search by address, portfolio reviews with full content, cash flow analyses.
+📝 CLIENT NOTES — Full CRUD: create, read, update, delete client notes.
+👥 ADDITIONAL CONTACTS — Add, update, remove co-borrowers/partners.
+✅ CHECKLISTS — Templates, active instances, items, toggle completion, create from template, archive/delete instances.
+📈 ANALYTICS — Activity logs, API usage, service health, cache stats, dashboard summary, conversion funnel, pipeline velocity, commission actuals vs forecast.
 🏢 BRANDING — Branding profiles, user permissions.
 🧮 CALCULATORS — Stamp duty, LMI, loan repayments, rental yield, equity position.
+🤖 AUTOMATION — Auto-report switches (view/toggle), generation logs, bulk generation status.
+🏦 LENDING — Cached bank rates, multi-lender rate comparison.
 
 CRITICAL RULES:
 1. When the user asks about a client, ALWAYS use search_clients first to find their ID, then use that ID for subsequent lookups.
