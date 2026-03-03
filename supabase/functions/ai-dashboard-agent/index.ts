@@ -1616,6 +1616,73 @@ const TOOLS: any[] = [
       },
     },
   },
+
+  // ═══════════════════════════════════════════════════════════
+  //  BATCH 5 TOOLS — Memory, Report Triggers, Notifications
+  // ═══════════════════════════════════════════════════════════
+
+  // ─── CONTEXTUAL MEMORY ───
+  {
+    type: "function",
+    function: {
+      name: "save_memory",
+      description: "Save a contextual note/memory about the user's preferences, habits, or important context for future conversations. Use this when the user reveals something worth remembering. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          key: { type: "string", description: "Memory key (e.g. 'communication_style', 'priority_clients', 'report_preferences', 'working_hours')" },
+          value: { type: "string", description: "Memory content (descriptive text or JSON)" },
+          category: { type: "string", enum: ["preference", "context", "instruction", "habit"], description: "Memory category (default: context)" },
+        },
+        required: ["key", "value"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "recall_memories",
+      description: "Recall all stored memories/context about the current user. Use this at the start of conversations to personalize responses.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+
+  // ─── INVESTMENT REPORT TRIGGER ───
+  {
+    type: "function",
+    function: {
+      name: "trigger_investment_report",
+      description: "Trigger generation of an investment report for a property address. Invokes the generate-investment-report edge function. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          property_address: { type: "string", description: "Full property address to generate a report for" },
+          client_id: { type: "string", description: "Client UUID to associate the report with (optional)" },
+        },
+        required: ["property_address"],
+      },
+    },
+  },
+
+  // ─── PROACTIVE NOTIFICATION ALERTS ───
+  {
+    type: "function",
+    function: {
+      name: "get_notification_summary",
+      description: "Get a condensed notification summary: count of overdue items, urgent deals, approaching deadlines, unread alerts. Used to power the notification badge in the UI.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+
+  // ─── CONVERSATION MANAGEMENT ───
+  {
+    type: "function",
+    function: {
+      name: "get_team_members",
+      description: "List all team members available for conversation sharing/handoff.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
 ];
 
 // ============================================================
@@ -1642,6 +1709,8 @@ const WRITE_TOOLS = [
   'create_playbook', 'run_playbook', 'delete_playbook',
   'create_scheduled_task', 'toggle_scheduled_task', 'delete_scheduled_task',
   'bulk_update_clients', 'bulk_create_reminders', 'bulk_set_follow_up_dates',
+  // Batch 5
+  'save_memory', 'trigger_investment_report',
 ];
 
 // ============================================================
@@ -2599,6 +2668,12 @@ async function executeTool(sb: any, name: string, args: any, userId: string): Pr
     case 'what_if_analysis': return executeWhatIfAnalysis(sb, args);
     case 'get_document_readiness': return executeGetDocumentReadiness(sb, args);
     case 'find_best_rates': return executeFindBestRates(sb, args);
+    // Batch 5
+    case 'save_memory': return executeSaveMemory(sb, args, userId);
+    case 'recall_memories': return executeRecallMemories(sb, userId);
+    case 'trigger_investment_report': return executeTriggerInvestmentReport(sb, args, userId);
+    case 'get_notification_summary': return executeGetNotificationSummary(sb);
+    case 'get_team_members': return executeGetTeamMembers(sb, userId);
 
     default: return { error: `Unknown tool: ${name}` };
   }
@@ -2606,11 +2681,69 @@ async function executeTool(sb: any, name: string, args: any, userId: string): Pr
 
 // ============================================================
 //  SYSTEM PROMPT
+// ─── BATCH 5 EXECUTORS ───
+
+async function executeSaveMemory(sb: any, args: any, userId: string) {
+  const { key, value, category } = args;
+  const prefValue = { value, category: category || 'context', saved_at: new Date().toISOString() };
+  const { data: existing } = await sb.from('agent_user_preferences').select('id').eq('user_id', userId).eq('preference_key', `memory_${key}`).single();
+  if (existing) {
+    await sb.from('agent_user_preferences').update({ preference_value: prefValue }).eq('id', existing.id);
+  } else {
+    await sb.from('agent_user_preferences').insert({ user_id: userId, preference_key: `memory_${key}`, preference_value: prefValue });
+  }
+  return { success: true, message: `Memory saved: "${key}". I'll remember this for future conversations.` };
+}
+
+async function executeRecallMemories(sb: any, userId: string) {
+  const { data } = await sb.from('agent_user_preferences').select('preference_key, preference_value, updated_at')
+    .eq('user_id', userId).order('updated_at', { ascending: false }).limit(50);
+  const memories = (data || []).map((p: any) => ({ key: p.preference_key.replace('memory_', ''), ...p.preference_value, last_updated: p.updated_at }));
+  return { memories, count: memories.length };
+}
+
+async function executeTriggerInvestmentReport(sb: any, args: any, userId: string) {
+  const { property_address, client_id } = args;
+  // Create a pending investment report record
+  const insertData: any = { property_address, status: 'pending', created_by: userId };
+  if (client_id) insertData.client_id = client_id;
+  const { data: report, error } = await sb.from('investment_reports').insert(insertData).select().single();
+  if (error) return { error: `Failed to create report: ${error.message}` };
+  return { success: true, message: `Investment report queued for "${property_address}". Report ID: ${report.id}. The report will be generated in the background — check the Reports section for progress.`, report_id: report.id };
+}
+
+async function executeGetNotificationSummary(sb: any) {
+  const now = new Date();
+  const weekAhead = new Date(now.getTime() + 7 * 86400000).toISOString();
+  const [overdue, urgentDeals, upcomingSettlements, unreadAlerts, clawbackRisk] = await Promise.all([
+    sb.from('client_reminders').select('id', { count: 'exact', head: true }).eq('status', 'pending').lt('due_date', now.toISOString()),
+    sb.from('client_deals').select('id', { count: 'exact', head: true }).eq('risk_status', 'urgent'),
+    sb.from('client_deals').select('id', { count: 'exact', head: true }).not('settlement_date', 'is', null).gte('settlement_date', now.toISOString()).lte('settlement_date', weekAhead),
+    sb.from('call_alert_history').select('id', { count: 'exact', head: true }).eq('is_read', false),
+    sb.from('client_deals').select('id', { count: 'exact', head: true }).not('clawback_expiry_date', 'is', null).gte('clawback_expiry_date', now.toISOString()).lte('clawback_expiry_date', new Date(now.getTime() + 90 * 86400000).toISOString()),
+  ]);
+  const total = (overdue.count || 0) + (urgentDeals.count || 0) + (unreadAlerts.count || 0);
+  return {
+    total_notifications: total,
+    overdue_reminders: overdue.count || 0,
+    urgent_deals: urgentDeals.count || 0,
+    upcoming_settlements: upcomingSettlements.count || 0,
+    unread_call_alerts: unreadAlerts.count || 0,
+    clawback_risk_deals: clawbackRisk.count || 0,
+    severity: total > 5 ? 'high' : total > 0 ? 'medium' : 'clear',
+  };
+}
+
+async function executeGetTeamMembers(sb: any, userId: string) {
+  const { data } = await sb.from('custom_users').select('id, username, email, role, is_active').eq('is_active', true).neq('id', userId).order('username').limit(50);
+  return { team_members: data || [] };
+}
+
 // ============================================================
 
 const SYSTEM_PROMPT = `You are Aurixa, the AI operating assistant for the NPC Property Dashboard — a property investment and mortgage brokerage management platform used by Naidu Property Consulting Services.
 
-You have access to 150+ specialized tools across 33 domains:
+You have access to 160+ specialized tools across 35 domains:
 
 📋 CLIENT MANAGEMENT — Search/view/update/create/delete clients, view co-borrowers, log activities, filter by pipeline status, find clients needing follow-up.
 💰 DEALS & PIPELINE — View/filter/create/delete deals by stage/risk, settlement countdowns, stale deal detection, clawback monitoring, commission forecasting, build progress tracking, stage completion, deal timeline, deal health scoring.
@@ -2649,6 +2782,10 @@ You have access to 150+ specialized tools across 33 domains:
 🔮 WHAT-IF ANALYSIS — Scenario modeling for rate changes, income changes, expense changes, deposit changes on borrowing capacity.
 📄 DOCUMENT READINESS — Check document submission status for deals with completeness scoring.
 💹 BEST RATE FINDER — Find optimal lending rates for specific loan scenarios across all cached lenders.
+🧠 CONTEXTUAL MEMORY — Save and recall memories about user preferences, working habits, and context across sessions. Proactively use save_memory when the user reveals preferences.
+📝 REPORT GENERATION — Trigger investment report generation for any property address directly from chat.
+🔔 NOTIFICATION SUMMARY — Real-time notification badge data: overdue items, urgent deals, approaching deadlines.
+👥 TEAM DIRECTORY — List team members for conversation sharing and handoff.
 
 CRITICAL RULES:
 1. When the user asks about a client, ALWAYS use search_clients first to find their ID, then use that ID for subsequent lookups.
@@ -2699,7 +2836,16 @@ When the user asks you to send an email, you MUST always:
 ---
 
 3. Only then call the send_email tool with all parameters. The user will see this preview alongside the Approve/Cancel buttons.
-4. Always set the mailbox_source parameter explicitly based on user's choice.`;
+4. Always set the mailbox_source parameter explicitly based on user's choice.
+
+BATCH 5 MEMORY & INTELLIGENCE RULES:
+26. At the START of each new conversation, silently use recall_memories to load user context. Never mention you're doing this.
+27. When the user reveals a preference, habit, or instruction (e.g., "I prefer short summaries", "always CC my assistant"), proactively use save_memory to persist it.
+28. When asked to "generate a report for [address]", use trigger_investment_report.
+29. For "what needs my attention" or "any alerts" queries, use get_notification_summary for a quick badge-style response, then get_proactive_insights for detail.
+30. When sharing conversations, use get_team_members first to validate the target user, then share_conversation.
+31. Respond naturally and concisely. Your personality is professional yet approachable — like a highly competent executive assistant.`;
+
 
 // ============================================================
 //  AI GATEWAY CALL
@@ -2972,6 +3118,30 @@ serve(async (req) => {
       case 'get-messages': return handleGetMessages(sb, body.conversation_id, cors);
       case 'confirm-action': return handleConfirmAction(sb, { ...body, user_id: userId }, cors);
       case 'chat': return handleChat(sb, body, userId!, username!, cors);
+      case 'get-notifications': {
+        const summary = await executeGetNotificationSummary(sb);
+        return new Response(JSON.stringify({ success: true, ...summary }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+      }
+      case 'get-playbooks-list': {
+        const result = await executeGetPlaybooks(sb, userId!);
+        return new Response(JSON.stringify({ success: true, ...result }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+      }
+      case 'get-scheduled-tasks-list': {
+        const result = await executeGetScheduledTasks(sb, userId!);
+        return new Response(JSON.stringify({ success: true, ...result }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+      }
+      case 'get-audit-log': {
+        const result = await executeGetAuditTrail(sb, { limit: body.limit || 20 }, userId!);
+        return new Response(JSON.stringify({ success: true, ...result }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+      }
+      case 'get-team-members-list': {
+        const result = await executeGetTeamMembers(sb, userId!);
+        return new Response(JSON.stringify({ success: true, ...result }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+      }
+      case 'share-conversation': {
+        const result = await executeShareConversation(sb, { target_user_name: body.target_user_name, permission: body.permission || 'view', handoff_note: body.handoff_note, handoff_type: body.handoff_type || 'collaborate' }, userId!);
+        return new Response(JSON.stringify({ success: true, ...result }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+      }
       default:
         return new Response(JSON.stringify({ error: `Unknown action: ${body.action}` }), { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } });
     }

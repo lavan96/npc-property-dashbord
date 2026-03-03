@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { MessageSquare, X, Plus, Trash2, Send, Check, XCircle, Loader2, ChevronLeft, Search, Pencil, RotateCcw, Sparkles, Diamond, BarChart3, Calendar, Zap, TrendingUp, Target, FileDown, Brain } from 'lucide-react';
+import { MessageSquare, X, Plus, Trash2, Send, Check, XCircle, Loader2, ChevronLeft, Search, Pencil, RotateCcw, Sparkles, Diamond, BarChart3, Calendar, Zap, TrendingUp, Target, FileDown, Brain, Bell, Settings, Users, Share2, ClipboardList, Clock, Shield, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
@@ -33,6 +33,9 @@ interface Message {
   created_at: string;
 }
 
+type PanelView = 'chat' | 'notifications' | 'settings' | 'share';
+type SettingsTab = 'playbooks' | 'tasks' | 'audit';
+
 export function AgentChatWidget() {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
@@ -47,6 +50,14 @@ export function AgentChatWidget() {
   const [editingConvoId, setEditingConvoId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [retryMessage, setRetryMessage] = useState<string | null>(null);
+  const [panelView, setPanelView] = useState<PanelView>('chat');
+  const [notifCount, setNotifCount] = useState(0);
+  const [notifications, setNotifications] = useState<any>(null);
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>('playbooks');
+  const [settingsData, setSettingsData] = useState<any>(null);
+  const [teamMembers, setTeamMembers] = useState<any[]>([]);
+  const [shareTarget, setShareTarget] = useState('');
+  const [shareNote, setShareNote] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
@@ -67,9 +78,31 @@ export function AgentChatWidget() {
     setLoadingConvos(false);
   }, [user]);
 
+  // Load notifications
+  const loadNotifications = useCallback(async () => {
+    if (!user) return;
+    try {
+      const { data } = await invokeSecureFunction('ai-dashboard-agent', { action: 'get-notifications' });
+      if (data) {
+        setNotifCount(data.total_notifications || 0);
+        setNotifications(data);
+      }
+    } catch (err) { console.error('Notif error:', err); }
+  }, [user]);
+
   useEffect(() => {
-    if (isOpen && user) loadConversations();
-  }, [isOpen, user, loadConversations]);
+    if (isOpen && user) {
+      loadConversations();
+      loadNotifications();
+    }
+  }, [isOpen, user, loadConversations, loadNotifications]);
+
+  // Poll notifications every 2 min
+  useEffect(() => {
+    if (!isOpen || !user) return;
+    const interval = setInterval(loadNotifications, 120000);
+    return () => clearInterval(interval);
+  }, [isOpen, user, loadNotifications]);
 
   // Load messages for active conversation
   useEffect(() => {
@@ -114,6 +147,7 @@ export function AgentChatWidget() {
         setActiveConversation(data.conversation.id);
         setMessages([]);
         setShowSidebar(false);
+        setPanelView('chat');
       }
     } catch (err) {
       toast.error('Failed to create conversation');
@@ -136,22 +170,11 @@ export function AgentChatWidget() {
   };
 
   const renameConversation = async (id: string) => {
-    if (!editTitle.trim()) {
-      setEditingConvoId(null);
-      return;
-    }
+    if (!editTitle.trim()) { setEditingConvoId(null); return; }
     try {
-      await invokeSecureFunction('ai-dashboard-agent', {
-        action: 'rename-conversation',
-        conversation_id: id,
-        title: editTitle.trim(),
-      });
-      setConversations(prev => prev.map(c =>
-        c.id === id ? { ...c, title: editTitle.trim() } : c
-      ));
-    } catch (err) {
-      toast.error('Failed to rename conversation');
-    }
+      await invokeSecureFunction('ai-dashboard-agent', { action: 'rename-conversation', conversation_id: id, title: editTitle.trim() });
+      setConversations(prev => prev.map(c => c.id === id ? { ...c, title: editTitle.trim() } : c));
+    } catch (err) { toast.error('Failed to rename conversation'); }
     setEditingConvoId(null);
   };
 
@@ -161,8 +184,8 @@ export function AgentChatWidget() {
     if (!overrideMessage) setInput('');
     setRetryMessage(null);
     setLoading(true);
+    setPanelView('chat');
 
-    // Create conversation if none active
     let convId = activeConversation;
     if (!convId) {
       try {
@@ -179,41 +202,24 @@ export function AgentChatWidget() {
       }
     }
 
-    // Optimistic user message
     const tempUserMsg: Message = { id: `temp-${Date.now()}`, role: 'user', content: msg, created_at: new Date().toISOString() };
     setMessages(prev => [...prev, tempUserMsg]);
 
     try {
-      const { data, error } = await invokeSecureFunction('ai-dashboard-agent', {
-        action: 'chat',
-        conversation_id: convId,
-        message: msg,
-      });
-
+      const { data, error } = await invokeSecureFunction('ai-dashboard-agent', { action: 'chat', conversation_id: convId, message: msg });
       if (error || !data?.success) {
         const errorMsg = error?.message || data?.error || 'Something went wrong';
         setRetryMessage(msg);
-        setMessages(prev => [
-          ...prev.filter(m => m.id !== tempUserMsg.id),
-          tempUserMsg,
-          { id: `error-${Date.now()}`, role: 'assistant', content: `⚠️ ${errorMsg}`, created_at: new Date().toISOString() },
-        ]);
+        setMessages(prev => [...prev.filter(m => m.id !== tempUserMsg.id), tempUserMsg, { id: `error-${Date.now()}`, role: 'assistant', content: `⚠️ ${errorMsg}`, created_at: new Date().toISOString() }]);
         toast.error(errorMsg);
       } else {
-        // Reload messages to get proper IDs
-        const { data: refreshed } = await invokeSecureFunction('ai-dashboard-agent', {
-          action: 'get-messages', conversation_id: convId,
-        });
+        const { data: refreshed } = await invokeSecureFunction('ai-dashboard-agent', { action: 'get-messages', conversation_id: convId });
         if (refreshed?.messages) setMessages(refreshed.messages);
         loadConversations();
       }
     } catch (err: any) {
       setRetryMessage(msg);
-      setMessages(prev => [
-        ...prev.filter(m => m.id !== tempUserMsg.id),
-        tempUserMsg,
-        { id: `error-${Date.now()}`, role: 'assistant', content: `⚠️ ${err.message || 'Network error'}`, created_at: new Date().toISOString() },
-      ]);
+      setMessages(prev => [...prev.filter(m => m.id !== tempUserMsg.id), tempUserMsg, { id: `error-${Date.now()}`, role: 'assistant', content: `⚠️ ${err.message || 'Network error'}`, created_at: new Date().toISOString() }]);
       toast.error(err.message || 'Failed to send message');
     }
     setLoading(false);
@@ -222,33 +228,51 @@ export function AgentChatWidget() {
   const handleConfirmAction = async (messageId: string, approved: boolean) => {
     setLoading(true);
     try {
-      await invokeSecureFunction('ai-dashboard-agent', {
-        action: 'confirm-action',
-        conversation_id: activeConversation,
-        message_id: messageId,
-        approved,
-      });
-      const { data } = await invokeSecureFunction('ai-dashboard-agent', {
-        action: 'get-messages', conversation_id: activeConversation,
-      });
+      await invokeSecureFunction('ai-dashboard-agent', { action: 'confirm-action', conversation_id: activeConversation, message_id: messageId, approved });
+      const { data } = await invokeSecureFunction('ai-dashboard-agent', { action: 'get-messages', conversation_id: activeConversation });
       if (data?.messages) setMessages(data.messages);
       toast.success(approved ? 'Action approved and executed' : 'Action cancelled');
-    } catch (err) {
-      toast.error('Failed to process action');
-    }
+    } catch (err) { toast.error('Failed to process action'); }
     setLoading(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   };
+
+  // Settings data loaders
+  const loadSettingsData = async (tab: SettingsTab) => {
+    setSettingsData(null);
+    try {
+      const actionMap = { playbooks: 'get-playbooks-list', tasks: 'get-scheduled-tasks-list', audit: 'get-audit-log' };
+      const { data } = await invokeSecureFunction('ai-dashboard-agent', { action: actionMap[tab] });
+      setSettingsData(data);
+    } catch (err) { console.error('Settings load error:', err); }
+  };
+
+  // Share conversation
+  const handleShareConversation = async () => {
+    if (!shareTarget.trim() || !activeConversation) return;
+    try {
+      await invokeSecureFunction('ai-dashboard-agent', { action: 'share-conversation', target_user_name: shareTarget.trim(), conversation_id: activeConversation, handoff_note: shareNote.trim() || undefined });
+      toast.success(`Shared with ${shareTarget}`);
+      setShareTarget('');
+      setShareNote('');
+      setPanelView('chat');
+    } catch (err) { toast.error('Failed to share conversation'); }
+  };
+
+  // Load team members for sharing
+  useEffect(() => {
+    if (panelView === 'share' && teamMembers.length === 0) {
+      invokeSecureFunction('ai-dashboard-agent', { action: 'get-team-members-list' })
+        .then(({ data }) => { if (data?.team_members) setTeamMembers(data.team_members); })
+        .catch(() => {});
+    }
+  }, [panelView]);
 
   if (!user) return null;
 
-  // Floating button when closed
   if (!isOpen) {
     return (
       <button
@@ -257,6 +281,11 @@ export function AgentChatWidget() {
         aria-label="Open AI Assistant"
       >
         <Diamond className="h-6 w-6 text-black dark:text-primary group-hover:animate-pulse" />
+        {notifCount > 0 && (
+          <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground animate-pulse">
+            {notifCount > 9 ? '9+' : notifCount}
+          </span>
+        )}
       </button>
     );
   }
@@ -268,8 +297,13 @@ export function AgentChatWidget() {
       {/* Header */}
       <div className="flex items-center justify-between border-b bg-primary/5 px-4 py-3 shrink-0">
         <div className="flex items-center gap-2">
-          {!showSidebar && activeConversation && (
+          {!showSidebar && activeConversation && panelView === 'chat' && (
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowSidebar(true)}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+          )}
+          {panelView !== 'chat' && (
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setPanelView('chat')}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
           )}
@@ -277,7 +311,22 @@ export function AgentChatWidget() {
           <span className="font-semibold text-sm">Aurixa Agent</span>
           <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">Gemini</span>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5">
+          {/* Notification bell */}
+          <Button variant="ghost" size="icon" className="h-7 w-7 relative" onClick={() => { setPanelView(panelView === 'notifications' ? 'chat' : 'notifications'); loadNotifications(); }} title="Notifications">
+            <Bell className={cn("h-4 w-4", panelView === 'notifications' && "text-primary")} />
+            {notifCount > 0 && <span className="absolute top-0 right-0 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-destructive text-[8px] font-bold text-destructive-foreground">{notifCount > 9 ? '9+' : notifCount}</span>}
+          </Button>
+          {/* Share */}
+          {activeConversation && (
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setPanelView(panelView === 'share' ? 'chat' : 'share')} title="Share conversation">
+              <Share2 className={cn("h-4 w-4", panelView === 'share' && "text-primary")} />
+            </Button>
+          )}
+          {/* Settings */}
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setPanelView(panelView === 'settings' ? 'chat' : 'settings'); if (panelView !== 'settings') loadSettingsData('playbooks'); }} title="Settings">
+            <Settings className={cn("h-4 w-4", panelView === 'settings' && "text-primary")} />
+          </Button>
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={createConversation} title="New conversation">
             <Plus className="h-4 w-4" />
           </Button>
@@ -288,37 +337,197 @@ export function AgentChatWidget() {
       </div>
 
       <div className="flex flex-1 min-h-0">
-        {/* Conversation sidebar */}
-        {showSidebar && (
+        {/* ═══ NOTIFICATIONS PANEL ═══ */}
+        {panelView === 'notifications' && (
+          <div className="w-full flex flex-col">
+            <div className="px-4 py-3 border-b">
+              <h3 className="text-sm font-semibold flex items-center gap-2"><Bell className="h-4 w-4 text-primary" /> Notifications</h3>
+            </div>
+            <ScrollArea className="flex-1 p-4">
+              {!notifications ? (
+                <div className="flex items-center justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+              ) : (
+                <div className="space-y-3">
+                  {[
+                    { icon: '⏰', label: 'Overdue Reminders', count: notifications.overdue_reminders, color: 'text-red-600 dark:text-red-400 bg-red-500/10', action: '⏰ Overdue reminders' },
+                    { icon: '🚨', label: 'Urgent Deals', count: notifications.urgent_deals, color: 'text-orange-600 dark:text-orange-400 bg-orange-500/10', action: '🚨 Show urgent deals' },
+                    { icon: '🏠', label: 'Settlements This Week', count: notifications.upcoming_settlements, color: 'text-blue-600 dark:text-blue-400 bg-blue-500/10', action: '🏠 Upcoming settlements' },
+                    { icon: '📞', label: 'Unread Call Alerts', count: notifications.unread_call_alerts, color: 'text-purple-600 dark:text-purple-400 bg-purple-500/10', action: '📞 Unread call alerts' },
+                    { icon: '⚠️', label: 'Clawback Risk (90d)', count: notifications.clawback_risk_deals, color: 'text-amber-600 dark:text-amber-400 bg-amber-500/10', action: '⚠️ Clawback risk deals' },
+                  ].map((item) => (
+                    <button
+                      key={item.label}
+                      onClick={() => { setPanelView('chat'); setShowSidebar(false); sendMessage(item.action); }}
+                      className={cn("w-full flex items-center justify-between px-3 py-2.5 rounded-lg border border-border/30 hover:border-primary/30 transition-colors text-left", item.count > 0 ? item.color : 'text-muted-foreground bg-muted/20')}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-base">{item.icon}</span>
+                        <span className="text-xs font-medium">{item.label}</span>
+                      </div>
+                      <span className={cn("text-sm font-bold", item.count > 0 ? '' : 'text-muted-foreground')}>{item.count}</span>
+                    </button>
+                  ))}
+                  <div className={cn("mt-3 text-center py-2 rounded-lg text-xs font-medium",
+                    notifications.severity === 'high' ? 'bg-red-500/10 text-red-600 dark:text-red-400' :
+                    notifications.severity === 'medium' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' :
+                    'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                  )}>
+                    {notifications.severity === 'high' ? '🔴 Needs immediate attention' : notifications.severity === 'medium' ? '🟡 Some items need review' : '🟢 All clear'}
+                  </div>
+                </div>
+              )}
+            </ScrollArea>
+          </div>
+        )}
+
+        {/* ═══ SETTINGS PANEL ═══ */}
+        {panelView === 'settings' && (
+          <div className="w-full flex flex-col">
+            <div className="flex border-b">
+              {([['playbooks', '📋', 'Playbooks'], ['tasks', '⏰', 'Tasks'], ['audit', '📜', 'Audit']] as const).map(([tab, icon, label]) => (
+                <button key={tab} onClick={() => { setSettingsTab(tab); loadSettingsData(tab); }}
+                  className={cn("flex-1 flex items-center justify-center gap-1 py-2.5 text-xs font-medium border-b-2 transition-colors",
+                    settingsTab === tab ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+                  )}>
+                  <span>{icon}</span> {label}
+                </button>
+              ))}
+            </div>
+            <ScrollArea className="flex-1 p-3">
+              {!settingsData ? (
+                <div className="flex items-center justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+              ) : settingsTab === 'playbooks' ? (
+                <div className="space-y-2">
+                  {(settingsData.playbooks || []).length === 0 ? (
+                    <div className="text-center py-6 text-muted-foreground">
+                      <ClipboardList className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                      <p className="text-xs">No playbooks yet</p>
+                      <p className="text-[10px] mt-1">Ask Aurixa to "create a playbook for new client onboarding"</p>
+                    </div>
+                  ) : (settingsData.playbooks || []).map((pb: any) => (
+                    <div key={pb.id} className="rounded-lg border border-border/30 p-3 hover:border-primary/20 transition-colors">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">{pb.icon || '📋'}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium truncate">{pb.name}</p>
+                          <p className="text-[10px] text-muted-foreground">{(pb.steps || []).length} steps • Run {pb.run_count || 0}x</p>
+                        </div>
+                        <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => { setPanelView('chat'); setShowSidebar(false); sendMessage(`Run playbook "${pb.name}"`); }}>
+                          <Zap className="h-3 w-3 mr-1" /> Run
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : settingsTab === 'tasks' ? (
+                <div className="space-y-2">
+                  {(settingsData.tasks || []).length === 0 ? (
+                    <div className="text-center py-6 text-muted-foreground">
+                      <Clock className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                      <p className="text-xs">No scheduled tasks</p>
+                      <p className="text-[10px] mt-1">Ask Aurixa to "schedule a morning briefing every weekday at 8am"</p>
+                    </div>
+                  ) : (settingsData.tasks || []).map((task: any) => (
+                    <div key={task.id} className="rounded-lg border border-border/30 p-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium truncate">{task.name}</p>
+                          <p className="text-[10px] text-muted-foreground">{task.schedule_description || task.schedule_cron}</p>
+                        </div>
+                        <span className={cn("text-[9px] px-1.5 py-0.5 rounded-full font-medium", task.is_enabled ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-muted text-muted-foreground')}>
+                          {task.is_enabled ? 'Active' : 'Paused'}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {(settingsData.actions || []).length === 0 ? (
+                    <div className="text-center py-6 text-muted-foreground">
+                      <Shield className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                      <p className="text-xs">No recent actions</p>
+                    </div>
+                  ) : (settingsData.actions || []).map((action: any) => (
+                    <div key={action.id} className="rounded-lg border border-border/30 p-2.5">
+                      <div className="flex items-center gap-2">
+                        <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", action.status === 'success' ? 'bg-emerald-500' : 'bg-red-500')} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[11px] font-medium truncate">{action.tool_name}</p>
+                          <p className="text-[10px] text-muted-foreground">{new Date(action.created_at).toLocaleString()}</p>
+                        </div>
+                        {!action.is_rolled_back && action.rollback_data && (
+                          <Button variant="ghost" size="sm" className="h-5 text-[9px] px-1.5" onClick={() => { setPanelView('chat'); setShowSidebar(false); sendMessage(`Undo action ${action.id}`); }}>
+                            <RotateCcw className="h-2.5 w-2.5 mr-0.5" /> Undo
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </div>
+        )}
+
+        {/* ═══ SHARE PANEL ═══ */}
+        {panelView === 'share' && (
+          <div className="w-full flex flex-col">
+            <div className="px-4 py-3 border-b">
+              <h3 className="text-sm font-semibold flex items-center gap-2"><Share2 className="h-4 w-4 text-primary" /> Share Conversation</h3>
+            </div>
+            <div className="p-4 space-y-3">
+              <div>
+                <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Share with</label>
+                <div className="space-y-1.5">
+                  {teamMembers.length > 0 ? teamMembers.map((member) => (
+                    <button key={member.id} onClick={() => setShareTarget(member.username)}
+                      className={cn("w-full flex items-center gap-2 px-3 py-2 rounded-lg border text-left text-xs transition-colors",
+                        shareTarget === member.username ? 'border-primary bg-primary/5' : 'border-border/30 hover:border-primary/20'
+                      )}>
+                      <Users className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{member.username}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">{member.email} • {member.role}</p>
+                      </div>
+                      {shareTarget === member.username && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
+                    </button>
+                  )) : (
+                    <div className="text-center py-4 text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin mx-auto mb-1" />
+                      <p className="text-[10px]">Loading team...</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div>
+                <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Handoff note (optional)</label>
+                <Input value={shareNote} onChange={(e) => setShareNote(e.target.value)} placeholder="Context for the recipient..." className="h-8 text-xs" />
+              </div>
+              <Button size="sm" className="w-full h-8 text-xs" disabled={!shareTarget.trim()} onClick={handleShareConversation}>
+                <Share2 className="h-3 w-3 mr-1.5" /> Share with {shareTarget || '...'}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* ═══ CONVERSATION SIDEBAR ═══ */}
+        {panelView === 'chat' && showSidebar && (
           <div className="w-full flex flex-col bg-muted/20">
-            {/* Search */}
             <div className="px-3 py-2 border-b">
               <div className="relative">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                <Input
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search conversations..."
-                  className="h-8 pl-8 text-xs"
-                />
+                <Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search conversations..." className="h-8 pl-8 text-xs" />
               </div>
             </div>
             <ScrollArea className="flex-1">
               {loadingConvos ? (
-                <div className="flex items-center justify-center p-8">
-                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                </div>
+                <div className="flex items-center justify-center p-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
               ) : filteredConversations.length === 0 ? (
                 <div className="p-6 text-center">
                   <Diamond className="h-8 w-8 text-muted-foreground/30 mx-auto mb-3" />
-                  <p className="text-sm text-muted-foreground mb-3">
-                    {searchQuery ? 'No matching conversations' : 'No conversations yet'}
-                  </p>
-                  {!searchQuery && (
-                    <Button size="sm" onClick={createConversation} variant="outline">
-                      <Plus className="h-4 w-4 mr-1" /> New Chat
-                    </Button>
-                  )}
+                  <p className="text-sm text-muted-foreground mb-3">{searchQuery ? 'No matching conversations' : 'No conversations yet'}</p>
+                  {!searchQuery && <Button size="sm" onClick={createConversation} variant="outline"><Plus className="h-4 w-4 mr-1" /> New Chat</Button>}
                 </div>
               ) : (
                 <div className="p-1.5 space-y-0.5">
@@ -326,26 +535,16 @@ export function AgentChatWidget() {
                     <div key={conv.id} className="group">
                       {editingConvoId === conv.id ? (
                         <div className="px-2 py-1.5">
-                          <Input
-                            ref={editInputRef}
-                            value={editTitle}
-                            onChange={(e) => setEditTitle(e.target.value)}
+                          <Input ref={editInputRef} value={editTitle} onChange={(e) => setEditTitle(e.target.value)}
                             onBlur={() => renameConversation(conv.id)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') renameConversation(conv.id);
-                              if (e.key === 'Escape') setEditingConvoId(null);
-                            }}
-                            className="h-7 text-xs"
-                          />
+                            onKeyDown={(e) => { if (e.key === 'Enter') renameConversation(conv.id); if (e.key === 'Escape') setEditingConvoId(null); }}
+                            className="h-7 text-xs" />
                         </div>
                       ) : (
-                        <button
-                          onClick={() => { setActiveConversation(conv.id); setShowSidebar(false); }}
-                          className={cn(
-                            "w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-accent/50 transition-colors flex items-center justify-between gap-1",
+                        <button onClick={() => { setActiveConversation(conv.id); setShowSidebar(false); }}
+                          className={cn("w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-accent/50 transition-colors flex items-center justify-between gap-1",
                             activeConversation === conv.id && "bg-accent"
-                          )}
-                        >
+                          )}>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1">
                               <span className="truncate block text-xs font-medium">{conv.title}</span>
@@ -355,29 +554,11 @@ export function AgentChatWidget() {
                                 </span>
                               )}
                             </div>
-                            <span className="text-[10px] text-muted-foreground">
-                              {new Date(conv.updated_at).toLocaleDateString()}
-                            </span>
+                            <span className="text-[10px] text-muted-foreground">{new Date(conv.updated_at).toLocaleDateString()}</span>
                           </div>
                           <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditingConvoId(conv.id);
-                                setEditTitle(conv.title);
-                              }}
-                              className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
-                              title="Rename"
-                            >
-                              <Pencil className="h-3 w-3" />
-                            </button>
-                            <button
-                              onClick={(e) => deleteConversation(conv.id, e)}
-                              className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
-                              title="Delete"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); setEditingConvoId(conv.id); setEditTitle(conv.title); }} className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground" title="Rename"><Pencil className="h-3 w-3" /></button>
+                            <button onClick={(e) => deleteConversation(conv.id, e)} className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive" title="Delete"><Trash2 className="h-3 w-3" /></button>
                           </div>
                         </button>
                       )}
@@ -389,199 +570,144 @@ export function AgentChatWidget() {
           </div>
         )}
 
-        {/* Chat area */}
-        {!showSidebar && (
+        {/* ═══ CHAT AREA ═══ */}
+        {panelView === 'chat' && !showSidebar && (
           <div className="flex-1 flex flex-col min-h-0">
-            {/* Messages */}
             <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3">
               {messages.length === 0 && (
                 <div className="flex flex-col items-center justify-center h-full text-center px-4">
                   <Diamond className="h-10 w-10 text-black/20 dark:text-primary/20 mb-3" />
                   <p className="text-sm font-medium text-foreground/80 mb-1">How can I help?</p>
-                  <p className="text-xs text-muted-foreground max-w-[280px]">
-                    Ask about clients, deals, emails, reminders, pipeline status, calendar, or borrowing capacity.
-                  </p>
-                   {/* Quick actions */}
-                   <div className="flex flex-wrap gap-1.5 mt-4 justify-center">
-                     {[
-                       '☀️ Morning briefing',
-                       '🔍 Proactive insights scan',
-                       '📊 Pipeline overview',
-                       '⏰ Overdue reminders',
-                       '📅 Upcoming appointments',
-                       '💰 Commission forecast',
-                       '🏥 System health check',
-                       '📊 Chart: deals by stage',
-                       '📈 Weekly digest',
-                       '🏆 Top clients',
-                       '📊 Performance KPIs',
-                       '💹 Revenue forecast',
-                       '🔮 What-if: rates +0.5%',
-                       '📤 Export pipeline data',
-                       '📋 My playbooks',
-                       '🔎 Smart search',
-                     ].map((prompt) => (
-                       <button
-                         key={prompt}
-                         onClick={() => sendMessage(prompt)}
-                         className="text-[11px] px-2.5 py-1.5 rounded-full border border-border/50 hover:bg-accent/50 hover:border-primary/30 transition-colors text-muted-foreground hover:text-foreground"
-                       >
-                         {prompt}
-                       </button>
-                     ))}
-                   </div>
+                  <p className="text-xs text-muted-foreground max-w-[280px]">Ask about clients, deals, emails, reminders, pipeline status, calendar, or borrowing capacity.</p>
+                  <div className="flex flex-wrap gap-1.5 mt-4 justify-center">
+                    {[
+                      '☀️ Morning briefing',
+                      '🔍 Proactive insights scan',
+                      '📊 Pipeline overview',
+                      '⏰ Overdue reminders',
+                      '📅 Upcoming appointments',
+                      '💰 Commission forecast',
+                      '🏥 System health check',
+                      '📊 Chart: deals by stage',
+                      '📈 Weekly digest',
+                      '🏆 Top clients',
+                      '💹 Revenue forecast',
+                      '🔮 What-if: rates +0.5%',
+                      '📤 Export pipeline data',
+                      '📋 My playbooks',
+                      '🔎 Smart search',
+                      '📝 Generate report for...',
+                    ].map((prompt) => (
+                      <button key={prompt} onClick={() => sendMessage(prompt)}
+                        className="text-[11px] px-2.5 py-1.5 rounded-full border border-border/50 hover:bg-accent/50 hover:border-primary/30 transition-colors text-muted-foreground hover:text-foreground">
+                        {prompt}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
               {messages.map((msg) => (
                 <div key={msg.id} className={cn("flex", msg.role === 'user' ? "justify-end" : "justify-start")}>
-                  <div className={cn(
-                    "max-w-[88%] rounded-2xl px-3.5 py-2.5 text-sm",
-                    msg.role === 'user'
-                      ? "bg-primary text-primary-foreground rounded-br-md"
-                      : "bg-muted/60 border border-border/30 rounded-bl-md"
+                  <div className={cn("max-w-[88%] rounded-2xl px-3.5 py-2.5 text-sm",
+                    msg.role === 'user' ? "bg-primary text-primary-foreground rounded-br-md" : "bg-muted/60 border border-border/30 rounded-bl-md"
                   )}>
-                     {msg.role === 'assistant' ? (
-                       <div>
-                         <div className="prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_table]:text-xs [&_th]:py-1 [&_td]:py-1">
-                           <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
-                         </div>
-                         {/* Inline Chart Rendering */}
-                         {msg.content && (() => {
-                           // Detect chart data in tool results (JSON blocks with chart type)
-                           const chartMatch = msg.content.match(/```json\s*(\{[\s\S]*?"chart"[\s\S]*?\})\s*```/);
-                           if (!chartMatch) return null;
-                           try {
-                             const chartData = JSON.parse(chartMatch[1]);
-                             if (!chartData.chart) return null;
-                             const { type, title, labels, datasets } = chartData.chart;
-                             const maxVal = Math.max(...(datasets?.[0]?.data || [1]));
-                             const colors = datasets?.[0]?.backgroundColor || ['hsl(var(--primary))'];
-                             
-                             return (
-                               <div className="mt-3 p-3 rounded-lg border border-border/30 bg-muted/20">
-                                 <div className="flex items-center gap-1.5 mb-2">
-                                   <BarChart3 className="h-3.5 w-3.5 text-primary" />
-                                   <span className="text-xs font-semibold">{title || 'Chart'}</span>
-                                   <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">{type}</span>
-                                 </div>
-                                 {(type === 'bar' || type === 'line') && (
-                                   <div className="space-y-1">
-                                     {labels?.map((label: string, i: number) => (
-                                       <div key={label} className="flex items-center gap-2 text-[10px]">
-                                         <span className="w-20 truncate text-muted-foreground text-right">{label}</span>
-                                         <div className="flex-1 h-4 bg-muted/50 rounded-full overflow-hidden">
-                                           <div
-                                             className="h-full rounded-full transition-all duration-500"
-                                             style={{
-                                               width: `${maxVal > 0 ? (datasets[0].data[i] / maxVal) * 100 : 0}%`,
-                                               backgroundColor: Array.isArray(colors) ? colors[i % colors.length] : colors,
-                                             }}
-                                           />
-                                         </div>
-                                         <span className="w-8 text-right font-mono font-medium">{datasets[0].data[i]}</span>
-                                       </div>
-                                     ))}
-                                   </div>
-                                 )}
-                                 {(type === 'pie' || type === 'doughnut') && (
-                                   <div className="flex flex-wrap gap-2">
-                                     {labels?.map((label: string, i: number) => {
-                                       const total = datasets[0].data.reduce((a: number, b: number) => a + b, 0);
-                                       const pct = total > 0 ? Math.round((datasets[0].data[i] / total) * 100) : 0;
-                                       return (
-                                         <div key={label} className="flex items-center gap-1 text-[10px]">
-                                           <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: Array.isArray(colors) ? colors[i % colors.length] : colors }} />
-                                           <span className="text-muted-foreground">{label}</span>
-                                           <span className="font-mono font-medium">{pct}%</span>
-                                         </div>
-                                       );
-                                     })}
-                                   </div>
-                                 )}
-                               </div>
-                             );
-                           } catch { return null; }
-                         })()}
-                         {/* Confidence / Health Score indicator */}
-                         {msg.content && (() => {
-                           const healthMatch = msg.content.match(/health[_ ]score[:\s]*(\d+)/i);
-                           const confidenceMatch = msg.content.match(/confidence[:\s]*(\d+(?:\.\d+)?)/i);
-                           const score = healthMatch ? parseInt(healthMatch[1]) : confidenceMatch ? parseFloat(confidenceMatch[1]) : null;
-                           if (score === null) return null;
-                           const normalizedScore = score > 1 ? score : score * 100;
-                           const variant = normalizedScore >= 80 ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10' : normalizedScore >= 50 ? 'text-amber-600 dark:text-amber-400 bg-amber-500/10' : 'text-red-600 dark:text-red-400 bg-red-500/10';
-                           const label = normalizedScore >= 80 ? '🟢 High' : normalizedScore >= 50 ? '🟡 Medium' : '🔴 Low';
-                           return (
-                             <div className={cn("mt-2 inline-flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-full", variant)}>
-                               {label} Confidence ({Math.round(normalizedScore)}%)
-                             </div>
-                           );
-                         })()}
-                          {/* Playbook / Digest / Export badges */}
-                          {msg.content && msg.content.includes('Playbook "') && (
-                            <div className="mt-2 inline-flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-full bg-primary/10 text-primary">
-                              <Zap className="h-3 w-3" /> Playbook Executed
-                            </div>
-                          )}
-                          {msg.content && msg.content.includes('Weekly Digest') && (
-                            <div className="mt-2 inline-flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-full bg-primary/10 text-primary">
-                              <TrendingUp className="h-3 w-3" /> Weekly Digest
-                            </div>
-                          )}
-                          {msg.content && (msg.content.includes('Pipeline Summary') || msg.content.includes('export')) && msg.content.includes('| Client') && (
-                            <div className="mt-2 inline-flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-full bg-primary/10 text-primary">
-                              <FileDown className="h-3 w-3" /> Exported Data
-                            </div>
-                          )}
-                          {msg.content && msg.content.includes('engagement_score') && (
-                            <div className="mt-2 inline-flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-full bg-primary/10 text-primary">
-                              <Brain className="h-3 w-3" /> Engagement Analysis
-                            </div>
-                          )}
-                       </div>
+                    {msg.role === 'assistant' ? (
+                      <div>
+                        <div className="prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_table]:text-xs [&_th]:py-1 [&_td]:py-1">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                        </div>
+                        {/* Inline Chart Rendering */}
+                        {msg.content && (() => {
+                          const chartMatch = msg.content.match(/```json\s*(\{[\s\S]*?"chart"[\s\S]*?\})\s*```/);
+                          if (!chartMatch) return null;
+                          try {
+                            const chartData = JSON.parse(chartMatch[1]);
+                            if (!chartData.chart) return null;
+                            const { type, title, labels, datasets } = chartData.chart;
+                            const maxVal = Math.max(...(datasets?.[0]?.data || [1]));
+                            const colors = datasets?.[0]?.backgroundColor || ['hsl(var(--primary))'];
+                            return (
+                              <div className="mt-3 p-3 rounded-lg border border-border/30 bg-muted/20">
+                                <div className="flex items-center gap-1.5 mb-2">
+                                  <BarChart3 className="h-3.5 w-3.5 text-primary" />
+                                  <span className="text-xs font-semibold">{title || 'Chart'}</span>
+                                  <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">{type}</span>
+                                </div>
+                                {(type === 'bar' || type === 'line') && (
+                                  <div className="space-y-1">
+                                    {labels?.map((label: string, i: number) => (
+                                      <div key={label} className="flex items-center gap-2 text-[10px]">
+                                        <span className="w-20 truncate text-muted-foreground text-right">{label}</span>
+                                        <div className="flex-1 h-4 bg-muted/50 rounded-full overflow-hidden">
+                                          <div className="h-full rounded-full transition-all duration-500"
+                                            style={{ width: `${maxVal > 0 ? (datasets[0].data[i] / maxVal) * 100 : 0}%`, backgroundColor: Array.isArray(colors) ? colors[i % colors.length] : colors }} />
+                                        </div>
+                                        <span className="w-8 text-right font-mono font-medium">{datasets[0].data[i]}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                                {(type === 'pie' || type === 'doughnut') && (
+                                  <div className="flex flex-wrap gap-2">
+                                    {labels?.map((label: string, i: number) => {
+                                      const total = datasets[0].data.reduce((a: number, b: number) => a + b, 0);
+                                      const pct = total > 0 ? Math.round((datasets[0].data[i] / total) * 100) : 0;
+                                      return (
+                                        <div key={label} className="flex items-center gap-1 text-[10px]">
+                                          <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: Array.isArray(colors) ? colors[i % colors.length] : colors }} />
+                                          <span className="text-muted-foreground">{label}</span>
+                                          <span className="font-mono font-medium">{pct}%</span>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          } catch { return null; }
+                        })()}
+                        {/* Confidence indicator */}
+                        {msg.content && (() => {
+                          const healthMatch = msg.content.match(/health[_ ]score[:\s]*(\d+)/i);
+                          const confidenceMatch = msg.content.match(/confidence[:\s]*(\d+(?:\.\d+)?)/i);
+                          const score = healthMatch ? parseInt(healthMatch[1]) : confidenceMatch ? parseFloat(confidenceMatch[1]) : null;
+                          if (score === null) return null;
+                          const normalizedScore = score > 1 ? score : score * 100;
+                          const variant = normalizedScore >= 80 ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10' : normalizedScore >= 50 ? 'text-amber-600 dark:text-amber-400 bg-amber-500/10' : 'text-red-600 dark:text-red-400 bg-red-500/10';
+                          const label = normalizedScore >= 80 ? '🟢 High' : normalizedScore >= 50 ? '🟡 Medium' : '🔴 Low';
+                          return <div className={cn("mt-2 inline-flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-full", variant)}>{label} Confidence ({Math.round(normalizedScore)}%)</div>;
+                        })()}
+                        {/* Contextual badges */}
+                        {msg.content?.includes('Playbook "') && <div className="mt-2 inline-flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-full bg-primary/10 text-primary"><Zap className="h-3 w-3" /> Playbook Executed</div>}
+                        {msg.content?.includes('Weekly Digest') && <div className="mt-2 inline-flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-full bg-primary/10 text-primary"><TrendingUp className="h-3 w-3" /> Weekly Digest</div>}
+                        {msg.content && (msg.content.includes('Pipeline Summary') || msg.content.includes('export')) && msg.content.includes('| Client') && <div className="mt-2 inline-flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-full bg-primary/10 text-primary"><FileDown className="h-3 w-3" /> Exported Data</div>}
+                        {msg.content?.includes('engagement_score') && <div className="mt-2 inline-flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-full bg-primary/10 text-primary"><Brain className="h-3 w-3" /> Engagement Analysis</div>}
+                        {msg.content?.includes('Memory saved') && <div className="mt-2 inline-flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-full bg-primary/10 text-primary"><Brain className="h-3 w-3" /> Memory Saved</div>}
+                        {msg.content?.includes('Report queued') && <div className="mt-2 inline-flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-full bg-primary/10 text-primary"><FileDown className="h-3 w-3" /> Report Queued</div>}
+                      </div>
                     ) : (
                       <p className="whitespace-pre-wrap">{msg.content}</p>
                     )}
-                    {/* Email preview for send_email tool calls */}
+                    {/* Email preview */}
                     {msg.requires_confirmation && msg.tool_calls?.some((tc: any) => tc.function?.name === 'send_email') && (
                       <div className="mt-2 rounded-lg border border-primary/20 overflow-hidden text-xs">
                         {msg.tool_calls.filter((tc: any) => tc.function?.name === 'send_email').map((tc: any, i: number) => {
                           const args = JSON.parse(tc.function.arguments || '{}');
                           return (
                             <div key={i}>
-                              {/* Header */}
-                              <div className="flex items-center gap-1.5 font-semibold text-primary bg-primary/10 px-3 py-2">
-                                📧 Email Preview
-                              </div>
+                              <div className="flex items-center gap-1.5 font-semibold text-primary bg-primary/10 px-3 py-2">📧 Email Preview</div>
                               <div className="p-3 space-y-2">
-                                {/* Mailbox selector */}
                                 <div className="flex items-center gap-2">
                                   <span className="text-muted-foreground shrink-0">From:</span>
                                   <div className="flex gap-1">
-                                    <span className={cn(
-                                      "px-2 py-0.5 rounded-full border text-[10px] font-medium",
-                                      (args.mailbox_source || 'admin') === 'admin'
-                                        ? "bg-primary/15 border-primary/30 text-primary"
-                                        : "bg-muted/50 border-border/50 text-muted-foreground"
-                                    )}>
-                                      🏢 Admin
-                                    </span>
-                                    <span className={cn(
-                                      "px-2 py-0.5 rounded-full border text-[10px] font-medium",
-                                      args.mailbox_source === 'personal'
-                                        ? "bg-primary/15 border-primary/30 text-primary"
-                                        : "bg-muted/50 border-border/50 text-muted-foreground"
-                                    )}>
-                                      👤 Personal
-                                    </span>
+                                    <span className={cn("px-2 py-0.5 rounded-full border text-[10px] font-medium", (args.mailbox_source || 'admin') === 'admin' ? "bg-primary/15 border-primary/30 text-primary" : "bg-muted/50 border-border/50 text-muted-foreground")}>🏢 Admin</span>
+                                    <span className={cn("px-2 py-0.5 rounded-full border text-[10px] font-medium", args.mailbox_source === 'personal' ? "bg-primary/15 border-primary/30 text-primary" : "bg-muted/50 border-border/50 text-muted-foreground")}>👤 Personal</span>
                                   </div>
                                 </div>
-                                {/* Recipients */}
                                 <div><span className="text-muted-foreground">To:</span> <span className="font-medium">{args.to}</span></div>
                                 {args.cc?.length > 0 && <div><span className="text-muted-foreground">CC:</span> {args.cc.join(', ')}</div>}
                                 {args.bcc?.length > 0 && <div><span className="text-muted-foreground">BCC:</span> {args.bcc.join(', ')}</div>}
                                 <div><span className="text-muted-foreground">Subject:</span> <span className="font-medium">{args.subject}</span></div>
-                                {/* Email body preview */}
                                 {args.body && (
                                   <div className="mt-2 pt-2 border-t border-border/30">
                                     <div className="text-[10px] text-muted-foreground mb-1 uppercase tracking-wider">Body</div>
@@ -599,57 +725,25 @@ export function AgentChatWidget() {
                     {/* Confirmation buttons */}
                     {msg.requires_confirmation && msg.confirmation_status === 'pending' && (
                       <div className="flex gap-2 mt-3 pt-2.5 border-t border-border/50">
-                        <Button
-                          size="sm"
-                          variant="default"
-                          className="h-7 text-xs flex-1"
-                          onClick={() => handleConfirmAction(msg.id, true)}
-                          disabled={loading}
-                        >
-                          <Check className="h-3 w-3 mr-1" /> Approve
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-xs flex-1"
-                          onClick={() => handleConfirmAction(msg.id, false)}
-                          disabled={loading}
-                        >
-                          <XCircle className="h-3 w-3 mr-1" /> Cancel
-                        </Button>
+                        <Button size="sm" variant="default" className="h-7 text-xs flex-1" onClick={() => handleConfirmAction(msg.id, true)} disabled={loading}><Check className="h-3 w-3 mr-1" /> Approve</Button>
+                        <Button size="sm" variant="outline" className="h-7 text-xs flex-1" onClick={() => handleConfirmAction(msg.id, false)} disabled={loading}><XCircle className="h-3 w-3 mr-1" /> Cancel</Button>
                       </div>
                     )}
-                    {msg.confirmation_status === 'approved' && (
-                      <p className="text-xs text-primary mt-1.5 flex items-center gap-1">
-                        <Check className="h-3 w-3" /> Approved & executed
-                      </p>
-                    )}
-                    {msg.confirmation_status === 'rejected' && (
-                      <p className="text-xs text-destructive mt-1.5 flex items-center gap-1">
-                        <XCircle className="h-3 w-3" /> Cancelled
-                      </p>
-                    )}
+                    {msg.confirmation_status === 'approved' && <p className="text-xs text-primary mt-1.5 flex items-center gap-1"><Check className="h-3 w-3" /> Approved & executed</p>}
+                    {msg.confirmation_status === 'rejected' && <p className="text-xs text-destructive mt-1.5 flex items-center gap-1"><XCircle className="h-3 w-3" /> Cancelled</p>}
                   </div>
                 </div>
               ))}
               {loading && (
                 <div className="flex justify-start">
                   <div className="bg-muted/60 border border-border/30 rounded-2xl rounded-bl-md px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-                      <span className="text-xs text-muted-foreground">Thinking...</span>
-                    </div>
+                    <div className="flex items-center gap-2"><Loader2 className="h-3.5 w-3.5 animate-spin text-primary" /><span className="text-xs text-muted-foreground">Thinking...</span></div>
                   </div>
                 </div>
               )}
               {retryMessage && !loading && (
                 <div className="flex justify-center">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => sendMessage(retryMessage)}
-                    className="h-7 text-xs text-muted-foreground hover:text-foreground"
-                  >
+                  <Button variant="ghost" size="sm" onClick={() => sendMessage(retryMessage)} className="h-7 text-xs text-muted-foreground hover:text-foreground">
                     <RotateCcw className="h-3 w-3 mr-1" /> Retry
                   </Button>
                 </div>
@@ -659,34 +753,12 @@ export function AgentChatWidget() {
             {/* Input */}
             <div className="border-t p-3 shrink-0 bg-background">
               <div className="flex gap-2 items-end">
-                <Textarea
-                  ref={textareaRef}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Ask Aurixa..."
-                  className="min-h-[40px] max-h-[100px] resize-none text-sm rounded-xl"
-                  rows={1}
-                  disabled={loading}
-                />
-                <VoiceToTextButton
-                  onTranscript={(text) => setInput(prev => prev ? `${prev} ${text}` : text)}
-                  disabled={loading}
-                  size="sm"
-                  className="shrink-0"
-                />
-                <Button
-                  size="icon"
-                  onClick={() => sendMessage()}
-                  disabled={!input.trim() || loading}
-                  className="h-10 w-10 shrink-0 rounded-xl"
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
+                <Textarea ref={textareaRef} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown}
+                  placeholder="Ask Aurixa..." className="min-h-[40px] max-h-[100px] resize-none text-sm rounded-xl" rows={1} disabled={loading} />
+                <VoiceToTextButton onTranscript={(text) => setInput(prev => prev ? `${prev} ${text}` : text)} disabled={loading} size="sm" className="shrink-0" />
+                <Button size="icon" onClick={() => sendMessage()} disabled={!input.trim() || loading} className="h-10 w-10 shrink-0 rounded-xl"><Send className="h-4 w-4" /></Button>
               </div>
-              <p className="text-[10px] text-muted-foreground mt-1.5 text-center">
-                Powered by Gemini • Aurixa may make mistakes
-              </p>
+              <p className="text-[10px] text-muted-foreground mt-1.5 text-center">Powered by Gemini • Aurixa may make mistakes</p>
             </div>
           </div>
         )}
