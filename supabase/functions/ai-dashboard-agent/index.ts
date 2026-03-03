@@ -1444,6 +1444,29 @@ async function executeGetOverdueReminders(sb: any) {
 }
 
 async function executeCreateReminder(sb: any, args: any, userId: string) {
+  // Validate client_id exists in clients table to prevent FK violation
+  if (!args.client_id) return { error: 'client_id is required to create a reminder.' };
+  const { data: clientCheck, error: clientErr } = await sb.from('clients').select('id').eq('id', args.client_id).maybeSingle();
+  if (clientErr || !clientCheck) {
+    // Try searching by name as fallback if it looks like a name was passed
+    const nameParts = (args.client_id || '').trim().split(/\s+/);
+    if (nameParts.length >= 1 && !args.client_id.match(/^[0-9a-f]{8}-/i)) {
+      const { data: found } = await sb.from('clients')
+        .select('id, primary_first_name, primary_surname')
+        .or(`primary_first_name.ilike.%${nameParts[0]}%,primary_surname.ilike.%${nameParts[nameParts.length-1]}%`)
+        .limit(5);
+      if (found && found.length === 1) {
+        args.client_id = found[0].id;
+      } else if (found && found.length > 1) {
+        return { error: `Multiple clients match that name. Please specify the exact client_id UUID. Matches: ${found.map((c:any)=>`${c.primary_first_name} ${c.primary_surname} (${c.id})`).join(', ')}` };
+      } else {
+        return { error: `No client found with id or name "${args.client_id}". Please verify the client exists.` };
+      }
+    } else {
+      return { error: `Client with id "${args.client_id}" not found. The client_id must be a valid UUID from the clients table.` };
+    }
+  }
+
   // Look up custom_users id to satisfy FK constraint on created_by
   let createdBy: string | null = null;
   if (userId && userId !== 'service_role') {
