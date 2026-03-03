@@ -191,7 +191,9 @@ export default function ReportQA() {
   const [streamingContent, setStreamingContent] = useState('');
   const [failedMessage, setFailedMessage] = useState<{ content: string; audioUrl?: string } | null>(null);
   const [isRetrying, setIsRetrying] = useState(false);
-  const MAX_MESSAGE_LENGTH = 4000;
+  const MAX_MESSAGE_LENGTH = 12000;
+  const MAX_CHAT_HISTORY_MESSAGES = 16;
+  const MAX_HISTORY_MESSAGE_CHARS = 6000;
   
   // Phase 2 UX improvements
   const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
@@ -596,6 +598,18 @@ export default function ReportQA() {
     }
   };
 
+  const buildChatHistoryForRequest = (history: ChatMessage[]) => {
+    const recentHistory = history.slice(-MAX_CHAT_HISTORY_MESSAGES);
+
+    return recentHistory.map((msg) => ({
+      role: msg.role,
+      content:
+        msg.content.length > MAX_HISTORY_MESSAGE_CHARS
+          ? `${msg.content.slice(0, MAX_HISTORY_MESSAGE_CHARS)}\n\n[Message truncated for context window]`
+          : msg.content,
+    }));
+  };
+
   const handleSendMessage = async (retryContent?: string, retryAudioUrl?: string) => {
     const messageContent = retryContent || inputMessage.trim();
     const audioUrl = retryAudioUrl || pendingAudioUrl;
@@ -658,6 +672,8 @@ export default function ReportQA() {
       const accessToken = sessionStorage.getItem('supabase_access_token') || localStorage.getItem('supabase_access_token');
       const bearerToken = accessToken || SUPABASE_KEY;
       
+      const chatHistoryForRequest = buildChatHistoryForRequest(messages);
+
       const response = await fetch(`${SUPABASE_URL}/functions/v1/report-qa`, {
         method: 'POST',
         headers: {
@@ -672,7 +688,7 @@ export default function ReportQA() {
           reportContents: reportsToUse.map(r => r.content),
           reportNames: reportsToUse.map(r => r.name),
           question: messageContent,
-          chatHistory: messages.map(m => ({ role: m.role, content: m.content })),
+          chatHistory: chatHistoryForRequest,
           conversationId: activeConversationId,
           stream: true,
           session_token: sessionToken, // Add session token to body as fallback
@@ -681,7 +697,19 @@ export default function ReportQA() {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+        let errorMessage = `HTTP ${response.status}`;
+
+        try {
+          const payload = await response.json();
+          errorMessage = payload?.error || payload?.message || errorMessage;
+        } catch {
+          const rawText = await response.text();
+          if (rawText?.trim()) {
+            errorMessage = rawText;
+          }
+        }
+
+        throw new Error(errorMessage);
       }
 
       if (!response.body) {
@@ -771,7 +799,7 @@ export default function ReportQA() {
       setFailedMessage({ content: messageContent, audioUrl: audioUrl || undefined });
       toast({
         title: 'Failed to send message',
-        description: 'Click retry to try again.',
+        description: error instanceof Error ? error.message : 'Click retry to try again.',
         variant: 'destructive',
       });
     } finally {
