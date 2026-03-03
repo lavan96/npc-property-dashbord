@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { MessageSquare, X, Plus, Trash2, Send, Check, XCircle, Loader2, ChevronLeft, Search, Pencil, RotateCcw, Sparkles, Diamond } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -405,12 +405,12 @@ export function AgentChatWidget() {
                   <div className="flex flex-wrap gap-1.5 mt-4 justify-center">
                     {[
                       '☀️ Morning briefing',
+                      '🔍 Proactive insights scan',
                       '📊 Pipeline overview',
                       '⏰ Overdue reminders',
                       '📅 Upcoming appointments',
-                      '🔍 Search a client',
                       '💰 Commission forecast',
-                      '🧮 Calculate stamp duty',
+                      '🏥 System health check',
                       '✅ Active checklists',
                     ].map((prompt) => (
                       <button
@@ -433,8 +433,25 @@ export function AgentChatWidget() {
                       : "bg-muted/60 border border-border/30 rounded-bl-md"
                   )}>
                     {msg.role === 'assistant' ? (
-                      <div className="prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_table]:text-xs [&_th]:py-1 [&_td]:py-1">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                      <div>
+                        <div className="prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_table]:text-xs [&_th]:py-1 [&_td]:py-1">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                        </div>
+                        {/* Confidence / Health Score indicator */}
+                        {msg.content && (() => {
+                          const healthMatch = msg.content.match(/health[_ ]score[:\s]*(\d+)/i);
+                          const confidenceMatch = msg.content.match(/confidence[:\s]*(\d+(?:\.\d+)?)/i);
+                          const score = healthMatch ? parseInt(healthMatch[1]) : confidenceMatch ? parseFloat(confidenceMatch[1]) : null;
+                          if (score === null) return null;
+                          const normalizedScore = score > 1 ? score : score * 100;
+                          const variant = normalizedScore >= 80 ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10' : normalizedScore >= 50 ? 'text-amber-600 dark:text-amber-400 bg-amber-500/10' : 'text-red-600 dark:text-red-400 bg-red-500/10';
+                          const label = normalizedScore >= 80 ? '🟢 High' : normalizedScore >= 50 ? '🟡 Medium' : '🔴 Low';
+                          return (
+                            <div className={cn("mt-2 inline-flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-full", variant)}>
+                              {label} Confidence ({Math.round(normalizedScore)}%)
+                            </div>
+                          );
+                        })()}
                       </div>
                     ) : (
                       <p className="whitespace-pre-wrap">{msg.content}</p>
