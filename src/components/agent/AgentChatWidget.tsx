@@ -31,6 +31,8 @@ interface Message {
   requires_confirmation?: boolean;
   confirmation_status?: 'pending' | 'approved' | 'rejected';
   created_at: string;
+  sent_by?: string | null;
+  sent_by_username?: string;
 }
 
 type PanelView = 'chat' | 'notifications' | 'settings' | 'share';
@@ -58,6 +60,8 @@ export function AgentChatWidget() {
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [shareTarget, setShareTarget] = useState('');
   const [shareNote, setShareNote] = useState('');
+  const [sharePermission, setSharePermission] = useState<'view' | 'collaborate'>('view');
+  const [userMap, setUserMap] = useState<Record<string, string>>({});
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
@@ -69,8 +73,9 @@ export function AgentChatWidget() {
     try {
       const { data } = await invokeSecureFunction('ai-dashboard-agent', { action: 'list-conversations' });
       if (data?.conversations) {
+        const own = (data.conversations || []).map((c: any) => ({ ...c, shared: false }));
         const shared = (data.shared_conversations || []).map((c: any) => ({ ...c, shared: true }));
-        setConversations([...data.conversations, ...shared]);
+        setConversations([...own, ...shared]);
       }
     } catch (err) {
       console.error('Failed to load conversations:', err);
@@ -254,10 +259,11 @@ export function AgentChatWidget() {
   const handleShareConversation = async () => {
     if (!shareTarget.trim() || !activeConversation) return;
     try {
-      await invokeSecureFunction('ai-dashboard-agent', { action: 'share-conversation', target_user_name: shareTarget.trim(), conversation_id: activeConversation, handoff_note: shareNote.trim() || undefined });
-      toast.success(`Shared with ${shareTarget}`);
+      await invokeSecureFunction('ai-dashboard-agent', { action: 'share-conversation', target_user_name: shareTarget.trim(), conversation_id: activeConversation, handoff_note: shareNote.trim() || undefined, permission: sharePermission });
+      toast.success(`Shared with ${shareTarget} (${sharePermission})`);
       setShareTarget('');
       setShareNote('');
+      setSharePermission('view');
       setPanelView('chat');
     } catch (err) { toast.error('Failed to share conversation'); }
   };
@@ -501,6 +507,19 @@ export function AgentChatWidget() {
                 </div>
               </div>
               <div>
+                <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Permission level</label>
+                <div className="flex gap-1.5">
+                  {(['view', 'collaborate'] as const).map((perm) => (
+                    <button key={perm} onClick={() => setSharePermission(perm)}
+                      className={cn("flex-1 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors",
+                        sharePermission === perm ? 'border-primary bg-primary/10 text-primary' : 'border-border/30 text-muted-foreground hover:border-primary/20'
+                      )}>
+                      {perm === 'view' ? '👁️ View Only' : '✏️ Collaborate'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
                 <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Handoff note (optional)</label>
                 <Input value={shareNote} onChange={(e) => setShareNote(e.target.value)} placeholder="Context for the recipient..." className="h-8 text-xs" />
               </div>
@@ -529,43 +548,78 @@ export function AgentChatWidget() {
                   <p className="text-sm text-muted-foreground mb-3">{searchQuery ? 'No matching conversations' : 'No conversations yet'}</p>
                   {!searchQuery && <Button size="sm" onClick={createConversation} variant="outline"><Plus className="h-4 w-4 mr-1" /> New Chat</Button>}
                 </div>
-              ) : (
-                <div className="p-1.5 space-y-0.5">
-                  {filteredConversations.map((conv) => (
-                    <div key={conv.id} className="group">
-                      {editingConvoId === conv.id ? (
-                        <div className="px-2 py-1.5">
-                          <Input ref={editInputRef} value={editTitle} onChange={(e) => setEditTitle(e.target.value)}
-                            onBlur={() => renameConversation(conv.id)}
-                            onKeyDown={(e) => { if (e.key === 'Enter') renameConversation(conv.id); if (e.key === 'Escape') setEditingConvoId(null); }}
-                            className="h-7 text-xs" />
-                        </div>
-                      ) : (
-                        <button onClick={() => { setActiveConversation(conv.id); setShowSidebar(false); }}
-                          className={cn("w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-accent/50 transition-colors flex items-center justify-between gap-1",
-                            activeConversation === conv.id && "bg-accent"
-                          )}>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1">
-                              <span className="truncate block text-xs font-medium">{conv.title}</span>
-                              {conv.shared && (
-                                <span className="shrink-0 text-[9px] px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-                                  🤝 {conv.shared_by}
-                                </span>
-                              )}
-                            </div>
-                            <span className="text-[10px] text-muted-foreground">{new Date(conv.updated_at).toLocaleDateString()}</span>
+              ) : (() => {
+                const ownConvos = filteredConversations.filter(c => !c.shared);
+                const sharedConvos = filteredConversations.filter(c => c.shared);
+                const renderConvo = (conv: Conversation) => (
+                  <div key={conv.id} className="group">
+                    {editingConvoId === conv.id ? (
+                      <div className="px-2 py-1.5">
+                        <Input ref={editInputRef} value={editTitle} onChange={(e) => setEditTitle(e.target.value)}
+                          onBlur={() => renameConversation(conv.id)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') renameConversation(conv.id); if (e.key === 'Escape') setEditingConvoId(null); }}
+                          className="h-7 text-xs" />
+                      </div>
+                    ) : (
+                      <button onClick={() => { setActiveConversation(conv.id); setShowSidebar(false); }}
+                        className={cn("w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-accent/50 transition-colors flex items-center justify-between gap-1",
+                          activeConversation === conv.id && "bg-accent"
+                        )}>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1">
+                            <span className="truncate block text-xs font-medium">{conv.title}</span>
+                            {conv.shared && conv.permission && (
+                              <span className={cn("shrink-0 text-[9px] px-1.5 py-0.5 rounded-full border",
+                                conv.permission === 'collaborate'
+                                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                                  : 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20'
+                              )}>
+                                {conv.permission === 'collaborate' ? '✏️' : '👁️'}
+                              </span>
+                            )}
                           </div>
+                          <span className="text-[10px] text-muted-foreground">
+                            {conv.shared ? `From ${conv.shared_by} • ` : ''}{new Date(conv.updated_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                        {!conv.shared && (
                           <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                             <button onClick={(e) => { e.stopPropagation(); setEditingConvoId(conv.id); setEditTitle(conv.title); }} className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground" title="Rename"><Pencil className="h-3 w-3" /></button>
                             <button onClick={(e) => deleteConversation(conv.id, e)} className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive" title="Delete"><Trash2 className="h-3 w-3" /></button>
                           </div>
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
+                        )}
+                      </button>
+                    )}
+                  </div>
+                );
+                return (
+                  <div className="p-1.5 space-y-1">
+                    {/* My Conversations */}
+                    {ownConvos.length > 0 && (
+                      <div>
+                        <p className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">My Conversations</p>
+                        <div className="space-y-0.5">{ownConvos.map(renderConvo)}</div>
+                      </div>
+                    )}
+                    {/* Shared with me */}
+                    {sharedConvos.length > 0 && (
+                      <div className={ownConvos.length > 0 ? 'pt-2 border-t border-border/30' : ''}>
+                        <p className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                          <Users className="h-3 w-3" /> Shared with me
+                        </p>
+                        <div className="space-y-0.5">{sharedConvos.map(renderConvo)}</div>
+                      </div>
+                    )}
+                    {ownConvos.length === 0 && sharedConvos.length === 0 && (
+                      <div className="p-6 text-center">
+                        <Diamond className="h-8 w-8 text-muted-foreground/30 mx-auto mb-3" />
+                        <p className="text-sm text-muted-foreground mb-3">No conversations yet</p>
+                        <Button size="sm" onClick={createConversation} variant="outline"><Plus className="h-4 w-4 mr-1" /> New Chat</Button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </ScrollArea>
           </div>
         )}
@@ -606,8 +660,15 @@ export function AgentChatWidget() {
                   </div>
                 </div>
               )}
-              {messages.map((msg) => (
-                <div key={msg.id} className={cn("flex", msg.role === 'user' ? "justify-end" : "justify-start")}>
+              {messages.map((msg) => {
+                const activeConvData = conversations.find(c => c.id === activeConversation);
+                const isSharedConvo = activeConvData?.shared;
+                const showAttribution = msg.role === 'user' && msg.sent_by_username && isSharedConvo;
+                return (
+                <div key={msg.id} className={cn("flex flex-col", msg.role === 'user' ? "items-end" : "items-start")}>
+                  {showAttribution && (
+                    <span className="text-[10px] text-muted-foreground mb-0.5 px-1">{msg.sent_by_username}</span>
+                  )}
                   <div className={cn("max-w-[88%] rounded-2xl px-3.5 py-2.5 text-sm",
                     msg.role === 'user' ? "bg-primary text-primary-foreground rounded-br-md" : "bg-muted/60 border border-border/30 rounded-bl-md"
                   )}>
@@ -733,7 +794,8 @@ export function AgentChatWidget() {
                     {msg.confirmation_status === 'rejected' && <p className="text-xs text-destructive mt-1.5 flex items-center gap-1"><XCircle className="h-3 w-3" /> Cancelled</p>}
                   </div>
                 </div>
-              ))}
+                );
+              })}
               {loading && (
                 <div className="flex justify-start">
                   <div className="bg-muted/60 border border-border/30 rounded-2xl rounded-bl-md px-4 py-3">
@@ -751,15 +813,28 @@ export function AgentChatWidget() {
             </div>
 
             {/* Input */}
-            <div className="border-t p-3 shrink-0 bg-background">
-              <div className="flex gap-2 items-end">
-                <Textarea ref={textareaRef} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown}
-                  placeholder="Ask Aurixa..." className="min-h-[40px] max-h-[100px] resize-none text-sm rounded-xl" rows={1} disabled={loading} />
-                <VoiceToTextButton onTranscript={(text) => setInput(prev => prev ? `${prev} ${text}` : text)} disabled={loading} size="sm" className="shrink-0" />
-                <Button size="icon" onClick={() => sendMessage()} disabled={!input.trim() || loading} className="h-10 w-10 shrink-0 rounded-xl"><Send className="h-4 w-4" /></Button>
-              </div>
-              <p className="text-[10px] text-muted-foreground mt-1.5 text-center">Powered by Gemini • Aurixa may make mistakes</p>
-            </div>
+            {(() => {
+              const activeConvMeta = conversations.find(c => c.id === activeConversation);
+              const isReadOnly = activeConvMeta?.shared && activeConvMeta?.permission === 'view';
+              if (isReadOnly) {
+                return (
+                  <div className="border-t p-3 shrink-0 bg-muted/30 text-center">
+                    <p className="text-xs text-muted-foreground flex items-center justify-center gap-1.5">👁️ View-only access — you can read but not send messages</p>
+                  </div>
+                );
+              }
+              return (
+                <div className="border-t p-3 shrink-0 bg-background">
+                  <div className="flex gap-2 items-end">
+                    <Textarea ref={textareaRef} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown}
+                      placeholder="Ask Aurixa..." className="min-h-[40px] max-h-[100px] resize-none text-sm rounded-xl" rows={1} disabled={loading} />
+                    <VoiceToTextButton onTranscript={(text) => setInput(prev => prev ? `${prev} ${text}` : text)} disabled={loading} size="sm" className="shrink-0" />
+                    <Button size="icon" onClick={() => sendMessage()} disabled={!input.trim() || loading} className="h-10 w-10 shrink-0 rounded-xl"><Send className="h-4 w-4" /></Button>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-1.5 text-center">Powered by Gemini • Aurixa may make mistakes</p>
+                </div>
+              );
+            })()}
           </div>
         )}
       </div>

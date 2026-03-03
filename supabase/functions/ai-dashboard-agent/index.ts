@@ -3843,9 +3843,10 @@ async function handleRenameConversation(sb: any, userId: string, convId: string,
 }
 
 async function handleGetMessages(sb: any, convId: string, cors: Record<string, string>) {
-  const { data, error } = await sb.from('agent_messages').select('*').eq('conversation_id', convId).order('created_at', { ascending: true }).limit(200);
+  const { data, error } = await sb.from('agent_messages').select('*, custom_users!agent_messages_sent_by_fkey(username)').eq('conversation_id', convId).order('created_at', { ascending: true }).limit(200);
   if (error) throw error;
-  return new Response(JSON.stringify({ success: true, messages: data || [] }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+  const messages = (data || []).map((m: any) => ({ ...m, sent_by_username: m.custom_users?.username || null, custom_users: undefined }));
+  return new Response(JSON.stringify({ success: true, messages }), { headers: { ...cors, 'Content-Type': 'application/json' } });
 }
 
 async function handleConfirmAction(sb: any, body: any, cors: Record<string, string>) {

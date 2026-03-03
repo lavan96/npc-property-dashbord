@@ -131,6 +131,10 @@ interface SavedConversation {
   report_names: string[];
   created_at: string;
   updated_at: string;
+  shared?: boolean;
+  shared_by?: string;
+  permission?: string;
+  handoff_note?: string;
 }
 
 export default function ReportQA() {
@@ -302,9 +306,11 @@ export default function ReportQA() {
         throw error;
       }
       
-      const conversations = data?.conversations || [];
-      console.log('[ReportQA] Loaded conversations:', conversations.length);
-      setSavedConversations(conversations);
+      const ownConversations = (data?.conversations || []).map((c: any) => ({ ...c, shared: false }));
+      const sharedConversations = (data?.shared_conversations || []).map((c: any) => ({ ...c, shared: true }));
+      const allConversations = [...ownConversations, ...sharedConversations];
+      console.log('[ReportQA] Loaded conversations:', allConversations.length, `(${sharedConversations.length} shared)`);
+      setSavedConversations(allConversations);
     } catch (error) {
       console.error('[ReportQA] Failed to load conversations:', error);
     }

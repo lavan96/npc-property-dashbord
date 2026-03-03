@@ -1326,6 +1326,7 @@ No investment report has been uploaded. You are having an open conversation abou
 
     // Handle fetching conversation history (no limit - return all)
     if (action === "get-conversations") {
+      // Fetch own conversations
       const { data, error } = await supabase
         .from("report_qa_conversations")
         .select("id, title, report_names, created_at, updated_at, structured_report")
@@ -1333,8 +1334,27 @@ No investment report has been uploaded. You are having an open conversation abou
 
       if (error) throw error;
 
+      // Fetch conversations shared with this user
+      let sharedConversations: any[] = [];
+      if (userId) {
+        const { data: shared } = await supabase
+          .from("report_qa_conversation_shares")
+          .select("conversation_id, permission, handoff_note, report_qa_conversations(id, title, report_names, created_at, updated_at, structured_report), custom_users!report_qa_conversation_shares_shared_by_fkey(username)")
+          .eq("shared_with", userId)
+          .eq("is_active", true)
+          .order("created_at", { ascending: false });
+
+        sharedConversations = (shared || []).map((s: any) => ({
+          ...s.report_qa_conversations,
+          shared: true,
+          shared_by: s.custom_users?.username || 'Unknown',
+          permission: s.permission,
+          handoff_note: s.handoff_note,
+        }));
+      }
+
       return new Response(
-        JSON.stringify({ success: true, conversations: data }),
+        JSON.stringify({ success: true, conversations: data, shared_conversations: sharedConversations }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -1564,7 +1584,84 @@ ${transcript}`;
       );
     }
 
-    // Handle fetching available mailboxes for email
+    // Handle sharing a conversation
+    if (action === "share-conversation") {
+      const { conversationId, targetUserId, permission, handoffNote } = body;
+      if (!conversationId || !targetUserId) {
+        return new Response(
+          JSON.stringify({ error: "conversationId and targetUserId are required" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if (targetUserId === userId) {
+        return new Response(
+          JSON.stringify({ error: "Cannot share with yourself" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      const { error: shareError } = await supabase
+        .from("report_qa_conversation_shares")
+        .insert({
+          conversation_id: conversationId,
+          shared_by: userId,
+          shared_with: targetUserId,
+          permission: permission || 'view',
+          handoff_note: handoffNote || null,
+        });
+      if (shareError) throw shareError;
+
+      // Get sharer's name and conversation title for notification
+      const { data: sharerData } = await supabase.from('custom_users').select('username').eq('id', userId).limit(1);
+      const { data: convData } = await supabase.from('report_qa_conversations').select('title').eq('id', conversationId).limit(1);
+      const sharerName = sharerData?.[0]?.username || 'A team member';
+      const convTitle = convData?.[0]?.title || 'Untitled Q&A';
+      const noteText = handoffNote ? ` — "${handoffNote}"` : '';
+      await supabase.from('notifications').insert({
+        type: 'qa_conversation_shared',
+        title: 'Q&A Session Shared With You',
+        message: `${sharerName} shared "${convTitle}" with you${noteText}`,
+        entity_id: conversationId,
+        read: false,
+      });
+
+      console.log(`[report-qa] Shared conversation ${conversationId} with user ${targetUserId}`);
+      return new Response(
+        JSON.stringify({ success: true }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Handle revoking a share
+    if (action === "revoke-share") {
+      const { conversationId: convId, targetUserId: revokeUserId } = body;
+      const { error: revokeError } = await supabase
+        .from("report_qa_conversation_shares")
+        .update({ is_active: false })
+        .eq("conversation_id", convId)
+        .eq("shared_with", revokeUserId);
+      if (revokeError) throw revokeError;
+      return new Response(
+        JSON.stringify({ success: true }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Handle getting team members for sharing
+    if (action === "get-team-members") {
+      const { data: members, error: membersError } = await supabase
+        .from("custom_users")
+        .select("id, username, email, role")
+        .eq("is_active", true)
+        .order("username");
+      if (membersError) throw membersError;
+      // Filter out current user
+      const filtered = (members || []).filter((m: any) => m.id !== userId);
+      return new Response(
+        JSON.stringify({ success: true, team_members: filtered }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     if (action === "get-mailboxes") {
       const { data, error } = await supabase
         .from("custom_users")

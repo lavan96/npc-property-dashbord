@@ -4858,6 +4858,64 @@ export type Database = {
           },
         ]
       }
+      report_qa_conversation_shares: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          handoff_note: string | null
+          id: string
+          is_active: boolean
+          permission: string
+          shared_by: string
+          shared_with: string
+          updated_at: string
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string
+          handoff_note?: string | null
+          id?: string
+          is_active?: boolean
+          permission?: string
+          shared_by: string
+          shared_with: string
+          updated_at?: string
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          handoff_note?: string | null
+          id?: string
+          is_active?: boolean
+          permission?: string
+          shared_by?: string
+          shared_with?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_qa_conversation_shares_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "report_qa_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_qa_conversation_shares_shared_by_fkey"
+            columns: ["shared_by"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_qa_conversation_shares_shared_with_fkey"
+            columns: ["shared_with"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       report_qa_conversations: {
         Row: {
           created_at: string
