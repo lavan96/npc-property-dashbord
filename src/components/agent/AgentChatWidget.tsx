@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { MessageSquare, X, Plus, Trash2, Send, Check, XCircle, Loader2, ChevronLeft, Search, Pencil, RotateCcw, Sparkles, Diamond } from 'lucide-react';
+import { MessageSquare, X, Plus, Trash2, Send, Check, XCircle, Loader2, ChevronLeft, Search, Pencil, RotateCcw, Sparkles, Diamond, BarChart3, Calendar, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
@@ -401,27 +401,31 @@ export function AgentChatWidget() {
                   <p className="text-xs text-muted-foreground max-w-[280px]">
                     Ask about clients, deals, emails, reminders, pipeline status, calendar, or borrowing capacity.
                   </p>
-                  {/* Quick actions */}
-                  <div className="flex flex-wrap gap-1.5 mt-4 justify-center">
-                    {[
-                      '☀️ Morning briefing',
-                      '🔍 Proactive insights scan',
-                      '📊 Pipeline overview',
-                      '⏰ Overdue reminders',
-                      '📅 Upcoming appointments',
-                      '💰 Commission forecast',
-                      '🏥 System health check',
-                      '✅ Active checklists',
-                    ].map((prompt) => (
-                      <button
-                        key={prompt}
-                        onClick={() => sendMessage(prompt)}
-                        className="text-[11px] px-2.5 py-1.5 rounded-full border border-border/50 hover:bg-accent/50 hover:border-primary/30 transition-colors text-muted-foreground hover:text-foreground"
-                      >
-                        {prompt}
-                      </button>
-                    ))}
-                  </div>
+                   {/* Quick actions */}
+                   <div className="flex flex-wrap gap-1.5 mt-4 justify-center">
+                     {[
+                       '☀️ Morning briefing',
+                       '🔍 Proactive insights scan',
+                       '📊 Pipeline overview',
+                       '⏰ Overdue reminders',
+                       '📅 Upcoming appointments',
+                       '💰 Commission forecast',
+                       '🏥 System health check',
+                       '✅ Active checklists',
+                       '📋 My playbooks',
+                       '⏰ Scheduled tasks',
+                       '📊 Chart: deals by stage',
+                       '📄 Bulk ops help',
+                     ].map((prompt) => (
+                       <button
+                         key={prompt}
+                         onClick={() => sendMessage(prompt)}
+                         className="text-[11px] px-2.5 py-1.5 rounded-full border border-border/50 hover:bg-accent/50 hover:border-primary/30 transition-colors text-muted-foreground hover:text-foreground"
+                       >
+                         {prompt}
+                       </button>
+                     ))}
+                   </div>
                 </div>
               )}
               {messages.map((msg) => (
@@ -432,27 +436,90 @@ export function AgentChatWidget() {
                       ? "bg-primary text-primary-foreground rounded-br-md"
                       : "bg-muted/60 border border-border/30 rounded-bl-md"
                   )}>
-                    {msg.role === 'assistant' ? (
-                      <div>
-                        <div className="prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_table]:text-xs [&_th]:py-1 [&_td]:py-1">
-                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
-                        </div>
-                        {/* Confidence / Health Score indicator */}
-                        {msg.content && (() => {
-                          const healthMatch = msg.content.match(/health[_ ]score[:\s]*(\d+)/i);
-                          const confidenceMatch = msg.content.match(/confidence[:\s]*(\d+(?:\.\d+)?)/i);
-                          const score = healthMatch ? parseInt(healthMatch[1]) : confidenceMatch ? parseFloat(confidenceMatch[1]) : null;
-                          if (score === null) return null;
-                          const normalizedScore = score > 1 ? score : score * 100;
-                          const variant = normalizedScore >= 80 ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10' : normalizedScore >= 50 ? 'text-amber-600 dark:text-amber-400 bg-amber-500/10' : 'text-red-600 dark:text-red-400 bg-red-500/10';
-                          const label = normalizedScore >= 80 ? '🟢 High' : normalizedScore >= 50 ? '🟡 Medium' : '🔴 Low';
-                          return (
-                            <div className={cn("mt-2 inline-flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-full", variant)}>
-                              {label} Confidence ({Math.round(normalizedScore)}%)
-                            </div>
-                          );
-                        })()}
-                      </div>
+                     {msg.role === 'assistant' ? (
+                       <div>
+                         <div className="prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_table]:text-xs [&_th]:py-1 [&_td]:py-1">
+                           <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                         </div>
+                         {/* Inline Chart Rendering */}
+                         {msg.content && (() => {
+                           // Detect chart data in tool results (JSON blocks with chart type)
+                           const chartMatch = msg.content.match(/```json\s*(\{[\s\S]*?"chart"[\s\S]*?\})\s*```/);
+                           if (!chartMatch) return null;
+                           try {
+                             const chartData = JSON.parse(chartMatch[1]);
+                             if (!chartData.chart) return null;
+                             const { type, title, labels, datasets } = chartData.chart;
+                             const maxVal = Math.max(...(datasets?.[0]?.data || [1]));
+                             const colors = datasets?.[0]?.backgroundColor || ['hsl(var(--primary))'];
+                             
+                             return (
+                               <div className="mt-3 p-3 rounded-lg border border-border/30 bg-muted/20">
+                                 <div className="flex items-center gap-1.5 mb-2">
+                                   <BarChart3 className="h-3.5 w-3.5 text-primary" />
+                                   <span className="text-xs font-semibold">{title || 'Chart'}</span>
+                                   <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">{type}</span>
+                                 </div>
+                                 {(type === 'bar' || type === 'line') && (
+                                   <div className="space-y-1">
+                                     {labels?.map((label: string, i: number) => (
+                                       <div key={label} className="flex items-center gap-2 text-[10px]">
+                                         <span className="w-20 truncate text-muted-foreground text-right">{label}</span>
+                                         <div className="flex-1 h-4 bg-muted/50 rounded-full overflow-hidden">
+                                           <div
+                                             className="h-full rounded-full transition-all duration-500"
+                                             style={{
+                                               width: `${maxVal > 0 ? (datasets[0].data[i] / maxVal) * 100 : 0}%`,
+                                               backgroundColor: Array.isArray(colors) ? colors[i % colors.length] : colors,
+                                             }}
+                                           />
+                                         </div>
+                                         <span className="w-8 text-right font-mono font-medium">{datasets[0].data[i]}</span>
+                                       </div>
+                                     ))}
+                                   </div>
+                                 )}
+                                 {(type === 'pie' || type === 'doughnut') && (
+                                   <div className="flex flex-wrap gap-2">
+                                     {labels?.map((label: string, i: number) => {
+                                       const total = datasets[0].data.reduce((a: number, b: number) => a + b, 0);
+                                       const pct = total > 0 ? Math.round((datasets[0].data[i] / total) * 100) : 0;
+                                       return (
+                                         <div key={label} className="flex items-center gap-1 text-[10px]">
+                                           <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: Array.isArray(colors) ? colors[i % colors.length] : colors }} />
+                                           <span className="text-muted-foreground">{label}</span>
+                                           <span className="font-mono font-medium">{pct}%</span>
+                                         </div>
+                                       );
+                                     })}
+                                   </div>
+                                 )}
+                               </div>
+                             );
+                           } catch { return null; }
+                         })()}
+                         {/* Confidence / Health Score indicator */}
+                         {msg.content && (() => {
+                           const healthMatch = msg.content.match(/health[_ ]score[:\s]*(\d+)/i);
+                           const confidenceMatch = msg.content.match(/confidence[:\s]*(\d+(?:\.\d+)?)/i);
+                           const score = healthMatch ? parseInt(healthMatch[1]) : confidenceMatch ? parseFloat(confidenceMatch[1]) : null;
+                           if (score === null) return null;
+                           const normalizedScore = score > 1 ? score : score * 100;
+                           const variant = normalizedScore >= 80 ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10' : normalizedScore >= 50 ? 'text-amber-600 dark:text-amber-400 bg-amber-500/10' : 'text-red-600 dark:text-red-400 bg-red-500/10';
+                           const label = normalizedScore >= 80 ? '🟢 High' : normalizedScore >= 50 ? '🟡 Medium' : '🔴 Low';
+                           return (
+                             <div className={cn("mt-2 inline-flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-full", variant)}>
+                               {label} Confidence ({Math.round(normalizedScore)}%)
+                             </div>
+                           );
+                         })()}
+                         {/* Playbook badge */}
+                         {msg.content && msg.content.includes('Playbook "') && (
+                           <div className="mt-2 inline-flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-full bg-primary/10 text-primary">
+                             <Zap className="h-3 w-3" /> Playbook Executed
+                           </div>
+                         )}
+                       </div>
                     ) : (
                       <p className="whitespace-pre-wrap">{msg.content}</p>
                     )}
