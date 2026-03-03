@@ -1717,6 +1717,810 @@ const WRITE_TOOLS = [
 //  TOOL EXECUTORS
 // ============================================================
 
+// ─── CLIENT MANAGEMENT ───
+
+async function executeSearchClients(sb: any, args: any) {
+  const q = args.query;
+  const { data } = await sb.from('clients').select('id, primary_first_name, primary_surname, primary_email, primary_mobile, pipeline_status, follow_up_date')
+    .or(`primary_first_name.ilike.%${q}%,primary_surname.ilike.%${q}%,primary_email.ilike.%${q}%,primary_mobile.ilike.%${q}%`)
+    .order('updated_at', { ascending: false }).limit(20);
+  return { clients: (data || []).map((c: any) => ({ id: c.id, name: `${c.primary_first_name||''} ${c.primary_surname||''}`.trim(), email: c.primary_email, mobile: c.primary_mobile, pipeline_status: c.pipeline_status, follow_up_date: c.follow_up_date })), count: data?.length || 0 };
+}
+
+async function executeGetClientDetails(sb: any, args: any) {
+  const { data, error } = await sb.from('clients').select('*').eq('id', args.client_id).single();
+  if (error || !data) return { error: 'Client not found.' };
+  return { client: data };
+}
+
+async function executeGetClientAdditionalContacts(sb: any, args: any) {
+  const { data } = await sb.from('client_additional_contacts').select('*').eq('client_id', args.client_id).order('display_order');
+  return { contacts: data || [] };
+}
+
+async function executeUpdateClientField(sb: any, args: any) {
+  const { error } = await sb.from('clients').update({ [args.field]: args.value }).eq('id', args.client_id);
+  if (error) return { error: error.message };
+  return { success: true, message: `Updated "${args.field}" for client.` };
+}
+
+async function executeGetClientActivities(sb: any, args: any) {
+  const limit = args.limit || 20;
+  const { data } = await sb.from('client_activities').select('*').eq('client_id', args.client_id).order('created_at', { ascending: false }).limit(limit);
+  return { activities: data || [] };
+}
+
+async function executeLogClientActivity(sb: any, args: any, userId: string) {
+  const { data: u } = await sb.from('custom_users').select('id').eq('id', userId).maybeSingle();
+  const { data, error } = await sb.from('client_activities').insert({ client_id: args.client_id, title: args.title, description: args.description || null, activity_type: args.activity_type, created_by: u ? userId : null }).select().single();
+  if (error) return { error: error.message };
+  return { success: true, message: `Activity "${args.title}" logged.`, activity: data };
+}
+
+// ─── DEALS & PIPELINE ───
+
+async function executeGetClientDeals(sb: any, args: any) {
+  const { data } = await sb.from('client_deals').select('*').eq('client_id', args.client_id).order('created_at', { ascending: false });
+  return { deals: data || [] };
+}
+
+async function executeGetPipelineOverview(sb: any) {
+  const { data: deals } = await sb.from('client_deals').select('id, deal_type, current_stage, risk_status, loan_amount, commission_estimate, settlement_date, clawback_expiry_date, clients:client_id(primary_first_name, primary_surname)');
+  const d = deals || [];
+  const byStage: Record<string, number> = {};
+  let atRisk = 0, totalValue = 0, totalCommission = 0;
+  for (const deal of d) { byStage[deal.current_stage || 'Unknown'] = (byStage[deal.current_stage || 'Unknown'] || 0) + 1; totalValue += (deal.loan_amount || 0); totalCommission += (deal.commission_estimate || 0); if (deal.risk_status === 'urgent' || deal.risk_status === 'needs_follow_up') atRisk++; }
+  const upcoming = d.filter((deal: any) => deal.settlement_date && new Date(deal.settlement_date) > new Date() && new Date(deal.settlement_date) < new Date(Date.now() + 30 * 86400000));
+  return { total_deals: d.length, by_stage: byStage, at_risk: atRisk, total_pipeline_value: totalValue, total_commission: totalCommission, upcoming_settlements: upcoming.length };
+}
+
+async function executeGetDealsByStage(sb: any, args: any) {
+  const { data } = await sb.from('client_deals').select('id, deal_type, current_stage, property_address, loan_amount, risk_status, clients:client_id(primary_first_name, primary_surname)').ilike('current_stage', `%${args.stage}%`);
+  return { deals: (data || []).map((d: any) => ({ ...d, client_name: `${d.clients?.primary_first_name||''} ${d.clients?.primary_surname||''}`.trim() })), count: data?.length || 0 };
+}
+
+async function executeGetDealsByRisk(sb: any, args: any) {
+  const { data } = await sb.from('client_deals').select('id, deal_type, current_stage, property_address, loan_amount, risk_status, clients:client_id(primary_first_name, primary_surname)').eq('risk_status', args.risk_status);
+  return { deals: (data || []).map((d: any) => ({ ...d, client_name: `${d.clients?.primary_first_name||''} ${d.clients?.primary_surname||''}`.trim() })), count: data?.length || 0 };
+}
+
+async function executeGetSettlementCountdown(sb: any, args: any) {
+  const days = args.days || 30;
+  const future = new Date(Date.now() + days * 86400000).toISOString();
+  const { data } = await sb.from('client_deals').select('id, property_address, loan_amount, settlement_date, current_stage, clients:client_id(primary_first_name, primary_surname)').gte('settlement_date', new Date().toISOString()).lte('settlement_date', future).order('settlement_date');
+  return { settlements: (data || []).map((d: any) => ({ ...d, client_name: `${d.clients?.primary_first_name||''} ${d.clients?.primary_surname||''}`.trim(), days_remaining: Math.ceil((new Date(d.settlement_date).getTime() - Date.now()) / 86400000) })) };
+}
+
+async function executeGetStaleDeals(sb: any, args: any) {
+  const threshold = args.days_threshold || 14;
+  const cutoff = new Date(Date.now() - threshold * 86400000).toISOString();
+  const { data } = await sb.from('client_deals').select('id, property_address, current_stage, risk_status, updated_at, clients:client_id(primary_first_name, primary_surname)').lt('updated_at', cutoff).not('current_stage', 'ilike', '%settled%').not('current_stage', 'ilike', '%cancelled%').not('current_stage', 'ilike', '%fallen%');
+  return { stale_deals: (data || []).map((d: any) => ({ ...d, client_name: `${d.clients?.primary_first_name||''} ${d.clients?.primary_surname||''}`.trim(), days_stale: Math.floor((Date.now() - new Date(d.updated_at).getTime()) / 86400000) })) };
+}
+
+async function executeUpdateDealStage(sb: any, args: any) {
+  const update: any = {};
+  if (args.new_stage) update.current_stage = args.new_stage;
+  if (args.new_stage_number !== undefined) update.stage_number = args.new_stage_number;
+  const { error } = await sb.from('client_deals').update(update).eq('id', args.deal_id);
+  if (error) return { error: error.message };
+  return { success: true, message: `Deal stage updated to "${args.new_stage || 'stage ' + args.new_stage_number}".` };
+}
+
+async function executeUpdateDealRiskStatus(sb: any, args: any) {
+  const { error } = await sb.from('client_deals').update({ risk_status: args.risk_status }).eq('id', args.deal_id);
+  if (error) return { error: error.message };
+  return { success: true, message: `Deal risk status updated to "${args.risk_status}".` };
+}
+
+async function executeUpdateDealField(sb: any, args: any) {
+  const { error } = await sb.from('client_deals').update({ [args.field]: args.value }).eq('id', args.deal_id);
+  if (error) return { error: error.message };
+  return { success: true, message: `Deal field "${args.field}" updated.` };
+}
+
+async function executeGetClawbackMonitor(sb: any) {
+  const { data } = await sb.from('client_deals').select('id, property_address, clawback_expiry_date, commission_estimate, current_stage, clients:client_id(primary_first_name, primary_surname)').not('clawback_expiry_date', 'is', null).order('clawback_expiry_date');
+  return { clawback_deals: (data || []).map((d: any) => ({ ...d, client_name: `${d.clients?.primary_first_name||''} ${d.clients?.primary_surname||''}`.trim(), months_remaining: Math.ceil((new Date(d.clawback_expiry_date).getTime() - Date.now()) / (30 * 86400000)) })) };
+}
+
+async function executeGetCommissionForecast(sb: any, args: any) {
+  const months = args.months_ahead || 6;
+  const { data } = await sb.from('client_deals').select('settlement_date, commission_estimate').not('settlement_date', 'is', null).gte('settlement_date', new Date().toISOString());
+  const forecast: Record<string, number> = {};
+  for (let i = 0; i < months; i++) { const dt = new Date(); dt.setMonth(dt.getMonth() + i); forecast[dt.toISOString().substring(0, 7)] = 0; }
+  for (const d of (data || [])) { const mo = d.settlement_date?.substring(0, 7); if (mo && forecast[mo] !== undefined) forecast[mo] += (d.commission_estimate || 0); }
+  return { forecast: Object.entries(forecast).map(([month, amount]) => ({ month, amount })), total: Object.values(forecast).reduce((s, v) => s + v, 0) };
+}
+
+async function executeGetBuildProgress(sb: any, args: any) {
+  const { data } = await sb.from('build_progress_payments').select('*').eq('deal_id', args.deal_id).order('stage_number');
+  return { stages: data || [] };
+}
+
+async function executeUpdateBuildPayment(sb: any, args: any) {
+  const dateFieldMap: Record<string, string> = { builder_invoice_received: 'builder_invoice_date', submitted_to_lender: 'submitted_to_lender_date', funds_released: 'funds_released_date', paid_to_builder: 'paid_to_builder_date' };
+  const update: any = { [args.field]: args.value };
+  if (args.value && dateFieldMap[args.field]) update[dateFieldMap[args.field]] = new Date().toISOString();
+  const { error } = await sb.from('build_progress_payments').update(update).eq('id', args.payment_id);
+  if (error) return { error: error.message };
+  return { success: true, message: `Build payment "${args.field}" updated.` };
+}
+
+async function executeGetBuilderInvoices(sb: any, args: any) {
+  let query = sb.from('builder_invoices').select('*');
+  if (args.deal_id) query = query.eq('deal_id', args.deal_id);
+  const { data } = await query.order('invoice_date', { ascending: false }).limit(50);
+  return { invoices: data || [] };
+}
+
+// ─── REMINDERS ───
+
+async function executeGetClientReminders(sb: any, args: any) {
+  let query = sb.from('client_reminders').select('*').eq('status', 'pending');
+  if (args.client_id) query = query.eq('client_id', args.client_id);
+  const { data } = await query.order('due_date').limit(30);
+  return { reminders: data || [] };
+}
+
+async function executeGetAllReminders(sb: any, _args: any) {
+  const now = new Date().toISOString();
+  const today = new Date().toISOString().substring(0, 10);
+  const { data } = await sb.from('client_reminders').select('*, clients:client_id(primary_first_name, primary_surname)').eq('status', 'pending').order('due_date').limit(100);
+  const overdue = (data || []).filter((r: any) => r.due_date && r.due_date < now);
+  const todayItems = (data || []).filter((r: any) => r.due_date?.startsWith(today));
+  const upcoming = (data || []).filter((r: any) => r.due_date && r.due_date > now && !r.due_date.startsWith(today));
+  return { overdue, today: todayItems, upcoming, total: data?.length || 0 };
+}
+
+async function executeGetOverdueReminders(sb: any) {
+  const { data } = await sb.from('client_reminders').select('*, clients:client_id(primary_first_name, primary_surname)').eq('status', 'pending').lt('due_date', new Date().toISOString()).order('due_date');
+  return { overdue_reminders: data || [], count: data?.length || 0 };
+}
+
+async function executeCreateReminder(sb: any, args: any, userId: string) {
+  const { data: u } = await sb.from('custom_users').select('id').eq('id', userId).maybeSingle();
+  const { data, error } = await sb.from('client_reminders').insert({ client_id: args.client_id, title: args.title, description: args.description || null, due_date: args.due_date, priority: args.priority || 'medium', reminder_type: args.reminder_type || 'task', status: 'pending', created_by: u ? userId : null }).select().single();
+  if (error) return { error: error.message };
+  return { success: true, message: `Reminder "${args.title}" created.`, reminder: data };
+}
+
+async function executeUpdateReminder(sb: any, args: any) {
+  const update: any = {};
+  if (args.action === 'complete') { update.status = 'completed'; update.completed_at = new Date().toISOString(); }
+  else if (args.action === 'snooze') { const days = args.snooze_days || 1; update.due_date = new Date(Date.now() + days * 86400000).toISOString(); }
+  else if (args.action === 'dismiss') { update.status = 'dismissed'; }
+  const { error } = await sb.from('client_reminders').update(update).eq('id', args.reminder_id);
+  if (error) return { error: error.message };
+  return { success: true, message: `Reminder ${args.action}d.` };
+}
+
+async function executeDeleteReminder(sb: any, args: any) {
+  const { error } = await sb.from('client_reminders').delete().eq('id', args.reminder_id);
+  if (error) return { error: error.message };
+  return { success: true, message: 'Reminder deleted.' };
+}
+
+async function executeSetFollowUpDate(sb: any, args: any) {
+  const { error } = await sb.from('clients').update({ follow_up_date: args.follow_up_date }).eq('id', args.client_id);
+  if (error) return { error: error.message };
+  return { success: true, message: `Follow-up date set to ${args.follow_up_date.substring(0, 10)}.` };
+}
+
+async function executeGetUpcomingMilestones(sb: any, args: any) {
+  const days = args.days_ahead || 30;
+  const future = new Date(Date.now() + days * 86400000).toISOString();
+  const now = new Date().toISOString();
+  const { data } = await sb.from('client_deals').select('id, property_address, settlement_date, finance_clause_expiry, land_settlement_date, build_start_date, expected_completion_date, clawback_expiry_date, clients:client_id(primary_first_name, primary_surname)');
+  const milestones: any[] = [];
+  for (const d of (data || [])) {
+    const name = `${d.clients?.primary_first_name||''} ${d.clients?.primary_surname||''}`.trim();
+    const check = (date: string | null, type: string) => { if (date && date >= now && date <= future) milestones.push({ deal_id: d.id, address: d.property_address, client: name, type, date, days_away: Math.ceil((new Date(date).getTime() - Date.now()) / 86400000) }); };
+    check(d.settlement_date, 'settlement'); check(d.finance_clause_expiry, 'finance_expiry'); check(d.land_settlement_date, 'land_settlement'); check(d.build_start_date, 'build_start'); check(d.expected_completion_date, 'completion'); check(d.clawback_expiry_date, 'clawback');
+  }
+  milestones.sort((a, b) => a.days_away - b.days_away);
+  return { milestones, count: milestones.length };
+}
+
+// ─── FINANCIAL ───
+
+async function executeGetBorrowingCapacity(sb: any, args: any) {
+  const { data } = await sb.from('borrowing_capacity_assessments').select('*').eq('client_id', args.client_id).order('created_at', { ascending: false }).limit(1);
+  return data?.[0] ? { assessment: data[0] } : { message: 'No borrowing capacity assessment found.' };
+}
+
+async function executeGetBCHistory(sb: any, args: any) {
+  const { data } = await sb.from('borrowing_capacity_assessments').select('id, borrowing_capacity, serviceability_band, monthly_surplus, gross_annual_income, created_at').eq('client_id', args.client_id).order('created_at', { ascending: false }).limit(10);
+  return { history: data || [] };
+}
+
+async function executeGetIncomeSources(sb: any, args: any) {
+  const { data } = await sb.from('client_income').select('*').eq('client_id', args.client_id);
+  return { income_sources: data || [] };
+}
+
+async function executeGetClientExpenses(sb: any, args: any) {
+  const { data } = await sb.from('client_expenses').select('*').eq('client_id', args.client_id);
+  return { expenses: data || [] };
+}
+
+async function executeGetClientLiabilities(sb: any, args: any) {
+  const { data } = await sb.from('client_liabilities').select('*').eq('client_id', args.client_id);
+  return { liabilities: data || [] };
+}
+
+async function executeGetClientAssets(sb: any, args: any) {
+  const { data } = await sb.from('client_assets').select('*').eq('client_id', args.client_id);
+  return { assets: data || [] };
+}
+
+async function executeGetClientProperties(sb: any, args: any) {
+  const { data } = await sb.from('client_properties').select('*').eq('client_id', args.client_id);
+  return { properties: data || [] };
+}
+
+async function executeGetEmploymentDetails(sb: any, args: any) {
+  const [primary, contacts] = await Promise.all([
+    sb.from('client_employment').select('*').eq('client_id', args.client_id),
+    sb.from('client_additional_contacts').select('id, first_name, surname').eq('client_id', args.client_id),
+  ]);
+  const contactEmployment: any[] = [];
+  for (const c of (contacts.data || [])) {
+    const { data: emp } = await sb.from('client_employment').select('*').eq('contact_id', c.id);
+    if (emp?.length) contactEmployment.push({ contact: `${c.first_name} ${c.surname}`, employment: emp });
+  }
+  return { primary_employment: primary.data || [], contact_employment: contactEmployment };
+}
+
+// ─── EMAIL ───
+
+async function executeGetClientEmails(sb: any, args: any) {
+  const limit = args.limit || 15;
+  const { data } = await sb.from('email_copilot_emails').select('id, subject, sender, received_at, body_preview, is_read, conversation_id').eq('client_id', args.client_id).order('received_at', { ascending: false }).limit(limit);
+  return { emails: data || [] };
+}
+
+async function executeSearchEmails(sb: any, args: any) {
+  const limit = args.limit || 20;
+  const { data } = await sb.from('email_copilot_emails').select('id, subject, sender, received_at, body_preview, client_id').or(`subject.ilike.%${args.query}%,sender.ilike.%${args.query}%,body_preview.ilike.%${args.query}%`).order('received_at', { ascending: false }).limit(limit);
+  return { emails: data || [], count: data?.length || 0 };
+}
+
+async function executeGetEmailThread(sb: any, args: any) {
+  const { data } = await sb.from('email_copilot_emails').select('id, subject, sender, to_recipients, cc_recipients, received_at, body_preview, is_read').eq('conversation_id', args.conversation_id).order('received_at');
+  return { thread: data || [] };
+}
+
+async function executeGetUnlinkedEmails(sb: any, args: any) {
+  const limit = args.limit || 20;
+  const { data } = await sb.from('email_copilot_emails').select('id, subject, sender, received_at, body_preview').is('client_id', null).order('received_at', { ascending: false }).limit(limit);
+  return { unlinked_emails: data || [] };
+}
+
+async function executeLinkEmailToClient(sb: any, args: any) {
+  const { error } = await sb.from('email_copilot_emails').update({ client_id: args.client_id }).eq('id', args.email_id);
+  if (error) return { error: error.message };
+  return { success: true, message: 'Email linked to client.' };
+}
+
+async function executeSendEmail(sb: any, args: any) {
+  const SUPABASE_URL_INNER = Deno.env.get('SUPABASE_URL')!;
+  const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkdXpiY2h1c3d3YmVmZHVuZmN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0NDM4NzksImV4cCI6MjA3MTAxOTg3OX0.eSYU6fxIc3tBQuGLsdBRff0alBMkNfvv7OpW0efNjxk';
+  try {
+    const resp = await fetch(`${SUPABASE_URL_INNER.trim()}/functions/v1/send-email-reply`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SERVICE_KEY.trim()}`, 'apikey': ANON_KEY.trim() },
+      body: JSON.stringify({ to: args.to, subject: args.subject, body: args.body, cc: args.cc, bcc: args.bcc, original_email_id: args.original_email_id, mailbox_source: args.mailbox_source || 'admin' }),
+    });
+    const result = await resp.json();
+    if (!resp.ok) return { error: result.error || `Failed to send email (${resp.status})` };
+    return { success: true, message: `Email sent to ${args.to}.` };
+  } catch (err: any) { return { error: `Email send failed: ${err.message}` }; }
+}
+
+// ─── CALENDAR ───
+
+async function executeGetUpcomingCalendar(sb: any, args: any) {
+  const days = Math.min(args.days_ahead || 7, 30);
+  const future = new Date(Date.now() + days * 86400000).toISOString();
+  const { data } = await sb.from('appointment_secondary_recipients').select('*').gte('appointment_start', new Date().toISOString()).lte('appointment_start', future).order('appointment_start');
+  return { appointments: data || [] };
+}
+
+async function executeGetAppointmentsForClient(sb: any, args: any) {
+  const { data: client } = await sb.from('clients').select('primary_email').eq('id', args.client_id).single();
+  if (!client?.primary_email) return { appointments: [], message: 'No email on file for this client.' };
+  const { data } = await sb.from('appointment_secondary_recipients').select('*').eq('contact_email', client.primary_email).order('appointment_start', { ascending: false }).limit(20);
+  return { appointments: data || [] };
+}
+
+// ─── CALLS ───
+
+async function executeGetRecentCalls(sb: any, args: any) {
+  const limit = args.limit || 20;
+  let query = sb.from('vapi_call_logs').select('id, agent_name, caller_phone, call_duration_seconds, call_outcome, sentiment, severity_score, created_at');
+  if (args.agent_name) query = query.ilike('agent_name', `%${args.agent_name}%`);
+  const { data } = await query.order('created_at', { ascending: false }).limit(limit);
+  return { calls: data || [] };
+}
+
+async function executeGetCallDetails(sb: any, args: any) {
+  const { data } = await sb.from('vapi_call_logs').select('*').eq('id', args.call_id).single();
+  return data ? { call: data } : { error: 'Call not found.' };
+}
+
+async function executeSearchCalls(sb: any, args: any) {
+  const limit = args.limit || 20;
+  const { data } = await sb.from('vapi_call_logs').select('id, agent_name, caller_phone, summary, sentiment, created_at').or(`summary.ilike.%${args.query}%,agent_name.ilike.%${args.query}%,caller_phone.ilike.%${args.query}%`).order('created_at', { ascending: false }).limit(limit);
+  return { calls: data || [], count: data?.length || 0 };
+}
+
+async function executeGetCallAlerts(sb: any, args: any) {
+  const limit = args.limit || 20;
+  let query = sb.from('call_alert_history').select('*');
+  if (args.unread_only) query = query.eq('is_read', false);
+  const { data } = await query.order('triggered_at', { ascending: false }).limit(limit);
+  return { alerts: data || [] };
+}
+
+async function executeGetCallAnalytics(sb: any, args: any) {
+  const daysBack = args.days_back || 30;
+  const cutoff = new Date(Date.now() - daysBack * 86400000).toISOString();
+  const { data } = await sb.from('vapi_call_logs').select('id, agent_name, call_duration_seconds, call_outcome, sentiment, severity_score').gte('created_at', cutoff);
+  const calls = data || [];
+  const avgDuration = calls.length ? Math.round(calls.reduce((s: number, c: any) => s + (c.call_duration_seconds || 0), 0) / calls.length) : 0;
+  const sentimentDist: Record<string, number> = {};
+  const byAgent: Record<string, number> = {};
+  for (const c of calls) { sentimentDist[c.sentiment || 'unknown'] = (sentimentDist[c.sentiment || 'unknown'] || 0) + 1; byAgent[c.agent_name || 'unknown'] = (byAgent[c.agent_name || 'unknown'] || 0) + 1; }
+  return { total_calls: calls.length, avg_duration_seconds: avgDuration, sentiment_distribution: sentimentDist, calls_by_agent: byAgent };
+}
+
+async function executeGetFlaggedCalls(sb: any, args: any) {
+  const limit = args.limit || 10;
+  const { data } = await sb.from('vapi_call_logs').select('id, agent_name, caller_phone, summary, sentiment, severity_score, created_at').or('severity_score.gte.4,sentiment.eq.negative').order('created_at', { ascending: false }).limit(limit);
+  return { flagged_calls: data || [] };
+}
+
+// ─── REPORTS & DOCUMENTS ───
+
+async function executeGetClientFiles(sb: any, args: any) {
+  const { data } = await sb.from('client_files').select('*').eq('client_id', args.client_id).order('created_at', { ascending: false });
+  return { files: data || [] };
+}
+
+async function executeGetInvestmentReports(sb: any, args: any) {
+  const limit = args.limit || 10;
+  let query = sb.from('investment_reports').select('id, property_address, status, quality_score, created_at, client_id');
+  if (args.client_id) query = query.eq('client_id', args.client_id);
+  const { data } = await query.order('created_at', { ascending: false }).limit(limit);
+  return { reports: data || [] };
+}
+
+async function executeGetReportDetails(sb: any, args: any) {
+  const { data } = await sb.from('investment_reports').select('*').eq('id', args.report_id).single();
+  return data ? { report: data } : { error: 'Report not found.' };
+}
+
+async function executeSearchReportsByAddress(sb: any, args: any) {
+  const { data } = await sb.from('investment_reports').select('id, property_address, status, quality_score, created_at').ilike('property_address', `%${args.address}%`).order('created_at', { ascending: false }).limit(20);
+  return { reports: data || [], count: data?.length || 0 };
+}
+
+async function executeGetPortfolioReviews(sb: any, args: any) {
+  const { data } = await sb.from('portfolio_reviews').select('*').eq('client_id', args.client_id).order('created_at', { ascending: false });
+  return { reviews: data || [] };
+}
+
+// ─── CHECKLISTS ───
+
+async function executeGetChecklistTemplates(sb: any) {
+  const { data } = await sb.from('checklist_templates').select('*').order('name');
+  return { templates: data || [] };
+}
+
+async function executeGetActiveChecklists(sb: any, args: any) {
+  let query = sb.from('checklist_instances').select('*');
+  if (args.status) query = query.eq('status', args.status);
+  else query = query.eq('status', 'active');
+  const { data } = await query.order('updated_at', { ascending: false }).limit(30);
+  return { checklists: data || [] };
+}
+
+async function executeGetChecklistItems(sb: any, args: any) {
+  const { data } = await sb.from('checklist_instance_items').select('*').eq('instance_id', args.instance_id).order('section_order').order('display_order');
+  return { items: data || [] };
+}
+
+async function executeToggleChecklistItem(sb: any, args: any, userId: string) {
+  const update: any = { is_checked: args.is_checked };
+  if (args.is_checked) { update.checked_at = new Date().toISOString(); update.checked_by = userId; }
+  else { update.checked_at = null; update.checked_by = null; }
+  const { error } = await sb.from('checklist_instance_items').update(update).eq('id', args.item_id);
+  if (error) return { error: error.message };
+  return { success: true, message: `Item ${args.is_checked ? 'checked' : 'unchecked'}.` };
+}
+
+async function executeCreateChecklistInstance(sb: any, args: any, userId: string) {
+  const { data: template } = await sb.from('checklist_templates').select('*, checklist_template_sections(*, checklist_template_items(*))').eq('id', args.template_id).single();
+  if (!template) return { error: 'Template not found.' };
+  const { data: instance, error } = await sb.from('checklist_instances').insert({ template_id: args.template_id, name: template.name, description: template.description, icon: template.icon, status: 'active', generated_by: userId }).select().single();
+  if (error) return { error: error.message };
+  const items: any[] = [];
+  for (const sec of (template.checklist_template_sections || [])) {
+    for (const item of (sec.checklist_template_items || [])) {
+      items.push({ instance_id: instance.id, section_title: sec.title, section_icon: sec.icon, section_order: sec.display_order, label: item.label, display_order: item.display_order, is_checked: item.is_pre_checked || false });
+    }
+  }
+  if (items.length) await sb.from('checklist_instance_items').insert(items);
+  return { success: true, message: `Checklist "${template.name}" created with ${items.length} items.`, instance_id: instance.id };
+}
+
+// ─── ANALYTICS ───
+
+async function executeGetRecentActivity(sb: any, args: any) {
+  const limit = Math.min(args.limit || 20, 50);
+  let query = sb.from('activity_logs').select('*');
+  if (args.entity_type) query = query.eq('entity_type', args.entity_type);
+  const { data } = await query.order('created_at', { ascending: false }).limit(limit);
+  return { activities: data || [] };
+}
+
+async function executeGetApiUsageStats(sb: any, args: any) {
+  const daysBack = args.days_back || 7;
+  const cutoff = new Date(Date.now() - daysBack * 86400000).toISOString();
+  const { data } = await sb.from('api_usage_log').select('*').gte('created_at', cutoff).order('created_at', { ascending: false }).limit(200);
+  const byService: Record<string, { calls: number; tokens: number; cost: number }> = {};
+  for (const entry of (data || [])) {
+    if (!byService[entry.service_name]) byService[entry.service_name] = { calls: 0, tokens: 0, cost: 0 };
+    byService[entry.service_name].calls += entry.request_count || 1;
+    byService[entry.service_name].tokens += entry.tokens_used || 0;
+    byService[entry.service_name].cost += entry.cost_estimate_usd || 0;
+  }
+  return { period_days: daysBack, total_calls: data?.length || 0, by_service: byService };
+}
+
+// ─── CALCULATORS ───
+
+function executeCalculateStampDuty(args: any) {
+  const { state, property_value, is_first_home_buyer, is_investment } = args;
+  let duty = 0;
+  // Simplified Australian stamp duty calculation
+  if (state === 'NSW') { if (property_value <= 14000) duty = property_value * 0.0125; else if (property_value <= 32000) duty = 175 + (property_value - 14000) * 0.015; else if (property_value <= 85000) duty = 445 + (property_value - 32000) * 0.0175; else if (property_value <= 319000) duty = 1372 + (property_value - 85000) * 0.035; else if (property_value <= 1064000) duty = 9562 + (property_value - 319000) * 0.045; else duty = 9562 + (property_value - 319000) * 0.055; if (is_first_home_buyer && property_value <= 800000) duty = 0; }
+  else if (state === 'VIC') { if (property_value <= 25000) duty = property_value * 0.014; else if (property_value <= 130000) duty = 350 + (property_value - 25000) * 0.024; else if (property_value <= 960000) duty = 2870 + (property_value - 130000) * 0.06; else duty = property_value * 0.055; if (is_first_home_buyer && property_value <= 600000) duty = 0; }
+  else if (state === 'QLD') { if (property_value <= 5000) duty = 0; else if (property_value <= 75000) duty = (property_value - 5000) * 0.015; else if (property_value <= 540000) duty = 1050 + (property_value - 75000) * 0.035; else if (property_value <= 1000000) duty = 17325 + (property_value - 540000) * 0.045; else duty = 17325 + (property_value - 540000) * 0.0575; if (is_first_home_buyer && property_value <= 500000) duty = 0; }
+  else { duty = property_value * 0.04; } // fallback
+  if (is_investment && state === 'VIC') duty *= 1.08; // surcharge
+  return { state, property_value, stamp_duty: Math.round(duty), is_first_home_buyer: !!is_first_home_buyer, is_investment: !!is_investment, note: 'Estimate only — consult your conveyancer for exact figures.' };
+}
+
+function executeCalculateLMI(args: any) {
+  const lvr = Math.round((args.loan_amount / args.property_value) * 100);
+  let lmiRate = 0;
+  if (lvr > 95) lmiRate = 0.035; else if (lvr > 90) lmiRate = 0.025; else if (lvr > 85) lmiRate = 0.015; else if (lvr > 80) lmiRate = 0.008; else lmiRate = 0;
+  const lmi = Math.round(args.loan_amount * lmiRate);
+  return { property_value: args.property_value, loan_amount: args.loan_amount, lvr, lmi_estimate: lmi, lmi_rate: lmiRate, note: lmi === 0 ? 'LMI not required (LVR ≤ 80%).' : 'Estimate only — actual LMI varies by insurer.' };
+}
+
+function executeCalculateLoanRepayment(args: any) {
+  const { loan_amount, interest_rate, loan_term_years } = args;
+  const type = args.repayment_type || 'pi';
+  const monthlyRate = interest_rate / 100 / 12;
+  const nPayments = loan_term_years * 12;
+  let monthly: number;
+  if (type === 'io') { monthly = loan_amount * monthlyRate; }
+  else { monthly = (loan_amount * monthlyRate * Math.pow(1 + monthlyRate, nPayments)) / (Math.pow(1 + monthlyRate, nPayments) - 1); }
+  return { loan_amount, interest_rate, loan_term_years, repayment_type: type, monthly_repayment: Math.round(monthly * 100) / 100, fortnightly_repayment: Math.round((monthly * 12 / 26) * 100) / 100, weekly_repayment: Math.round((monthly * 12 / 52) * 100) / 100, total_repaid: Math.round(monthly * nPayments), total_interest: Math.round(monthly * nPayments - loan_amount) };
+}
+
+function executeCalculateRentalYield(args: any) {
+  const annualRent = args.weekly_rent * 52;
+  const grossYield = (annualRent / args.property_value) * 100;
+  const netYield = args.annual_expenses ? ((annualRent - args.annual_expenses) / args.property_value) * 100 : grossYield;
+  return { property_value: args.property_value, weekly_rent: args.weekly_rent, annual_rent: annualRent, gross_yield: Math.round(grossYield * 100) / 100, net_yield: Math.round(netYield * 100) / 100, annual_expenses: args.annual_expenses || 0 };
+}
+
+function executeCalculateEquityPosition(args: any) {
+  const targetLvr = args.target_lvr || 80;
+  const maxBorrow = args.property_value * (targetLvr / 100);
+  const equity = args.property_value - args.current_loan_balance;
+  const usableEquity = maxBorrow - args.current_loan_balance;
+  const currentLvr = (args.current_loan_balance / args.property_value) * 100;
+  return { property_value: args.property_value, current_loan_balance: args.current_loan_balance, total_equity: equity, usable_equity: Math.max(0, usableEquity), current_lvr: Math.round(currentLvr * 100) / 100, target_lvr: targetLvr };
+}
+
+// ─── EXTENDED TOOLS ───
+
+async function executeCreateClient(sb: any, args: any, userId: string) {
+  const { data: u } = await sb.from('custom_users').select('id').eq('id', userId).maybeSingle();
+  const insert: any = { primary_first_name: args.first_name, primary_surname: args.surname, pipeline_status: args.pipeline_status || 'lead' };
+  if (args.email) insert.primary_email = args.email;
+  if (args.mobile) insert.primary_mobile = args.mobile;
+  if (u) insert.created_by = userId;
+  const { data, error } = await sb.from('clients').insert(insert).select().single();
+  if (error) return { error: error.message };
+  return { success: true, message: `Client "${args.first_name} ${args.surname}" created.`, client: data };
+}
+
+async function executeDeleteClient(sb: any, args: any) {
+  const { error } = await sb.from('clients').delete().eq('id', args.client_id);
+  if (error) return { error: error.message };
+  return { success: true, message: 'Client deleted.' };
+}
+
+async function executeGetClientsByPipelineStatus(sb: any, args: any) {
+  const limit = args.limit || 30;
+  const { data } = await sb.from('clients').select('id, primary_first_name, primary_surname, primary_email, pipeline_status, follow_up_date').eq('pipeline_status', args.status).order('updated_at', { ascending: false }).limit(limit);
+  return { clients: (data || []).map((c: any) => ({ id: c.id, name: `${c.primary_first_name||''} ${c.primary_surname||''}`.trim(), email: c.primary_email, status: c.pipeline_status, follow_up_date: c.follow_up_date })), count: data?.length || 0 };
+}
+
+async function executeGetClientsNeedingFollowUp(sb: any, args: any) {
+  const days = args.days_inactive || 14;
+  const cutoff = new Date(Date.now() - days * 86400000).toISOString();
+  const [overdue, inactive] = await Promise.all([
+    sb.from('clients').select('id, primary_first_name, primary_surname, follow_up_date').lt('follow_up_date', new Date().toISOString()).not('follow_up_date', 'is', null).limit(30),
+    sb.from('clients').select('id, primary_first_name, primary_surname, updated_at').lt('updated_at', cutoff).not('pipeline_status', 'ilike', '%settled%').not('pipeline_status', 'ilike', '%inactive%').limit(30),
+  ]);
+  return { overdue_follow_ups: (overdue.data || []).map((c: any) => ({ id: c.id, name: `${c.primary_first_name||''} ${c.primary_surname||''}`.trim(), follow_up_date: c.follow_up_date })), inactive_clients: (inactive.data || []).map((c: any) => ({ id: c.id, name: `${c.primary_first_name||''} ${c.primary_surname||''}`.trim(), last_updated: c.updated_at })) };
+}
+
+async function executeGetClientNotes(sb: any, args: any) {
+  const limit = args.limit || 20;
+  const { data } = await sb.from('client_notes').select('*').eq('client_id', args.client_id).order('created_at', { ascending: false }).limit(limit);
+  return { notes: data || [] };
+}
+
+async function executeCreateClientNote(sb: any, args: any, userId: string) {
+  const { data: u } = await sb.from('custom_users').select('id').eq('id', userId).maybeSingle();
+  const { data, error } = await sb.from('client_notes').insert({ client_id: args.client_id, content: args.content, note_type: args.note_type || 'general', created_by: u ? userId : null }).select().single();
+  if (error) return { error: error.message };
+  return { success: true, message: 'Note created.', note: data };
+}
+
+async function executeUpdateClientNote(sb: any, args: any) {
+  const { error } = await sb.from('client_notes').update({ content: args.content }).eq('id', args.note_id);
+  if (error) return { error: error.message };
+  return { success: true, message: 'Note updated.' };
+}
+
+async function executeDeleteClientNote(sb: any, args: any) {
+  const { error } = await sb.from('client_notes').delete().eq('id', args.note_id);
+  if (error) return { error: error.message };
+  return { success: true, message: 'Note deleted.' };
+}
+
+async function executeGetClientScore(sb: any, args: any) {
+  const { data } = await sb.from('client_scores').select('*').eq('client_id', args.client_id).order('created_at', { ascending: false }).limit(1);
+  return data?.[0] ? { score: data[0] } : { message: 'No score data found for this client.' };
+}
+
+async function executeGetPortfolioReviewDetails(sb: any, args: any) {
+  const { data } = await sb.from('portfolio_reviews').select('*').eq('id', args.review_id).single();
+  return data ? { review: data } : { error: 'Portfolio review not found.' };
+}
+
+async function executeCreateDeal(sb: any, args: any, userId: string) {
+  const { data: u } = await sb.from('custom_users').select('id').eq('id', userId).maybeSingle();
+  const insert: any = { client_id: args.client_id, deal_type: args.deal_type || 'Purchase', deal_name: args.deal_name || args.property_address || 'New Deal', property_address: args.property_address, loan_amount: args.loan_amount, current_stage: args.stage || 'New Lead', risk_status: 'on_track' };
+  if (u) insert.created_by = userId;
+  const { data, error } = await sb.from('client_deals').insert(insert).select().single();
+  if (error) return { error: error.message };
+  return { success: true, message: `Deal "${insert.deal_name}" created.`, deal: data };
+}
+
+async function executeDeleteDeal(sb: any, args: any) {
+  const { error } = await sb.from('client_deals').delete().eq('id', args.deal_id);
+  if (error) return { error: error.message };
+  return { success: true, message: 'Deal deleted.' };
+}
+
+async function executeGetConversionFunnel(sb: any, args: any) {
+  let query = sb.from('client_deals').select('current_stage, deal_type');
+  if (args.deal_type) query = query.eq('deal_type', args.deal_type);
+  const { data } = await query;
+  const stages: Record<string, number> = {};
+  for (const d of (data || [])) { stages[d.current_stage || 'Unknown'] = (stages[d.current_stage || 'Unknown'] || 0) + 1; }
+  return { funnel: Object.entries(stages).map(([stage, count]) => ({ stage, count })).sort((a, b) => b.count - a.count), total: data?.length || 0 };
+}
+
+async function executeGetPipelineVelocity(sb: any) {
+  const { data } = await sb.from('deal_stages').select('stage_name, completed_at, created_at, deal_id');
+  const stageAvg: Record<string, { total: number; count: number }> = {};
+  for (const s of (data || [])) {
+    if (s.completed_at) {
+      const days = Math.ceil((new Date(s.completed_at).getTime() - new Date(s.created_at).getTime()) / 86400000);
+      if (!stageAvg[s.stage_name]) stageAvg[s.stage_name] = { total: 0, count: 0 };
+      stageAvg[s.stage_name].total += days; stageAvg[s.stage_name].count++;
+    }
+  }
+  return { velocity: Object.entries(stageAvg).map(([stage, v]) => ({ stage, avg_days: Math.round(v.total / v.count), sample_size: v.count })).sort((a, b) => b.avg_days - a.avg_days) };
+}
+
+async function executeGetCommissionActuals(sb: any, args: any) {
+  const monthsBack = args.months_back || 6;
+  const cutoff = new Date(); cutoff.setMonth(cutoff.getMonth() - monthsBack);
+  const { data } = await sb.from('build_progress_payments').select('commission_amount, commission_received, commission_received_date').eq('commission_received', true).gte('commission_received_date', cutoff.toISOString());
+  const total = (data || []).reduce((s: number, p: any) => s + (p.commission_amount || 0), 0);
+  return { total_received: total, count: data?.length || 0, period_months: monthsBack };
+}
+
+async function executeAddAdditionalContact(sb: any, args: any) {
+  const { data: existing } = await sb.from('client_additional_contacts').select('display_order').eq('client_id', args.client_id).order('display_order', { ascending: false }).limit(1);
+  const nextOrder = (existing?.[0]?.display_order || 0) + 1;
+  const { data, error } = await sb.from('client_additional_contacts').insert({ client_id: args.client_id, first_name: args.first_name, surname: args.surname, relationship: args.relationship || 'co_borrower', email: args.email || null, mobile: args.mobile || null, dob: args.dob || null, display_order: nextOrder }).select().single();
+  if (error) return { error: error.message };
+  return { success: true, message: `Contact "${args.first_name} ${args.surname}" added.`, contact: data };
+}
+
+async function executeUpdateAdditionalContact(sb: any, args: any) {
+  const { error } = await sb.from('client_additional_contacts').update({ [args.field]: args.value }).eq('id', args.contact_id);
+  if (error) return { error: error.message };
+  return { success: true, message: `Contact field "${args.field}" updated.` };
+}
+
+async function executeRemoveAdditionalContact(sb: any, args: any) {
+  const { error } = await sb.from('client_additional_contacts').delete().eq('id', args.contact_id);
+  if (error) return { error: error.message };
+  return { success: true, message: 'Contact removed.' };
+}
+
+async function executeGetCashFlowAnalysis(sb: any, args: any) {
+  let query = sb.from('cash_flow_analyses').select('*');
+  if (args.report_id) query = query.eq('primary_report_id', args.report_id);
+  const { data } = await query.order('created_at', { ascending: false }).limit(args.limit || 5);
+  return { analyses: data || [] };
+}
+
+async function executeGetAutoReportSwitches(sb: any) {
+  const { data } = await sb.from('auto_report_switches').select('*').order('priority');
+  return { switches: data || [] };
+}
+
+async function executeToggleAutoReportSwitch(sb: any, args: any) {
+  const { error } = await sb.from('auto_report_switches').update({ is_enabled: args.is_enabled }).eq('id', args.switch_id);
+  if (error) return { error: error.message };
+  return { success: true, message: `Switch ${args.is_enabled ? 'enabled' : 'disabled'}.` };
+}
+
+async function executeGetAutoReportLog(sb: any, args: any) {
+  const limit = args.limit || 20;
+  const { data } = await sb.from('auto_report_generation_log').select('*').order('created_at', { ascending: false }).limit(limit);
+  return { logs: data || [] };
+}
+
+async function executeDeleteChecklistInstance(sb: any, args: any) {
+  const action = args.action || 'archive';
+  if (action === 'archive') { await sb.from('checklist_instances').update({ status: 'archived' }).eq('id', args.instance_id); }
+  else { await sb.from('checklist_instance_items').delete().eq('instance_id', args.instance_id); await sb.from('checklist_instances').delete().eq('id', args.instance_id); }
+  return { success: true, message: `Checklist ${action}d.` };
+}
+
+async function executeGetTodaysSchedule(sb: any) {
+  const today = new Date().toISOString().substring(0, 10);
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().substring(0, 10);
+  const [appointments, reminders, milestones] = await Promise.all([
+    sb.from('appointment_secondary_recipients').select('*').gte('appointment_start', today).lt('appointment_start', tomorrow).order('appointment_start'),
+    sb.from('client_reminders').select('*, clients:client_id(primary_first_name, primary_surname)').eq('status', 'pending').gte('due_date', today).lt('due_date', tomorrow),
+    sb.from('client_deals').select('id, property_address, settlement_date, finance_clause_expiry, clients:client_id(primary_first_name, primary_surname)').or(`settlement_date.gte.${today},finance_clause_expiry.gte.${today}`).or(`settlement_date.lt.${tomorrow},finance_clause_expiry.lt.${tomorrow}`),
+  ]);
+  return { date: today, appointments: appointments.data || [], reminders_due: reminders.data || [], milestones_today: milestones.data || [] };
+}
+
+async function executeDeleteClientFile(sb: any, args: any) {
+  const { error } = await sb.from('client_files').delete().eq('id', args.file_id);
+  if (error) return { error: error.message };
+  return { success: true, message: 'File deleted.' };
+}
+
+async function executeGetBulkGenerationStatus(sb: any, args: any) {
+  const limit = args.limit || 5;
+  const { data } = await sb.from('bulk_generation_jobs').select('*').order('created_at', { ascending: false }).limit(limit);
+  return { jobs: data || [] };
+}
+
+async function executeGetLendingRates(sb: any, args: any) {
+  let query = sb.from('bank_lending_rates_cache').select('*');
+  if (args.lender_name) query = query.ilike('lender_name', `%${args.lender_name}%`);
+  const { data } = await query.order('lender_name');
+  return { lenders: data || [] };
+}
+
+async function executeCompareLenderRates(sb: any, args: any) {
+  const { data } = await sb.from('bank_lending_rates_cache').select('lender_name, rates').order('lender_name');
+  const comparison = (data || []).map((l: any) => ({ lender: l.lender_name, rates: l.rates }));
+  return { comparison, loan_amount: args.loan_amount, total_lenders: comparison.length };
+}
+
+async function executeCompleteDealStage(sb: any, args: any) {
+  const { error } = await sb.from('deal_stages').update({ completed_at: new Date().toISOString(), status: 'completed' }).eq('id', args.stage_id);
+  if (error) return { error: error.message };
+  if (args.advance_deal !== false) {
+    const { data: stage } = await sb.from('deal_stages').select('deal_id, stage_number, stage_name').eq('id', args.stage_id).single();
+    if (stage) { const { data: next } = await sb.from('deal_stages').select('stage_name, stage_number').eq('deal_id', stage.deal_id).gt('stage_number', stage.stage_number).order('stage_number').limit(1); if (next?.[0]) await sb.from('client_deals').update({ current_stage: next[0].stage_name }).eq('id', stage.deal_id); }
+  }
+  return { success: true, message: 'Stage completed.' };
+}
+
+async function executeGetEmailStats(sb: any) {
+  const [total, unread, unlinked] = await Promise.all([
+    sb.from('email_copilot_emails').select('id', { count: 'exact', head: true }),
+    sb.from('email_copilot_emails').select('id', { count: 'exact', head: true }).eq('is_read', false),
+    sb.from('email_copilot_emails').select('id', { count: 'exact', head: true }).is('client_id', null),
+  ]);
+  return { total_emails: total.count || 0, unread: unread.count || 0, unlinked: unlinked.count || 0 };
+}
+
+// ─── COLLABORATION (Batch 1 extended) ───
+
+async function executeShareConversation(sb: any, args: any, userId: string) {
+  // Find target user
+  const { data: target } = await sb.from('custom_users').select('id, username').or(`username.ilike.%${args.target_user_name}%,email.ilike.%${args.target_user_name}%`).limit(1);
+  if (!target?.length) return { error: `User "${args.target_user_name}" not found.` };
+  const targetId = target[0].id;
+  if (targetId === userId) return { error: 'Cannot share with yourself.' };
+  // Get most recent conversation for this user
+  const { data: convs } = await sb.from('agent_conversations').select('id').eq('user_id', userId).order('updated_at', { ascending: false }).limit(1);
+  const convId = args.conversation_id || convs?.[0]?.id;
+  if (!convId) return { error: 'No conversation to share.' };
+  const { error } = await sb.from('agent_conversation_shares').insert({ conversation_id: convId, shared_by: userId, shared_with: targetId, permission: args.permission || 'view', handoff_note: args.handoff_note || null });
+  if (error) return { error: error.message };
+  // Log handoff
+  await sb.from('agent_conversation_handoffs').insert({ conversation_id: convId, from_user_id: userId, to_user_id: targetId, handoff_type: args.handoff_type || 'collaborate', note: args.handoff_note || null });
+  return { success: true, message: `Conversation shared with ${target[0].username}.` };
+}
+
+async function executeGetSharedConversations(sb: any, userId: string) {
+  const { data } = await sb.from('agent_conversation_shares').select('*, agent_conversations(id, title, updated_at), custom_users!agent_conversation_shares_shared_by_fkey(username)').eq('shared_with', userId).eq('is_active', true).order('created_at', { ascending: false });
+  return { shared: (data || []).map((s: any) => ({ conversation: s.agent_conversations, shared_by: s.custom_users?.username, permission: s.permission, note: s.handoff_note })) };
+}
+
+async function executeGetConversationCollaborators(sb: any, args: any) {
+  const { data } = await sb.from('agent_conversation_shares').select('*, custom_users!agent_conversation_shares_shared_with_fkey(username, email)').eq('conversation_id', args.conversation_id).eq('is_active', true);
+  return { collaborators: (data || []).map((s: any) => ({ user: s.custom_users?.username, email: s.custom_users?.email, permission: s.permission })) };
+}
+
+async function executeRevokeConversationShare(sb: any, args: any, userId: string) {
+  const { error } = await sb.from('agent_conversation_shares').update({ is_active: false }).eq('conversation_id', args.conversation_id).eq('shared_with', args.user_id);
+  if (error) return { error: error.message };
+  return { success: true, message: 'Access revoked.' };
+}
+
+async function executeGetUserPreferences(sb: any, userId: string) {
+  const { data } = await sb.from('agent_user_preferences').select('preference_key, preference_value, updated_at').eq('user_id', userId).order('updated_at', { ascending: false });
+  return { preferences: data || [] };
+}
+
+async function executeSetUserPreference(sb: any, args: any, userId: string) {
+  const { data: existing } = await sb.from('agent_user_preferences').select('id').eq('user_id', userId).eq('preference_key', args.key).maybeSingle();
+  if (existing) { await sb.from('agent_user_preferences').update({ preference_value: { value: args.value } }).eq('id', existing.id); }
+  else { await sb.from('agent_user_preferences').insert({ user_id: userId, preference_key: args.key, preference_value: { value: args.value } }); }
+  return { success: true, message: `Preference "${args.key}" saved.` };
+}
+
+async function executeGetAuditTrail(sb: any, args: any, userId: string) {
+  const limit = args.limit || 20;
+  let query = sb.from('agent_action_log').select('*').eq('user_id', userId);
+  if (args.client_id) query = query.eq('affected_client_id', args.client_id);
+  if (args.tool_name) query = query.eq('tool_name', args.tool_name);
+  const { data } = await query.order('created_at', { ascending: false }).limit(limit);
+  return { actions: data || [] };
+}
+
+async function executeUndoAction(sb: any, args: any, userId: string) {
+  const { data: action } = await sb.from('agent_action_log').select('*').eq('id', args.action_id).eq('user_id', userId).single();
+  if (!action) return { error: 'Action not found or not yours.' };
+  if (action.is_rolled_back) return { error: 'Action already rolled back.' };
+  if (!action.rollback_data) return { error: 'No rollback data available for this action.' };
+  // Apply rollback
+  try {
+    if (action.affected_table && action.affected_record_id && action.rollback_data) {
+      await sb.from(action.affected_table).update(action.rollback_data).eq('id', action.affected_record_id);
+    }
+    await sb.from('agent_action_log').update({ is_rolled_back: true, rolled_back_at: new Date().toISOString(), rolled_back_by: userId }).eq('id', args.action_id);
+    return { success: true, message: `Action "${action.tool_name}" has been undone.` };
+  } catch (err: any) { return { error: `Rollback failed: ${err.message}` }; }
+}
+
 // ─── PROACTIVE INSIGHTS (Batch 2) ───
 
 async function executeGetProactiveInsights(sb: any) {
