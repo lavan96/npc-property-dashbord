@@ -43,6 +43,16 @@ export function TemplateBuilder({ template: initialTemplate, onBack }: TemplateB
   const [cronExpression, setCronExpression] = useState(template.cron_expression || '');
   const [cronDesc, setCronDesc] = useState(template.cron_description || '');
 
+  // Keep local cron state in sync with server data
+  const prevCronExpr = template.cron_expression || '';
+  const prevCronDesc = template.cron_description || '';
+  if (prevCronExpr && !cronExpression && prevCronExpr !== cronExpression) {
+    setCronExpression(prevCronExpr);
+  }
+  if (prevCronDesc && !cronDesc && prevCronDesc !== cronDesc) {
+    setCronDesc(prevCronDesc);
+  }
+
   const toggleSection = (id: string) => {
     const next = new Set(openSections);
     next.has(id) ? next.delete(id) : next.add(id);
@@ -77,8 +87,8 @@ export function TemplateBuilder({ template: initialTemplate, onBack }: TemplateB
     mutations.updateTemplate.mutate({
       id: template.id,
       cron_enabled: enabled,
-      cron_expression: cronExpression || null,
-      cron_description: cronDesc || null,
+      ...(cronExpression ? { cron_expression: cronExpression } : {}),
+      ...(cronDesc ? { cron_description: cronDesc } : {}),
     });
   };
 
