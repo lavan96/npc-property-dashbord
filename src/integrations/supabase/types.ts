@@ -100,6 +100,221 @@ export type Database = {
           },
         ]
       }
+      agent_action_log: {
+        Row: {
+          affected_client_id: string | null
+          affected_record_id: string | null
+          affected_table: string | null
+          confidence_score: number | null
+          conversation_id: string | null
+          created_at: string
+          execution_time_ms: number | null
+          id: string
+          is_rolled_back: boolean
+          message_id: string | null
+          rollback_data: Json | null
+          rollback_sql: string | null
+          rolled_back_at: string | null
+          rolled_back_by: string | null
+          status: string
+          tool_arguments: Json | null
+          tool_name: string
+          tool_result: Json | null
+          user_id: string
+        }
+        Insert: {
+          affected_client_id?: string | null
+          affected_record_id?: string | null
+          affected_table?: string | null
+          confidence_score?: number | null
+          conversation_id?: string | null
+          created_at?: string
+          execution_time_ms?: number | null
+          id?: string
+          is_rolled_back?: boolean
+          message_id?: string | null
+          rollback_data?: Json | null
+          rollback_sql?: string | null
+          rolled_back_at?: string | null
+          rolled_back_by?: string | null
+          status?: string
+          tool_arguments?: Json | null
+          tool_name: string
+          tool_result?: Json | null
+          user_id: string
+        }
+        Update: {
+          affected_client_id?: string | null
+          affected_record_id?: string | null
+          affected_table?: string | null
+          confidence_score?: number | null
+          conversation_id?: string | null
+          created_at?: string
+          execution_time_ms?: number | null
+          id?: string
+          is_rolled_back?: boolean
+          message_id?: string | null
+          rollback_data?: Json | null
+          rollback_sql?: string | null
+          rolled_back_at?: string | null
+          rolled_back_by?: string | null
+          status?: string
+          tool_arguments?: Json | null
+          tool_name?: string
+          tool_result?: Json | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_action_log_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "agent_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_action_log_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "agent_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_action_log_rolled_back_by_fkey"
+            columns: ["rolled_back_by"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_action_log_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_conversation_handoffs: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          from_user_id: string
+          handoff_type: string
+          id: string
+          message_id: string | null
+          note: string | null
+          to_user_id: string
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string
+          from_user_id: string
+          handoff_type?: string
+          id?: string
+          message_id?: string | null
+          note?: string | null
+          to_user_id: string
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          from_user_id?: string
+          handoff_type?: string
+          id?: string
+          message_id?: string | null
+          note?: string | null
+          to_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_conversation_handoffs_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "agent_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_conversation_handoffs_from_user_id_fkey"
+            columns: ["from_user_id"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_conversation_handoffs_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "agent_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_conversation_handoffs_to_user_id_fkey"
+            columns: ["to_user_id"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_conversation_shares: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          handoff_note: string | null
+          id: string
+          is_active: boolean
+          permission: string
+          shared_by: string
+          shared_with: string
+          updated_at: string
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string
+          handoff_note?: string | null
+          id?: string
+          is_active?: boolean
+          permission?: string
+          shared_by: string
+          shared_with: string
+          updated_at?: string
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          handoff_note?: string | null
+          id?: string
+          is_active?: boolean
+          permission?: string
+          shared_by?: string
+          shared_with?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_conversation_shares_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "agent_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_conversation_shares_shared_by_fkey"
+            columns: ["shared_by"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_conversation_shares_shared_with_fkey"
+            columns: ["shared_with"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_conversations: {
         Row: {
           created_at: string
@@ -141,6 +356,7 @@ export type Database = {
           id: string
           requires_confirmation: boolean | null
           role: string
+          sent_by: string | null
           tool_calls: Json | null
           tool_results: Json | null
         }
@@ -152,6 +368,7 @@ export type Database = {
           id?: string
           requires_confirmation?: boolean | null
           role: string
+          sent_by?: string | null
           tool_calls?: Json | null
           tool_results?: Json | null
         }
@@ -163,6 +380,7 @@ export type Database = {
           id?: string
           requires_confirmation?: boolean | null
           role?: string
+          sent_by?: string | null
           tool_calls?: Json | null
           tool_results?: Json | null
         }
@@ -172,6 +390,48 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "agent_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_messages_sent_by_fkey"
+            columns: ["sent_by"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_user_preferences: {
+        Row: {
+          created_at: string
+          id: string
+          preference_key: string
+          preference_value: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          preference_key: string
+          preference_value?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          preference_key?: string
+          preference_value?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_user_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
             referencedColumns: ["id"]
           },
         ]
