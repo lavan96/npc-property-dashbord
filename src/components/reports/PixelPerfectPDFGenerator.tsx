@@ -4,6 +4,7 @@ import { Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { secureStorageUpload } from '@/hooks/useSecureStorage';
 import { fetchGlobalReportSettings, type GlobalReportSettings } from '@/hooks/useGlobalReportSettings';
 import { drawPdfLibDisclaimerPage } from '@/utils/pdfDisclaimerPage';
@@ -2913,6 +2914,15 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
 
       console.log('✅ PDF generation completed successfully!');
       toast.success('PDF generated and saved successfully!');
+
+      // Log activity
+      logActivityDirect({
+        actionType: 'report_pdf_downloaded',
+        entityType: 'investment_report',
+        entityId: report.id,
+        entityName: report.address,
+        metadata: { format: 'pdf', source: 'pixel_perfect_generator' }
+      });
     } catch (error) {
       console.error('❌ PDF generation error:', error);
       console.error('Error details:', {

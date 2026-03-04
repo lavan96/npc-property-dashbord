@@ -25,6 +25,7 @@ import { useToast } from '@/hooks/use-toast';
 import { addBackgroundJob } from '@/components/BackgroundJobTracker';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { useAuth } from '@/hooks/useAuth';
+import { logActivityDirect } from '@/hooks/useActivityLogger';
 
 interface PropertyComparisonModalProps {
   isOpen: boolean;
@@ -217,6 +218,15 @@ export function PropertyComparisonModal({
       setAnalysis(data.analysis);
       setComparisonId(data.comparisonId);
       setProgress(100);
+
+      // Log activity
+      logActivityDirect({
+        actionType: 'comparison_created',
+        entityType: 'property_comparison',
+        entityId: data.comparisonId,
+        entityName: `${reportIds.length} Property Comparison`,
+        metadata: { propertyCount: reportIds.length, analysisDepth, investorProfile, propertyAddresses }
+      });
 
       // Add notification for completion
       addNotification({

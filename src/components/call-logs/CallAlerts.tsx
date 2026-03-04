@@ -419,10 +419,18 @@ export const CallAlerts = ({ calls, onAlertTriggered }: CallAlertsProps) => {
   };
 
   const toggleRule = async (ruleId: string, enabled: boolean) => {
+    const rule = rules.find(r => r.id === ruleId);
     const result = await updateRuleSecure(ruleId, { is_enabled: enabled });
     
     if (result.success) {
       setRules(prev => prev.map(r => r.id === ruleId ? { ...r, is_enabled: enabled } : r));
+      logActivityDirect({
+        actionType: 'alert_rule_updated',
+        entityType: 'call_alert_rule',
+        entityId: ruleId,
+        entityName: rule?.name,
+        metadata: { field: 'is_enabled', value: enabled }
+      });
     }
   };
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { logActivityDirect } from '@/hooks/useActivityLogger';
 import type { Json } from '@/integrations/supabase/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -344,6 +345,15 @@ export function ClientPropertyInvestmentReport({
       if (error || !data?.success) {
         throw new Error(error?.message || data?.error || 'Failed to delete report');
       }
+
+      // Log activity
+      logActivityDirect({
+        actionType: 'report_deleted',
+        entityType: 'investment_report',
+        entityId: reportToDelete.id,
+        entityName: reportToDelete.property_address,
+        metadata: { source: 'client_property_report' }
+      });
 
       toast({
         title: 'Report Deleted',

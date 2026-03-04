@@ -18,6 +18,7 @@ import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { InvestmentReportEditor } from './InvestmentReportEditor';
 import { ClientPDFGenerator } from './ClientPDFGenerator';
 import { RegenerateWithPerplexityButton } from './RegenerateWithPerplexityButton';
+import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { TierBadge, type ReportTier } from './TierBadge';
 import { TierSwitcher } from './TierSwitcher';
 
@@ -203,6 +204,15 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+
+    // Log activity
+    logActivityDirect({
+      actionType: 'report_pdf_downloaded',
+      entityType: 'investment_report',
+      entityId: report.id,
+      entityName: report.property_address,
+      metadata: { format: 'txt', source: 'investment_report_viewer' }
+    });
   };
 
   const handleEdit = () => {
