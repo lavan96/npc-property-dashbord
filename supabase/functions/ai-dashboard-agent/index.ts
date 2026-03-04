@@ -1891,6 +1891,15 @@ const TOOLS: any[] = [
       parameters: { type: "object", properties: {} },
     },
   },
+  // ─── FILE UPLOADS ───
+  {
+    type: "function",
+    function: {
+      name: "search_uploaded_files",
+      description: "Search files previously uploaded by the user to the agent. Returns filename, type, size, extracted text preview, and upload date. Use to recall documents from past conversations.",
+      parameters: { type: "object", properties: { query: { type: "string", description: "Search term to match against filenames or extracted text" }, mime_type: { type: "string", description: "Filter by MIME type (e.g. application/pdf, image/png)" }, limit: { type: "number", description: "Max results (default 10)" } }, required: [] },
+    },
+  },
 ];
 
 // ============================================================
@@ -4042,6 +4051,8 @@ async function executeTool(sb: any, name: string, args: any, userId: string): Pr
     case 'get_user_list': return executeGetUserList(sb, args);
     case 'get_depreciation_comps': return executeGetDepreciationComps(sb, args);
     case 'get_depreciation_summary': return executeGetDepreciationSummary(sb);
+    // File uploads
+    case 'search_uploaded_files': return executeSearchUploadedFiles(sb, args, userId);
 
     default: return { error: `Unknown tool: ${name}` };
   }
@@ -4049,6 +4060,24 @@ async function executeTool(sb: any, name: string, args: any, userId: string): Pr
 
 // ============================================================
 //  SYSTEM PROMPT
+// ─── FILE UPLOADS ───
+
+async function executeSearchUploadedFiles(sb: any, args: any, userId: string) {
+  const { query, mime_type, limit = 10 } = args;
+  let q = sb.from('agent_file_uploads').select('id, filename, mime_type, file_size, file_category, storage_path, extracted_text, conversation_id, created_at')
+    .eq('user_id', userId).order('created_at', { ascending: false }).limit(limit);
+  if (query) q = q.or(`filename.ilike.%${query}%,extracted_text.ilike.%${query}%`);
+  if (mime_type) q = q.eq('mime_type', mime_type);
+  const { data, error } = await q;
+  if (error) return { error: error.message };
+  const files = (data || []).map((f: any) => ({
+    ...f,
+    extracted_text: f.extracted_text ? f.extracted_text.substring(0, 500) + (f.extracted_text.length > 500 ? '...' : '') : null,
+    size_display: f.file_size < 1024 ? `${f.file_size}B` : f.file_size < 1048576 ? `${(f.file_size / 1024).toFixed(1)}KB` : `${(f.file_size / 1048576).toFixed(1)}MB`,
+  }));
+  return { files, count: files.length };
+}
+
 // ─── BATCH 5 EXECUTORS ───
 
 async function executeSaveMemory(sb: any, args: any, userId: string) {
@@ -4661,6 +4690,15 @@ serve(async (req) => {
       case 'share-conversation': {
         const result = await executeShareConversation(sb, { target_user_name: body.target_user_name, permission: body.permission || 'view', handoff_note: body.handoff_note, handoff_type: body.handoff_type || 'collaborate' }, userId!);
         return new Response(JSON.stringify({ success: true, ...result }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+      }
+      case 'index-file-upload': {
+        const { conversation_id, filename, mime_type, file_size, storage_path, extracted_text, file_category } = body;
+        const { error: insertErr } = await sb.from('agent_file_uploads').insert({
+          user_id: userId, conversation_id, filename, mime_type, file_size: file_size || 0,
+          storage_path, extracted_text: extracted_text?.substring(0, 10000) || null, file_category: file_category || 'general',
+        });
+        if (insertErr) return new Response(JSON.stringify({ success: false, error: insertErr.message }), { status: 500, headers: { ...cors, 'Content-Type': 'application/json' } });
+        return new Response(JSON.stringify({ success: true }), { headers: { ...cors, 'Content-Type': 'application/json' } });
       }
       default:
         return new Response(JSON.stringify({ error: `Unknown action: ${body.action}` }), { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } });

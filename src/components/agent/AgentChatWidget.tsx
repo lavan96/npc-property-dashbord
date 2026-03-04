@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { MessageSquare, X, Plus, Trash2, Send, Check, XCircle, Loader2, ChevronLeft, Search, Pencil, RotateCcw, Sparkles, Diamond, BarChart3, Calendar, Zap, TrendingUp, Target, FileDown, Brain, Bell, Settings, Users, Share2, ClipboardList, Clock, Shield, ChevronRight, Info, Play, HelpCircle, ArrowRight } from 'lucide-react';
+import { MessageSquare, X, Plus, Trash2, Send, Check, XCircle, Loader2, ChevronLeft, Search, Pencil, RotateCcw, Sparkles, Diamond, BarChart3, Calendar, Zap, TrendingUp, Target, FileDown, Brain, Bell, Settings, Users, Share2, ClipboardList, Clock, Shield, ChevronRight, Info, Play, HelpCircle, ArrowRight, Paperclip, File, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
@@ -7,10 +7,12 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { VoiceToTextButton } from '@/components/ui/VoiceToTextButton';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { secureStorageUpload } from '@/hooks/useSecureStorage';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { extractFileContent, formatFilesForAgent, ACCEPTED_EXTENSIONS, type ExtractedFile } from '@/lib/agentFileExtractor';
 
 interface Conversation {
   id: string;
@@ -62,9 +64,13 @@ export function AgentChatWidget() {
   const [shareNote, setShareNote] = useState('');
   const [sharePermission, setSharePermission] = useState<'view' | 'collaborate'>('view');
   const [userMap, setUserMap] = useState<Record<string, string>>({});
+  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  const [extractedFiles, setExtractedFiles] = useState<ExtractedFile[]>([]);
+  const [extractingFiles, setExtractingFiles] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load conversations
   const loadConversations = useCallback(async () => {
@@ -183,13 +189,48 @@ export function AgentChatWidget() {
     setEditingConvoId(null);
   };
 
+  // File attachment handlers
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    
+    const maxFiles = 5;
+    const newFiles = files.slice(0, maxFiles - attachedFiles.length);
+    if (newFiles.length < files.length) {
+      toast.info(`Max ${maxFiles} files per message. Only first ${newFiles.length} added.`);
+    }
+    
+    setAttachedFiles(prev => [...prev, ...newFiles]);
+    setExtractingFiles(true);
+    
+    try {
+      const extracted = await Promise.all(newFiles.map(f => extractFileContent(f)));
+      setExtractedFiles(prev => [...prev, ...extracted]);
+    } catch (err: any) {
+      toast.error(`File extraction failed: ${err.message}`);
+    }
+    setExtractingFiles(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const removeAttachedFile = (index: number) => {
+    setAttachedFiles(prev => prev.filter((_, i) => i !== index));
+    setExtractedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
   const sendMessage = async (overrideMessage?: string) => {
     const msg = (overrideMessage || input).trim();
-    if (!msg || loading) return;
+    if ((!msg && extractedFiles.length === 0) || loading) return;
     if (!overrideMessage) setInput('');
     setRetryMessage(null);
     setLoading(true);
     setPanelView('chat');
+
+    // Capture and clear attached files
+    const filesToSend = [...extractedFiles];
+    const rawFiles = [...attachedFiles];
+    setAttachedFiles([]);
+    setExtractedFiles([]);
 
     let convId = activeConversation;
     if (!convId) {
@@ -207,11 +248,55 @@ export function AgentChatWidget() {
       }
     }
 
-    const tempUserMsg: Message = { id: `temp-${Date.now()}`, role: 'user', content: msg, created_at: new Date().toISOString() };
+    // Build display message (with file indicators)
+    const fileIndicators = filesToSend.length > 0
+      ? filesToSend.map(f => `📎 ${f.filename}`).join('\n') + '\n\n'
+      : '';
+    const displayContent = fileIndicators + msg;
+    const tempUserMsg: Message = { id: `temp-${Date.now()}`, role: 'user', content: displayContent, created_at: new Date().toISOString() };
     setMessages(prev => [...prev, tempUserMsg]);
 
+    // Build agent message with file context
+    const fileContext = formatFilesForAgent(filesToSend);
+    const imageFiles = filesToSend.filter(f => f.isImage && f.base64Data);
+    const agentMessage = fileContext ? `${fileContext}\n\n${msg}` : msg;
+
+    // Upload files to storage in background (don't block the message)
+    if (rawFiles.length > 0 && user) {
+      const finalConvId = convId;
+      Promise.all(rawFiles.map(async (file, idx) => {
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const storagePath = `agent-uploads/${user.id}/${timestamp}-${file.name}`;
+        try {
+          await secureStorageUpload('client-files', storagePath, file, { upsert: true });
+          // Index in DB
+          await invokeSecureFunction('ai-dashboard-agent', {
+            action: 'index-file-upload',
+            conversation_id: finalConvId,
+            filename: file.name,
+            mime_type: filesToSend[idx]?.mimeType || file.type,
+            file_size: file.size,
+            storage_path: storagePath,
+            extracted_text: filesToSend[idx]?.extractedText?.substring(0, 10000) || null,
+            file_category: filesToSend[idx]?.category || 'general',
+          });
+        } catch (err) {
+          console.warn('[Agent] Background file upload failed:', err);
+        }
+      })).catch(() => {});
+    }
+
     try {
-      const { data, error } = await invokeSecureFunction('ai-dashboard-agent', { action: 'chat', conversation_id: convId, message: msg });
+      const payload: any = { action: 'chat', conversation_id: convId, message: agentMessage };
+      // Include image data for vision analysis
+      if (imageFiles.length > 0) {
+        payload.image_attachments = imageFiles.map(f => ({
+          filename: f.filename,
+          mime_type: f.mimeType,
+          base64: f.base64Data,
+        }));
+      }
+      const { data, error } = await invokeSecureFunction('ai-dashboard-agent', payload);
       if (error || !data?.success) {
         const errorMsg = error?.message || data?.error || 'Something went wrong';
         setRetryMessage(msg);
@@ -897,14 +982,36 @@ export function AgentChatWidget() {
                 );
               }
               return (
-                <div className="border-t p-3 shrink-0 bg-background">
-                  <div className="flex gap-2 items-end">
-                    <Textarea ref={textareaRef} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown}
-                      placeholder="Ask Aurixa..." className="min-h-[40px] max-h-[100px] resize-none text-sm rounded-xl" rows={1} disabled={loading} />
-                    <VoiceToTextButton onTranscript={(text) => setInput(prev => prev ? `${prev} ${text}` : text)} disabled={loading} size="sm" className="shrink-0" />
-                    <Button size="icon" onClick={() => sendMessage()} disabled={!input.trim() || loading} className="h-10 w-10 shrink-0 rounded-xl"><Send className="h-4 w-4" /></Button>
+                <div className="border-t shrink-0 bg-background">
+                  {/* File preview chips */}
+                  {attachedFiles.length > 0 && (
+                    <div className="px-3 pt-2 flex flex-wrap gap-1.5">
+                      {attachedFiles.map((file, idx) => {
+                        const isImg = file.type.startsWith('image/');
+                        return (
+                          <div key={idx} className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-muted/60 border border-border/40 text-xs max-w-[200px]">
+                            {isImg ? <ImageIcon className="h-3 w-3 text-primary shrink-0" /> : <File className="h-3 w-3 text-primary shrink-0" />}
+                            <span className="truncate">{file.name}</span>
+                            <button onClick={() => removeAttachedFile(idx)} className="shrink-0 hover:text-destructive transition-colors"><X className="h-3 w-3" /></button>
+                          </div>
+                        );
+                      })}
+                      {extractingFiles && <div className="flex items-center gap-1 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" /> Extracting...</div>}
+                    </div>
+                  )}
+                  <div className="p-3">
+                    <div className="flex gap-2 items-end">
+                      <input ref={fileInputRef} type="file" multiple accept={ACCEPTED_EXTENSIONS} onChange={handleFileSelect} className="hidden" />
+                      <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 rounded-xl" onClick={() => fileInputRef.current?.click()} disabled={loading || attachedFiles.length >= 5} title="Attach files">
+                        <Paperclip className="h-4 w-4" />
+                      </Button>
+                      <Textarea ref={textareaRef} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown}
+                        placeholder="Ask Aurixa..." className="min-h-[40px] max-h-[100px] resize-none text-sm rounded-xl" rows={1} disabled={loading} />
+                      <VoiceToTextButton onTranscript={(text) => setInput(prev => prev ? `${prev} ${text}` : text)} disabled={loading} size="sm" className="shrink-0" />
+                      <Button size="icon" onClick={() => sendMessage()} disabled={(!input.trim() && extractedFiles.length === 0) || loading || extractingFiles} className="h-10 w-10 shrink-0 rounded-xl"><Send className="h-4 w-4" /></Button>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-1.5 text-center">Powered by Gemini • Aurixa may make mistakes • 📎 Up to 5 files (50MB each)</p>
                   </div>
-                  <p className="text-[10px] text-muted-foreground mt-1.5 text-center">Powered by Gemini • Aurixa may make mistakes</p>
                 </div>
               );
             })()}
