@@ -4,6 +4,7 @@ import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { useSecureClientData } from '@/hooks/useSecureClientData';
 import { cn } from '@/lib/utils';
 import {
@@ -183,6 +184,13 @@ If you have any questions about the report or would like to discuss your investm
 Best regards,
 NPC Team`
       );
+
+      logActivityDirect({
+        actionType: 'portfolio_report_generated',
+        entityType: 'portfolio_report',
+        entityName: `${clientFirstName} ${client.primary_surname}`,
+        metadata: { client_id: client.id, delivery: 'email' }
+      });
 
       // Generate PDF from analysis data - store in session for email attachment
       toast.success('Portfolio analysis ready. Preparing email...');

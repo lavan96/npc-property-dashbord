@@ -4,6 +4,7 @@ import { FileText, Loader2, Download, TrendingUp, AlertTriangle, CheckCircle, La
 import { toast } from 'sonner';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { secureStorageUpload } from '@/hooks/useSecureStorage';
+import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { PDFDocument, rgb, StandardFonts, PDFPage, PDFFont } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import { fetchGlobalReportSettings, type GlobalReportSettings } from '@/hooks/useGlobalReportSettings';
@@ -3126,6 +3127,12 @@ export function PortfolioAnalysisPDFGenerator({
 
       console.log('✅ PDF generation complete!');
       toast.success(reportPersisted ? 'PDF downloaded and report saved' : 'PDF downloaded locally');
+      logActivityDirect({
+        actionType: 'portfolio_report_generated',
+        entityType: 'portfolio_report',
+        entityName: clientName,
+        metadata: { client_id: clientId, persisted: reportPersisted, include_owner_occupied: includeOwnerOccupied }
+      });
       onComplete?.();
       
     } catch (error: any) {
