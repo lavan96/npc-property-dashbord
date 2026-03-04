@@ -1,0 +1,343 @@
+import { useState, useEffect } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import { FileSignature, Send, Loader2, User, MapPin, Phone, Mail, Calendar, UserPlus, CheckCircle2 } from 'lucide-react';
+import { useAgreementMutations } from '@/hooks/useAgencyAgreements';
+import { logActivityDirect } from '@/hooks/useActivityLogger';
+import { format } from 'date-fns';
+
+interface SendAgreementDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  client: {
+    id: string;
+    primary_first_name: string;
+    primary_surname: string;
+    primary_email: string | null;
+    primary_mobile: string | null;
+    current_address?: string | null;
+    secondary_first_name?: string | null;
+    secondary_surname?: string | null;
+  };
+  dealId?: string;
+}
+
+export function SendAgreementDialog({ open, onOpenChange, client, dealId }: SendAgreementDialogProps) {
+  const { generateAgreement, sendViaDocuSign } = useAgreementMutations();
+
+  // Pre-fill from client data
+  const [buyerNames, setBuyerNames] = useState('');
+  const [buyerAddress, setBuyerAddress] = useState('');
+  const [buyerPhone, setBuyerPhone] = useState('');
+  const [buyerEmail, setBuyerEmail] = useState('');
+  const [agreementDate, setAgreementDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [secondaryBuyerName, setSecondaryBuyerName] = useState('');
+  const [notes, setNotes] = useState('');
+  const [step, setStep] = useState<'fill' | 'confirm' | 'sent'>('fill');
+  const [generatedId, setGeneratedId] = useState<string | null>(null);
+
+  // Pre-fill when dialog opens
+  useEffect(() => {
+    if (open) {
+      setBuyerNames(`${client.primary_first_name} ${client.primary_surname}`);
+      setBuyerAddress(client.current_address || '');
+      setBuyerPhone(client.primary_mobile || '');
+      setBuyerEmail(client.primary_email || '');
+      setAgreementDate(format(new Date(), 'yyyy-MM-dd'));
+      setSecondaryBuyerName(
+        client.secondary_first_name && client.secondary_surname
+          ? `${client.secondary_first_name} ${client.secondary_surname}`
+          : ''
+      );
+      setNotes('');
+      setStep('fill');
+      setGeneratedId(null);
+    }
+  }, [open, client]);
+
+  const handleGenerate = async () => {
+    try {
+      const result = await generateAgreement.mutateAsync({
+        clientId: client.id,
+        buyerNames,
+        buyerAddress,
+        buyerPhone,
+        buyerEmail,
+        agreementDate,
+        secondaryBuyerName: secondaryBuyerName || undefined,
+        dealId,
+        notes: notes || undefined,
+      });
+
+      setGeneratedId(result?.agreement_id);
+      setStep('confirm');
+
+      logActivityDirect({
+        actionType: 'agreement_generated',
+        entityType: 'agency_agreement',
+        entityId: result?.agreement_id,
+        entityName: buyerNames,
+        metadata: { client_id: client.id },
+      });
+    } catch {
+      // Error handled by mutation
+    }
+  };
+
+  const handleSendDocuSign = async () => {
+    if (!generatedId) return;
+    try {
+      await sendViaDocuSign.mutateAsync(generatedId);
+      setStep('sent');
+
+      logActivityDirect({
+        actionType: 'agreement_sent',
+        entityType: 'agency_agreement',
+        entityId: generatedId,
+        entityName: buyerNames,
+        metadata: { client_id: client.id, method: 'docusign' },
+      });
+    } catch {
+      // Error handled by mutation
+    }
+  };
+
+  const isGenerating = generateAgreement.isPending;
+  const isSending = sendViaDocuSign.isPending;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FileSignature className="h-5 w-5 text-primary" />
+            Send Agency Agreement
+          </DialogTitle>
+          <DialogDescription>
+            Pre-fill the Buyer's Agent Agreement and send via DocuSign for e-signature.
+          </DialogDescription>
+        </DialogHeader>
+
+        {step === 'fill' && (
+          <div className="space-y-4 py-2">
+            {/* Agreement Date */}
+            <div className="space-y-1.5">
+              <Label htmlFor="agreement-date" className="flex items-center gap-1.5">
+                <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                Agreement Date
+              </Label>
+              <Input
+                id="agreement-date"
+                type="date"
+                value={agreementDate}
+                onChange={(e) => setAgreementDate(e.target.value)}
+              />
+            </div>
+
+            <Separator />
+
+            {/* Buyer Details Section */}
+            <div>
+              <h4 className="text-sm font-semibold text-foreground mb-3">Buyer Details</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="buyer-names" className="flex items-center gap-1.5">
+                    <User className="h-3.5 w-3.5 text-muted-foreground" />
+                    Buyer's Name(s) *
+                  </Label>
+                  <Input
+                    id="buyer-names"
+                    value={buyerNames}
+                    onChange={(e) => setBuyerNames(e.target.value)}
+                    placeholder="Full legal name(s)"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="buyer-email" className="flex items-center gap-1.5">
+                    <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                    Email *
+                  </Label>
+                  <Input
+                    id="buyer-email"
+                    type="email"
+                    value={buyerEmail}
+                    onChange={(e) => setBuyerEmail(e.target.value)}
+                    placeholder="buyer@email.com"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="buyer-address" className="flex items-center gap-1.5">
+                    <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                    Address
+                  </Label>
+                  <Input
+                    id="buyer-address"
+                    value={buyerAddress}
+                    onChange={(e) => setBuyerAddress(e.target.value)}
+                    placeholder="Full address"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="buyer-phone" className="flex items-center gap-1.5">
+                    <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                    Phone Number
+                  </Label>
+                  <Input
+                    id="buyer-phone"
+                    value={buyerPhone}
+                    onChange={(e) => setBuyerPhone(e.target.value)}
+                    placeholder="04XX XXX XXX"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Secondary Buyer */}
+            <div className="space-y-1.5">
+              <Label htmlFor="secondary-buyer" className="flex items-center gap-1.5">
+                <UserPlus className="h-3.5 w-3.5 text-muted-foreground" />
+                Secondary Buyer Name (optional)
+              </Label>
+              <Input
+                id="secondary-buyer"
+                value={secondaryBuyerName}
+                onChange={(e) => setSecondaryBuyerName(e.target.value)}
+                placeholder="Joint applicant name"
+              />
+            </div>
+
+            <Separator />
+
+            {/* Notes */}
+            <div className="space-y-1.5">
+              <Label htmlFor="notes">Internal Notes (optional)</Label>
+              <Textarea
+                id="notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Any internal notes about this agreement..."
+                rows={2}
+              />
+            </div>
+
+            {/* Preview Card */}
+            <Card className="bg-muted/50 border-dashed">
+              <CardContent className="pt-4 text-sm space-y-1">
+                <p className="font-medium text-foreground">Agreement Preview</p>
+                <p className="text-muted-foreground">
+                  This agreement will be generated between <strong>{buyerNames || '...'}</strong> and
+                  Naidu Group Pty Ltd T/A Naidu Property Consulting Services, dated{' '}
+                  <strong>{agreementDate ? format(new Date(agreementDate), 'dd MMMM yyyy') : '...'}</strong>.
+                </p>
+                {secondaryBuyerName && (
+                  <p className="text-muted-foreground">
+                    Secondary buyer: <strong>{secondaryBuyerName}</strong>
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {step === 'confirm' && (
+          <div className="space-y-4 py-2">
+            <Card className="border-primary/30 bg-primary/5">
+              <CardContent className="pt-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-5 w-5 text-primary" />
+                  <p className="font-medium">Agreement Generated Successfully</p>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  The Buyer's Agent Agreement has been pre-filled with the provided details and stored as a PDF.
+                </p>
+                <Separator />
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Buyer:</span>
+                    <p className="font-medium">{buyerNames}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Email:</span>
+                    <p className="font-medium">{buyerEmail}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Date:</span>
+                    <p className="font-medium">{format(new Date(agreementDate), 'dd MMM yyyy')}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Method:</span>
+                    <Badge variant="outline" className="mt-0.5">DocuSign</Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <p className="text-sm text-muted-foreground">
+              Click <strong>"Send via DocuSign"</strong> to dispatch this agreement to <strong>{buyerEmail}</strong> for electronic signature.
+            </p>
+          </div>
+        )}
+
+        {step === 'sent' && (
+          <div className="py-8 text-center space-y-4">
+            <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+              <Send className="h-7 w-7 text-primary" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold">Agreement Sent!</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                The agreement has been dispatched to <strong>{buyerEmail}</strong> via DocuSign.
+                You'll be notified when the client views or signs the document.
+              </p>
+            </div>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Close
+            </Button>
+          </div>
+        )}
+
+        {step !== 'sent' && (
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            {step === 'fill' && (
+              <Button
+                onClick={handleGenerate}
+                disabled={!buyerNames || !buyerEmail || isGenerating}
+              >
+                {isGenerating ? (
+                  <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                ) : (
+                  <FileSignature className="h-4 w-4 mr-1.5" />
+                )}
+                Generate Agreement
+              </Button>
+            )}
+            {step === 'confirm' && (
+              <Button
+                onClick={handleSendDocuSign}
+                disabled={isSending}
+              >
+                {isSending ? (
+                  <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4 mr-1.5" />
+                )}
+                Send via DocuSign
+              </Button>
+            )}
+          </DialogFooter>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}

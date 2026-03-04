@@ -100,6 +100,11 @@ export type ActivityActionType =
   // Report extended
   | 'comparison_pdf_downloaded'
   | 'portfolio_report_generated'
+  // Agency agreement actions
+  | 'agreement_generated'
+  | 'agreement_sent'
+  | 'agreement_signed'
+  | 'agreement_voided'
   // General
   | 'settings_updated'
   | 'data_exported';
@@ -128,7 +133,8 @@ export type ActivityEntityType =
   | 'appointment'
   | 'checklist'
   | 'data_import'
-  | 'portfolio_report';
+  | 'portfolio_report'
+  | 'agency_agreement';
 
 interface LogActivityParams {
   actionType: ActivityActionType;

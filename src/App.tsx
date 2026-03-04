@@ -56,6 +56,7 @@ import ApiUsage from "./pages/ApiUsage";
 import DealPipeline from "./pages/DealPipeline";
 import RemindersHub from "./pages/RemindersHub";
 import Checklists from "./pages/Checklists";
+import Agreements from "./pages/Agreements";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -143,6 +144,7 @@ const App = () => (
                            <Route path="deal-pipeline" element={<DealPipeline />} />
                            <Route path="reminders" element={<RemindersHub />} />
                            <Route path="checklists" element={<Checklists />} />
+                           <Route path="agreements" element={<Agreements />} />
                         </Route>
                         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                         <Route path="*" element={<NotFound />} />

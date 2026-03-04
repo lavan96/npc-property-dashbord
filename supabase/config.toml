@@ -1,5 +1,8 @@
 project_id = "dduzbchuswwbefdunfct"
 
+[functions.manage-agency-agreements]
+verify_jwt = false
+
 [functions.import-clients-from-ghl]
 verify_jwt = true
 

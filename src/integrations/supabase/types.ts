@@ -100,6 +100,96 @@ export type Database = {
           },
         ]
       }
+      agency_agreements: {
+        Row: {
+          agreement_date: string
+          buyer_address: string | null
+          buyer_email: string | null
+          buyer_names: string
+          buyer_phone: string | null
+          client_id: string
+          created_at: string
+          created_by: string | null
+          deal_id: string | null
+          docusign_envelope_id: string | null
+          docusign_sent_at: string | null
+          docusign_signed_at: string | null
+          docusign_status: string | null
+          docusign_voided_at: string | null
+          id: string
+          notes: string | null
+          pdf_storage_path: string | null
+          secondary_buyer_name: string | null
+          sent_via: string | null
+          signed_pdf_storage_path: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          agreement_date?: string
+          buyer_address?: string | null
+          buyer_email?: string | null
+          buyer_names: string
+          buyer_phone?: string | null
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          deal_id?: string | null
+          docusign_envelope_id?: string | null
+          docusign_sent_at?: string | null
+          docusign_signed_at?: string | null
+          docusign_status?: string | null
+          docusign_voided_at?: string | null
+          id?: string
+          notes?: string | null
+          pdf_storage_path?: string | null
+          secondary_buyer_name?: string | null
+          sent_via?: string | null
+          signed_pdf_storage_path?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          agreement_date?: string
+          buyer_address?: string | null
+          buyer_email?: string | null
+          buyer_names?: string
+          buyer_phone?: string | null
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          deal_id?: string | null
+          docusign_envelope_id?: string | null
+          docusign_sent_at?: string | null
+          docusign_signed_at?: string | null
+          docusign_status?: string | null
+          docusign_voided_at?: string | null
+          id?: string
+          notes?: string | null
+          pdf_storage_path?: string | null
+          secondary_buyer_name?: string | null
+          sent_via?: string | null
+          signed_pdf_storage_path?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agency_agreements_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agency_agreements_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "client_deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_action_log: {
         Row: {
           affected_client_id: string | null
@@ -6108,6 +6198,10 @@ export type Database = {
         | "whitelabel_theme_changed"
         | "comparison_pdf_downloaded"
         | "portfolio_report_generated"
+        | "agreement_generated"
+        | "agreement_sent"
+        | "agreement_signed"
+        | "agreement_voided"
       activity_entity_type:
         | "investment_report"
         | "property_comparison"
@@ -6133,6 +6227,7 @@ export type Database = {
         | "checklist"
         | "data_import"
         | "portfolio_report"
+        | "agency_agreement"
       app_role: "superadmin" | "admin" | "user"
       deal_risk_status: "on_track" | "needs_follow_up" | "urgent"
       deal_stage_status: "pending" | "in_progress" | "complete" | "skipped"
@@ -6392,6 +6487,10 @@ export const Constants = {
         "whitelabel_theme_changed",
         "comparison_pdf_downloaded",
         "portfolio_report_generated",
+        "agreement_generated",
+        "agreement_sent",
+        "agreement_signed",
+        "agreement_voided",
       ],
       activity_entity_type: [
         "investment_report",
@@ -6418,6 +6517,7 @@ export const Constants = {
         "checklist",
         "data_import",
         "portfolio_report",
+        "agency_agreement",
       ],
       app_role: ["superadmin", "admin", "user"],
       deal_risk_status: ["on_track", "needs_follow_up", "urgent"],

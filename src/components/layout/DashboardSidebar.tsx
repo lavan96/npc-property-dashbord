@@ -29,6 +29,7 @@ import {
   TrendingUp,
   Bell,
   ClipboardList,
+  FileSignature,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -61,6 +62,7 @@ const navigationItems = [
   { title: 'Deal Pipeline', url: '/deal-pipeline', icon: TrendingUp, moduleKey: 'deal_pipeline' },
   { title: 'Reminders', url: '/reminders', icon: Bell, moduleKey: 'reminders' },
   { title: 'Checklists', url: '/checklists', icon: ClipboardList, moduleKey: 'checklists' },
+  { title: 'Agreements', url: '/agreements', icon: FileSignature, moduleKey: 'agreements' },
   { title: 'Charts', url: '/charts', icon: BarChart3, moduleKey: 'charts' },
   { title: 'User Guide', url: '/user-guide', icon: BookOpen, moduleKey: 'user_guide' },
 ];
