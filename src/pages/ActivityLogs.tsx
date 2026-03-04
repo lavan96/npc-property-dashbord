@@ -27,7 +27,12 @@ import {
   Palette,
   Download,
   Filter,
-  X
+  X,
+  Users,
+  Handshake,
+  FileUp,
+  StickyNote,
+  Tag
 } from 'lucide-react';
 
 // ActivityLog interface is now imported from useSecureActivityLogs
@@ -98,6 +103,22 @@ const ACTION_TYPE_LABELS: Record<string, { label: string; color: string }> = {
   // General
   settings_updated: { label: 'Settings Updated', color: 'bg-slate-500' },
   data_exported: { label: 'Data Exported', color: 'bg-teal-500' },
+  // Client management
+  client_created: { label: 'Client Created', color: 'bg-emerald-500' },
+  client_updated: { label: 'Client Updated', color: 'bg-emerald-400' },
+  client_deleted: { label: 'Client Deleted', color: 'bg-red-500' },
+  client_exported: { label: 'Client Exported', color: 'bg-teal-500' },
+  client_file_uploaded: { label: 'File Uploaded', color: 'bg-blue-500' },
+  client_file_deleted: { label: 'File Deleted', color: 'bg-red-400' },
+  client_note_added: { label: 'Note Added', color: 'bg-amber-400' },
+  client_tag_added: { label: 'Tag Added', color: 'bg-violet-500' },
+  client_tag_removed: { label: 'Tag Removed', color: 'bg-violet-400' },
+  // Deal pipeline
+  deal_created: { label: 'Deal Created', color: 'bg-emerald-600' },
+  deal_updated: { label: 'Deal Updated', color: 'bg-emerald-400' },
+  deal_stage_changed: { label: 'Stage Changed', color: 'bg-blue-500' },
+  deal_deleted: { label: 'Deal Deleted', color: 'bg-red-500' },
+  build_payment_updated: { label: 'Payment Updated', color: 'bg-amber-500' },
 };
 
 const ENTITY_TYPE_ICONS: Record<string, React.ReactNode> = {
@@ -116,6 +137,10 @@ const ENTITY_TYPE_ICONS: Record<string, React.ReactNode> = {
   bulk_generation_job: <FileText className="h-4 w-4" />,
   session: <LogIn className="h-4 w-4" />,
   system: <Settings className="h-4 w-4" />,
+  client: <Users className="h-4 w-4" />,
+  deal: <Handshake className="h-4 w-4" />,
+  client_file: <FileUp className="h-4 w-4" />,
+  client_note: <StickyNote className="h-4 w-4" />,
 };
 
 export default function ActivityLogs() {
@@ -274,6 +299,10 @@ export default function ActivityLogs() {
                   <SelectItem value="template">Templates</SelectItem>
                   <SelectItem value="user">Users</SelectItem>
                   <SelectItem value="session">Sessions</SelectItem>
+                  <SelectItem value="client">Clients</SelectItem>
+                  <SelectItem value="deal">Deals</SelectItem>
+                  <SelectItem value="client_file">Client Files</SelectItem>
+                  <SelectItem value="client_note">Client Notes</SelectItem>
                 </SelectContent>
               </Select>
 

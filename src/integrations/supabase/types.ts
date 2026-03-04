@@ -6080,6 +6080,20 @@ export type Database = {
         | "user_promoted"
         | "user_demoted"
         | "permissions_updated"
+        | "client_created"
+        | "client_updated"
+        | "client_deleted"
+        | "client_exported"
+        | "client_file_uploaded"
+        | "client_file_deleted"
+        | "client_note_added"
+        | "client_tag_added"
+        | "client_tag_removed"
+        | "deal_created"
+        | "deal_updated"
+        | "deal_stage_changed"
+        | "deal_deleted"
+        | "build_payment_updated"
       activity_entity_type:
         | "investment_report"
         | "property_comparison"
@@ -6097,6 +6111,10 @@ export type Database = {
         | "system"
         | "session"
         | "branding"
+        | "client"
+        | "deal"
+        | "client_file"
+        | "client_note"
       app_role: "superadmin" | "admin" | "user"
       deal_risk_status: "on_track" | "needs_follow_up" | "urgent"
       deal_stage_status: "pending" | "in_progress" | "complete" | "skipped"
@@ -6328,6 +6346,20 @@ export const Constants = {
         "user_promoted",
         "user_demoted",
         "permissions_updated",
+        "client_created",
+        "client_updated",
+        "client_deleted",
+        "client_exported",
+        "client_file_uploaded",
+        "client_file_deleted",
+        "client_note_added",
+        "client_tag_added",
+        "client_tag_removed",
+        "deal_created",
+        "deal_updated",
+        "deal_stage_changed",
+        "deal_deleted",
+        "build_payment_updated",
       ],
       activity_entity_type: [
         "investment_report",
@@ -6346,6 +6378,10 @@ export const Constants = {
         "system",
         "session",
         "branding",
+        "client",
+        "deal",
+        "client_file",
+        "client_note",
       ],
       app_role: ["superadmin", "admin", "user"],
       deal_risk_status: ["on_track", "needs_follow_up", "urgent"],

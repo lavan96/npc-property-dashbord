@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { toast } from 'sonner';
+import { logActivityDirect } from '@/hooks/useActivityLogger';
 
 async function manageDealData(params: {
   operation: string;
@@ -36,8 +37,13 @@ export function usePipelineMutations() {
         data,
       });
     },
-    onSuccess: () => {
+    onSuccess: (_: any, variables: { paymentId: string; clientId: string; data: any }) => {
       invalidate();
+      logActivityDirect({
+        actionType: 'build_payment_updated',
+        entityType: 'deal',
+        entityId: variables.paymentId,
+      });
     },
     onError: (err: any) => {
       toast.error('Failed to update: ' + err.message);
@@ -54,8 +60,13 @@ export function usePipelineMutations() {
         data,
       });
     },
-    onSuccess: () => {
+    onSuccess: (_: any, variables: { dealId: string; clientId: string; data: any }) => {
       invalidate();
+      logActivityDirect({
+        actionType: 'deal_updated',
+        entityType: 'deal',
+        entityId: variables.dealId,
+      });
       toast.success('Deal updated');
     },
     onError: (err: any) => {
@@ -73,8 +84,13 @@ export function usePipelineMutations() {
         data,
       });
     },
-    onSuccess: () => {
+    onSuccess: (_: any, variables: { stageId: string; clientId: string; data: any }) => {
       invalidate();
+      logActivityDirect({
+        actionType: 'deal_stage_changed',
+        entityType: 'deal',
+        entityId: variables.stageId,
+      });
       toast.success('Stage updated');
     },
     onError: (err: any) => {

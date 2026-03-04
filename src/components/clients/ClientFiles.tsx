@@ -29,6 +29,7 @@ import { toast } from 'sonner';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { secureStorageUpload, secureStorageDownload, secureStorageDelete } from '@/hooks/useSecureStorage';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { logActivityDirect } from '@/hooks/useActivityLogger';
 
 interface ClientFilesProps {
   clientId: string;
@@ -114,8 +115,14 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
       if (!data?.success) throw new Error(data?.error || 'Failed to save file record');
       return data.result;
     },
-    onSuccess: () => {
+    onSuccess: (result: any) => {
       queryClient.invalidateQueries({ queryKey: ['client-files', clientId] });
+      logActivityDirect({
+        actionType: 'client_file_uploaded',
+        entityType: 'client_file',
+        entityId: clientId,
+        metadata: { category: selectedCategory }
+      });
       toast.success('File uploaded successfully');
       setDescription('');
     },
@@ -146,6 +153,11 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-files', clientId] });
+      logActivityDirect({
+        actionType: 'client_file_deleted',
+        entityType: 'client_file',
+        entityId: clientId,
+      });
       toast.success('File deleted');
     },
     onError: (error) => {

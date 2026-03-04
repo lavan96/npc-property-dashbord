@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { logActivityDirect } from '@/hooks/useActivityLogger';
 import {
   Dialog,
   DialogContent,
@@ -98,7 +99,15 @@ export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
 
       return newClient;
     },
-    onSuccess: () => {
+    onSuccess: (newClient: any) => {
+      // Log activity
+      logActivityDirect({
+        actionType: 'client_created',
+        entityType: 'client',
+        entityId: newClient?.id,
+        entityName: `${formData.primary_first_name} ${formData.primary_surname}`.trim(),
+        metadata: { synced_to_ghl: syncToGHL }
+      });
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       if (!syncToGHL) {
         toast.success('Client created successfully');

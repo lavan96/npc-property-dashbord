@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/command';
 import { Plus, X, Tag, Check, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { logActivityDirect } from '@/hooks/useActivityLogger';
 
 interface ClientTagsProps {
   clientId: string;
@@ -66,8 +67,15 @@ export function ClientTags({ clientId, compact = false }: ClientTagsProps) {
         .insert({ client_id: clientId, tag_id: tagId });
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_: any, tagId: string) => {
       queryClient.invalidateQueries({ queryKey: ['client-tag-assignments', clientId] });
+      const tagName = allTags.find(t => t.id === tagId)?.name;
+      logActivityDirect({
+        actionType: 'client_tag_added',
+        entityType: 'client',
+        entityId: clientId,
+        metadata: { tag_name: tagName }
+      });
       toast.success('Tag added');
     },
     onError: (error) => {
@@ -86,6 +94,11 @@ export function ClientTags({ clientId, compact = false }: ClientTagsProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-tag-assignments', clientId] });
+      logActivityDirect({
+        actionType: 'client_tag_removed',
+        entityType: 'client',
+        entityId: clientId,
+      });
       toast.success('Tag removed');
     },
     onError: (error) => {
