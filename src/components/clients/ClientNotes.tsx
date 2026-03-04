@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { VoiceNoteRecorder } from './VoiceNoteRecorder';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { logActivityDirect } from '@/hooks/useActivityLogger';
 
 interface ClientNotesProps {
   clientId: string;
@@ -98,6 +99,12 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-notes', clientId] });
+      logActivityDirect({
+        actionType: 'client_note_added',
+        entityType: 'client_note',
+        entityId: clientId,
+        metadata: { note_type: noteType }
+      });
       setNewNote('');
       setIsAdding(false);
       toast.success('Note added');

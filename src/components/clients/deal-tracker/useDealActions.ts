@@ -1,6 +1,7 @@
 import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { toast } from 'sonner';
+import { logActivityDirect } from '@/hooks/useActivityLogger';
 import {
   DealType,
   Deal,
@@ -103,8 +104,14 @@ export function useDealActions(clientId: string) {
 
       return deal;
     },
-    onSuccess: () => {
+    onSuccess: (_: any, variables: { dealType: DealType; propertyId?: string }) => {
       invalidate();
+      logActivityDirect({
+        actionType: 'deal_created',
+        entityType: 'deal',
+        entityId: clientId,
+        metadata: { deal_type: variables.dealType }
+      });
       toast.success('Deal created successfully');
     },
     onError: (err: any) => {
@@ -122,8 +129,13 @@ export function useDealActions(clientId: string) {
         data,
       });
     },
-    onSuccess: () => {
+    onSuccess: (_: any, variables: { dealId: string; data: Partial<Deal> }) => {
       invalidate();
+      logActivityDirect({
+        actionType: 'deal_updated',
+        entityType: 'deal',
+        entityId: variables.dealId,
+      });
     },
     onError: (err: any) => {
       toast.error('Failed to update deal: ' + err.message);
@@ -140,8 +152,13 @@ export function useDealActions(clientId: string) {
         data,
       });
     },
-    onSuccess: () => {
+    onSuccess: (_: any, variables: { stageId: string; data: any }) => {
       invalidate();
+      logActivityDirect({
+        actionType: 'deal_stage_changed',
+        entityType: 'deal',
+        entityId: variables.stageId,
+      });
     },
   });
 
@@ -155,8 +172,13 @@ export function useDealActions(clientId: string) {
         data,
       });
     },
-    onSuccess: () => {
+    onSuccess: (_: any, variables: { paymentId: string; data: any }) => {
       invalidate();
+      logActivityDirect({
+        actionType: 'build_payment_updated',
+        entityType: 'deal',
+        entityId: variables.paymentId,
+      });
     },
   });
 
@@ -169,8 +191,13 @@ export function useDealActions(clientId: string) {
         recordId: dealId,
       });
     },
-    onSuccess: () => {
+    onSuccess: (_: any, dealId: string) => {
       invalidate();
+      logActivityDirect({
+        actionType: 'deal_deleted',
+        entityType: 'deal',
+        entityId: dealId,
+      });
       toast.success('Deal deleted');
     },
     onError: (err: any) => {

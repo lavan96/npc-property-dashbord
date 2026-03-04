@@ -5,6 +5,7 @@ import { RefreshCw, Trash2, Download, FileSpreadsheet, Loader2 } from 'lucide-re
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { logActivityDirect } from '@/hooks/useActivityLogger';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -106,6 +107,11 @@ export function ClientBulkActions({
       }
       
       if (allSuccess) {
+        logActivityDirect({
+          actionType: 'client_deleted',
+          entityType: 'client',
+          metadata: { count: selectedCount, client_ids: selectedClients }
+        });
         toast.success(`Deleted ${selectedCount} clients`);
         onActionComplete();
         onClearSelection();
@@ -152,6 +158,11 @@ export function ClientBulkActions({
     a.download = `clients-export-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+    logActivityDirect({
+      actionType: 'data_exported',
+      entityType: 'client',
+      metadata: { format: 'csv', count: selectedCount }
+    });
     toast.success(`Exported ${selectedCount} clients to CSV`);
   };
 
@@ -174,6 +185,11 @@ export function ClientBulkActions({
     a.download = `clients-export-${new Date().toISOString().split('T')[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
+    logActivityDirect({
+      actionType: 'data_exported',
+      entityType: 'client',
+      metadata: { format: 'json', count: selectedCount }
+    });
     toast.success(`Exported ${selectedCount} clients to JSON`);
   };
 

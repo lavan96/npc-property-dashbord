@@ -65,6 +65,22 @@ export type ActivityActionType =
   // Bulk actions
   | 'bulk_generation_started'
   | 'bulk_generation_completed'
+  // Client management actions
+  | 'client_created'
+  | 'client_updated'
+  | 'client_deleted'
+  | 'client_exported'
+  | 'client_file_uploaded'
+  | 'client_file_deleted'
+  | 'client_note_added'
+  | 'client_tag_added'
+  | 'client_tag_removed'
+  // Deal pipeline actions
+  | 'deal_created'
+  | 'deal_updated'
+  | 'deal_stage_changed'
+  | 'deal_deleted'
+  | 'build_payment_updated'
   // General
   | 'settings_updated'
   | 'data_exported';
@@ -85,7 +101,11 @@ export type ActivityEntityType =
   | 'whitelabel_settings'
   | 'bulk_generation_job'
   | 'session'
-  | 'system';
+  | 'system'
+  | 'client'
+  | 'deal'
+  | 'client_file'
+  | 'client_note';
 
 interface LogActivityParams {
   actionType: ActivityActionType;

@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { downloadVownetTemplate, downloadBlankVownetTemplate, type VownetExportData } from '@/utils/vownetTemplateGenerator';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { logActivityDirect } from '@/hooks/useActivityLogger';
 
 interface ExportVownetButtonProps {
   clientId: string;
@@ -78,6 +79,13 @@ export function ExportVownetButton({
       };
 
       downloadVownetTemplate(exportData);
+      logActivityDirect({
+        actionType: 'client_exported',
+        entityType: 'client',
+        entityId: clientId,
+        entityName: clientName,
+        metadata: { format: 'vownet_excel', type: 'prefilled' }
+      });
       toast.success('Client detail form exported successfully');
       
       addNotification({
