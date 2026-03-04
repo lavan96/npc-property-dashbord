@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { VoiceToTextButton } from '@/components/ui/VoiceToTextButton';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { secureStorageUpload } from '@/hooks/useSecureStorage';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -159,6 +160,13 @@ export function AgentChatWidget() {
         setMessages([]);
         setShowSidebar(false);
         setPanelView('chat');
+        logActivityDirect({
+          actionType: 'qa_conversation_created',
+          entityType: 'qa_conversation',
+          entityId: data.conversation.id,
+          entityName: data.conversation.title,
+          metadata: { source: 'agent_chat' }
+        });
       }
     } catch (err) {
       toast.error('Failed to create conversation');
@@ -168,8 +176,16 @@ export function AgentChatWidget() {
   const deleteConversation = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
+      const conv = conversations.find(c => c.id === id);
       await invokeSecureFunction('ai-dashboard-agent', { action: 'delete-conversation', conversation_id: id });
       setConversations(prev => prev.filter(c => c.id !== id));
+      logActivityDirect({
+        actionType: 'qa_conversation_deleted',
+        entityType: 'qa_conversation',
+        entityId: id,
+        entityName: conv?.title,
+        metadata: { source: 'agent_chat' }
+      });
       if (activeConversation === id) {
         setActiveConversation(null);
         setMessages([]);
@@ -346,6 +362,13 @@ export function AgentChatWidget() {
     try {
       await invokeSecureFunction('ai-dashboard-agent', { action: 'share-conversation', target_user_name: shareTarget.trim(), conversation_id: activeConversation, handoff_note: shareNote.trim() || undefined, permission: sharePermission });
       toast.success(`Shared with ${shareTarget} (${sharePermission})`);
+      logActivityDirect({
+        actionType: 'report_shared',
+        entityType: 'qa_conversation',
+        entityId: activeConversation,
+        entityName: conversations.find(c => c.id === activeConversation)?.title,
+        metadata: { shared_with: shareTarget, permission: sharePermission, source: 'agent_chat' }
+      });
       setShareTarget('');
       setShareNote('');
       setSharePermission('view');

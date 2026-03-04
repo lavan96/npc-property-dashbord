@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { secureStorageDownload } from '@/hooks/useSecureStorage';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -232,8 +233,14 @@ export function ClientReportsTab({
       });
       if (error) throw new Error(error.message);
     },
-    onSuccess: () => {
+    onSuccess: (_: any, reportId: string) => {
       queryClient.invalidateQueries({ queryKey: ['portfolio-analysis-reports', clientId] });
+      logActivityDirect({
+        actionType: 'report_deleted',
+        entityType: 'portfolio_report',
+        entityId: reportId,
+        metadata: { client_id: clientId }
+      });
       toast.success('Report deleted');
       setReportToDelete(null);
     },
