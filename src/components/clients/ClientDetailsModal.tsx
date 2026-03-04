@@ -49,6 +49,7 @@ import {
   Landmark,
   ClipboardCheck,
   Inbox,
+  FileSignature,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ClientNotes } from './ClientNotes';
@@ -80,6 +81,7 @@ import { ClientPortfolioActions } from './ClientPortfolioActions';
 import { ReviewWizard } from './review-wizard';
 import { ClientEmailsTab } from './ClientEmailsTab';
 import { DealTrackerTab } from './deal-tracker';
+import { SendAgreementDialog } from '../agreements/SendAgreementDialog';
 import { toast } from 'sonner';
 interface ClientDetailsModalProps {
   client: {
@@ -107,6 +109,7 @@ export function ClientDetailsModal({ client, open, onOpenChange, initialTab, ini
   const [editingProperty, setEditingProperty] = useState<any>(null);
   const [showReviewWizard, setShowReviewWizard] = useState(false);
   const [showBorrowingCalculator, setShowBorrowingCalculator] = useState(false);
+  const [showAgreementDialog, setShowAgreementDialog] = useState(false);
   const [activeTab, setActiveTab] = useState(initialTab || 'overview');
 
   const tabOrder = ['overview', 'personal', 'properties', 'deals', 'employment', 'financials', 'reports', 'emails', 'notes', 'reminders', 'vownet-forms', 'files', 'activity', 'insights'];
@@ -312,6 +315,17 @@ NPC Team`
             <Send className="h-4 w-4 mr-1.5" />
           )}
           <span className={isMobile ? "text-xs" : ""}>{isMobile ? "Send" : "Send Portfolio to Client"}</span>
+        </Button>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowAgreementDialog(true)}
+          disabled={!client.primary_email}
+          title={!client.primary_email ? 'Client has no email' : 'Send Buyer\'s Agent Agreement via DocuSign'}
+        >
+          <FileSignature className="h-4 w-4 mr-1.5" />
+          <span className={isMobile ? "text-xs" : ""}>{isMobile ? "Agreement" : "Send Agreement"}</span>
         </Button>
       </div>
       <Separator className="my-1" />
@@ -836,6 +850,22 @@ NPC Team`
         clientId={client.id}
         open={showBorrowingCalculator}
         onOpenChange={setShowBorrowingCalculator}
+      />
+
+      {/* Send Agreement Dialog */}
+      <SendAgreementDialog
+        open={showAgreementDialog}
+        onOpenChange={setShowAgreementDialog}
+        client={{
+          id: client.id,
+          primary_first_name: client.primary_first_name,
+          primary_surname: client.primary_surname,
+          primary_email: client.primary_email,
+          primary_mobile: client.primary_mobile,
+          current_address: fullClient?.current_address,
+          secondary_first_name: fullClient?.secondary_first_name,
+          secondary_surname: fullClient?.secondary_surname,
+        }}
       />
     </>
   );
