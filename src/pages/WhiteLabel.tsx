@@ -674,6 +674,11 @@ export default function WhiteLabel() {
                 key={option.value}
                 onClick={() => {
                   updateSettings({ darkModeDefault: option.value });
+                  logActivityDirect({
+                    actionType: 'whitelabel_theme_changed',
+                    entityType: 'whitelabel_settings',
+                    metadata: { theme: option.value }
+                  });
                   toast.success(`Theme set to ${option.label}`);
                 }}
                 className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all hover:border-primary/50 ${
@@ -710,8 +715,8 @@ export default function WhiteLabel() {
           icon={<LogIn className="h-5 w-5 text-primary" />}
           currentLogo={settings.authLogo}
           logoType="auth"
-          onUpload={(url) => updateSettings({ authLogo: url })}
-          onRemove={() => updateSettings({ authLogo: null })}
+          onUpload={(url) => { updateSettings({ authLogo: url }); logActivityDirect({ actionType: 'whitelabel_logo_uploaded', entityType: 'whitelabel_settings', metadata: { logo_type: 'auth' } }); }}
+          onRemove={() => { updateSettings({ authLogo: null }); logActivityDirect({ actionType: 'whitelabel_logo_removed', entityType: 'whitelabel_settings', metadata: { logo_type: 'auth' } }); }}
         />
 
         <LogoUploadCard
@@ -720,8 +725,8 @@ export default function WhiteLabel() {
           icon={<PanelLeft className="h-5 w-5 text-primary" />}
           currentLogo={settings.sidebarLogo}
           logoType="sidebar"
-          onUpload={(url) => updateSettings({ sidebarLogo: url })}
-          onRemove={() => updateSettings({ sidebarLogo: null })}
+          onUpload={(url) => { updateSettings({ sidebarLogo: url }); logActivityDirect({ actionType: 'whitelabel_logo_uploaded', entityType: 'whitelabel_settings', metadata: { logo_type: 'sidebar' } }); }}
+          onRemove={() => { updateSettings({ sidebarLogo: null }); logActivityDirect({ actionType: 'whitelabel_logo_removed', entityType: 'whitelabel_settings', metadata: { logo_type: 'sidebar' } }); }}
         />
 
         <LogoUploadCard
@@ -730,8 +735,8 @@ export default function WhiteLabel() {
           icon={<Minimize2 className="h-5 w-5 text-primary" />}
           currentLogo={settings.sidebarIcon}
           logoType="sidebar-icon"
-          onUpload={(url) => updateSettings({ sidebarIcon: url })}
-          onRemove={() => updateSettings({ sidebarIcon: null })}
+          onUpload={(url) => { updateSettings({ sidebarIcon: url }); logActivityDirect({ actionType: 'whitelabel_logo_uploaded', entityType: 'whitelabel_settings', metadata: { logo_type: 'sidebar-icon' } }); }}
+          onRemove={() => { updateSettings({ sidebarIcon: null }); logActivityDirect({ actionType: 'whitelabel_logo_removed', entityType: 'whitelabel_settings', metadata: { logo_type: 'sidebar-icon' } }); }}
         />
 
         <LogoUploadCard
@@ -740,8 +745,8 @@ export default function WhiteLabel() {
           icon={<Globe className="h-5 w-5 text-primary" />}
           currentLogo={settings.favicon}
           logoType="favicon"
-          onUpload={(url) => updateSettings({ favicon: url })}
-          onRemove={() => updateSettings({ favicon: null })}
+          onUpload={(url) => { updateSettings({ favicon: url }); logActivityDirect({ actionType: 'whitelabel_logo_uploaded', entityType: 'whitelabel_settings', metadata: { logo_type: 'favicon' } }); }}
+          onRemove={() => { updateSettings({ favicon: null }); logActivityDirect({ actionType: 'whitelabel_logo_removed', entityType: 'whitelabel_settings', metadata: { logo_type: 'favicon' } }); }}
         />
       </div>
 

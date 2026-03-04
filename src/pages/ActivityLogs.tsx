@@ -32,7 +32,10 @@ import {
   Handshake,
   FileUp,
   StickyNote,
-  Tag
+  Tag,
+  CalendarIcon,
+  ClipboardCheck,
+  DatabaseIcon
 } from 'lucide-react';
 
 // ActivityLog interface is now imported from useSecureActivityLogs
@@ -119,6 +122,25 @@ const ACTION_TYPE_LABELS: Record<string, { label: string; color: string }> = {
   deal_stage_changed: { label: 'Stage Changed', color: 'bg-blue-500' },
   deal_deleted: { label: 'Deal Deleted', color: 'bg-red-500' },
   build_payment_updated: { label: 'Payment Updated', color: 'bg-amber-500' },
+  // Calendar
+  appointment_created: { label: 'Appointment Created', color: 'bg-blue-500' },
+  appointment_updated: { label: 'Appointment Updated', color: 'bg-blue-400' },
+  appointment_deleted: { label: 'Appointment Deleted', color: 'bg-red-400' },
+  appointment_rescheduled: { label: 'Appointment Rescheduled', color: 'bg-amber-500' },
+  // Checklists
+  checklist_generated: { label: 'Checklist Generated', color: 'bg-cyan-500' },
+  checklist_item_checked: { label: 'Item Checked', color: 'bg-cyan-400' },
+  checklist_completed: { label: 'Checklist Completed', color: 'bg-green-600' },
+  checklist_deleted: { label: 'Checklist Deleted', color: 'bg-red-400' },
+  // Data
+  data_imported: { label: 'Data Imported', color: 'bg-indigo-500' },
+  // WhiteLabel extended
+  whitelabel_logo_uploaded: { label: 'Logo Uploaded', color: 'bg-purple-500' },
+  whitelabel_logo_removed: { label: 'Logo Removed', color: 'bg-purple-400' },
+  whitelabel_theme_changed: { label: 'Theme Changed', color: 'bg-purple-500' },
+  // Reports extended
+  comparison_pdf_downloaded: { label: 'Comparison PDF', color: 'bg-teal-500' },
+  portfolio_report_generated: { label: 'Portfolio Report', color: 'bg-emerald-500' },
 };
 
 const ENTITY_TYPE_ICONS: Record<string, React.ReactNode> = {
@@ -141,6 +163,10 @@ const ENTITY_TYPE_ICONS: Record<string, React.ReactNode> = {
   deal: <Handshake className="h-4 w-4" />,
   client_file: <FileUp className="h-4 w-4" />,
   client_note: <StickyNote className="h-4 w-4" />,
+  appointment: <CalendarIcon className="h-4 w-4" />,
+  checklist: <ClipboardCheck className="h-4 w-4" />,
+  data_import: <DatabaseIcon className="h-4 w-4" />,
+  portfolio_report: <FileText className="h-4 w-4" />,
 };
 
 export default function ActivityLogs() {
@@ -303,6 +329,9 @@ export default function ActivityLogs() {
                   <SelectItem value="deal">Deals</SelectItem>
                   <SelectItem value="client_file">Client Files</SelectItem>
                   <SelectItem value="client_note">Client Notes</SelectItem>
+                  <SelectItem value="appointment">Appointments</SelectItem>
+                  <SelectItem value="checklist">Checklists</SelectItem>
+                  <SelectItem value="data_import">Data Imports</SelectItem>
                 </SelectContent>
               </Select>
 
