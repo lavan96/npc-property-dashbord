@@ -347,6 +347,79 @@ export type Database = {
           },
         ]
       }
+      agent_file_uploads: {
+        Row: {
+          conversation_id: string | null
+          created_at: string
+          extracted_text: string | null
+          file_category: string
+          file_size: number
+          filename: string
+          id: string
+          message_id: string | null
+          metadata: Json | null
+          mime_type: string
+          storage_bucket: string
+          storage_path: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          conversation_id?: string | null
+          created_at?: string
+          extracted_text?: string | null
+          file_category?: string
+          file_size?: number
+          filename: string
+          id?: string
+          message_id?: string | null
+          metadata?: Json | null
+          mime_type: string
+          storage_bucket?: string
+          storage_path: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          conversation_id?: string | null
+          created_at?: string
+          extracted_text?: string | null
+          file_category?: string
+          file_size?: number
+          filename?: string
+          id?: string
+          message_id?: string | null
+          metadata?: Json | null
+          mime_type?: string
+          storage_bucket?: string
+          storage_path?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_file_uploads_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "agent_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_file_uploads_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "agent_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_file_uploads_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_messages: {
         Row: {
           confirmation_status: string | null
