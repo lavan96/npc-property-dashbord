@@ -258,8 +258,8 @@ export default function DataImport() {
         
         // Log data import
         logActivityDirect({
-          actionType: 'data_exported',
-          entityType: 'system',
+          actionType: 'data_imported',
+          entityType: 'data_import',
           entityName: dataType.label,
           metadata: { 
             action: 'import',

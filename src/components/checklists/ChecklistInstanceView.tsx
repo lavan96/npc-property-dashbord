@@ -7,6 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { ArrowLeft, CheckCircle2, Trash2, Archive } from 'lucide-react';
 import { useChecklistInstanceItems, useChecklistMutations, type ChecklistInstance } from '@/hooks/useChecklists';
+import { logActivityDirect } from '@/hooks/useActivityLogger';
 
 interface ChecklistInstanceViewProps {
   instance: ChecklistInstance;
@@ -52,12 +53,23 @@ export function ChecklistInstanceView({ instance, onBack }: ChecklistInstanceVie
     // Update instance progress
     const newChecked = currentChecked ? checkedCount - 1 : checkedCount + 1;
     const newProgress = totalCount > 0 ? Math.round((newChecked / totalCount) * 100) : 0;
+    const isCompleted = newProgress === 100;
+    
     mutations.updateInstance.mutate({
       id: instance.id,
       progress_percent: newProgress,
-      status: newProgress === 100 ? 'completed' : 'in_progress',
-      completed_at: newProgress === 100 ? new Date().toISOString() : null,
+      status: isCompleted ? 'completed' : 'in_progress',
+      completed_at: isCompleted ? new Date().toISOString() : null,
     });
+
+    if (isCompleted) {
+      logActivityDirect({
+        actionType: 'checklist_completed',
+        entityType: 'checklist',
+        entityId: instance.id,
+        entityName: instance.name,
+      });
+    }
   };
 
   const handleArchive = () => {

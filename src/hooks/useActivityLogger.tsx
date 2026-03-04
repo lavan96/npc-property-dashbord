@@ -81,6 +81,25 @@ export type ActivityActionType =
   | 'deal_stage_changed'
   | 'deal_deleted'
   | 'build_payment_updated'
+  // Calendar actions
+  | 'appointment_created'
+  | 'appointment_updated'
+  | 'appointment_deleted'
+  | 'appointment_rescheduled'
+  // Checklist actions
+  | 'checklist_generated'
+  | 'checklist_item_checked'
+  | 'checklist_completed'
+  | 'checklist_deleted'
+  // Data actions
+  | 'data_imported'
+  // WhiteLabel extended
+  | 'whitelabel_logo_uploaded'
+  | 'whitelabel_logo_removed'
+  | 'whitelabel_theme_changed'
+  // Report extended
+  | 'comparison_pdf_downloaded'
+  | 'portfolio_report_generated'
   // General
   | 'settings_updated'
   | 'data_exported';
@@ -105,7 +124,11 @@ export type ActivityEntityType =
   | 'client'
   | 'deal'
   | 'client_file'
-  | 'client_note';
+  | 'client_note'
+  | 'appointment'
+  | 'checklist'
+  | 'data_import'
+  | 'portfolio_report';
 
 interface LogActivityParams {
   actionType: ActivityActionType;

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { toast } from 'sonner';
+import { logActivityDirect } from '@/hooks/useActivityLogger';
 
 // ─── Types ───
 export interface ChecklistTemplate {
@@ -207,7 +208,11 @@ export function useChecklistMutations() {
 
   const deleteInstance = useMutation({
     mutationFn: async (id: string) => invoke({ operation: 'delete', table: 'checklist_instances', recordId: id }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['checklist-instances'] }); toast.success('Checklist deleted'); },
+    onSuccess: (_: any, id: string) => {
+      qc.invalidateQueries({ queryKey: ['checklist-instances'] });
+      logActivityDirect({ actionType: 'checklist_deleted', entityType: 'checklist', entityId: id });
+      toast.success('Checklist deleted');
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -275,8 +280,14 @@ export function useChecklistMutations() {
 
       return instance;
     },
-    onSuccess: () => {
+    onSuccess: (_: any, template: ChecklistTemplate) => {
       qc.invalidateQueries({ queryKey: ['checklist-instances'] });
+      logActivityDirect({
+        actionType: 'checklist_generated',
+        entityType: 'checklist',
+        entityName: template.name,
+        metadata: { template_id: template.id }
+      });
       toast.success('Fresh checklist generated from template');
     },
     onError: (e: Error) => toast.error(e.message),

@@ -17,6 +17,7 @@ import { getBookingTimezone, AUSTRALIAN_TIMEZONES } from '@/lib/bookingTimezone'
 import { GHLEvent, GHLCalendar, GHLContact } from '@/hooks/useGHLCalendar';
 import { useFinanceContacts, FinanceContact } from '@/hooks/useFinanceContacts';
 import { supabase } from '@/integrations/supabase/client';
+import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import type { BookingRecipient } from './QuickAddAppointmentModal';
 
@@ -225,6 +226,13 @@ export function EventDetailsModal({
     });
     setIsSaving(false);
     if (result.success) {
+      logActivityDirect({
+        actionType: 'appointment_updated',
+        entityType: 'appointment',
+        entityId: event.id,
+        entityName: editTitle,
+        metadata: { status: editStatus }
+      });
       setIsEditing(false);
     }
   };
@@ -267,6 +275,12 @@ export function EventDetailsModal({
     
     setIsSaving(false);
     if (result.success) {
+      logActivityDirect({
+        actionType: 'appointment_rescheduled',
+        entityType: 'appointment',
+        entityId: event.id,
+        entityName: event.title,
+      });
       setIsRescheduling(false);
       // Reset reschedule-specific state
       setOverrideAvailability(false);
@@ -282,6 +296,12 @@ export function EventDetailsModal({
     if (!onDeleteEvent) return;
     const result = await onDeleteEvent(event.id);
     if (result.success) {
+      logActivityDirect({
+        actionType: 'appointment_deleted',
+        entityType: 'appointment',
+        entityId: event.id,
+        entityName: event.title,
+      });
       onOpenChange(false);
     }
   };

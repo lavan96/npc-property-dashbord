@@ -6094,6 +6094,20 @@ export type Database = {
         | "deal_stage_changed"
         | "deal_deleted"
         | "build_payment_updated"
+        | "appointment_created"
+        | "appointment_updated"
+        | "appointment_deleted"
+        | "appointment_rescheduled"
+        | "checklist_generated"
+        | "checklist_item_checked"
+        | "checklist_completed"
+        | "checklist_deleted"
+        | "data_imported"
+        | "whitelabel_logo_uploaded"
+        | "whitelabel_logo_removed"
+        | "whitelabel_theme_changed"
+        | "comparison_pdf_downloaded"
+        | "portfolio_report_generated"
       activity_entity_type:
         | "investment_report"
         | "property_comparison"
@@ -6115,6 +6129,10 @@ export type Database = {
         | "deal"
         | "client_file"
         | "client_note"
+        | "appointment"
+        | "checklist"
+        | "data_import"
+        | "portfolio_report"
       app_role: "superadmin" | "admin" | "user"
       deal_risk_status: "on_track" | "needs_follow_up" | "urgent"
       deal_stage_status: "pending" | "in_progress" | "complete" | "skipped"
@@ -6360,6 +6378,20 @@ export const Constants = {
         "deal_stage_changed",
         "deal_deleted",
         "build_payment_updated",
+        "appointment_created",
+        "appointment_updated",
+        "appointment_deleted",
+        "appointment_rescheduled",
+        "checklist_generated",
+        "checklist_item_checked",
+        "checklist_completed",
+        "checklist_deleted",
+        "data_imported",
+        "whitelabel_logo_uploaded",
+        "whitelabel_logo_removed",
+        "whitelabel_theme_changed",
+        "comparison_pdf_downloaded",
+        "portfolio_report_generated",
       ],
       activity_entity_type: [
         "investment_report",
@@ -6382,6 +6414,10 @@ export const Constants = {
         "deal",
         "client_file",
         "client_note",
+        "appointment",
+        "checklist",
+        "data_import",
+        "portfolio_report",
       ],
       app_role: ["superadmin", "admin", "user"],
       deal_risk_status: ["on_track", "needs_follow_up", "urgent"],
