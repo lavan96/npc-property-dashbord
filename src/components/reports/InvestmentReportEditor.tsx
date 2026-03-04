@@ -13,6 +13,7 @@ import { useSecureInvestmentReports } from '@/hooks/useSecureInvestmentReports';
 import { format } from 'date-fns';
 import { Save, Eye, MapPin, Calendar, FileText, AlertCircle, CheckCircle, Type, Link } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { logActivityDirect } from '@/hooks/useActivityLogger';
 
 interface InvestmentReport {
   id: string;
@@ -104,6 +105,15 @@ export function InvestmentReportEditor({ report, isOpen, onClose, onSave }: Inve
       toast({
         title: "Report saved successfully",
         description: "Your changes have been saved to the database.",
+      });
+      
+      // Log activity
+      logActivityDirect({
+        actionType: 'report_edited',
+        entityType: 'investment_report',
+        entityId: report.id,
+        entityName: editedPropertyAddress,
+        metadata: { contentChanged: editedContent !== report.report_content, sourcesChanged: editedSources !== (report.sources_content || '') }
       });
       
       setHasChanges(false);

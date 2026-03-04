@@ -13,6 +13,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { AlertCircle, RotateCcw, Save, Calculator, ExternalLink, ChevronDown, ChevronRight, ArrowRight, Check, Table, Copy, Banknote, Info, FileText, TrendingUp, Sparkles, Loader2 } from 'lucide-react';
@@ -1174,6 +1175,15 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       }
 
       console.log('✅ Manual overrides saved successfully');
+
+      // Log activity
+      logActivityDirect({
+        actionType: 'manual_override_applied',
+        entityType: 'investment_report',
+        entityId: report.id,
+        entityName: report.property_address,
+        metadata: { overrideFields: Object.keys(overrides) }
+      });
 
       toast({
         title: "Overrides saved",

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { useEmailNotifications } from '@/hooks/useEmailNotifications';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -533,11 +534,21 @@ export default function EmailCopilot() {
 
   // When selecting an email, ensure we have the latest data from state
   const handleSelectEmail = (email: Email) => {
-    // Find the email in the current emails array to get latest summary/draft
     const latestEmail = emails.find(e => e.id === email.id);
-    setSelectedEmail(latestEmail || email);
+    const emailToSelect = latestEmail || email;
+    setSelectedEmail(emailToSelect);
     if (isMobile) {
       setShowMobileDetail(true);
+    }
+    // Log email read
+    if (emailToSelect.status === 'unread') {
+      logActivityDirect({
+        actionType: 'email_read',
+        entityType: 'email',
+        entityId: emailToSelect.id,
+        entityName: emailToSelect.subject,
+        metadata: { sender: emailToSelect.sender }
+      });
     }
   };
 
@@ -835,6 +846,15 @@ export default function EmailCopilot() {
       setCurrentDraft(data.draftReply);
       initializeReplyFields();
       setShowDraftModal(true);
+
+      // Log reply generated
+      logActivityDirect({
+        actionType: 'email_reply_generated',
+        entityType: 'email',
+        entityId: selectedEmail.id,
+        entityName: selectedEmail.subject,
+        metadata: { sender: selectedEmail.sender }
+      });
       
       // Update local state
       setSelectedEmail({
@@ -1224,6 +1244,15 @@ export default function EmailCopilot() {
       setReplyCc('');
       setReplyBcc('');
       setReplyAttachments([]);
+
+      // Log reply sent
+      logActivityDirect({
+        actionType: 'email_reply_sent',
+        entityType: 'email',
+        entityId: selectedEmail.id,
+        entityName: selectedEmail.subject,
+        metadata: { recipient: replyTo }
+      });
       
       // Update email status to 'replied' so it shows badge and remains visible in thread
       await supabase

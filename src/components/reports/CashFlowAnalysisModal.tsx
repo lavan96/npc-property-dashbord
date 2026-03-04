@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react'; // En
 import * as XLSX from 'xlsx';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { fetchGlobalReportSettings } from '@/hooks/useGlobalReportSettings';
 import { drawJsPDFDisclaimerPage } from '@/utils/pdfDisclaimerPage';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -798,6 +799,15 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       toast({
         title: "Overrides Saved",
         description: "Cash flow analysis overrides have been saved successfully.",
+      });
+
+      // Log activity
+      logActivityDirect({
+        actionType: 'cash_flow_updated',
+        entityType: 'cash_flow_analysis',
+        entityId: report.id,
+        entityName: report.property_address,
+        metadata: { overrideKeys: Object.keys(yearlyOverrides), excludeLandTax: excludeLandTaxFromCashFlow }
       });
 
       setHasChanges(false);

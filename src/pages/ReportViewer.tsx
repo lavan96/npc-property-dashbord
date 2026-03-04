@@ -255,6 +255,15 @@ export default function ReportViewer() {
   const handleDownloadPDF = async () => {
     if (!report || !reportRef.current) return;
     
+    // Log PDF download
+    logActivityDirect({
+      actionType: 'report_pdf_downloaded',
+      entityType: 'investment_report',
+      entityId: reportId,
+      entityName: report.title,
+      metadata: { format: 'pdf', source: 'report_viewer' }
+    });
+
     setDownloading(true);
     try {
       const pdf = new jsPDF('p', 'mm', 'a4');

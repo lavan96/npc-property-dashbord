@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useWhiteLabel } from '@/contexts/WhiteLabelContext';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -88,6 +89,13 @@ export default function Auth() {
       if (data?.success) {
         setEmailHint(data.email_hint || '');
         setView('otp');
+        // Log password reset initiated
+        logActivityDirect({
+          actionType: 'password_reset_initiated',
+          entityType: 'user',
+          entityName: username,
+          metadata: { email_hint: data.email_hint }
+        });
       } else {
         setError(data?.error || 'Failed to send OTP');
       }

@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, lazy, Suspense, useCallback } from 'react
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -491,6 +492,15 @@ export default function GeneratedReports() {
         prev.map(r => r.id === reportId ? { ...r, is_archived: true } : r)
       );
       
+      // Log activity
+      logActivityDirect({
+        actionType: 'report_archived',
+        entityType: 'investment_report',
+        entityId: reportId,
+        entityName: report?.property_address,
+        metadata: { action: 'archived' }
+      });
+      
       // Add notification
       addNotification({
         type: 'report_archived',
@@ -530,6 +540,15 @@ export default function GeneratedReports() {
       setInvestmentReports(prev => 
         prev.map(r => r.id === reportId ? { ...r, is_archived: false } : r)
       );
+      
+      // Log activity
+      logActivityDirect({
+        actionType: 'report_archived',
+        entityType: 'investment_report',
+        entityId: reportId,
+        entityName: report?.property_address,
+        metadata: { action: 'restored' }
+      });
       
       // Add notification
       addNotification({
@@ -755,6 +774,13 @@ export default function GeneratedReports() {
 
   const handleDownloadPDF = async (report: GeneratedReport) => {
     try {
+      logActivityDirect({
+        actionType: 'report_pdf_downloaded',
+        entityType: 'investment_report',
+        entityId: report.id,
+        entityName: report.title,
+        metadata: { source: 'generated_reports_list' }
+      });
       // Navigate to the report view with a download flag
       navigate(`/generated-reports/${report.id}?download=true`);
     } catch (error) {
