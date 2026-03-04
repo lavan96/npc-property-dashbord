@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Calendar, Trash2, Clock, X, CheckSquare, Square } from 'lucide-react';
+import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -45,7 +46,14 @@ export function BatchActions({
   const handleBatchDelete = async () => {
     setIsDeleting(true);
     try {
-      await onBatchDelete(Array.from(selectedEventIds));
+      const ids = Array.from(selectedEventIds);
+      await onBatchDelete(ids);
+      logActivityDirect({
+        actionType: 'appointment_deleted',
+        entityType: 'appointment',
+        entityName: `Batch delete: ${ids.length} events`,
+        metadata: { batch: true, count: ids.length, event_ids: ids.slice(0, 10) }
+      });
       onClearSelection();
     } finally {
       setIsDeleting(false);

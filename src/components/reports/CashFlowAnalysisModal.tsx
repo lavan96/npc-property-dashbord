@@ -1452,6 +1452,14 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         
         if (error) throw error;
         
+        logActivityDirect({
+          actionType: 'cash_flow_updated',
+          entityType: 'cash_flow_analysis',
+          entityId: savedAnalysisId,
+          entityName: report.property_address,
+          metadata: { investor_profile: investorProfile, comparison_count: comparisonReports.length }
+        });
+        
         toast({
           title: "Analysis Updated",
           description: "Your cash flow analysis has been updated.",
@@ -1472,6 +1480,14 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         if (error) throw error;
         
         setSavedAnalysisId(data.id);
+        logActivityDirect({
+          actionType: 'cash_flow_created',
+          entityType: 'cash_flow_analysis',
+          entityId: data.id,
+          entityName: report.property_address,
+          metadata: { investor_profile: investorProfile, comparison_count: comparisonReports.length }
+        });
+        
         toast({
           title: "Analysis Saved",
           description: "Your cash flow analysis has been saved and can be viewed later.",
@@ -1820,6 +1836,13 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       pdf.text('This comparison is for informational purposes only.', margin, yPos);
 
       pdf.save(`cash-flow-comparison-${comparisonReports.length + 1}-properties-${new Date().toISOString().split('T')[0]}.pdf`);
+
+      logActivityDirect({
+        actionType: 'comparison_pdf_downloaded',
+        entityType: 'cash_flow_analysis',
+        entityName: report.property_address,
+        metadata: { comparison_count: comparisonReports.length + 1, has_ai_analysis: !!aiAnalysis }
+      });
 
       toast({
         title: "PDF Exported",

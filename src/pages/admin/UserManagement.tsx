@@ -201,6 +201,12 @@ export default function UserManagement() {
         if (data.temporary_password) {
           toast.info(`Temporary password: ${data.temporary_password}`, { duration: 10000 });
         }
+        logActivityDirect({
+          actionType: 'user_invited',
+          entityType: 'user',
+          entityName: inviteEmail,
+          metadata: { invite_type: inviteType, has_username: !!inviteUsername }
+        });
         addNotification({
           type: 'new_user_invited',
           title: 'User Invite Sent',
@@ -267,7 +273,15 @@ export default function UserManagement() {
       });
 
       if (data?.success) {
+        const targetUser = users.find(u => u.id === userId);
         toast.success(isActive ? 'User activated' : 'User deactivated');
+        logActivityDirect({
+          actionType: isActive ? 'user_activated' : 'user_deactivated',
+          entityType: 'user',
+          entityId: userId,
+          entityName: targetUser?.username,
+          metadata: { is_active: isActive }
+        });
         fetchUsers();
       } else {
         toast.error(data?.error || 'Failed to update user');
