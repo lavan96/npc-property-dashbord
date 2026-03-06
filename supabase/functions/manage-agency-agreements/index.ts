@@ -5,6 +5,103 @@ import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_s
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
+// ─── DocuSign JWT Grant Auth ──────────────────────────────
+// Generates a short-lived access token using RSA private key + JWT assertion
+
+function base64UrlEncode(data: Uint8Array): string {
+  const base64 = btoa(String.fromCharCode(...data));
+  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function strToBytes(str: string): Uint8Array {
+  return new TextEncoder().encode(str);
+}
+
+function pemToArrayBuffer(pem: string): ArrayBuffer {
+  const b64 = pem
+    .replace(/-----BEGIN RSA PRIVATE KEY-----/g, '')
+    .replace(/-----END RSA PRIVATE KEY-----/g, '')
+    .replace(/-----BEGIN PRIVATE KEY-----/g, '')
+    .replace(/-----END PRIVATE KEY-----/g, '')
+    .replace(/\s/g, '');
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes.buffer;
+}
+
+async function getDocuSignAccessToken(): Promise<string> {
+  const integrationKey = Deno.env.get('DOCUSIGN_INTEGRATION_KEY')?.trim();
+  const userId = Deno.env.get('DOCUSIGN_USER_ID')?.trim();
+  const rsaPrivateKey = Deno.env.get('DOCUSIGN_RSA_PRIVATE_KEY')?.trim();
+
+  if (!integrationKey || !userId || !rsaPrivateKey) {
+    throw new Error('DocuSign JWT credentials not configured. Need DOCUSIGN_INTEGRATION_KEY, DOCUSIGN_USER_ID, DOCUSIGN_RSA_PRIVATE_KEY.');
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  const header = { alg: 'RS256', typ: 'JWT' };
+  const payload = {
+    iss: integrationKey,
+    sub: userId,
+    aud: 'account-d.docusign.com',
+    iat: now,
+    exp: now + 3600,
+    scope: 'signature impersonation',
+  };
+
+  const headerB64 = base64UrlEncode(strToBytes(JSON.stringify(header)));
+  const payloadB64 = base64UrlEncode(strToBytes(JSON.stringify(payload)));
+  const signingInput = `${headerB64}.${payloadB64}`;
+
+  // Import RSA private key
+  const keyData = pemToArrayBuffer(rsaPrivateKey);
+  
+  // Try PKCS#8 first, fall back to PKCS#1
+  let cryptoKey: CryptoKey;
+  try {
+    cryptoKey = await crypto.subtle.importKey(
+      'pkcs8',
+      keyData,
+      { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
+  } catch {
+    // If PKCS#8 fails, the key might be PKCS#1 — wrap it
+    console.log('[DocuSign JWT] PKCS#8 import failed, trying raw import...');
+    throw new Error('RSA key import failed. Please ensure the key is in PKCS#8 format (starts with "-----BEGIN PRIVATE KEY-----"). If your key starts with "-----BEGIN RSA PRIVATE KEY-----", you may need to convert it.');
+  }
+
+  const signature = await crypto.subtle.sign(
+    'RSASSA-PKCS1-v1_5',
+    cryptoKey,
+    strToBytes(signingInput)
+  );
+
+  const jwtToken = `${signingInput}.${base64UrlEncode(new Uint8Array(signature))}`;
+
+  // Exchange JWT for access token
+  console.log('[DocuSign] Exchanging JWT for access token...');
+  const tokenResponse = await fetch('https://account-d.docusign.com/oauth/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwtToken}`,
+  });
+
+  const tokenData = await tokenResponse.json();
+  
+  if (!tokenResponse.ok) {
+    console.error('[DocuSign] Token exchange failed:', JSON.stringify(tokenData));
+    throw new Error(`DocuSign token exchange failed: ${tokenData.error || tokenData.error_description || 'Unknown error'}`);
+  }
+
+  console.log('[DocuSign] Access token obtained successfully, expires in', tokenData.expires_in, 'seconds');
+  return tokenData.access_token;
+}
+
 serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = createCorsHeaders(origin);
@@ -107,19 +204,28 @@ serve(async (req) => {
         );
       }
 
-      // DocuSign API credentials
+      // DocuSign API credentials - auto-generate token via JWT
       const docusignAccountId = Deno.env.get('DOCUSIGN_ACCOUNT_ID');
-      const docusignAccessToken = Deno.env.get('DOCUSIGN_ACCESS_TOKEN');
       const docusignBaseUrl = Deno.env.get('DOCUSIGN_BASE_URL') || 'https://demo.docusign.net/restapi';
 
-      if (!docusignAccountId || !docusignAccessToken) {
-        // Update status to generated but return info about missing config
+      if (!docusignAccountId) {
         return new Response(
           JSON.stringify({
-            error: 'DocuSign credentials not configured. Please add DOCUSIGN_ACCOUNT_ID and DOCUSIGN_ACCESS_TOKEN secrets.',
+            error: 'DocuSign credentials not configured. Please add DOCUSIGN_ACCOUNT_ID secret.',
             requires_setup: true,
           }),
           { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      let docusignAccessToken: string;
+      try {
+        docusignAccessToken = await getDocuSignAccessToken();
+      } catch (tokenErr: any) {
+        console.error('[DocuSign] Token generation failed:', tokenErr.message);
+        return new Response(
+          JSON.stringify({ error: `DocuSign auth failed: ${tokenErr.message}` }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
@@ -285,13 +391,22 @@ serve(async (req) => {
       }
 
       const docusignAccountId = Deno.env.get('DOCUSIGN_ACCOUNT_ID');
-      const docusignAccessToken = Deno.env.get('DOCUSIGN_ACCESS_TOKEN');
       const docusignBaseUrl = Deno.env.get('DOCUSIGN_BASE_URL') || 'https://demo.docusign.net/restapi';
 
-      if (!docusignAccountId || !docusignAccessToken) {
+      if (!docusignAccountId) {
         return new Response(
           JSON.stringify({ error: 'DocuSign not configured' }),
           { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      let docusignAccessToken: string;
+      try {
+        docusignAccessToken = await getDocuSignAccessToken();
+      } catch (tokenErr: any) {
+        return new Response(
+          JSON.stringify({ error: `DocuSign auth failed: ${tokenErr.message}` }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
@@ -356,24 +471,28 @@ serve(async (req) => {
       // Void in DocuSign if applicable
       if (agreement?.docusign_envelope_id) {
         const docusignAccountId = Deno.env.get('DOCUSIGN_ACCOUNT_ID');
-        const docusignAccessToken = Deno.env.get('DOCUSIGN_ACCESS_TOKEN');
         const docusignBaseUrl = Deno.env.get('DOCUSIGN_BASE_URL') || 'https://demo.docusign.net/restapi';
 
-        if (docusignAccountId && docusignAccessToken) {
-          await fetch(
-            `${docusignBaseUrl}/v2.1/accounts/${docusignAccountId}/envelopes/${agreement.docusign_envelope_id}`,
-            {
-              method: 'PUT',
-              headers: {
-                Authorization: `Bearer ${docusignAccessToken}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                status: 'voided',
-                voidedReason: void_reason || 'Voided by agent',
-              }),
-            }
-          );
+        if (docusignAccountId) {
+          try {
+            const docusignAccessToken = await getDocuSignAccessToken();
+            await fetch(
+              `${docusignBaseUrl}/v2.1/accounts/${docusignAccountId}/envelopes/${agreement.docusign_envelope_id}`,
+              {
+                method: 'PUT',
+                headers: {
+                  Authorization: `Bearer ${docusignAccessToken}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  status: 'voided',
+                  voidedReason: void_reason || 'Voided by agent',
+                }),
+              }
+            );
+          } catch (tokenErr: any) {
+            console.error('[DocuSign] Void token error:', tokenErr.message);
+          }
         }
       }
 
