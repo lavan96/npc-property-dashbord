@@ -86,6 +86,12 @@ async function getDocuSignAccessToken(): Promise<string> {
     throw new Error('DocuSign JWT credentials not configured. Need DOCUSIGN_INTEGRATION_KEY, DOCUSIGN_USER_ID, DOCUSIGN_RSA_PRIVATE_KEY.');
   }
 
+  // Normalize escaped newlines — secrets often store \n as literal two-char sequences
+  rsaPrivateKey = rsaPrivateKey.replace(/\\n/g, '\n');
+
+  console.log('[DocuSign JWT] Key starts with:', rsaPrivateKey.substring(0, 40));
+  console.log('[DocuSign JWT] Key contains actual newlines:', rsaPrivateKey.includes('\n'));
+
   // Convert PKCS#1 to PKCS#8 if needed
   if (rsaPrivateKey.includes('BEGIN RSA PRIVATE KEY')) {
     console.log('[DocuSign JWT] Converting PKCS#1 key to PKCS#8...');
