@@ -32,6 +32,56 @@ function pemToArrayBuffer(pem: string): ArrayBuffer {
   return bytes.buffer;
 }
 
+// Wrap PKCS#1 (RSA PRIVATE KEY) into PKCS#8 (PRIVATE KEY) format
+// so WebCrypto can import it
+function wrapPkcs1ToPkcs8(pkcs1Der: ArrayBuffer): ArrayBuffer {
+  const pkcs1Bytes = new Uint8Array(pkcs1Der);
+  // PKCS#8 wraps PKCS#1 with an AlgorithmIdentifier for RSA
+  // OID 1.2.840.113549.1.1.1 (rsaEncryption) + NULL params
+  const oid = new Uint8Array([
+    0x30, 0x0d, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86,
+    0xf7, 0x0d, 0x01, 0x01, 0x01, 0x05, 0x00
+  ]);
+  
+  // Wrap the PKCS#1 key in an OCTET STRING
+  const octetString = wrapAsn1(0x04, pkcs1Bytes);
+  
+  // Version INTEGER 0
+  const version = new Uint8Array([0x02, 0x01, 0x00]);
+  
+  // SEQUENCE { version, algorithmIdentifier, privateKey }
+  const totalLen = version.length + oid.length + octetString.length;
+  const result = wrapAsn1(0x30, concatBytes(version, oid, octetString));
+  
+  return result.buffer;
+}
+
+function wrapAsn1(tag: number, content: Uint8Array): Uint8Array {
+  const len = content.length;
+  let header: Uint8Array;
+  if (len < 128) {
+    header = new Uint8Array([tag, len]);
+  } else if (len < 256) {
+    header = new Uint8Array([tag, 0x81, len]);
+  } else if (len < 65536) {
+    header = new Uint8Array([tag, 0x82, (len >> 8) & 0xff, len & 0xff]);
+  } else {
+    header = new Uint8Array([tag, 0x83, (len >> 16) & 0xff, (len >> 8) & 0xff, len & 0xff]);
+  }
+  return concatBytes(header, content);
+}
+
+function concatBytes(...arrays: Uint8Array[]): Uint8Array {
+  const totalLen = arrays.reduce((sum, a) => sum + a.length, 0);
+  const result = new Uint8Array(totalLen);
+  let offset = 0;
+  for (const arr of arrays) {
+    result.set(arr, offset);
+    offset += arr.length;
+  }
+  return result;
+}
+
 async function getDocuSignAccessToken(): Promise<string> {
   const integrationKey = Deno.env.get('DOCUSIGN_INTEGRATION_KEY')?.trim();
   const userId = Deno.env.get('DOCUSIGN_USER_ID')?.trim();
@@ -57,22 +107,34 @@ async function getDocuSignAccessToken(): Promise<string> {
   const signingInput = `${headerB64}.${payloadB64}`;
 
   // Import RSA private key
+  const isPkcs1 = rsaPrivateKey.includes('BEGIN RSA PRIVATE KEY');
   const keyData = pemToArrayBuffer(rsaPrivateKey);
   
-  // Try PKCS#8 first, fall back to PKCS#1
   let cryptoKey: CryptoKey;
   try {
-    cryptoKey = await crypto.subtle.importKey(
-      'pkcs8',
-      keyData,
-      { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
-      false,
-      ['sign']
-    );
-  } catch {
-    // If PKCS#8 fails, the key might be PKCS#1 — wrap it
-    console.log('[DocuSign JWT] PKCS#8 import failed, trying raw import...');
-    throw new Error('RSA key import failed. Please ensure the key is in PKCS#8 format (starts with "-----BEGIN PRIVATE KEY-----"). If your key starts with "-----BEGIN RSA PRIVATE KEY-----", you may need to convert it.');
+    if (isPkcs1) {
+      // Convert PKCS#1 to PKCS#8 format for WebCrypto
+      console.log('[DocuSign JWT] Detected PKCS#1 key, wrapping to PKCS#8...');
+      const pkcs8Data = wrapPkcs1ToPkcs8(keyData);
+      cryptoKey = await crypto.subtle.importKey(
+        'pkcs8',
+        pkcs8Data,
+        { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+        false,
+        ['sign']
+      );
+    } else {
+      cryptoKey = await crypto.subtle.importKey(
+        'pkcs8',
+        keyData,
+        { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+        false,
+        ['sign']
+      );
+    }
+  } catch (keyErr: any) {
+    console.error('[DocuSign JWT] Key import failed:', keyErr.message);
+    throw new Error(`RSA key import failed: ${keyErr.message}. Please check your DOCUSIGN_RSA_PRIVATE_KEY secret.`);
   }
 
   const signature = await crypto.subtle.sign(
