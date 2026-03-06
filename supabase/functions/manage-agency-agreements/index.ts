@@ -193,22 +193,38 @@ serve(async (req) => {
       };
 
       try {
-        const dsResponse = await fetch(
-          `${docusignBaseUrl}/v2.1/accounts/${docusignAccountId}/envelopes`,
-          {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${docusignAccessToken}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(envelopeDefinition),
-          }
-        );
+        const envelopeUrl = `${docusignBaseUrl}/v2.1/accounts/${docusignAccountId}/envelopes`;
+        console.log('[DocuSign] Sending envelope to:', envelopeUrl);
+        
+        const dsResponse = await fetch(envelopeUrl, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${docusignAccessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(envelopeDefinition),
+        });
 
-        const dsData = await dsResponse.json();
+        const responseText = await dsResponse.text();
+        console.log('[DocuSign] Response status:', dsResponse.status, 'Content-Type:', dsResponse.headers.get('content-type'));
+        
+        // Check if response is JSON before parsing
+        let dsData: any;
+        try {
+          dsData = JSON.parse(responseText);
+        } catch {
+          console.error('[DocuSign] Non-JSON response:', responseText.substring(0, 500));
+          return new Response(
+            JSON.stringify({
+              error: `DocuSign returned a non-JSON response (status ${dsResponse.status}). This usually means the DOCUSIGN_BASE_URL is incorrect. Current URL: ${docusignBaseUrl}. For demo accounts use: https://demo.docusign.net/restapi`,
+              hint: 'Check your DOCUSIGN_BASE_URL secret value',
+            }),
+            { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
 
         if (!dsResponse.ok) {
-          console.error('[DocuSign] Envelope creation failed:', dsData);
+          console.error('[DocuSign] Envelope creation failed:', JSON.stringify(dsData));
           return new Response(
             JSON.stringify({
               error: `DocuSign error: ${dsData.message || dsData.errorCode || 'Unknown error'}`,
