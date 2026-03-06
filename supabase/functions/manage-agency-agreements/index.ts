@@ -6,7 +6,8 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 serve(async (req) => {
-  const corsHeaders = createCorsHeaders(req);
+  const origin = req.headers.get('origin');
+  const corsHeaders = createCorsHeaders(origin);
 
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -14,12 +15,12 @@ serve(async (req) => {
 
   try {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    const authResult = await verifyAuth(req, supabase);
+    const body = await req.json();
+    
+    const authResult = await verifyAuth(supabase, req.headers, body);
     if (authResult.error) {
       return createUnauthorizedResponse(authResult.error, corsHeaders);
     }
-
-    const body = await req.json();
     const { action } = body;
 
     // ─── LIST AGREEMENTS ────────────────────────────────────
