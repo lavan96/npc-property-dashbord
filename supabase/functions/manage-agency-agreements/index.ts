@@ -6,54 +6,47 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 // ─── DocuSign JWT Grant Auth ──────────────────────────────
-// Generates a short-lived access token using RSA private key + JWT assertion
+import { SignJWT, importPKCS8 } from 'https://deno.land/x/jose@v5.2.2/index.ts';
 
-function base64UrlEncode(data: Uint8Array): string {
-  const base64 = btoa(String.fromCharCode(...data));
-  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-function strToBytes(str: string): Uint8Array {
-  return new TextEncoder().encode(str);
-}
-
-function pemToArrayBuffer(pem: string): ArrayBuffer {
+// Convert PKCS#1 PEM to PKCS#8 PEM
+function convertPkcs1ToPkcs8Pem(pem: string): string {
+  if (pem.includes('BEGIN PRIVATE KEY')) {
+    return pem; // Already PKCS#8
+  }
+  
+  // Extract base64 from PKCS#1 PEM
   const b64 = pem
     .replace(/-----BEGIN RSA PRIVATE KEY-----/g, '')
     .replace(/-----END RSA PRIVATE KEY-----/g, '')
-    .replace(/-----BEGIN PRIVATE KEY-----/g, '')
-    .replace(/-----END PRIVATE KEY-----/g, '')
     .replace(/\s/g, '');
-  const binary = atob(b64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return bytes.buffer;
-}
-
-// Wrap PKCS#1 (RSA PRIVATE KEY) into PKCS#8 (PRIVATE KEY) format
-// so WebCrypto can import it
-function wrapPkcs1ToPkcs8(pkcs1Der: ArrayBuffer): ArrayBuffer {
-  const pkcs1Bytes = new Uint8Array(pkcs1Der);
-  // PKCS#8 wraps PKCS#1 with an AlgorithmIdentifier for RSA
-  // OID 1.2.840.113549.1.1.1 (rsaEncryption) + NULL params
-  const oid = new Uint8Array([
-    0x30, 0x0d, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86,
-    0xf7, 0x0d, 0x01, 0x01, 0x01, 0x05, 0x00
-  ]);
   
-  // Wrap the PKCS#1 key in an OCTET STRING
-  const octetString = wrapAsn1(0x04, pkcs1Bytes);
+  // Decode PKCS#1 DER
+  const pkcs1Der = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  
+  // RSA OID: 1.2.840.113549.1.1.1
+  const rsaOid = new Uint8Array([
+    0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01
+  ]);
+  const nullParam = new Uint8Array([0x05, 0x00]);
+  
+  // AlgorithmIdentifier SEQUENCE
+  const algoIdContent = concatBytes(rsaOid, nullParam);
+  const algoId = wrapAsn1(0x30, algoIdContent);
   
   // Version INTEGER 0
   const version = new Uint8Array([0x02, 0x01, 0x00]);
   
-  // SEQUENCE { version, algorithmIdentifier, privateKey }
-  const totalLen = version.length + oid.length + octetString.length;
-  const result = wrapAsn1(0x30, concatBytes(version, oid, octetString));
+  // Wrap PKCS#1 key in OCTET STRING
+  const privateKeyOctet = wrapAsn1(0x04, pkcs1Der);
   
-  return result.buffer;
+  // Outer SEQUENCE
+  const pkcs8Content = concatBytes(version, algoId, privateKeyOctet);
+  const pkcs8Der = wrapAsn1(0x30, pkcs8Content);
+  
+  // Convert back to PEM
+  const pkcs8B64 = btoa(String.fromCharCode(...pkcs8Der));
+  const lines = pkcs8B64.match(/.{1,64}/g) || [];
+  return `-----BEGIN PRIVATE KEY-----\n${lines.join('\n')}\n-----END PRIVATE KEY-----`;
 }
 
 function wrapAsn1(tag: number, content: Uint8Array): Uint8Array {
@@ -65,8 +58,10 @@ function wrapAsn1(tag: number, content: Uint8Array): Uint8Array {
     header = new Uint8Array([tag, 0x81, len]);
   } else if (len < 65536) {
     header = new Uint8Array([tag, 0x82, (len >> 8) & 0xff, len & 0xff]);
-  } else {
+  } else if (len < 16777216) {
     header = new Uint8Array([tag, 0x83, (len >> 16) & 0xff, (len >> 8) & 0xff, len & 0xff]);
+  } else {
+    header = new Uint8Array([tag, 0x84, (len >> 24) & 0xff, (len >> 16) & 0xff, (len >> 8) & 0xff, len & 0xff]);
   }
   return concatBytes(header, content);
 }
@@ -85,65 +80,34 @@ function concatBytes(...arrays: Uint8Array[]): Uint8Array {
 async function getDocuSignAccessToken(): Promise<string> {
   const integrationKey = Deno.env.get('DOCUSIGN_INTEGRATION_KEY')?.trim();
   const userId = Deno.env.get('DOCUSIGN_USER_ID')?.trim();
-  const rsaPrivateKey = Deno.env.get('DOCUSIGN_RSA_PRIVATE_KEY')?.trim();
+  let rsaPrivateKey = Deno.env.get('DOCUSIGN_RSA_PRIVATE_KEY')?.trim();
 
   if (!integrationKey || !userId || !rsaPrivateKey) {
     throw new Error('DocuSign JWT credentials not configured. Need DOCUSIGN_INTEGRATION_KEY, DOCUSIGN_USER_ID, DOCUSIGN_RSA_PRIVATE_KEY.');
   }
 
+  // Convert PKCS#1 to PKCS#8 if needed
+  if (rsaPrivateKey.includes('BEGIN RSA PRIVATE KEY')) {
+    console.log('[DocuSign JWT] Converting PKCS#1 key to PKCS#8...');
+    rsaPrivateKey = convertPkcs1ToPkcs8Pem(rsaPrivateKey);
+  }
+
+  // Import the key using jose
+  const privateKey = await importPKCS8(rsaPrivateKey, 'RS256');
+
   const now = Math.floor(Date.now() / 1000);
-  const header = { alg: 'RS256', typ: 'JWT' };
-  const payload = {
+
+  // Create and sign JWT
+  const jwtToken = await new SignJWT({
     iss: integrationKey,
     sub: userId,
     aud: 'account-d.docusign.com',
-    iat: now,
-    exp: now + 3600,
     scope: 'signature impersonation',
-  };
-
-  const headerB64 = base64UrlEncode(strToBytes(JSON.stringify(header)));
-  const payloadB64 = base64UrlEncode(strToBytes(JSON.stringify(payload)));
-  const signingInput = `${headerB64}.${payloadB64}`;
-
-  // Import RSA private key
-  const isPkcs1 = rsaPrivateKey.includes('BEGIN RSA PRIVATE KEY');
-  const keyData = pemToArrayBuffer(rsaPrivateKey);
-  
-  let cryptoKey: CryptoKey;
-  try {
-    if (isPkcs1) {
-      // Convert PKCS#1 to PKCS#8 format for WebCrypto
-      console.log('[DocuSign JWT] Detected PKCS#1 key, wrapping to PKCS#8...');
-      const pkcs8Data = wrapPkcs1ToPkcs8(keyData);
-      cryptoKey = await crypto.subtle.importKey(
-        'pkcs8',
-        pkcs8Data,
-        { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
-        false,
-        ['sign']
-      );
-    } else {
-      cryptoKey = await crypto.subtle.importKey(
-        'pkcs8',
-        keyData,
-        { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
-        false,
-        ['sign']
-      );
-    }
-  } catch (keyErr: any) {
-    console.error('[DocuSign JWT] Key import failed:', keyErr.message);
-    throw new Error(`RSA key import failed: ${keyErr.message}. Please check your DOCUSIGN_RSA_PRIVATE_KEY secret.`);
-  }
-
-  const signature = await crypto.subtle.sign(
-    'RSASSA-PKCS1-v1_5',
-    cryptoKey,
-    strToBytes(signingInput)
-  );
-
-  const jwtToken = `${signingInput}.${base64UrlEncode(new Uint8Array(signature))}`;
+  })
+    .setProtectedHeader({ alg: 'RS256', typ: 'JWT' })
+    .setIssuedAt(now)
+    .setExpirationTime(now + 3600)
+    .sign(privateKey);
 
   // Exchange JWT for access token
   console.log('[DocuSign] Exchanging JWT for access token...');
