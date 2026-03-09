@@ -102,7 +102,7 @@ serve(async (req) => {
     // Get client details
     const { data: clientData, error: clientError } = await supabase
       .from('clients')
-      .select('id, first_name, last_name, primary_email, status')
+      .select('id, primary_first_name, primary_surname, primary_email, status')
       .eq('id', client_id)
       .maybeSingle()
 
@@ -177,7 +177,7 @@ serve(async (req) => {
 
     // Build invite link
     const inviteLink = `${appUrl}/client/accept-invite?token=${inviteToken}`
-    const clientName = clientData.first_name || 'there'
+    const clientName = clientData.primary_first_name || 'there'
 
     // Send invite email via Resend
     if (resendApiKey) {
