@@ -207,9 +207,12 @@ serve(async (req) => {
 
       if (error) throw error;
 
-      // Trigger Gamma generation asynchronously via the gamma-agreement-generator function
+      // Trigger Gamma generation
       const gammaApiKey = Deno.env.get('GAMMA_API_KEY');
       const gammaTemplateId = Deno.env.get('GAMMA_TEMPLATE_ID');
+
+      console.log('[generate] GAMMA_API_KEY present:', !!gammaApiKey, 'GAMMA_TEMPLATE_ID present:', !!gammaTemplateId);
+      if (gammaTemplateId) console.log('[generate] Template ID:', gammaTemplateId);
 
       if (gammaApiKey && gammaTemplateId) {
         try {
@@ -227,6 +230,7 @@ serve(async (req) => {
 
 Keep everything else exactly as-is.`;
 
+          console.log('[Gamma] POST /generations/from-template with gammaId:', gammaTemplateId);
           const createRes = await fetch(`${GAMMA_API_URL}/generations/from-template`, {
             method: 'POST',
             headers: {
@@ -240,11 +244,15 @@ Keep everything else exactly as-is.`;
             }),
           });
 
-          const createData = await createRes.json();
+          const createText = await createRes.text();
+          console.log('[Gamma] Create response status:', createRes.status, 'body:', createText.substring(0, 500));
+          
+          let createData: any;
+          try { createData = JSON.parse(createText); } catch { createData = {}; }
 
           if (createRes.ok) {
             const generationId = createData.generationId || createData.id;
-            console.log('[Gamma] Generation started:', generationId);
+            console.log('[Gamma] Generation started, generationId:', generationId);
 
             // Poll for completion (max 90 seconds)
             let gammaResult: any = null;
@@ -253,11 +261,14 @@ Keep everything else exactly as-is.`;
               const pollRes = await fetch(`${GAMMA_API_URL}/generations/${generationId}`, {
                 headers: { 'X-API-KEY': gammaApiKey },
               });
-              const pollData = await pollRes.json();
-              console.log(`[Gamma] Poll ${i + 1}: status=${pollData.status}`);
+              const pollText = await pollRes.text();
+              let pollData: any;
+              try { pollData = JSON.parse(pollText); } catch { pollData = {}; }
+              console.log(`[Gamma] Poll ${i + 1}: status=${pollData.status}, keys=${Object.keys(pollData).join(',')}`);
 
               if (pollData.status === 'completed') {
                 gammaResult = pollData;
+                console.log('[Gamma] COMPLETED - full response:', JSON.stringify(pollData).substring(0, 1000));
                 break;
               } else if (pollData.status === 'failed' || pollData.status === 'error') {
                 console.error('[Gamma] Generation failed:', JSON.stringify(pollData));
@@ -267,8 +278,10 @@ Keep everything else exactly as-is.`;
 
             if (gammaResult) {
               const gammaUrl = gammaResult.gammaUrl || gammaResult.url;
-              const pdfUrl = gammaResult.exportUrl || gammaResult.pdfUrl;
+              const pdfUrl = gammaResult.exportUrl || gammaResult.pdfUrl || gammaResult.fileUrl;
               const gammaDocId = gammaResult.gammaId || generationId;
+
+              console.log('[Gamma] gammaUrl:', gammaUrl, 'pdfUrl:', pdfUrl, 'gammaDocId:', gammaDocId);
 
               const updateData: Record<string, any> = {
                 status: 'generated',
@@ -279,9 +292,12 @@ Keep everything else exactly as-is.`;
               // Download and store PDF
               if (pdfUrl) {
                 try {
+                  console.log('[Gamma] Downloading PDF from:', pdfUrl);
                   const pdfRes = await fetch(pdfUrl);
+                  console.log('[Gamma] PDF download status:', pdfRes.status, 'content-type:', pdfRes.headers.get('content-type'));
                   if (pdfRes.ok) {
                     const pdfBuffer = await pdfRes.arrayBuffer();
+                    console.log('[Gamma] PDF size:', pdfBuffer.byteLength, 'bytes');
                     const storagePath = `agreements/${agreement.id}/agreement.pdf`;
                     const { error: uploadErr } = await supabase.storage
                       .from('agency-agreements')
@@ -291,6 +307,7 @@ Keep everything else exactly as-is.`;
                       });
                     if (!uploadErr) {
                       updateData.pdf_storage_path = storagePath;
+                      console.log('[Gamma] PDF stored at:', storagePath);
                     } else {
                       console.error('[Gamma] PDF upload error:', uploadErr.message);
                     }
@@ -298,25 +315,26 @@ Keep everything else exactly as-is.`;
                 } catch (dlErr: any) {
                   console.error('[Gamma] PDF download error:', dlErr.message);
                 }
+              } else {
+                console.warn('[Gamma] No PDF URL in response. Available keys:', Object.keys(gammaResult).join(', '));
               }
 
               await supabase.from('agency_agreements').update(updateData).eq('id', agreement.id);
-              console.log('[Gamma] Agreement updated with Gamma data');
+              console.log('[Gamma] Agreement record updated');
             } else {
-              // Gamma timed out or failed — still mark as generated (with HTML fallback)
               await supabase.from('agency_agreements').update({ status: 'generated' }).eq('id', agreement.id);
               console.warn('[Gamma] Timed out — agreement generated without Gamma');
             }
           } else {
-            console.error('[Gamma] Create failed:', JSON.stringify(createData));
+            console.error('[Gamma] Create failed - status:', createRes.status, 'body:', createText.substring(0, 500));
             await supabase.from('agency_agreements').update({ status: 'generated' }).eq('id', agreement.id);
           }
         } catch (gammaErr: any) {
-          console.error('[Gamma] Error:', gammaErr.message);
+          console.error('[Gamma] Unhandled error:', gammaErr.message, gammaErr.stack);
           await supabase.from('agency_agreements').update({ status: 'generated' }).eq('id', agreement.id);
         }
       } else {
-        // No Gamma configured — just mark as generated (uses HTML fallback for DocuSign)
+        console.warn('[generate] Gamma not configured, skipping. API key present:', !!gammaApiKey, 'Template ID present:', !!gammaTemplateId);
         await supabase.from('agency_agreements').update({ status: 'generated' }).eq('id', agreement.id);
       }
 
@@ -333,7 +351,7 @@ Keep everything else exactly as-is.`;
       );
     }
 
-    // ─── PREVIEW AGREEMENT (return HTML) ──────────────────
+    // ─── PREVIEW AGREEMENT (return HTML or PDF URL) ──────────────────
     if (action === 'preview') {
       const { agreement_id } = body;
       if (!agreement_id) {
@@ -356,9 +374,23 @@ Keep everything else exactly as-is.`;
         );
       }
 
+      // If PDF exists in storage, return a signed URL
+      let pdfSignedUrl: string | null = null;
+      if (agreement.pdf_storage_path) {
+        const { data: signedData } = await supabase.storage
+          .from('agency-agreements')
+          .createSignedUrl(agreement.pdf_storage_path, 3600); // 1 hour
+        if (signedData?.signedUrl) {
+          pdfSignedUrl = signedData.signedUrl;
+        }
+      }
+
+      // If Gamma URL exists, include it
+      const gammaUrl = agreement.gamma_document_url || null;
+
       const html = generateAgreementHtml(agreement);
       return new Response(
-        JSON.stringify({ success: true, html, agreement }),
+        JSON.stringify({ success: true, html, agreement, pdf_url: pdfSignedUrl, gamma_url: gammaUrl }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -802,7 +834,7 @@ function generateAgreementHtml(agreement: any): string {
 <p>The Buyer agrees to pay the Agent the below commission of the purchase price of any property acquired as a result of the Agent's services.</p>
 
 <table class="fees">
-  <tr><th>Initial Commitment Fee (ICF):</th><td>$1,500.00 + GST (Non-Refundable, deducted from Final Payment from Property Purchase)</td></tr>
+  <tr><th>Initial Commitment Fee (ICF):</th><td>${agreement.initial_commitment_fee ? `$${Number(agreement.initial_commitment_fee).toLocaleString('en-AU', { minimumFractionDigits: 2 })} + GST` : '$1,500.00 + GST'} (Non-Refundable, deducted from Final Payment from Property Purchase)</td></tr>
 </table>
 
 <table class="fees">
