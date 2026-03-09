@@ -15,7 +15,11 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const resendApiKey = Deno.env.get('RESEND_API_KEY')
-    const appUrl = Deno.env.get('APP_URL') || 'https://npc-property-dashbord.lovable.app'
+    const configuredAppUrl = Deno.env.get('APP_URL')?.trim()
+    const fallbackAppUrl = 'https://npc-property-dashbord.lovable.app'
+    const appUrl = configuredAppUrl && !configuredAppUrl.includes('preview--') && !configuredAppUrl.includes('localhost')
+      ? configuredAppUrl.replace(/\/+$/, '')
+      : fallbackAppUrl
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     const body = await req.json()
