@@ -20,6 +20,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
+import GammaTemplateManager from '@/components/agreements/GammaTemplateManager';
 
 const STATUS_CONFIG: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: React.ComponentType<any> }> = {
   draft: { label: 'Draft', variant: 'secondary', icon: Clock },
