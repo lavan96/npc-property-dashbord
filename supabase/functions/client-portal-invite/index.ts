@@ -15,7 +15,11 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const resendApiKey = Deno.env.get('RESEND_API_KEY')
-    const appUrl = Deno.env.get('APP_URL') || 'https://npc-property-dashbord.lovable.app'
+    const configuredAppUrl = Deno.env.get('APP_URL')?.trim()
+    const fallbackAppUrl = 'https://npc-property-dashbord.lovable.app'
+    const appUrl = configuredAppUrl && !configuredAppUrl.includes('preview--') && !configuredAppUrl.includes('localhost')
+      ? configuredAppUrl.replace(/\/+$/, '')
+      : fallbackAppUrl
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     const body = await req.json()
@@ -229,8 +233,8 @@ serve(async (req) => {
     }
 
     // Build invite link
-    const inviteLink = `${appUrl}/client/accept-invite?token=${inviteToken}`
-    const clientName = clientData.primary_first_name || 'there'
+    const inviteLink = `${appUrl}/client/accept-invite?token=${encodeURIComponent(inviteToken)}`
+    const clientName = [clientData.primary_first_name, clientData.primary_surname].filter(Boolean).join(' ').trim() || 'there'
 
     // Send invite email via Resend
     if (resendApiKey) {
