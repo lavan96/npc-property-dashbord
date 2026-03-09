@@ -383,6 +383,54 @@ Keep everything else exactly as-is.`;
         if (signedData?.signedUrl) {
           pdfSignedUrl = signedData.signedUrl;
         }
+      } else if (agreement.gamma_document_id) {
+        // PDF not stored but Gamma doc exists - try to fetch and store it now (backfill)
+        console.log('[preview] PDF not stored, attempting to fetch from Gamma:', agreement.gamma_document_id);
+        const gammaApiKey = Deno.env.get('GAMMA_API_KEY');
+        if (gammaApiKey) {
+          try {
+            // Poll Gamma to get the latest generation data (it might have the export URL)
+            const pollRes = await fetch(`https://public-api.gamma.app/v1.0/generations/${agreement.gamma_document_id}`, {
+              headers: { 'X-API-KEY': gammaApiKey },
+            });
+            if (pollRes.ok) {
+              const gammaData = await pollRes.json();
+              const pdfUrl = gammaData.exportUrl || gammaData.pdfUrl || gammaData.fileUrl;
+              if (pdfUrl) {
+                console.log('[preview] Found PDF URL in Gamma, downloading:', pdfUrl);
+                const pdfRes = await fetch(pdfUrl);
+                if (pdfRes.ok) {
+                  const pdfBuffer = await pdfRes.arrayBuffer();
+                  console.log('[preview] PDF size:', pdfBuffer.byteLength, 'bytes');
+                  const storagePath = `agreements/${agreement.id}/agreement.pdf`;
+                  const { error: uploadErr } = await supabase.storage
+                    .from('agency-agreements')
+                    .upload(storagePath, new Uint8Array(pdfBuffer), {
+                      contentType: 'application/pdf',
+                      upsert: true,
+                    });
+                  if (!uploadErr) {
+                    await supabase.from('agency_agreements').update({ pdf_storage_path: storagePath }).eq('id', agreement.id);
+                    console.log('[preview] PDF backfilled to storage:', storagePath);
+                    // Create signed URL for this newly stored PDF
+                    const { data: signedData } = await supabase.storage
+                      .from('agency-agreements')
+                      .createSignedUrl(storagePath, 3600);
+                    if (signedData?.signedUrl) {
+                      pdfSignedUrl = signedData.signedUrl;
+                    }
+                  } else {
+                    console.error('[preview] PDF upload error:', uploadErr.message);
+                  }
+                }
+              } else {
+                console.warn('[preview] No PDF export URL found in Gamma response');
+              }
+            }
+          } catch (err: any) {
+            console.error('[preview] Gamma backfill error:', err.message);
+          }
+        }
       }
 
       // If Gamma URL exists, include it
