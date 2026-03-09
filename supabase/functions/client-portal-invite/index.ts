@@ -213,7 +213,7 @@ serve(async (req) => {
         .from('client_portal_users')
         .insert({
           email: normalizedEmail,
-          client_id: client_id,
+          client_id: resolvedClientId,
           invite_token: inviteToken,
           invite_expires_at: expiresAt.toISOString(),
           status: 'invited',
