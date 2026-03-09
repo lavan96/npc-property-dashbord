@@ -177,7 +177,7 @@ serve(async (req) => {
 
     // Build invite link
     const inviteLink = `${appUrl}/client/accept-invite?token=${inviteToken}`
-    const clientName = clientData.first_name || 'there'
+    const clientName = clientData.primary_first_name || 'there'
 
     // Send invite email via Resend
     if (resendApiKey) {
