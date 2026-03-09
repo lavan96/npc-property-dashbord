@@ -30,6 +30,7 @@ import {
   Bell,
   ClipboardList,
   FileSignature,
+  Globe,
 } from 'lucide-react';
 import {
   Sidebar,
