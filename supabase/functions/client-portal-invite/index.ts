@@ -107,13 +107,12 @@ serve(async (req) => {
       primary_first_name: string | null
       primary_surname: string | null
       primary_email: string | null
-      status: string | null
     } | null = null
 
     if (client_id) {
       const { data: clientById, error: clientByIdError } = await supabase
         .from('clients')
-        .select('id, primary_first_name, primary_surname, primary_email, status')
+        .select('id, primary_first_name, primary_surname, primary_email')
         .eq('id', client_id)
         .maybeSingle()
 
@@ -130,7 +129,7 @@ serve(async (req) => {
     if (!clientData && inputEmail) {
       const { data: clientsByEmail, error: clientByEmailError } = await supabase
         .from('clients')
-        .select('id, primary_first_name, primary_surname, primary_email, status')
+        .select('id, primary_first_name, primary_surname, primary_email')
         .eq('primary_email', inputEmail)
         .limit(2)
 
