@@ -879,6 +879,15 @@ NPC Team`
           secondary_surname: fullClient?.secondary_surname,
         }}
       />
+
+      {/* Portal Invite Dialog */}
+      <SendPortalInviteDialog
+        open={showPortalInviteDialog}
+        onOpenChange={setShowPortalInviteDialog}
+        clientId={client.id}
+        clientName={`${client.primary_first_name} ${client.primary_surname}`}
+        clientEmail={client.primary_email}
+      />
     </>
   );
 }
