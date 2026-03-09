@@ -218,6 +218,20 @@ export function SendAgreementDialog({ open, onOpenChange, client, dealId }: Send
               />
             </div>
 
+            {/* Initial Commitment Fee */}
+            <div className="space-y-1.5">
+              <Label htmlFor="commitment-fee" className="flex items-center gap-1.5">
+                <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
+                Initial Commitment Fee
+              </Label>
+              <Input
+                id="commitment-fee"
+                value={commitmentFee}
+                onChange={(e) => setCommitmentFee(e.target.value)}
+                placeholder="$1,500.00 + GST"
+              />
+            </div>
+
             <Separator />
 
             {/* Notes */}
