@@ -53,6 +53,17 @@ function getAutoContinueSettings(): AutoContinueSettings {
 }
 
 export function ReportGenerationProgress() {
+  const location = useLocation();
+  
+  // Don't render on client portal routes
+  if (location.pathname.startsWith('/client')) {
+    return null;
+  }
+  
+  return <ReportGenerationProgressInner />;
+}
+
+function ReportGenerationProgressInner() {
   const [reports, setReports] = useState<ReportProgress[]>([]);
   const [isMinimized, setIsMinimized] = useState(false);
   const [isExpanded, setIsExpanded] = useState(true); // For mobile: expand/collapse list
