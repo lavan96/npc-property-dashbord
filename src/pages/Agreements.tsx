@@ -36,7 +36,7 @@ const STATUS_CONFIG: Record<string, { label: string; variant: 'default' | 'secon
 
 export default function Agreements() {
   const { data: agreements = [], isLoading } = useAgencyAgreements();
-  const { checkStatus, voidAgreement } = useAgreementMutations();
+  const { checkStatus, voidAgreement, sendViaDocuSign } = useAgreementMutations();
   const [searchTerm, setSearchTerm] = useState('');
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewTitle, setPreviewTitle] = useState('');
@@ -140,6 +140,15 @@ export default function Agreements() {
 
   const handleViewClient = (clientId: string) => {
     navigate(`/clients?clientId=${clientId}`);
+  };
+
+  const handleSendViaDocuSign = async (agreement: AgencyAgreement) => {
+    if (!confirm(`Send agreement for ${agreement.buyer_names} via DocuSign?`)) return;
+    try {
+      await sendViaDocuSign.mutateAsync(agreement.id);
+    } catch {
+      // handled by mutation
+    }
   };
 
   const renderStatusBadge = (status: string) => {
