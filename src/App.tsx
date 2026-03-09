@@ -155,6 +155,7 @@ const App = () => (
                           <Route path="deal-progress" element={<PortalDealProgress />} />
                           <Route path="messages" element={<PortalMessages />} />
                           <Route path="property-insights" element={<PortalPropertyInsights />} />
+                          <Route path="booking" element={<PortalBooking />} />
                         </Route>
 
                         {/* Internal Dashboard Routes */}

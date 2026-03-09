@@ -25,6 +25,7 @@ const portalNavItems = [
   { to: '/client/emails', icon: Mail, label: 'Correspondence' },
   { to: '/client/messages', icon: MessageSquare, label: 'Messages' },
   { to: '/client/notifications', icon: Bell, label: 'Notifications' },
+  { to: '/client/booking', icon: CalendarDays, label: 'Book Appointment' },
 ];
 
 function getInitials(name?: string): string {
