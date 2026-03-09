@@ -328,6 +328,9 @@ export default function Agreements() {
         </CardContent>
       </Card>
 
+      {/* Gamma Template Manager */}
+      <GammaTemplateManager />
+
       {/* Agreement Preview Dialog */}
       <Dialog open={!!previewHtml || isPreviewLoading} onOpenChange={(open) => { if (!open) { setPreviewHtml(null); setPreviewTitle(''); } }}>
         <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
