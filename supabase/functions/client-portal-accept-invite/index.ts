@@ -28,7 +28,7 @@ serve(async (req) => {
     // Look up the invite
     const { data: portalUser, error: lookupError } = await supabase
       .from('client_portal_users')
-      .select('id, email, client_id, status, invite_token, invite_expires_at, clients:client_id (first_name, last_name)')
+      .select('id, email, client_id, status, invite_token, invite_expires_at, clients:client_id (primary_first_name, primary_surname)')
       .eq('invite_token', token)
       .maybeSingle()
 
@@ -54,7 +54,7 @@ serve(async (req) => {
         JSON.stringify({ 
           valid: true,
           email: portalUser.email,
-          name: clientData ? `${clientData.first_name || ''} ${clientData.last_name || ''}`.trim() : '',
+          name: clientData ? `${clientData.primary_first_name || ''} ${clientData.primary_surname || ''}`.trim() : '',
           already_active: portalUser.status === 'active',
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -121,7 +121,7 @@ serve(async (req) => {
           id: portalUser.id,
           client_id: portalUser.client_id,
           email: portalUser.email,
-          name: clientData ? `${clientData.first_name || ''} ${clientData.last_name || ''}`.trim() : portalUser.email,
+          name: clientData ? `${clientData.primary_first_name || ''} ${clientData.primary_surname || ''}`.trim() : portalUser.email,
         },
         session_token: sessionToken,
         expires_at: expiresAt.toISOString(),
