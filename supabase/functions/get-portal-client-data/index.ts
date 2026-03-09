@@ -2,14 +2,6 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
 import { createCorsHeaders } from "../_shared/auth.ts"
 
-/**
- * Portal-specific data access Edge Function
- * Authenticates portal users via their session token and returns
- * data scoped ONLY to their linked client_id.
- * 
- * This is separate from get-client-data (which uses internal admin auth).
- */
-
 function extractPortalToken(headers: Headers, body?: any): string | null {
   const headerToken = headers.get('x-portal-session-token');
   if (headerToken) return headerToken;
@@ -33,8 +25,19 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const body = await req.json();
+    let body: any = {};
+    try {
+      body = await req.json();
+    } catch {
+      console.error('[get-portal-client-data] Failed to parse request body');
+      return new Response(
+        JSON.stringify({ error: 'Invalid request body', success: false }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const sessionToken = extractPortalToken(req.headers, body);
+    console.log('[get-portal-client-data] Session token present:', !!sessionToken);
 
     if (!sessionToken) {
       return new Response(
@@ -56,6 +59,13 @@ serve(async (req) => {
       .gt('expires_at', new Date().toISOString())
       .maybeSingle();
 
+    console.log('[get-portal-client-data] Session query result:', {
+      hasSession: !!session,
+      sessionError: sessionError?.message || null,
+      hasPortalUser: !!session?.client_portal_users,
+      portalUserStatus: session?.client_portal_users?.status,
+    });
+
     if (sessionError || !session?.client_portal_users || session.client_portal_users.status !== 'active') {
       return new Response(
         JSON.stringify({ error: 'Invalid or expired session', success: false }),
@@ -65,26 +75,32 @@ serve(async (req) => {
 
     const clientId = session.client_portal_users.client_id;
     const include = body.include || {};
+    console.log('[get-portal-client-data] Fetching data for clientId:', clientId, 'include:', JSON.stringify(include));
 
     const result: Record<string, any> = { success: true, clientId };
 
     // Fetch client profile
     if (include.client !== false) {
-      const { data: client } = await supabase
+      const { data: client, error: clientError } = await supabase
         .from('clients')
         .select('*')
         .eq('id', clientId)
         .single();
+      
+      if (clientError) {
+        console.error('[get-portal-client-data] Client fetch error:', clientError.message);
+      }
       result.client = client;
     }
 
     // Fetch properties
     if (include.properties !== false) {
-      const { data: properties } = await supabase
+      const { data: properties, error: propError } = await supabase
         .from('client_properties')
         .select('*')
         .eq('client_id', clientId)
         .order('created_at', { ascending: false });
+      if (propError) console.error('[get-portal-client-data] Properties error:', propError.message);
       result.properties = properties || [];
     }
 
@@ -161,12 +177,14 @@ serve(async (req) => {
       result.borrowingCapacity = bc;
     }
 
+    console.log('[get-portal-client-data] Success. Keys returned:', Object.keys(result));
+
     return new Response(
       JSON.stringify(result),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error('Portal data fetch error:', error);
+    console.error('[get-portal-client-data] Unhandled error:', error?.message || error);
     return new Response(
       JSON.stringify({ error: 'Internal server error', success: false }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
