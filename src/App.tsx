@@ -111,6 +111,7 @@ const App = () => (
           <AuthProvider>
             <PermissionsProvider>
               <BrowserRouter>
+                <PathNormalizer />
                 <NotificationsProvider>
                   <BackgroundJobTracker />
                   <ReportGenerationProgress />
