@@ -393,3 +393,18 @@ verify_jwt = true
 [functions.ai-dashboard-agent]
 verify_jwt = false
 request_timeout = 60
+
+[functions.client-portal-login]
+verify_jwt = false
+
+[functions.client-portal-verify]
+verify_jwt = false
+
+[functions.client-portal-logout]
+verify_jwt = false
+
+[functions.client-portal-forgot-password]
+verify_jwt = false
+
+[functions.client-portal-reset-password]
+verify_jwt = false
