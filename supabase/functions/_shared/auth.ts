@@ -294,7 +294,7 @@ export function createCorsHeaders(origin: string | null): Record<string, string>
     'Access-Control-Allow-Origin': allowedOrigin,
     // Required for browser preflight (POST + application/json)
     'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-session-token',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-session-token, x-portal-session-token',
     // Required for HttpOnly cookie auth
     'Access-Control-Allow-Credentials': 'true',
     // Ensure caches/proxies don't mix CORS responses across origins
