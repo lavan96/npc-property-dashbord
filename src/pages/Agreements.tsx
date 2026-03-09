@@ -52,24 +52,27 @@ export default function Agreements() {
   const totalSigned = agreements.filter(a => a.status === 'signed').length;
   const pending = agreements.filter(a => ['sent', 'delivered', 'viewed'].includes(a.status)).length;
 
-  const fetchAgreementHtml = async (agreementId: string): Promise<string | null> => {
-    const { data, error } = await invokeSecureFunction<{ html: string }>('manage-agency-agreements', {
+  const fetchAgreementPreview = async (agreementId: string): Promise<{ html: string | null; pdf_url: string | null }> => {
+    const { data, error } = await invokeSecureFunction<{ html: string; pdf_url?: string; gamma_url?: string }>('manage-agency-agreements', {
       action: 'preview',
       agreement_id: agreementId,
     });
-    if (error || !data?.html) {
+    if (error || !data) {
       toast.error('Failed to load agreement: ' + (error?.message || 'Unknown error'));
-      return null;
+      return { html: null, pdf_url: null };
     }
-    return data.html;
+    return { html: data.html || null, pdf_url: data.pdf_url || null };
   };
 
   const handleViewAgreement = async (agreement: AgencyAgreement) => {
     setIsPreviewLoading(true);
     setPreviewTitle(`Agreement — ${agreement.buyer_names}`);
     setPreviewHtml(null);
-    const html = await fetchAgreementHtml(agreement.id);
-    if (html) {
+    const { html, pdf_url } = await fetchAgreementPreview(agreement.id);
+    if (pdf_url) {
+      // Show PDF in iframe
+      setPreviewHtml(`__PDF__${pdf_url}`);
+    } else if (html) {
       setPreviewHtml(html);
     } else {
       setPreviewTitle('');
@@ -79,12 +82,34 @@ export default function Agreements() {
 
   const handleDownloadAgreement = async (agreement: AgencyAgreement) => {
     toast.loading('Preparing download...', { id: 'download-agreement' });
-    const html = await fetchAgreementHtml(agreement.id);
+    const { html, pdf_url } = await fetchAgreementPreview(agreement.id);
+    
+    if (pdf_url) {
+      // Download PDF directly
+      try {
+        const res = await fetch(pdf_url);
+        if (!res.ok) throw new Error('Failed to fetch PDF');
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `Agreement_${agreement.buyer_names.replace(/\s+/g, '_')}_${format(new Date(agreement.agreement_date), 'yyyy-MM-dd')}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        toast.success('PDF downloaded', { id: 'download-agreement' });
+      } catch {
+        toast.error('Failed to download PDF', { id: 'download-agreement' });
+      }
+      return;
+    }
+
     if (!html) {
       toast.dismiss('download-agreement');
       return;
     }
-    // Download as HTML file
+    // Fallback: Download as HTML file
     const blob = new Blob([html], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -299,12 +324,20 @@ export default function Agreements() {
             </div>
           ) : previewHtml ? (
             <div className="flex-1 overflow-auto border rounded-md">
-              <iframe
-                srcDoc={previewHtml}
-                className="w-full min-h-[70vh] border-0"
-                title="Agreement Preview"
-                sandbox="allow-same-origin"
-              />
+              {previewHtml.startsWith('__PDF__') ? (
+                <iframe
+                  src={previewHtml.replace('__PDF__', '')}
+                  className="w-full min-h-[70vh] border-0"
+                  title="Agreement Preview"
+                />
+              ) : (
+                <iframe
+                  srcDoc={previewHtml}
+                  className="w-full min-h-[70vh] border-0"
+                  title="Agreement Preview"
+                  sandbox="allow-same-origin"
+                />
+              )}
             </div>
           ) : null}
         </DialogContent>
