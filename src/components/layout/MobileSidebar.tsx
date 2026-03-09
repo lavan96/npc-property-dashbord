@@ -31,6 +31,7 @@ import {
   Bell,
   ClipboardList,
   FileSignature,
+  Globe,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useWhiteLabel } from '@/contexts/WhiteLabelContext';
