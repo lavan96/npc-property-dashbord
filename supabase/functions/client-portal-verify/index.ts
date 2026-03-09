@@ -2,6 +2,20 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
 import { extractSessionToken, createCorsHeaders } from "../_shared/auth.ts"
 
+function smartCapitalizeStr(name: string): string {
+  if (!name) return '';
+  return name.trim().split(/\s+/).map((word) => {
+    const lower = word.toLowerCase();
+    if (lower.startsWith("o'") && lower.length > 2) return "O'" + lower.charAt(2).toUpperCase() + lower.slice(3);
+    if (/^(mc|mac)(.+)$/i.test(lower)) {
+      const m = lower.match(/^(mc|mac)(.+)$/i)!;
+      return m[1].charAt(0).toUpperCase() + m[1].slice(1) + m[2].charAt(0).toUpperCase() + m[2].slice(1);
+    }
+    if (word.includes('-')) return word.split('-').map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join('-');
+    return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+  }).join(' ');
+}
+
 serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = createCorsHeaders(origin);
@@ -65,7 +79,7 @@ serve(async (req) => {
           id: portalUser.id,
           client_id: portalUser.client_id,
           email: portalUser.email,
-          name: clientData ? `${clientData.primary_first_name || ''} ${clientData.primary_surname || ''}`.trim() : portalUser.email,
+          name: clientData ? smartCapitalizeStr(`${clientData.primary_first_name || ''} ${clientData.primary_surname || ''}`.trim()) : portalUser.email,
         },
         session_token: sessionToken,
       }),
