@@ -391,7 +391,7 @@ export function AgentChatWidget() {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-4 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all hover:scale-105 group sm:bottom-6 sm:right-6"
+        className="fixed bottom-[5.5rem] right-4 z-[55] flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all hover:scale-105 group md:bottom-6 md:right-6 md:z-40"
         aria-label="Open AI Assistant"
       >
         <Diamond className="h-6 w-6 text-black group-hover:animate-pulse" />
@@ -405,9 +405,9 @@ export function AgentChatWidget() {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-[60] flex flex-col rounded-2xl border border-border/50 bg-background shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-300
-      w-[calc(100vw-2rem)] max-w-[440px] h-[min(85vh,640px)]
-      sm:bottom-6 sm:right-6">
+    <div className="fixed bottom-[5.5rem] right-4 z-[60] flex flex-col rounded-2xl border border-border/50 bg-background shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-300
+      w-[calc(100vw-2rem)] max-w-[440px] h-[min(75vh,580px)]
+      md:bottom-6 md:right-6 md:h-[min(85vh,640px)]">
       {/* Header */}
       <div className="flex items-center justify-between border-b bg-primary/5 px-4 py-3 shrink-0">
         <div className="flex items-center gap-2">
