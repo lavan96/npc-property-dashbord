@@ -295,6 +295,12 @@ export default function Agreements() {
                               <Eye className="h-4 w-4 mr-2" />
                               View Client
                             </DropdownMenuItem>
+                            {agreement.status === 'generated' && (
+                              <DropdownMenuItem onClick={() => handleSendViaDocuSign(agreement)}>
+                                <Send className="h-4 w-4 mr-2" />
+                                Send via DocuSign
+                              </DropdownMenuItem>
+                            )}
                             {agreement.docusign_envelope_id && (
                               <DropdownMenuItem onClick={() => handleRefreshStatus(agreement.id)}>
                                 <RefreshCw className="h-4 w-4 mr-2" />
