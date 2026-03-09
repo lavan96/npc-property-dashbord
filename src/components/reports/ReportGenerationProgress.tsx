@@ -353,7 +353,7 @@ export function ReportGenerationProgress() {
   // Mobile: show compact bar at bottom
   if (isMobile) {
     return (
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border shadow-lg">
+      <div className="fixed bottom-[72px] left-0 right-0 z-50 bg-card border-t border-border shadow-lg rounded-t-xl">
         {/* Header bar - always visible */}
         <div 
           className="flex items-center justify-between px-3 py-2 bg-muted/50 cursor-pointer"
