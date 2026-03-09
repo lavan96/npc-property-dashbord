@@ -70,6 +70,10 @@ import PortalEmployment from "./pages/portal/PortalEmployment";
 import PortalEmails from "./pages/portal/PortalEmails";
 import PortalDocuments from "./pages/portal/PortalDocuments";
 import PortalAcceptInvite from "./pages/portal/PortalAcceptInvite";
+import PortalNotifications from "./pages/portal/PortalNotifications";
+import PortalDealProgress from "./pages/portal/PortalDealProgress";
+import PortalMessages from "./pages/portal/PortalMessages";
+import PortalPropertyInsights from "./pages/portal/PortalPropertyInsights";
 
 const queryClient = new QueryClient();
 
@@ -147,6 +151,10 @@ const App = () => (
                           <Route path="employment" element={<PortalEmployment />} />
                           <Route path="emails" element={<PortalEmails />} />
                           <Route path="documents" element={<PortalDocuments />} />
+                          <Route path="notifications" element={<PortalNotifications />} />
+                          <Route path="deal-progress" element={<PortalDealProgress />} />
+                          <Route path="messages" element={<PortalMessages />} />
+                          <Route path="property-insights" element={<PortalPropertyInsights />} />
                         </Route>
 
                         {/* Internal Dashboard Routes */}

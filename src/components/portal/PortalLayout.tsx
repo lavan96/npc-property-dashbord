@@ -8,7 +8,8 @@ import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   Building2, User, Home as HomeIcon, Briefcase, Mail,
-  FileText, LogOut, Menu, X, Shield
+  FileText, LogOut, Menu, X, Shield, Bell, TrendingUp,
+  MessageSquare, BarChart3
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -16,10 +17,14 @@ import { cn } from '@/lib/utils';
 const portalNavItems = [
   { to: '/client', icon: HomeIcon, label: 'Dashboard', end: true },
   { to: '/client/profile', icon: User, label: 'My Profile' },
+  { to: '/client/deal-progress', icon: TrendingUp, label: 'Deal Progress' },
   { to: '/client/properties', icon: Building2, label: 'Properties' },
-  { to: '/client/employment', icon: Briefcase, label: 'Employment & Finances' },
-  { to: '/client/emails', icon: Mail, label: 'Correspondence' },
+  { to: '/client/property-insights', icon: BarChart3, label: 'Property Insights' },
+  { to: '/client/employment', icon: Briefcase, label: 'Finances' },
   { to: '/client/documents', icon: FileText, label: 'Documents' },
+  { to: '/client/emails', icon: Mail, label: 'Correspondence' },
+  { to: '/client/messages', icon: MessageSquare, label: 'Messages' },
+  { to: '/client/notifications', icon: Bell, label: 'Notifications' },
 ];
 
 function getInitials(name?: string): string {
