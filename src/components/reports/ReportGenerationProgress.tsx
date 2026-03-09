@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
