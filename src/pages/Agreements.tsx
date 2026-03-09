@@ -20,6 +20,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
+import GammaTemplateManager from '@/components/agreements/GammaTemplateManager';
 
 const STATUS_CONFIG: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: React.ComponentType<any> }> = {
   draft: { label: 'Draft', variant: 'secondary', icon: Clock },
@@ -35,7 +36,7 @@ const STATUS_CONFIG: Record<string, { label: string; variant: 'default' | 'secon
 
 export default function Agreements() {
   const { data: agreements = [], isLoading } = useAgencyAgreements();
-  const { checkStatus, voidAgreement } = useAgreementMutations();
+  const { checkStatus, voidAgreement, sendViaDocuSign } = useAgreementMutations();
   const [searchTerm, setSearchTerm] = useState('');
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewTitle, setPreviewTitle] = useState('');
@@ -139,6 +140,15 @@ export default function Agreements() {
 
   const handleViewClient = (clientId: string) => {
     navigate(`/clients?clientId=${clientId}`);
+  };
+
+  const handleSendViaDocuSign = async (agreement: AgencyAgreement) => {
+    if (!confirm(`Send agreement for ${agreement.buyer_names} via DocuSign?`)) return;
+    try {
+      await sendViaDocuSign.mutateAsync(agreement.id);
+    } catch {
+      // handled by mutation
+    }
   };
 
   const renderStatusBadge = (status: string) => {
@@ -285,6 +295,12 @@ export default function Agreements() {
                               <Eye className="h-4 w-4 mr-2" />
                               View Client
                             </DropdownMenuItem>
+                            {agreement.status === 'generated' && (
+                              <DropdownMenuItem onClick={() => handleSendViaDocuSign(agreement)}>
+                                <Send className="h-4 w-4 mr-2" />
+                                Send via DocuSign
+                              </DropdownMenuItem>
+                            )}
                             {agreement.docusign_envelope_id && (
                               <DropdownMenuItem onClick={() => handleRefreshStatus(agreement.id)}>
                                 <RefreshCw className="h-4 w-4 mr-2" />
@@ -311,6 +327,9 @@ export default function Agreements() {
           )}
         </CardContent>
       </Card>
+
+      {/* Gamma Template Manager */}
+      <GammaTemplateManager />
 
       {/* Agreement Preview Dialog */}
       <Dialog open={!!previewHtml || isPreviewLoading} onOpenChange={(open) => { if (!open) { setPreviewHtml(null); setPreviewTitle(''); } }}>

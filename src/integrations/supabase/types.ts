@@ -126,6 +126,7 @@ export type Database = {
           sent_via: string | null
           signed_pdf_storage_path: string | null
           status: string
+          template_id: string | null
           updated_at: string
         }
         Insert: {
@@ -153,6 +154,7 @@ export type Database = {
           sent_via?: string | null
           signed_pdf_storage_path?: string | null
           status?: string
+          template_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -180,6 +182,7 @@ export type Database = {
           sent_via?: string | null
           signed_pdf_storage_path?: string | null
           status?: string
+          template_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -195,6 +198,13 @@ export type Database = {
             columns: ["deal_id"]
             isOneToOne: false
             referencedRelation: "client_deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agency_agreements_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "gamma_agreement_templates"
             referencedColumns: ["id"]
           },
         ]
@@ -4148,6 +4158,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      gamma_agreement_templates: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          gamma_template_id: string
+          id: string
+          is_active: boolean | null
+          is_default: boolean | null
+          name: string
+          placeholder_mappings: Json
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          gamma_template_id: string
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          name: string
+          placeholder_mappings?: Json
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          gamma_template_id?: string
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          name?: string
+          placeholder_mappings?: Json
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       generated_reports: {
         Row: {
