@@ -350,56 +350,7 @@ export function ReportGenerationProgress() {
 
   if (reports.length === 0) return null;
 
-  // Mobile: show compact bar at bottom
-  if (isMobile) {
-    return (
-      <div className="fixed bottom-[72px] left-0 right-0 z-50 bg-card border-t border-border shadow-lg rounded-t-xl">
-        {/* Header bar - always visible */}
-        <div 
-          className="flex items-center justify-between px-3 py-2 bg-muted/50 cursor-pointer"
-          onClick={() => setIsExpanded(!isExpanded)}
-        >
-          <div className="flex items-center gap-2">
-            <Loader2 className="h-4 w-4 animate-spin text-primary" />
-            <span className="text-sm font-medium text-foreground">
-              Reports ({reports.length})
-            </span>
-            {autoContinueSettings.enabled && (
-              <Zap className="h-3.5 w-3.5 text-warning" />
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {/* Quick progress summary */}
-            <span className="text-xs text-muted-foreground">
-              {reports[0]?.sectionsCompleted || 0}/{reports[0]?.totalSections || 12}
-            </span>
-            {isExpanded ? (
-              <ChevronDown className="h-4 w-4 text-muted-foreground" />
-            ) : (
-              <ChevronUp className="h-4 w-4 text-muted-foreground" />
-            )}
-          </div>
-        </div>
-        
-        {/* Expandable list */}
-        {isExpanded && (
-          <div className="max-h-64 overflow-y-auto">
-            {reports.map((report) => (
-              <ReportProgressItem
-                key={report.id}
-                report={report}
-                retryState={retryStateRef.current[report.id]}
-                autoContinueSettings={autoContinueSettings}
-                onContinue={() => handleManualContinue(report.id)}
-                onDismiss={() => dismissReport(report.id)}
-                isMobile={true}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  }
+  // Removed separate mobile layout — unified with desktop floating card below
 
   // Desktop: floating card in corner
   return (
