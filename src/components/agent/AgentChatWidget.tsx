@@ -391,7 +391,7 @@ export function AgentChatWidget() {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all hover:scale-105 group"
+        className="fixed bottom-4 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all hover:scale-105 group sm:bottom-6 sm:right-6"
         aria-label="Open AI Assistant"
       >
         <Diamond className="h-6 w-6 text-black group-hover:animate-pulse" />
@@ -405,7 +405,7 @@ export function AgentChatWidget() {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col rounded-2xl border border-border/50 bg-background shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-300
+    <div className="fixed bottom-4 right-4 z-[60] flex flex-col rounded-2xl border border-border/50 bg-background shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-300
       w-[calc(100vw-2rem)] max-w-[440px] h-[min(85vh,640px)]
       sm:bottom-6 sm:right-6">
       {/* Header */}
