@@ -56,6 +56,7 @@ export function useAgreementMutations() {
       secondaryBuyerName?: string;
       dealId?: string;
       notes?: string;
+      initialCommitmentFee?: string;
     }) => {
       const { data, error } = await invokeSecureFunction('manage-agency-agreements', {
         action: 'generate',
@@ -68,6 +69,7 @@ export function useAgreementMutations() {
         secondary_buyer_name: params.secondaryBuyerName,
         deal_id: params.dealId,
         notes: params.notes,
+        initial_commitment_fee: params.initialCommitmentFee,
       });
       if (error) throw new Error(error.message);
       return data;

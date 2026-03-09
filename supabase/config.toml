@@ -393,3 +393,7 @@ verify_jwt = true
 [functions.ai-dashboard-agent]
 verify_jwt = false
 request_timeout = 60
+
+[functions.gamma-agreement-generator]
+verify_jwt = false
+request_timeout = 120

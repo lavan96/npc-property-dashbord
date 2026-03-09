@@ -116,7 +116,10 @@ export type Database = {
           docusign_signed_at: string | null
           docusign_status: string | null
           docusign_voided_at: string | null
+          gamma_document_id: string | null
+          gamma_document_url: string | null
           id: string
+          initial_commitment_fee: number | null
           notes: string | null
           pdf_storage_path: string | null
           secondary_buyer_name: string | null
@@ -140,7 +143,10 @@ export type Database = {
           docusign_signed_at?: string | null
           docusign_status?: string | null
           docusign_voided_at?: string | null
+          gamma_document_id?: string | null
+          gamma_document_url?: string | null
           id?: string
+          initial_commitment_fee?: number | null
           notes?: string | null
           pdf_storage_path?: string | null
           secondary_buyer_name?: string | null
@@ -164,7 +170,10 @@ export type Database = {
           docusign_signed_at?: string | null
           docusign_status?: string | null
           docusign_voided_at?: string | null
+          gamma_document_id?: string | null
+          gamma_document_url?: string | null
           id?: string
+          initial_commitment_fee?: number | null
           notes?: string | null
           pdf_storage_path?: string | null
           secondary_buyer_name?: string | null

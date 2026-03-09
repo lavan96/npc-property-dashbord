@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { FileSignature, Send, Loader2, User, MapPin, Phone, Mail, Calendar, UserPlus, CheckCircle2 } from 'lucide-react';
+import { FileSignature, Send, Loader2, User, MapPin, Phone, Mail, Calendar, UserPlus, CheckCircle2, DollarSign } from 'lucide-react';
 import { useAgreementMutations } from '@/hooks/useAgencyAgreements';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { format } from 'date-fns';
@@ -38,6 +38,7 @@ export function SendAgreementDialog({ open, onOpenChange, client, dealId }: Send
   const [buyerEmail, setBuyerEmail] = useState('');
   const [agreementDate, setAgreementDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [secondaryBuyerName, setSecondaryBuyerName] = useState('');
+  const [commitmentFee, setCommitmentFee] = useState('$1,500.00 + GST');
   const [notes, setNotes] = useState('');
   const [step, setStep] = useState<'fill' | 'confirm' | 'sent'>('fill');
   const [generatedId, setGeneratedId] = useState<string | null>(null);
@@ -55,6 +56,7 @@ export function SendAgreementDialog({ open, onOpenChange, client, dealId }: Send
           ? `${client.secondary_first_name} ${client.secondary_surname}`
           : ''
       );
+      setCommitmentFee('$1,500.00 + GST');
       setNotes('');
       setStep('fill');
       setGeneratedId(null);
@@ -73,6 +75,7 @@ export function SendAgreementDialog({ open, onOpenChange, client, dealId }: Send
         secondaryBuyerName: secondaryBuyerName || undefined,
         dealId,
         notes: notes || undefined,
+        initialCommitmentFee: commitmentFee || undefined,
       });
 
       setGeneratedId(result?.agreement_id);
@@ -212,6 +215,20 @@ export function SendAgreementDialog({ open, onOpenChange, client, dealId }: Send
                 value={secondaryBuyerName}
                 onChange={(e) => setSecondaryBuyerName(e.target.value)}
                 placeholder="Joint applicant name"
+              />
+            </div>
+
+            {/* Initial Commitment Fee */}
+            <div className="space-y-1.5">
+              <Label htmlFor="commitment-fee" className="flex items-center gap-1.5">
+                <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
+                Initial Commitment Fee
+              </Label>
+              <Input
+                id="commitment-fee"
+                value={commitmentFee}
+                onChange={(e) => setCommitmentFee(e.target.value)}
+                placeholder="$1,500.00 + GST"
               />
             </div>
 
