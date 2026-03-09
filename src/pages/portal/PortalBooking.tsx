@@ -1,0 +1,393 @@
+import { useState, useEffect, useMemo } from 'react';
+import { usePortalAuth } from '@/hooks/usePortalAuth';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
+import { Calendar } from '@/components/ui/calendar';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
+import {
+  CalendarDays, Clock, CheckCircle2, Loader2, ArrowRight,
+  ArrowLeft, CalendarCheck, Sparkles
+} from 'lucide-react';
+import { format, addDays, isBefore, startOfDay, isToday } from 'date-fns';
+import { toast } from 'sonner';
+
+const SUPABASE_URL = "https://dduzbchuswwbefdunfct.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkdXpiY2h1c3d3YmVmZHVuZmN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0NDM4NzksImV4cCI6MjA3MTAxOTg3OX0.eSYU6fxIc3tBQuGLsdBRff0alBMkNfvv7OpW0efNjxk";
+const PORTAL_SESSION_KEY = 'portal_session_token';
+
+function getSessionToken(): string | null {
+  try { return sessionStorage.getItem(PORTAL_SESSION_KEY) || localStorage.getItem(PORTAL_SESSION_KEY); }
+  catch { try { return localStorage.getItem(PORTAL_SESSION_KEY); } catch { return null; } }
+}
+
+async function invokePortalBooking(body: Record<string, any>) {
+  const sessionToken = getSessionToken();
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/portal-book-appointment`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      ...(sessionToken ? { 'x-portal-session-token': sessionToken } : {}),
+    },
+    credentials: 'omit',
+    body: JSON.stringify({ ...body, portal_session_token: sessionToken, session_token: sessionToken }),
+  });
+  const data = await response.json();
+  if (!response.ok || !data.success) throw new Error(data.error || `HTTP ${response.status}`);
+  return data;
+}
+
+interface TimeSlot {
+  start: string;
+  end: string;
+}
+
+type BookingStep = 'date' | 'time' | 'confirm' | 'success';
+
+export default function PortalBooking() {
+  const { user } = usePortalAuth();
+  const [step, setStep] = useState<BookingStep>('date');
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>();
+  const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
+  const [notes, setNotes] = useState('');
+
+  // Fetch portal config
+  const { data: configData } = useQuery({
+    queryKey: ['portal-booking-config'],
+    queryFn: () => invokePortalBooking({ action: 'getConfig' }),
+    staleTime: 60000,
+  });
+
+  const config = configData?.config;
+  const calendarId = config?.booking_calendar_id;
+  const leadTimeHours = config?.booking_lead_time_hours || 24;
+  const maxAdvanceDays = config?.booking_max_advance_days || 30;
+  const introText = config?.booking_intro_text || 'Schedule a consultation with our team.';
+
+  const minDate = useMemo(() => {
+    const d = new Date();
+    d.setHours(d.getHours() + leadTimeHours);
+    return startOfDay(d);
+  }, [leadTimeHours]);
+
+  const maxDate = useMemo(() => addDays(new Date(), maxAdvanceDays), [maxAdvanceDays]);
+
+  // Fetch free slots for selected date
+  const { data: slotsData, isLoading: slotsLoading } = useQuery({
+    queryKey: ['portal-free-slots', calendarId, selectedDate?.toISOString()],
+    queryFn: () => {
+      if (!calendarId || !selectedDate) return null;
+      const dateStr = format(selectedDate, 'yyyy-MM-dd');
+      return invokePortalBooking({
+        action: 'freeSlots',
+        calendarId,
+        startDate: dateStr,
+        endDate: dateStr,
+        timezone: 'Australia/Sydney',
+      });
+    },
+    enabled: !!calendarId && !!selectedDate,
+    staleTime: 30000,
+  });
+
+  // Parse free slots from GHL response
+  const freeSlots: TimeSlot[] = useMemo(() => {
+    if (!slotsData?.slots) return [];
+    const slotsObj = slotsData.slots;
+    // GHL returns { [date]: [{ startTime, endTime }] }
+    const allSlots: TimeSlot[] = [];
+    if (typeof slotsObj === 'object') {
+      for (const dateKey of Object.keys(slotsObj)) {
+        const daySlots = slotsObj[dateKey];
+        if (Array.isArray(daySlots)) {
+          for (const slot of daySlots) {
+            allSlots.push({ start: slot.startTime || slot.start, end: slot.endTime || slot.end });
+          }
+        }
+      }
+    }
+    // Filter out slots that are in the past (lead time)
+    const now = new Date();
+    now.setHours(now.getHours() + Math.max(1, leadTimeHours));
+    return allSlots.filter(s => new Date(s.start) >= now);
+  }, [slotsData, leadTimeHours]);
+
+  // Book mutation
+  const bookMutation = useMutation({
+    mutationFn: () => {
+      if (!calendarId || !selectedSlot) throw new Error('No slot selected');
+      return invokePortalBooking({
+        action: 'book',
+        calendarId,
+        startTime: selectedSlot.start,
+        endTime: selectedSlot.end,
+        notes,
+      });
+    },
+    onSuccess: () => {
+      setStep('success');
+      toast.success('Appointment booked successfully!');
+    },
+    onError: (err: any) => {
+      toast.error(err.message || 'Failed to book appointment');
+    },
+  });
+
+  const handleDateSelect = (date: Date | undefined) => {
+    setSelectedDate(date);
+    setSelectedSlot(null);
+    if (date) setStep('time');
+  };
+
+  const handleSlotSelect = (slot: TimeSlot) => {
+    setSelectedSlot(slot);
+    setStep('confirm');
+  };
+
+  const handleConfirm = () => {
+    bookMutation.mutate();
+  };
+
+  const handleReset = () => {
+    setStep('date');
+    setSelectedDate(undefined);
+    setSelectedSlot(null);
+    setNotes('');
+  };
+
+  if (!calendarId) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Book Appointment</h2>
+          <p className="text-muted-foreground mt-1">Schedule a consultation with our team</p>
+        </div>
+        <Card>
+          <CardContent className="py-12 text-center">
+            <CalendarDays className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <p className="text-muted-foreground">Appointment booking is not currently available.</p>
+            <p className="text-sm text-muted-foreground mt-1">Please contact your advisor directly to schedule a meeting.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight">Book Appointment</h2>
+        <p className="text-muted-foreground mt-1">{introText}</p>
+      </div>
+
+      {/* Progress Steps */}
+      <div className="flex items-center gap-2">
+        {(['date', 'time', 'confirm'] as const).map((s, i) => (
+          <div key={s} className="flex items-center gap-2">
+            <div className={cn(
+              'flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold transition-colors',
+              step === s ? 'bg-primary text-primary-foreground' :
+              (step === 'success' || (['time', 'confirm'].indexOf(step) > i - 1 && step !== 'date') || 
+               (step === 'confirm' && i < 2) || (step === 'time' && i === 0))
+                ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'
+            )}>
+              {i + 1}
+            </div>
+            <span className={cn('text-sm hidden sm:inline', step === s ? 'font-medium text-foreground' : 'text-muted-foreground')}>
+              {s === 'date' ? 'Select Date' : s === 'time' ? 'Choose Time' : 'Confirm'}
+            </span>
+            {i < 2 && <ArrowRight className="h-4 w-4 text-muted-foreground" />}
+          </div>
+        ))}
+      </div>
+
+      {/* Success State */}
+      {step === 'success' && selectedSlot && (
+        <Card className="border-green-500/30 bg-green-500/5">
+          <CardContent className="py-10 text-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center mx-auto">
+              <CheckCircle2 className="h-8 w-8 text-green-500" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-foreground">Booking Confirmed!</h3>
+              <p className="text-muted-foreground mt-1">Your appointment has been scheduled successfully.</p>
+            </div>
+            <div className="inline-flex items-center gap-3 bg-card border border-border rounded-xl px-6 py-4">
+              <CalendarCheck className="h-5 w-5 text-primary" />
+              <div className="text-left">
+                <p className="font-semibold text-foreground">
+                  {format(new Date(selectedSlot.start), 'EEEE, d MMMM yyyy')}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {format(new Date(selectedSlot.start), 'h:mm a')} – {format(new Date(selectedSlot.end), 'h:mm a')} (AEST)
+                </p>
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground">A confirmation email has been sent to your registered email address.</p>
+            <Button onClick={handleReset} variant="outline" className="mt-4">
+              Book Another Appointment
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Date Selection */}
+      {step === 'date' && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <CalendarDays className="h-5 w-5 text-primary" />
+              Select a Date
+            </CardTitle>
+            <CardDescription>Choose your preferred date for the consultation</CardDescription>
+          </CardHeader>
+          <CardContent className="flex justify-center">
+            <Calendar
+              mode="single"
+              selected={selectedDate}
+              onSelect={handleDateSelect}
+              disabled={(date) => isBefore(date, minDate) || date > maxDate || date.getDay() === 0 || date.getDay() === 6}
+              className="rounded-xl border"
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Time Selection */}
+      {step === 'time' && selectedDate && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Clock className="h-5 w-5 text-primary" />
+                  Available Times
+                </CardTitle>
+                <CardDescription>
+                  {format(selectedDate, 'EEEE, d MMMM yyyy')}
+                </CardDescription>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setStep('date')}>
+                <ArrowLeft className="h-4 w-4 mr-1" /> Change Date
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {slotsLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                <span className="ml-2 text-muted-foreground">Loading available slots...</span>
+              </div>
+            ) : freeSlots.length === 0 ? (
+              <div className="text-center py-12">
+                <Clock className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                <p className="text-muted-foreground">No available time slots for this date.</p>
+                <Button variant="outline" className="mt-4" onClick={() => setStep('date')}>
+                  Choose Another Date
+                </Button>
+              </div>
+            ) : (
+              <ScrollArea className="max-h-[400px]">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {freeSlots.map((slot, i) => (
+                    <Button
+                      key={i}
+                      variant="outline"
+                      className={cn(
+                        'h-auto py-3 px-4 flex flex-col items-center gap-1 transition-all',
+                        selectedSlot?.start === slot.start
+                          ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
+                          : 'hover:border-primary/50 hover:bg-primary/5'
+                      )}
+                      onClick={() => handleSlotSelect(slot)}
+                    >
+                      <span className="font-semibold text-sm">
+                        {format(new Date(slot.start), 'h:mm a')}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {format(new Date(slot.end), 'h:mm a')}
+                      </span>
+                    </Button>
+                  ))}
+                </div>
+              </ScrollArea>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Confirmation */}
+      {step === 'confirm' && selectedSlot && selectedDate && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Sparkles className="h-5 w-5 text-primary" />
+                Confirm Booking
+              </CardTitle>
+              <Button variant="ghost" size="sm" onClick={() => setStep('time')}>
+                <ArrowLeft className="h-4 w-4 mr-1" /> Change Time
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Booking Summary */}
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-5 space-y-3">
+              <div className="flex items-center gap-3">
+                <CalendarCheck className="h-5 w-5 text-primary" />
+                <div>
+                  <p className="font-semibold text-foreground">
+                    {format(selectedDate, 'EEEE, d MMMM yyyy')}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {format(new Date(selectedSlot.start), 'h:mm a')} – {format(new Date(selectedSlot.end), 'h:mm a')} (AEST)
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Notes */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Notes (optional)</label>
+              <Textarea
+                placeholder="Any topics you'd like to discuss or questions you have..."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={3}
+                className="resize-none"
+              />
+            </div>
+
+            {/* Action */}
+            <Button
+              onClick={handleConfirm}
+              disabled={bookMutation.isPending}
+              className="w-full h-12 text-base font-semibold"
+              size="lg"
+            >
+              {bookMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Booking...
+                </>
+              ) : (
+                <>
+                  <CalendarCheck className="h-4 w-4 mr-2" />
+                  Confirm Booking
+                </>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
