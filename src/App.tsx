@@ -74,6 +74,8 @@ import PortalNotifications from "./pages/portal/PortalNotifications";
 import PortalDealProgress from "./pages/portal/PortalDealProgress";
 import PortalMessages from "./pages/portal/PortalMessages";
 import PortalPropertyInsights from "./pages/portal/PortalPropertyInsights";
+import PortalBooking from "./pages/portal/PortalBooking";
+import PortalConfig from "./pages/PortalConfig";
 
 const queryClient = new QueryClient();
 
@@ -155,6 +157,7 @@ const App = () => (
                           <Route path="deal-progress" element={<PortalDealProgress />} />
                           <Route path="messages" element={<PortalMessages />} />
                           <Route path="property-insights" element={<PortalPropertyInsights />} />
+                          <Route path="booking" element={<PortalBooking />} />
                         </Route>
 
                         {/* Internal Dashboard Routes */}
@@ -208,6 +211,7 @@ const App = () => (
                            <Route path="reminders" element={<RemindersHub />} />
                            <Route path="checklists" element={<Checklists />} />
                            <Route path="agreements" element={<Agreements />} />
+                           <Route path="portal-config" element={<PortalConfig />} />
                         </Route>
                         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                         <Route path="*" element={<NotFound />} />

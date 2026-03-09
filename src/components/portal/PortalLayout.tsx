@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   Building2, User, Home as HomeIcon, Briefcase, Mail,
   FileText, LogOut, Menu, X, Shield, Bell, TrendingUp,
-  MessageSquare, BarChart3
+  MessageSquare, BarChart3, CalendarDays
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -25,6 +25,7 @@ const portalNavItems = [
   { to: '/client/emails', icon: Mail, label: 'Correspondence' },
   { to: '/client/messages', icon: MessageSquare, label: 'Messages' },
   { to: '/client/notifications', icon: Bell, label: 'Notifications' },
+  { to: '/client/booking', icon: CalendarDays, label: 'Book Appointment' },
 ];
 
 function getInitials(name?: string): string {

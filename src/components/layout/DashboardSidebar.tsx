@@ -30,6 +30,7 @@ import {
   Bell,
   ClipboardList,
   FileSignature,
+  Globe,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -82,6 +83,7 @@ const adminItems = [
   { title: 'Activity Logs', url: '/admin/activity-logs', icon: History, moduleKey: 'activity_logs' },
   { title: 'Settings', url: '/settings', icon: Settings, moduleKey: 'settings' },
   { title: 'User Management', url: '/admin/users', icon: Users, moduleKey: 'user_management' },
+  { title: 'Portal Config', url: '/portal-config', icon: Globe, moduleKey: 'portal_config' },
 ];
 
 export function DashboardSidebar() {
