@@ -7,23 +7,19 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { FileSignature, Search, RefreshCw, MoreHorizontal, Eye, XCircle, Download, Loader2, Send, CheckCircle2, Clock, AlertTriangle, Ban } from 'lucide-react';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog';
+import { FileSignature, Search, RefreshCw, MoreHorizontal, Eye, XCircle, Download, Loader2, Send, CheckCircle2, Clock, AlertTriangle, Ban, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 
 const STATUS_CONFIG: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: React.ComponentType<any> }> = {
   draft: { label: 'Draft', variant: 'secondary', icon: Clock },
@@ -41,6 +37,9 @@ export default function Agreements() {
   const { data: agreements = [], isLoading } = useAgencyAgreements();
   const { checkStatus, voidAgreement } = useAgreementMutations();
   const [searchTerm, setSearchTerm] = useState('');
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [previewTitle, setPreviewTitle] = useState('');
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const navigate = useNavigate();
 
   const filteredAgreements = agreements.filter((a) =>
@@ -49,10 +48,54 @@ export default function Agreements() {
     a.status.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Stats
   const totalSent = agreements.filter(a => ['sent', 'delivered', 'viewed', 'signed'].includes(a.status)).length;
   const totalSigned = agreements.filter(a => a.status === 'signed').length;
   const pending = agreements.filter(a => ['sent', 'delivered', 'viewed'].includes(a.status)).length;
+
+  const fetchAgreementHtml = async (agreementId: string): Promise<string | null> => {
+    const { data, error } = await invokeSecureFunction<{ html: string }>('manage-agency-agreements', {
+      action: 'preview',
+      agreement_id: agreementId,
+    });
+    if (error || !data?.html) {
+      toast.error('Failed to load agreement: ' + (error?.message || 'Unknown error'));
+      return null;
+    }
+    return data.html;
+  };
+
+  const handleViewAgreement = async (agreement: AgencyAgreement) => {
+    setIsPreviewLoading(true);
+    setPreviewTitle(`Agreement — ${agreement.buyer_names}`);
+    setPreviewHtml(null);
+    const html = await fetchAgreementHtml(agreement.id);
+    if (html) {
+      setPreviewHtml(html);
+    } else {
+      setPreviewTitle('');
+    }
+    setIsPreviewLoading(false);
+  };
+
+  const handleDownloadAgreement = async (agreement: AgencyAgreement) => {
+    toast.loading('Preparing download...', { id: 'download-agreement' });
+    const html = await fetchAgreementHtml(agreement.id);
+    if (!html) {
+      toast.dismiss('download-agreement');
+      return;
+    }
+    // Download as HTML file
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Agreement_${agreement.buyer_names.replace(/\s+/g, '_')}_${format(new Date(agreement.agreement_date), 'yyyy-MM-dd')}.html`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success('Agreement downloaded', { id: 'download-agreement' });
+  };
 
   const handleRefreshStatus = async (id: string) => {
     try {
@@ -205,6 +248,14 @@ export default function Agreements() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleViewAgreement(agreement)}>
+                              <FileText className="h-4 w-4 mr-2" />
+                              View Agreement
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDownloadAgreement(agreement)}>
+                              <Download className="h-4 w-4 mr-2" />
+                              Download Agreement
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleViewClient(agreement.client_id)}>
                               <Eye className="h-4 w-4 mr-2" />
                               View Client
@@ -235,6 +286,29 @@ export default function Agreements() {
           )}
         </CardContent>
       </Card>
+
+      {/* Agreement Preview Dialog */}
+      <Dialog open={!!previewHtml || isPreviewLoading} onOpenChange={(open) => { if (!open) { setPreviewHtml(null); setPreviewTitle(''); } }}>
+        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>{previewTitle}</DialogTitle>
+          </DialogHeader>
+          {isPreviewLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : previewHtml ? (
+            <div className="flex-1 overflow-auto border rounded-md">
+              <iframe
+                srcDoc={previewHtml}
+                className="w-full min-h-[70vh] border-0"
+                title="Agreement Preview"
+                sandbox="allow-same-origin"
+              />
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
