@@ -177,6 +177,28 @@ serve(async (req) => {
       result.borrowingCapacity = bc;
     }
 
+    // Fetch notifications
+    if (include.notifications) {
+      const { data: notifications } = await supabase
+        .from('client_portal_notifications')
+        .select('*')
+        .eq('client_id', clientId)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      result.notifications = notifications || [];
+    }
+
+    // Fetch messages
+    if (include.messages) {
+      const { data: messages } = await supabase
+        .from('client_portal_messages')
+        .select('*')
+        .eq('client_id', clientId)
+        .order('created_at', { ascending: true })
+        .limit(200);
+      result.messages = messages || [];
+    }
+
     console.log('[get-portal-client-data] Success. Keys returned:', Object.keys(result));
 
     return new Response(
