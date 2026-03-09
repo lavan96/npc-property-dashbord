@@ -4967,6 +4967,105 @@ export type Database = {
           },
         ]
       }
+      portal_configuration: {
+        Row: {
+          booking_calendar_id: string | null
+          booking_calendar_name: string | null
+          booking_confirmation_email: boolean | null
+          booking_intro_text: string | null
+          booking_lead_time_hours: number | null
+          booking_max_advance_days: number | null
+          booking_slot_duration: number | null
+          booking_team_notification_email: string | null
+          booking_working_hours_end: number | null
+          booking_working_hours_start: number | null
+          created_at: string | null
+          default_access_level: string | null
+          id: string
+          module_booking: boolean | null
+          module_dashboard: boolean | null
+          module_deal_progress: boolean | null
+          module_documents: boolean | null
+          module_emails: boolean | null
+          module_employment: boolean | null
+          module_messages: boolean | null
+          module_notifications: boolean | null
+          module_profile: boolean | null
+          module_properties: boolean | null
+          module_property_insights: boolean | null
+          portal_accent_color: string | null
+          portal_footer_text: string | null
+          updated_at: string | null
+          welcome_banner_url: string | null
+          welcome_message: string | null
+          welcome_title: string | null
+        }
+        Insert: {
+          booking_calendar_id?: string | null
+          booking_calendar_name?: string | null
+          booking_confirmation_email?: boolean | null
+          booking_intro_text?: string | null
+          booking_lead_time_hours?: number | null
+          booking_max_advance_days?: number | null
+          booking_slot_duration?: number | null
+          booking_team_notification_email?: string | null
+          booking_working_hours_end?: number | null
+          booking_working_hours_start?: number | null
+          created_at?: string | null
+          default_access_level?: string | null
+          id?: string
+          module_booking?: boolean | null
+          module_dashboard?: boolean | null
+          module_deal_progress?: boolean | null
+          module_documents?: boolean | null
+          module_emails?: boolean | null
+          module_employment?: boolean | null
+          module_messages?: boolean | null
+          module_notifications?: boolean | null
+          module_profile?: boolean | null
+          module_properties?: boolean | null
+          module_property_insights?: boolean | null
+          portal_accent_color?: string | null
+          portal_footer_text?: string | null
+          updated_at?: string | null
+          welcome_banner_url?: string | null
+          welcome_message?: string | null
+          welcome_title?: string | null
+        }
+        Update: {
+          booking_calendar_id?: string | null
+          booking_calendar_name?: string | null
+          booking_confirmation_email?: boolean | null
+          booking_intro_text?: string | null
+          booking_lead_time_hours?: number | null
+          booking_max_advance_days?: number | null
+          booking_slot_duration?: number | null
+          booking_team_notification_email?: string | null
+          booking_working_hours_end?: number | null
+          booking_working_hours_start?: number | null
+          created_at?: string | null
+          default_access_level?: string | null
+          id?: string
+          module_booking?: boolean | null
+          module_dashboard?: boolean | null
+          module_deal_progress?: boolean | null
+          module_documents?: boolean | null
+          module_emails?: boolean | null
+          module_employment?: boolean | null
+          module_messages?: boolean | null
+          module_notifications?: boolean | null
+          module_profile?: boolean | null
+          module_properties?: boolean | null
+          module_property_insights?: boolean | null
+          portal_accent_color?: string | null
+          portal_footer_text?: string | null
+          updated_at?: string | null
+          welcome_banner_url?: string | null
+          welcome_message?: string | null
+          welcome_title?: string | null
+        }
+        Relationships: []
+      }
       portfolio_analysis_reports: {
         Row: {
           average_lvr: number | null
