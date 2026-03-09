@@ -1,4 +1,4 @@
-// App configuration - updated Jan 21, 2026
+// App configuration - updated Mar 9, 2026
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -58,6 +58,12 @@ import RemindersHub from "./pages/RemindersHub";
 import Checklists from "./pages/Checklists";
 import Agreements from "./pages/Agreements";
 import NotFound from "./pages/NotFound";
+import { PortalAuthProvider } from "@/hooks/usePortalAuth";
+import { PortalProtectedRoute } from "@/components/portal/PortalProtectedRoute";
+import { PortalLayout } from "@/components/portal/PortalLayout";
+import PortalAuth from "./pages/portal/PortalAuth";
+import PortalDashboard from "./pages/portal/PortalDashboard";
+import PortalPlaceholder from "./pages/portal/PortalPlaceholder";
 
 const queryClient = new QueryClient();
 
@@ -95,6 +101,28 @@ const App = () => (
                       <Toaster />
                       <Sonner />
                       <Routes>
+                        {/* Client Portal Routes */}
+                        <Route path="/client/login" element={
+                          <PortalAuthProvider>
+                            <PortalAuth />
+                          </PortalAuthProvider>
+                        } />
+                        <Route path="/client" element={
+                          <PortalAuthProvider>
+                            <PortalProtectedRoute>
+                              <PortalLayout />
+                            </PortalProtectedRoute>
+                          </PortalAuthProvider>
+                        }>
+                          <Route index element={<PortalDashboard />} />
+                          <Route path="profile" element={<PortalPlaceholder title="My Profile" description="Your personal profile and contact details will appear here. This feature is being built in Phase 3." />} />
+                          <Route path="properties" element={<PortalPlaceholder title="Properties" description="Your property portfolio information will appear here. This feature is being built in Phase 3." />} />
+                          <Route path="employment" element={<PortalPlaceholder title="Employment & Finances" description="Your employment and financial details will appear here. This feature is being built in Phase 3." />} />
+                          <Route path="emails" element={<PortalPlaceholder title="Correspondence" description="Your email correspondence history will appear here. This feature is being built in Phase 3." />} />
+                          <Route path="documents" element={<PortalPlaceholder title="Documents" description="Your uploaded documents and files will appear here. This feature is being built in Phase 3." />} />
+                        </Route>
+
+                        {/* Internal Dashboard Routes */}
                         <Route path="/auth" element={<Auth />} />
                         <Route path="/accept-invite" element={<AcceptInvite />} />
                         <Route path="/" element={
