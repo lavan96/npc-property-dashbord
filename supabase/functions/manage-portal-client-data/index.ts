@@ -17,6 +17,8 @@ const ALLOWED_TABLES = [
   'client_employment',
   'client_income_sources',
   'client_expenses',
+  'client_portal_messages',
+  'client_portal_notifications',
 ] as const;
 
 // Fields that portal users are NOT allowed to modify on the clients table
@@ -105,11 +107,45 @@ serve(async (req) => {
     }
 
     // Validate operation
-    if (!['update'].includes(operation)) {
-      // Portal users can only update existing records (not create/delete)
+    if (!['update', 'insert'].includes(operation)) {
       return new Response(
         JSON.stringify({ error: `Operation '${operation}' is not allowed for portal users`, success: false }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Insert operation (only for messages)
+    if (operation === 'insert') {
+      if (table !== 'client_portal_messages') {
+        return new Response(
+          JSON.stringify({ error: 'Insert only allowed for messages', success: false }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      const insertData = {
+        ...payload,
+        client_id: clientId,
+        portal_user_id: session.client_portal_users.id,
+        sender_type: 'client',
+        created_at: new Date().toISOString(),
+      };
+      delete insertData.id;
+
+      const { data: result, error } = await supabase
+        .from('client_portal_messages')
+        .insert(insertData)
+        .select()
+        .single();
+
+      if (error) {
+        return new Response(
+          JSON.stringify({ error: error.message, success: false }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      return new Response(
+        JSON.stringify({ success: true, data: result }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 

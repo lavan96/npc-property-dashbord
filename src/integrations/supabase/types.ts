@@ -2846,6 +2846,110 @@ export type Database = {
           },
         ]
       }
+      client_portal_messages: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          id: string
+          is_read: boolean | null
+          message: string
+          portal_user_id: string | null
+          read_at: string | null
+          sender_name: string | null
+          sender_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          message: string
+          portal_user_id?: string | null
+          read_at?: string | null
+          sender_name?: string | null
+          sender_type: string
+          updated_at?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          message?: string
+          portal_user_id?: string | null
+          read_at?: string | null
+          sender_name?: string | null
+          sender_type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_portal_messages_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_portal_messages_portal_user_id_fkey"
+            columns: ["portal_user_id"]
+            isOneToOne: false
+            referencedRelation: "client_portal_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_portal_notifications: {
+        Row: {
+          action_url: string | null
+          category: string | null
+          client_id: string
+          created_at: string | null
+          id: string
+          is_read: boolean | null
+          message: string | null
+          metadata: Json | null
+          read_at: string | null
+          title: string
+          type: string | null
+        }
+        Insert: {
+          action_url?: string | null
+          category?: string | null
+          client_id: string
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          message?: string | null
+          metadata?: Json | null
+          read_at?: string | null
+          title: string
+          type?: string | null
+        }
+        Update: {
+          action_url?: string | null
+          category?: string | null
+          client_id?: string
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          message?: string | null
+          metadata?: Json | null
+          read_at?: string | null
+          title?: string
+          type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_portal_notifications_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_portal_sessions: {
         Row: {
           created_at: string

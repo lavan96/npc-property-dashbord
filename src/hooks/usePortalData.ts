@@ -40,6 +40,8 @@ export interface PortalDataInclude {
   emails?: boolean;
   files?: boolean;
   borrowingCapacity?: boolean;
+  notifications?: boolean;
+  messages?: boolean;
 }
 
 /**
@@ -65,6 +67,40 @@ export function usePortalDashboardData() {
     properties: true,
     deals: true,
     borrowingCapacity: true,
+    notifications: true,
+  });
+}
+
+/**
+ * Fetch portal notifications
+ */
+export function usePortalNotificationsData() {
+  return usePortalClientData({
+    client: false,
+    properties: false,
+    notifications: true,
+  });
+}
+
+/**
+ * Fetch portal messages
+ */
+export function usePortalMessagesData() {
+  return usePortalClientData({
+    client: false,
+    properties: false,
+    messages: true,
+  });
+}
+
+/**
+ * Fetch portal deal progress data
+ */
+export function usePortalDealProgressData() {
+  return usePortalClientData({
+    client: false,
+    properties: false,
+    deals: true,
   });
 }
 
