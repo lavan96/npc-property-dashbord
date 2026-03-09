@@ -1,9 +1,10 @@
 // App configuration - updated Mar 9, 2026
+import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation, useNavigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { SearchProvider } from "@/contexts/SearchContext";
 import { NotificationsProvider } from "@/contexts/NotificationsContext";
@@ -87,6 +88,20 @@ const CalendarErrorFallback = () => (
     </div>
   </div>
 );
+
+const PathNormalizer = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const normalizedPath = location.pathname.replace(/\/{2,}/g, '/');
+    if (normalizedPath !== location.pathname) {
+      navigate(`${normalizedPath}${location.search}${location.hash}`, { replace: true });
+    }
+  }, [location.pathname, location.search, location.hash, navigate]);
+
+  return null;
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
