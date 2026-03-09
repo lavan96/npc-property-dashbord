@@ -92,28 +92,82 @@ serve(async (req) => {
     }
 
     // === SEND INVITE ===
-    if (!client_id) {
+    const inputEmail = typeof email === 'string' ? email.trim().toLowerCase() : ''
+
+    if (!client_id && !inputEmail) {
       return new Response(
-        JSON.stringify({ error: 'client_id is required' }),
+        JSON.stringify({ error: 'client_id or email is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // Get client details
-    const { data: clientData, error: clientError } = await supabase
-      .from('clients')
-      .select('id, primary_first_name, primary_surname, primary_email, status')
-      .eq('id', client_id)
-      .maybeSingle()
+    // Resolve client by id first, then fallback to primary email
+    let clientData: {
+      id: string
+      primary_first_name: string | null
+      primary_surname: string | null
+      primary_email: string | null
+      status: string | null
+    } | null = null
 
-    if (clientError || !clientData) {
+    if (client_id) {
+      const { data: clientById, error: clientByIdError } = await supabase
+        .from('clients')
+        .select('id, primary_first_name, primary_surname, primary_email, status')
+        .eq('id', client_id)
+        .maybeSingle()
+
+      if (clientByIdError) {
+        console.error('[client-portal-invite] Lookup by client_id failed:', {
+          client_id,
+          error: clientByIdError.message,
+        })
+      } else if (clientById) {
+        clientData = clientById
+      }
+    }
+
+    if (!clientData && inputEmail) {
+      const { data: clientsByEmail, error: clientByEmailError } = await supabase
+        .from('clients')
+        .select('id, primary_first_name, primary_surname, primary_email, status')
+        .eq('primary_email', inputEmail)
+        .limit(2)
+
+      if (clientByEmailError) {
+        console.error('[client-portal-invite] Lookup by email failed:', {
+          email: inputEmail,
+          error: clientByEmailError.message,
+        })
+        return new Response(
+          JSON.stringify({ error: 'Failed to find client by email' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      const emailMatches = clientsByEmail ?? []
+      if (emailMatches.length > 1) {
+        return new Response(
+          JSON.stringify({ error: 'Multiple clients found with that email. Please select from a specific client record.' }),
+          { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      if (emailMatches.length === 1) {
+        clientData = emailMatches[0]
+      }
+    }
+
+    if (!clientData) {
       return new Response(
-        JSON.stringify({ error: 'Client not found' }),
+        JSON.stringify({ error: 'Client not found for provided identifier' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    const clientEmail = email || clientData.primary_email
+    const resolvedClientId = clientData.id
+
+    const clientEmail = inputEmail || clientData.primary_email
     if (!clientEmail) {
       return new Response(
         JSON.stringify({ error: 'Client has no email address' }),
@@ -127,7 +181,7 @@ serve(async (req) => {
     const { data: existingUser } = await supabase
       .from('client_portal_users')
       .select('id, status, invite_expires_at')
-      .eq('client_id', client_id)
+      .eq('client_id', resolvedClientId)
       .maybeSingle()
 
     // Generate invite token (secure random)
@@ -159,7 +213,7 @@ serve(async (req) => {
         .from('client_portal_users')
         .insert({
           email: normalizedEmail,
-          client_id: client_id,
+          client_id: resolvedClientId,
           invite_token: inviteToken,
           invite_expires_at: expiresAt.toISOString(),
           status: 'invited',
