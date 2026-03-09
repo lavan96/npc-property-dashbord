@@ -355,8 +355,11 @@ export function ReportGenerationProgress() {
   // Desktop: floating card in corner
   return (
     <div className={cn(
-      "fixed bottom-20 right-4 z-50 transition-all duration-300 sm:bottom-24 sm:right-6",
-      isMinimized ? "w-12 h-12" : "w-80"
+      "fixed z-50 transition-all duration-300",
+      isMobile 
+        ? "bottom-[5.5rem] right-4" 
+        : "bottom-24 right-6",
+      isMinimized ? "w-12 h-12" : isMobile ? "w-72" : "w-80"
     )}>
       {isMinimized ? (
         <Button
