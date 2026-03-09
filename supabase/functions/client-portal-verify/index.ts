@@ -41,7 +41,7 @@ serve(async (req) => {
           client_id,
           email,
           status,
-          clients:client_id (id, first_name, last_name, primary_email)
+          clients:client_id (id, primary_first_name, primary_surname, primary_email)
         )
       `)
       .eq('session_token', sessionToken)
@@ -65,7 +65,7 @@ serve(async (req) => {
           id: portalUser.id,
           client_id: portalUser.client_id,
           email: portalUser.email,
-          name: clientData ? `${clientData.first_name || ''} ${clientData.last_name || ''}`.trim() : portalUser.email,
+          name: clientData ? `${clientData.primary_first_name || ''} ${clientData.primary_surname || ''}`.trim() : portalUser.email,
         },
         session_token: sessionToken,
       }),

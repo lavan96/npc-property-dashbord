@@ -30,7 +30,7 @@ serve(async (req) => {
     // Look up portal user
     const { data: portalUser } = await supabase
       .from('client_portal_users')
-      .select('id, email, status, clients:client_id (first_name)')
+      .select('id, email, status, clients:client_id (primary_first_name)')
       .eq('email', normalizedEmail)
       .maybeSingle()
 
@@ -59,7 +59,7 @@ serve(async (req) => {
 
     // Send email via Resend if configured
     if (resendApiKey) {
-      const clientName = (portalUser.clients as any)?.first_name || 'there';
+      const clientName = (portalUser.clients as any)?.primary_first_name || 'there';
       try {
         const emailRes = await fetch('https://api.resend.com/emails', {
           method: 'POST',
