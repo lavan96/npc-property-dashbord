@@ -414,3 +414,9 @@ verify_jwt = false
 
 [functions.client-portal-accept-invite]
 verify_jwt = false
+
+[functions.get-portal-client-data]
+verify_jwt = false
+
+[functions.manage-portal-client-data]
+verify_jwt = false

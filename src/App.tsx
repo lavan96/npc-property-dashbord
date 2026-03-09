@@ -63,7 +63,11 @@ import { PortalProtectedRoute } from "@/components/portal/PortalProtectedRoute";
 import { PortalLayout } from "@/components/portal/PortalLayout";
 import PortalAuth from "./pages/portal/PortalAuth";
 import PortalDashboard from "./pages/portal/PortalDashboard";
-import PortalPlaceholder from "./pages/portal/PortalPlaceholder";
+import PortalProfile from "./pages/portal/PortalProfile";
+import PortalProperties from "./pages/portal/PortalProperties";
+import PortalEmployment from "./pages/portal/PortalEmployment";
+import PortalEmails from "./pages/portal/PortalEmails";
+import PortalDocuments from "./pages/portal/PortalDocuments";
 import PortalAcceptInvite from "./pages/portal/PortalAcceptInvite";
 
 const queryClient = new QueryClient();
@@ -119,11 +123,11 @@ const App = () => (
                           </PortalAuthProvider>
                         }>
                           <Route index element={<PortalDashboard />} />
-                          <Route path="profile" element={<PortalPlaceholder title="My Profile" description="Your personal profile and contact details will appear here. This feature is being built in Phase 3." />} />
-                          <Route path="properties" element={<PortalPlaceholder title="Properties" description="Your property portfolio information will appear here. This feature is being built in Phase 3." />} />
-                          <Route path="employment" element={<PortalPlaceholder title="Employment & Finances" description="Your employment and financial details will appear here. This feature is being built in Phase 3." />} />
-                          <Route path="emails" element={<PortalPlaceholder title="Correspondence" description="Your email correspondence history will appear here. This feature is being built in Phase 3." />} />
-                          <Route path="documents" element={<PortalPlaceholder title="Documents" description="Your uploaded documents and files will appear here. This feature is being built in Phase 3." />} />
+                          <Route path="profile" element={<PortalProfile />} />
+                          <Route path="properties" element={<PortalProperties />} />
+                          <Route path="employment" element={<PortalEmployment />} />
+                          <Route path="emails" element={<PortalEmails />} />
+                          <Route path="documents" element={<PortalDocuments />} />
                         </Route>
 
                         {/* Internal Dashboard Routes */}
