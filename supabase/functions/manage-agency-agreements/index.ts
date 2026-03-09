@@ -212,6 +212,36 @@ serve(async (req) => {
       );
     }
 
+    // ─── PREVIEW AGREEMENT (return HTML) ──────────────────
+    if (action === 'preview') {
+      const { agreement_id } = body;
+      if (!agreement_id) {
+        return new Response(
+          JSON.stringify({ error: 'Missing agreement_id' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data: agreement, error: fetchErr } = await supabase
+        .from('agency_agreements')
+        .select('*')
+        .eq('id', agreement_id)
+        .single();
+
+      if (fetchErr || !agreement) {
+        return new Response(
+          JSON.stringify({ error: 'Agreement not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const html = generateAgreementHtml(agreement);
+      return new Response(
+        JSON.stringify({ success: true, html, agreement }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // ─── SEND VIA DOCUSIGN ─────────────────────────────────
     if (action === 'send_docusign') {
       const { agreement_id } = body;
