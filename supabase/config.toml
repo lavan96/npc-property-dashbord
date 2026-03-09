@@ -1,5 +1,8 @@
 project_id = "dduzbchuswwbefdunfct"
 
+[functions.portal-book-appointment]
+verify_jwt = false
+
 [functions.manage-agency-agreements]
 verify_jwt = false
 
