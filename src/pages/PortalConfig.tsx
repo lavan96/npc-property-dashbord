@@ -81,19 +81,13 @@ export default function PortalConfig() {
   const { data, isLoading } = useQuery({
     queryKey: ['portal-configuration'],
     queryFn: async () => {
-      const { data, error } = await invokeSecureFunction('get-client-data', {
-        table: 'portal_configuration',
+      const { data, error } = await invokeSecureFunction('manage-client-data', {
         operation: 'list',
+        table: 'portal_configuration',
       });
-      // Fallback: try direct fetch
-      if (error || !data) {
-        const resp = await invokeSecureFunction('manage-client-data', {
-          operation: 'list',
-          table: 'portal_configuration',
-        });
-        return resp.data?.data?.[0] || resp.data?.[0] || null;
-      }
-      return data?.data?.[0] || data?.[0] || null;
+      if (error) throw new Error(error.message);
+      const rows = data?.data || data || [];
+      return Array.isArray(rows) ? rows[0] : rows;
     },
   });
 
