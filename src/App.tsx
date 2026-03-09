@@ -64,6 +64,7 @@ import { PortalLayout } from "@/components/portal/PortalLayout";
 import PortalAuth from "./pages/portal/PortalAuth";
 import PortalDashboard from "./pages/portal/PortalDashboard";
 import PortalPlaceholder from "./pages/portal/PortalPlaceholder";
+import PortalAcceptInvite from "./pages/portal/PortalAcceptInvite";
 
 const queryClient = new QueryClient();
 
@@ -106,6 +107,9 @@ const App = () => (
                           <PortalAuthProvider>
                             <PortalAuth />
                           </PortalAuthProvider>
+                        } />
+                        <Route path="/client/accept-invite" element={
+                          <PortalAcceptInvite />
                         } />
                         <Route path="/client" element={
                           <PortalAuthProvider>

@@ -82,6 +82,7 @@ import { ReviewWizard } from './review-wizard';
 import { ClientEmailsTab } from './ClientEmailsTab';
 import { DealTrackerTab } from './deal-tracker';
 import { SendAgreementDialog } from '../agreements/SendAgreementDialog';
+import { SendPortalInviteDialog } from '../portal/SendPortalInviteDialog';
 import { toast } from 'sonner';
 interface ClientDetailsModalProps {
   client: {
@@ -110,6 +111,7 @@ export function ClientDetailsModal({ client, open, onOpenChange, initialTab, ini
   const [showReviewWizard, setShowReviewWizard] = useState(false);
   const [showBorrowingCalculator, setShowBorrowingCalculator] = useState(false);
   const [showAgreementDialog, setShowAgreementDialog] = useState(false);
+  const [showPortalInviteDialog, setShowPortalInviteDialog] = useState(false);
   const [activeTab, setActiveTab] = useState(initialTab || 'overview');
 
   const tabOrder = ['overview', 'personal', 'properties', 'deals', 'employment', 'financials', 'reports', 'emails', 'notes', 'reminders', 'vownet-forms', 'files', 'activity', 'insights'];
@@ -326,6 +328,16 @@ NPC Team`
         >
           <FileSignature className="h-4 w-4 mr-1.5" />
           <span className={isMobile ? "text-xs" : ""}>{isMobile ? "Agreement" : "Send Agreement"}</span>
+        </Button>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowPortalInviteDialog(true)}
+          title="Manage client portal access"
+        >
+          <UserCog className="h-4 w-4 mr-1.5" />
+          <span className={isMobile ? "text-xs" : ""}>{isMobile ? "Portal" : "Portal Access"}</span>
         </Button>
       </div>
       <Separator className="my-1" />
@@ -866,6 +878,15 @@ NPC Team`
           secondary_first_name: fullClient?.secondary_first_name,
           secondary_surname: fullClient?.secondary_surname,
         }}
+      />
+
+      {/* Portal Invite Dialog */}
+      <SendPortalInviteDialog
+        open={showPortalInviteDialog}
+        onOpenChange={setShowPortalInviteDialog}
+        clientId={client.id}
+        clientName={`${client.primary_first_name} ${client.primary_surname}`}
+        clientEmail={client.primary_email}
       />
     </>
   );

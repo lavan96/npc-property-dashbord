@@ -408,3 +408,9 @@ verify_jwt = false
 
 [functions.client-portal-reset-password]
 verify_jwt = false
+
+[functions.client-portal-invite]
+verify_jwt = false
+
+[functions.client-portal-accept-invite]
+verify_jwt = false
