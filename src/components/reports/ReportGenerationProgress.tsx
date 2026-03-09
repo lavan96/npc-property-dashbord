@@ -54,9 +54,10 @@ function getAutoContinueSettings(): AutoContinueSettings {
 
 export function ReportGenerationProgress() {
   const location = useLocation();
-  
-  // Don't render on client portal routes
-  if (location.pathname.startsWith('/client')) {
+  const isClientPortalRoute = location.pathname.startsWith('/client') || location.pathname.startsWith('/portal');
+
+  // Don't render on client-facing portal routes
+  if (isClientPortalRoute) {
     return null;
   }
   
