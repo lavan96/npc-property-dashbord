@@ -355,6 +355,28 @@ export default function MarketingAnalytics() {
         />
       </div>
 
+      {/* Phase 3: Performance Forecast */}
+      <ForecastPanel
+        forecast={forecastData?.forecast || []}
+        trends={forecastData?.trends || null}
+        projections={forecastData?.projections || null}
+        aiAnalysis={forecastData?.aiAnalysis || ''}
+        aiError={forecastData?.aiError}
+        loading={forecastLoading}
+        horizonDays={forecastHorizon}
+      />
+
+      {/* Phase 3: Weekly AI Brief */}
+      <WeeklyBriefPanel
+        currentBrief={currentBrief}
+        currentBriefError={currentBriefError}
+        pastBriefs={pastBriefsData?.reports || []}
+        loading={false}
+        generating={generatingBrief}
+        onGenerate={handleGenerateBrief}
+        pastBriefsLoading={pastBriefsLoading}
+      />
+
       <Card>
         <CardHeader className="pb-3">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
