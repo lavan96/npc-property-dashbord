@@ -227,6 +227,51 @@ export default function MarketingAnalytics() {
     retry: 1,
   });
 
+  // Fetch campaign list for hierarchical filter dropdowns
+  const { data: campaignListData } = useQuery({
+    queryKey: ['meta-ads-campaign-list', datePreset],
+    queryFn: async () => {
+      const { data, error } = await invokeSecureFunction('fetch-meta-ads', {
+        level: 'campaign',
+        datePreset,
+        limit: 100,
+      });
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
+
+  // Fetch adset list for a selected campaign (for ad-level filtering)
+  const { data: adsetListData } = useQuery({
+    queryKey: ['meta-ads-adset-list', datePreset, selectedCampaignId],
+    queryFn: async () => {
+      if (!selectedCampaignId) return null;
+      const { data, error } = await invokeSecureFunction('fetch-meta-ads', {
+        level: 'adset',
+        datePreset,
+        campaignId: selectedCampaignId,
+        limit: 100,
+      });
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    enabled: !!selectedCampaignId && level === 'ad',
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
+
+  const campaignFilterOptions = (campaignListData?.insights || []).map((row: any) => ({
+    id: row.campaign_id,
+    name: row.campaign_name || 'Unknown Campaign',
+  })).filter((c: any, i: number, arr: any[]) => arr.findIndex((x: any) => x.id === c.id) === i);
+
+  const adsetFilterOptions = (adsetListData?.insights || []).map((row: any) => ({
+    id: row.adset_id,
+    name: row.adset_name || 'Unknown Ad Set',
+  })).filter((a: any, i: number, arr: any[]) => arr.findIndex((x: any) => x.id === a.id) === i);
+
   const insights = adsData?.insights || [];
   const campaigns = adsData?.campaigns || [];
   const anomalies = analysisData?.anomalies || [];
@@ -234,6 +279,18 @@ export default function MarketingAnalytics() {
   const aiDigest = analysisData?.aiDigest || '';
   const aiDigestError = analysisData?.aiDigestError || '';
   const summary = analysisData?.summary || {};
+
+  const handleLevelChange = (newLevel: string) => {
+    const l = newLevel as 'account' | 'campaign' | 'adset' | 'ad';
+    // Reset child filters when going to a higher level
+    if (l === 'account' || l === 'campaign') {
+      setSelectedCampaignId(null);
+      setSelectedAdsetId(null);
+    } else if (l === 'adset') {
+      setSelectedAdsetId(null);
+    }
+    setLevel(l);
+  };
 
   // Totals
   const totals = insights.reduce((acc: any, row: any) => {
