@@ -145,25 +145,27 @@ serve(async (req) => {
       // Get client details for GHL contact lookup
       const { data: client } = await supabase
         .from('clients')
-        .select('id, primary_first_name, primary_last_name, primary_email, primary_phone, ghl_contact_id')
+        .select('id, primary_first_name, primary_surname, primary_email, primary_mobile, ghl_contact_id')
         .eq('id', clientId)
         .maybeSingle();
 
-      // Create appointment in GHL
+      if (!client?.ghl_contact_id) {
+        return new Response(JSON.stringify({ error: 'Client does not have a linked GHL contact. Please contact support.', success: false }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Create appointment in GHL - contactId is required
       const appointmentPayload: any = {
         calendarId,
         locationId: ghlLocationId,
+        contactId: client.ghl_contact_id,
         startTime,
         endTime,
-        title: title || `Portal Booking - ${client?.primary_first_name || ''} ${client?.primary_last_name || ''}`.trim(),
+        title: title || `Portal Booking - ${client?.primary_first_name || ''} ${client?.primary_surname || ''}`.trim(),
         appointmentStatus: 'confirmed',
         notes: notes || `Booked via Client Portal by ${portalUser.email}`,
       };
-
-      // If client has a GHL contact ID, associate the appointment
-      if (client?.ghl_contact_id) {
-        appointmentPayload.contactId = client.ghl_contact_id;
-      }
 
       console.log('[portal-book-appointment] Creating GHL appointment:', JSON.stringify(appointmentPayload));
 
