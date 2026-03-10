@@ -11,9 +11,9 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import {
   CalendarDays, Clock, CheckCircle2, Loader2, ArrowRight,
-  ArrowLeft, CalendarCheck, Sparkles
+  ArrowLeft, CalendarCheck, Sparkles, List
 } from 'lucide-react';
-import { format, addDays, isBefore, startOfDay, isToday } from 'date-fns';
+import { format, addDays, isBefore, startOfDay } from 'date-fns';
 import { toast } from 'sonner';
 
 const SUPABASE_URL = "https://dduzbchuswwbefdunfct.supabase.co";
@@ -48,27 +48,53 @@ interface TimeSlot {
   end: string;
 }
 
-type BookingStep = 'date' | 'time' | 'confirm' | 'success';
+interface BookingCalendarOption {
+  id: string;
+  name: string;
+  description?: string;
+}
+
+type BookingStep = 'calendar' | 'date' | 'time' | 'confirm' | 'success';
 
 export default function PortalBooking() {
   const { user } = usePortalAuth();
-  const [step, setStep] = useState<BookingStep>('date');
+  const [step, setStep] = useState<BookingStep>('calendar');
+  const [selectedCalendar, setSelectedCalendar] = useState<BookingCalendarOption | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
   const [notes, setNotes] = useState('');
 
   // Fetch portal config
-  const { data: configData } = useQuery({
+  const { data: configData, isLoading: configLoading } = useQuery({
     queryKey: ['portal-booking-config'],
     queryFn: () => invokePortalBooking({ action: 'getConfig' }),
     staleTime: 60000,
   });
 
   const config = configData?.config;
-  const calendarId = config?.booking_calendar_id;
+  const bookingCalendars: BookingCalendarOption[] = useMemo(() => {
+    // Support new multi-calendar array, fallback to legacy single calendar
+    if (config?.booking_calendars && Array.isArray(config.booking_calendars) && config.booking_calendars.length > 0) {
+      return config.booking_calendars;
+    }
+    if (config?.booking_calendar_id) {
+      return [{ id: config.booking_calendar_id, name: config.booking_calendar_name || 'Default Calendar' }];
+    }
+    return [];
+  }, [config]);
+
+  const calendarId = selectedCalendar?.id || null;
   const leadTimeHours = config?.booking_lead_time_hours || 24;
   const maxAdvanceDays = config?.booking_max_advance_days || 30;
   const introText = config?.booking_intro_text || 'Schedule a consultation with our team.';
+
+  // Auto-select if only one calendar
+  useEffect(() => {
+    if (bookingCalendars.length === 1 && !selectedCalendar) {
+      setSelectedCalendar(bookingCalendars[0]);
+      setStep('date');
+    }
+  }, [bookingCalendars, selectedCalendar]);
 
   const minDate = useMemo(() => {
     const d = new Date();
@@ -100,7 +126,6 @@ export default function PortalBooking() {
   const freeSlots: TimeSlot[] = useMemo(() => {
     if (!slotsData?.slots) return [];
     const slotsObj = slotsData.slots;
-    // GHL returns { [date]: [{ startTime, endTime }] }
     const allSlots: TimeSlot[] = [];
     if (typeof slotsObj === 'object') {
       for (const dateKey of Object.keys(slotsObj)) {
@@ -112,7 +137,6 @@ export default function PortalBooking() {
         }
       }
     }
-    // Filter out slots that are in the past (lead time)
     const now = new Date();
     now.setHours(now.getHours() + Math.max(1, leadTimeHours));
     return allSlots.filter(s => new Date(s.start) >= now);
@@ -139,6 +163,13 @@ export default function PortalBooking() {
     },
   });
 
+  const handleCalendarSelect = (cal: BookingCalendarOption) => {
+    setSelectedCalendar(cal);
+    setSelectedDate(undefined);
+    setSelectedSlot(null);
+    setStep('date');
+  };
+
   const handleDateSelect = (date: Date | undefined) => {
     setSelectedDate(date);
     setSelectedSlot(null);
@@ -155,13 +186,22 @@ export default function PortalBooking() {
   };
 
   const handleReset = () => {
-    setStep('date');
+    setStep(bookingCalendars.length > 1 ? 'calendar' : 'date');
+    setSelectedCalendar(bookingCalendars.length === 1 ? bookingCalendars[0] : null);
     setSelectedDate(undefined);
     setSelectedSlot(null);
     setNotes('');
   };
 
-  if (!calendarId) {
+  if (configLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[300px]">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (bookingCalendars.length === 0) {
     return (
       <div className="space-y-6">
         <div>
@@ -179,6 +219,16 @@ export default function PortalBooking() {
     );
   }
 
+  const stepLabels = bookingCalendars.length > 1
+    ? ['Select Type', 'Select Date', 'Choose Time', 'Confirm'] as const
+    : ['Select Date', 'Choose Time', 'Confirm'] as const;
+
+  const stepsOrder = bookingCalendars.length > 1
+    ? ['calendar', 'date', 'time', 'confirm'] as const
+    : ['date', 'time', 'confirm'] as const;
+
+  const currentStepIdx = stepsOrder.indexOf(step as any);
+
   return (
     <div className="space-y-6">
       <div>
@@ -187,25 +237,25 @@ export default function PortalBooking() {
       </div>
 
       {/* Progress Steps */}
-      <div className="flex items-center gap-2">
-        {(['date', 'time', 'confirm'] as const).map((s, i) => (
-          <div key={s} className="flex items-center gap-2">
-            <div className={cn(
-              'flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold transition-colors',
-              step === s ? 'bg-primary text-primary-foreground' :
-              (step === 'success' || (['time', 'confirm'].indexOf(step) > i - 1 && step !== 'date') || 
-               (step === 'confirm' && i < 2) || (step === 'time' && i === 0))
-                ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'
-            )}>
-              {i + 1}
+      {step !== 'success' && (
+        <div className="flex items-center gap-2">
+          {stepsOrder.map((s, i) => (
+            <div key={s} className="flex items-center gap-2">
+              <div className={cn(
+                'flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold transition-colors',
+                step === s ? 'bg-primary text-primary-foreground' :
+                currentStepIdx > i ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'
+              )}>
+                {i + 1}
+              </div>
+              <span className={cn('text-sm hidden sm:inline', step === s ? 'font-medium text-foreground' : 'text-muted-foreground')}>
+                {stepLabels[i]}
+              </span>
+              {i < stepsOrder.length - 1 && <ArrowRight className="h-4 w-4 text-muted-foreground" />}
             </div>
-            <span className={cn('text-sm hidden sm:inline', step === s ? 'font-medium text-foreground' : 'text-muted-foreground')}>
-              {s === 'date' ? 'Select Date' : s === 'time' ? 'Choose Time' : 'Confirm'}
-            </span>
-            {i < 2 && <ArrowRight className="h-4 w-4 text-muted-foreground" />}
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Success State */}
       {step === 'success' && selectedSlot && (
@@ -227,6 +277,11 @@ export default function PortalBooking() {
                 <p className="text-sm text-muted-foreground">
                   {format(new Date(selectedSlot.start), 'h:mm a')} – {format(new Date(selectedSlot.end), 'h:mm a')} (AEST)
                 </p>
+                {selectedCalendar && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {selectedCalendar.description || selectedCalendar.name}
+                  </p>
+                )}
               </div>
             </div>
             <p className="text-sm text-muted-foreground">A confirmation email has been sent to your registered email address.</p>
@@ -237,15 +292,63 @@ export default function PortalBooking() {
         </Card>
       )}
 
+      {/* Calendar Selection (only when multiple calendars) */}
+      {step === 'calendar' && bookingCalendars.length > 1 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <List className="h-5 w-5 text-primary" />
+              What type of appointment?
+            </CardTitle>
+            <CardDescription>Choose the type of consultation you'd like to book</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-3">
+              {bookingCalendars.map((cal) => (
+                <Button
+                  key={cal.id}
+                  variant="outline"
+                  className={cn(
+                    'h-auto py-4 px-5 flex items-start gap-4 text-left transition-all justify-start',
+                    'hover:border-primary/50 hover:bg-primary/5'
+                  )}
+                  onClick={() => handleCalendarSelect(cal)}
+                >
+                  <div className="p-2 rounded-lg bg-primary/10 shrink-0 mt-0.5">
+                    <CalendarDays className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-foreground">{cal.description || cal.name}</p>
+                    {cal.description && <p className="text-xs text-muted-foreground mt-0.5">{cal.name}</p>}
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-muted-foreground ml-auto self-center" />
+                </Button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Date Selection */}
       {step === 'date' && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <CalendarDays className="h-5 w-5 text-primary" />
-              Select a Date
-            </CardTitle>
-            <CardDescription>Choose your preferred date for the consultation</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <CalendarDays className="h-5 w-5 text-primary" />
+                  Select a Date
+                </CardTitle>
+                <CardDescription>
+                  {selectedCalendar?.description || selectedCalendar?.name || 'Choose your preferred date'}
+                </CardDescription>
+              </div>
+              {bookingCalendars.length > 1 && (
+                <Button variant="ghost" size="sm" onClick={() => { setStep('calendar'); setSelectedCalendar(null); }}>
+                  <ArrowLeft className="h-4 w-4 mr-1" /> Change Type
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent className="flex justify-center">
             <Calendar
@@ -337,7 +440,6 @@ export default function PortalBooking() {
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Booking Summary */}
             <div className="rounded-xl border border-primary/20 bg-primary/5 p-5 space-y-3">
               <div className="flex items-center gap-3">
                 <CalendarCheck className="h-5 w-5 text-primary" />
@@ -348,13 +450,17 @@ export default function PortalBooking() {
                   <p className="text-sm text-muted-foreground">
                     {format(new Date(selectedSlot.start), 'h:mm a')} – {format(new Date(selectedSlot.end), 'h:mm a')} (AEST)
                   </p>
+                  {selectedCalendar && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {selectedCalendar.description || selectedCalendar.name}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
 
             <Separator />
 
-            {/* Notes */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">Notes (optional)</label>
               <Textarea
@@ -366,7 +472,6 @@ export default function PortalBooking() {
               />
             </div>
 
-            {/* Action */}
             <Button
               onClick={handleConfirm}
               disabled={bookMutation.isPending}
