@@ -16,6 +16,8 @@ import { AIDigestPanel } from '@/components/marketing/AIDigestPanel';
 import { BudgetAdvisorPanel } from '@/components/marketing/BudgetAdvisorPanel';
 import { AudienceIntelligencePanel } from '@/components/marketing/AudienceIntelligencePanel';
 import { LeadQualityPanel } from '@/components/marketing/LeadQualityPanel';
+import { ForecastPanel } from '@/components/marketing/ForecastPanel';
+import { WeeklyBriefPanel } from '@/components/marketing/WeeklyBriefPanel';
 
 const DATE_PRESETS = [
   { value: 'today', label: 'Today' },
@@ -53,6 +55,10 @@ export default function MarketingAnalytics() {
   const [datePreset, setDatePreset] = useState('last_30d');
   const [level, setLevel] = useState<'account' | 'campaign' | 'adset'>('campaign');
   const [regeneratingDigest, setRegeneratingDigest] = useState(false);
+  const [generatingBrief, setGeneratingBrief] = useState(false);
+  const [currentBrief, setCurrentBrief] = useState('');
+  const [currentBriefError, setCurrentBriefError] = useState('');
+  const [forecastHorizon] = useState(14);
   const queryClient = useQueryClient();
 
   // Fetch raw Meta Ads data
@@ -127,6 +133,39 @@ export default function MarketingAnalytics() {
     retry: 1,
   });
 
+  // Phase 3: Forecasting
+  const { data: forecastData, isLoading: forecastLoading } = useQuery({
+    queryKey: ['meta-ads-phase3-forecast', datePreset, forecastHorizon, adsData?.insights?.length],
+    queryFn: async () => {
+      if (!adsData?.insights || adsData.insights.length === 0) return null;
+      const { data, error } = await invokeSecureFunction('analyze-meta-ads-phase3', {
+        action: 'forecast',
+        insights: adsData.insights,
+        horizonDays: forecastHorizon,
+      });
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    enabled: !!adsData?.insights && adsData.insights.length > 0,
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
+
+  // Phase 3: Past briefs list
+  const { data: pastBriefsData, isLoading: pastBriefsLoading } = useQuery({
+    queryKey: ['meta-ads-phase3-briefs'],
+    queryFn: async () => {
+      const { data, error } = await invokeSecureFunction('analyze-meta-ads-phase3', {
+        action: 'list_briefs',
+        insights: [],
+        limit: 10,
+      });
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
   const insights = adsData?.insights || [];
   const campaigns = adsData?.campaigns || [];
   const anomalies = analysisData?.anomalies || [];
@@ -167,12 +206,46 @@ export default function MarketingAnalytics() {
     }
   }, [queryClient, refetchAnalysis]);
 
+  const handleGenerateBrief = useCallback(async () => {
+    if (!adsData?.insights || adsData.insights.length === 0) {
+      toast.error('No data available to generate brief');
+      return;
+    }
+    setGeneratingBrief(true);
+    setCurrentBriefError('');
+    try {
+      const { data, error } = await invokeSecureFunction('analyze-meta-ads-phase3', {
+        action: 'weekly_brief',
+        insights: adsData.insights,
+        campaigns: adsData.campaigns,
+        datePreset,
+        healthScores: analysisData?.healthScores,
+        anomalies: analysisData?.anomalies,
+        budgetRecommendations: phase2Data?.recommendations,
+      });
+      if (error) {
+        setCurrentBriefError(error.message);
+      } else {
+        setCurrentBrief(data?.brief || '');
+        if (data?.aiError) setCurrentBriefError(data.aiError);
+        queryClient.invalidateQueries({ queryKey: ['meta-ads-phase3-briefs'] });
+        toast.success('Weekly brief generated');
+      }
+    } catch (err: any) {
+      setCurrentBriefError(err.message || 'Failed to generate brief');
+      toast.error('Failed to generate brief');
+    } finally {
+      setGeneratingBrief(false);
+    }
+  }, [adsData, datePreset, analysisData, phase2Data, queryClient]);
+
   const getHealthForCampaign = (campaignId: string) => {
     return healthScores.find((h: any) => h.campaign_id === campaignId);
   };
 
   const isLoading = adsLoading;
   const isAnalyzing = analysisLoading;
+
 
   return (
     <div className="space-y-6">
@@ -281,6 +354,28 @@ export default function MarketingAnalytics() {
           loading={leadQualityLoading}
         />
       </div>
+
+      {/* Phase 3: Performance Forecast */}
+      <ForecastPanel
+        forecast={forecastData?.forecast || []}
+        trends={forecastData?.trends || null}
+        projections={forecastData?.projections || null}
+        aiAnalysis={forecastData?.aiAnalysis || ''}
+        aiError={forecastData?.aiError}
+        loading={forecastLoading}
+        horizonDays={forecastHorizon}
+      />
+
+      {/* Phase 3: Weekly AI Brief */}
+      <WeeklyBriefPanel
+        currentBrief={currentBrief}
+        currentBriefError={currentBriefError}
+        pastBriefs={pastBriefsData?.reports || []}
+        loading={false}
+        generating={generatingBrief}
+        onGenerate={handleGenerateBrief}
+        pastBriefsLoading={pastBriefsLoading}
+      />
 
       <Card>
         <CardHeader className="pb-3">

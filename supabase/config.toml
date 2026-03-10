@@ -432,3 +432,6 @@ verify_jwt = true
 
 [functions.analyze-meta-ads-phase2]
 verify_jwt = true
+
+[functions.analyze-meta-ads-phase3]
+verify_jwt = true
