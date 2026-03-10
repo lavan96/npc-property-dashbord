@@ -31,6 +31,8 @@ const ALLOWED_SECRETS = new Set([
   'TWILIO_ACCOUNT_SID',
   'TWILIO_AUTH_TOKEN',
   'MAKE_WEBHOOK_URL',
+  'META_ADS_ACCESS_TOKEN',
+  'META_ADS_AD_ACCOUNT_ID',
 ]);
 
 // Validation schemas

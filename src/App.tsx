@@ -213,6 +213,7 @@ const App = () => (
                            <Route path="checklists" element={<Checklists />} />
                            <Route path="agreements" element={<Agreements />} />
                            <Route path="portal-config" element={<PortalConfig />} />
+                           <Route path="marketing-analytics" element={<MarketingAnalytics />} />
                         </Route>
                         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                         <Route path="*" element={<NotFound />} />

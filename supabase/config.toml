@@ -423,3 +423,6 @@ verify_jwt = false
 
 [functions.manage-portal-client-data]
 verify_jwt = false
+
+[functions.fetch-meta-ads]
+verify_jwt = true
