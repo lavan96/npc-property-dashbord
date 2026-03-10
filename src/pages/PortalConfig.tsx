@@ -132,7 +132,11 @@ export default function PortalConfig() {
 
   useEffect(() => {
     if (data) {
-      setConfig(data as PortalConfig);
+      const row = data as any;
+      setConfig({
+        ...row,
+        booking_calendars: Array.isArray(row.booking_calendars) ? row.booking_calendars : [],
+      } as PortalConfig);
     } else if (!isLoading && !data) {
       setConfig(DEFAULT_CONFIG);
     }
