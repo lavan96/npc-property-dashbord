@@ -18,6 +18,8 @@ import { AudienceIntelligencePanel } from '@/components/marketing/AudienceIntell
 import { LeadQualityPanel } from '@/components/marketing/LeadQualityPanel';
 import { ForecastPanel } from '@/components/marketing/ForecastPanel';
 import { WeeklyBriefPanel } from '@/components/marketing/WeeklyBriefPanel';
+import { BenchmarksPanel } from '@/components/marketing/BenchmarksPanel';
+import { MarketCorrelationPanel } from '@/components/marketing/MarketCorrelationPanel';
 
 const DATE_PRESETS = [
   { value: 'today', label: 'Today' },
