@@ -25,6 +25,12 @@ import {
 import { toast } from 'sonner';
 import { useGHLCalendar } from '@/hooks/useGHLCalendar';
 
+interface BookingCalendarOption {
+  id: string;
+  name: string;
+  description?: string;
+}
+
 interface PortalConfig {
   id: string;
   module_dashboard: boolean;
@@ -44,6 +50,7 @@ interface PortalConfig {
   default_access_level: string;
   booking_calendar_id: string | null;
   booking_calendar_name: string | null;
+  booking_calendars: BookingCalendarOption[];
   booking_slot_duration: number;
   booking_working_hours_start: number;
   booking_working_hours_end: number;
