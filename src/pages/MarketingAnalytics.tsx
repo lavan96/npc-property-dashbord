@@ -55,6 +55,10 @@ export default function MarketingAnalytics() {
   const [datePreset, setDatePreset] = useState('last_30d');
   const [level, setLevel] = useState<'account' | 'campaign' | 'adset'>('campaign');
   const [regeneratingDigest, setRegeneratingDigest] = useState(false);
+  const [generatingBrief, setGeneratingBrief] = useState(false);
+  const [currentBrief, setCurrentBrief] = useState('');
+  const [currentBriefError, setCurrentBriefError] = useState('');
+  const [forecastHorizon] = useState(14);
   const queryClient = useQueryClient();
 
   // Fetch raw Meta Ads data
