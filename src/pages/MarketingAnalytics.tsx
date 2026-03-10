@@ -89,6 +89,44 @@ export default function MarketingAnalytics() {
     retry: 1,
   });
 
+  // Phase 2: Budget Advisor + Audience Intelligence
+  const { data: phase2Data, isLoading: phase2Loading } = useQuery({
+    queryKey: ['meta-ads-phase2-budget', datePreset, adsData?.insights?.length],
+    queryFn: async () => {
+      if (!adsData?.insights || adsData.insights.length === 0) return null;
+      const { data, error } = await invokeSecureFunction('analyze-meta-ads-phase2', {
+        action: 'budget_advisor',
+        insights: adsData.insights,
+        campaigns: adsData.campaigns,
+        datePreset,
+        healthScores: analysisData?.healthScores,
+      });
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    enabled: !!adsData?.insights && adsData.insights.length > 0,
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
+
+  // Phase 2: Lead Quality Correlation
+  const { data: leadQualityData, isLoading: leadQualityLoading } = useQuery({
+    queryKey: ['meta-ads-phase2-leads', datePreset, adsData?.insights?.length],
+    queryFn: async () => {
+      if (!adsData?.insights) return null;
+      const { data, error } = await invokeSecureFunction('analyze-meta-ads-phase2', {
+        action: 'lead_quality',
+        insights: adsData.insights,
+        datePreset,
+      });
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    enabled: !!adsData?.insights && adsData.insights.length > 0,
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
+
   const insights = adsData?.insights || [];
   const campaigns = adsData?.campaigns || [];
   const anomalies = analysisData?.anomalies || [];
