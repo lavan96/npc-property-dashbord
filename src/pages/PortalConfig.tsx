@@ -20,7 +20,7 @@ import {
 import {
   Settings, LayoutDashboard, User, TrendingUp, Building2, BarChart3,
   Briefcase, FileText, Mail, MessageSquare, Bell, CalendarDays,
-  Save, Loader2, Palette, Clock, Type, Shield, Eye
+  Save, Loader2, Palette, Clock, Type, Shield, Eye, Plus, Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useGHLCalendar } from '@/hooks/useGHLCalendar';
