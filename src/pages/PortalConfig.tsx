@@ -153,12 +153,15 @@ export default function PortalConfig() {
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!config) throw new Error('No config');
-      const { id, ...updates } = config;
+      const configData = { ...config };
+      // Ensure we have an id for upsert conflict resolution
+      if (!configData.id) {
+        configData.id = crypto.randomUUID();
+      }
       const { error } = await invokeSecureFunction('manage-client-data', {
         operation: 'upsert',
         table: 'portal_configuration',
-        data: updates,
-        id,
+        data: configData,
       });
       if (error) throw new Error(error.message);
     },
