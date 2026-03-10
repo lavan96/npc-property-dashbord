@@ -563,6 +563,27 @@ export default function MarketingAnalytics() {
           )}
         </CardContent>
       </Card>
+
+      {/* Phase 4: Industry Benchmarks */}
+      <BenchmarksPanel
+        benchmarks={benchmarkData?.benchmarks || []}
+        perplexityResearch={benchmarkData?.perplexityResearch || ''}
+        citations={benchmarkData?.citations || []}
+        aiAnalysis={benchmarkData?.aiAnalysis || ''}
+        aiError={benchmarkData?.aiError}
+        rawBenchmarks={benchmarkData?.rawBenchmarks}
+        loading={benchmarkLoading}
+      />
+
+      {/* Phase 4: Market Correlation */}
+      <MarketCorrelationPanel
+        marketEvents={marketData?.marketEvents || []}
+        perplexityResearch={marketData?.perplexityResearch || ''}
+        citations={marketData?.citations || []}
+        aiAnalysis={marketData?.aiAnalysis || ''}
+        aiError={marketData?.aiError}
+        loading={marketLoading}
+      />
     </div>
   );
 }
