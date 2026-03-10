@@ -16,6 +16,8 @@ import { AIDigestPanel } from '@/components/marketing/AIDigestPanel';
 import { BudgetAdvisorPanel } from '@/components/marketing/BudgetAdvisorPanel';
 import { AudienceIntelligencePanel } from '@/components/marketing/AudienceIntelligencePanel';
 import { LeadQualityPanel } from '@/components/marketing/LeadQualityPanel';
+import { ForecastPanel } from '@/components/marketing/ForecastPanel';
+import { WeeklyBriefPanel } from '@/components/marketing/WeeklyBriefPanel';
 
 const DATE_PRESETS = [
   { value: 'today', label: 'Today' },
