@@ -77,6 +77,37 @@ export default function PortalConfig() {
 
   const { calendars, fetchCalendarData } = useGHLCalendar();
 
+  const DEFAULT_CONFIG: PortalConfig = {
+    id: '',
+    module_dashboard: true,
+    module_profile: true,
+    module_deal_progress: true,
+    module_properties: true,
+    module_property_insights: true,
+    module_employment: true,
+    module_documents: true,
+    module_emails: true,
+    module_messages: true,
+    module_notifications: true,
+    module_booking: true,
+    welcome_title: 'Welcome to your Client Portal',
+    welcome_message: 'Access your property investment details, track your deal progress, and communicate with your advisor.',
+    welcome_banner_url: null,
+    default_access_level: 'read_only',
+    booking_calendar_id: null,
+    booking_calendar_name: null,
+    booking_slot_duration: 30,
+    booking_working_hours_start: 9,
+    booking_working_hours_end: 17,
+    booking_lead_time_hours: 24,
+    booking_max_advance_days: 30,
+    booking_confirmation_email: true,
+    booking_team_notification_email: null,
+    booking_intro_text: 'Schedule a consultation with our team.',
+    portal_accent_color: null,
+    portal_footer_text: 'Secured Portal • End-to-end encrypted',
+  };
+
   // Fetch config
   const { data, isLoading } = useQuery({
     queryKey: ['portal-configuration'],
@@ -87,13 +118,18 @@ export default function PortalConfig() {
       });
       if (error) throw new Error(error.message);
       const rows = data?.data || data || [];
-      return Array.isArray(rows) ? rows[0] : rows;
+      const row = Array.isArray(rows) ? rows[0] : rows;
+      return row || null;
     },
   });
 
   useEffect(() => {
-    if (data) setConfig(data as PortalConfig);
-  }, [data]);
+    if (data) {
+      setConfig(data as PortalConfig);
+    } else if (!isLoading && !data) {
+      setConfig(DEFAULT_CONFIG);
+    }
+  }, [data, isLoading]);
 
   // Load GHL calendars for the booking selector
   useEffect(() => {
