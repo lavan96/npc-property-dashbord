@@ -206,12 +206,46 @@ export default function MarketingAnalytics() {
     }
   }, [queryClient, refetchAnalysis]);
 
+  const handleGenerateBrief = useCallback(async () => {
+    if (!adsData?.insights || adsData.insights.length === 0) {
+      toast.error('No data available to generate brief');
+      return;
+    }
+    setGeneratingBrief(true);
+    setCurrentBriefError('');
+    try {
+      const { data, error } = await invokeSecureFunction('analyze-meta-ads-phase3', {
+        action: 'weekly_brief',
+        insights: adsData.insights,
+        campaigns: adsData.campaigns,
+        datePreset,
+        healthScores: analysisData?.healthScores,
+        anomalies: analysisData?.anomalies,
+        budgetRecommendations: phase2Data?.recommendations,
+      });
+      if (error) {
+        setCurrentBriefError(error.message);
+      } else {
+        setCurrentBrief(data?.brief || '');
+        if (data?.aiError) setCurrentBriefError(data.aiError);
+        queryClient.invalidateQueries({ queryKey: ['meta-ads-phase3-briefs'] });
+        toast.success('Weekly brief generated');
+      }
+    } catch (err: any) {
+      setCurrentBriefError(err.message || 'Failed to generate brief');
+      toast.error('Failed to generate brief');
+    } finally {
+      setGeneratingBrief(false);
+    }
+  }, [adsData, datePreset, analysisData, phase2Data, queryClient]);
+
   const getHealthForCampaign = (campaignId: string) => {
     return healthScores.find((h: any) => h.campaign_id === campaignId);
   };
 
   const isLoading = adsLoading;
   const isAnalyzing = analysisLoading;
+
 
   return (
     <div className="space-y-6">
