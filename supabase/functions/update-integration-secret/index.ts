@@ -190,8 +190,8 @@ serve(async (req) => {
 
     // Log the activity
     await supabase.from('activity_logs').insert({
-      user_id: sessionData.custom_users?.id,
-      username: sessionData.custom_users?.username,
+      user_id: authResult.userId,
+      username: authResult.username,
       action_type: 'update',
       entity_type: 'settings',
       entity_name: 'Integration Secrets',
