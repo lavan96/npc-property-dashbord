@@ -61,6 +61,7 @@ const navigationItems = [
   { title: 'Reminders', url: '/reminders', icon: Bell, moduleKey: 'reminders' },
   { title: 'Checklists', url: '/checklists', icon: ClipboardList, moduleKey: 'checklists' },
   { title: 'Agreements', url: '/agreements', icon: FileSignature, moduleKey: 'agreements' },
+  { title: 'Marketing', url: '/marketing-analytics', icon: TrendingUp, moduleKey: 'marketing_analytics' },
   { title: 'Charts', url: '/charts', icon: BarChart3, moduleKey: 'charts' },
   { title: 'User Guide', url: '/user-guide', icon: BookOpen, moduleKey: 'user_guide' },
 ];
