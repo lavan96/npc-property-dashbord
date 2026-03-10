@@ -13,6 +13,9 @@ import { toast } from 'sonner';
 import { AnomalyAlertsPanel } from '@/components/marketing/AnomalyAlertsPanel';
 import { CampaignHealthPanel } from '@/components/marketing/CampaignHealthPanel';
 import { AIDigestPanel } from '@/components/marketing/AIDigestPanel';
+import { BudgetAdvisorPanel } from '@/components/marketing/BudgetAdvisorPanel';
+import { AudienceIntelligencePanel } from '@/components/marketing/AudienceIntelligencePanel';
+import { LeadQualityPanel } from '@/components/marketing/LeadQualityPanel';
 
 const DATE_PRESETS = [
   { value: 'today', label: 'Today' },
