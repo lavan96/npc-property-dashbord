@@ -116,24 +116,27 @@ export default function PortalConfig() {
     portal_footer_text: 'Secured Portal • End-to-end encrypted',
   };
 
-  // Fetch config
+  // Fetch config using supabase client directly (manage-client-data doesn't support reads)
   const { data, isLoading } = useQuery({
     queryKey: ['portal-configuration'],
     queryFn: async () => {
-      const { data, error } = await invokeSecureFunction('manage-client-data', {
-        operation: 'list',
-        table: 'portal_configuration',
-      });
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data: rows, error } = await supabase
+        .from('portal_configuration')
+        .select('*')
+        .limit(1);
       if (error) throw new Error(error.message);
-      const rows = data?.data || data || [];
-      const row = Array.isArray(rows) ? rows[0] : rows;
-      return row || null;
+      return rows?.[0] || null;
     },
   });
 
   useEffect(() => {
     if (data) {
-      setConfig(data as PortalConfig);
+      const row = data as any;
+      setConfig({
+        ...row,
+        booking_calendars: Array.isArray(row.booking_calendars) ? row.booking_calendars : [],
+      } as PortalConfig);
     } else if (!isLoading && !data) {
       setConfig(DEFAULT_CONFIG);
     }
