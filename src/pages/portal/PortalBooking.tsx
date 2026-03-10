@@ -86,6 +86,7 @@ export default function PortalBooking() {
   const calendarId = selectedCalendar?.id || null;
   const leadTimeHours = config?.booking_lead_time_hours || 24;
   const maxAdvanceDays = config?.booking_max_advance_days || 30;
+  const slotDuration = config?.booking_slot_duration || 30; // minutes
   const introText = config?.booking_intro_text || 'Schedule a consultation with our team.';
 
   // Auto-select if only one calendar
