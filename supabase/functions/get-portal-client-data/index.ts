@@ -134,14 +134,52 @@ serve(async (req) => {
       result.expenses = expenses || [];
     }
 
-    // Fetch deals
+    // Fetch deals with stages and build progress payments
     if (include.deals) {
       const { data: deals } = await supabase
         .from('client_deals')
         .select('*')
         .eq('client_id', clientId)
         .order('created_at', { ascending: false });
-      result.deals = deals || [];
+
+      const dealsList = deals || [];
+
+      // Fetch stages and build payments for each deal
+      if (dealsList.length > 0) {
+        const dealIds = dealsList.map((d: any) => d.id);
+
+        const [stagesResult, buildPaymentsResult] = await Promise.all([
+          supabase
+            .from('deal_stages')
+            .select('id, deal_id, stage_number, stage_name, stage_category, status, completed_at, display_order')
+            .in('deal_id', dealIds)
+            .order('display_order', { ascending: true }),
+          supabase
+            .from('build_progress_payments')
+            .select('id, deal_id, stage_number, stage_name, percentage, amount, paid_to_builder, paid_to_builder_date, display_order')
+            .in('deal_id', dealIds)
+            .order('display_order', { ascending: true }),
+        ]);
+
+        const stagesByDeal: Record<string, any[]> = {};
+        for (const s of (stagesResult.data || [])) {
+          if (!stagesByDeal[s.deal_id]) stagesByDeal[s.deal_id] = [];
+          stagesByDeal[s.deal_id].push(s);
+        }
+
+        const buildByDeal: Record<string, any[]> = {};
+        for (const b of (buildPaymentsResult.data || [])) {
+          if (!buildByDeal[b.deal_id]) buildByDeal[b.deal_id] = [];
+          buildByDeal[b.deal_id].push(b);
+        }
+
+        for (const deal of dealsList) {
+          (deal as any).stages = stagesByDeal[deal.id] || [];
+          (deal as any).buildPayments = buildByDeal[deal.id] || [];
+        }
+      }
+
+      result.deals = dealsList;
     }
 
     // Fetch emails (read-only)
