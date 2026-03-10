@@ -74,8 +74,22 @@ serve(async (req) => {
         });
       }
 
+      // GHL requires startDate/endDate as epoch milliseconds (numbers)
+      let startMs: number;
+      let endMs: number;
+      if (typeof startDate === 'number') {
+        startMs = startDate;
+        endMs = typeof endDate === 'number' ? endDate : new Date(endDate).getTime();
+      } else {
+        // Convert date string (yyyy-MM-dd) to epoch ms - start of day and end of day
+        const startD = new Date(startDate + 'T00:00:00');
+        const endD = new Date(endDate + 'T23:59:59');
+        startMs = startD.getTime();
+        endMs = endD.getTime();
+      }
+
       const tz = timezone || 'Australia/Sydney';
-      const url = `${GHL_API_BASE}/calendars/${calendarId}/free-slots?startDate=${startDate}&endDate=${endDate}&timezone=${encodeURIComponent(tz)}`;
+      const url = `${GHL_API_BASE}/calendars/${calendarId}/free-slots?startDate=${startMs}&endDate=${endMs}&timezone=${encodeURIComponent(tz)}`;
       
       const resp = await fetch(url, {
         method: 'GET',
