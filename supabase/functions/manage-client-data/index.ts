@@ -301,10 +301,13 @@ serve(async (req) => {
           ? { ...data as Record<string, any> }
           : { ...data as Record<string, any>, client_id: clientId };
 
-        // Upsert using client_id as the conflict target for client-related tables
+        // Use appropriate conflict target
+        const conflictTarget = STANDALONE_TABLES.includes(table) ? 'id' : 'client_id';
+
+        // Upsert using the appropriate conflict target
         const { data: upserted, error: upsertError } = await supabase
           .from(table)
-          .upsert(upsertData, { onConflict: 'client_id' })
+          .upsert(upsertData, { onConflict: conflictTarget })
           .select()
           .single();
 
