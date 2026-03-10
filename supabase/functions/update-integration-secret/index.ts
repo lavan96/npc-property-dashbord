@@ -31,6 +31,8 @@ const ALLOWED_SECRETS = new Set([
   'TWILIO_ACCOUNT_SID',
   'TWILIO_AUTH_TOKEN',
   'MAKE_WEBHOOK_URL',
+  'META_ADS_ACCESS_TOKEN',
+  'META_ADS_AD_ACCOUNT_ID',
 ]);
 
 // Validation schemas
@@ -188,8 +190,8 @@ serve(async (req) => {
 
     // Log the activity
     await supabase.from('activity_logs').insert({
-      user_id: sessionData.custom_users?.id,
-      username: sessionData.custom_users?.username,
+      user_id: authResult.userId,
+      username: authResult.username,
       action_type: 'update',
       entity_type: 'settings',
       entity_name: 'Integration Secrets',
