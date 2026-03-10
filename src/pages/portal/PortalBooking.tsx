@@ -129,10 +129,19 @@ export default function PortalBooking() {
     const allSlots: TimeSlot[] = [];
     if (typeof slotsObj === 'object') {
       for (const dateKey of Object.keys(slotsObj)) {
-        const daySlots = slotsObj[dateKey];
-        if (Array.isArray(daySlots)) {
-          for (const slot of daySlots) {
-            allSlots.push({ start: slot.startTime || slot.start, end: slot.endTime || slot.end });
+        const dayData = slotsObj[dateKey];
+        // GHL returns { "YYYY-MM-DD": { slots: ["ISO_STRING", ...] } }
+        const slotsArray = Array.isArray(dayData) ? dayData : (dayData?.slots || []);
+        if (Array.isArray(slotsArray)) {
+          for (const slot of slotsArray) {
+            if (typeof slot === 'string') {
+              // Each slot is just a start time string; estimate end as start + slotDuration
+              const startDate = new Date(slot);
+              const endDate = new Date(startDate.getTime() + (slotDuration || 30) * 60000);
+              allSlots.push({ start: startDate.toISOString(), end: endDate.toISOString() });
+            } else if (typeof slot === 'object' && slot) {
+              allSlots.push({ start: slot.startTime || slot.start, end: slot.endTime || slot.end });
+            }
           }
         }
       }
@@ -140,7 +149,7 @@ export default function PortalBooking() {
     const now = new Date();
     now.setHours(now.getHours() + Math.max(1, leadTimeHours));
     return allSlots.filter(s => new Date(s.start) >= now);
-  }, [slotsData, leadTimeHours]);
+  }, [slotsData, leadTimeHours, slotDuration]);
 
   // Book mutation
   const bookMutation = useMutation({
