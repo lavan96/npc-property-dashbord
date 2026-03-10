@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Loader2, DollarSign, Eye, MousePointerClick, Target, RefreshCw, BarChart3, TrendingUp, Users, Megaphone } from 'lucide-react';
+import { Loader2, DollarSign, Eye, MousePointerClick, Target, RefreshCw, BarChart3, TrendingUp, Users, Megaphone, ChevronRight, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { AnomalyAlertsPanel } from '@/components/marketing/AnomalyAlertsPanel';
 import { CampaignHealthPanel } from '@/components/marketing/CampaignHealthPanel';
