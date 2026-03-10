@@ -13,6 +13,9 @@ import { toast } from 'sonner';
 import { AnomalyAlertsPanel } from '@/components/marketing/AnomalyAlertsPanel';
 import { CampaignHealthPanel } from '@/components/marketing/CampaignHealthPanel';
 import { AIDigestPanel } from '@/components/marketing/AIDigestPanel';
+import { BudgetAdvisorPanel } from '@/components/marketing/BudgetAdvisorPanel';
+import { AudienceIntelligencePanel } from '@/components/marketing/AudienceIntelligencePanel';
+import { LeadQualityPanel } from '@/components/marketing/LeadQualityPanel';
 
 const DATE_PRESETS = [
   { value: 'today', label: 'Today' },
@@ -76,6 +79,44 @@ export default function MarketingAnalytics() {
       const { data, error } = await invokeSecureFunction('analyze-meta-ads', {
         insights: adsData.insights,
         campaigns: adsData.campaigns,
+        datePreset,
+      });
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    enabled: !!adsData?.insights && adsData.insights.length > 0,
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
+
+  // Phase 2: Budget Advisor + Audience Intelligence
+  const { data: phase2Data, isLoading: phase2Loading } = useQuery({
+    queryKey: ['meta-ads-phase2-budget', datePreset, adsData?.insights?.length],
+    queryFn: async () => {
+      if (!adsData?.insights || adsData.insights.length === 0) return null;
+      const { data, error } = await invokeSecureFunction('analyze-meta-ads-phase2', {
+        action: 'budget_advisor',
+        insights: adsData.insights,
+        campaigns: adsData.campaigns,
+        datePreset,
+        healthScores: analysisData?.healthScores,
+      });
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    enabled: !!adsData?.insights && adsData.insights.length > 0,
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
+
+  // Phase 2: Lead Quality Correlation
+  const { data: leadQualityData, isLoading: leadQualityLoading } = useQuery({
+    queryKey: ['meta-ads-phase2-leads', datePreset, adsData?.insights?.length],
+    queryFn: async () => {
+      if (!adsData?.insights) return null;
+      const { data, error } = await invokeSecureFunction('analyze-meta-ads-phase2', {
+        action: 'lead_quality',
+        insights: adsData.insights,
         datePreset,
       });
       if (error) throw new Error(error.message);
@@ -219,7 +260,28 @@ export default function MarketingAnalytics() {
         <CampaignHealthPanel healthScores={healthScores} loading={isAnalyzing} />
       </div>
 
-      {/* Campaign Breakdown Table */}
+      {/* Phase 2: Budget Advisor */}
+      <BudgetAdvisorPanel
+        recommendations={phase2Data?.recommendations || []}
+        aiAnalysis={phase2Data?.aiAnalysis || ''}
+        aiError={phase2Data?.aiError}
+        loading={phase2Loading}
+        summary={phase2Data?.summary}
+      />
+
+      {/* Phase 2: Audience Intelligence + Lead Quality */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <AudienceIntelligencePanel
+          audienceInsights={phase2Data?.audienceInsights || []}
+          loading={phase2Loading}
+        />
+        <LeadQualityPanel
+          leadQuality={leadQualityData?.leadQuality || []}
+          aiAnalysis={leadQualityData?.aiAnalysis || ''}
+          loading={leadQualityLoading}
+        />
+      </div>
+
       <Card>
         <CardHeader className="pb-3">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">

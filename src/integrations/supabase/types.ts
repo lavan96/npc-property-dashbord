@@ -3362,6 +3362,9 @@ export type Database = {
           is_favorite: boolean
           last_note_at: string | null
           last_review_date: string | null
+          lead_source: string | null
+          lead_source_campaign: string | null
+          lead_source_detail: string | null
           living_situation: string | null
           marital_status: string | null
           net_monthly_cash_flow: number | null
@@ -3422,6 +3425,9 @@ export type Database = {
           is_favorite?: boolean
           last_note_at?: string | null
           last_review_date?: string | null
+          lead_source?: string | null
+          lead_source_campaign?: string | null
+          lead_source_detail?: string | null
           living_situation?: string | null
           marital_status?: string | null
           net_monthly_cash_flow?: number | null
@@ -3482,6 +3488,9 @@ export type Database = {
           is_favorite?: boolean
           last_note_at?: string | null
           last_review_date?: string | null
+          lead_source?: string | null
+          lead_source_campaign?: string | null
+          lead_source_detail?: string | null
           living_situation?: string | null
           marital_status?: string | null
           net_monthly_cash_flow?: number | null
