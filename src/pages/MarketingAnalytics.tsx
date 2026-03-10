@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Loader2, DollarSign, Eye, MousePointerClick, Target, RefreshCw, BarChart3, TrendingUp, Users, Megaphone } from 'lucide-react';
+import { Loader2, DollarSign, Eye, MousePointerClick, Target, RefreshCw, BarChart3, TrendingUp, Users, Megaphone, ChevronRight, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { AnomalyAlertsPanel } from '@/components/marketing/AnomalyAlertsPanel';
 import { CampaignHealthPanel } from '@/components/marketing/CampaignHealthPanel';
@@ -55,7 +55,9 @@ function extractAction(actions: any[] | undefined, type: string): number {
 
 export default function MarketingAnalytics() {
   const [datePreset, setDatePreset] = useState('last_30d');
-  const [level, setLevel] = useState<'account' | 'campaign' | 'adset'>('campaign');
+  const [level, setLevel] = useState<'account' | 'campaign' | 'adset' | 'ad'>('campaign');
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
+  const [selectedAdsetId, setSelectedAdsetId] = useState<string | null>(null);
   const [regeneratingDigest, setRegeneratingDigest] = useState(false);
   const [generatingBrief, setGeneratingBrief] = useState(false);
   const [currentBrief, setCurrentBrief] = useState('');
@@ -65,13 +67,21 @@ export default function MarketingAnalytics() {
 
   // Fetch raw Meta Ads data
   const { data: adsData, isLoading: adsLoading, error: adsError, refetch: refetchAds, isFetching: adsFetching } = useQuery({
-    queryKey: ['meta-ads', level, datePreset],
+    queryKey: ['meta-ads', level, datePreset, selectedCampaignId, selectedAdsetId],
     queryFn: async () => {
-      const { data, error } = await invokeSecureFunction('fetch-meta-ads', {
+      const payload: any = {
         level,
         datePreset,
         limit: 50,
-      });
+      };
+      // Hierarchical filtering: pass parent IDs when drilling down
+      if (selectedCampaignId && (level === 'adset' || level === 'ad')) {
+        payload.campaignId = selectedCampaignId;
+      }
+      if (selectedAdsetId && level === 'ad') {
+        payload.adsetId = selectedAdsetId;
+      }
+      const { data, error } = await invokeSecureFunction('fetch-meta-ads', payload);
       if (error) throw new Error(error.message);
       return data;
     },
@@ -217,6 +227,51 @@ export default function MarketingAnalytics() {
     retry: 1,
   });
 
+  // Fetch campaign list for hierarchical filter dropdowns
+  const { data: campaignListData } = useQuery({
+    queryKey: ['meta-ads-campaign-list', datePreset],
+    queryFn: async () => {
+      const { data, error } = await invokeSecureFunction('fetch-meta-ads', {
+        level: 'campaign',
+        datePreset,
+        limit: 100,
+      });
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
+
+  // Fetch adset list for a selected campaign (for ad-level filtering)
+  const { data: adsetListData } = useQuery({
+    queryKey: ['meta-ads-adset-list', datePreset, selectedCampaignId],
+    queryFn: async () => {
+      if (!selectedCampaignId) return null;
+      const { data, error } = await invokeSecureFunction('fetch-meta-ads', {
+        level: 'adset',
+        datePreset,
+        campaignId: selectedCampaignId,
+        limit: 100,
+      });
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    enabled: !!selectedCampaignId && level === 'ad',
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
+
+  const campaignFilterOptions = (campaignListData?.insights || []).map((row: any) => ({
+    id: row.campaign_id,
+    name: row.campaign_name || 'Unknown Campaign',
+  })).filter((c: any, i: number, arr: any[]) => arr.findIndex((x: any) => x.id === c.id) === i);
+
+  const adsetFilterOptions = (adsetListData?.insights || []).map((row: any) => ({
+    id: row.adset_id,
+    name: row.adset_name || 'Unknown Ad Set',
+  })).filter((a: any, i: number, arr: any[]) => arr.findIndex((x: any) => x.id === a.id) === i);
+
   const insights = adsData?.insights || [];
   const campaigns = adsData?.campaigns || [];
   const anomalies = analysisData?.anomalies || [];
@@ -224,6 +279,18 @@ export default function MarketingAnalytics() {
   const aiDigest = analysisData?.aiDigest || '';
   const aiDigestError = analysisData?.aiDigestError || '';
   const summary = analysisData?.summary || {};
+
+  const handleLevelChange = (newLevel: string) => {
+    const l = newLevel as 'account' | 'campaign' | 'adset' | 'ad';
+    // Reset child filters when going to a higher level
+    if (l === 'account' || l === 'campaign') {
+      setSelectedCampaignId(null);
+      setSelectedAdsetId(null);
+    } else if (l === 'adset') {
+      setSelectedAdsetId(null);
+    }
+    setLevel(l);
+  };
 
   // Totals
   const totals = insights.reduce((acc: any, row: any) => {
@@ -430,23 +497,95 @@ export default function MarketingAnalytics() {
 
       <Card>
         <CardHeader className="pb-3">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <BarChart3 className="h-5 w-5 text-primary" />
-                Performance Breakdown
-              </CardTitle>
-              <CardDescription className="mt-1">
-                {insights.length} {level === 'campaign' ? 'campaigns' : level === 'adset' ? 'ad sets' : 'results'} · {DATE_PRESETS.find(p => p.value === datePreset)?.label}
-              </CardDescription>
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-primary" />
+                  Performance Breakdown
+                </CardTitle>
+                <CardDescription className="mt-1">
+                  {insights.length} {level === 'campaign' ? 'campaigns' : level === 'adset' ? 'ad sets' : level === 'ad' ? 'ads' : 'results'} · {DATE_PRESETS.find(p => p.value === datePreset)?.label}
+                </CardDescription>
+              </div>
+              <Tabs value={level} onValueChange={handleLevelChange}>
+                <TabsList>
+                  <TabsTrigger value="account">Account</TabsTrigger>
+                  <TabsTrigger value="campaign">Campaigns</TabsTrigger>
+                  <TabsTrigger value="adset">Ad Sets</TabsTrigger>
+                  <TabsTrigger value="ad">Ads</TabsTrigger>
+                </TabsList>
+              </Tabs>
             </div>
-            <Tabs value={level} onValueChange={(v) => setLevel(v as any)}>
-              <TabsList>
-                <TabsTrigger value="account">Account</TabsTrigger>
-                <TabsTrigger value="campaign">Campaigns</TabsTrigger>
-                <TabsTrigger value="adset">Ad Sets</TabsTrigger>
-              </TabsList>
-            </Tabs>
+
+            {/* Hierarchical Filters */}
+            {(level === 'adset' || level === 'ad') && (
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Breadcrumb-style filter path */}
+                <span className="text-xs text-muted-foreground font-medium">Filter:</span>
+                
+                {/* Campaign filter - available for adset and ad levels */}
+                <Select
+                  value={selectedCampaignId || 'all'}
+                  onValueChange={(v) => {
+                    setSelectedCampaignId(v === 'all' ? null : v);
+                    setSelectedAdsetId(null);
+                  }}
+                >
+                  <SelectTrigger className="w-[200px] h-8 text-xs">
+                    <SelectValue placeholder="All Campaigns" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Campaigns</SelectItem>
+                    {campaignFilterOptions.map((c: any) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {selectedCampaignId && (
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                )}
+
+                {/* Ad Set filter - only at ad level with a campaign selected */}
+                {level === 'ad' && selectedCampaignId && (
+                  <Select
+                    value={selectedAdsetId || 'all'}
+                    onValueChange={(v) => setSelectedAdsetId(v === 'all' ? null : v)}
+                  >
+                    <SelectTrigger className="w-[200px] h-8 text-xs">
+                      <SelectValue placeholder="All Ad Sets" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Ad Sets</SelectItem>
+                      {adsetFilterOptions.map((a: any) => (
+                        <SelectItem key={a.id} value={a.id}>
+                          {a.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+
+                {/* Clear filters */}
+                {(selectedCampaignId || selectedAdsetId) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                    onClick={() => {
+                      setSelectedCampaignId(null);
+                      setSelectedAdsetId(null);
+                    }}
+                  >
+                    <X className="h-3 w-3 mr-1" />
+                    Clear
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -480,9 +619,11 @@ export default function MarketingAnalytics() {
                 <TableHeader>
                   <TableRow>
                     {level !== 'account' && <TableHead className="min-w-[200px]">
-                      {level === 'campaign' ? 'Campaign' : 'Ad Set'}
+                      {level === 'campaign' ? 'Campaign' : level === 'adset' ? 'Ad Set' : 'Ad'}
                     </TableHead>}
                     {level === 'campaign' && <TableHead className="text-center w-[80px]">Health</TableHead>}
+                    {(level === 'adset' || level === 'ad') && <TableHead className="min-w-[140px]">Campaign</TableHead>}
+                    {level === 'ad' && <TableHead className="min-w-[140px]">Ad Set</TableHead>}
                     <TableHead className="text-right">Spend</TableHead>
                     <TableHead className="text-right">Impressions</TableHead>
                     <TableHead className="text-right">Clicks</TableHead>
@@ -500,14 +641,19 @@ export default function MarketingAnalytics() {
                     const cpl = leads > 0 ? Number(row.spend || 0) / leads : 0;
                     const campaign = campaigns?.find((c: any) => c.id === row.campaign_id);
                     const health = getHealthForCampaign(row.campaign_id);
+                    const rowKey = row.ad_id || row.adset_id || row.campaign_id || i;
 
                     return (
-                      <TableRow key={row.campaign_id || row.adset_id || i} className="group">
+                      <TableRow key={rowKey} className="group">
                         {level !== 'account' && (
                           <TableCell className="font-medium max-w-[250px]">
                             <div className="flex items-center gap-2">
-                              <span className="truncate">{level === 'campaign' ? row.campaign_name : row.adset_name || 'Unknown'}</span>
-                              {campaign?.status && (
+                              <span className="truncate">
+                                {level === 'campaign' ? row.campaign_name : 
+                                 level === 'adset' ? (row.adset_name || 'Unknown') :
+                                 (row.ad_name || 'Unknown')}
+                              </span>
+                              {level === 'campaign' && campaign?.status && (
                                 <Badge variant={campaign.status === 'ACTIVE' ? 'default' : 'secondary'} className="text-[10px] px-1.5 py-0 shrink-0">
                                   {campaign.status}
                                 </Badge>
@@ -543,6 +689,16 @@ export default function MarketingAnalytics() {
                             ) : (
                               <span className="text-muted-foreground text-xs">—</span>
                             )}
+                          </TableCell>
+                        )}
+                        {(level === 'adset' || level === 'ad') && (
+                          <TableCell className="text-sm text-muted-foreground truncate max-w-[140px]">
+                            {row.campaign_name || '—'}
+                          </TableCell>
+                        )}
+                        {level === 'ad' && (
+                          <TableCell className="text-sm text-muted-foreground truncate max-w-[140px]">
+                            {row.adset_name || '—'}
                           </TableCell>
                         )}
                         <TableCell className="text-right font-mono text-sm">{formatCurrency(row.spend)}</TableCell>
