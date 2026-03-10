@@ -103,6 +103,7 @@ export default function PortalConfig() {
     default_access_level: 'read_only',
     booking_calendar_id: null,
     booking_calendar_name: null,
+    booking_calendars: [],
     booking_slot_duration: 30,
     booking_working_hours_start: 9,
     booking_working_hours_end: 17,
