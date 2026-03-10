@@ -55,7 +55,9 @@ function extractAction(actions: any[] | undefined, type: string): number {
 
 export default function MarketingAnalytics() {
   const [datePreset, setDatePreset] = useState('last_30d');
-  const [level, setLevel] = useState<'account' | 'campaign' | 'adset'>('campaign');
+  const [level, setLevel] = useState<'account' | 'campaign' | 'adset' | 'ad'>('campaign');
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
+  const [selectedAdsetId, setSelectedAdsetId] = useState<string | null>(null);
   const [regeneratingDigest, setRegeneratingDigest] = useState(false);
   const [generatingBrief, setGeneratingBrief] = useState(false);
   const [currentBrief, setCurrentBrief] = useState('');
@@ -65,13 +67,21 @@ export default function MarketingAnalytics() {
 
   // Fetch raw Meta Ads data
   const { data: adsData, isLoading: adsLoading, error: adsError, refetch: refetchAds, isFetching: adsFetching } = useQuery({
-    queryKey: ['meta-ads', level, datePreset],
+    queryKey: ['meta-ads', level, datePreset, selectedCampaignId, selectedAdsetId],
     queryFn: async () => {
-      const { data, error } = await invokeSecureFunction('fetch-meta-ads', {
+      const payload: any = {
         level,
         datePreset,
         limit: 50,
-      });
+      };
+      // Hierarchical filtering: pass parent IDs when drilling down
+      if (selectedCampaignId && (level === 'adset' || level === 'ad')) {
+        payload.campaignId = selectedCampaignId;
+      }
+      if (selectedAdsetId && level === 'ad') {
+        payload.adsetId = selectedAdsetId;
+      }
+      const { data, error } = await invokeSecureFunction('fetch-meta-ads', payload);
       if (error) throw new Error(error.message);
       return data;
     },
