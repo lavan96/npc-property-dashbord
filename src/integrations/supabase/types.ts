@@ -4971,6 +4971,7 @@ export type Database = {
         Row: {
           booking_calendar_id: string | null
           booking_calendar_name: string | null
+          booking_calendars: Json | null
           booking_confirmation_email: boolean | null
           booking_intro_text: string | null
           booking_lead_time_hours: number | null
@@ -5003,6 +5004,7 @@ export type Database = {
         Insert: {
           booking_calendar_id?: string | null
           booking_calendar_name?: string | null
+          booking_calendars?: Json | null
           booking_confirmation_email?: boolean | null
           booking_intro_text?: string | null
           booking_lead_time_hours?: number | null
@@ -5035,6 +5037,7 @@ export type Database = {
         Update: {
           booking_calendar_id?: string | null
           booking_calendar_name?: string | null
+          booking_calendars?: Json | null
           booking_confirmation_email?: boolean | null
           booking_intro_text?: string | null
           booking_lead_time_hours?: number | null

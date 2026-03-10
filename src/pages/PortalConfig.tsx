@@ -20,10 +20,16 @@ import {
 import {
   Settings, LayoutDashboard, User, TrendingUp, Building2, BarChart3,
   Briefcase, FileText, Mail, MessageSquare, Bell, CalendarDays,
-  Save, Loader2, Palette, Clock, Type, Shield, Eye
+  Save, Loader2, Palette, Clock, Type, Shield, Eye, Plus, Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useGHLCalendar } from '@/hooks/useGHLCalendar';
+
+interface BookingCalendarOption {
+  id: string;
+  name: string;
+  description?: string;
+}
 
 interface PortalConfig {
   id: string;
@@ -44,6 +50,7 @@ interface PortalConfig {
   default_access_level: string;
   booking_calendar_id: string | null;
   booking_calendar_name: string | null;
+  booking_calendars: BookingCalendarOption[];
   booking_slot_duration: number;
   booking_working_hours_start: number;
   booking_working_hours_end: number;
@@ -96,6 +103,7 @@ export default function PortalConfig() {
     default_access_level: 'read_only',
     booking_calendar_id: null,
     booking_calendar_name: null,
+    booking_calendars: [],
     booking_slot_duration: 30,
     booking_working_hours_start: 9,
     booking_working_hours_end: 17,
@@ -310,33 +318,89 @@ export default function PortalConfig() {
                 <>
                   <Separator />
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>GHL Calendar</Label>
-                      <Select
-                        value={config.booking_calendar_id || ''}
-                        onValueChange={(val) => {
-                          const cal = calendars.find(c => c.id === val);
-                          updateConfig({
-                            booking_calendar_id: val,
-                            booking_calendar_name: cal?.name || null,
-                          });
-                        }}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a calendar..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {calendars.map((cal) => (
-                            <SelectItem key={cal.id} value={cal.id}>
-                              {cal.name}
-                            </SelectItem>
+                  <div className="grid grid-cols-1 gap-4">
+                    {/* Multi-calendar manager */}
+                    <div className="space-y-3">
+                      <Label>Available Calendars for Clients</Label>
+                      <p className="text-xs text-muted-foreground">Add GHL calendars that clients can choose from when booking. Clients select one calendar per booking.</p>
+                      
+                      {/* Existing calendars list */}
+                      {(config.booking_calendars || []).length > 0 && (
+                        <div className="space-y-2">
+                          {config.booking_calendars.map((bc, idx) => (
+                            <div key={bc.id} className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30">
+                              <CalendarDays className="h-4 w-4 text-primary shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium truncate">{bc.name}</p>
+                                {bc.description && <p className="text-xs text-muted-foreground truncate">{bc.description}</p>}
+                                <p className="text-xs text-muted-foreground font-mono">{bc.id}</p>
+                              </div>
+                              <Input
+                                className="w-48 text-xs"
+                                placeholder="Label shown to clients..."
+                                value={bc.description || ''}
+                                onChange={(e) => {
+                                  const updated = [...config.booking_calendars];
+                                  updated[idx] = { ...updated[idx], description: e.target.value };
+                                  updateConfig({ booking_calendars: updated });
+                                }}
+                              />
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                onClick={() => {
+                                  const updated = config.booking_calendars.filter((_, i) => i !== idx);
+                                  updateConfig({ booking_calendars: updated });
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           ))}
-                        </SelectContent>
-                      </Select>
-                      <p className="text-xs text-muted-foreground">The GHL calendar to fetch free slots from</p>
-                    </div>
+                        </div>
+                      )}
 
+                      {/* Add calendar selector */}
+                      {(() => {
+                        const usedIds = new Set((config.booking_calendars || []).map(c => c.id));
+                        const available = calendars.filter(c => !usedIds.has(c.id));
+                        if (available.length === 0 && calendars.length > 0) return (
+                          <p className="text-xs text-muted-foreground italic">All available GHL calendars have been added.</p>
+                        );
+                        return (
+                          <div className="flex items-center gap-2">
+                            <Select
+                              value=""
+                              onValueChange={(val) => {
+                                const cal = calendars.find(c => c.id === val);
+                                if (cal) {
+                                  updateConfig({
+                                    booking_calendars: [...(config.booking_calendars || []), { id: cal.id, name: cal.name, description: '' }],
+                                  });
+                                }
+                              }}
+                            >
+                              <SelectTrigger className="flex-1">
+                                <SelectValue placeholder="Add a GHL calendar..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {available.map((cal) => (
+                                  <SelectItem key={cal.id} value={cal.id}>
+                                    {cal.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Slot Duration (minutes)</Label>
                       <Select
