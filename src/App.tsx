@@ -49,6 +49,7 @@ import UserManagement from "./pages/admin/UserManagement";
 import ActivityLogs from "./pages/ActivityLogs";
 import { DepreciationCompsAdmin } from "./components/admin/DepreciationCompsAdmin";
 import Integrations from "./pages/Integrations";
+import MarketingAnalytics from "./pages/MarketingAnalytics";
 import CloudflareManagement from "./pages/CloudflareManagement";
 import ClientManagement from "./pages/ClientManagement";
 import ClientTracker from "./pages/ClientTracker";
