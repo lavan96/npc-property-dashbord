@@ -168,6 +168,55 @@ export default function MarketingAnalytics() {
     staleTime: 5 * 60 * 1000,
   });
 
+  // Phase 4: Industry Benchmarks
+  const { data: benchmarkData, isLoading: benchmarkLoading } = useQuery({
+    queryKey: ['meta-ads-phase4-benchmarks', datePreset, adsData?.insights?.length],
+    queryFn: async () => {
+      if (!adsData?.insights || adsData.insights.length === 0) return null;
+      // Calculate totals for benchmark comparison
+      const t = { spend: 0, leads: 0, cpl: 0, ctr: 0, cpc: 0, impressions: 0, clicks: 0 };
+      for (const row of adsData.insights) {
+        t.spend += Number(row.spend || 0);
+        t.impressions += Number(row.impressions || 0);
+        t.clicks += Number(row.clicks || 0);
+        if (row.actions) {
+          const lead = row.actions.find((a: any) => a.action_type === 'lead');
+          t.leads += lead ? Number(lead.value) : 0;
+        }
+      }
+      t.ctr = t.impressions > 0 ? (t.clicks / t.impressions) * 100 : 0;
+      t.cpc = t.clicks > 0 ? t.spend / t.clicks : 0;
+      t.cpl = t.leads > 0 ? t.spend / t.leads : 0;
+
+      const { data, error } = await invokeSecureFunction('analyze-meta-ads-phase4', {
+        action: 'benchmarks',
+        totals: t,
+      });
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    enabled: !!adsData?.insights && adsData.insights.length > 0,
+    staleTime: 15 * 60 * 1000, // Cache longer — benchmarks don't change fast
+    retry: 1,
+  });
+
+  // Phase 4: Market Correlation
+  const { data: marketData, isLoading: marketLoading } = useQuery({
+    queryKey: ['meta-ads-phase4-market', datePreset, adsData?.insights?.length],
+    queryFn: async () => {
+      const { data, error } = await invokeSecureFunction('analyze-meta-ads-phase4', {
+        action: 'market_correlation',
+        insights: adsData?.insights || [],
+        datePreset,
+      });
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    enabled: !!adsData?.insights && adsData.insights.length > 0,
+    staleTime: 15 * 60 * 1000,
+    retry: 1,
+  });
+
   const insights = adsData?.insights || [];
   const campaigns = adsData?.campaigns || [];
   const anomalies = analysisData?.anomalies || [];
