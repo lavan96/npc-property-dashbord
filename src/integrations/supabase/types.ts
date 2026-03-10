@@ -4801,6 +4801,60 @@ export type Database = {
         }
         Relationships: []
       }
+      marketing_reports: {
+        Row: {
+          anomalies_snapshot: Json | null
+          content: string
+          created_at: string
+          created_by: string | null
+          date_preset: string | null
+          forecast_data: Json | null
+          health_snapshot: Json | null
+          id: string
+          metrics_snapshot: Json | null
+          period_end: string
+          period_start: string
+          recommendations: Json | null
+          report_type: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          anomalies_snapshot?: Json | null
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          date_preset?: string | null
+          forecast_data?: Json | null
+          health_snapshot?: Json | null
+          id?: string
+          metrics_snapshot?: Json | null
+          period_end: string
+          period_start: string
+          recommendations?: Json | null
+          report_type?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          anomalies_snapshot?: Json | null
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          date_preset?: string | null
+          forecast_data?: Json | null
+          health_snapshot?: Json | null
+          id?: string
+          metrics_snapshot?: Json | null
+          period_end?: string
+          period_start?: string
+          recommendations?: Json | null
+          report_type?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       median_rent_cache: {
         Row: {
           bedrooms: number
