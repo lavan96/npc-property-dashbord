@@ -133,6 +133,39 @@ export default function MarketingAnalytics() {
     retry: 1,
   });
 
+  // Phase 3: Forecasting
+  const { data: forecastData, isLoading: forecastLoading } = useQuery({
+    queryKey: ['meta-ads-phase3-forecast', datePreset, forecastHorizon, adsData?.insights?.length],
+    queryFn: async () => {
+      if (!adsData?.insights || adsData.insights.length === 0) return null;
+      const { data, error } = await invokeSecureFunction('analyze-meta-ads-phase3', {
+        action: 'forecast',
+        insights: adsData.insights,
+        horizonDays: forecastHorizon,
+      });
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    enabled: !!adsData?.insights && adsData.insights.length > 0,
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
+
+  // Phase 3: Past briefs list
+  const { data: pastBriefsData, isLoading: pastBriefsLoading } = useQuery({
+    queryKey: ['meta-ads-phase3-briefs'],
+    queryFn: async () => {
+      const { data, error } = await invokeSecureFunction('analyze-meta-ads-phase3', {
+        action: 'list_briefs',
+        insights: [],
+        limit: 10,
+      });
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
   const insights = adsData?.insights || [];
   const campaigns = adsData?.campaigns || [];
   const anomalies = analysisData?.anomalies || [];
