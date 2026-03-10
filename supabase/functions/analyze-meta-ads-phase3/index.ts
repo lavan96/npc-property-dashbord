@@ -359,20 +359,22 @@ async function callGemini(prompt: string, apiKey: string): Promise<string> {
 // ─── Main Handler ────────────────────────────────────────────────────────────
 
 serve(async (req) => {
-  const corsHeaders = createCorsHeaders();
+  const origin = req.headers.get('origin');
+  const corsHeaders = createCorsHeaders(origin);
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
-    const authResult = await verifyAuth(req);
-    if (!authResult.authenticated) return createUnauthorizedResponse(corsHeaders);
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
     const body: Phase3Request = await req.json();
     const { action } = body;
 
+    const authResult = await verifyAuth(supabase, req.headers, body as any);
+    if (authResult.error) return createUnauthorizedResponse(authResult.error, corsHeaders);
+
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
 
     if (action === 'forecast') {
       const { insights, horizonDays = 14 } = body as any;
