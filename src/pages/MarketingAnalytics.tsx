@@ -260,7 +260,28 @@ export default function MarketingAnalytics() {
         <CampaignHealthPanel healthScores={healthScores} loading={isAnalyzing} />
       </div>
 
-      {/* Campaign Breakdown Table */}
+      {/* Phase 2: Budget Advisor */}
+      <BudgetAdvisorPanel
+        recommendations={phase2Data?.recommendations || []}
+        aiAnalysis={phase2Data?.aiAnalysis || ''}
+        aiError={phase2Data?.aiError}
+        loading={phase2Loading}
+        summary={phase2Data?.summary}
+      />
+
+      {/* Phase 2: Audience Intelligence + Lead Quality */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <AudienceIntelligencePanel
+          audienceInsights={phase2Data?.audienceInsights || []}
+          loading={phase2Loading}
+        />
+        <LeadQualityPanel
+          leadQuality={leadQualityData?.leadQuality || []}
+          aiAnalysis={leadQualityData?.aiAnalysis || ''}
+          loading={leadQualityLoading}
+        />
+      </div>
+
       <Card>
         <CardHeader className="pb-3">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
