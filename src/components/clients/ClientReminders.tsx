@@ -314,6 +314,7 @@ export function ClientReminders({ clientId, followUpDate }: ClientRemindersProps
     setDueDate('');
     setPriority('medium');
     setReminderType('follow_up');
+    setAssignedTo('unassigned');
     setShowAdd(false);
   };
 
