@@ -291,6 +291,20 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         }
         navigate('/generated-reports?tab=investment');
         break;
+      case 'reminder_assigned':
+        if (notification.entityId) {
+          navigate(`/clients?highlight=${notification.entityId}`);
+        } else {
+          navigate('/reminders');
+        }
+        break;
+      case 'deal_assigned':
+        if (notification.entityId) {
+          navigate(`/deal-pipeline`);
+        } else {
+          navigate('/deal-pipeline');
+        }
+        break;
       default:
         break;
     }
