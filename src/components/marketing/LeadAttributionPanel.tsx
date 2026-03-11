@@ -165,6 +165,7 @@ export function LeadAttributionPanel() {
   const autoCount = attributions.filter(a => a.source_type === 'webhook_auto' || a.source_type === 'backfill').length;
   const manualCount = attributions.filter(a => a.source_type === 'manual').length;
   const csvCount = attributions.filter(a => a.source_type === 'csv_import').length;
+  const incompleteCount = attributions.filter(a => !a.meta_campaign_name && !a.utm_campaign).length;
 
   const handleBackfill = async () => {
     setIsBackfilling(true);
