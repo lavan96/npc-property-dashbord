@@ -293,6 +293,7 @@ export function ClientReportsTab({
         name: `Investment Report - ${r.property_address}`,
         generatedAt: r.created_at,
         status: (r.status === 'completed' ? 'completed' : r.status === 'failed' ? 'failed' : 'pending') as any,
+        fileUrl: r.pdf_url || null,
         propertyAddress: r.property_address,
         source: 'investment_report',
       });
@@ -451,6 +452,10 @@ export function ClientReportsTab({
   };
 
   const handleSendToPortal = async (report: UnifiedReport) => {
+    if (!report.fileUrl) {
+      toast.error('No PDF available to send. Generate the report PDF first.');
+      return;
+    }
     try {
       const reportTypeMap: Record<string, string> = {
         investment: 'investment',
@@ -466,7 +471,7 @@ export function ClientReportsTab({
         data: {
           report_title: report.name,
           report_type: reportTypeMap[report.type] || 'investment',
-          storage_path: report.fileUrl || null,
+          storage_path: report.fileUrl,
           notes: report.propertyAddress ? `Property: ${report.propertyAddress}` : null,
           published_at: new Date().toISOString(),
         },
