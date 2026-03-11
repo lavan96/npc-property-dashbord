@@ -7,10 +7,21 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { FileSignature, Send, Loader2, User, MapPin, Phone, Mail, Calendar, UserPlus, CheckCircle2, DollarSign } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { FileSignature, Send, Loader2, User, MapPin, Phone, Mail, Calendar, UserPlus, CheckCircle2, DollarSign, Layout } from 'lucide-react';
 import { useAgreementMutations } from '@/hooks/useAgencyAgreements';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { format } from 'date-fns';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+
+interface GammaTemplate {
+  id: string;
+  name: string;
+  gamma_template_id: string;
+  is_default: boolean;
+  is_active: boolean;
+}
 
 interface SendAgreementDialogProps {
   open: boolean;
@@ -31,7 +42,24 @@ interface SendAgreementDialogProps {
 export function SendAgreementDialog({ open, onOpenChange, client, dealId }: SendAgreementDialogProps) {
   const { generateAgreement, sendViaDocuSign } = useAgreementMutations();
 
+  // Fetch available Gamma templates
+  const { data: templates = [] } = useQuery({
+    queryKey: ['gamma-templates-active'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('gamma_agreement_templates' as any)
+        .select('id, name, gamma_template_id, is_default, is_active')
+        .eq('is_active', true)
+        .order('is_default', { ascending: false })
+        .order('name');
+      if (error) throw error;
+      return (data || []) as unknown as GammaTemplate[];
+    },
+    enabled: open,
+  });
+
   // Pre-fill from client data
+  const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [buyerNames, setBuyerNames] = useState('');
   const [buyerAddress, setBuyerAddress] = useState('');
   const [buyerPhone, setBuyerPhone] = useState('');
@@ -62,6 +90,14 @@ export function SendAgreementDialog({ open, onOpenChange, client, dealId }: Send
       setGeneratedId(null);
     }
   }, [open, client]);
+
+  // Auto-select default template when templates load
+  useEffect(() => {
+    if (templates.length > 0 && !selectedTemplateId) {
+      const defaultTemplate = templates.find(t => t.is_default);
+      setSelectedTemplateId(defaultTemplate?.id || templates[0].id);
+    }
+  }, [templates, selectedTemplateId]);
 
   const handleGenerate = async () => {
     try {
