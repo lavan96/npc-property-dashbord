@@ -133,6 +133,7 @@ async function fetchClientDataSecure(
     borrowingCapacity: include.borrowingCapacity ?? false,
     additionalContacts: include.additionalContacts ?? false,
     deals: include.deals ?? false,
+    attributions: include.attributions ?? false,
   };
 
   const { data, error } = await invokeSecureFunction('get-client-data', {
@@ -163,6 +164,7 @@ async function fetchClientDataSecure(
     borrowingCapacity: data.borrowingCapacity || null,
     additionalContacts: data.additionalContacts || [],
     deals: data.deals || [],
+    attributions: data.attributions || [],
   };
 }
 
