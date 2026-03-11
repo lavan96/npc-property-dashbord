@@ -6723,7 +6723,11 @@ export type Database = {
         | "portfolio_report"
         | "agency_agreement"
       app_role: "superadmin" | "admin" | "user"
-      attribution_source_type: "webhook_auto" | "manual" | "csv_import"
+      attribution_source_type:
+        | "webhook_auto"
+        | "manual"
+        | "csv_import"
+        | "backfill"
       deal_risk_status: "on_track" | "needs_follow_up" | "urgent"
       deal_stage_status: "pending" | "in_progress" | "complete" | "skipped"
       deal_type: "existing_property" | "house_and_land" | "refinance"
@@ -7015,7 +7019,12 @@ export const Constants = {
         "agency_agreement",
       ],
       app_role: ["superadmin", "admin", "user"],
-      attribution_source_type: ["webhook_auto", "manual", "csv_import"],
+      attribution_source_type: [
+        "webhook_auto",
+        "manual",
+        "csv_import",
+        "backfill",
+      ],
       deal_risk_status: ["on_track", "needs_follow_up", "urgent"],
       deal_stage_status: ["pending", "in_progress", "complete", "skipped"],
       deal_type: ["existing_property", "house_and_land", "refinance"],
