@@ -5,12 +5,20 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  FileText, Search, Loader2, Download, Eye, Clock,
+  FileText, Search, Loader2, Download,
   BarChart3, PiggyBank, TrendingUp, FileBarChart, Inbox
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
+import { toast } from 'sonner';
 
 const SUPABASE_URL = "https://dduzbchuswwbefdunfct.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkdXpiY2h1c3d3YmVmZHVuZmN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0NDM4NzksImV4cCI6MjA3MTAxOTg3OX0.eSYU6fxIc3tBQuGLsdBRff0alBMkNfvv7OpW0efNjxk";
+const PORTAL_SESSION_KEY = 'portal_session_token';
+
+function getSessionToken(): string | null {
+  try { return sessionStorage.getItem(PORTAL_SESSION_KEY) || localStorage.getItem(PORTAL_SESSION_KEY); }
+  catch { try { return localStorage.getItem(PORTAL_SESSION_KEY); } catch { return null; } }
+}
 
 const reportTypeConfig: Record<string, { label: string; icon: typeof FileText; color: string }> = {
   investment: { label: 'Investment Report', icon: FileBarChart, color: 'bg-blue-500/10 text-blue-600' },
@@ -35,6 +43,7 @@ export default function PortalReports() {
   const { data, isLoading } = usePortalReportsData();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const reports = data?.reports || [];
 
@@ -46,16 +55,46 @@ export default function PortalReports() {
     return matchesSearch && matchesType;
   });
 
-  const handleDownload = (report: any) => {
-    if (!report.storage_path) return;
-    const url = `${SUPABASE_URL}/storage/v1/object/public/client-files/${report.storage_path}`;
-    window.open(url, '_blank');
-  };
+  const handleDownload = async (report: any) => {
+    if (!report.storage_path) {
+      toast.error('No file available for this report');
+      return;
+    }
 
-  const handleView = (report: any) => {
-    if (!report.storage_path) return;
-    const url = `${SUPABASE_URL}/storage/v1/object/public/client-files/${report.storage_path}`;
-    window.open(url, '_blank');
+    setDownloadingId(report.id);
+    try {
+      const sessionToken = getSessionToken();
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/get-portal-client-data`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          ...(sessionToken ? { 'x-portal-session-token': sessionToken } : {}),
+        },
+        credentials: 'omit',
+        body: JSON.stringify({
+          action: 'downloadReport',
+          reportId: report.id,
+          portal_session_token: sessionToken,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success || !result.signedUrl) {
+        throw new Error(result.error || 'Failed to get download link');
+      }
+
+      // Open signed URL to trigger download
+      window.open(result.signedUrl, '_blank');
+      toast.success('Downloading report...');
+    } catch (error: any) {
+      console.error('Download error:', error);
+      toast.error('Failed to download: ' + error.message);
+    } finally {
+      setDownloadingId(null);
+    }
   };
 
   if (isLoading) {
@@ -116,6 +155,7 @@ export default function PortalReports() {
           {filtered.map((report: any) => {
             const config = getReportConfig(report.report_type);
             const Icon = config.icon;
+            const isDownloading = downloadingId === report.id;
             return (
               <Card key={report.id} className="hover:shadow-md transition-shadow">
                 <CardContent className="p-4 sm:p-5">
@@ -155,13 +195,19 @@ export default function PortalReports() {
 
                       {report.storage_path && (
                         <div className="flex items-center gap-2 mt-3">
-                          <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => handleView(report)}>
-                            <Eye className="h-3.5 w-3.5 mr-1.5" />
-                            View
-                          </Button>
-                          <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => handleDownload(report)}>
-                            <Download className="h-3.5 w-3.5 mr-1.5" />
-                            Download
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-xs h-8"
+                            onClick={() => handleDownload(report)}
+                            disabled={isDownloading}
+                          >
+                            {isDownloading ? (
+                              <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                            ) : (
+                              <Download className="h-3.5 w-3.5 mr-1.5" />
+                            )}
+                            {isDownloading ? 'Preparing...' : 'Download'}
                           </Button>
                         </div>
                       )}
