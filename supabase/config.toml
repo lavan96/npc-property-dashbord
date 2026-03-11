@@ -453,3 +453,6 @@ verify_jwt = true
 
 [functions.diagnose-ghl-attribution]
 verify_jwt = true
+
+[functions.analyze-meta-ads-phase5]
+verify_jwt = true
