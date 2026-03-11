@@ -274,11 +274,17 @@ export function LeadAttributionPanel() {
               </div>
 
               {/* Attribution Method Breakdown */}
-              <div className="flex items-center gap-3 text-[10px] text-muted-foreground pt-2 border-t border-border/50">
-                <span>Capture method:</span>
-                {autoCount > 0 && <Badge variant="outline" className="text-[9px] bg-emerald-500/5">Auto: {autoCount}</Badge>}
-                {manualCount > 0 && <Badge variant="outline" className="text-[9px] bg-blue-500/5">Manual: {manualCount}</Badge>}
-                {csvCount > 0 && <Badge variant="outline" className="text-[9px] bg-amber-500/5">CSV: {csvCount}</Badge>}
+              <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-2 border-t border-border/50">
+                <div className="flex items-center gap-3">
+                  <span>Capture method:</span>
+                  {autoCount > 0 && <Badge variant="outline" className="text-[9px] bg-emerald-500/5">Auto: {autoCount}</Badge>}
+                  {manualCount > 0 && <Badge variant="outline" className="text-[9px] bg-blue-500/5">Manual: {manualCount}</Badge>}
+                  {csvCount > 0 && <Badge variant="outline" className="text-[9px] bg-amber-500/5">CSV: {csvCount}</Badge>}
+                </div>
+                <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={handleBackfill} disabled={isBackfilling}>
+                  {isBackfilling ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <DatabaseBackup className="h-3 w-3 mr-1" />}
+                  {isBackfilling ? backfillProgress : 'Backfill'}
+                </Button>
               </div>
             </>
           )}
