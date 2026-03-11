@@ -126,16 +126,9 @@ export function DealDetailView({ deal, clientId, onBack }: DealDetailViewProps) 
             </SelectContent>
           </Select>
 
-          <Input
-            key={deal.id + '-responsible'}
-            defaultValue={deal.responsible_person || ''}
-            onBlur={(e) => {
-              if (e.target.value !== (deal.responsible_person || '')) {
-                handleDealUpdate({ responsible_person: e.target.value });
-              }
-            }}
-            placeholder="Responsible"
-            className="h-8 text-xs w-full sm:w-[140px]"
+          <ResponsiblePersonSelect
+            deal={deal}
+            onUpdate={handleDealUpdate}
           />
 
           <AlertDialog>
