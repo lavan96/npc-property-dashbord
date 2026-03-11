@@ -72,6 +72,7 @@ interface CampaignGroup {
 export function LeadAttributionPanel() {
   const [expanded, setExpanded] = useState(true);
   const [isBackfilling, setIsBackfilling] = useState(false);
+  const [isReBackfilling, setIsReBackfilling] = useState(false);
   const [isEnriching, setIsEnriching] = useState(false);
   const [backfillProgress, setBackfillProgress] = useState('');
   const [expandedCampaigns, setExpandedCampaigns] = useState<Set<string>>(new Set());
@@ -164,6 +165,7 @@ export function LeadAttributionPanel() {
   const autoCount = attributions.filter(a => a.source_type === 'webhook_auto' || a.source_type === 'backfill').length;
   const manualCount = attributions.filter(a => a.source_type === 'manual').length;
   const csvCount = attributions.filter(a => a.source_type === 'csv_import').length;
+  const incompleteCount = attributions.filter(a => !a.meta_campaign_name && !a.utm_campaign).length;
 
   const handleBackfill = async () => {
     setIsBackfilling(true);
@@ -189,6 +191,34 @@ export function LeadAttributionPanel() {
       toast({ title: 'Backfill Error', description: err.message, variant: 'destructive' });
     } finally {
       setIsBackfilling(false);
+      setBackfillProgress('');
+    }
+  };
+
+  const handleReBackfill = async () => {
+    setIsReBackfilling(true);
+    setBackfillProgress('Re-fetching incomplete attributions...');
+    let offset = 0;
+    let totalUpdated = 0;
+    let totalProcessed = 0;
+
+    try {
+      let hasMore = true;
+      while (hasMore) {
+        const { data, error } = await invokeSecureFunction('backfill-lead-attributions', { batchSize: 50, offset, mode: 'update' });
+        if (error) throw new Error(error.message || 'Re-backfill failed');
+        totalUpdated += data.stats?.updated || 0;
+        totalProcessed += data.stats?.processed || 0;
+        hasMore = data.hasMore;
+        offset = data.nextOffset || offset + 50;
+        setBackfillProgress(`Re-fetched ${totalProcessed} records, ${totalUpdated} updated...`);
+      }
+      toast({ title: 'Re-Backfill Complete', description: `${totalUpdated} attributions updated with full campaign data from ${totalProcessed} records.` });
+      refetch();
+    } catch (err: any) {
+      toast({ title: 'Re-Backfill Error', description: err.message, variant: 'destructive' });
+    } finally {
+      setIsReBackfilling(false);
       setBackfillProgress('');
     }
   };
@@ -459,8 +489,14 @@ export function LeadAttributionPanel() {
                   )}
                   <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={handleBackfill} disabled={isBackfilling}>
                     {isBackfilling ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <DatabaseBackup className="h-3 w-3 mr-1" />}
-                    {isBackfilling ? backfillProgress : 'Backfill'}
+                    {isBackfilling ? backfillProgress : 'Backfill New'}
                   </Button>
+                  {incompleteCount > 0 && (
+                    <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={handleReBackfill} disabled={isReBackfilling}>
+                      {isReBackfilling ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <RefreshCw className="h-3 w-3 mr-1" />}
+                      {isReBackfilling ? backfillProgress : `Re-fetch (${incompleteCount})`}
+                    </Button>
+                  )}
                 </div>
               </div>
             </>
