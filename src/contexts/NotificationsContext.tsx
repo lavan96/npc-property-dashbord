@@ -141,30 +141,6 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     };
   }, [fetchNotifications]);
 
-  const fetchNotifications = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .order('timestamp', { ascending: false })
-        .limit(50);
-
-      if (error) throw error;
-
-      if (data) {
-        const notificationsWithDates = data.map((n: any) => ({
-          ...n,
-          reportId: n.report_id,
-          entityId: n.entity_id,
-          targetUserId: n.target_user_id,
-          timestamp: new Date(n.timestamp)
-        }));
-        setNotifications(notificationsWithDates);
-      }
-    } catch (error) {
-      console.error('Failed to fetch notifications:', error);
-    }
-  };
 
   const addNotification = async (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => {
     try {
