@@ -1050,7 +1050,7 @@ No investment report has been uploaded. You are having an open conversation abou
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              model: "google/gemini-2.5-pro",
+              model: "google/gemini-3.1-pro-preview",
               messages,
               max_tokens: 65536,
               stream: true,
@@ -1166,7 +1166,7 @@ No investment report has been uploaded. You are having an open conversation abou
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: "google/gemini-2.5-pro",
+            model: "google/gemini-3.1-pro-preview",
             messages,
             max_tokens: 65536,
           }),
