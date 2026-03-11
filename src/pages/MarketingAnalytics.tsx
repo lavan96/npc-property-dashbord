@@ -103,7 +103,8 @@ export default function MarketingAnalytics() {
       return data;
     },
     enabled: !!adsData?.insights && adsData.insights.length > 0,
-    staleTime: 5 * 60 * 1000,
+    staleTime: Infinity,
+    gcTime: 30 * 60 * 1000,
     retry: 1,
   });
 
@@ -123,7 +124,8 @@ export default function MarketingAnalytics() {
       return data;
     },
     enabled: !!adsData?.insights && adsData.insights.length > 0,
-    staleTime: 5 * 60 * 1000,
+    staleTime: Infinity,
+    gcTime: 30 * 60 * 1000,
     retry: 1,
   });
 
@@ -141,7 +143,8 @@ export default function MarketingAnalytics() {
       return data;
     },
     enabled: !!adsData?.insights && adsData.insights.length > 0,
-    staleTime: 5 * 60 * 1000,
+    staleTime: Infinity,
+    gcTime: 30 * 60 * 1000,
     retry: 1,
   });
 
@@ -159,7 +162,8 @@ export default function MarketingAnalytics() {
       return data;
     },
     enabled: !!adsData?.insights && adsData.insights.length > 0,
-    staleTime: 5 * 60 * 1000,
+    staleTime: Infinity,
+    gcTime: 30 * 60 * 1000,
     retry: 1,
   });
 
@@ -206,7 +210,8 @@ export default function MarketingAnalytics() {
       return data;
     },
     enabled: !!adsData?.insights && adsData.insights.length > 0,
-    staleTime: 15 * 60 * 1000, // Cache longer — benchmarks don't change fast
+    staleTime: Infinity,
+    gcTime: 30 * 60 * 1000,
     retry: 1,
   });
 
@@ -223,7 +228,8 @@ export default function MarketingAnalytics() {
       return data;
     },
     enabled: !!adsData?.insights && adsData.insights.length > 0,
-    staleTime: 15 * 60 * 1000,
+    staleTime: Infinity,
+    gcTime: 30 * 60 * 1000,
     retry: 1,
   });
 
@@ -308,8 +314,9 @@ export default function MarketingAnalytics() {
 
   const handleRefresh = useCallback(() => {
     refetchAds();
-    queryClient.invalidateQueries({ queryKey: ['meta-ads-analysis'] });
-  }, [refetchAds, queryClient]);
+    // Note: AI queries are NOT invalidated on refresh to save tokens.
+    // Use the individual "Regenerate" buttons to refresh AI content.
+  }, [refetchAds]);
 
   const handleRegenerateDigest = useCallback(async () => {
     setRegeneratingDigest(true);
