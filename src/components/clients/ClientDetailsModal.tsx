@@ -456,6 +456,13 @@ NPC Team`
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Lead Source Attribution */}
+              <LeadSourceCard
+                clientId={client.id}
+                attributions={attributions}
+                onRefresh={refetchClient}
+              />
             </TabsContent>
 
             {/* Personal Details Tab - Vownet Mirror */}
