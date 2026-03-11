@@ -76,6 +76,7 @@ import PortalDealProgress from "./pages/portal/PortalDealProgress";
 import PortalMessages from "./pages/portal/PortalMessages";
 import PortalPropertyInsights from "./pages/portal/PortalPropertyInsights";
 import PortalBooking from "./pages/portal/PortalBooking";
+import PortalAppointments from "./pages/portal/PortalAppointments";
 import PortalConfig from "./pages/PortalConfig";
 
 const queryClient = new QueryClient();
