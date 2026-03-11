@@ -781,65 +781,112 @@ serve(async (req) => {
     if (action === "chat") {
       const { reportContents, reportNames, question, chatHistory, conversationId, useRAG = true, modelProvider = 'openai' } = body;
       console.log(`[report-qa] Processing chat question: ${question?.substring(0, 50)}...`);
-      console.log(`[report-qa] Reports count: ${reportContents?.length || 0}, RAG: ${useRAG}, Provider: ${modelProvider}`);
+      console.log(`[report-qa] ConversationId: ${conversationId}, RAG: ${useRAG}, Provider: ${modelProvider}`);
 
-      const hasReports = reportContents && reportContents.length > 0;
-      const isMultiReport = reportContents && reportContents.length > 1;
-      
-      // Step 6: Retrieve relevant chunks from knowledge base
+      // === RAG-FIRST CONTEXT ASSEMBLY ===
+      // Instead of sending full report content every message, we:
+      // 1. Load the structural summary from the conversation
+      // 2. Retrieve semantically relevant chunks via embeddings
+      // 3. Fall back to raw content only if RAG is not available
+
+      let summaryContext = "";
       let ragContext = "";
-      if (useRAG && OPENAI_API_KEY) {
+      let hasRagContext = false;
+      const hasReports = (reportContents && reportContents.length > 0);
+      const isMultiReport = reportContents && reportContents.length > 1;
+
+      // Try RAG-based context assembly first
+      if (conversationId && OPENAI_API_KEY) {
+        // Load structural summary from conversation
         try {
-          const relevantChunks = await retrieveRelevantChunks(
-            supabase,
-            question,
-            OPENAI_API_KEY,
-            conversationId,
-            0.6, // Lower threshold for broader matches
-            8    // Get more chunks for comprehensive context
-          );
-          
-          if (relevantChunks.length > 0) {
-            ragContext = formatRetrievedContext(relevantChunks);
-            console.log(`[report-qa] Injecting ${relevantChunks.length} RAG chunks into context`);
+          const { data: conv } = await supabase
+            .from("report_qa_conversations")
+            .select("structured_report, report_names")
+            .eq("id", conversationId)
+            .single();
+
+          if (conv?.structured_report && conv.structured_report.length > 100) {
+            summaryContext = conv.structured_report;
+            console.log(`[report-qa] Loaded structural summary: ${summaryContext.length} chars`);
           }
-        } catch (ragError) {
-          console.error(`[report-qa] RAG retrieval failed (continuing without):`, ragError);
+        } catch (e) {
+          console.error(`[report-qa] Failed to load summary:`, e);
+        }
+
+        // Retrieve relevant chunks via semantic search
+        if (useRAG) {
+          try {
+            const relevantChunks = await retrieveRelevantChunks(
+              supabase,
+              question,
+              OPENAI_API_KEY,
+              conversationId,
+              0.5, // Lower threshold for broader matches
+              12   // More chunks for comprehensive context
+            );
+            
+            if (relevantChunks.length > 0) {
+              ragContext = formatRetrievedContext(relevantChunks);
+              hasRagContext = true;
+              console.log(`[report-qa] RAG retrieved ${relevantChunks.length} relevant chunks`);
+            }
+          } catch (ragError) {
+            console.error(`[report-qa] RAG retrieval failed:`, ragError);
+          }
         }
       }
-      
-      // Truncate report content to stay within model context limits
-      // ~4 chars per token; reserve ~200k tokens for context (~800k chars)
+
+      // Build context section
+      // Priority: Summary + RAG chunks (preferred) > Raw content (fallback)
       const MAX_CONTEXT_CHARS = 800000;
       
       function truncateContext(text: string, maxChars: number): string {
         if (text.length <= maxChars) return text;
         const truncated = text.substring(0, maxChars);
-        // Cut at last complete sentence/paragraph
         const lastBreak = Math.max(
           truncated.lastIndexOf('\n\n'),
           truncated.lastIndexOf('. '),
           truncated.lastIndexOf('.\n')
         );
         const cutPoint = lastBreak > maxChars * 0.8 ? lastBreak + 1 : maxChars;
-        return truncated.substring(0, cutPoint) + '\n\n[... Report content truncated due to length. Ask specific questions about sections you need details on.]';
+        return truncated.substring(0, cutPoint) + '\n\n[... Content truncated. Ask specific questions for more detail.]';
       }
-      
+
       let contextSection = "";
-      if (isMultiReport) {
-        const perReportLimit = Math.floor(MAX_CONTEXT_CHARS / reportContents.length);
-        contextSection = reportContents.map((content: string, idx: number) => 
-          `--- REPORT ${idx + 1}: ${reportNames?.[idx] || `Report ${idx + 1}`} ---\n${truncateContext(content, perReportLimit)}\n`
-        ).join("\n\n");
+      
+      if (summaryContext || hasRagContext) {
+        // RAG mode: Use summary + retrieved chunks (much more efficient)
+        const parts: string[] = [];
+        
+        if (summaryContext) {
+          parts.push(`## REPORT SUMMARY\n${summaryContext}`);
+        }
+        
+        if (ragContext) {
+          parts.push(ragContext);
+        }
+        
+        contextSection = parts.join('\n\n');
+        console.log(`[report-qa] Using RAG context: ${contextSection.length} chars (summary: ${summaryContext.length}, chunks: ${ragContext.length})`);
       } else if (hasReports) {
-        const raw = reportContents?.[0] || body.reportContent || "";
-        contextSection = truncateContext(raw, MAX_CONTEXT_CHARS);
+        // Fallback: Use raw report content (legacy behavior for non-indexed conversations)
+        console.log(`[report-qa] RAG not available, falling back to raw content injection`);
+        
+        if (isMultiReport) {
+          const perReportLimit = Math.floor(MAX_CONTEXT_CHARS / reportContents.length);
+          contextSection = reportContents.map((content: string, idx: number) => 
+            `--- REPORT ${idx + 1}: ${reportNames?.[idx] || `Report ${idx + 1}`} ---\n${truncateContext(content, perReportLimit)}\n`
+          ).join("\n\n");
+        } else {
+          const raw = reportContents?.[0] || body.reportContent || "";
+          contextSection = truncateContext(raw, MAX_CONTEXT_CHARS);
+        }
       }
       
       if (contextSection.length > MAX_CONTEXT_CHARS) {
         contextSection = truncateContext(contextSection, MAX_CONTEXT_CHARS);
       }
-      console.log(`[report-qa] Context section length: ${contextSection.length} chars`);
+      console.log(`[report-qa] Final context section length: ${contextSection.length} chars`);
 
       let systemPrompt = "";
       
