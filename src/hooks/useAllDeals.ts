@@ -83,7 +83,7 @@ export function useAllDeals() {
       // Fetch stages & build payments for all deals
       const dealIds = deals.map((d: any) => d.id);
 
-      const [stagesRes, paymentsRes, invoicesRes] = await Promise.all([
+      const [stagesRes, paymentsRes, invoicesRes, attributionsRes] = await Promise.all([
         invokeSecureFunction('get-client-data', {
           listMode: true,
           listOptions: { table: 'deal_stages', select: '*', orderBy: 'display_order', orderAsc: true },
@@ -95,6 +95,10 @@ export function useAllDeals() {
         invokeSecureFunction('get-client-data', {
           listMode: true,
           listOptions: { table: 'builder_invoices', select: '*', orderBy: 'created_at', orderAsc: false },
+        }),
+        invokeSecureFunction('get-client-data', {
+          listMode: true,
+          listOptions: { table: 'lead_source_attributions', select: 'client_id,utm_source,utm_campaign', orderBy: 'attributed_at', orderAsc: false, limit: 500 },
         }),
       ]);
 
