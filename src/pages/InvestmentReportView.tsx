@@ -57,6 +57,7 @@ export default function InvestmentReportView() {
 
   const [editorOpen, setEditorOpen] = useState(false);
   const [overrideModalOpen, setOverrideModalOpen] = useState(false);
+  const [sendToClientOpen, setSendToClientOpen] = useState(false);
   const [includeSources, setIncludeSources] = useState(true);
   const [includeScoring, setIncludeScoring] = useState(true);
   const [showOverrides, setShowOverrides] = useState(true);
