@@ -222,7 +222,7 @@ export function LeadAttributionPanel() {
     }
   };
 
-
+  const handleEnrich = async () => {
     setIsEnriching(true);
     try {
       let totalEnriched = 0;
