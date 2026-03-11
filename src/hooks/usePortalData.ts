@@ -42,6 +42,7 @@ export interface PortalDataInclude {
   borrowingCapacity?: boolean;
   notifications?: boolean;
   messages?: boolean;
+  reports?: boolean;
 }
 
 /**
