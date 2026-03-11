@@ -80,6 +80,8 @@ import { CGTCalculator } from './CGTCalculator';
 import { ClientPortfolioActions } from './ClientPortfolioActions';
 import { ReviewWizard } from './review-wizard';
 import { ClientEmailsTab } from './ClientEmailsTab';
+import { ClientSentReportsTab } from './ClientSentReportsTab';
+import { ClientAppointmentsTab } from './ClientAppointmentsTab';
 import { DealTrackerTab } from './deal-tracker';
 import { SendAgreementDialog } from '../agreements/SendAgreementDialog';
 import { SendPortalInviteDialog } from '../portal/SendPortalInviteDialog';
