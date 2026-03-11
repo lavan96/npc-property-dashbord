@@ -187,7 +187,7 @@ export interface BorrowingCapacityExportData {
   returnBlob?: boolean;
 }
 
-export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExportData) {
+export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExportData): Promise<{ blob: Blob; fileName: string } | undefined> {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const pageNum = { value: 1 };
   const a = data.assessment;
