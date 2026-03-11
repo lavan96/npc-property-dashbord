@@ -34,6 +34,9 @@ verify_jwt = true
 [functions.outlook-manage-subscription]
 verify_jwt = true
 
+[functions.ghl-calendar-proxy]
+verify_jwt = false
+
 [functions.sync-notes-to-ghl]
 verify_jwt = true
 
