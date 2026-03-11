@@ -453,18 +453,74 @@ export function ClientReportsTab({
   };
 
   const handleSendToPortal = async (report: UnifiedReport) => {
-    if (!report.fileUrl) {
+    const reportTypeMap: Record<string, string> = {
+      investment: 'investment',
+      portfolio: 'portfolio',
+      borrowing: 'borrowing_capacity',
+      vownet: 'cash_flow',
+      property: 'investment',
+    };
+
+    let storagePath = report.fileUrl || null;
+
+    // For borrowing capacity reports, generate the PDF on-the-fly, upload to storage, then publish
+    if (report.source === 'borrowing_assessment' && !storagePath) {
+      toast.loading('Generating & uploading Borrowing Capacity PDF...', { id: 'portal-bc' });
+      try {
+        const { latestAssessment, incomeSources, liabilities, expenses, properties, client } =
+          await fetchLatestBorrowingCapacity(clientId);
+
+        if (!latestAssessment) {
+          toast.error('No borrowing capacity assessment found. Calculate capacity first.', { id: 'portal-bc' });
+          return;
+        }
+
+        const result = await generateBorrowingCapacityPDF({
+          clientId,
+          clientName,
+          assessment: latestAssessment,
+          incomeSources,
+          liabilities,
+          expenses,
+          properties,
+          client,
+          returnBlob: true,
+        });
+
+        if (!result?.blob) {
+          toast.error('PDF generation failed', { id: 'portal-bc' });
+          return;
+        }
+
+        // Upload to storage
+        const safeName = clientName.replace(/[^a-zA-Z0-9]/g, '_');
+        const dateStr = format(new Date(), 'yyyy-MM-dd_HHmmss');
+        const uploadPath = `portal-reports/${clientId}/Borrowing_Capacity_${safeName}_${dateStr}.pdf`;
+
+        const uploadResult = await secureStorageUpload('client-files', uploadPath, result.blob, {
+          contentType: 'application/pdf',
+          upsert: true,
+        });
+
+        if (!uploadResult.success) {
+          toast.error('Failed to upload PDF: ' + uploadResult.error, { id: 'portal-bc' });
+          return;
+        }
+
+        storagePath = uploadResult.path || uploadPath;
+        toast.dismiss('portal-bc');
+      } catch (err: any) {
+        toast.error('Failed to generate PDF: ' + err.message, { id: 'portal-bc' });
+        return;
+      }
+    }
+
+    if (!storagePath) {
       toast.error('No PDF available to send. Generate the report PDF first.');
       return;
     }
+
     try {
-      const reportTypeMap: Record<string, string> = {
-        investment: 'investment',
-        portfolio: 'portfolio',
-        borrowing: 'borrowing_capacity',
-        vownet: 'cash_flow',
-        property: 'investment',
-      };
       const { error } = await invokeSecureFunction('manage-client-data', {
         operation: 'create',
         table: 'client_portal_reports',
@@ -472,7 +528,7 @@ export function ClientReportsTab({
         data: {
           report_title: report.name,
           report_type: reportTypeMap[report.type] || 'investment',
-          storage_path: report.fileUrl,
+          storage_path: storagePath,
           notes: report.propertyAddress ? `Property: ${report.propertyAddress}` : null,
           published_at: new Date().toISOString(),
         },
