@@ -51,11 +51,24 @@ export function DealTrackerTab({ clientId, deals, properties, initialDealId }: D
   const selectedDeal = deals.find(d => d.id === selectedDealId);
 
   const handleCreate = () => {
+    const assignedUserId = responsibleUserId !== 'unassigned' ? responsibleUserId : undefined;
     createDeal.mutate(
-      { dealType: newDealType },
+      { dealType: newDealType, responsibleUserId: assignedUserId },
       { onSuccess: (result) => {
         setShowCreateDialog(false);
         setSelectedDealId(result.id);
+        setResponsibleUserId('unassigned');
+
+        // Send notification to assigned user (if not self)
+        if (assignedUserId && assignedUserId !== user?.id) {
+          addNotification({
+            type: 'deal_assigned',
+            title: `Deal Assigned to You`,
+            message: `You have been assigned a new ${DEAL_TYPE_LABELS[newDealType]} deal`,
+            entityId: result.id,
+            targetUserId: assignedUserId,
+          });
+        }
       }}
     );
   };
