@@ -37,8 +37,8 @@ interface InvestmentReport {
   location_intelligence?: any;
   is_client_report?: boolean;
   client_property_id?: string | null;
+  report_tier?: string | null;
 }
-
 interface ClientInfo {
   id: string;
   primary_first_name: string;
