@@ -68,7 +68,7 @@ import PortalDashboard from "./pages/portal/PortalDashboard";
 import PortalProfile from "./pages/portal/PortalProfile";
 import PortalProperties from "./pages/portal/PortalProperties";
 import PortalEmployment from "./pages/portal/PortalEmployment";
-import PortalEmails from "./pages/portal/PortalEmails";
+import PortalReports from "./pages/portal/PortalReports";
 import PortalDocuments from "./pages/portal/PortalDocuments";
 import PortalAcceptInvite from "./pages/portal/PortalAcceptInvite";
 import PortalNotifications from "./pages/portal/PortalNotifications";
