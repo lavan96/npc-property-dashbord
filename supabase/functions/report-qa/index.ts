@@ -781,70 +781,121 @@ serve(async (req) => {
     if (action === "chat") {
       const { reportContents, reportNames, question, chatHistory, conversationId, useRAG = true, modelProvider = 'openai' } = body;
       console.log(`[report-qa] Processing chat question: ${question?.substring(0, 50)}...`);
-      console.log(`[report-qa] Reports count: ${reportContents?.length || 0}, RAG: ${useRAG}, Provider: ${modelProvider}`);
+      console.log(`[report-qa] ConversationId: ${conversationId}, RAG: ${useRAG}, Provider: ${modelProvider}`);
 
-      const hasReports = reportContents && reportContents.length > 0;
-      const isMultiReport = reportContents && reportContents.length > 1;
-      
-      // Step 6: Retrieve relevant chunks from knowledge base
+      // === RAG-FIRST CONTEXT ASSEMBLY ===
+      // Instead of sending full report content every message, we:
+      // 1. Load the structural summary from the conversation
+      // 2. Retrieve semantically relevant chunks via embeddings
+      // 3. Fall back to raw content only if RAG is not available
+
+      let summaryContext = "";
       let ragContext = "";
-      if (useRAG && OPENAI_API_KEY) {
+      let hasRagContext = false;
+      const hasReports = (reportContents && reportContents.length > 0);
+      const isMultiReport = reportContents && reportContents.length > 1;
+
+      // Try RAG-based context assembly first
+      if (conversationId && OPENAI_API_KEY) {
+        // Load structural summary from conversation
         try {
-          const relevantChunks = await retrieveRelevantChunks(
-            supabase,
-            question,
-            OPENAI_API_KEY,
-            conversationId,
-            0.6, // Lower threshold for broader matches
-            8    // Get more chunks for comprehensive context
-          );
-          
-          if (relevantChunks.length > 0) {
-            ragContext = formatRetrievedContext(relevantChunks);
-            console.log(`[report-qa] Injecting ${relevantChunks.length} RAG chunks into context`);
+          const { data: conv } = await supabase
+            .from("report_qa_conversations")
+            .select("structured_report, report_names")
+            .eq("id", conversationId)
+            .single();
+
+          if (conv?.structured_report && conv.structured_report.length > 100) {
+            summaryContext = conv.structured_report;
+            console.log(`[report-qa] Loaded structural summary: ${summaryContext.length} chars`);
           }
-        } catch (ragError) {
-          console.error(`[report-qa] RAG retrieval failed (continuing without):`, ragError);
+        } catch (e) {
+          console.error(`[report-qa] Failed to load summary:`, e);
+        }
+
+        // Retrieve relevant chunks via semantic search
+        if (useRAG) {
+          try {
+            const relevantChunks = await retrieveRelevantChunks(
+              supabase,
+              question,
+              OPENAI_API_KEY,
+              conversationId,
+              0.5, // Lower threshold for broader matches
+              12   // More chunks for comprehensive context
+            );
+            
+            if (relevantChunks.length > 0) {
+              ragContext = formatRetrievedContext(relevantChunks);
+              hasRagContext = true;
+              console.log(`[report-qa] RAG retrieved ${relevantChunks.length} relevant chunks`);
+            }
+          } catch (ragError) {
+            console.error(`[report-qa] RAG retrieval failed:`, ragError);
+          }
         }
       }
-      
-      // Truncate report content to stay within model context limits
-      // ~4 chars per token; reserve ~200k tokens for context (~800k chars)
+
+      // Build context section
+      // Priority: Summary + RAG chunks (preferred) > Raw content (fallback)
       const MAX_CONTEXT_CHARS = 800000;
       
       function truncateContext(text: string, maxChars: number): string {
         if (text.length <= maxChars) return text;
         const truncated = text.substring(0, maxChars);
-        // Cut at last complete sentence/paragraph
         const lastBreak = Math.max(
           truncated.lastIndexOf('\n\n'),
           truncated.lastIndexOf('. '),
           truncated.lastIndexOf('.\n')
         );
         const cutPoint = lastBreak > maxChars * 0.8 ? lastBreak + 1 : maxChars;
-        return truncated.substring(0, cutPoint) + '\n\n[... Report content truncated due to length. Ask specific questions about sections you need details on.]';
+        return truncated.substring(0, cutPoint) + '\n\n[... Content truncated. Ask specific questions for more detail.]';
       }
-      
+
       let contextSection = "";
-      if (isMultiReport) {
-        const perReportLimit = Math.floor(MAX_CONTEXT_CHARS / reportContents.length);
-        contextSection = reportContents.map((content: string, idx: number) => 
-          `--- REPORT ${idx + 1}: ${reportNames?.[idx] || `Report ${idx + 1}`} ---\n${truncateContext(content, perReportLimit)}\n`
-        ).join("\n\n");
+      
+      if (summaryContext || hasRagContext) {
+        // RAG mode: Use summary + retrieved chunks (much more efficient)
+        const parts: string[] = [];
+        
+        if (summaryContext) {
+          parts.push(`## REPORT SUMMARY\n${summaryContext}`);
+        }
+        
+        if (ragContext) {
+          parts.push(ragContext);
+        }
+        
+        contextSection = parts.join('\n\n');
+        console.log(`[report-qa] Using RAG context: ${contextSection.length} chars (summary: ${summaryContext.length}, chunks: ${ragContext.length})`);
       } else if (hasReports) {
-        const raw = reportContents?.[0] || body.reportContent || "";
-        contextSection = truncateContext(raw, MAX_CONTEXT_CHARS);
+        // Fallback: Use raw report content (legacy behavior for non-indexed conversations)
+        console.log(`[report-qa] RAG not available, falling back to raw content injection`);
+        
+        if (isMultiReport) {
+          const perReportLimit = Math.floor(MAX_CONTEXT_CHARS / reportContents.length);
+          contextSection = reportContents.map((content: string, idx: number) => 
+            `--- REPORT ${idx + 1}: ${reportNames?.[idx] || `Report ${idx + 1}`} ---\n${truncateContext(content, perReportLimit)}\n`
+          ).join("\n\n");
+        } else {
+          const raw = reportContents?.[0] || body.reportContent || "";
+          contextSection = truncateContext(raw, MAX_CONTEXT_CHARS);
+        }
       }
       
       if (contextSection.length > MAX_CONTEXT_CHARS) {
         contextSection = truncateContext(contextSection, MAX_CONTEXT_CHARS);
       }
-      console.log(`[report-qa] Context section length: ${contextSection.length} chars`);
+      console.log(`[report-qa] Final context section length: ${contextSection.length} chars`);
 
       let systemPrompt = "";
       
-      if (isMultiReport) {
-        systemPrompt = `You are an expert Australian investment property analyst and advisor for NPC Services. You have been provided with ${reportContents.length} investment reports for comparison analysis.
+      // Determine context type for prompt selection
+      const hasContext = contextSection.length > 100;
+      const isMultiReportContext = isMultiReport || (reportNames && reportNames.length > 1);
+      
+      if (isMultiReportContext && hasContext) {
+        systemPrompt = `You are an expert Australian investment property analyst and advisor for NPC Services. You have been provided with investment report data for comparison analysis.
 
 ## YOUR EXPERTISE
 - Deep knowledge of Australian property markets across all states and territories
@@ -867,12 +918,12 @@ serve(async (req) => {
 - Provide a clear recommendation with reasoning
 - If data is missing, acknowledge it and explain what impact it has on the analysis
 - Format for easy reading with headings, bullet points, and clear sections
-- When citing information from the knowledge base, indicate the source
+- When citing information, indicate the source document
 
-## REPORTS TO ANALYZE
-${contextSection}${ragContext}`;
-      } else if (hasReports) {
-        systemPrompt = `You are an expert Australian investment property analyst and advisor for NPC Services. You have been provided with an investment property report to analyze.
+## REPORT DATA
+${contextSection}`;
+      } else if (hasContext) {
+        systemPrompt = `You are an expert Australian investment property analyst and advisor for NPC Services. You have been provided with investment property report data to analyze.
 
 ## YOUR EXPERTISE
 - Deep knowledge of Australian property markets across all states and territories
@@ -900,10 +951,10 @@ ${contextSection}${ragContext}`;
   • Top 3 strengths and top 3 concerns
   • Investor suitability rating
 - If information is not in the report, clearly state that and explain what assumptions you're making
-- When citing information from the knowledge base, indicate the source
+- When citing information, indicate the source
 
-## REPORT CONTENT
-${contextSection}${ragContext}`;
+## REPORT DATA
+${contextSection}`;
       } else if (ragContext) {
         // No reports loaded but we have RAG context from knowledge base
         systemPrompt = `You are an expert Australian investment property analyst and advisor for NPC Services.
@@ -1344,6 +1395,171 @@ No investment report has been uploaded. You are having an open conversation abou
 
       return new Response(
         JSON.stringify({ success: true, conversation: data }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Handle report indexing for RAG - chunks reports, generates embeddings + summary
+    if (action === "index-reports") {
+      const { conversationId } = body;
+      
+      if (!conversationId) {
+        return new Response(
+          JSON.stringify({ error: "conversationId is required" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      if (!OPENAI_API_KEY) {
+        console.log('[report-qa] index-reports: OPENAI_API_KEY not configured, skipping');
+        return new Response(
+          JSON.stringify({ success: true, indexed: false, reason: 'OPENAI_API_KEY not configured' }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Load the conversation to get report contents
+      const { data: conv, error: convError } = await supabase
+        .from("report_qa_conversations")
+        .select("report_contents, report_names, structured_report")
+        .eq("id", conversationId)
+        .single();
+
+      if (convError) throw convError;
+
+      // Check if already indexed (has structured_report)
+      if (conv.structured_report && conv.structured_report.length > 100) {
+        // Check if chunks exist too
+        const { count } = await supabase
+          .from("document_chunks")
+          .select("*", { count: 'exact', head: true })
+          .eq("conversation_id", conversationId);
+        
+        if (count && count > 0) {
+          console.log(`[report-qa] Conversation ${conversationId} already indexed (${count} chunks, summary exists)`);
+          return new Response(
+            JSON.stringify({ success: true, indexed: true, alreadyIndexed: true, chunksCount: count }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
+
+      const reportContents = conv.report_contents || [];
+      const reportNames = conv.report_names || [];
+
+      if (reportContents.length === 0) {
+        console.log(`[report-qa] No report contents to index for conversation ${conversationId}`);
+        return new Response(
+          JSON.stringify({ success: true, indexed: false, reason: 'No report contents' }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      console.log(`[report-qa] Indexing ${reportContents.length} reports for conversation ${conversationId}`);
+
+      // Step 1: Delete existing chunks for this conversation
+      await supabase
+        .from("document_chunks")
+        .delete()
+        .eq("conversation_id", conversationId);
+
+      // Step 2: Chunk and embed each report
+      let totalChunks = 0;
+      for (let i = 0; i < reportContents.length; i++) {
+        const content = reportContents[i];
+        const name = reportNames[i] || `Report ${i + 1}`;
+        
+        if (!content || content.length < 50) continue;
+        
+        const chunks = chunkText(content, 1500, 200); // Larger chunks for better context
+        console.log(`[report-qa] Report "${name}": ${chunks.length} chunks from ${content.length} chars`);
+        
+        await storeDocumentChunks(supabase, `report:${name}`, chunks, OPENAI_API_KEY, conversationId);
+        totalChunks += chunks.length;
+      }
+
+      // Step 3: Generate structural summary using AI
+      let summary = '';
+      try {
+        const allContent = reportContents.map((c: string, i: number) => 
+          `--- ${reportNames[i] || `Report ${i + 1}`} ---\n${c.substring(0, 50000)}`
+        ).join('\n\n');
+
+        const summaryResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash",
+            messages: [
+              {
+                role: "system",
+                content: `You are a property investment report analyst. Create a comprehensive structural summary of the provided investment report(s). This summary will be used as context for a Q&A system.
+
+Include ALL of these elements:
+1. **Property Overview**: Address, type, price, land/building size, bedrooms/bathrooms
+2. **Financial Summary**: Purchase price, estimated rental yield, gross/net yield, cash flow projections, stamp duty, LMI
+3. **Market Data**: Suburb median prices, growth rates, days on market, vacancy rates, rental demand
+4. **Demographics**: Population, age distribution, household composition, income levels
+5. **Infrastructure & Location**: Transport, schools, amenities, planned developments
+6. **Risk Assessment**: Key risks identified, flood/fire zones, market risks
+7. **Investment Metrics**: Capital growth projections, depreciation estimates, tax benefits
+8. **Comparison Points** (if multiple reports): Side-by-side key metrics
+
+Be thorough and include ALL specific numbers, percentages, and data points mentioned in the reports. This summary needs to capture the full analytical picture.`,
+              },
+              {
+                role: "user",
+                content: `Summarize these investment report(s):\n\n${allContent}`,
+              },
+            ],
+            max_tokens: 8000,
+          }),
+        });
+
+        if (summaryResponse.ok) {
+          const summaryData = await summaryResponse.json();
+          summary = summaryData.choices?.[0]?.message?.content || '';
+          console.log(`[report-qa] Generated summary: ${summary.length} chars`);
+
+          // Log summary generation usage
+          const summaryUsage = extractOpenAIUsage(summaryData);
+          await logApiUsage(supabase, {
+            service_name: 'gemini',
+            endpoint: '/v1/chat/completions',
+            model_used: 'gemini-2.5-flash',
+            prompt_tokens: summaryUsage.prompt_tokens,
+            completion_tokens: summaryUsage.completion_tokens,
+            tokens_used: summaryUsage.total_tokens,
+            status: 'success',
+            metadata: { function: 'report-qa', action: 'index-reports-summary' },
+          });
+        } else {
+          console.error(`[report-qa] Summary generation failed: ${summaryResponse.status}`);
+        }
+      } catch (summaryError) {
+        console.error(`[report-qa] Summary generation error:`, summaryError);
+      }
+
+      // Step 4: Store summary in conversation
+      if (summary) {
+        await supabase
+          .from("report_qa_conversations")
+          .update({ structured_report: summary })
+          .eq("id", conversationId);
+      }
+
+      console.log(`[report-qa] Indexing complete: ${totalChunks} chunks, summary ${summary.length} chars`);
+
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          indexed: true, 
+          chunksCount: totalChunks, 
+          summaryLength: summary.length,
+        }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
