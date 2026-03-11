@@ -116,6 +116,7 @@ export function ClientSentReportsTab({ clientId, clientName }: ClientSentReports
       const { error } = await invokeSecureFunction('manage-client-data', {
         operation: 'delete',
         table: 'client_portal_reports',
+        clientId,
         recordId: reportToDelete.id,
       });
       if (error) throw error;
