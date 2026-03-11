@@ -450,6 +450,34 @@ export function ClientReportsTab({
     }
   };
 
+  const handleSendToPortal = async (report: UnifiedReport) => {
+    try {
+      const reportTypeMap: Record<string, string> = {
+        investment: 'investment',
+        portfolio: 'portfolio',
+        borrowing: 'borrowing_capacity',
+        vownet: 'cash_flow',
+        property: 'investment',
+      };
+      const { error } = await invokeSecureFunction('manage-client-data', {
+        operation: 'create',
+        table: 'client_portal_reports',
+        clientId,
+        data: {
+          report_title: report.name,
+          report_type: reportTypeMap[report.type] || 'investment',
+          storage_path: report.fileUrl || null,
+          notes: report.propertyAddress ? `Property: ${report.propertyAddress}` : null,
+          published_at: new Date().toISOString(),
+        },
+      });
+      if (error) throw error;
+      toast.success('Report published to client portal');
+    } catch (err: any) {
+      toast.error('Failed to publish: ' + (err.message || 'Unknown error'));
+    }
+  };
+
   const handleDelete = (report: UnifiedReport) => {
     setReportToDelete(report);
   };
