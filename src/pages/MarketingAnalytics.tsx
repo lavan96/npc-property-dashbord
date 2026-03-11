@@ -310,8 +310,9 @@ export default function MarketingAnalytics() {
 
   const handleRefresh = useCallback(() => {
     refetchAds();
-    queryClient.invalidateQueries({ queryKey: ['meta-ads-analysis'] });
-  }, [refetchAds, queryClient]);
+    // Note: AI queries are NOT invalidated on refresh to save tokens.
+    // Use the individual "Regenerate" buttons to refresh AI content.
+  }, [refetchAds]);
 
   const handleRegenerateDigest = useCallback(async () => {
     setRegeneratingDigest(true);
