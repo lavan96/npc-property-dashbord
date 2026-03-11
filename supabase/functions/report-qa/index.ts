@@ -808,14 +808,38 @@ serve(async (req) => {
         }
       }
       
+      // Truncate report content to stay within model context limits
+      // ~4 chars per token; reserve ~200k tokens for context (~800k chars)
+      const MAX_CONTEXT_CHARS = 800000;
+      
+      function truncateContext(text: string, maxChars: number): string {
+        if (text.length <= maxChars) return text;
+        const truncated = text.substring(0, maxChars);
+        // Cut at last complete sentence/paragraph
+        const lastBreak = Math.max(
+          truncated.lastIndexOf('\n\n'),
+          truncated.lastIndexOf('. '),
+          truncated.lastIndexOf('.\n')
+        );
+        const cutPoint = lastBreak > maxChars * 0.8 ? lastBreak + 1 : maxChars;
+        return truncated.substring(0, cutPoint) + '\n\n[... Report content truncated due to length. Ask specific questions about sections you need details on.]';
+      }
+      
       let contextSection = "";
       if (isMultiReport) {
+        const perReportLimit = Math.floor(MAX_CONTEXT_CHARS / reportContents.length);
         contextSection = reportContents.map((content: string, idx: number) => 
-          `--- REPORT ${idx + 1}: ${reportNames?.[idx] || `Report ${idx + 1}`} ---\n${content}\n`
+          `--- REPORT ${idx + 1}: ${reportNames?.[idx] || `Report ${idx + 1}`} ---\n${truncateContext(content, perReportLimit)}\n`
         ).join("\n\n");
       } else if (hasReports) {
-        contextSection = reportContents?.[0] || body.reportContent || "";
+        const raw = reportContents?.[0] || body.reportContent || "";
+        contextSection = truncateContext(raw, MAX_CONTEXT_CHARS);
       }
+      
+      if (contextSection.length > MAX_CONTEXT_CHARS) {
+        contextSection = truncateContext(contextSection, MAX_CONTEXT_CHARS);
+      }
+      console.log(`[report-qa] Context section length: ${contextSection.length} chars`);
 
       let systemPrompt = "";
       
