@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import {
@@ -45,7 +45,41 @@ import { BuildPaymentTracker } from './BuildPaymentTracker';
 import { DealFinancialControls } from './DealFinancialControls';
 import { DealCriticalDates } from './DealCriticalDates';
 import { useDealActions } from './useDealActions';
+import { TeamUserSelect } from '@/components/ui/TeamUserSelect';
+import { useTeamUsers } from '@/hooks/useTeamUsers';
+import { useNotifications } from '@/contexts/NotificationsContext';
+import { useAuth } from '@/hooks/useAuth';
 
+function ResponsiblePersonSelect({ deal, onUpdate }: { deal: Deal; onUpdate: (data: Partial<Deal>) => void }) {
+  const { data: teamUsers = [] } = useTeamUsers();
+  const { addNotification } = useNotifications();
+  const { user } = useAuth();
+
+  const handleChange = (value: string) => {
+    const newUserId = value === 'unassigned' ? null : value;
+    const oldUserId = deal.responsible_person;
+    if (newUserId === oldUserId) return;
+    onUpdate({ responsible_person: newUserId } as any);
+    if (newUserId && newUserId !== user?.id) {
+      addNotification({
+        type: 'deal_assigned',
+        title: 'Deal Reassigned to You',
+        message: `You are now responsible for the ${deal.property_address || DEAL_TYPE_LABELS[deal.deal_type]} deal`,
+        entityId: deal.id,
+        targetUserId: newUserId,
+      });
+    }
+  };
+
+  return (
+    <TeamUserSelect
+      value={deal.responsible_person || 'unassigned'}
+      onValueChange={handleChange}
+      placeholder="Responsible"
+      className="h-8 text-xs w-full sm:w-[160px]"
+    />
+  );
+}
 interface DealDetailViewProps {
   deal: Deal;
   clientId: string;
@@ -126,16 +160,9 @@ export function DealDetailView({ deal, clientId, onBack }: DealDetailViewProps) 
             </SelectContent>
           </Select>
 
-          <Input
-            key={deal.id + '-responsible'}
-            defaultValue={deal.responsible_person || ''}
-            onBlur={(e) => {
-              if (e.target.value !== (deal.responsible_person || '')) {
-                handleDealUpdate({ responsible_person: e.target.value });
-              }
-            }}
-            placeholder="Responsible"
-            className="h-8 text-xs w-full sm:w-[140px]"
+          <ResponsiblePersonSelect
+            deal={deal}
+            onUpdate={handleDealUpdate}
           />
 
           <AlertDialog>

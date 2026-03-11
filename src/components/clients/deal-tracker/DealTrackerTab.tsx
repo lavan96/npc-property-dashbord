@@ -22,6 +22,10 @@ import {
 import { Deal, DealType, RISK_STATUS_CONFIG, DEAL_TYPE_LABELS } from './types';
 import { DealDetailView } from './DealDetailView';
 import { useDealActions } from './useDealActions';
+import { TeamUserSelect } from '@/components/ui/TeamUserSelect';
+import { useTeamUsers } from '@/hooks/useTeamUsers';
+import { useNotifications } from '@/contexts/NotificationsContext';
+import { useAuth } from '@/hooks/useAuth';
 
 interface DealTrackerTabProps {
   clientId: string;
@@ -34,7 +38,11 @@ export function DealTrackerTab({ clientId, deals, properties, initialDealId }: D
   const [selectedDealId, setSelectedDealId] = useState<string | null>(initialDealId || null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newDealType, setNewDealType] = useState<DealType>('existing_property');
+  const [responsibleUserId, setResponsibleUserId] = useState('unassigned');
   const { createDeal } = useDealActions(clientId);
+  const { data: teamUsers = [] } = useTeamUsers();
+  const { addNotification } = useNotifications();
+  const { user } = useAuth();
 
   // Auto-select deal when deep-linked and deals load
   useEffect(() => {
@@ -47,11 +55,24 @@ export function DealTrackerTab({ clientId, deals, properties, initialDealId }: D
   const selectedDeal = deals.find(d => d.id === selectedDealId);
 
   const handleCreate = () => {
+    const assignedUserId = responsibleUserId !== 'unassigned' ? responsibleUserId : undefined;
     createDeal.mutate(
-      { dealType: newDealType },
+      { dealType: newDealType, responsibleUserId: assignedUserId },
       { onSuccess: (result) => {
         setShowCreateDialog(false);
         setSelectedDealId(result.id);
+        setResponsibleUserId('unassigned');
+
+        // Send notification to assigned user (if not self)
+        if (assignedUserId && assignedUserId !== user?.id) {
+          addNotification({
+            type: 'deal_assigned',
+            title: `Deal Assigned to You`,
+            message: `You have been assigned a new ${DEAL_TYPE_LABELS[newDealType]} deal`,
+            entityId: result.id,
+            targetUserId: assignedUserId,
+          });
+        }
       }}
     );
   };
@@ -144,9 +165,10 @@ export function DealTrackerTab({ clientId, deals, properties, initialDealId }: D
 
                   {/* Key info - wrap on mobile */}
                   <div className="flex items-center gap-2 sm:gap-4 text-xs text-muted-foreground flex-wrap">
-                    {deal.responsible_person && (
-                      <span className="truncate">👤 {deal.responsible_person}</span>
-                    )}
+                    {deal.responsible_person && (() => {
+                      const assignee = teamUsers.find(u => u.id === deal.responsible_person);
+                      return <span className="truncate">👤 {assignee?.username || deal.responsible_person}</span>;
+                    })()}
                     {deal.total_contract_price && (
                       <span>💰 {new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(deal.total_contract_price)}</span>
                     )}
@@ -217,6 +239,15 @@ export function DealTrackerTab({ clientId, deals, properties, initialDealId }: D
                 <span className="text-[10px] sm:text-xs text-muted-foreground">12-stage workflow</span>
               </CardContent>
             </Card>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-sm font-medium">Assign Responsible Person</label>
+            <TeamUserSelect
+              value={responsibleUserId}
+              onValueChange={setResponsibleUserId}
+              placeholder="Assign team member..."
+            />
           </div>
 
           <DialogFooter className="flex-col sm:flex-row gap-2">

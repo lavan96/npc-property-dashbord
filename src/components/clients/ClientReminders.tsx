@@ -28,13 +28,18 @@ import {
   MoreHorizontal,
   Loader2,
   X,
-  Pin
+  Pin,
+  UserCircle
 } from 'lucide-react';
 import { format, formatDistanceToNow, isPast, isToday } from 'date-fns';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { VoiceToTextButton } from '@/components/ui/VoiceToTextButton';
+import { TeamUserSelect } from '@/components/ui/TeamUserSelect';
+import { useTeamUsers } from '@/hooks/useTeamUsers';
+import { useNotifications } from '@/contexts/NotificationsContext';
+import { useAuth } from '@/hooks/useAuth';
 
 interface ClientRemindersProps {
   clientId: string;
@@ -179,7 +184,11 @@ export function ClientReminders({ clientId, followUpDate }: ClientRemindersProps
   const [dueDate, setDueDate] = useState('');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high' | 'urgent'>('medium');
   const [reminderType, setReminderType] = useState('follow_up');
+  const [assignedTo, setAssignedTo] = useState('unassigned');
   const queryClient = useQueryClient();
+  const { data: teamUsers = [] } = useTeamUsers();
+  const { addNotification } = useNotifications();
+  const { user } = useAuth();
 
   const { data: reminders = [], isLoading } = useQuery({
     queryKey: ['client-reminders', clientId],
@@ -197,6 +206,7 @@ export function ClientReminders({ clientId, followUpDate }: ClientRemindersProps
 
   const addReminderMutation = useMutation({
     mutationFn: async () => {
+      const assignedUserId = assignedTo !== 'unassigned' ? assignedTo : null;
       const { data, error } = await invokeSecureFunction('manage-client-data', {
         operation: 'create',
         table: 'client_reminders',
@@ -207,15 +217,31 @@ export function ClientReminders({ clientId, followUpDate }: ClientRemindersProps
           due_date: new Date(dueDate).toISOString(),
           priority,
           reminder_type: reminderType,
+          assigned_to: assignedUserId,
         },
       });
 
       if (error) throw new Error(error.message);
       if (!data?.success) throw new Error(data?.error || 'Failed to create reminder');
+      return assignedUserId;
     },
-    onSuccess: () => {
+    onSuccess: (assignedUserId) => {
       queryClient.invalidateQueries({ queryKey: ['client-reminders', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['all-reminders'] });
       toast.success('Reminder created');
+
+      // Send notification to assigned user (if not self)
+      if (assignedUserId && assignedUserId !== user?.id) {
+        const assignedUser = teamUsers.find(u => u.id === assignedUserId);
+        addNotification({
+          type: 'reminder_assigned',
+          title: `Reminder Assigned: ${title}`,
+          message: `You have been assigned a ${priority} priority reminder: "${title}"`,
+          entityId: clientId,
+          targetUserId: assignedUserId,
+        });
+      }
+
       resetForm();
     },
     onError: (error: any) => {
@@ -288,6 +314,7 @@ export function ClientReminders({ clientId, followUpDate }: ClientRemindersProps
     setDueDate('');
     setPriority('medium');
     setReminderType('follow_up');
+    setAssignedTo('unassigned');
     setShowAdd(false);
   };
 
@@ -382,6 +409,14 @@ export function ClientReminders({ clientId, followUpDate }: ClientRemindersProps
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Assign To</label>
+              <TeamUserSelect
+                value={assignedTo}
+                onValueChange={setAssignedTo}
+                placeholder="Assign to team member..."
+              />
+            </div>
             <div className="flex gap-2">
               <Button 
                 onClick={() => addReminderMutation.mutate()}
@@ -453,11 +488,22 @@ export function ClientReminders({ clientId, followUpDate }: ClientRemindersProps
                             {reminder.priority}
                           </Badge>
                         </div>
-                        <div className="flex items-center gap-2 mt-2">
-                          <CalendarIcon className="h-3 w-3 text-muted-foreground" />
-                          <span className={`text-xs ${dueStatus.className}`}>
-                            {format(new Date(reminder.due_date), 'MMM d, yyyy h:mm a')} · {dueStatus.label}
-                          </span>
+                        <div className="flex items-center gap-3 mt-2 flex-wrap">
+                          <div className="flex items-center gap-1">
+                            <CalendarIcon className="h-3 w-3 text-muted-foreground" />
+                            <span className={`text-xs ${dueStatus.className}`}>
+                              {format(new Date(reminder.due_date), 'MMM d, yyyy h:mm a')} · {dueStatus.label}
+                            </span>
+                          </div>
+                          {reminder.assigned_to && (() => {
+                            const assignee = teamUsers.find(u => u.id === reminder.assigned_to);
+                            return assignee ? (
+                              <div className="flex items-center gap-1">
+                                <UserCircle className="h-3 w-3 text-muted-foreground" />
+                                <span className="text-xs text-muted-foreground">{assignee.username}</span>
+                              </div>
+                            ) : null;
+                          })()}
                         </div>
                       </div>
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

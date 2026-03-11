@@ -1,6 +1,7 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 export type NotificationType = 
   | 'report_generated' 
@@ -45,7 +46,10 @@ export type NotificationType =
   | 'deal_finance_expiry_overdue'
   | 'deal_settlement_warning'
   | 'deal_settlement_overdue'
-  | 'deal_build_date_warning';
+  | 'deal_build_date_warning'
+  // Phase 5 - Assignment notifications
+  | 'reminder_assigned'
+  | 'deal_assigned';
 
 export interface Notification {
   id: string;
@@ -53,7 +57,8 @@ export interface Notification {
   title: string;
   message: string;
   reportId?: string;
-  entityId?: string; // Generic ID for linking to entities (client, reminder, etc.)
+  entityId?: string;
+  targetUserId?: string;
   timestamp: Date;
   read: boolean;
 }
@@ -74,8 +79,44 @@ const NotificationsContext = createContext<NotificationsContextType | undefined>
 export function NotificationsProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const currentUserId = user?.id;
 
-  // Load notifications from Supabase on mount
+  const fetchNotifications = useCallback(async () => {
+    try {
+      let query = supabase
+        .from('notifications')
+        .select('*')
+        .order('timestamp', { ascending: false })
+        .limit(50);
+
+      // Filter: show broadcast notifications (no target) + ones targeted to current user
+      if (currentUserId) {
+        query = query.or(`target_user_id.is.null,target_user_id.eq.${currentUserId}`);
+      } else {
+        query = query.is('target_user_id', null);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      if (data) {
+        const notificationsWithDates = data.map((n: any) => ({
+          ...n,
+          reportId: n.report_id,
+          entityId: n.entity_id,
+          targetUserId: n.target_user_id,
+          timestamp: new Date(n.timestamp)
+        }));
+        setNotifications(notificationsWithDates);
+      }
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error);
+    }
+  }, [currentUserId]);
+
+  // Load notifications from Supabase on mount and when user changes
   useEffect(() => {
     fetchNotifications();
     
@@ -90,7 +131,6 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
           table: 'notifications'
         },
         () => {
-          // Refetch all notifications when any change occurs
           fetchNotifications();
         }
       )
@@ -99,31 +139,8 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [fetchNotifications]);
 
-  const fetchNotifications = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .order('timestamp', { ascending: false })
-        .limit(50);
-
-      if (error) throw error;
-
-      if (data) {
-        const notificationsWithDates = data.map((n: any) => ({
-          ...n,
-          reportId: n.report_id,
-          entityId: n.entity_id,
-          timestamp: new Date(n.timestamp)
-        }));
-        setNotifications(notificationsWithDates);
-      }
-    } catch (error) {
-      console.error('Failed to fetch notifications:', error);
-    }
-  };
 
   const addNotification = async (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => {
     try {
@@ -135,6 +152,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
           message: notification.message,
           report_id: notification.reportId || null,
           entity_id: notification.entityId || null,
+          target_user_id: notification.targetUserId || null,
           read: false
         });
 
@@ -284,6 +302,20 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
           localStorage.setItem('openReportId', notification.reportId || notification.entityId || '');
         }
         navigate('/generated-reports?tab=investment');
+        break;
+      case 'reminder_assigned':
+        if (notification.entityId) {
+          navigate(`/clients?highlight=${notification.entityId}`);
+        } else {
+          navigate('/reminders');
+        }
+        break;
+      case 'deal_assigned':
+        if (notification.entityId) {
+          navigate(`/deal-pipeline`);
+        } else {
+          navigate('/deal-pipeline');
+        }
         break;
       default:
         break;

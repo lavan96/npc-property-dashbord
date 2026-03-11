@@ -34,7 +34,7 @@ export function useDealActions(clientId: string) {
   };
 
   const createDeal = useMutation({
-    mutationFn: async ({ dealType, propertyId }: { dealType: DealType; propertyId?: string }) => {
+    mutationFn: async ({ dealType, propertyId, responsibleUserId }: { dealType: DealType; propertyId?: string; responsibleUserId?: string }) => {
       // Determine initial stage name
       const initialStage = dealType === 'existing_property'
         ? 'Initial Holding Deposit (0.25%)'
@@ -52,6 +52,7 @@ export function useDealActions(clientId: string) {
           property_id: propertyId || null,
           current_stage: initialStage,
           current_stage_number: 1,
+          responsible_person: responsibleUserId || null,
         },
       });
 
@@ -104,7 +105,7 @@ export function useDealActions(clientId: string) {
 
       return deal;
     },
-    onSuccess: (_: any, variables: { dealType: DealType; propertyId?: string }) => {
+    onSuccess: (_: any, variables: { dealType: DealType; propertyId?: string; responsibleUserId?: string }) => {
       invalidate();
       logActivityDirect({
         actionType: 'deal_created',
