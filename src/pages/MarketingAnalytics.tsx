@@ -505,8 +505,25 @@ export default function MarketingAnalytics() {
         summary={phase2Data?.summary}
       />
 
+      {/* Spend Pacing */}
+      <SpendPacingPanel
+        campaigns={campaigns}
+        insights={insights}
+        datePreset={datePreset}
+        loading={isLoading}
+      />
+
       {/* Lead Source Attribution */}
       <LeadAttributionPanel />
+
+      {/* Creative Performance Gallery */}
+      <CreativeGalleryPanel datePreset={datePreset} />
+
+      {/* Full-Funnel Visualization */}
+      <FullFunnelPanel />
+
+      {/* True ROI */}
+      <TrueROIPanel insights={insights} datePreset={datePreset} />
 
       {/* Audience Intelligence + Lead Quality */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
