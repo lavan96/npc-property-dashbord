@@ -452,6 +452,10 @@ export function ClientReportsTab({
   };
 
   const handleSendToPortal = async (report: UnifiedReport) => {
+    if (!report.fileUrl) {
+      toast.error('No PDF available to send. Generate the report PDF first.');
+      return;
+    }
     try {
       const reportTypeMap: Record<string, string> = {
         investment: 'investment',
@@ -467,7 +471,7 @@ export function ClientReportsTab({
         data: {
           report_title: report.name,
           report_type: reportTypeMap[report.type] || 'investment',
-          storage_path: report.fileUrl || null,
+          storage_path: report.fileUrl,
           notes: report.propertyAddress ? `Property: ${report.propertyAddress}` : null,
           published_at: new Date().toISOString(),
         },
