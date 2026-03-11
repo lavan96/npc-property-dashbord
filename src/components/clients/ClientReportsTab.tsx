@@ -62,7 +62,8 @@ import { PropertyReportGenerator } from './PropertyReportGenerator';
 import { toast } from 'sonner';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
-import { fetchAndGenerateBorrowingCapacityPDF } from '@/components/borrowing-capacity/BorrowingCapacityPDFReport';
+import { fetchAndGenerateBorrowingCapacityPDF, generateBorrowingCapacityPDF } from '@/components/borrowing-capacity/BorrowingCapacityPDFReport';
+import { fetchLatestBorrowingCapacity } from '@/lib/fetchLatestBorrowingCapacity';
 import { useAuth } from '@/hooks/useAuth';
 
 interface ClientReportsTabProps {
