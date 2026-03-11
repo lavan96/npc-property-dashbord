@@ -22,6 +22,10 @@ import {
 import { Deal, DealType, RISK_STATUS_CONFIG, DEAL_TYPE_LABELS } from './types';
 import { DealDetailView } from './DealDetailView';
 import { useDealActions } from './useDealActions';
+import { TeamUserSelect } from '@/components/ui/TeamUserSelect';
+import { useTeamUsers } from '@/hooks/useTeamUsers';
+import { useNotifications } from '@/contexts/NotificationsContext';
+import { useAuth } from '@/hooks/useAuth';
 
 interface DealTrackerTabProps {
   clientId: string;
