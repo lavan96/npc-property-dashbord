@@ -52,7 +52,9 @@ export default function PortalDashboard() {
   const properties = data?.properties || [];
   const deals = data?.deals || [];
   const borrowingCapacity = data?.borrowingCapacity;
-  const displayName = smartCapitalize(client?.primary_first_name || user?.name);
+  const displayName = client?.primary_first_name
+    ? smartCapitalize(`${client.primary_first_name} ${client.primary_surname || ''}`.trim())
+    : smartCapitalize(user?.name);
 
   return (
     <div className="space-y-8">
