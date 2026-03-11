@@ -3215,6 +3215,7 @@ export type Database = {
       }
       client_reminders: {
         Row: {
+          assigned_to: string | null
           client_id: string
           completed_at: string | null
           created_at: string
@@ -3229,6 +3230,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          assigned_to?: string | null
           client_id: string
           completed_at?: string | null
           created_at?: string
@@ -3243,6 +3245,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          assigned_to?: string | null
           client_id?: string
           completed_at?: string | null
           created_at?: string
@@ -3257,6 +3260,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "client_reminders_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "client_reminders_client_id_fkey"
             columns: ["client_id"]
@@ -5102,6 +5112,7 @@ export type Database = {
           message: string
           read: boolean
           report_id: string | null
+          target_user_id: string | null
           timestamp: string
           title: string
           type: string
@@ -5113,6 +5124,7 @@ export type Database = {
           message: string
           read?: boolean
           report_id?: string | null
+          target_user_id?: string | null
           timestamp?: string
           title: string
           type: string
@@ -5124,11 +5136,20 @@ export type Database = {
           message?: string
           read?: boolean
           report_id?: string | null
+          target_user_id?: string | null
           timestamp?: string
           title?: string
           type?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "notifications_target_user_id_fkey"
+            columns: ["target_user_id"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       password_reset_tokens: {
         Row: {
