@@ -25,6 +25,7 @@ const portalNavItems = [
   { to: '/client/reports', icon: FileText, label: 'Reports' },
   { to: '/client/messages', icon: MessageSquare, label: 'Messages' },
   { to: '/client/notifications', icon: Bell, label: 'Notifications' },
+  { to: '/client/appointments', icon: CalendarDays, label: 'My Appointments' },
   { to: '/client/booking', icon: CalendarDays, label: 'Book Appointment' },
 ];
 

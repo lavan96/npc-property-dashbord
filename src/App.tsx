@@ -76,6 +76,7 @@ import PortalDealProgress from "./pages/portal/PortalDealProgress";
 import PortalMessages from "./pages/portal/PortalMessages";
 import PortalPropertyInsights from "./pages/portal/PortalPropertyInsights";
 import PortalBooking from "./pages/portal/PortalBooking";
+import PortalAppointments from "./pages/portal/PortalAppointments";
 import PortalConfig from "./pages/PortalConfig";
 
 const queryClient = new QueryClient();
@@ -160,6 +161,7 @@ const App = () => (
                           <Route path="messages" element={<PortalMessages />} />
                           <Route path="property-insights" element={<PortalPropertyInsights />} />
                           <Route path="booking" element={<PortalBooking />} />
+                          <Route path="appointments" element={<PortalAppointments />} />
                         </Route>
 
                         {/* Internal Dashboard Routes */}
