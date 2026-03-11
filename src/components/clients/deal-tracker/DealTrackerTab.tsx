@@ -240,6 +240,15 @@ export function DealTrackerTab({ clientId, deals, properties, initialDealId }: D
             </Card>
           </div>
 
+          <div className="space-y-1">
+            <label className="text-sm font-medium">Assign Responsible Person</label>
+            <TeamUserSelect
+              value={responsibleUserId}
+              onValueChange={setResponsibleUserId}
+              placeholder="Assign team member..."
+            />
+          </div>
+
           <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button variant="outline" onClick={() => setShowCreateDialog(false)} className="w-full sm:w-auto">Cancel</Button>
             <Button onClick={handleCreate} disabled={createDeal.isPending} className="w-full sm:w-auto">
