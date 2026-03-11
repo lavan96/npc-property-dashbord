@@ -189,7 +189,12 @@ export function LeadAttributionPanel() {
             <div className="text-center py-8 text-muted-foreground">
               <Globe className="h-8 w-8 mx-auto mb-2 opacity-30" />
               <p className="text-sm font-medium">No attribution data yet</p>
-              <p className="text-xs mt-1">Attributions are captured automatically from GHL imports or can be added manually on client profiles</p>
+              <p className="text-xs mt-1">Attributions are captured automatically from GHL webhooks/imports or can be added manually on client profiles</p>
+              <Button variant="outline" size="sm" className="mt-3" onClick={handleBackfill} disabled={isBackfilling}>
+                {isBackfilling ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : <DatabaseBackup className="h-3 w-3 mr-1.5" />}
+                {isBackfilling ? 'Backfilling...' : 'Backfill from GHL'}
+              </Button>
+              {backfillProgress && <p className="text-[10px] mt-2 text-muted-foreground">{backfillProgress}</p>}
             </div>
           ) : (
             <>
