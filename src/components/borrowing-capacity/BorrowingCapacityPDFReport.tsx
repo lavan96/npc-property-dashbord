@@ -184,6 +184,7 @@ export interface BorrowingCapacityExportData {
   expenses?: any[];
   properties?: any[];
   client?: any;
+  returnBlob?: boolean;
 }
 
 export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExportData) {
