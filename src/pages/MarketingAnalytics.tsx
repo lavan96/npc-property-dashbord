@@ -468,6 +468,9 @@ export default function MarketingAnalytics() {
         summary={phase2Data?.summary}
       />
 
+      {/* Lead Source Attribution */}
+      <LeadAttributionPanel />
+
       {/* Phase 2: Audience Intelligence + Lead Quality */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <AudienceIntelligencePanel
