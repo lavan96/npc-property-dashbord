@@ -363,6 +363,13 @@ serve(async (req) => {
         );
       }
 
+      if (include.attributions) {
+        fetchPromises.push(
+          supabase.from('lead_source_attributions').select('*').eq('client_id', id).order('attributed_at', { ascending: false })
+            .then(({ data }) => { clientResult.attributions = data || []; })
+        );
+      }
+
       await Promise.all(fetchPromises);
 
       return clientResult;

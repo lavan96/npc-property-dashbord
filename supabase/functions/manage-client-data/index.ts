@@ -44,6 +44,7 @@ const ALLOWED_TABLES: TableName[] = [
   'portfolio_analysis_reports',
   'client_reminders',
   'portal_configuration',
+  'lead_source_attributions',
 ];
 
 // Map employment_type to income source_type and default shading
