@@ -45,7 +45,41 @@ import { BuildPaymentTracker } from './BuildPaymentTracker';
 import { DealFinancialControls } from './DealFinancialControls';
 import { DealCriticalDates } from './DealCriticalDates';
 import { useDealActions } from './useDealActions';
+import { TeamUserSelect } from '@/components/ui/TeamUserSelect';
+import { useTeamUsers } from '@/hooks/useTeamUsers';
+import { useNotifications } from '@/contexts/NotificationsContext';
+import { useAuth } from '@/hooks/useAuth';
 
+function ResponsiblePersonSelect({ deal, onUpdate }: { deal: Deal; onUpdate: (data: Partial<Deal>) => void }) {
+  const { data: teamUsers = [] } = useTeamUsers();
+  const { addNotification } = useNotifications();
+  const { user } = useAuth();
+
+  const handleChange = (value: string) => {
+    const newUserId = value === 'unassigned' ? null : value;
+    const oldUserId = deal.responsible_person;
+    if (newUserId === oldUserId) return;
+    onUpdate({ responsible_person: newUserId } as any);
+    if (newUserId && newUserId !== user?.id) {
+      addNotification({
+        type: 'deal_assigned',
+        title: 'Deal Reassigned to You',
+        message: `You are now responsible for the ${deal.property_address || DEAL_TYPE_LABELS[deal.deal_type]} deal`,
+        entityId: deal.id,
+        targetUserId: newUserId,
+      });
+    }
+  };
+
+  return (
+    <TeamUserSelect
+      value={deal.responsible_person || 'unassigned'}
+      onValueChange={handleChange}
+      placeholder="Responsible"
+      className="h-8 text-xs w-full sm:w-[160px]"
+    />
+  );
+}
 interface DealDetailViewProps {
   deal: Deal;
   clientId: string;
