@@ -1537,7 +1537,7 @@ export default function ReportQA() {
       <LiveRegion message={liveAnnouncement} />
       <div 
         className={cn(
-          "p-0 sm:p-3 md:p-6 sm:space-y-4 md:space-y-6 h-[calc(100vh-4rem)] pb-16 sm:pb-20 md:pb-0",
+          "p-0 sm:p-3 md:p-6 sm:space-y-4 md:space-y-6 h-[calc(100vh-4rem)] pb-16 sm:pb-20 md:pb-0 min-w-0 overflow-hidden",
           isFullScreen && "report-qa-fullscreen"
         )}
         role="main"
@@ -1591,7 +1591,7 @@ export default function ReportQA() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-0 sm:gap-4 md:gap-6 h-[calc(100%-3rem)] sm:h-[calc(100%-4rem)] md:h-[calc(100%-5rem)]">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-0 sm:gap-4 md:gap-6 h-[calc(100%-3rem)] sm:h-[calc(100%-4rem)] md:h-[calc(100%-5rem)] min-w-0">
         {/* Upload Section - Hidden on mobile, accessible via MobileReportsPanel */}
         {showReportsPanel && (
         <Card className="hidden lg:flex lg:col-span-1 flex-col">
@@ -1727,7 +1727,7 @@ export default function ReportQA() {
         )}
 
         {/* Chat Section */}
-        <Card className={cn("flex flex-col overflow-hidden min-h-0 border-0 shadow-none sm:border sm:shadow-sm rounded-none sm:rounded-lg", showReportsPanel ? "lg:col-span-2" : "lg:col-span-3")}>
+        <Card className={cn("flex flex-col overflow-hidden min-h-0 min-w-0 border-0 shadow-none sm:border sm:shadow-sm rounded-none sm:rounded-lg", showReportsPanel ? "lg:col-span-2" : "lg:col-span-3")}>
           <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6 py-2 sm:py-4 flex-shrink-0">
             {/* Mobile: single compact row — title + model + overflow menu */}
             <div className="flex items-center gap-2 sm:hidden">
