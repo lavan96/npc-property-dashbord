@@ -12,7 +12,7 @@ interface InvestmentReportData {
   investment_score?: any;
   location_intelligence?: any;
   manual_overrides?: any;
-  report_tier?: ReportTier;
+  report_tier?: string;
 }
 
 interface ClientPDFGeneratorProps {

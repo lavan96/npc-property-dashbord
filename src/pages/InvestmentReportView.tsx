@@ -453,7 +453,7 @@ export default function InvestmentReportView() {
         onClose={() => setSendToClientOpen(false)}
         reportId={report.id}
         reportTitle={report.property_address}
-        reportTier={(report as any).report_tier}
+        reportTier={report.report_tier || undefined}
         storagePath={null}
       />
     </div>
