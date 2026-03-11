@@ -805,6 +805,17 @@ export function ClientReportsTab({
                   </>
                 )}
 
+                {/* Send to Client Portal */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-10 w-10 sm:h-8 sm:w-8 text-primary"
+                  onClick={() => handleSendToPortal(report)}
+                  title="Send to Client Portal"
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
+
                 {/* More actions (delete for portfolio reports) */}
                 {report.source === 'portfolio_report' && (
                   <DropdownMenu>
