@@ -354,8 +354,8 @@ export function LeadAttributionPanel() {
               {/* Hierarchical Campaign → Ad Set → Ad Breakdown */}
               <div>
                 <p className="text-xs font-semibold text-foreground mb-2">Campaign Funnel Breakdown</p>
-                <ScrollArea className="max-h-[450px]">
-                  <div className="space-y-2">
+                <ScrollArea className="h-[400px]">
+                  <div className="space-y-2 pr-3">
                     {campaignList.map((campaign, i) => {
                       const isOpen = expandedCampaigns.has(campaign.campaignName);
                       const adsetList = Array.from(campaign.adsets.values()).sort((a, b) => b.leads - a.leads);

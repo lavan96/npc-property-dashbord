@@ -261,7 +261,7 @@ export function LeadSourceCard({ clientId, attributions, onRefresh }: LeadSource
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-3 max-h-[350px] overflow-y-auto">
         {attributions.length === 0 && !adding ? (
           <div className="text-center py-4 text-muted-foreground">
             <Globe className="h-6 w-6 mx-auto mb-1.5 opacity-40" />
