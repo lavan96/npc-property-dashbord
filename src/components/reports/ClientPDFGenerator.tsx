@@ -12,7 +12,7 @@ interface InvestmentReportData {
   investment_score?: any;
   location_intelligence?: any;
   manual_overrides?: any;
-  report_tier?: ReportTier;
+  report_tier?: string;
 }
 
 interface ClientPDFGeneratorProps {
@@ -99,7 +99,7 @@ export function ClientPDFGenerator({ report, includeSources = true, includeScori
   };
 
   // Pass report tier to the PDF generator (defaults to 'compass' for backward compatibility)
-  const reportTier = report.report_tier || 'compass';
+  const reportTier = (report.report_tier || 'compass') as ReportTier;
 
   return <PixelPerfectPDFGenerator report={transformedReport} includeSources={includeSources} includeScoring={includeScoring} reportTier={reportTier} />;
 }

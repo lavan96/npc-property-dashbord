@@ -10,7 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ArrowLeft, Loader2, Download, Edit, MapPin, Calendar, FileText, TrendingUp, Link, AlertCircle, Settings, ChevronDown, PenLine, Calculator } from 'lucide-react';
+import { ArrowLeft, Loader2, Download, Edit, MapPin, Calendar, FileText, TrendingUp, Link, AlertCircle, Settings, ChevronDown, PenLine, Calculator, Send } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
@@ -18,6 +18,7 @@ import { ClientPDFGenerator } from '@/components/reports/ClientPDFGenerator';
 import { RegenerateWithPerplexityButton } from '@/components/reports/RegenerateWithPerplexityButton';
 import { InvestmentReportEditor } from '@/components/reports/InvestmentReportEditor';
 import { ManualDataOverrideModal } from '@/components/reports/ManualDataOverrideModal';
+import { SendToClientModal } from '@/components/reports/SendToClientModal';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 
 interface InvestmentReport {
@@ -36,8 +37,8 @@ interface InvestmentReport {
   location_intelligence?: any;
   is_client_report?: boolean;
   client_property_id?: string | null;
+  report_tier?: string | null;
 }
-
 interface ClientInfo {
   id: string;
   primary_first_name: string;
@@ -56,6 +57,7 @@ export default function InvestmentReportView() {
 
   const [editorOpen, setEditorOpen] = useState(false);
   const [overrideModalOpen, setOverrideModalOpen] = useState(false);
+  const [sendToClientOpen, setSendToClientOpen] = useState(false);
   const [includeSources, setIncludeSources] = useState(true);
   const [includeScoring, setIncludeScoring] = useState(true);
   const [showOverrides, setShowOverrides] = useState(true);
@@ -76,7 +78,7 @@ export default function InvestmentReportView() {
       const { data, error: fetchError } = await invokeSecureFunction('get-investment-reports', {
         reportId: id,
         listOptions: {
-          select: 'id, property_address, property_listing_id, report_content, sources_content, created_at, status, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence, is_client_report, client_property_id'
+        select: 'id, property_address, property_listing_id, report_content, sources_content, created_at, status, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence, is_client_report, client_property_id, report_tier'
         }
       });
 
@@ -130,7 +132,7 @@ export default function InvestmentReportView() {
     const { data } = await invokeSecureFunction('get-investment-reports', {
       reportId: id,
       listOptions: {
-        select: 'id, property_address, property_listing_id, report_content, sources_content, created_at, status, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence, is_client_report, client_property_id'
+        select: 'id, property_address, property_listing_id, report_content, sources_content, created_at, status, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence, is_client_report, client_property_id, report_tier'
       }
     });
 
@@ -257,6 +259,15 @@ export default function InvestmentReportView() {
           )}
         </div>
         <div className="flex items-center gap-2">
+          {/* Send to Client */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setSendToClientOpen(true)}
+          >
+            <Send className="h-4 w-4 mr-1" />
+            Send to Client
+          </Button>
           {/* Cash Flow - available for all reports */}
           <Button
             variant="outline"
@@ -434,6 +445,16 @@ export default function InvestmentReportView() {
         isOpen={overrideModalOpen}
         onClose={() => setOverrideModalOpen(false)}
         onSave={handleReportUpdate}
+      />
+
+      {/* Send to Client Modal */}
+      <SendToClientModal
+        isOpen={sendToClientOpen}
+        onClose={() => setSendToClientOpen(false)}
+        reportId={report.id}
+        reportTitle={report.property_address}
+        reportTier={report.report_tier || undefined}
+        storagePath={null}
       />
     </div>
   );
