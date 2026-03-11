@@ -37,6 +37,7 @@ interface RequestBody {
     additionalContacts?: boolean;
     scores?: boolean;
     deals?: boolean;
+    attributions?: boolean;
     reminders?: boolean;
   };
   session_token?: string;
