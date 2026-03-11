@@ -139,6 +139,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
           message: notification.message,
           report_id: notification.reportId || null,
           entity_id: notification.entityId || null,
+          target_user_id: notification.targetUserId || null,
           read: false
         });
 
