@@ -13,7 +13,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Megaphone, Target, Users, DollarSign, TrendingUp, ChevronDown, ChevronUp, RefreshCw, Globe, Loader2 } from 'lucide-react';
+import { Megaphone, Target, Users, DollarSign, TrendingUp, ChevronDown, ChevronUp, RefreshCw, Globe, Loader2, DatabaseBackup } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface AttributionRow {
   id: string;
