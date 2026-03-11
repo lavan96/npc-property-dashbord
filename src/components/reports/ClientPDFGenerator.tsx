@@ -99,7 +99,7 @@ export function ClientPDFGenerator({ report, includeSources = true, includeScori
   };
 
   // Pass report tier to the PDF generator (defaults to 'compass' for backward compatibility)
-  const reportTier = report.report_tier || 'compass';
+  const reportTier = (report.report_tier || 'compass') as ReportTier;
 
   return <PixelPerfectPDFGenerator report={transformedReport} includeSources={includeSources} includeScoring={includeScoring} reportTier={reportTier} />;
 }
