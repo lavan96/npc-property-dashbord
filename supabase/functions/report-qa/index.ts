@@ -890,8 +890,12 @@ serve(async (req) => {
 
       let systemPrompt = "";
       
-      if (isMultiReport) {
-        systemPrompt = `You are an expert Australian investment property analyst and advisor for NPC Services. You have been provided with ${reportContents.length} investment reports for comparison analysis.
+      // Determine context type for prompt selection
+      const hasContext = contextSection.length > 100;
+      const isMultiReportContext = isMultiReport || (reportNames && reportNames.length > 1);
+      
+      if (isMultiReportContext && hasContext) {
+        systemPrompt = `You are an expert Australian investment property analyst and advisor for NPC Services. You have been provided with investment report data for comparison analysis.
 
 ## YOUR EXPERTISE
 - Deep knowledge of Australian property markets across all states and territories
@@ -914,12 +918,12 @@ serve(async (req) => {
 - Provide a clear recommendation with reasoning
 - If data is missing, acknowledge it and explain what impact it has on the analysis
 - Format for easy reading with headings, bullet points, and clear sections
-- When citing information from the knowledge base, indicate the source
+- When citing information, indicate the source document
 
-## REPORTS TO ANALYZE
-${contextSection}${ragContext}`;
-      } else if (hasReports) {
-        systemPrompt = `You are an expert Australian investment property analyst and advisor for NPC Services. You have been provided with an investment property report to analyze.
+## REPORT DATA
+${contextSection}`;
+      } else if (hasContext) {
+        systemPrompt = `You are an expert Australian investment property analyst and advisor for NPC Services. You have been provided with investment property report data to analyze.
 
 ## YOUR EXPERTISE
 - Deep knowledge of Australian property markets across all states and territories
@@ -947,10 +951,10 @@ ${contextSection}${ragContext}`;
   • Top 3 strengths and top 3 concerns
   • Investor suitability rating
 - If information is not in the report, clearly state that and explain what assumptions you're making
-- When citing information from the knowledge base, indicate the source
+- When citing information, indicate the source
 
-## REPORT CONTENT
-${contextSection}${ragContext}`;
+## REPORT DATA
+${contextSection}`;
       } else if (ragContext) {
         // No reports loaded but we have RAG context from knowledge base
         systemPrompt = `You are an expert Australian investment property analyst and advisor for NPC Services.
