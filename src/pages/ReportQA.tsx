@@ -1727,7 +1727,7 @@ export default function ReportQA() {
         )}
 
         {/* Chat Section */}
-        <Card className={cn("flex flex-col overflow-hidden min-h-0 border-0 shadow-none sm:border sm:shadow-sm rounded-none sm:rounded-lg", showReportsPanel ? "lg:col-span-2" : "lg:col-span-3")}>
+        <Card className={cn("flex flex-col overflow-hidden min-h-0 min-w-0 border-0 shadow-none sm:border sm:shadow-sm rounded-none sm:rounded-lg", showReportsPanel ? "lg:col-span-2" : "lg:col-span-3")}>
           <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6 py-2 sm:py-4 flex-shrink-0">
             {/* Mobile: single compact row — title + model + overflow menu */}
             <div className="flex items-center gap-2 sm:hidden">
