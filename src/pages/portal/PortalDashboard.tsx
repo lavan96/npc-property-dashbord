@@ -102,7 +102,7 @@ export default function PortalDashboard() {
               { label: 'Properties', value: properties.length.toString(), icon: Home, gradient: 'from-primary/10 to-primary/5', iconColor: 'text-primary' },
               { label: 'Portfolio Value', value: formatCurrency(client?.total_portfolio_value), icon: DollarSign, gradient: 'from-emerald-500/10 to-emerald-500/5', iconColor: 'text-emerald-600 dark:text-emerald-400' },
               { label: 'Rental Income', value: formatCurrency(client?.total_monthly_rental_income), suffix: '/mo', icon: TrendingUp, gradient: 'from-blue-500/10 to-blue-500/5', iconColor: 'text-blue-600 dark:text-blue-400' },
-              { label: 'Borrowing Power', value: formatCurrency(borrowingCapacity?.borrowing_capacity || client?.borrowing_capacity), icon: Briefcase, gradient: 'from-purple-500/10 to-purple-500/5', iconColor: 'text-purple-600 dark:text-purple-400' },
+              { label: 'Net Cash Flow', value: formatCurrency(client?.net_monthly_cash_flow), suffix: '/mo', icon: Briefcase, gradient: 'from-purple-500/10 to-purple-500/5', iconColor: 'text-purple-600 dark:text-purple-400' },
             ].map((stat) => (
               <Card key={stat.label} className="overflow-hidden border-0 shadow-sm hover:shadow-md transition-shadow">
                 <CardContent className="pt-6 relative">
