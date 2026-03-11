@@ -71,7 +71,7 @@ serve(async (req) => {
     const { clientId, clientIds, listMode, listOptions = {}, notesOptions = {}, include = {} } = body;
 
     // Support for querying other tables (portfolio_analysis_reports, etc.)
-    const allowedTables = ['clients', 'portfolio_analysis_reports', 'client_properties', 'client_files', 'client_additional_contacts', 'client_deals', 'deal_stages', 'build_progress_payments', 'builder_invoices', 'borrowing_capacity_assessments', 'client_reminders'];
+    const allowedTables = ['clients', 'portfolio_analysis_reports', 'client_properties', 'client_files', 'client_additional_contacts', 'client_deals', 'deal_stages', 'build_progress_payments', 'builder_invoices', 'borrowing_capacity_assessments', 'client_reminders', 'lead_source_attributions'];
     const targetTable = listOptions.table || 'clients';
     
     if (listOptions.table && !allowedTables.includes(targetTable)) {
