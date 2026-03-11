@@ -148,6 +148,17 @@ export function usePortalEmailsData() {
 }
 
 /**
+ * Fetch portal reports (published to client)
+ */
+export function usePortalReportsData() {
+  return usePortalClientData({
+    client: false,
+    properties: false,
+    reports: true,
+  });
+}
+
+/**
  * Fetch portal documents
  */
 export function usePortalDocumentsData() {
