@@ -1348,6 +1348,171 @@ No investment report has been uploaded. You are having an open conversation abou
       );
     }
 
+    // Handle report indexing for RAG - chunks reports, generates embeddings + summary
+    if (action === "index-reports") {
+      const { conversationId } = body;
+      
+      if (!conversationId) {
+        return new Response(
+          JSON.stringify({ error: "conversationId is required" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      if (!OPENAI_API_KEY) {
+        console.log('[report-qa] index-reports: OPENAI_API_KEY not configured, skipping');
+        return new Response(
+          JSON.stringify({ success: true, indexed: false, reason: 'OPENAI_API_KEY not configured' }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Load the conversation to get report contents
+      const { data: conv, error: convError } = await supabase
+        .from("report_qa_conversations")
+        .select("report_contents, report_names, structured_report")
+        .eq("id", conversationId)
+        .single();
+
+      if (convError) throw convError;
+
+      // Check if already indexed (has structured_report)
+      if (conv.structured_report && conv.structured_report.length > 100) {
+        // Check if chunks exist too
+        const { count } = await supabase
+          .from("document_chunks")
+          .select("*", { count: 'exact', head: true })
+          .eq("conversation_id", conversationId);
+        
+        if (count && count > 0) {
+          console.log(`[report-qa] Conversation ${conversationId} already indexed (${count} chunks, summary exists)`);
+          return new Response(
+            JSON.stringify({ success: true, indexed: true, alreadyIndexed: true, chunksCount: count }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
+
+      const reportContents = conv.report_contents || [];
+      const reportNames = conv.report_names || [];
+
+      if (reportContents.length === 0) {
+        console.log(`[report-qa] No report contents to index for conversation ${conversationId}`);
+        return new Response(
+          JSON.stringify({ success: true, indexed: false, reason: 'No report contents' }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      console.log(`[report-qa] Indexing ${reportContents.length} reports for conversation ${conversationId}`);
+
+      // Step 1: Delete existing chunks for this conversation
+      await supabase
+        .from("document_chunks")
+        .delete()
+        .eq("conversation_id", conversationId);
+
+      // Step 2: Chunk and embed each report
+      let totalChunks = 0;
+      for (let i = 0; i < reportContents.length; i++) {
+        const content = reportContents[i];
+        const name = reportNames[i] || `Report ${i + 1}`;
+        
+        if (!content || content.length < 50) continue;
+        
+        const chunks = chunkText(content, 1500, 200); // Larger chunks for better context
+        console.log(`[report-qa] Report "${name}": ${chunks.length} chunks from ${content.length} chars`);
+        
+        await storeDocumentChunks(supabase, `report:${name}`, chunks, OPENAI_API_KEY, conversationId);
+        totalChunks += chunks.length;
+      }
+
+      // Step 3: Generate structural summary using AI
+      let summary = '';
+      try {
+        const allContent = reportContents.map((c: string, i: number) => 
+          `--- ${reportNames[i] || `Report ${i + 1}`} ---\n${c.substring(0, 50000)}`
+        ).join('\n\n');
+
+        const summaryResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash",
+            messages: [
+              {
+                role: "system",
+                content: `You are a property investment report analyst. Create a comprehensive structural summary of the provided investment report(s). This summary will be used as context for a Q&A system.
+
+Include ALL of these elements:
+1. **Property Overview**: Address, type, price, land/building size, bedrooms/bathrooms
+2. **Financial Summary**: Purchase price, estimated rental yield, gross/net yield, cash flow projections, stamp duty, LMI
+3. **Market Data**: Suburb median prices, growth rates, days on market, vacancy rates, rental demand
+4. **Demographics**: Population, age distribution, household composition, income levels
+5. **Infrastructure & Location**: Transport, schools, amenities, planned developments
+6. **Risk Assessment**: Key risks identified, flood/fire zones, market risks
+7. **Investment Metrics**: Capital growth projections, depreciation estimates, tax benefits
+8. **Comparison Points** (if multiple reports): Side-by-side key metrics
+
+Be thorough and include ALL specific numbers, percentages, and data points mentioned in the reports. This summary needs to capture the full analytical picture.`,
+              },
+              {
+                role: "user",
+                content: `Summarize these investment report(s):\n\n${allContent}`,
+              },
+            ],
+            max_tokens: 8000,
+          }),
+        });
+
+        if (summaryResponse.ok) {
+          const summaryData = await summaryResponse.json();
+          summary = summaryData.choices?.[0]?.message?.content || '';
+          console.log(`[report-qa] Generated summary: ${summary.length} chars`);
+
+          // Log summary generation usage
+          const summaryUsage = extractOpenAIUsage(summaryData);
+          await logApiUsage(supabase, {
+            service_name: 'gemini',
+            endpoint: '/v1/chat/completions',
+            model_used: 'gemini-2.5-flash',
+            prompt_tokens: summaryUsage.prompt_tokens,
+            completion_tokens: summaryUsage.completion_tokens,
+            tokens_used: summaryUsage.total_tokens,
+            status: 'success',
+            metadata: { function: 'report-qa', action: 'index-reports-summary' },
+          });
+        } else {
+          console.error(`[report-qa] Summary generation failed: ${summaryResponse.status}`);
+        }
+      } catch (summaryError) {
+        console.error(`[report-qa] Summary generation error:`, summaryError);
+      }
+
+      // Step 4: Store summary in conversation
+      if (summary) {
+        await supabase
+          .from("report_qa_conversations")
+          .update({ structured_report: summary })
+          .eq("id", conversationId);
+      }
+
+      console.log(`[report-qa] Indexing complete: ${totalChunks} chunks, summary ${summary.length} chars`);
+
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          indexed: true, 
+          chunksCount: totalChunks, 
+          summaryLength: summary.length,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Handle fetching conversation history (no limit - return all)
     if (action === "get-conversations") {
       // Fetch own conversations
