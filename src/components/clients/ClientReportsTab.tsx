@@ -293,6 +293,7 @@ export function ClientReportsTab({
         name: `Investment Report - ${r.property_address}`,
         generatedAt: r.created_at,
         status: (r.status === 'completed' ? 'completed' : r.status === 'failed' ? 'failed' : 'pending') as any,
+        fileUrl: r.pdf_url || null,
         propertyAddress: r.property_address,
         source: 'investment_report',
       });
