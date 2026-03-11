@@ -79,8 +79,44 @@ const NotificationsContext = createContext<NotificationsContextType | undefined>
 export function NotificationsProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const currentUserId = user?.id;
 
-  // Load notifications from Supabase on mount
+  const fetchNotifications = useCallback(async () => {
+    try {
+      let query = supabase
+        .from('notifications')
+        .select('*')
+        .order('timestamp', { ascending: false })
+        .limit(50);
+
+      // Filter: show broadcast notifications (no target) + ones targeted to current user
+      if (currentUserId) {
+        query = query.or(`target_user_id.is.null,target_user_id.eq.${currentUserId}`);
+      } else {
+        query = query.is('target_user_id', null);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      if (data) {
+        const notificationsWithDates = data.map((n: any) => ({
+          ...n,
+          reportId: n.report_id,
+          entityId: n.entity_id,
+          targetUserId: n.target_user_id,
+          timestamp: new Date(n.timestamp)
+        }));
+        setNotifications(notificationsWithDates);
+      }
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error);
+    }
+  }, [currentUserId]);
+
+  // Load notifications from Supabase on mount and when user changes
   useEffect(() => {
     fetchNotifications();
     
@@ -95,7 +131,6 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
           table: 'notifications'
         },
         () => {
-          // Refetch all notifications when any change occurs
           fetchNotifications();
         }
       )
@@ -104,7 +139,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [fetchNotifications]);
 
   const fetchNotifications = async () => {
     try {
