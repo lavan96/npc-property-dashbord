@@ -45,7 +45,10 @@ export type NotificationType =
   | 'deal_finance_expiry_overdue'
   | 'deal_settlement_warning'
   | 'deal_settlement_overdue'
-  | 'deal_build_date_warning';
+  | 'deal_build_date_warning'
+  // Phase 5 - Assignment notifications
+  | 'reminder_assigned'
+  | 'deal_assigned';
 
 export interface Notification {
   id: string;
@@ -53,7 +56,8 @@ export interface Notification {
   title: string;
   message: string;
   reportId?: string;
-  entityId?: string; // Generic ID for linking to entities (client, reminder, etc.)
+  entityId?: string;
+  targetUserId?: string;
   timestamp: Date;
   read: boolean;
 }
