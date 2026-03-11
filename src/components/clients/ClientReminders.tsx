@@ -184,7 +184,11 @@ export function ClientReminders({ clientId, followUpDate }: ClientRemindersProps
   const [dueDate, setDueDate] = useState('');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high' | 'urgent'>('medium');
   const [reminderType, setReminderType] = useState('follow_up');
+  const [assignedTo, setAssignedTo] = useState('unassigned');
   const queryClient = useQueryClient();
+  const { data: teamUsers = [] } = useTeamUsers();
+  const { addNotification } = useNotifications();
+  const { user } = useAuth();
 
   const { data: reminders = [], isLoading } = useQuery({
     queryKey: ['client-reminders', clientId],
