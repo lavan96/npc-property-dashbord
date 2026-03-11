@@ -74,6 +74,60 @@ serve(async (req) => {
     }
 
     const clientId = session.client_portal_users.client_id;
+
+    // Handle report download action
+    if (body.action === 'downloadReport') {
+      const reportId = body.reportId;
+      if (!reportId) {
+        return new Response(
+          JSON.stringify({ error: 'reportId is required', success: false }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Verify the report belongs to this client
+      const { data: report, error: reportError } = await supabase
+        .from('client_portal_reports')
+        .select('id, storage_path, report_title')
+        .eq('id', reportId)
+        .eq('client_id', clientId)
+        .maybeSingle();
+
+      if (reportError || !report || !report.storage_path) {
+        return new Response(
+          JSON.stringify({ error: 'Report not found or no file available', success: false }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Generate a signed URL for the file (valid for 5 minutes)
+      const { data: signedUrlData, error: signedUrlError } = await supabase
+        .storage
+        .from('client-files')
+        .createSignedUrl(report.storage_path, 300);
+
+      if (signedUrlError || !signedUrlData?.signedUrl) {
+        console.error('[get-portal-client-data] Signed URL error:', signedUrlError?.message);
+        return new Response(
+          JSON.stringify({ error: 'Failed to generate download link', success: false }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Mark as read
+      await supabase
+        .from('client_portal_reports')
+        .update({ is_read: true })
+        .eq('id', reportId);
+
+      console.log('[get-portal-client-data] Generated signed URL for report:', report.report_title);
+
+      return new Response(
+        JSON.stringify({ success: true, signedUrl: signedUrlData.signedUrl, reportTitle: report.report_title }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const include = body.include || {};
     console.log('[get-portal-client-data] Fetching data for clientId:', clientId, 'include:', JSON.stringify(include));
 
