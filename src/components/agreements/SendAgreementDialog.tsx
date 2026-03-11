@@ -166,6 +166,28 @@ export function SendAgreementDialog({ open, onOpenChange, client, dealId }: Send
 
         {step === 'fill' && (
           <div className="space-y-4 py-2">
+            {/* Template Selection */}
+            {templates.length > 0 && (
+              <div className="space-y-1.5">
+                <Label className="flex items-center gap-1.5">
+                  <Layout className="h-3.5 w-3.5 text-muted-foreground" />
+                  Agreement Template
+                </Label>
+                <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a template..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {templates.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.name} {t.is_default ? '(Default)' : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             {/* Agreement Date */}
             <div className="space-y-1.5">
               <Label htmlFor="agreement-date" className="flex items-center gap-1.5">

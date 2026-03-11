@@ -176,7 +176,7 @@ serve(async (req) => {
       const {
         client_id, buyer_names, buyer_address, buyer_phone,
         buyer_email, agreement_date, secondary_buyer_name,
-        deal_id, notes, initial_commitment_fee,
+        deal_id, notes, initial_commitment_fee, template_id,
       } = body;
 
       if (!client_id || !buyer_names || !buyer_email) {
@@ -184,6 +184,45 @@ serve(async (req) => {
           JSON.stringify({ error: 'Missing required fields: client_id, buyer_names, buyer_email' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
+      }
+
+      // Look up template from DB if template_id provided
+      let resolvedGammaTemplateId: string | null = null;
+      let placeholderMappings: any[] | null = null;
+      
+      if (template_id) {
+        const { data: tmpl, error: tmplErr } = await supabase
+          .from('gamma_agreement_templates')
+          .select('gamma_template_id, placeholder_mappings')
+          .eq('id', template_id)
+          .single();
+        if (!tmplErr && tmpl) {
+          resolvedGammaTemplateId = tmpl.gamma_template_id;
+          placeholderMappings = tmpl.placeholder_mappings as any[];
+          console.log('[generate] Using DB template:', template_id, 'gamma_id:', resolvedGammaTemplateId);
+        }
+      }
+
+      // Fallback to default template from DB
+      if (!resolvedGammaTemplateId) {
+        const { data: defaultTmpl } = await supabase
+          .from('gamma_agreement_templates')
+          .select('id, gamma_template_id, placeholder_mappings')
+          .eq('is_default', true)
+          .eq('is_active', true)
+          .limit(1)
+          .maybeSingle();
+        if (defaultTmpl) {
+          resolvedGammaTemplateId = defaultTmpl.gamma_template_id;
+          placeholderMappings = defaultTmpl.placeholder_mappings as any[];
+          console.log('[generate] Using default DB template:', defaultTmpl.id);
+        }
+      }
+
+      // Final fallback to env var
+      if (!resolvedGammaTemplateId) {
+        resolvedGammaTemplateId = Deno.env.get('GAMMA_TEMPLATE_ID') || null;
+        console.log('[generate] Falling back to env GAMMA_TEMPLATE_ID:', resolvedGammaTemplateId);
       }
 
       const { data: agreement, error } = await supabase
@@ -201,6 +240,7 @@ serve(async (req) => {
           notes: notes || null,
           initial_commitment_fee: initial_commitment_fee ? parseFloat(initial_commitment_fee) : null,
           created_by: authResult.username || authResult.userId,
+          template_id: template_id || null,
         })
         .select()
         .single();
@@ -209,10 +249,9 @@ serve(async (req) => {
 
       // Trigger Gamma generation
       const gammaApiKey = Deno.env.get('GAMMA_API_KEY');
-      const gammaTemplateId = Deno.env.get('GAMMA_TEMPLATE_ID');
+      const gammaTemplateId = resolvedGammaTemplateId;
 
-      console.log('[generate] GAMMA_API_KEY present:', !!gammaApiKey, 'GAMMA_TEMPLATE_ID present:', !!gammaTemplateId);
-      if (gammaTemplateId) console.log('[generate] Template ID:', gammaTemplateId);
+      console.log('[generate] GAMMA_API_KEY present:', !!gammaApiKey, 'GAMMA_TEMPLATE_ID:', gammaTemplateId);
 
       if (gammaApiKey && gammaTemplateId) {
         try {
@@ -220,15 +259,34 @@ serve(async (req) => {
 
           const GAMMA_API_URL = 'https://public-api.gamma.app/v1.0';
 
-          const prompt = `Replace the placeholders in this agreement template with the following details. Do NOT change any other content, formatting, structure, or wording — only replace the bracketed placeholders exactly:
+          // Build prompt from placeholder mappings if available
+          const fieldValues: Record<string, string> = {
+            buyer_names,
+            buyer_address: buyer_address || 'N/A',
+            buyer_phone: buyer_phone || 'N/A',
+            buyer_email,
+            initial_commitment_fee: initial_commitment_fee || '$1,500.00 + GST',
+            secondary_buyer_name: secondary_buyer_name || '',
+            agreement_date: agreement_date || new Date().toISOString().split('T')[0],
+            notes: notes || '',
+          };
 
-[Buyer's Name] → ${buyer_names}
-[Address] → ${buyer_address || 'N/A'}
-[Phone Number] → ${buyer_phone || 'N/A'}
-[Email] → ${buyer_email}
-[Initial Commitment Fee] → ${initial_commitment_fee || '$1,500.00 + GST'}
+          let promptLines: string[];
+          if (placeholderMappings && placeholderMappings.length > 0) {
+            promptLines = placeholderMappings
+              .filter((m: any) => m.placeholder && m.field)
+              .map((m: any) => `${m.placeholder} → ${fieldValues[m.field] || m.defaultValue || 'N/A'}`);
+          } else {
+            promptLines = [
+              `[Buyer's Name] → ${buyer_names}`,
+              `[Address] → ${buyer_address || 'N/A'}`,
+              `[Phone Number] → ${buyer_phone || 'N/A'}`,
+              `[Email] → ${buyer_email}`,
+              `[Initial Commitment Fee] → ${initial_commitment_fee || '$1,500.00 + GST'}`,
+            ];
+          }
 
-Keep everything else exactly as-is.`;
+          const prompt = `Replace the placeholders in this agreement template with the following details. Do NOT change any other content, formatting, structure, or wording — only replace the bracketed placeholders exactly:\n\n${promptLines.join('\n')}\n\nKeep everything else exactly as-is.`;
 
           console.log('[Gamma] POST /generations/from-template with gammaId:', gammaTemplateId);
           const createRes = await fetch(`${GAMMA_API_URL}/generations/from-template`, {
