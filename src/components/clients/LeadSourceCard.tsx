@@ -39,6 +39,7 @@ const SOURCE_TYPE_LABELS: Record<string, { label: string; color: string }> = {
   webhook_auto: { label: 'Auto (GHL)', color: 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20' },
   manual: { label: 'Manual', color: 'bg-blue-500/10 text-blue-700 border-blue-500/20' },
   csv_import: { label: 'CSV Import', color: 'bg-amber-500/10 text-amber-700 border-amber-500/20' },
+  backfill: { label: 'Backfill', color: 'bg-purple-500/10 text-purple-700 border-purple-500/20' },
 };
 
 export function LeadSourceCard({ clientId, attributions, onRefresh }: LeadSourceCardProps) {
