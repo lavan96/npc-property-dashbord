@@ -215,10 +215,11 @@ export function ConversationReportEditor({
         // Replace %æ sub-bullet markers with dash
         clean = clean.replace(/%æ\s*/g, '- ');
         // Replace common Unicode chars that cause letter-spacing issues in jsPDF
-        clean = clean.replace(/[≤≥→←↑↓•·…—–''""″′]/g, (ch) => {
+        clean = clean.replace(/[≤≥→←↑↓•·…—–‐‑−⁃''""″′]/g, (ch) => {
           const map: Record<string, string> = {
             '≤': '<=', '≥': '>=', '→': '->', '←': '<-', '↑': '^', '↓': 'v',
             '•': '-', '·': '-', '…': '...', '—': '--', '–': '-',
+            '\u2010': '-', '\u2011': '-', '\u2212': '-', '\u2043': '-',
             '\u2018': "'", '\u2019': "'", '\u201C': '"', '\u201D': '"',
             '″': '"', '′': "'",
           };
