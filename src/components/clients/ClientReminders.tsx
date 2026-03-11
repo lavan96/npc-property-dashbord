@@ -409,6 +409,14 @@ export function ClientReminders({ clientId, followUpDate }: ClientRemindersProps
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Assign To</label>
+              <TeamUserSelect
+                value={assignedTo}
+                onValueChange={setAssignedTo}
+                placeholder="Assign to team member..."
+              />
+            </div>
             <div className="flex gap-2">
               <Button 
                 onClick={() => addReminderMutation.mutate()}
