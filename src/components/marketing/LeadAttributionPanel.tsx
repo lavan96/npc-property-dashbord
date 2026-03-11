@@ -489,8 +489,14 @@ export function LeadAttributionPanel() {
                   )}
                   <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={handleBackfill} disabled={isBackfilling}>
                     {isBackfilling ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <DatabaseBackup className="h-3 w-3 mr-1" />}
-                    {isBackfilling ? backfillProgress : 'Backfill'}
+                    {isBackfilling ? backfillProgress : 'Backfill New'}
                   </Button>
+                  {incompleteCount > 0 && (
+                    <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={handleReBackfill} disabled={isReBackfilling}>
+                      {isReBackfilling ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <RefreshCw className="h-3 w-3 mr-1" />}
+                      {isReBackfilling ? backfillProgress : `Re-fetch (${incompleteCount})`}
+                    </Button>
+                  )}
                 </div>
               </div>
             </>
