@@ -56,11 +56,21 @@ export default function PortalReports() {
   });
 
   const handleDownload = async (report: any) => {
-    if (!report.storage_path) {
+    const storagePath = report.storage_path;
+
+    if (!storagePath) {
       toast.error('No file available for this report');
       return;
     }
 
+    // If storage_path is already a full URL, open directly
+    if (storagePath.startsWith('http://') || storagePath.startsWith('https://')) {
+      window.open(storagePath, '_blank');
+      toast.success('Opening report...');
+      return;
+    }
+
+    // Otherwise use secure signed URL via edge function
     setDownloadingId(report.id);
     try {
       const sessionToken = getSessionToken();
@@ -86,7 +96,6 @@ export default function PortalReports() {
         throw new Error(result.error || 'Failed to get download link');
       }
 
-      // Open signed URL to trigger download
       window.open(result.signedUrl, '_blank');
       toast.success('Downloading report...');
     } catch (error: any) {
