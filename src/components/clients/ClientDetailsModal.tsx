@@ -239,6 +239,7 @@ NPC Team`
   const assets = secureData?.assets || [];
   const liabilities = secureData?.liabilities || [];
   const additionalContacts = secureData?.additionalContacts || [];
+  const attributions = secureData?.attributions || [];
 
   // Build dynamic contact list for employment/income tabs
   const contacts = useClientContacts(fullClient || undefined, additionalContacts);
