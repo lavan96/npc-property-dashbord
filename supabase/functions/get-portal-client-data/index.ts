@@ -237,6 +237,17 @@ serve(async (req) => {
       result.messages = messages || [];
     }
 
+    // Fetch published reports
+    if (include.reports) {
+      const { data: reports } = await supabase
+        .from('client_portal_reports')
+        .select('*')
+        .eq('client_id', clientId)
+        .order('published_at', { ascending: false })
+        .limit(100);
+      result.reports = reports || [];
+    }
+
     console.log('[get-portal-client-data] Success. Keys returned:', Object.keys(result));
 
     return new Response(

@@ -22,7 +22,7 @@ const portalNavItems = [
   { to: '/client/property-insights', icon: BarChart3, label: 'Property Insights' },
   { to: '/client/employment', icon: Briefcase, label: 'Finances' },
   { to: '/client/documents', icon: FileText, label: 'Documents' },
-  { to: '/client/emails', icon: Mail, label: 'Correspondence' },
+  { to: '/client/reports', icon: FileText, label: 'Reports' },
   { to: '/client/messages', icon: MessageSquare, label: 'Messages' },
   { to: '/client/notifications', icon: Bell, label: 'Notifications' },
   { to: '/client/booking', icon: CalendarDays, label: 'Book Appointment' },
