@@ -749,8 +749,22 @@ NPC Team`
               />
             </TabsContent>
 
+            <TabsContent value="sent-reports" className={cn("mt-4", !isMobile && "max-w-3xl mx-auto w-full")}>
+              <ClientSentReportsTab
+                clientId={client.id}
+                clientName={`${client.primary_first_name} ${client.primary_surname}`}
+              />
+            </TabsContent>
+
             <TabsContent value="emails" className="mt-4 w-full min-w-0">
               <ClientEmailsTab clientId={client.id} clientName={`${client.primary_first_name} ${client.primary_surname}`} />
+            </TabsContent>
+
+            <TabsContent value="appointments" className={cn("mt-4", !isMobile && "max-w-3xl mx-auto w-full")}>
+              <ClientAppointmentsTab
+                clientId={client.id}
+                ghlContactId={fullClient?.ghl_contact_id}
+              />
             </TabsContent>
 
             <TabsContent value="notes" className="mt-4">
