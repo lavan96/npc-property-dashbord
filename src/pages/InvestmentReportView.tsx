@@ -446,6 +446,16 @@ export default function InvestmentReportView() {
         onClose={() => setOverrideModalOpen(false)}
         onSave={handleReportUpdate}
       />
+
+      {/* Send to Client Modal */}
+      <SendToClientModal
+        isOpen={sendToClientOpen}
+        onClose={() => setSendToClientOpen(false)}
+        reportId={report.id}
+        reportTitle={report.property_address}
+        reportTier={(report as any).report_tier}
+        storagePath={null}
+      />
     </div>
   );
 }
