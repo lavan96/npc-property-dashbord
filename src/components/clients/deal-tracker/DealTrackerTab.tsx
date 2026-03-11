@@ -38,7 +38,11 @@ export function DealTrackerTab({ clientId, deals, properties, initialDealId }: D
   const [selectedDealId, setSelectedDealId] = useState<string | null>(initialDealId || null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newDealType, setNewDealType] = useState<DealType>('existing_property');
+  const [responsibleUserId, setResponsibleUserId] = useState('unassigned');
   const { createDeal } = useDealActions(clientId);
+  const { data: teamUsers = [] } = useTeamUsers();
+  const { addNotification } = useNotifications();
+  const { user } = useAuth();
 
   // Auto-select deal when deep-linked and deals load
   useEffect(() => {
