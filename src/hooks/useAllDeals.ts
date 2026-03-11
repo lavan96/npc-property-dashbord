@@ -105,11 +105,20 @@ export function useAllDeals() {
       const stages = stagesRes.data?.records || [];
       const payments = paymentsRes.data?.records || [];
       const invoices = invoicesRes.data?.records || [];
+      const attributions = attributionsRes.data?.records || [];
 
       // Group by deal_id
       const stagesByDeal: Record<string, any[]> = {};
       const paymentsByDeal: Record<string, any[]> = {};
       const invoicesByDeal: Record<string, any[]> = {};
+
+      // Map attributions by client_id (first attribution wins)
+      const attrByClient: Record<string, string> = {};
+      for (const a of attributions) {
+        if (a.client_id && !attrByClient[a.client_id]) {
+          attrByClient[a.client_id] = a.utm_campaign || a.utm_source || 'Unknown source';
+        }
+      }
 
       for (const s of stages) {
         if (!stagesByDeal[s.deal_id]) stagesByDeal[s.deal_id] = [];
@@ -130,6 +139,7 @@ export function useAllDeals() {
         stages: stagesByDeal[d.id] || [],
         buildPayments: paymentsByDeal[d.id] || [],
         invoices: invoicesByDeal[d.id] || [],
+        leadSource: attrByClient[d.client_id] || null,
       }));
     },
     staleTime: 30000,
