@@ -132,7 +132,7 @@ export default function InvestmentReportView() {
     const { data } = await invokeSecureFunction('get-investment-reports', {
       reportId: id,
       listOptions: {
-        select: 'id, property_address, property_listing_id, report_content, sources_content, created_at, status, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence, is_client_report, client_property_id'
+        select: 'id, property_address, property_listing_id, report_content, sources_content, created_at, status, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence, is_client_report, client_property_id, report_tier'
       }
     });
 
