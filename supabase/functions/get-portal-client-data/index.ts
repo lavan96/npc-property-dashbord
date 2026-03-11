@@ -100,13 +100,46 @@ serve(async (req) => {
         );
       }
 
-      // Generate a signed URL for the file (valid for 5 minutes)
+      const storagePath = report.storage_path;
+
+      // If storage_path is already a full URL (e.g. investment-reports bucket public URL), return it directly
+      if (storagePath.startsWith('http://') || storagePath.startsWith('https://')) {
+        // Mark as read
+        await supabase
+          .from('client_portal_reports')
+          .update({ is_read: true })
+          .eq('id', reportId);
+
+        console.log('[get-portal-client-data] Returning direct URL for report:', report.report_title);
+
+        return new Response(
+          JSON.stringify({ success: true, signedUrl: storagePath, reportTitle: report.report_title }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Try client-files bucket first, then investment-reports bucket
+      let signedUrl: string | null = null;
+      
       const { data: signedUrlData, error: signedUrlError } = await supabase
         .storage
         .from('client-files')
-        .createSignedUrl(report.storage_path, 300);
+        .createSignedUrl(storagePath, 300);
 
-      if (signedUrlError || !signedUrlData?.signedUrl) {
+      if (signedUrlData?.signedUrl) {
+        signedUrl = signedUrlData.signedUrl;
+      } else {
+        // Fallback to investment-reports bucket
+        const { data: fallbackData } = await supabase
+          .storage
+          .from('investment-reports')
+          .createSignedUrl(storagePath, 300);
+        if (fallbackData?.signedUrl) {
+          signedUrl = fallbackData.signedUrl;
+        }
+      }
+
+      if (!signedUrl) {
         console.error('[get-portal-client-data] Signed URL error:', signedUrlError?.message);
         return new Response(
           JSON.stringify({ error: 'Failed to generate download link', success: false }),
@@ -123,7 +156,7 @@ serve(async (req) => {
       console.log('[get-portal-client-data] Generated signed URL for report:', report.report_title);
 
       return new Response(
-        JSON.stringify({ success: true, signedUrl: signedUrlData.signedUrl, reportTitle: report.report_title }),
+        JSON.stringify({ success: true, signedUrl, reportTitle: report.report_title }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
