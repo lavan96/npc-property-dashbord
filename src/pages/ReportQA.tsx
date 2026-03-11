@@ -789,7 +789,9 @@ export default function ReportQA() {
         credentials: 'omit', // Avoid CORS issues with wildcard origins
         body: JSON.stringify({
           action: 'chat',
-          reportContents: reportsToUse.map(r => r.content),
+          // RAG mode: Don't send full report contents - the backend retrieves relevant chunks
+          // Only send report names for context identification
+          reportContents: [],
           reportNames: reportsToUse.map(r => r.name),
           question: messageContent,
           chatHistory: chatHistoryForRequest,
