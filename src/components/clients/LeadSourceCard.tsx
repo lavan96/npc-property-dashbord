@@ -21,7 +21,7 @@ interface Attribution {
   meta_campaign_id: string | null;
   meta_adset_id: string | null;
   meta_ad_id: string | null;
-  source_type: 'webhook_auto' | 'manual' | 'csv_import';
+  source_type: 'webhook_auto' | 'manual' | 'csv_import' | 'backfill';
   landing_page_url: string | null;
   referrer_url: string | null;
   ghl_contact_id: string | null;
