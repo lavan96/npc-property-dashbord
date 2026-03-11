@@ -1591,7 +1591,7 @@ export default function ReportQA() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-0 sm:gap-4 md:gap-6 h-[calc(100%-3rem)] sm:h-[calc(100%-4rem)] md:h-[calc(100%-5rem)]">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-0 sm:gap-4 md:gap-6 h-[calc(100%-3rem)] sm:h-[calc(100%-4rem)] md:h-[calc(100%-5rem)] min-w-0">
         {/* Upload Section - Hidden on mobile, accessible via MobileReportsPanel */}
         {showReportsPanel && (
         <Card className="hidden lg:flex lg:col-span-1 flex-col">
