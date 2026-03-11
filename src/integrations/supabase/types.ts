@@ -4805,14 +4805,28 @@ export type Database = {
         Row: {
           attributed_at: string
           client_id: string
+          conversion_page_url: string | null
           created_at: string
           deal_id: string | null
+          device_type: string | null
+          enriched_at: string | null
+          enrichment_status: string | null
+          fbclid: string | null
+          gclid: string | null
+          geo_location: string | null
+          ghl_attribution_source: string | null
           ghl_contact_id: string | null
+          ghl_last_attribution_source: string | null
           id: string
           landing_page_url: string | null
+          meta_ad_creative_url: string | null
           meta_ad_id: string | null
+          meta_ad_name: string | null
           meta_adset_id: string | null
+          meta_adset_name: string | null
           meta_campaign_id: string | null
+          meta_campaign_name: string | null
+          meta_campaign_objective: string | null
           notes: string | null
           referrer_url: string | null
           source_type: Database["public"]["Enums"]["attribution_source_type"]
@@ -4826,14 +4840,28 @@ export type Database = {
         Insert: {
           attributed_at?: string
           client_id: string
+          conversion_page_url?: string | null
           created_at?: string
           deal_id?: string | null
+          device_type?: string | null
+          enriched_at?: string | null
+          enrichment_status?: string | null
+          fbclid?: string | null
+          gclid?: string | null
+          geo_location?: string | null
+          ghl_attribution_source?: string | null
           ghl_contact_id?: string | null
+          ghl_last_attribution_source?: string | null
           id?: string
           landing_page_url?: string | null
+          meta_ad_creative_url?: string | null
           meta_ad_id?: string | null
+          meta_ad_name?: string | null
           meta_adset_id?: string | null
+          meta_adset_name?: string | null
           meta_campaign_id?: string | null
+          meta_campaign_name?: string | null
+          meta_campaign_objective?: string | null
           notes?: string | null
           referrer_url?: string | null
           source_type?: Database["public"]["Enums"]["attribution_source_type"]
@@ -4847,14 +4875,28 @@ export type Database = {
         Update: {
           attributed_at?: string
           client_id?: string
+          conversion_page_url?: string | null
           created_at?: string
           deal_id?: string | null
+          device_type?: string | null
+          enriched_at?: string | null
+          enrichment_status?: string | null
+          fbclid?: string | null
+          gclid?: string | null
+          geo_location?: string | null
+          ghl_attribution_source?: string | null
           ghl_contact_id?: string | null
+          ghl_last_attribution_source?: string | null
           id?: string
           landing_page_url?: string | null
+          meta_ad_creative_url?: string | null
           meta_ad_id?: string | null
+          meta_ad_name?: string | null
           meta_adset_id?: string | null
+          meta_adset_name?: string | null
           meta_campaign_id?: string | null
+          meta_campaign_name?: string | null
+          meta_campaign_objective?: string | null
           notes?: string | null
           referrer_url?: string | null
           source_type?: Database["public"]["Enums"]["attribution_source_type"]

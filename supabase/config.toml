@@ -444,3 +444,6 @@ verify_jwt = false
 
 [functions.backfill-lead-attributions]
 verify_jwt = true
+
+[functions.enrich-lead-attributions]
+verify_jwt = true
