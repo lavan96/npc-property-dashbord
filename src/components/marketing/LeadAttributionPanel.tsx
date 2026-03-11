@@ -72,6 +72,7 @@ interface CampaignGroup {
 export function LeadAttributionPanel() {
   const [expanded, setExpanded] = useState(true);
   const [isBackfilling, setIsBackfilling] = useState(false);
+  const [isReBackfilling, setIsReBackfilling] = useState(false);
   const [isEnriching, setIsEnriching] = useState(false);
   const [backfillProgress, setBackfillProgress] = useState('');
   const [expandedCampaigns, setExpandedCampaigns] = useState<Set<string>>(new Set());
