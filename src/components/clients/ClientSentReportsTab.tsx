@@ -73,10 +73,10 @@ export function ClientSentReportsTab({ clientId, clientName }: ClientSentReports
     setPublishing(true);
     try {
       const { error } = await invokeSecureFunction('manage-client-data', {
-        operation: 'insert',
+        operation: 'create',
         table: 'client_portal_reports',
+        clientId,
         data: {
-          client_id: clientId,
           report_title: newReport.report_title,
           report_type: newReport.report_type,
           report_tier: newReport.report_tier || null,

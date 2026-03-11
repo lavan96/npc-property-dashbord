@@ -53,6 +53,7 @@ import {
   Landmark,
   Home,
   Info,
+  Send,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { VownetPDFGenerator, type VownetPDFData } from './VownetPDFGenerator';
@@ -449,6 +450,34 @@ export function ClientReportsTab({
     }
   };
 
+  const handleSendToPortal = async (report: UnifiedReport) => {
+    try {
+      const reportTypeMap: Record<string, string> = {
+        investment: 'investment',
+        portfolio: 'portfolio',
+        borrowing: 'borrowing_capacity',
+        vownet: 'cash_flow',
+        property: 'investment',
+      };
+      const { error } = await invokeSecureFunction('manage-client-data', {
+        operation: 'create',
+        table: 'client_portal_reports',
+        clientId,
+        data: {
+          report_title: report.name,
+          report_type: reportTypeMap[report.type] || 'investment',
+          storage_path: report.fileUrl || null,
+          notes: report.propertyAddress ? `Property: ${report.propertyAddress}` : null,
+          published_at: new Date().toISOString(),
+        },
+      });
+      if (error) throw error;
+      toast.success('Report published to client portal');
+    } catch (err: any) {
+      toast.error('Failed to publish: ' + (err.message || 'Unknown error'));
+    }
+  };
+
   const handleDelete = (report: UnifiedReport) => {
     setReportToDelete(report);
   };
@@ -775,6 +804,17 @@ export function ClientReportsTab({
                     </Button>
                   </>
                 )}
+
+                {/* Send to Client Portal */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-10 w-10 sm:h-8 sm:w-8 text-primary"
+                  onClick={() => handleSendToPortal(report)}
+                  title="Send to Client Portal"
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
 
                 {/* More actions (delete for portfolio reports) */}
                 {report.source === 'portfolio_report' && (
