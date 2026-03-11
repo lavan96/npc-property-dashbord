@@ -206,6 +206,7 @@ export function ClientReminders({ clientId, followUpDate }: ClientRemindersProps
 
   const addReminderMutation = useMutation({
     mutationFn: async () => {
+      const assignedUserId = assignedTo !== 'unassigned' ? assignedTo : null;
       const { data, error } = await invokeSecureFunction('manage-client-data', {
         operation: 'create',
         table: 'client_reminders',
@@ -216,15 +217,31 @@ export function ClientReminders({ clientId, followUpDate }: ClientRemindersProps
           due_date: new Date(dueDate).toISOString(),
           priority,
           reminder_type: reminderType,
+          assigned_to: assignedUserId,
         },
       });
 
       if (error) throw new Error(error.message);
       if (!data?.success) throw new Error(data?.error || 'Failed to create reminder');
+      return assignedUserId;
     },
-    onSuccess: () => {
+    onSuccess: (assignedUserId) => {
       queryClient.invalidateQueries({ queryKey: ['client-reminders', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['all-reminders'] });
       toast.success('Reminder created');
+
+      // Send notification to assigned user (if not self)
+      if (assignedUserId && assignedUserId !== user?.id) {
+        const assignedUser = teamUsers.find(u => u.id === assignedUserId);
+        addNotification({
+          type: 'reminder_assigned',
+          title: `Reminder Assigned: ${title}`,
+          message: `You have been assigned a ${priority} priority reminder: "${title}"`,
+          entityId: clientId,
+          targetUserId: assignedUserId,
+        });
+      }
+
       resetForm();
     },
     onError: (error: any) => {
