@@ -165,9 +165,10 @@ export function DealTrackerTab({ clientId, deals, properties, initialDealId }: D
 
                   {/* Key info - wrap on mobile */}
                   <div className="flex items-center gap-2 sm:gap-4 text-xs text-muted-foreground flex-wrap">
-                    {deal.responsible_person && (
-                      <span className="truncate">👤 {deal.responsible_person}</span>
-                    )}
+                    {deal.responsible_person && (() => {
+                      const assignee = teamUsers.find(u => u.id === deal.responsible_person);
+                      return <span className="truncate">👤 {assignee?.username || deal.responsible_person}</span>;
+                    })()}
                     {deal.total_contract_price && (
                       <span>💰 {new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(deal.total_contract_price)}</span>
                     )}
