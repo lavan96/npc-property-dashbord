@@ -165,13 +165,25 @@ serve(async (req) => {
     const utmCampaign = getCustomField(['utm_campaign', 'utmCampaign']);
     const utmContent = getCustomField(['utm_content', 'utmContent']);
     const utmTerm = getCustomField(['utm_term', 'utmTerm']);
-    const metaCampaignId = getCustomField(['meta_campaign_id', 'fb_campaign_id', 'fbclid']);
-    const metaAdsetId = getCustomField(['meta_adset_id', 'fb_adset_id']);
-    const metaAdId = getCustomField(['meta_ad_id', 'fb_ad_id']);
-    const landingPage = getCustomField(['landing_page', 'landing_page_url', 'page_url']);
+    const metaCampaignId = getCustomField(['meta_campaign_id', 'fb_campaign_id', 'facebook_campaign_id']);
+    const metaAdsetId = getCustomField(['meta_adset_id', 'fb_adset_id', 'facebook_adset_id']);
+    const metaAdId = getCustomField(['meta_ad_id', 'fb_ad_id', 'facebook_ad_id']);
+    const landingPage = getCustomField(['landing_page', 'landing_page_url', 'page_url', 'full_url']);
+    const fbclid = getCustomField(['fbclid', 'fb_click_id']);
+    const gclid = getCustomField(['gclid', 'google_click_id']);
+    const deviceType = getCustomField(['device', 'device_type']);
+    const geoLocation = getCustomField(['geo_location', 'location', 'ip_city']);
+    const conversionPage = getCustomField(['conversion_page', 'form_url', 'conversion_url']);
+
+    // GHL native attribution fields
+    const ghlAttrSource = contact.attributionSource || contact.attribution_source
+      || getCustomField(['attribution_source']) || null;
+    const ghlLastAttrSource = contact.lastAttributionSource || contact.last_attribution_source
+      || getCustomField(['last_attribution_source']) || null;
 
     const hasAttribution = utmSource || utmMedium || utmCampaign || utmContent || utmTerm
-      || metaCampaignId || metaAdsetId || metaAdId || source;
+      || metaCampaignId || metaAdsetId || metaAdId || fbclid || gclid || source
+      || ghlAttrSource || ghlLastAttrSource;
 
     if (clientDbId && hasAttribution) {
       const attributionData = {
@@ -185,9 +197,17 @@ serve(async (req) => {
         meta_adset_id: metaAdsetId,
         meta_ad_id: metaAdId,
         landing_page_url: landingPage,
+        fbclid,
+        gclid,
+        device_type: deviceType,
+        geo_location: geoLocation,
+        conversion_page_url: conversionPage,
+        ghl_attribution_source: ghlAttrSource,
+        ghl_last_attribution_source: ghlLastAttrSource,
         source_type: 'webhook_auto',
         ghl_contact_id: contactId,
         attributed_at: dateAdded,
+        enrichment_status: metaCampaignId ? 'pending' : 'not_applicable',
       };
 
       // Upsert to avoid duplicates on re-sent webhooks

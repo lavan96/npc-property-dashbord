@@ -139,13 +139,24 @@ serve(async (req) => {
         const utmCampaign = getField(['utm_campaign', 'utmCampaign']);
         const utmContent = getField(['utm_content', 'utmContent']);
         const utmTerm = getField(['utm_term', 'utmTerm']);
-        const metaCampaignId = getField(['meta_campaign_id', 'fb_campaign_id']);
-        const metaAdsetId = getField(['meta_adset_id', 'fb_adset_id']);
-        const metaAdId = getField(['meta_ad_id', 'fb_ad_id']);
-        const landingPage = getField(['landing_page', 'landing_page_url', 'page_url']);
+        const metaCampaignId = getField(['meta_campaign_id', 'fb_campaign_id', 'facebook_campaign_id']);
+        const metaAdsetId = getField(['meta_adset_id', 'fb_adset_id', 'facebook_adset_id']);
+        const metaAdId = getField(['meta_ad_id', 'fb_ad_id', 'facebook_ad_id']);
+        const landingPage = getField(['landing_page', 'landing_page_url', 'page_url', 'full_url']);
+        const fbclid = getField(['fbclid', 'fb_click_id']);
+        const gclid = getField(['gclid', 'google_click_id']);
+        const deviceType = getField(['device', 'device_type']);
+        const geoLocation = getField(['geo_location', 'location', 'ip_city']);
+        const conversionPage = getField(['conversion_page', 'form_url', 'conversion_url']);
+
+        // GHL native attribution
+        const ghlAttrSource = contact.attributionSource || contact.attribution_source
+          || getField(['attribution_source']) || null;
+        const ghlLastAttrSource = contact.lastAttributionSource || contact.last_attribution_source
+          || getField(['last_attribution_source']) || null;
 
         const hasData = utmSource || utmMedium || utmCampaign || utmContent || utmTerm
-          || metaCampaignId || contact.source;
+          || metaCampaignId || fbclid || gclid || contact.source || ghlAttrSource;
 
         if (!hasData) {
           skipped++;
@@ -165,9 +176,17 @@ serve(async (req) => {
             meta_adset_id: metaAdsetId,
             meta_ad_id: metaAdId,
             landing_page_url: landingPage,
+            fbclid,
+            gclid,
+            device_type: deviceType,
+            geo_location: geoLocation,
+            conversion_page_url: conversionPage,
+            ghl_attribution_source: ghlAttrSource,
+            ghl_last_attribution_source: ghlLastAttrSource,
             source_type: 'backfill',
             ghl_contact_id: client.ghl_contact_id,
             attributed_at: contact.dateAdded || new Date().toISOString(),
+            enrichment_status: metaCampaignId ? 'pending' : 'not_applicable',
           });
 
         if (insertError) {
