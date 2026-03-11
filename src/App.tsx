@@ -68,7 +68,7 @@ import PortalDashboard from "./pages/portal/PortalDashboard";
 import PortalProfile from "./pages/portal/PortalProfile";
 import PortalProperties from "./pages/portal/PortalProperties";
 import PortalEmployment from "./pages/portal/PortalEmployment";
-import PortalEmails from "./pages/portal/PortalEmails";
+import PortalReports from "./pages/portal/PortalReports";
 import PortalDocuments from "./pages/portal/PortalDocuments";
 import PortalAcceptInvite from "./pages/portal/PortalAcceptInvite";
 import PortalNotifications from "./pages/portal/PortalNotifications";
@@ -152,7 +152,8 @@ const App = () => (
                           <Route path="profile" element={<PortalProfile />} />
                           <Route path="properties" element={<PortalProperties />} />
                           <Route path="employment" element={<PortalEmployment />} />
-                          <Route path="emails" element={<PortalEmails />} />
+                          <Route path="emails" element={<PortalReports />} />
+                          <Route path="reports" element={<PortalReports />} />
                           <Route path="documents" element={<PortalDocuments />} />
                           <Route path="notifications" element={<PortalNotifications />} />
                           <Route path="deal-progress" element={<PortalDealProgress />} />

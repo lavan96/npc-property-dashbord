@@ -16,7 +16,7 @@ const quickLinks = [
   { to: '/client/profile', icon: User, label: 'My Profile', desc: 'View and update your personal details', color: 'from-blue-500/10 to-indigo-500/10' },
   { to: '/client/properties', icon: Building2, label: 'Properties', desc: 'View your property portfolio', color: 'from-emerald-500/10 to-teal-500/10' },
   { to: '/client/employment', icon: Briefcase, label: 'Employment & Finances', desc: 'Employment and income details', color: 'from-amber-500/10 to-orange-500/10' },
-  { to: '/client/emails', icon: Mail, label: 'Correspondence', desc: 'View email communications', color: 'from-purple-500/10 to-fuchsia-500/10' },
+  { to: '/client/reports', icon: FileText, label: 'Reports', desc: 'View reports shared by your advisor', color: 'from-purple-500/10 to-fuchsia-500/10' },
   { to: '/client/documents', icon: FileText, label: 'Documents', desc: 'Access your uploaded documents', color: 'from-rose-500/10 to-pink-500/10' },
 ];
 

@@ -42,6 +42,7 @@ export interface PortalDataInclude {
   borrowingCapacity?: boolean;
   notifications?: boolean;
   messages?: boolean;
+  reports?: boolean;
 }
 
 /**
@@ -144,6 +145,17 @@ export function usePortalEmailsData() {
     client: false,
     properties: false,
     emails: true,
+  });
+}
+
+/**
+ * Fetch portal reports (published to client)
+ */
+export function usePortalReportsData() {
+  return usePortalClientData({
+    client: false,
+    properties: false,
+    reports: true,
   });
 }
 

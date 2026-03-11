@@ -71,7 +71,7 @@ const MODULE_ITEMS = [
   { key: 'module_property_insights', label: 'Property Insights', icon: BarChart3, desc: 'Equity, LVR, yield analytics' },
   { key: 'module_employment', label: 'Finances', icon: Briefcase, desc: 'Employment and income details' },
   { key: 'module_documents', label: 'Documents', icon: FileText, desc: 'File uploads and downloads' },
-  { key: 'module_emails', label: 'Correspondence', icon: Mail, desc: 'Email history view' },
+  { key: 'module_reports', label: 'Reports', icon: FileText, desc: 'Published reports for clients' },
   { key: 'module_messages', label: 'Messages', icon: MessageSquare, desc: 'Advisor messaging' },
   { key: 'module_notifications', label: 'Notifications', icon: Bell, desc: 'Activity alerts and updates' },
   { key: 'module_booking', label: 'Book Appointment', icon: CalendarDays, desc: 'Calendar booking via GHL' },
