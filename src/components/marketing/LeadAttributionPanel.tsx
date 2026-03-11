@@ -41,6 +41,9 @@ const formatCurrency = (val: number) =>
 
 export function LeadAttributionPanel() {
   const [expanded, setExpanded] = useState(true);
+  const [isBackfilling, setIsBackfilling] = useState(false);
+  const [backfillProgress, setBackfillProgress] = useState('');
+  const { toast } = useToast();
 
   const { data: attributionsData, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['lead-attributions-summary'],
