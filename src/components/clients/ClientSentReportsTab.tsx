@@ -8,9 +8,19 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import {
-  FileText, Loader2, Eye, EyeOff, Clock, Send, Plus,
+  FileText, Loader2, Eye, EyeOff, Clock, Send, Plus, Trash2,
   BarChart3, PiggyBank, TrendingUp, FileBarChart, Inbox, CheckCircle2
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -36,6 +46,8 @@ export function ClientSentReportsTab({ clientId, clientName }: ClientSentReports
   const queryClient = useQueryClient();
   const [showPublishDialog, setShowPublishDialog] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [reportToDelete, setReportToDelete] = useState<any>(null);
+  const [deleting, setDeleting] = useState(false);
   const [newReport, setNewReport] = useState({
     report_title: '',
     report_type: 'investment',
@@ -86,14 +98,34 @@ export function ClientSentReportsTab({ clientId, clientName }: ClientSentReports
         },
       });
       if (error) throw error;
-      toast.success('Report published to client portal');
+      toast.success('Report published to portal');
       setShowPublishDialog(false);
       setNewReport({ report_title: '', report_type: 'investment', report_tier: '', storage_path: '', notes: '' });
-      refetch();
+      queryClient.invalidateQueries({ queryKey: ['client-portal-reports', clientId] });
     } catch (err: any) {
-      toast.error('Failed to publish: ' + err.message);
+      toast.error('Failed to publish: ' + (err.message || 'Unknown error'));
     } finally {
       setPublishing(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!reportToDelete) return;
+    setDeleting(true);
+    try {
+      const { error } = await invokeSecureFunction('manage-client-data', {
+        operation: 'delete',
+        table: 'client_portal_reports',
+        recordId: reportToDelete.id,
+      });
+      if (error) throw error;
+      toast.success('Report removed from client portal');
+      setReportToDelete(null);
+      queryClient.invalidateQueries({ queryKey: ['client-portal-reports', clientId] });
+    } catch (err: any) {
+      toast.error('Failed to delete: ' + (err.message || 'Unknown error'));
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -162,8 +194,19 @@ export function ClientSentReportsTab({ clientId, clientName }: ClientSentReports
                         <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{report.notes}</p>
                       )}
                     </div>
-                    <div className="text-right shrink-0 text-xs text-muted-foreground">
-                      {report.published_at && format(new Date(report.published_at), 'dd MMM yyyy')}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-xs text-muted-foreground hidden sm:inline">
+                        {report.published_at && format(new Date(report.published_at), 'dd MMM yyyy')}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => setReportToDelete(report)}
+                        title="Remove from portal"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
                     </div>
                   </div>
                 </CardContent>
@@ -172,6 +215,29 @@ export function ClientSentReportsTab({ clientId, clientName }: ClientSentReports
           })}
         </div>
       )}
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!reportToDelete} onOpenChange={() => !deleting && setReportToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Report from Portal</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove "<strong>{reportToDelete?.report_title}</strong>" from {clientName}'s portal. They will no longer be able to view or download it. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Publish Dialog */}
       <Dialog open={showPublishDialog} onOpenChange={setShowPublishDialog}>
