@@ -100,9 +100,49 @@ export function LeadAttributionPanel() {
   const sourceList = Array.from(sourceMap.entries()).sort((a, b) => b[1] - a[1]);
 
   // Source type breakdown
-  const autoCount = attributions.filter(a => a.source_type === 'webhook_auto').length;
+  const autoCount = attributions.filter(a => a.source_type === 'webhook_auto' || a.source_type === 'backfill').length;
   const manualCount = attributions.filter(a => a.source_type === 'manual').length;
   const csvCount = attributions.filter(a => a.source_type === 'csv_import').length;
+
+  const handleBackfill = async () => {
+    setIsBackfilling(true);
+    setBackfillProgress('Starting backfill...');
+    let offset = 0;
+    let totalAttributed = 0;
+    let totalProcessed = 0;
+
+    try {
+      let hasMore = true;
+      while (hasMore) {
+        const { data, error } = await invokeSecureFunction('backfill-lead-attributions', {
+          batchSize: 50,
+          offset,
+        });
+        if (error) throw new Error(error.message || 'Backfill failed');
+        
+        totalAttributed += data.stats?.attributed || 0;
+        totalProcessed += data.stats?.processed || 0;
+        hasMore = data.hasMore;
+        offset = data.nextOffset || offset + 50;
+        setBackfillProgress(`Processed ${totalProcessed} clients, ${totalAttributed} attributed...`);
+      }
+
+      toast({
+        title: 'Backfill Complete',
+        description: `Processed ${totalProcessed} clients. ${totalAttributed} attribution records created.`,
+      });
+      refetch();
+    } catch (err: any) {
+      toast({
+        title: 'Backfill Error',
+        description: err.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsBackfilling(false);
+      setBackfillProgress('');
+    }
+  };
 
   const sourceColors: Record<string, string> = {
     meta: 'bg-blue-500',
