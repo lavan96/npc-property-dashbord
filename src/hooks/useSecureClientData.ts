@@ -164,6 +164,7 @@ async function fetchClientDataSecure(
     borrowingCapacity: data.borrowingCapacity || null,
     additionalContacts: data.additionalContacts || [],
     deals: data.deals || [],
+    attributions: data.attributions || [],
   };
 }
 
