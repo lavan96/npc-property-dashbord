@@ -202,8 +202,7 @@ export default function PortalReports() {
                         <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{report.notes}</p>
                       )}
 
-                      {report.storage_path && (
-                        <div className="flex items-center gap-2 mt-3">
+                      <div className="flex items-center gap-2 mt-3">
                           <Button
                             variant="outline"
                             size="sm"
@@ -216,10 +215,9 @@ export default function PortalReports() {
                             ) : (
                               <Download className="h-3.5 w-3.5 mr-1.5" />
                             )}
-                            {isDownloading ? 'Preparing...' : 'Download'}
+                            {isDownloading ? 'Preparing...' : 'Download Report'}
                           </Button>
                         </div>
-                      )}
                     </div>
                   </div>
                 </CardContent>
