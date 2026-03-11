@@ -194,7 +194,35 @@ export function LeadAttributionPanel() {
     }
   };
 
-  const handleEnrich = async () => {
+  const handleReBackfill = async () => {
+    setIsReBackfilling(true);
+    setBackfillProgress('Re-fetching incomplete attributions...');
+    let offset = 0;
+    let totalUpdated = 0;
+    let totalProcessed = 0;
+
+    try {
+      let hasMore = true;
+      while (hasMore) {
+        const { data, error } = await invokeSecureFunction('backfill-lead-attributions', { batchSize: 50, offset, mode: 'update' });
+        if (error) throw new Error(error.message || 'Re-backfill failed');
+        totalUpdated += data.stats?.updated || 0;
+        totalProcessed += data.stats?.processed || 0;
+        hasMore = data.hasMore;
+        offset = data.nextOffset || offset + 50;
+        setBackfillProgress(`Re-fetched ${totalProcessed} records, ${totalUpdated} updated...`);
+      }
+      toast({ title: 'Re-Backfill Complete', description: `${totalUpdated} attributions updated with full campaign data from ${totalProcessed} records.` });
+      refetch();
+    } catch (err: any) {
+      toast({ title: 'Re-Backfill Error', description: err.message, variant: 'destructive' });
+    } finally {
+      setIsReBackfilling(false);
+      setBackfillProgress('');
+    }
+  };
+
+
     setIsEnriching(true);
     try {
       let totalEnriched = 0;
