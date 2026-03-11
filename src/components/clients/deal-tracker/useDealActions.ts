@@ -105,7 +105,7 @@ export function useDealActions(clientId: string) {
 
       return deal;
     },
-    onSuccess: (_: any, variables: { dealType: DealType; propertyId?: string }) => {
+    onSuccess: (_: any, variables: { dealType: DealType; propertyId?: string; responsibleUserId?: string }) => {
       invalidate();
       logActivityDirect({
         actionType: 'deal_created',
