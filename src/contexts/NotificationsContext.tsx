@@ -120,6 +120,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
           ...n,
           reportId: n.report_id,
           entityId: n.entity_id,
+          targetUserId: n.target_user_id,
           timestamp: new Date(n.timestamp)
         }));
         setNotifications(notificationsWithDates);
