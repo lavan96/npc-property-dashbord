@@ -34,6 +34,7 @@ export interface DealWithClient {
   stages?: any[];
   buildPayments?: any[];
   invoices?: any[];
+  leadSource?: string | null;
 }
 
 /**
