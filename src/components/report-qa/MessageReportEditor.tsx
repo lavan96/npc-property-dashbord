@@ -124,10 +124,11 @@ export function MessageReportEditor({
   const sanitizeForPDF = (text: string): string => {
     let clean = text.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1');
     clean = clean.replace(/%æ\s*/g, '- ');
-    clean = clean.replace(/[≤≥→←↑↓•·…—–''""″′]/g, (ch) => {
+    clean = clean.replace(/[≤≥→←↑↓•·…—–‐‑−⁃''""″′]/g, (ch) => {
       const map: Record<string, string> = {
         '≤': '<=', '≥': '>=', '→': '->', '←': '<-', '↑': '^', '↓': 'v',
         '•': '-', '·': '-', '…': '...', '—': '--', '–': '-',
+        '\u2010': '-', '\u2011': '-', '\u2212': '-', '\u2043': '-',
         '\u2018': "'", '\u2019': "'", '\u201C': '"', '\u201D': '"',
         '″': '"', '′': "'",
       };
