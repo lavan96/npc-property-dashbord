@@ -18,6 +18,7 @@ import { ClientPDFGenerator } from '@/components/reports/ClientPDFGenerator';
 import { RegenerateWithPerplexityButton } from '@/components/reports/RegenerateWithPerplexityButton';
 import { InvestmentReportEditor } from '@/components/reports/InvestmentReportEditor';
 import { ManualDataOverrideModal } from '@/components/reports/ManualDataOverrideModal';
+import { SendToClientModal } from '@/components/reports/SendToClientModal';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 
 interface InvestmentReport {
