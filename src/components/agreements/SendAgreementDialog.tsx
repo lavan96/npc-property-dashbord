@@ -112,6 +112,7 @@ export function SendAgreementDialog({ open, onOpenChange, client, dealId }: Send
         dealId,
         notes: notes || undefined,
         initialCommitmentFee: commitmentFee || undefined,
+        templateId: selectedTemplateId || undefined,
       });
 
       setGeneratedId(result?.agreement_id);
