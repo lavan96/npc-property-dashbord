@@ -449,4 +449,4 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.diagnose-ghl-attribution]
-verify_jwt = false
+verify_jwt = true
