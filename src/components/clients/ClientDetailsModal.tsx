@@ -226,6 +226,7 @@ NPC Team`
       liabilities: true,
       additionalContacts: true,
       deals: true,
+      attributions: true,
     },
     enabled: open,
   });
