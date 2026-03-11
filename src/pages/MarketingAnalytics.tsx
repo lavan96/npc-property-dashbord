@@ -23,6 +23,10 @@ import { DateRangePicker } from '@/components/marketing/DateRangePicker';
 import { DrillDownExplorer } from '@/components/marketing/DrillDownExplorer';
 import { ComparisonPanel } from '@/components/marketing/ComparisonPanel';
 import { PeriodOverPeriodPanel } from '@/components/marketing/PeriodOverPeriodPanel';
+import { CreativeGalleryPanel } from '@/components/marketing/CreativeGalleryPanel';
+import { SpendPacingPanel } from '@/components/marketing/SpendPacingPanel';
+import { FullFunnelPanel } from '@/components/marketing/FullFunnelPanel';
+import { TrueROIPanel } from '@/components/marketing/TrueROIPanel';
 
 const DATE_PRESETS = [
   { value: 'today', label: 'Today' },
