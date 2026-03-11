@@ -104,6 +104,7 @@ interface UseSecureClientDataOptions {
     borrowingCapacity?: boolean;
     additionalContacts?: boolean;
     deals?: boolean;
+    attributions?: boolean;
   };
   enabled?: boolean;
 }
