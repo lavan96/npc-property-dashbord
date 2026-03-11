@@ -550,6 +550,24 @@ export default function ReportQA() {
       setMessages([]);
       loadSavedConversations();
       
+      // Trigger RAG indexing in the background (non-blocking)
+      // This chunks reports, generates embeddings, and creates a structural summary
+      if (uploadedReports.length > 0) {
+        console.log(`[ReportQA] Triggering RAG indexing for conversation ${newConversationId}...`);
+        invokeSecureFunction('report-qa', {
+          action: 'index-reports',
+          conversationId: newConversationId,
+        }).then(({ data: indexData, error: indexError }) => {
+          if (indexError) {
+            console.error('[ReportQA] RAG indexing failed (non-critical):', indexError);
+          } else {
+            console.log(`[ReportQA] RAG indexing complete:`, indexData);
+          }
+        }).catch(err => {
+          console.error('[ReportQA] RAG indexing error (non-critical):', err);
+        });
+      }
+      
       // Log conversation created
       logActivityDirect({
         actionType: 'qa_conversation_created',
@@ -561,7 +579,9 @@ export default function ReportQA() {
       
       toast({
         title: 'Conversation started',
-        description: 'Your chat will be saved automatically',
+        description: uploadedReports.length > 0 
+          ? 'Indexing reports for intelligent retrieval...' 
+          : 'Your chat will be saved automatically',
       });
 
       return newConversationId;
