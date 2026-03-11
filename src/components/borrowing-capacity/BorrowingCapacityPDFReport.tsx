@@ -841,7 +841,15 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
   // Save
   const safeName = data.clientName.replace(/[^a-zA-Z0-9]/g, '_');
   const dateStr = format(new Date(), 'yyyy-MM-dd');
-  doc.save(`Borrowing_Capacity_Snapshot_${safeName}_${dateStr}.pdf`);
+  const fileName = `Borrowing_Capacity_Snapshot_${safeName}_${dateStr}.pdf`;
+  
+  // If returnBlob is requested, return the blob + filename instead of downloading
+  if (data.returnBlob) {
+    return { blob: doc.output('blob'), fileName };
+  }
+
+  doc.save(fileName);
+  return undefined;
 }
 
 // ─── Data fetching & orchestration ───────────────────────────────────────────
