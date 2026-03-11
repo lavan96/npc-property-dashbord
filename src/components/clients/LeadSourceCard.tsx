@@ -4,9 +4,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Megaphone, Edit, Save, X, Plus, Trash2, Globe, Target, ExternalLink } from 'lucide-react';
+import { Megaphone, Save, X, Plus, Trash2, Globe, Target, ExternalLink, Layers, ChevronDown, ChevronUp } from 'lucide-react';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -19,14 +18,21 @@ interface Attribution {
   utm_content: string | null;
   utm_term: string | null;
   meta_campaign_id: string | null;
+  meta_campaign_name: string | null;
   meta_adset_id: string | null;
+  meta_adset_name: string | null;
   meta_ad_id: string | null;
+  meta_ad_name: string | null;
   source_type: 'webhook_auto' | 'manual' | 'csv_import' | 'backfill';
   landing_page_url: string | null;
   referrer_url: string | null;
   ghl_contact_id: string | null;
   attributed_at: string;
   notes: string | null;
+  fbclid: string | null;
+  gclid: string | null;
+  device_type: string | null;
+  geo_location: string | null;
 }
 
 interface LeadSourceCardProps {
@@ -42,8 +48,146 @@ const SOURCE_TYPE_LABELS: Record<string, { label: string; color: string }> = {
   backfill: { label: 'Backfill', color: 'bg-purple-500/10 text-purple-700 border-purple-500/20' },
 };
 
+function AttributionItem({ attr, onDelete }: { attr: Attribution; onDelete: (id: string) => void }) {
+  const [expanded, setExpanded] = useState(false);
+  
+  const campaignName = attr.meta_campaign_name || attr.utm_campaign;
+  const adsetName = attr.meta_adset_name || attr.utm_medium;
+  const adName = attr.meta_ad_name || attr.utm_content;
+  const source = attr.utm_source || 'Unknown';
+  const hasDetails = campaignName || adsetName || adName || attr.meta_campaign_id;
+
+  return (
+    <div className="rounded-lg border border-border/60 bg-muted/20 p-3 space-y-2">
+      {/* Header row */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Badge variant="outline" className="text-[10px] font-semibold">
+            <Target className="h-2.5 w-2.5 mr-0.5" />
+            {source}
+          </Badge>
+          <Badge variant="outline" className={`text-[9px] ${SOURCE_TYPE_LABELS[attr.source_type]?.color || ''}`}>
+            {SOURCE_TYPE_LABELS[attr.source_type]?.label || attr.source_type}
+          </Badge>
+          {(attr.fbclid || attr.gclid) && (
+            <Badge variant="secondary" className="text-[9px]">
+              {attr.fbclid ? 'fbclid' : 'gclid'} ✓
+            </Badge>
+          )}
+        </div>
+        <div className="flex items-center gap-1">
+          {hasDetails && (
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground" onClick={() => setExpanded(!expanded)}>
+              {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            </Button>
+          )}
+          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive" onClick={() => onDelete(attr.id)}>
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Campaign hierarchy - always visible if data exists */}
+      {campaignName && (
+        <div className="space-y-1">
+          <div className="flex items-start gap-1.5">
+            <Layers className="h-3 w-3 text-primary mt-0.5 shrink-0" />
+            <div className="text-[11px] space-y-0.5 min-w-0">
+              <div>
+                <span className="text-muted-foreground">Campaign: </span>
+                <span className="font-medium text-foreground break-words">{campaignName}</span>
+              </div>
+              {adsetName && (
+                <div className="pl-2 border-l border-border/40">
+                  <span className="text-muted-foreground">Ad Set: </span>
+                  <span className="font-medium text-foreground break-words">{adsetName}</span>
+                </div>
+              )}
+              {adName && (
+                <div className="pl-4 border-l border-border/40">
+                  <span className="text-muted-foreground">Ad: </span>
+                  <span className="font-medium text-foreground break-words">{adName}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Expanded details */}
+      {expanded && (
+        <div className="pt-1 border-t border-border/30 space-y-1.5">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[10px]">
+            {attr.meta_campaign_id && (
+              <div className="col-span-2">
+                <span className="text-muted-foreground">Campaign ID: </span>
+                <span className="font-mono text-foreground">{attr.meta_campaign_id}</span>
+              </div>
+            )}
+            {attr.meta_adset_id && (
+              <div className="col-span-2">
+                <span className="text-muted-foreground">Ad Set ID: </span>
+                <span className="font-mono text-foreground">{attr.meta_adset_id}</span>
+              </div>
+            )}
+            {attr.meta_ad_id && (
+              <div className="col-span-2">
+                <span className="text-muted-foreground">Ad ID: </span>
+                <span className="font-mono text-foreground">{attr.meta_ad_id}</span>
+              </div>
+            )}
+            {attr.utm_term && (
+              <div>
+                <span className="text-muted-foreground">Term: </span>
+                <span className="font-medium">{attr.utm_term}</span>
+              </div>
+            )}
+            {attr.device_type && (
+              <div>
+                <span className="text-muted-foreground">Device: </span>
+                <span className="font-medium">{attr.device_type}</span>
+              </div>
+            )}
+            {attr.geo_location && (
+              <div>
+                <span className="text-muted-foreground">Location: </span>
+                <span className="font-medium">{attr.geo_location}</span>
+              </div>
+            )}
+            {attr.fbclid && (
+              <div className="col-span-2 truncate">
+                <span className="text-muted-foreground">Click ID: </span>
+                <span className="font-mono text-foreground">{attr.fbclid}</span>
+              </div>
+            )}
+            {attr.gclid && (
+              <div className="col-span-2 truncate">
+                <span className="text-muted-foreground">GCLID: </span>
+                <span className="font-mono text-foreground">{attr.gclid}</span>
+              </div>
+            )}
+          </div>
+
+          {attr.landing_page_url && (
+            <div className="text-[10px] text-muted-foreground flex items-center gap-1 truncate">
+              <ExternalLink className="h-2.5 w-2.5 shrink-0" />
+              <span className="truncate">{attr.landing_page_url}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {attr.notes && (
+        <p className="text-[11px] text-muted-foreground italic">{attr.notes}</p>
+      )}
+      <p className="text-[9px] text-muted-foreground">
+        Attributed: {format(new Date(attr.attributed_at), 'dd MMM yyyy')}
+      </p>
+    </div>
+  );
+}
+
 export function LeadSourceCard({ clientId, attributions, onRefresh }: LeadSourceCardProps) {
-  const [editing, setEditing] = useState(false);
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
   const [newAttribution, setNewAttribution] = useState({
@@ -99,8 +243,6 @@ export function LeadSourceCard({ clientId, attributions, onRefresh }: LeadSource
     }
   };
 
-  const primary = attributions[0];
-
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -130,55 +272,7 @@ export function LeadSourceCard({ clientId, attributions, onRefresh }: LeadSource
           </div>
         ) : (
           attributions.map((attr) => (
-            <div key={attr.id} className="rounded-lg border border-border/60 bg-muted/20 p-3 space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 flex-wrap">
-                  {attr.utm_source && (
-                    <Badge variant="outline" className="text-[10px]">
-                      <Target className="h-2.5 w-2.5 mr-0.5" />
-                      {attr.utm_source}
-                    </Badge>
-                  )}
-                  {attr.utm_campaign && (
-                    <Badge variant="secondary" className="text-[10px]">{attr.utm_campaign}</Badge>
-                  )}
-                  <Badge variant="outline" className={`text-[9px] ${SOURCE_TYPE_LABELS[attr.source_type]?.color || ''}`}>
-                    {SOURCE_TYPE_LABELS[attr.source_type]?.label || attr.source_type}
-                  </Badge>
-                </div>
-                <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(attr.id)}>
-                  <Trash2 className="h-3 w-3" />
-                </Button>
-              </div>
-
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px]">
-                {attr.utm_medium && (
-                  <div><span className="text-muted-foreground">Medium:</span> <span className="font-medium">{attr.utm_medium}</span></div>
-                )}
-                {attr.utm_content && (
-                  <div><span className="text-muted-foreground">Content:</span> <span className="font-medium">{attr.utm_content}</span></div>
-                )}
-                {attr.utm_term && (
-                  <div><span className="text-muted-foreground">Term:</span> <span className="font-medium">{attr.utm_term}</span></div>
-                )}
-                {attr.meta_campaign_id && (
-                  <div><span className="text-muted-foreground">Meta ID:</span> <span className="font-mono font-medium">{attr.meta_campaign_id}</span></div>
-                )}
-              </div>
-
-              {attr.landing_page_url && (
-                <div className="text-[10px] text-muted-foreground flex items-center gap-1 truncate">
-                  <ExternalLink className="h-2.5 w-2.5 shrink-0" />
-                  <span className="truncate">{attr.landing_page_url}</span>
-                </div>
-              )}
-              {attr.notes && (
-                <p className="text-[11px] text-muted-foreground italic">{attr.notes}</p>
-              )}
-              <p className="text-[9px] text-muted-foreground">
-                Attributed: {format(new Date(attr.attributed_at), 'dd MMM yyyy')}
-              </p>
-            </div>
+            <AttributionItem key={attr.id} attr={attr} onDelete={handleDelete} />
           ))
         )}
 
