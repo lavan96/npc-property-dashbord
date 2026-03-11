@@ -134,14 +134,29 @@ serve(async (req) => {
           return null;
         };
 
-        const utmSource = getField(['utm_source', 'utmSource']) || contact.source || null;
-        const utmMedium = getField(['utm_medium', 'utmMedium']);
-        const utmCampaign = getField(['utm_campaign', 'utmCampaign']);
-        const utmContent = getField(['utm_content', 'utmContent']);
+        // GHL native attribution object - this is the richest source of data
+        const ghlAttrRaw = contact.attributionSource || contact.attribution_source || null;
+        const ghlLastAttrRaw = contact.lastAttributionSource || contact.last_attribution_source || null;
+        
+        // Parse the attribution object for granular data
+        const attrObj = typeof ghlAttrRaw === 'object' ? ghlAttrRaw : null;
+        
+        const utmSource = attrObj?.utmSource || getField(['utm_source', 'utmSource']) || contact.source || null;
+        const utmMedium = attrObj?.utmMedium || getField(['utm_medium', 'utmMedium']);
+        const utmCampaign = attrObj?.utmCampaign || attrObj?.campaign || getField(['utm_campaign', 'utmCampaign']);
+        const utmContent = attrObj?.utmContent || getField(['utm_content', 'utmContent']);
         const utmTerm = getField(['utm_term', 'utmTerm']);
-        const metaCampaignId = getField(['meta_campaign_id', 'fb_campaign_id', 'facebook_campaign_id']);
-        const metaAdsetId = getField(['meta_adset_id', 'fb_adset_id', 'facebook_adset_id']);
-        const metaAdId = getField(['meta_ad_id', 'fb_ad_id', 'facebook_ad_id']);
+        
+        // Extract Meta IDs from attribution object first, then fall back to custom fields
+        const metaCampaignId = attrObj?.campaignId || getField(['meta_campaign_id', 'fb_campaign_id', 'facebook_campaign_id']);
+        const metaAdsetId = attrObj?.adSetId || getField(['meta_adset_id', 'fb_adset_id', 'facebook_adset_id']);
+        const metaAdId = (attrObj?.adId && attrObj.adId !== null) ? attrObj.adId : getField(['meta_ad_id', 'fb_ad_id', 'facebook_ad_id']);
+        
+        // Use attribution object fields for names
+        const metaCampaignName = attrObj?.campaign || null;
+        const metaAdsetName = attrObj?.utmMedium || null;  // GHL stores adset info in utmMedium
+        const metaAdName = attrObj?.utmContent || null;     // GHL stores ad info in utmContent
+        
         const landingPage = getField(['landing_page', 'landing_page_url', 'page_url', 'full_url']);
         const fbclid = getField(['fbclid', 'fb_click_id']);
         const gclid = getField(['gclid', 'google_click_id']);
@@ -149,11 +164,9 @@ serve(async (req) => {
         const geoLocation = getField(['geo_location', 'location', 'ip_city']);
         const conversionPage = getField(['conversion_page', 'form_url', 'conversion_url']);
 
-        // GHL native attribution
-        const ghlAttrSource = contact.attributionSource || contact.attribution_source
-          || getField(['attribution_source']) || null;
-        const ghlLastAttrSource = contact.lastAttributionSource || contact.last_attribution_source
-          || getField(['last_attribution_source']) || null;
+        // Serialize full attribution objects for reference
+        const ghlAttrSource = ghlAttrRaw ? (typeof ghlAttrRaw === 'string' ? ghlAttrRaw : JSON.stringify(ghlAttrRaw)) : null;
+        const ghlLastAttrSource = ghlLastAttrRaw ? (typeof ghlLastAttrRaw === 'string' ? ghlLastAttrRaw : JSON.stringify(ghlLastAttrRaw)) : null;
 
         const hasData = utmSource || utmMedium || utmCampaign || utmContent || utmTerm
           || metaCampaignId || fbclid || gclid || contact.source || ghlAttrSource;
@@ -173,8 +186,11 @@ serve(async (req) => {
             utm_content: utmContent,
             utm_term: utmTerm,
             meta_campaign_id: metaCampaignId,
+            meta_campaign_name: metaCampaignName,
             meta_adset_id: metaAdsetId,
+            meta_adset_name: metaAdsetName,
             meta_ad_id: metaAdId,
+            meta_ad_name: metaAdName,
             landing_page_url: landingPage,
             fbclid,
             gclid,
@@ -186,7 +202,7 @@ serve(async (req) => {
             source_type: 'backfill',
             ghl_contact_id: client.ghl_contact_id,
             attributed_at: contact.dateAdded || new Date().toISOString(),
-            enrichment_status: metaCampaignId ? 'pending' : 'not_applicable',
+            enrichment_status: metaCampaignId ? 'enriched' : 'not_applicable',
           });
 
         if (insertError) {
