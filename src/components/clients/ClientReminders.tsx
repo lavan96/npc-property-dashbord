@@ -488,12 +488,22 @@ export function ClientReminders({ clientId, followUpDate }: ClientRemindersProps
                             {reminder.priority}
                           </Badge>
                         </div>
-                        <div className="flex items-center gap-2 mt-2">
-                          <CalendarIcon className="h-3 w-3 text-muted-foreground" />
-                          <span className={`text-xs ${dueStatus.className}`}>
-                            {format(new Date(reminder.due_date), 'MMM d, yyyy h:mm a')} · {dueStatus.label}
-                          </span>
-                        </div>
+                        <div className="flex items-center gap-3 mt-2 flex-wrap">
+                          <div className="flex items-center gap-1">
+                            <CalendarIcon className="h-3 w-3 text-muted-foreground" />
+                            <span className={`text-xs ${dueStatus.className}`}>
+                              {format(new Date(reminder.due_date), 'MMM d, yyyy h:mm a')} · {dueStatus.label}
+                            </span>
+                          </div>
+                          {reminder.assigned_to && (() => {
+                            const assignee = teamUsers.find(u => u.id === reminder.assigned_to);
+                            return assignee ? (
+                              <div className="flex items-center gap-1">
+                                <UserCircle className="h-3 w-3 text-muted-foreground" />
+                                <span className="text-xs text-muted-foreground">{assignee.username}</span>
+                              </div>
+                            ) : null;
+                          })()}
                       </div>
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <Button 
