@@ -12,6 +12,7 @@ import {
   ChevronRight,
   User,
   Eye,
+  Megaphone,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -178,14 +179,20 @@ function DealCard({ deal, onClick }: { deal: DealWithClient; onClick?: () => voi
           )}
         </div>
 
-        {/* Next action */}
-        {nextAction && (
-          <div className="pt-1.5 border-t border-border/50">
+        {/* Lead source + Next action */}
+        <div className="pt-1.5 border-t border-border/50 space-y-0.5">
+          {deal.leadSource && (
+            <div className="flex items-center gap-1">
+              <Megaphone className="h-2.5 w-2.5 text-primary shrink-0" />
+              <span className="text-[10px] text-primary font-medium truncate">{deal.leadSource}</span>
+            </div>
+          )}
+          {nextAction && (
             <p className="text-[10px] text-muted-foreground truncate">
               <span className="font-medium">Next:</span> {nextAction}
             </p>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Footer: responsible + age */}
         <div className="flex items-center justify-between text-[9px] text-muted-foreground pt-0.5">

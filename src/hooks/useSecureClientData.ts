@@ -68,6 +68,7 @@ export interface SecureClientDataResponse {
   borrowingCapacity?: any;
   additionalContacts?: AdditionalContactData[];
   deals?: any[];
+  attributions?: any[];
 }
 
 export interface AdditionalContactData {
@@ -103,6 +104,7 @@ interface UseSecureClientDataOptions {
     borrowingCapacity?: boolean;
     additionalContacts?: boolean;
     deals?: boolean;
+    attributions?: boolean;
   };
   enabled?: boolean;
 }

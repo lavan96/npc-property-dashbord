@@ -4801,6 +4801,87 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_source_attributions: {
+        Row: {
+          attributed_at: string
+          client_id: string
+          created_at: string
+          deal_id: string | null
+          ghl_contact_id: string | null
+          id: string
+          landing_page_url: string | null
+          meta_ad_id: string | null
+          meta_adset_id: string | null
+          meta_campaign_id: string | null
+          notes: string | null
+          referrer_url: string | null
+          source_type: Database["public"]["Enums"]["attribution_source_type"]
+          updated_at: string
+          utm_campaign: string | null
+          utm_content: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          utm_term: string | null
+        }
+        Insert: {
+          attributed_at?: string
+          client_id: string
+          created_at?: string
+          deal_id?: string | null
+          ghl_contact_id?: string | null
+          id?: string
+          landing_page_url?: string | null
+          meta_ad_id?: string | null
+          meta_adset_id?: string | null
+          meta_campaign_id?: string | null
+          notes?: string | null
+          referrer_url?: string | null
+          source_type?: Database["public"]["Enums"]["attribution_source_type"]
+          updated_at?: string
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+        }
+        Update: {
+          attributed_at?: string
+          client_id?: string
+          created_at?: string
+          deal_id?: string | null
+          ghl_contact_id?: string | null
+          id?: string
+          landing_page_url?: string | null
+          meta_ad_id?: string | null
+          meta_adset_id?: string | null
+          meta_campaign_id?: string | null
+          notes?: string | null
+          referrer_url?: string | null
+          source_type?: Database["public"]["Enums"]["attribution_source_type"]
+          updated_at?: string
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_source_attributions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_source_attributions_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "client_deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       marketing_reports: {
         Row: {
           anomalies_snapshot: Json | null
@@ -6642,6 +6723,7 @@ export type Database = {
         | "portfolio_report"
         | "agency_agreement"
       app_role: "superadmin" | "admin" | "user"
+      attribution_source_type: "webhook_auto" | "manual" | "csv_import"
       deal_risk_status: "on_track" | "needs_follow_up" | "urgent"
       deal_stage_status: "pending" | "in_progress" | "complete" | "skipped"
       deal_type: "existing_property" | "house_and_land" | "refinance"
@@ -6933,6 +7015,7 @@ export const Constants = {
         "agency_agreement",
       ],
       app_role: ["superadmin", "admin", "user"],
+      attribution_source_type: ["webhook_auto", "manual", "csv_import"],
       deal_risk_status: ["on_track", "needs_follow_up", "urgent"],
       deal_stage_status: ["pending", "in_progress", "complete", "skipped"],
       deal_type: ["existing_property", "house_and_land", "refinance"],

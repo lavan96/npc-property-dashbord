@@ -34,6 +34,7 @@ export interface DealWithClient {
   stages?: any[];
   buildPayments?: any[];
   invoices?: any[];
+  leadSource?: string | null;
 }
 
 /**
@@ -82,7 +83,7 @@ export function useAllDeals() {
       // Fetch stages & build payments for all deals
       const dealIds = deals.map((d: any) => d.id);
 
-      const [stagesRes, paymentsRes, invoicesRes] = await Promise.all([
+      const [stagesRes, paymentsRes, invoicesRes, attributionsRes] = await Promise.all([
         invokeSecureFunction('get-client-data', {
           listMode: true,
           listOptions: { table: 'deal_stages', select: '*', orderBy: 'display_order', orderAsc: true },
@@ -95,16 +96,29 @@ export function useAllDeals() {
           listMode: true,
           listOptions: { table: 'builder_invoices', select: '*', orderBy: 'created_at', orderAsc: false },
         }),
+        invokeSecureFunction('get-client-data', {
+          listMode: true,
+          listOptions: { table: 'lead_source_attributions', select: 'client_id,utm_source,utm_campaign', orderBy: 'attributed_at', orderAsc: false, limit: 500 },
+        }),
       ]);
 
       const stages = stagesRes.data?.records || [];
       const payments = paymentsRes.data?.records || [];
       const invoices = invoicesRes.data?.records || [];
+      const attributions = attributionsRes.data?.records || [];
 
       // Group by deal_id
       const stagesByDeal: Record<string, any[]> = {};
       const paymentsByDeal: Record<string, any[]> = {};
       const invoicesByDeal: Record<string, any[]> = {};
+
+      // Map attributions by client_id (first attribution wins)
+      const attrByClient: Record<string, string> = {};
+      for (const a of attributions) {
+        if (a.client_id && !attrByClient[a.client_id]) {
+          attrByClient[a.client_id] = a.utm_campaign || a.utm_source || 'Unknown source';
+        }
+      }
 
       for (const s of stages) {
         if (!stagesByDeal[s.deal_id]) stagesByDeal[s.deal_id] = [];
@@ -125,6 +139,7 @@ export function useAllDeals() {
         stages: stagesByDeal[d.id] || [],
         buildPayments: paymentsByDeal[d.id] || [],
         invoices: invoicesByDeal[d.id] || [],
+        leadSource: attrByClient[d.client_id] || null,
       }));
     },
     staleTime: 30000,

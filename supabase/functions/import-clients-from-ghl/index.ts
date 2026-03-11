@@ -262,9 +262,11 @@ serve(async (req) => {
         }
 
         // Insert new client
-        const { error: insertError } = await supabase
+        const { data: insertedClient, error: insertError } = await supabase
           .from('clients')
-          .insert(clientData);
+          .insert(clientData)
+          .select('id')
+          .single();
 
         if (insertError) {
           console.error(`Error inserting client ${contact.id}:`, insertError);
@@ -272,6 +274,36 @@ serve(async (req) => {
           totalErrors++;
         } else {
           savedCount++;
+          
+          // Extract UTM attribution data from GHL custom fields
+          const utmSource = contact.customFields?.find((f: any) => f.key === 'utm_source' || f.id === 'utm_source')?.value 
+            || contact.source || null;
+          const utmMedium = contact.customFields?.find((f: any) => f.key === 'utm_medium' || f.id === 'utm_medium')?.value || null;
+          const utmCampaign = contact.customFields?.find((f: any) => f.key === 'utm_campaign' || f.id === 'utm_campaign')?.value || null;
+          const utmContent = contact.customFields?.find((f: any) => f.key === 'utm_content' || f.id === 'utm_content')?.value || null;
+          const utmTerm = contact.customFields?.find((f: any) => f.key === 'utm_term' || f.id === 'utm_term')?.value || null;
+          
+          if (insertedClient?.id && (utmSource || utmMedium || utmCampaign || utmContent || contact.source)) {
+            const attributionData = {
+              client_id: insertedClient.id,
+              utm_source: utmSource,
+              utm_medium: utmMedium,
+              utm_campaign: utmCampaign,
+              utm_content: utmContent,
+              utm_term: utmTerm,
+              source_type: 'webhook_auto',
+              ghl_contact_id: contact.id,
+              attributed_at: contact.dateAdded || new Date().toISOString(),
+            };
+            
+            const { error: attrError } = await supabase
+              .from('lead_source_attributions')
+              .insert(attributionData);
+            
+            if (attrError) {
+              console.warn(`Failed to save attribution for client ${insertedClient.id}:`, attrError.message);
+            }
+          }
         }
       }
 

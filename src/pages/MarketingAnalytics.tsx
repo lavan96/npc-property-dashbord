@@ -20,6 +20,7 @@ import { ForecastPanel } from '@/components/marketing/ForecastPanel';
 import { WeeklyBriefPanel } from '@/components/marketing/WeeklyBriefPanel';
 import { BenchmarksPanel } from '@/components/marketing/BenchmarksPanel';
 import { MarketCorrelationPanel } from '@/components/marketing/MarketCorrelationPanel';
+import { LeadAttributionPanel } from '@/components/marketing/LeadAttributionPanel';
 
 const DATE_PRESETS = [
   { value: 'today', label: 'Today' },
@@ -466,6 +467,9 @@ export default function MarketingAnalytics() {
         loading={phase2Loading}
         summary={phase2Data?.summary}
       />
+
+      {/* Lead Source Attribution */}
+      <LeadAttributionPanel />
 
       {/* Phase 2: Audience Intelligence + Lead Quality */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

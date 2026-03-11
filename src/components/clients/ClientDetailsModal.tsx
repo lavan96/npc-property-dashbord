@@ -83,6 +83,7 @@ import { ClientEmailsTab } from './ClientEmailsTab';
 import { DealTrackerTab } from './deal-tracker';
 import { SendAgreementDialog } from '../agreements/SendAgreementDialog';
 import { SendPortalInviteDialog } from '../portal/SendPortalInviteDialog';
+import { LeadSourceCard } from './LeadSourceCard';
 import { toast } from 'sonner';
 interface ClientDetailsModalProps {
   client: {
@@ -226,6 +227,7 @@ NPC Team`
       liabilities: true,
       additionalContacts: true,
       deals: true,
+      attributions: true,
     },
     enabled: open,
   });
@@ -238,6 +240,7 @@ NPC Team`
   const assets = secureData?.assets || [];
   const liabilities = secureData?.liabilities || [];
   const additionalContacts = secureData?.additionalContacts || [];
+  const attributions = secureData?.attributions || [];
 
   // Build dynamic contact list for employment/income tabs
   const contacts = useClientContacts(fullClient || undefined, additionalContacts);
@@ -453,6 +456,13 @@ NPC Team`
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Lead Source Attribution */}
+              <LeadSourceCard
+                clientId={client.id}
+                attributions={attributions}
+                onRefresh={refetchClient}
+              />
             </TabsContent>
 
             {/* Personal Details Tab - Vownet Mirror */}
