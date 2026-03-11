@@ -13,7 +13,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Megaphone, Target, Users, DollarSign, TrendingUp, ChevronDown, ChevronUp, RefreshCw, Globe, Loader2 } from 'lucide-react';
+import { Megaphone, Target, Users, DollarSign, TrendingUp, ChevronDown, ChevronUp, RefreshCw, Globe, Loader2, DatabaseBackup } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface AttributionRow {
   id: string;
@@ -40,6 +41,9 @@ const formatCurrency = (val: number) =>
 
 export function LeadAttributionPanel() {
   const [expanded, setExpanded] = useState(true);
+  const [isBackfilling, setIsBackfilling] = useState(false);
+  const [backfillProgress, setBackfillProgress] = useState('');
+  const { toast } = useToast();
 
   const { data: attributionsData, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['lead-attributions-summary'],
@@ -96,9 +100,49 @@ export function LeadAttributionPanel() {
   const sourceList = Array.from(sourceMap.entries()).sort((a, b) => b[1] - a[1]);
 
   // Source type breakdown
-  const autoCount = attributions.filter(a => a.source_type === 'webhook_auto').length;
+  const autoCount = attributions.filter(a => a.source_type === 'webhook_auto' || a.source_type === 'backfill').length;
   const manualCount = attributions.filter(a => a.source_type === 'manual').length;
   const csvCount = attributions.filter(a => a.source_type === 'csv_import').length;
+
+  const handleBackfill = async () => {
+    setIsBackfilling(true);
+    setBackfillProgress('Starting backfill...');
+    let offset = 0;
+    let totalAttributed = 0;
+    let totalProcessed = 0;
+
+    try {
+      let hasMore = true;
+      while (hasMore) {
+        const { data, error } = await invokeSecureFunction('backfill-lead-attributions', {
+          batchSize: 50,
+          offset,
+        });
+        if (error) throw new Error(error.message || 'Backfill failed');
+        
+        totalAttributed += data.stats?.attributed || 0;
+        totalProcessed += data.stats?.processed || 0;
+        hasMore = data.hasMore;
+        offset = data.nextOffset || offset + 50;
+        setBackfillProgress(`Processed ${totalProcessed} clients, ${totalAttributed} attributed...`);
+      }
+
+      toast({
+        title: 'Backfill Complete',
+        description: `Processed ${totalProcessed} clients. ${totalAttributed} attribution records created.`,
+      });
+      refetch();
+    } catch (err: any) {
+      toast({
+        title: 'Backfill Error',
+        description: err.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsBackfilling(false);
+      setBackfillProgress('');
+    }
+  };
 
   const sourceColors: Record<string, string> = {
     meta: 'bg-blue-500',
@@ -145,7 +189,12 @@ export function LeadAttributionPanel() {
             <div className="text-center py-8 text-muted-foreground">
               <Globe className="h-8 w-8 mx-auto mb-2 opacity-30" />
               <p className="text-sm font-medium">No attribution data yet</p>
-              <p className="text-xs mt-1">Attributions are captured automatically from GHL imports or can be added manually on client profiles</p>
+              <p className="text-xs mt-1">Attributions are captured automatically from GHL webhooks/imports or can be added manually on client profiles</p>
+              <Button variant="outline" size="sm" className="mt-3" onClick={handleBackfill} disabled={isBackfilling}>
+                {isBackfilling ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : <DatabaseBackup className="h-3 w-3 mr-1.5" />}
+                {isBackfilling ? 'Backfilling...' : 'Backfill from GHL'}
+              </Button>
+              {backfillProgress && <p className="text-[10px] mt-2 text-muted-foreground">{backfillProgress}</p>}
             </div>
           ) : (
             <>
@@ -225,11 +274,17 @@ export function LeadAttributionPanel() {
               </div>
 
               {/* Attribution Method Breakdown */}
-              <div className="flex items-center gap-3 text-[10px] text-muted-foreground pt-2 border-t border-border/50">
-                <span>Capture method:</span>
-                {autoCount > 0 && <Badge variant="outline" className="text-[9px] bg-emerald-500/5">Auto: {autoCount}</Badge>}
-                {manualCount > 0 && <Badge variant="outline" className="text-[9px] bg-blue-500/5">Manual: {manualCount}</Badge>}
-                {csvCount > 0 && <Badge variant="outline" className="text-[9px] bg-amber-500/5">CSV: {csvCount}</Badge>}
+              <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-2 border-t border-border/50">
+                <div className="flex items-center gap-3">
+                  <span>Capture method:</span>
+                  {autoCount > 0 && <Badge variant="outline" className="text-[9px] bg-emerald-500/5">Auto: {autoCount}</Badge>}
+                  {manualCount > 0 && <Badge variant="outline" className="text-[9px] bg-blue-500/5">Manual: {manualCount}</Badge>}
+                  {csvCount > 0 && <Badge variant="outline" className="text-[9px] bg-amber-500/5">CSV: {csvCount}</Badge>}
+                </div>
+                <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={handleBackfill} disabled={isBackfilling}>
+                  {isBackfilling ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <DatabaseBackup className="h-3 w-3 mr-1" />}
+                  {isBackfilling ? backfillProgress : 'Backfill'}
+                </Button>
               </div>
             </>
           )}
