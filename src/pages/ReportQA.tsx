@@ -1537,7 +1537,7 @@ export default function ReportQA() {
       <LiveRegion message={liveAnnouncement} />
       <div 
         className={cn(
-          "p-0 sm:p-3 md:p-6 sm:space-y-4 md:space-y-6 h-[calc(100vh-4rem)] pb-16 sm:pb-20 md:pb-0",
+          "p-0 sm:p-3 md:p-6 sm:space-y-4 md:space-y-6 h-[calc(100vh-4rem)] pb-16 sm:pb-20 md:pb-0 min-w-0 overflow-hidden",
           isFullScreen && "report-qa-fullscreen"
         )}
         role="main"
