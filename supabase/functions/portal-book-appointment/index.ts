@@ -286,6 +286,54 @@ serve(async (req) => {
       });
     }
 
+    // ── GET CLIENT APPOINTMENTS ──
+    if (action === 'getAppointments') {
+      if (!ghlApiKey || !ghlLocationId) {
+        return new Response(JSON.stringify({ error: 'GHL not configured', success: false }), {
+          status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Get client's GHL contact ID
+      const { data: client } = await supabase
+        .from('clients')
+        .select('ghl_contact_id')
+        .eq('id', clientId)
+        .maybeSingle();
+
+      if (!client?.ghl_contact_id) {
+        return new Response(JSON.stringify({ success: true, appointments: [], message: 'No GHL contact linked' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Fetch appointments from GHL for this contact
+      const url = `${GHL_API_BASE}/contacts/${client.ghl_contact_id}/appointments`;
+      const resp = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${ghlApiKey}`,
+          'Version': '2021-04-15',
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!resp.ok) {
+        const errText = await resp.text();
+        console.error('[portal-book-appointment] GHL get appointments error:', errText);
+        return new Response(JSON.stringify({ error: 'Failed to fetch appointments', success: false }), {
+          status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      const appointmentsData = await resp.json();
+      const events = appointmentsData?.events || appointmentsData?.appointments || [];
+
+      return new Response(JSON.stringify({ success: true, appointments: events }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     return new Response(JSON.stringify({ error: 'Unknown action', success: false }), {
       status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
