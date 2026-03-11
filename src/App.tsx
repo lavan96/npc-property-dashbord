@@ -161,6 +161,7 @@ const App = () => (
                           <Route path="messages" element={<PortalMessages />} />
                           <Route path="property-insights" element={<PortalPropertyInsights />} />
                           <Route path="booking" element={<PortalBooking />} />
+                          <Route path="appointments" element={<PortalAppointments />} />
                         </Route>
 
                         {/* Internal Dashboard Routes */}
