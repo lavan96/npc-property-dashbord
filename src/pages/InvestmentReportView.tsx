@@ -259,6 +259,15 @@ export default function InvestmentReportView() {
           )}
         </div>
         <div className="flex items-center gap-2">
+          {/* Send to Client */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setSendToClientOpen(true)}
+          >
+            <Send className="h-4 w-4 mr-1" />
+            Send to Client
+          </Button>
           {/* Cash Flow - available for all reports */}
           <Button
             variant="outline"
