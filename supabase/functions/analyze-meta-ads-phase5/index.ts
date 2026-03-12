@@ -186,6 +186,8 @@ serve(async (req) => {
       const imageCreatives = rawCreatives.filter((c: any) => !c.video_id && c.image_hash);
       
       const allFetches: Promise<void>[] = [];
+      const videoMetaCache = new Map<string, { video_url: string | null; image_url: string | null; width: number | null; height: number | null }>();
+      const imageMetaCache = new Map<string, { image_url: string | null; width: number | null; height: number | null }>();
       
       // Video fetches - get source URL, hi-res picture, dimensions
       for (const c of videoCreatives) {
