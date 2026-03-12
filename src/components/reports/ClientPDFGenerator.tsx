@@ -1,4 +1,5 @@
-import { PixelPerfectPDFGenerator } from './PixelPerfectPDFGenerator';
+import { forwardRef } from 'react';
+import { PixelPerfectPDFGenerator, type PixelPerfectPDFGeneratorHandle } from './PixelPerfectPDFGenerator';
 
 type ReportTier = 'compass' | 'briefing' | 'snapshot';
 
@@ -21,7 +22,7 @@ interface ClientPDFGeneratorProps {
   includeScoring?: boolean;
 }
 
-export function ClientPDFGenerator({ report, includeSources = true, includeScoring = true }: ClientPDFGeneratorProps) {
+export const ClientPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandle, ClientPDFGeneratorProps>(({ report, includeSources = true, includeScoring = true }, ref) => {
   // Merge manual_overrides with financial_calculations for PDF generation
   const mergedFinancialData = (() => {
     if (!report.manual_overrides || Object.keys(report.manual_overrides).length === 0) {
@@ -101,5 +102,7 @@ export function ClientPDFGenerator({ report, includeSources = true, includeScori
   // Pass report tier to the PDF generator (defaults to 'compass' for backward compatibility)
   const reportTier = (report.report_tier || 'compass') as ReportTier;
 
-  return <PixelPerfectPDFGenerator report={transformedReport} includeSources={includeSources} includeScoring={includeScoring} reportTier={reportTier} />;
-}
+  return <PixelPerfectPDFGenerator ref={ref} report={transformedReport} includeSources={includeSources} includeScoring={includeScoring} reportTier={reportTier} />;
+});
+
+ClientPDFGenerator.displayName = 'ClientPDFGenerator';

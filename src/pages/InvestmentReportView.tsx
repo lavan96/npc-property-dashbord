@@ -15,6 +15,7 @@ import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { ClientPDFGenerator } from '@/components/reports/ClientPDFGenerator';
+import type { PixelPerfectPDFGeneratorHandle } from '@/components/reports/PixelPerfectPDFGenerator';
 import { RegenerateWithPerplexityButton } from '@/components/reports/RegenerateWithPerplexityButton';
 import { InvestmentReportEditor } from '@/components/reports/InvestmentReportEditor';
 import { ManualDataOverrideModal } from '@/components/reports/ManualDataOverrideModal';
