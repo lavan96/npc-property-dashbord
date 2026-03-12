@@ -318,13 +318,37 @@ export function AgentChatWidget() {
 
     try {
       const payload: any = { action: 'chat', conversation_id: convId, message: agentMessage };
-      // Include image data for vision analysis
+      // Include image data for vision analysis (regular images + scanned PDF page images)
+      const allImageAttachments: Array<{ filename: string; mime_type: string; base64: string }> = [];
+      
+      // Regular image files
       if (imageFiles.length > 0) {
-        payload.image_attachments = imageFiles.map(f => ({
-          filename: f.filename,
-          mime_type: f.mimeType,
-          base64: f.base64Data,
-        }));
+        for (const f of imageFiles) {
+          if (f.base64Data) {
+            allImageAttachments.push({
+              filename: f.filename,
+              mime_type: f.mimeType,
+              base64: f.base64Data,
+            });
+          }
+        }
+      }
+      
+      // Scanned PDF pages rendered as images
+      for (const f of filesToSend) {
+        if (f.pdfPageImages && f.pdfPageImages.length > 0) {
+          for (const page of f.pdfPageImages) {
+            allImageAttachments.push({
+              filename: `${f.filename}_page${page.pageNumber}.png`,
+              mime_type: 'image/png',
+              base64: page.base64,
+            });
+          }
+        }
+      }
+      
+      if (allImageAttachments.length > 0) {
+        payload.image_attachments = allImageAttachments;
       }
       const { data, error } = await invokeSecureFunction('ai-dashboard-agent', payload);
       if (error || !data?.success) {
