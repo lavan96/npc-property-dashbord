@@ -464,10 +464,29 @@ Provide a concise 3-4 sentence analysis of what these trends mean for the busine
         aiError = 'LOVABLE_API_KEY not configured';
       }
 
-      // Calculate period dates
-      const now = new Date();
-      const periodEnd = now.toISOString().split('T')[0];
-      const periodStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      // Calculate period dates from actual insights data (not hardcoded)
+      let periodStart = '';
+      let periodEnd = '';
+      
+      // Try to get actual date range from insights data
+      for (const row of insights) {
+        const ds = row.date_start;
+        const de = row.date_stop;
+        if (ds && (!periodStart || ds < periodStart)) periodStart = ds;
+        if (de && (!periodEnd || de > periodEnd)) periodEnd = de;
+      }
+      
+      // Fallback to datePreset-based calculation if insights have no dates
+      if (!periodStart || !periodEnd) {
+        const now = new Date();
+        const presetDays: Record<string, number> = {
+          'last_7d': 7, 'last_14d': 14, 'last_30d': 30, 'last_90d': 90,
+          'this_month': new Date().getDate(), 'last_month': 30,
+        };
+        const days = presetDays[datePreset || 'last_7d'] || 7;
+        periodEnd = now.toISOString().split('T')[0];
+        periodStart = new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      }
 
       // Save to database
       const reportData = {
@@ -525,7 +544,7 @@ Provide a concise 3-4 sentence analysis of what these trends mean for the busine
 
       const { data: reports, error } = await supabase
         .from('marketing_reports')
-        .select('id, title, report_type, period_start, period_end, metrics_snapshot, forecast_data, created_at')
+        .select('id, title, report_type, period_start, period_end, metrics_snapshot, forecast_data, content, created_at')
         .eq('report_type', 'weekly_brief')
         .order('created_at', { ascending: false })
         .limit(limit);
