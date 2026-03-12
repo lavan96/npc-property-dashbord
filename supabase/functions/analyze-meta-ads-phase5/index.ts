@@ -124,35 +124,33 @@ serve(async (req) => {
       
       const allFetches: Promise<void>[] = [];
       
-      // Video fetches - get source URL, dimensions, and hi-res thumbnails
+      // Video fetches - get source URL, hi-res picture, dimensions
       for (const c of videoCreatives) {
         allFetches.push((async () => {
           try {
-            const videoRes = await fetch(`${META_BASE_URL}/${c.video_id}?fields=source,thumbnails{uri,width,height},format{width,height}&access_token=${accessToken}`);
+            // 'picture' gives a high-res thumbnail (720p+), 'source' gives the playable URL
+            const videoRes = await fetch(`${META_BASE_URL}/${c.video_id}?fields=source,picture,format{width,height}&access_token=${accessToken}`);
             const videoJson = await videoRes.json();
+            
+            console.log(`[meta-ads-phase5] Video ${c.video_id} response keys:`, Object.keys(videoJson));
+            
             if (videoJson.source) {
               c.video_url = videoJson.source;
             }
+            
+            // Use 'picture' for high-res thumbnail (much better than creative.thumbnail_url which is 64x64)
+            if (videoJson.picture) {
+              c.image_url = videoJson.picture;
+            }
+            
             // Get video dimensions from format
             const formats = videoJson.format;
             if (formats && formats.length > 0) {
-              // Pick the largest format
+              // Pick the largest format for accurate dimensions
               const bestFormat = formats.reduce((best: any, f: any) => (f.width > (best?.width || 0)) ? f : best, formats[0]);
               c.width = bestFormat.width;
               c.height = bestFormat.height;
-            }
-            // Get highest-res thumbnail for video creatives
-            const thumbs = videoJson.thumbnails?.data;
-            if (thumbs && thumbs.length > 0) {
-              const bestThumb = thumbs.reduce((best: any, t: any) => (t.width > (best?.width || 0)) ? t : best, thumbs[0]);
-              if (bestThumb?.uri) {
-                c.image_url = bestThumb.uri;
-                // Use thumbnail dims as fallback if no format dims
-                if (!c.width && bestThumb.width) {
-                  c.width = bestThumb.width;
-                  c.height = bestThumb.height;
-                }
-              }
+              console.log(`[meta-ads-phase5] Video ${c.video_id} dimensions: ${c.width}x${c.height}`);
             }
           } catch (e) {
             console.warn(`[meta-ads-phase5] Failed to fetch video ${c.video_id}:`, e);
@@ -164,13 +162,31 @@ serve(async (req) => {
       for (const c of imageCreatives) {
         allFetches.push((async () => {
           try {
-            const imgRes = await fetch(`${META_BASE_URL}/${accountId}/adimages?hashes=${c.image_hash}&fields=url_128,url,width,height&access_token=${accessToken}`);
+            const imgRes = await fetch(`${META_BASE_URL}/${accountId}/adimages?hashes[]=${c.image_hash}&fields=url,url_128,width,height,hash&access_token=${accessToken}`);
             const imgJson = await imgRes.json();
-            const imgData = imgJson.data?.[0] || imgJson.images?.[c.image_hash];
+            
+            console.log(`[meta-ads-phase5] Image hash ${c.image_hash} response keys:`, Object.keys(imgJson));
+            
+            // The adimages endpoint returns { data: [ { hash, url, width, height, ... } ] }
+            // Try data array first, then images object keyed by hash
+            let imgData = null;
+            if (imgJson.data && Array.isArray(imgJson.data) && imgJson.data.length > 0) {
+              imgData = imgJson.data[0];
+            } else if (imgJson.images && imgJson.images[c.image_hash]) {
+              imgData = imgJson.images[c.image_hash];
+            }
+            
             if (imgData) {
-              if (imgData.url) c.image_url = imgData.url;
+              // 'url' is the original full-resolution image
+              if (imgData.url) {
+                c.image_url = imgData.url;
+                console.log(`[meta-ads-phase5] Got full-res image URL for hash ${c.image_hash}`);
+              }
               if (imgData.width) c.width = imgData.width;
               if (imgData.height) c.height = imgData.height;
+              console.log(`[meta-ads-phase5] Image ${c.image_hash} dimensions: ${c.width}x${c.height}`);
+            } else {
+              console.warn(`[meta-ads-phase5] No image data found for hash ${c.image_hash}, response:`, JSON.stringify(imgJson).slice(0, 200));
             }
           } catch (e) {
             console.warn(`[meta-ads-phase5] Failed to fetch image dims for hash ${c.image_hash}:`, e);
