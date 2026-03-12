@@ -247,7 +247,7 @@ function CreativePreviewModal({ creative, onClose }: { creative: Creative | null
                   playsInline
                   autoPlay
                   className="w-full max-h-[80vh] object-contain"
-                  style={{ aspectRatio }}
+                  style={aspectStyle}
                 />
               ) : mediaUrl ? (
                 <img
