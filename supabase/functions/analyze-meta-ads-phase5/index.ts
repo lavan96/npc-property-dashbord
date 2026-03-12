@@ -80,6 +80,10 @@ serve(async (req) => {
         const storySpec = creative.object_story_spec || {};
         const videoData = storySpec.video_data || {};
         const videoId = videoData.video_id || null;
+        
+        // Extract image dimensions from story spec if available
+        const linkData = storySpec.link_data || {};
+        const photoData = storySpec.photo_data || {};
 
         // Determine media type
         const isVideo = !!videoId;
@@ -90,12 +94,15 @@ serve(async (req) => {
           status: ad.status,
           thumbnail_url: creative.thumbnail_url || creative.image_url || null,
           image_url: creative.image_url || null,
+          image_hash: creative.image_hash || null,
           title: creative.title || null,
           body: creative.body || null,
           cta_type: creative.call_to_action_type || null,
           is_video: isVideo,
           video_id: videoId,
           video_url: null as string | null,
+          width: null as number | null,
+          height: null as number | null,
           spend: spend,
           impressions: Number(insightsData.impressions || 0),
           clicks: Number(insightsData.clicks || 0),
