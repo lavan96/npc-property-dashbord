@@ -235,8 +235,8 @@ function CreativePreviewModal({ creative, onClose }: { creative: Creative | null
       <DialogContent className="max-w-3xl w-[calc(100vw-32px)] p-0 overflow-hidden bg-background border-border">
         {creative && (
           <div className="flex flex-col">
-            {/* Media area */}
-            <div className="relative bg-black flex items-center justify-center min-h-[300px] max-h-[65vh]">
+            {/* Media area - dynamic sizing */}
+            <div className="relative bg-black flex items-center justify-center">
               {creative.is_video && creative.video_url ? (
                 <video
                   src={creative.video_url}
@@ -244,13 +244,15 @@ function CreativePreviewModal({ creative, onClose }: { creative: Creative | null
                   controls
                   playsInline
                   autoPlay
-                  className="w-full max-h-[65vh] object-contain"
+                  className="w-full max-h-[75vh] object-contain"
+                  style={creative.width && creative.height ? { aspectRatio: `${creative.width}/${creative.height}` } : undefined}
                 />
               ) : mediaUrl ? (
                 <img
                   src={mediaUrl}
                   alt={creative.ad_name}
-                  className="w-full max-h-[65vh] object-contain"
+                  className="w-full max-h-[75vh] object-contain"
+                  style={creative.width && creative.height ? { aspectRatio: `${creative.width}/${creative.height}` } : undefined}
                 />
               ) : (
                 <div className="py-24 flex items-center justify-center">
