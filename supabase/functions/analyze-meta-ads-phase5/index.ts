@@ -206,6 +206,104 @@ serve(async (req) => {
             const videoRes = await fetch(`${META_BASE_URL}/${c.video_id}?fields=source,picture,format{width,height}&access_token=${accessToken}`);
             const videoJson = await videoRes.json();
 
+            console.log(`[meta-ads-phase5] Video ${c.video_id} response keys:`, Object.keys(videoJson));
+
+            // If direct video fetch fails (common for asset_feed_spec / dynamic creative videos),
+            // try fetching via the ad's creative ID with video_id + thumbnails fields
+            if (videoJson.error) {
+              console.warn(`[meta-ads-phase5] Video ${c.video_id} direct fetch error: ${videoJson.error?.message || 'unknown'}. Trying creative fallback...`);
+
+              // Fallback 1: Fetch the creative object itself for effective_object_story_id
+              if (c.creative_id) {
+                try {
+                  const creativeFallbackRes = await fetch(
+                    `${META_BASE_URL}/${c.creative_id}?fields=effective_object_story_id,thumbnail_url,image_url,object_story_spec&access_token=${accessToken}`
+                  );
+                  const creativeFallbackJson = await creativeFallbackRes.json();
+
+                  if (creativeFallbackRes.ok) {
+                    // Try to get video from effective_object_story_id (the actual published post)
+                    const storyId = creativeFallbackJson.effective_object_story_id;
+                    if (storyId) {
+                      try {
+                        const postRes = await fetch(
+                          `${META_BASE_URL}/${storyId}?fields=source,picture,full_picture,permalink_url,attachments{media{source,image{src,width,height}}}&access_token=${accessToken}`
+                        );
+                        const postJson = await postRes.json();
+
+                        console.log(`[meta-ads-phase5] Post ${storyId} response keys:`, Object.keys(postJson));
+
+                        if (postRes.ok) {
+                          // Extract video source from post
+                          if (postJson.source) {
+                            c.video_url = postJson.source;
+                          }
+                          // Extract video source from attachments
+                          const attachment = postJson.attachments?.data?.[0];
+                          if (!c.video_url && attachment?.media?.source) {
+                            c.video_url = attachment.media.source;
+                          }
+                          // High-res image from full_picture or attachment
+                          if (postJson.full_picture) {
+                            c.image_url = postJson.full_picture;
+                          } else if (attachment?.media?.image?.src) {
+                            c.image_url = attachment.media.image.src;
+                          }
+                          // Dimensions from attachment
+                          if (attachment?.media?.image?.width && attachment?.media?.image?.height) {
+                            c.width = attachment.media.image.width;
+                            c.height = attachment.media.image.height;
+                          }
+                          console.log(`[meta-ads-phase5] Post fallback for video ${c.video_id}: hasVideoUrl=${!!c.video_url}, hasImageUrl=${!!c.image_url}`);
+                        }
+                      } catch (postErr) {
+                        console.warn(`[meta-ads-phase5] Post fetch failed for ${storyId}:`, postErr);
+                      }
+                    }
+
+                    // If still no image, use the creative's own thumbnail/image
+                    if (!c.image_url && creativeFallbackJson.image_url) {
+                      c.image_url = creativeFallbackJson.image_url;
+                    }
+                    if (!c.image_url && creativeFallbackJson.thumbnail_url) {
+                      c.image_url = creativeFallbackJson.thumbnail_url;
+                    }
+                  }
+                } catch (cfErr) {
+                  console.warn(`[meta-ads-phase5] Creative fallback fetch failed for ${c.creative_id}:`, cfErr);
+                }
+              }
+
+              // Fallback 2: Try fetching ad-level previews for the video URL
+              if (!c.video_url) {
+                try {
+                  const previewRes = await fetch(
+                    `${META_BASE_URL}/${c.ad_id}/previews?ad_format=DESKTOP_FEED_STANDARD&access_token=${accessToken}`
+                  );
+                  const previewJson = await previewRes.json();
+                  // Preview returns HTML - we can extract video source from it if present
+                  const previewBody = previewJson?.data?.[0]?.body || '';
+                  const videoSrcMatch = previewBody.match(/src="(https:\/\/video[^"]+)"/);
+                  if (videoSrcMatch?.[1]) {
+                    c.video_url = videoSrcMatch[1].replace(/&amp;/g, '&');
+                    console.log(`[meta-ads-phase5] Extracted video URL from ad preview for ${c.ad_id}`);
+                  }
+                } catch (prevErr) {
+                  console.warn(`[meta-ads-phase5] Preview fallback failed for ${c.ad_id}:`, prevErr);
+                }
+              }
+
+              // Cache whatever we got (even if partial)
+              videoMetaCache.set(c.video_id, {
+                video_url: c.video_url,
+                image_url: c.image_url,
+                width: c.width,
+                height: c.height,
+              });
+              return;
+            }
+
+            // Direct fetch succeeded
             const cachedVideo = {
               video_url: videoJson.source || null,
               image_url: videoJson.picture || null,
@@ -213,12 +311,9 @@ serve(async (req) => {
               height: null as number | null,
             };
 
-            console.log(`[meta-ads-phase5] Video ${c.video_id} response keys:`, Object.keys(videoJson));
-
             // Get video dimensions from format
             const formats = videoJson.format;
             if (formats && formats.length > 0) {
-              // Pick the largest format for accurate dimensions
               const bestFormat = formats.reduce((best: any, f: any) => (f.width > (best?.width || 0)) ? f : best, formats[0]);
               cachedVideo.width = bestFormat.width;
               cachedVideo.height = bestFormat.height;
