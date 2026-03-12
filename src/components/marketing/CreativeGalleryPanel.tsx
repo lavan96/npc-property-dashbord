@@ -1,12 +1,11 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { Loader2, Image, DollarSign, MousePointerClick, Eye, Target, Trophy, Play, Volume2, VolumeX, Maximize2, X } from 'lucide-react';
+import { Loader2, Image, DollarSign, MousePointerClick, Eye, Target, Trophy, Play, Maximize2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 interface CreativeGalleryProps {
@@ -211,31 +210,33 @@ export function CreativeGalleryPanel({ datePreset }: CreativeGalleryProps) {
 /* ── Preview Modal ── */
 
 function CreativePreviewModal({ creative, onClose }: { creative: Creative | null; onClose: () => void }) {
+  const mediaUrl = creative?.image_url || creative?.thumbnail_url;
+
   return (
     <Dialog open={!!creative} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-4xl w-[calc(100vw-32px)] p-0 overflow-hidden bg-background border-border">
+      <DialogContent className="max-w-3xl w-[calc(100vw-32px)] p-0 overflow-hidden bg-background border-border">
         {creative && (
           <div className="flex flex-col">
             {/* Media area */}
-            <div className="relative bg-muted">
+            <div className="relative bg-black flex items-center justify-center min-h-[300px] max-h-[65vh]">
               {creative.is_video && creative.video_url ? (
-                <VideoPlayer
+                <video
                   src={creative.video_url}
-                  poster={creative.image_url || creative.thumbnail_url || undefined}
+                  poster={mediaUrl || undefined}
+                  controls
+                  playsInline
+                  autoPlay
+                  className="w-full max-h-[65vh] object-contain"
+                />
+              ) : mediaUrl ? (
+                <img
+                  src={mediaUrl}
+                  alt={creative.ad_name}
+                  className="w-full max-h-[65vh] object-contain"
                 />
               ) : (
-                <div className="flex items-center justify-center max-h-[70vh]">
-                  {(creative.image_url || creative.thumbnail_url) ? (
-                    <img
-                      src={creative.image_url || creative.thumbnail_url!}
-                      alt={creative.ad_name}
-                      className="max-w-full max-h-[70vh] object-contain"
-                    />
-                  ) : (
-                    <div className="py-24 flex items-center justify-center">
-                      <Image className="h-16 w-16 text-muted-foreground/20" />
-                    </div>
-                  )}
+                <div className="py-24 flex items-center justify-center">
+                  <Image className="h-16 w-16 text-muted-foreground/20" />
                 </div>
               )}
             </div>
@@ -273,122 +274,8 @@ function CreativePreviewModal({ creative, onClose }: { creative: Creative | null
   );
 }
 
-/* ── Video Player ── */
 
-function VideoPlayer({ src, poster }: { src: string; poster?: string }) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isMuted, setIsMuted] = useState(true);
-  const [progress, setProgress] = useState(0);
-  const [showControls, setShowControls] = useState(true);
 
-  const togglePlay = () => {
-    if (!videoRef.current) return;
-    if (videoRef.current.paused) {
-      videoRef.current.play();
-      setIsPlaying(true);
-    } else {
-      videoRef.current.pause();
-      setIsPlaying(false);
-    }
-  };
-
-  const toggleMute = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!videoRef.current) return;
-    videoRef.current.muted = !videoRef.current.muted;
-    setIsMuted(videoRef.current.muted);
-  };
-
-  const handleTimeUpdate = () => {
-    if (!videoRef.current) return;
-    setProgress((videoRef.current.currentTime / videoRef.current.duration) * 100);
-  };
-
-  const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!videoRef.current) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const pct = (e.clientX - rect.left) / rect.width;
-    videoRef.current.currentTime = pct * videoRef.current.duration;
-  };
-
-  return (
-    <div
-      className="relative group/video"
-      onMouseEnter={() => setShowControls(true)}
-      onMouseLeave={() => isPlaying && setShowControls(false)}
-    >
-      <video
-        ref={videoRef}
-        src={src}
-        poster={poster}
-        muted={isMuted}
-        playsInline
-        onTimeUpdate={handleTimeUpdate}
-        onEnded={() => setIsPlaying(false)}
-        onClick={togglePlay}
-        className="w-full max-h-[70vh] object-contain cursor-pointer bg-black"
-      />
-
-      {/* Play overlay when paused */}
-      {!isPlaying && (
-        <div
-          className="absolute inset-0 flex items-center justify-center cursor-pointer bg-black/20"
-          onClick={togglePlay}
-        >
-          <div className="h-16 w-16 rounded-full bg-background/90 backdrop-blur-sm flex items-center justify-center shadow-xl">
-            <Play className="h-8 w-8 text-foreground ml-1" />
-          </div>
-        </div>
-      )}
-
-      {/* Controls bar */}
-      <div className={cn(
-        'absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3 transition-opacity duration-200',
-        showControls || !isPlaying ? 'opacity-100' : 'opacity-0'
-      )}>
-        {/* Progress bar */}
-        <div
-          className="w-full h-1.5 bg-white/20 rounded-full cursor-pointer mb-2 group/progress"
-          onClick={handleSeek}
-        >
-          <div
-            className="h-full bg-primary rounded-full relative transition-all"
-            style={{ width: `${progress}%` }}
-          >
-            <div className="absolute right-0 top-1/2 -translate-y-1/2 h-3 w-3 rounded-full bg-primary opacity-0 group-hover/progress:opacity-100 transition-opacity" />
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-8 w-8 text-white hover:bg-white/20"
-            onClick={(e) => { e.stopPropagation(); togglePlay(); }}
-          >
-            {isPlaying ? (
-              <div className="flex gap-0.5">
-                <div className="w-1 h-3 bg-white rounded-sm" />
-                <div className="w-1 h-3 bg-white rounded-sm" />
-              </div>
-            ) : (
-              <Play className="h-4 w-4 ml-0.5" />
-            )}
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-8 w-8 text-white hover:bg-white/20"
-            onClick={toggleMute}
-          >
-            {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 /* ── Metric Item ── */
 
