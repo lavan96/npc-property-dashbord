@@ -43,6 +43,7 @@ export function SendToClientModal({
   reportTitle,
   reportTier,
   storagePath,
+  onGeneratePDF,
 }: SendToClientModalProps) {
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
