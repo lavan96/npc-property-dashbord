@@ -2904,30 +2904,63 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
       }
       console.log('✓ Database updated');
 
-      // Download the PDF
-      console.log('⬇️ Step 10: Triggering browser download...');
-      const downloadUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = downloadUrl;
-      a.download = `${suburb}_${state}_Investment_Report.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(downloadUrl);
-      console.log('✓ Download triggered');
+      return { blob, publicUrl, suburb, state };
+    };
 
-      console.log('✅ PDF generation completed successfully!');
-      toast.success('PDF generated and saved successfully!');
+    // Generate, upload, and return the public URL (no download)
+    const handleGenerateAndUpload = async (): Promise<string | null> => {
+      setIsGenerating(true);
+      try {
+        const result = await generateCore();
+        if (!result) return null;
+        toast.success('PDF generated and uploaded successfully!');
+        return result.publicUrl;
+      } catch (error) {
+        handleGenerationError(error);
+        return null;
+      } finally {
+        setIsGenerating(false);
+      }
+    };
 
-      // Log activity
-      logActivityDirect({
-        actionType: 'report_pdf_downloaded',
-        entityType: 'investment_report',
-        entityId: report.id,
-        entityName: report.address,
-        metadata: { format: 'pdf', source: 'pixel_perfect_generator' }
-      });
-    } catch (error) {
+    // Generate, upload, AND download to device
+    const generatePixelPerfectPDF = async () => {
+      setIsGenerating(true);
+      try {
+        const result = await generateCore();
+        if (!result) return;
+
+        // Download the PDF
+        console.log('⬇️ Step 10: Triggering browser download...');
+        const downloadUrl = URL.createObjectURL(result.blob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = `${result.suburb}_${result.state}_Investment_Report.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(downloadUrl);
+        console.log('✓ Download triggered');
+
+        console.log('✅ PDF generation completed successfully!');
+        toast.success('PDF generated and saved successfully!');
+
+        // Log activity
+        logActivityDirect({
+          actionType: 'report_pdf_downloaded',
+          entityType: 'investment_report',
+          entityId: report.id,
+          entityName: report.address,
+          metadata: { format: 'pdf', source: 'pixel_perfect_generator' }
+        });
+      } catch (error) {
+        handleGenerationError(error);
+      } finally {
+        setIsGenerating(false);
+      }
+    };
+
+    const handleGenerationError = (error: unknown) => {
       console.error('❌ PDF generation error:', error);
       console.error('Error details:', {
         name: error instanceof Error ? error.name : 'Unknown',
@@ -2935,7 +2968,6 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
         stack: error instanceof Error ? error.stack : undefined
       });
       
-      // More specific error message
       let errorMessage = 'Failed to generate PDF. ';
       if (error instanceof Error) {
         if (error.message.includes('WinAnsi')) {
@@ -2950,10 +2982,12 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
       }
       
       toast.error(errorMessage);
-    } finally {
-      setIsGenerating(false);
-    }
-  };
+    };
+
+  // Expose generateAndUpload for external use (e.g., Send to Client)
+  useImperativeHandle(ref, () => ({
+    generateAndUpload: handleGenerateAndUpload,
+  }));
 
   return (
     <Button
@@ -2965,4 +2999,6 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
       {isGenerating ? 'Generating PDF...' : 'Download Client PDF'}
     </Button>
   );
-};
+});
+
+PixelPerfectPDFGenerator.displayName = 'PixelPerfectPDFGenerator';
