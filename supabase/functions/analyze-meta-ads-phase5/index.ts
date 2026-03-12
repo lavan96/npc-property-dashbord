@@ -113,10 +113,19 @@ serve(async (req) => {
       if (videoCreatives.length > 0) {
         const videoFetches = videoCreatives.map(async (c: any) => {
           try {
-            const videoRes = await fetch(`${META_BASE_URL}/${c.video_id}?fields=source&access_token=${accessToken}`);
+            const videoRes = await fetch(`${META_BASE_URL}/${c.video_id}?fields=source,thumbnails{uri,width,height}&access_token=${accessToken}`);
             const videoJson = await videoRes.json();
             if (videoJson.source) {
               c.video_url = videoJson.source;
+            }
+            // Get highest-res thumbnail for video creatives
+            const thumbs = videoJson.thumbnails?.data;
+            if (thumbs && thumbs.length > 0) {
+              // Pick the largest thumbnail available
+              const bestThumb = thumbs.reduce((best: any, t: any) => (t.width > (best?.width || 0)) ? t : best, thumbs[0]);
+              if (bestThumb?.uri) {
+                c.image_url = bestThumb.uri;
+              }
             }
           } catch (e) {
             console.warn(`[meta-ads-phase5] Failed to fetch video ${c.video_id}:`, e);
