@@ -120,7 +120,7 @@ export function CreativeGalleryPanel({ datePreset }: CreativeGalleryProps) {
                   >
                     {/* Media */}
                     <div
-                      className="aspect-video bg-muted relative overflow-hidden cursor-pointer"
+                      className={cn(getAspectClass(creative), "bg-muted relative overflow-hidden cursor-pointer")}
                       onClick={() => setPreviewCreative(creative)}
                     >
                       {displayUrl ? (
