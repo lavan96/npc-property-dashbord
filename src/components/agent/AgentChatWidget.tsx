@@ -217,15 +217,28 @@ export function AgentChatWidget() {
       toast.info(`Max ${maxFiles} files per message. Only first ${newFiles.length} added.`);
     }
     
-    setAttachedFiles(prev => [...prev, ...newFiles]);
+    // Extract each file individually so one failure doesn't break the rest
     setExtractingFiles(true);
+    const successFiles: File[] = [];
+    const successExtracted: ExtractedFile[] = [];
     
-    try {
-      const extracted = await Promise.all(newFiles.map(f => extractFileContent(f)));
-      setExtractedFiles(prev => [...prev, ...extracted]);
-    } catch (err: any) {
-      toast.error(`File extraction failed: ${err.message}`);
+    for (const file of newFiles) {
+      try {
+        const extracted = await extractFileContent(file);
+        successFiles.push(file);
+        successExtracted.push(extracted);
+      } catch (err: any) {
+        console.error(`[Agent] Extraction failed for ${file.name}:`, err);
+        toast.error(`Failed to process "${file.name}": ${err.message}`);
+        // Skip this file — don't add to either array
+      }
     }
+    
+    if (successFiles.length > 0) {
+      setAttachedFiles(prev => [...prev, ...successFiles]);
+      setExtractedFiles(prev => [...prev, ...successExtracted]);
+    }
+    
     setExtractingFiles(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
