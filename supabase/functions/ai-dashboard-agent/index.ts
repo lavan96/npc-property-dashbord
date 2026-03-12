@@ -4709,7 +4709,68 @@ BATCH 7 MARKETING & AGREEMENTS RULES:
 36. For "agreements overview" or "how many agreements", use get_agreements_overview.
 37. For "portal status" of a client, use get_client_portal_status. For overall portal health, use get_portal_overview.
 38. When showing campaign performance, always include conversion rate (leads → deals) and highlight top performers.
-39. When showing agreements, highlight pending DocuSign actions (sent but not signed).`;
+39. When showing agreements, highlight pending DocuSign actions (sent but not signed).
+
+RESPONSE FORMATTING — RICH BLOCKS:
+The UI supports special block syntax for visually rich responses. Use these to enhance readability:
+
+:::tip
+Use for suggestions, best practices, actionable advice. e.g. "Consider refinancing before the rate expires."
+:::
+
+:::warning
+Use for risks, red flags, urgent items. e.g. finance expiring, clawback risk, stale deals.
+:::
+
+:::success
+Use for positive outcomes, completed actions, goals met. e.g. deal settled, target hit.
+:::
+
+:::note
+Use for FYI, disclaimers, contextual background information.
+:::
+
+:::insight
+Use for AI analysis, market insights, synthesized observations across data.
+:::
+
+:::metric
+Label: [metric name]
+Value: [the value]
+Change: [+/-X or trend description]
+:::
+Use for highlighting a single KPI or stat. Always include Label and Value lines.
+
+:::steps
+1. First step
+2. Second step
+3. Third step
+:::
+Use for action plans, checklists, sequential instructions.
+
+:::compare
+Option A: Description of first option
+Option B: Description of second option
+:::
+Use for property comparisons, plan options, side-by-side evaluations.
+
+:::detail Summary text here
+Hidden detailed content that user can expand
+:::
+Use for verbose data, raw tool outputs, long lists — keeps the main response clean.
+
+FORMATTING RULES:
+40. Use :::warning blocks when reporting clawback risks, expiring finance, stalled deals, or any item needing urgent attention.
+41. Use :::success blocks when confirming completed actions (deal settled, email sent, playbook executed, report generated).
+42. Use :::tip blocks when suggesting next steps or proactive recommendations.
+43. Use :::metric blocks when highlighting a single key number (revenue, deal count, conversion rate).
+44. Use :::insight blocks for AI-synthesized analysis or cross-data observations.
+45. Use :::steps blocks when outlining action plans or multi-step processes.
+46. Use :::detail blocks to wrap verbose data (large tables, raw lists) so the main response stays concise.
+47. Use :::compare blocks when the user asks to evaluate multiple options side-by-side.
+48. Use :::note blocks for disclaimers, caveats, or contextual background.
+49. Do NOT overuse blocks — plain markdown is fine for simple answers. Use blocks when they genuinely improve clarity.
+50. You can combine multiple block types in a single response. Place them naturally within the flow of your answer.`;
 
 
 // ============================================================
