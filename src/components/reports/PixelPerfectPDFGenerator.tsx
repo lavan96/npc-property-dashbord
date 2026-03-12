@@ -2905,82 +2905,71 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
       return { blob, publicUrl, suburb, state };
   };
 
-    // Generate, upload, and return the public URL (no download)
-    const handleGenerateAndUpload = async (): Promise<string | null> => {
-      setIsGenerating(true);
-      try {
-        const result = await generateCore();
-        if (!result) return null;
-        toast.success('PDF generated and uploaded successfully!');
-        return result.publicUrl;
-      } catch (error) {
-        handleGenerationError(error);
-        return null;
-      } finally {
-        setIsGenerating(false);
+  const handleGenerationError = (error: unknown) => {
+    console.error('❌ PDF generation error:', error);
+    let errorMessage = 'Failed to generate PDF. ';
+    if (error instanceof Error) {
+      if (error.message.includes('WinAnsi')) {
+        errorMessage += 'Special characters encoding issue detected.';
+      } else if (error.message.includes('template')) {
+        errorMessage += 'Template loading failed.';
+      } else if (error.message.includes('storage')) {
+        errorMessage += 'Failed to upload to storage.';
+      } else {
+        errorMessage += error.message;
       }
-    };
+    }
+    toast.error(errorMessage);
+  };
 
-    // Generate, upload, AND download to device
-    const generatePixelPerfectPDF = async () => {
-      setIsGenerating(true);
-      try {
-        const result = await generateCore();
-        if (!result) return;
+  // Generate, upload, and return the public URL (no download)
+  const handleGenerateAndUpload = async (): Promise<string | null> => {
+    setIsGenerating(true);
+    try {
+      const result = await generateCore();
+      toast.success('PDF generated and uploaded successfully!');
+      return result.publicUrl;
+    } catch (error) {
+      handleGenerationError(error);
+      return null;
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
-        // Download the PDF
-        console.log('⬇️ Step 10: Triggering browser download...');
-        const downloadUrl = URL.createObjectURL(result.blob);
-        const a = document.createElement('a');
-        a.href = downloadUrl;
-        a.download = `${result.suburb}_${result.state}_Investment_Report.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(downloadUrl);
-        console.log('✓ Download triggered');
+  // Generate, upload, AND download to device
+  const generatePixelPerfectPDF = async () => {
+    setIsGenerating(true);
+    try {
+      const result = await generateCore();
 
-        console.log('✅ PDF generation completed successfully!');
-        toast.success('PDF generated and saved successfully!');
+      // Download the PDF
+      console.log('⬇️ Step 10: Triggering browser download...');
+      const downloadUrl = URL.createObjectURL(result.blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = `${result.suburb}_${result.state}_Investment_Report.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(downloadUrl);
 
-        // Log activity
-        logActivityDirect({
-          actionType: 'report_pdf_downloaded',
-          entityType: 'investment_report',
-          entityId: report.id,
-          entityName: report.address,
-          metadata: { format: 'pdf', source: 'pixel_perfect_generator' }
-        });
-      } catch (error) {
-        handleGenerationError(error);
-      } finally {
-        setIsGenerating(false);
-      }
-    };
+      console.log('✅ PDF generation completed successfully!');
+      toast.success('PDF generated and saved successfully!');
 
-    const handleGenerationError = (error: unknown) => {
-      console.error('❌ PDF generation error:', error);
-      console.error('Error details:', {
-        name: error instanceof Error ? error.name : 'Unknown',
-        message: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined
+      logActivityDirect({
+        actionType: 'report_pdf_downloaded',
+        entityType: 'investment_report',
+        entityId: report.id,
+        entityName: report.address,
+        metadata: { format: 'pdf', source: 'pixel_perfect_generator' }
       });
-      
-      let errorMessage = 'Failed to generate PDF. ';
-      if (error instanceof Error) {
-        if (error.message.includes('WinAnsi')) {
-          errorMessage += 'Special characters encoding issue detected.';
-        } else if (error.message.includes('template')) {
-          errorMessage += 'Template loading failed.';
-        } else if (error.message.includes('storage')) {
-          errorMessage += 'Failed to upload to storage.';
-        } else {
-          errorMessage += error.message;
-        }
-      }
-      
-      toast.error(errorMessage);
-    };
+    } catch (error) {
+      handleGenerationError(error);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   // Expose generateAndUpload for external use (e.g., Send to Client)
   useImperativeHandle(ref, () => ({
