@@ -228,14 +228,20 @@ export function CreativeGalleryPanel({ datePreset }: CreativeGalleryProps) {
 /* ── Preview Modal ── */
 
 function CreativePreviewModal({ creative, onClose }: { creative: Creative | null; onClose: () => void }) {
+  // Prefer image_url (hi-res) over thumbnail_url (low-res 64x64)
   const mediaUrl = creative?.image_url || creative?.thumbnail_url;
+
+  // Calculate aspect ratio string for inline styles
+  const aspectRatio = creative?.width && creative?.height
+    ? `${creative.width} / ${creative.height}`
+    : creative?.is_video ? '9 / 16' : '1 / 1';
 
   return (
     <Dialog open={!!creative} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-3xl w-[calc(100vw-32px)] p-0 overflow-hidden bg-background border-border">
         {creative && (
           <div className="flex flex-col">
-            {/* Media area - dynamic sizing */}
+            {/* Media area - dynamic sizing based on actual dimensions */}
             <div className="relative bg-black flex items-center justify-center">
               {creative.is_video && creative.video_url ? (
                 <video
@@ -244,15 +250,15 @@ function CreativePreviewModal({ creative, onClose }: { creative: Creative | null
                   controls
                   playsInline
                   autoPlay
-                  className="w-full max-h-[75vh] object-contain"
-                  style={creative.width && creative.height ? { aspectRatio: `${creative.width}/${creative.height}` } : undefined}
+                  className="w-full max-h-[80vh] object-contain"
+                  style={{ aspectRatio }}
                 />
               ) : mediaUrl ? (
                 <img
                   src={mediaUrl}
                   alt={creative.ad_name}
-                  className="w-full max-h-[75vh] object-contain"
-                  style={creative.width && creative.height ? { aspectRatio: `${creative.width}/${creative.height}` } : undefined}
+                  className="w-full max-h-[80vh] object-contain"
+                  style={{ aspectRatio }}
                 />
               ) : (
                 <div className="py-24 flex items-center justify-center">
@@ -284,6 +290,9 @@ function CreativePreviewModal({ creative, onClose }: { creative: Creative | null
                     <span className="text-muted-foreground">Leads: <span className="text-foreground font-medium">{creative.leads}</span></span>
                     <span className="text-muted-foreground">CPL: <span className="text-foreground font-medium">{formatCurrency(creative.cpl)}</span></span>
                   </>
+                )}
+                {creative.width && creative.height && (
+                  <span className="text-muted-foreground">Size: <span className="text-foreground font-medium">{creative.width}×{creative.height}</span></span>
                 )}
               </div>
             </div>
