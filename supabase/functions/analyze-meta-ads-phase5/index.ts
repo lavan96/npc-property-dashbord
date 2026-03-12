@@ -211,10 +211,39 @@ serve(async (req) => {
             // If direct video fetch fails (common for asset_feed_spec / dynamic creative videos),
             // try fetching via the ad's creative ID with video_id + thumbnails fields
             if (videoJson.error) {
-              console.warn(`[meta-ads-phase5] Video ${c.video_id} direct fetch error: ${videoJson.error?.message || 'unknown'}. Trying creative fallback...`);
+              console.warn(`[meta-ads-phase5] Video ${c.video_id} direct fetch error: ${videoJson.error?.message || 'unknown'}. Trying fallbacks...`);
 
-              // Fallback 1: Fetch the creative object itself for effective_object_story_id
-              if (c.creative_id) {
+              // Fallback 1: Use account-level /advideos endpoint (works with ad account permissions
+              // even when direct video object access is denied - common for dynamic creative videos)
+              try {
+                const adVideosUrl = `${META_BASE_URL}/${accountId}/advideos?filtering=[{"field":"id","operator":"IN","value":["${c.video_id}"]}]&fields=id,source,picture,thumbnails,length,title&access_token=${accessToken}`;
+                const adVideosRes = await fetch(adVideosUrl);
+                const adVideosJson = await adVideosRes.json();
+
+                if (adVideosRes.ok && adVideosJson.data?.length > 0) {
+                  const vid = adVideosJson.data[0];
+                  if (vid.source) c.video_url = vid.source;
+                  if (vid.picture) c.image_url = vid.picture;
+                  // Try to get best thumbnail for dimensions
+                  if (vid.thumbnails?.data?.length > 0) {
+                    const best = vid.thumbnails.data.reduce((b: any, t: any) => (t.width > (b?.width || 0)) ? t : b, vid.thumbnails.data[0]);
+                    if (best.width && best.height) {
+                      c.width = best.width;
+                      c.height = best.height;
+                    }
+                    // Use highest-res thumbnail as image if no picture
+                    if (!c.image_url && best.uri) c.image_url = best.uri;
+                  }
+                  console.log(`[meta-ads-phase5] Account advideos fallback SUCCESS for ${c.video_id}: hasVideoUrl=${!!c.video_url}, hasImageUrl=${!!c.image_url}`);
+                } else {
+                  console.warn(`[meta-ads-phase5] Account advideos fallback returned no data for ${c.video_id}`);
+                }
+              } catch (advErr) {
+                console.warn(`[meta-ads-phase5] Account advideos fallback failed for ${c.video_id}:`, advErr);
+              }
+
+              // Fallback 2: Fetch the creative object itself for effective_object_story_id
+              if (!c.video_url && c.creative_id) {
                 try {
                   const creativeFallbackRes = await fetch(
                     `${META_BASE_URL}/${c.creative_id}?fields=effective_object_story_id,thumbnail_url,image_url,object_story_spec&access_token=${accessToken}`
@@ -222,7 +251,6 @@ serve(async (req) => {
                   const creativeFallbackJson = await creativeFallbackRes.json();
 
                   if (creativeFallbackRes.ok) {
-                    // Try to get video from effective_object_story_id (the actual published post)
                     const storyId = creativeFallbackJson.effective_object_story_id;
                     if (storyId) {
                       try {
@@ -234,22 +262,11 @@ serve(async (req) => {
                         console.log(`[meta-ads-phase5] Post ${storyId} response keys:`, Object.keys(postJson));
 
                         if (postRes.ok) {
-                          // Extract video source from post
-                          if (postJson.source) {
-                            c.video_url = postJson.source;
-                          }
-                          // Extract video source from attachments
+                          if (postJson.source) c.video_url = postJson.source;
                           const attachment = postJson.attachments?.data?.[0];
-                          if (!c.video_url && attachment?.media?.source) {
-                            c.video_url = attachment.media.source;
-                          }
-                          // High-res image from full_picture or attachment
-                          if (postJson.full_picture) {
-                            c.image_url = postJson.full_picture;
-                          } else if (attachment?.media?.image?.src) {
-                            c.image_url = attachment.media.image.src;
-                          }
-                          // Dimensions from attachment
+                          if (!c.video_url && attachment?.media?.source) c.video_url = attachment.media.source;
+                          if (postJson.full_picture) c.image_url = postJson.full_picture;
+                          else if (attachment?.media?.image?.src) c.image_url = attachment.media.image.src;
                           if (attachment?.media?.image?.width && attachment?.media?.image?.height) {
                             c.width = attachment.media.image.width;
                             c.height = attachment.media.image.height;
@@ -261,27 +278,21 @@ serve(async (req) => {
                       }
                     }
 
-                    // If still no image, use the creative's own thumbnail/image
-                    if (!c.image_url && creativeFallbackJson.image_url) {
-                      c.image_url = creativeFallbackJson.image_url;
-                    }
-                    if (!c.image_url && creativeFallbackJson.thumbnail_url) {
-                      c.image_url = creativeFallbackJson.thumbnail_url;
-                    }
+                    if (!c.image_url && creativeFallbackJson.image_url) c.image_url = creativeFallbackJson.image_url;
+                    if (!c.image_url && creativeFallbackJson.thumbnail_url) c.image_url = creativeFallbackJson.thumbnail_url;
                   }
                 } catch (cfErr) {
                   console.warn(`[meta-ads-phase5] Creative fallback fetch failed for ${c.creative_id}:`, cfErr);
                 }
               }
 
-              // Fallback 2: Try fetching ad-level previews for the video URL
+              // Fallback 3: Try fetching ad-level previews for the video URL
               if (!c.video_url) {
                 try {
                   const previewRes = await fetch(
                     `${META_BASE_URL}/${c.ad_id}/previews?ad_format=DESKTOP_FEED_STANDARD&access_token=${accessToken}`
                   );
                   const previewJson = await previewRes.json();
-                  // Preview returns HTML - we can extract video source from it if present
                   const previewBody = previewJson?.data?.[0]?.body || '';
                   const videoSrcMatch = previewBody.match(/src="(https:\/\/video[^"]+)"/);
                   if (videoSrcMatch?.[1]) {
