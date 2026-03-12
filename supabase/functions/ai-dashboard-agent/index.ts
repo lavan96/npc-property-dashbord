@@ -3112,9 +3112,51 @@ async function executeGetScheduledTasks(sb: any, userId: string) {
   return { tasks: data || [] };
 }
 async function executeCreateScheduledTask(sb: any, args: any, userId: string) {
-  const { data, error } = await sb.from('agent_scheduled_tasks').insert({ user_id: userId, name: args.name, description: args.description||null, task_type: args.task_type||'single_tool', playbook_id: args.playbook_id||null, tool_name: args.tool_name||null, tool_arguments: args.tool_arguments||null, schedule_cron: args.schedule_cron, schedule_description: args.schedule_description||null }).select().single();
+  // Calculate initial next_run_at from cron expression
+  const nextRun = calculateNextRunFromCron(args.schedule_cron);
+  const { data, error } = await sb.from('agent_scheduled_tasks').insert({ user_id: userId, name: args.name, description: args.description||null, task_type: args.task_type||'single_tool', playbook_id: args.playbook_id||null, tool_name: args.tool_name||null, tool_arguments: args.tool_arguments||null, schedule_cron: args.schedule_cron, schedule_description: args.schedule_description||null, next_run_at: nextRun }).select().single();
   if (error) return { error: error.message };
-  return { success: true, message: `Scheduled task "${args.name}" created.`, task: data };
+  return { success: true, message: `Scheduled task "${args.name}" created. Next run: ${nextRun}`, task: data };
+}
+
+/** Calculate the next run time from a cron expression */
+function calculateNextRunFromCron(cron: string): string {
+  const now = new Date();
+  const parts = (cron || '').trim().split(/\s+/);
+  if (parts.length !== 5) return new Date(now.getTime() + 60*60*1000).toISOString();
+  const [minute, hour] = parts;
+  if (minute.startsWith('*/') && hour === '*') {
+    const interval = parseInt(minute.slice(2)) || 60;
+    return new Date(now.getTime() + interval*60*1000).toISOString();
+  }
+  if (hour.startsWith('*/')) {
+    const interval = parseInt(hour.slice(2)) || 1;
+    return new Date(now.getTime() + interval*60*60*1000).toISOString();
+  }
+  if (minute !== '*' && hour !== '*') {
+    const next = new Date(now);
+    next.setHours(parseInt(hour)||0, parseInt(minute)||0, 0, 0);
+    if (next <= now) next.setDate(next.getDate() + 1);
+    const dow = parts[4];
+    if (dow !== '*') {
+      const allowed = parseCronDays(dow);
+      let safety = 0;
+      while (!allowed.includes(next.getDay()) && safety < 8) { next.setDate(next.getDate()+1); safety++; }
+    }
+    return next.toISOString();
+  }
+  return new Date(now.getTime() + 60*60*1000).toISOString();
+}
+
+function parseCronDays(field: string): number[] {
+  const values: number[] = [];
+  for (const part of field.split(',')) {
+    if (part.includes('-')) {
+      const [a, b] = part.split('-').map(Number);
+      for (let i = a; i <= b; i++) values.push(i);
+    } else values.push(parseInt(part));
+  }
+  return values;
 }
 async function executeToggleScheduledTask(sb: any, args: any) {
   await sb.from('agent_scheduled_tasks').update({ is_enabled: args.is_enabled }).eq('id', args.task_id);
