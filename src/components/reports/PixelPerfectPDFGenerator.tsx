@@ -33,7 +33,11 @@ interface PixelPerfectPDFGeneratorProps {
   reportTier?: ReportTier;
 }
 
-export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> = ({ report, includeSources = true, includeScoring = true, reportTier = 'compass' }) => {
+export interface PixelPerfectPDFGeneratorHandle {
+  generateAndUpload: () => Promise<string | null>;
+}
+
+export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandle, PixelPerfectPDFGeneratorProps>(({ report, includeSources = true, includeScoring = true, reportTier = 'compass' }, ref) => {
   const [isGenerating, setIsGenerating] = React.useState(false);
 
   const extractSuburbState = (address: string | undefined | null): { suburb: string; state: string } => {
