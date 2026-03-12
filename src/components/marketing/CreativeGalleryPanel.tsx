@@ -30,6 +30,7 @@ interface Creative {
   body: string | null;
   is_video: boolean;
   video_url: string | null;
+  preview_url: string | null;
   width: number | null;
   height: number | null;
   spend: number;
