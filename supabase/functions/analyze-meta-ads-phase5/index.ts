@@ -215,7 +215,7 @@ serve(async (req) => {
 
               // Fallback 1: Use account-level /advideos endpoint with properly URL-encoded filtering
               try {
-                const filterJson = JSON.stringify([{field: "id", operator: "EQUAL", value: c.video_id}]);
+                const filterJson = JSON.stringify([{field: "id", operator: "IN", value: [c.video_id]}]);
                 const adVideosParams = new URLSearchParams({
                   filtering: filterJson,
                   fields: 'id,source,picture,thumbnails,length,title',
@@ -318,6 +318,50 @@ serve(async (req) => {
                       c.video_url = match[1].replace(/\\/g, '');
                       console.log(`[meta-ads-phase5] Extracted video URL from ad preview for ${c.ad_id} using pattern ${pattern.source.slice(0, 30)}`);
                       break;
+                    }
+                  }
+
+                  // If preview only returns iframe wrapper, fetch iframe HTML and parse inside it
+                  if (!c.video_url) {
+                    const iframeMatch = decoded.match(/<iframe[^>]+src="([^"]+)"/i);
+                    if (iframeMatch?.[1]) {
+                      let iframeUrl = iframeMatch[1].replace(/&amp;/g, '&');
+                      if (iframeUrl.startsWith('//')) iframeUrl = `https:${iframeUrl}`;
+                      if (iframeUrl.startsWith('/')) iframeUrl = `https://business.facebook.com${iframeUrl}`;
+
+                      try {
+                        const iframeRes = await fetch(iframeUrl, {
+                          headers: {
+                            'User-Agent': 'Mozilla/5.0 (compatible; MetaAdsFetcher/1.0)',
+                          },
+                        });
+                        const iframeHtml = await iframeRes.text();
+
+                        const iframePatterns = [
+                          /"playable_url"\s*:\s*"(https:\/\/[^"]+)"/,
+                          /"browser_native_hd_url"\s*:\s*"(https:\/\/[^"]+)"/,
+                          /"browser_native_sd_url"\s*:\s*"(https:\/\/[^"]+)"/,
+                          /"sd_src_no_ratelimit"\s*:\s*"(https:\/\/[^"]+)"/,
+                          /"hd_src"\s*:\s*"(https:\/\/[^"]+)"/,
+                          /<source[^>]+src="(https:\/\/[^"]+\.mp4[^"]*)"/i,
+                          /src="(https:\/\/[^"]*video[^"]+)"/i,
+                        ];
+
+                        for (const pattern of iframePatterns) {
+                          const match = iframeHtml.match(pattern);
+                          if (match?.[1]) {
+                            c.video_url = match[1].replace(/\\/g, '').replace(/&amp;/g, '&');
+                            console.log(`[meta-ads-phase5] Extracted video URL from preview iframe for ${c.ad_id}`);
+                            break;
+                          }
+                        }
+
+                        if (!c.video_url) {
+                          console.log(`[meta-ads-phase5] Preview iframe fetched but no video URL found for ${c.ad_id}. HTML length=${iframeHtml.length}, snippet=${iframeHtml.slice(0, 600)}`);
+                        }
+                      } catch (iframeErr) {
+                        console.warn(`[meta-ads-phase5] Preview iframe fetch failed for ${c.ad_id}:`, iframeErr);
+                      }
                     }
                   }
 
