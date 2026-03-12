@@ -97,7 +97,9 @@ export function AIDigestPanel({ digest, loading, error, onRegenerate, regenerati
             </div>
           ) : (
             <ScrollArea className="max-h-[400px]">
-              <AgentMessageRenderer content={digest} />
+              <div className="min-w-0 overflow-hidden">
+                <AgentMessageRenderer content={digest} />
+              </div>
             </ScrollArea>
           )}
         </CardContent>

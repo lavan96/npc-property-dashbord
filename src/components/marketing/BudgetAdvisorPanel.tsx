@@ -99,9 +99,9 @@ export function BudgetAdvisorPanel({ recommendations, aiAnalysis, aiError, loadi
               {showAI ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
             </button>
             {showAI && (
-              <div className="mt-2">
+              <div className="mt-2 min-w-0 overflow-hidden">
                 {aiError ? (
-                  <p className="text-xs text-destructive">{aiError}</p>
+                  <p className="text-xs text-destructive break-words">{aiError}</p>
                 ) : (
                   <AgentMessageRenderer content={aiAnalysis} />
                 )}
