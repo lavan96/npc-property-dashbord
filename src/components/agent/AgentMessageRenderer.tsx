@@ -406,7 +406,7 @@ export function AgentMessageRenderer({ content }: AgentMessageRendererProps) {
             return <DetailBlock key={i} content={block.content} meta={block.meta} />;
           case 'markdown':
             return (
-              <div key={i} className="prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_table]:text-xs [&_th]:py-1 [&_td]:py-1 [&_p]:leading-relaxed">
+              <div key={i} className="prose prose-sm dark:prose-invert max-w-none break-words overflow-hidden [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_table]:text-xs [&_th]:py-1 [&_td]:py-1 [&_p]:leading-relaxed [&_pre]:overflow-x-auto [&_pre]:max-w-full [&_code]:break-all [&_table]:block [&_table]:overflow-x-auto">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{block.content}</ReactMarkdown>
               </div>
             );
