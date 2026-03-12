@@ -3,6 +3,7 @@
  * Supports PDF, XLSX, XLS, CSV, TXT, MD, JSON, XML, DOCX, and images.
  */
 import { extractPdfTextClientSide } from '@/lib/pdfClientExtractor';
+import { convertPdfToImages } from '@/utils/pdfToImages';
 import * as XLSX from 'xlsx';
 
 export interface ExtractedFile {
@@ -13,6 +14,8 @@ export interface ExtractedFile {
   base64Data: string | null; // For images - base64 encoded
   isImage: boolean;
   category: 'document' | 'spreadsheet' | 'image' | 'data' | 'text';
+  /** For scanned PDFs converted to images for vision analysis */
+  pdfPageImages?: Array<{ pageNumber: number; base64: string }>;
 }
 
 export type ExtractionProgress = {
@@ -22,6 +25,9 @@ export type ExtractionProgress = {
 };
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+
+/** Minimum chars from PDF text extraction to consider it text-readable (not scanned) */
+const MIN_PDF_TEXT_THRESHOLD = 100;
 
 const TEXT_MIME_TYPES = [
   'text/plain', 'text/markdown', 'text/csv', 'text/tab-separated-values',
@@ -42,6 +48,22 @@ const PDF_MIME_TYPES = ['application/pdf'];
 
 const DOCX_MIME_TYPES = [
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+];
+
+/** Known binary MIME types that should never be read as text */
+const BINARY_MIME_TYPES = [
+  'application/octet-stream',
+  'application/zip',
+  'application/x-zip-compressed',
+  'application/gzip',
+  'application/x-tar',
+  'application/x-rar-compressed',
+  'application/x-7z-compressed',
+  'application/wasm',
+  'application/x-executable',
+  'application/x-mach-binary',
+  'application/x-sharedlib',
+  'video/', 'audio/', // prefix matches handled below
 ];
 
 /** All supported MIME types */
@@ -90,6 +112,14 @@ function guessMimeType(filename: string): string {
     gif: 'image/gif',
   };
   return map[ext || ''] || 'application/octet-stream';
+}
+
+/** Check if a MIME type is known binary (not text-readable) */
+function isKnownBinaryType(mimeType: string): boolean {
+  if (BINARY_MIME_TYPES.includes(mimeType)) return true;
+  // Check prefix matches for video/ and audio/
+  if (mimeType.startsWith('video/') || mimeType.startsWith('audio/')) return true;
+  return false;
 }
 
 async function readAsText(file: File): Promise<string> {
@@ -156,6 +186,7 @@ async function extractDocxText(file: File): Promise<string> {
 
 /**
  * Extract content from a file for agent context.
+ * Never throws — returns an error result instead so callers can safely use Promise.allSettled-style logic.
  */
 export async function extractFileContent(
   file: File,
@@ -166,13 +197,24 @@ export async function extractFileContent(
   const category = categorizeFile(mimeType);
   
   if (file.size > MAX_FILE_SIZE) {
-    throw new Error(`File "${file.name}" exceeds 50MB limit (${(file.size / 1024 / 1024).toFixed(1)}MB)`);
+    // Return an error result instead of throwing
+    onProgress?.({ filename: file.name, stage: 'error', message: `File exceeds 50MB limit` });
+    return {
+      filename: file.name,
+      mimeType,
+      size: file.size,
+      extractedText: `[Error: File "${file.name}" exceeds 50MB limit (${(file.size / 1024 / 1024).toFixed(1)}MB)]`,
+      base64Data: null,
+      isImage: false,
+      category,
+    };
   }
   
   onProgress?.({ filename: file.name, stage: 'extracting', message: 'Processing...' });
   
   let extractedText: string | null = null;
   let base64Data: string | null = null;
+  let pdfPageImages: Array<{ pageNumber: number; base64: string }> | undefined;
   
   try {
     if (isImage) {
@@ -180,21 +222,69 @@ export async function extractFileContent(
       base64Data = await readAsBase64(file);
       extractedText = null; // no text extraction for images
     } else if (PDF_MIME_TYPES.includes(mimeType)) {
-      // PDFs: use existing client-side extractor
-      const result = await extractPdfTextClientSide(file);
-      extractedText = result.text;
+      // PDFs: try text extraction first
+      try {
+        const result = await extractPdfTextClientSide(file);
+        const textContent = result.text?.trim() || '';
+        
+        if (textContent.length >= MIN_PDF_TEXT_THRESHOLD) {
+          // Text-readable PDF — use extracted text
+          extractedText = result.text;
+        } else {
+          // Scanned/image-based PDF — fall back to image conversion for vision
+          console.log(`[agentFileExtractor] PDF "${file.name}" has only ${textContent.length} chars of text, falling back to image extraction`);
+          const imageResult = await convertPdfToImages(file);
+          if (imageResult.success && imageResult.images.length > 0) {
+            pdfPageImages = imageResult.images.map(img => ({
+              pageNumber: img.pageNumber,
+              base64: img.base64,
+            }));
+            extractedText = `[Scanned PDF: ${imageResult.totalPages} pages, ${imageResult.images.length} rendered as images for visual analysis]`;
+          } else {
+            extractedText = '[PDF appears to be scanned/image-based. Could not extract text or render pages.]';
+          }
+        }
+      } catch (pdfErr) {
+        console.warn(`[agentFileExtractor] PDF extraction failed for "${file.name}":`, pdfErr);
+        // Try image fallback even on extraction error
+        try {
+          const imageResult = await convertPdfToImages(file);
+          if (imageResult.success && imageResult.images.length > 0) {
+            pdfPageImages = imageResult.images.map(img => ({
+              pageNumber: img.pageNumber,
+              base64: img.base64,
+            }));
+            extractedText = `[PDF text extraction failed, ${imageResult.images.length} pages rendered as images]`;
+          } else {
+            extractedText = `[PDF extraction failed: ${pdfErr instanceof Error ? pdfErr.message : 'Unknown error'}]`;
+          }
+        } catch {
+          extractedText = `[PDF extraction failed: ${pdfErr instanceof Error ? pdfErr.message : 'Unknown error'}]`;
+        }
+      }
     } else if (SPREADSHEET_MIME_TYPES.includes(mimeType)) {
       extractedText = await extractSpreadsheet(file);
     } else if (DOCX_MIME_TYPES.includes(mimeType)) {
       extractedText = await extractDocxText(file);
     } else if (TEXT_MIME_TYPES.includes(mimeType) || mimeType.startsWith('text/')) {
       extractedText = await readAsText(file);
+    } else if (isKnownBinaryType(mimeType)) {
+      // Known binary type — don't attempt text read
+      extractedText = `[Binary file "${file.name}" (${mimeType}) — content cannot be extracted as text]`;
     } else {
-      // Unknown type - try reading as text
+      // Unknown type — try reading as text, but validate the result
       try {
-        extractedText = await readAsText(file);
+        const rawText = await readAsText(file);
+        // Check if result looks like valid text (not garbled binary)
+        const nullByteRatio = (rawText.match(/\0/g) || []).length / rawText.length;
+        if (nullByteRatio > 0.01) {
+          // More than 1% null bytes = likely binary
+          extractedText = `[Binary file "${file.name}" (${mimeType}) — content cannot be extracted as text]`;
+        } else {
+          extractedText = rawText;
+        }
       } catch {
-        extractedText = '[Binary file - content could not be extracted as text]';
+        extractedText = `[Binary file "${file.name}" — content could not be extracted as text]`;
       }
     }
     
@@ -205,8 +295,18 @@ export async function extractFileContent(
     
     onProgress?.({ filename: file.name, stage: 'done' });
   } catch (err: any) {
+    console.error(`[agentFileExtractor] Extraction error for "${file.name}":`, err);
     onProgress?.({ filename: file.name, stage: 'error', message: err.message });
-    throw err;
+    // Return error result instead of throwing — prevents array sync issues
+    return {
+      filename: file.name,
+      mimeType,
+      size: file.size,
+      extractedText: `[Extraction error for "${file.name}": ${err.message}]`,
+      base64Data: null,
+      isImage: false,
+      category,
+    };
   }
   
   return {
@@ -217,6 +317,7 @@ export async function extractFileContent(
     base64Data,
     isImage,
     category,
+    pdfPageImages,
   };
 }
 

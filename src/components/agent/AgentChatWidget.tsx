@@ -217,15 +217,28 @@ export function AgentChatWidget() {
       toast.info(`Max ${maxFiles} files per message. Only first ${newFiles.length} added.`);
     }
     
-    setAttachedFiles(prev => [...prev, ...newFiles]);
+    // Extract each file individually so one failure doesn't break the rest
     setExtractingFiles(true);
+    const successFiles: File[] = [];
+    const successExtracted: ExtractedFile[] = [];
     
-    try {
-      const extracted = await Promise.all(newFiles.map(f => extractFileContent(f)));
-      setExtractedFiles(prev => [...prev, ...extracted]);
-    } catch (err: any) {
-      toast.error(`File extraction failed: ${err.message}`);
+    for (const file of newFiles) {
+      try {
+        const extracted = await extractFileContent(file);
+        successFiles.push(file);
+        successExtracted.push(extracted);
+      } catch (err: any) {
+        console.error(`[Agent] Extraction failed for ${file.name}:`, err);
+        toast.error(`Failed to process "${file.name}": ${err.message}`);
+        // Skip this file — don't add to either array
+      }
     }
+    
+    if (successFiles.length > 0) {
+      setAttachedFiles(prev => [...prev, ...successFiles]);
+      setExtractedFiles(prev => [...prev, ...successExtracted]);
+    }
+    
     setExtractingFiles(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -305,13 +318,37 @@ export function AgentChatWidget() {
 
     try {
       const payload: any = { action: 'chat', conversation_id: convId, message: agentMessage };
-      // Include image data for vision analysis
+      // Include image data for vision analysis (regular images + scanned PDF page images)
+      const allImageAttachments: Array<{ filename: string; mime_type: string; base64: string }> = [];
+      
+      // Regular image files
       if (imageFiles.length > 0) {
-        payload.image_attachments = imageFiles.map(f => ({
-          filename: f.filename,
-          mime_type: f.mimeType,
-          base64: f.base64Data,
-        }));
+        for (const f of imageFiles) {
+          if (f.base64Data) {
+            allImageAttachments.push({
+              filename: f.filename,
+              mime_type: f.mimeType,
+              base64: f.base64Data,
+            });
+          }
+        }
+      }
+      
+      // Scanned PDF pages rendered as images
+      for (const f of filesToSend) {
+        if (f.pdfPageImages && f.pdfPageImages.length > 0) {
+          for (const page of f.pdfPageImages) {
+            allImageAttachments.push({
+              filename: `${f.filename}_page${page.pageNumber}.png`,
+              mime_type: 'image/png',
+              base64: page.base64,
+            });
+          }
+        }
+      }
+      
+      if (allImageAttachments.length > 0) {
+        payload.image_attachments = allImageAttachments;
       }
       const { data, error } = await invokeSecureFunction('ai-dashboard-agent', payload);
       if (error || !data?.success) {
