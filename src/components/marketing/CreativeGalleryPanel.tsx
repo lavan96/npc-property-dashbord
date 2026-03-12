@@ -30,6 +30,7 @@ interface Creative {
   body: string | null;
   is_video: boolean;
   video_url: string | null;
+  preview_url: string | null;
   width: number | null;
   height: number | null;
   spend: number;
@@ -247,6 +248,14 @@ function CreativePreviewModal({ creative, onClose }: { creative: Creative | null
                   autoPlay
                   className="w-full max-h-[80vh] object-contain"
                   style={aspectStyle}
+                />
+              ) : creative.is_video && creative.preview_url ? (
+                <iframe
+                  src={creative.preview_url}
+                  className="w-full border-0"
+                  style={{ minHeight: '500px', maxHeight: '80vh', aspectRatio: '9 / 16' }}
+                  allow="autoplay; fullscreen"
+                  sandbox="allow-scripts allow-same-origin allow-popups"
                 />
               ) : mediaUrl ? (
                 <img
