@@ -292,7 +292,7 @@ serve(async (req) => {
                 }
               }
 
-              // Fallback 3: Try fetching ad-level previews and extract video URL from rendered HTML
+              // Fallback 3: Get preview iframe URL for embedding
               if (!c.video_url) {
                 try {
                   const previewRes = await fetch(
@@ -301,74 +301,16 @@ serve(async (req) => {
                   const previewJson = await previewRes.json();
                   const previewBody = previewJson?.data?.[0]?.body || '';
 
-                  // Decode HTML entities first
+                  // Decode HTML entities
                   const decoded = previewBody.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#x3D;/g, '=').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
 
-                  // Try multiple patterns to find video URLs in the preview HTML
-                  const patterns = [
-                    /src="(https:\/\/video[^"]+)"/,
-                    /src="(https:\/\/[^"]*?(?:video|\.mp4|fbcdn)[^"]+)"/,
-                    /"source"\s*:\s*"(https:\/\/[^"]+)"/,
-                    /data-video-url="(https:\/\/[^"]+)"/,
-                    /video_url['"]\s*:\s*['"](https:\/\/[^'"]+)['"]/,
-                  ];
-
-                  for (const pattern of patterns) {
-                    const match = decoded.match(pattern);
-                    if (match?.[1]) {
-                      c.video_url = match[1].replace(/\\/g, '');
-                      console.log(`[meta-ads-phase5] Extracted video URL from ad preview for ${c.ad_id} using pattern ${pattern.source.slice(0, 30)}`);
-                      break;
-                    }
-                  }
-
-                  // If preview only returns iframe wrapper, fetch iframe HTML and parse inside it
-                  if (!c.video_url) {
-                    const iframeMatch = decoded.match(/<iframe[^>]+src="([^"]+)"/i);
-                    if (iframeMatch?.[1]) {
-                      let iframeUrl = iframeMatch[1].replace(/&amp;/g, '&');
-                      if (iframeUrl.startsWith('//')) iframeUrl = `https:${iframeUrl}`;
-                      if (iframeUrl.startsWith('/')) iframeUrl = `https://business.facebook.com${iframeUrl}`;
-
-                      try {
-                        const iframeRes = await fetch(iframeUrl, {
-                          headers: {
-                            'User-Agent': 'Mozilla/5.0 (compatible; MetaAdsFetcher/1.0)',
-                          },
-                        });
-                        const iframeHtml = await iframeRes.text();
-
-                        const iframePatterns = [
-                          /"playable_url"\s*:\s*"(https:\/\/[^"]+)"/,
-                          /"browser_native_hd_url"\s*:\s*"(https:\/\/[^"]+)"/,
-                          /"browser_native_sd_url"\s*:\s*"(https:\/\/[^"]+)"/,
-                          /"sd_src_no_ratelimit"\s*:\s*"(https:\/\/[^"]+)"/,
-                          /"hd_src"\s*:\s*"(https:\/\/[^"]+)"/,
-                          /<source[^>]+src="(https:\/\/[^"]+\.mp4[^"]*)"/i,
-                          /src="(https:\/\/[^"]*video[^"]+)"/i,
-                        ];
-
-                        for (const pattern of iframePatterns) {
-                          const match = iframeHtml.match(pattern);
-                          if (match?.[1]) {
-                            c.video_url = match[1].replace(/\\/g, '').replace(/&amp;/g, '&');
-                            console.log(`[meta-ads-phase5] Extracted video URL from preview iframe for ${c.ad_id}`);
-                            break;
-                          }
-                        }
-
-                        if (!c.video_url) {
-                          console.log(`[meta-ads-phase5] Preview iframe fetched but no video URL found for ${c.ad_id}. HTML length=${iframeHtml.length}, snippet=${iframeHtml.slice(0, 600)}`);
-                        }
-                      } catch (iframeErr) {
-                        console.warn(`[meta-ads-phase5] Preview iframe fetch failed for ${c.ad_id}:`, iframeErr);
-                      }
-                    }
-                  }
-
-                  if (!c.video_url) {
-                    // Log a snippet of the preview to diagnose what's available
-                    console.log(`[meta-ads-phase5] Preview fallback: no video URL found for ${c.ad_id}. Preview length=${previewBody.length}, snippet=${decoded.slice(0, 500)}`);
+                  // Extract iframe src as the preview URL for embedding
+                  const iframeMatch = decoded.match(/<iframe[^>]+src="([^"]+)"/i);
+                  if (iframeMatch?.[1]) {
+                    let iframeUrl = iframeMatch[1].replace(/&amp;/g, '&');
+                    if (iframeUrl.startsWith('//')) iframeUrl = `https:${iframeUrl}`;
+                    c.preview_url = iframeUrl;
+                    console.log(`[meta-ads-phase5] Got preview iframe URL for ${c.ad_id}`);
                   }
 
                   // Also try to extract a high-res image from the preview if we don't have one
