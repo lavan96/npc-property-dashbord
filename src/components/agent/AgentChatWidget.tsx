@@ -289,7 +289,23 @@ export function AgentChatWidget() {
     // Build agent message with file context
     const fileContext = formatFilesForAgent(filesToSend);
     const imageFiles = filesToSend.filter(f => f.isImage && f.base64Data);
-    const agentMessage = fileContext ? `${fileContext}\n\n${msg}` : msg;
+    
+    // Build the message to send to the agent
+    // If only images are attached (no text context from documents), generate a descriptive fallback
+    let agentMessage = msg;
+    if (fileContext) {
+      agentMessage = `${fileContext}\n\n${msg}`;
+    }
+    // Ensure message is never empty — the edge function requires it
+    if (!agentMessage.trim()) {
+      if (imageFiles.length > 0) {
+        const imageNames = imageFiles.map(f => f.filename).join(', ');
+        agentMessage = `[User attached ${imageFiles.length} image${imageFiles.length > 1 ? 's' : ''}: ${imageNames}. Please analyze the attached image${imageFiles.length > 1 ? 's' : ''}.]`;
+      } else if (filesToSend.length > 0) {
+        const fileNames = filesToSend.map(f => f.filename).join(', ');
+        agentMessage = `[User attached ${filesToSend.length} file${filesToSend.length > 1 ? 's' : ''}: ${fileNames}. Please review the attached file${filesToSend.length > 1 ? 's' : ''}.]`;
+      }
+    }
 
     // Upload files to storage in background (don't block the message)
     if (rawFiles.length > 0 && user) {
