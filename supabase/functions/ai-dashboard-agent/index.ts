@@ -2146,7 +2146,7 @@ async function executeGetDealsByStage(sb: any, args: any) {
 
 async function executeGetDealsByRisk(sb: any, args: any) {
   const { data } = await sb.from('client_deals').select('id, deal_type, current_stage, property_address, loan_amount, risk_status, clients:client_id(primary_first_name, primary_surname)').eq('risk_status', args.risk_status);
-  return { deals: (data || []).map((d: any) => ({ ...d, client_name: `${d.clients?.primary_first_name||''} ${d.clients?.primary_surname||''}`.trim() })), count: data?.length || 0 };
+  return { deals: (data || []).map((d: any) => ({ ...d, client_name: clientName(d.clients) })), count: data?.length || 0 };
 }
 
 async function executeGetSettlementCountdown(sb: any, args: any) {
