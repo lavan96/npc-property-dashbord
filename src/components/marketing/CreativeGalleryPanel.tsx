@@ -4,9 +4,8 @@ import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { Loader2, Image, DollarSign, MousePointerClick, Eye, Target, Trophy, Play, Volume2, VolumeX, Maximize2, X } from 'lucide-react';
+import { Loader2, Image, DollarSign, MousePointerClick, Eye, Target, Trophy, Play, Maximize2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 interface CreativeGalleryProps {
