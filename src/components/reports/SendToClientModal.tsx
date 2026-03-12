@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Send, Search, User, CheckCircle2 } from 'lucide-react';
+import { Loader2, Send, Search, User, CheckCircle2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -74,6 +74,11 @@ export function SendToClientModal({
   const handleSend = async () => {
     if (!selectedClientId) {
       toast.error('Please select a client');
+      return;
+    }
+
+    if (!storagePath) {
+      toast.error('Please generate the PDF first before sending to a client');
       return;
     }
 
@@ -155,6 +160,16 @@ export function SendToClientModal({
                 )}
               </div>
             </div>
+
+            {/* PDF not generated warning */}
+            {!storagePath && (
+              <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+                <p className="text-sm text-destructive">
+                  Please generate the PDF first (click "Generate PDF" on the report page) before sending to a client.
+                </p>
+              </div>
+            )}
 
             {/* Client search */}
             <div className="space-y-2">
