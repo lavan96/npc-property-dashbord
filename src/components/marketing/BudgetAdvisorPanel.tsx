@@ -5,7 +5,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ArrowUpCircle, ArrowDownCircle, PauseCircle, Repeat, DollarSign, Loader2, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
 import { useState } from 'react';
-import ReactMarkdown from 'react-markdown';
+import { AgentMessageRenderer } from '@/components/agent/AgentMessageRenderer';
 
 interface BudgetRecommendation {
   type: 'increase' | 'decrease' | 'pause' | 'reallocate';
