@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -15,6 +15,7 @@ import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { ClientPDFGenerator } from '@/components/reports/ClientPDFGenerator';
+import type { PixelPerfectPDFGeneratorHandle } from '@/components/reports/PixelPerfectPDFGenerator';
 import { RegenerateWithPerplexityButton } from '@/components/reports/RegenerateWithPerplexityButton';
 import { InvestmentReportEditor } from '@/components/reports/InvestmentReportEditor';
 import { ManualDataOverrideModal } from '@/components/reports/ManualDataOverrideModal';
@@ -62,6 +63,7 @@ export default function InvestmentReportView() {
   const [includeSources, setIncludeSources] = useState(true);
   const [includeScoring, setIncludeScoring] = useState(true);
   const [showOverrides, setShowOverrides] = useState(true);
+  const pdfGeneratorRef = useRef<PixelPerfectPDFGeneratorHandle>(null);
 
   const isClientReport = report?.is_client_report === true;
 
@@ -386,7 +388,7 @@ export default function InvestmentReportView() {
           <CardContent className="p-0 flex-1 flex flex-col">
             <div className="p-4 border-b bg-muted/50 flex flex-wrap items-center gap-3">
               <ErrorBoundary fallback={<div className="text-sm text-muted-foreground">PDF tools are unavailable.</div>}>
-                <ClientPDFGenerator report={report} includeSources={includeSources} includeScoring={includeScoring} />
+                <ClientPDFGenerator ref={pdfGeneratorRef} report={report} includeSources={includeSources} includeScoring={includeScoring} />
               </ErrorBoundary>
 
               <RegenerateWithPerplexityButton
@@ -456,6 +458,16 @@ export default function InvestmentReportView() {
         reportTitle={report.property_address}
         reportTier={report.report_tier || undefined}
         storagePath={report.pdf_url || null}
+        onGeneratePDF={async () => {
+          if (pdfGeneratorRef.current) {
+            const url = await pdfGeneratorRef.current.generateAndUpload();
+            if (url) {
+              setReport((prev) => prev ? { ...prev, pdf_url: url } : prev);
+            }
+            return url;
+          }
+          return null;
+        }}
       />
     </div>
   );

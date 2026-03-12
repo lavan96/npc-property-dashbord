@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { forwardRef, useImperativeHandle } from 'react';
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
 import { toast } from 'sonner';
@@ -33,7 +33,11 @@ interface PixelPerfectPDFGeneratorProps {
   reportTier?: ReportTier;
 }
 
-export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> = ({ report, includeSources = true, includeScoring = true, reportTier = 'compass' }) => {
+export interface PixelPerfectPDFGeneratorHandle {
+  generateAndUpload: () => Promise<string | null>;
+}
+
+export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandle, PixelPerfectPDFGeneratorProps>(({ report, includeSources = true, includeScoring = true, reportTier = 'compass' }, ref) => {
   const [isGenerating, setIsGenerating] = React.useState(false);
 
   const extractSuburbState = (address: string | undefined | null): { suburb: string; state: string } => {
@@ -1192,11 +1196,9 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
     });
   };
 
-  const generatePixelPerfectPDF = async () => {
-    setIsGenerating(true);
+  const generateCore = async (): Promise<{ blob: Blob; publicUrl: string; suburb: string; state: string }> => {
     console.log('🚀 Starting PDF generation for report:', report.id);
     
-    try {
       // Fetch global report settings (contact details and disclaimer)
       console.log('⚙️ Step 0: Fetching global report settings...');
       const globalSettings = await fetchGlobalReportSettings();
@@ -2900,22 +2902,61 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       }
       console.log('✓ Database updated');
 
+      return { blob, publicUrl, suburb, state };
+  };
+
+  const handleGenerationError = (error: unknown) => {
+    console.error('❌ PDF generation error:', error);
+    let errorMessage = 'Failed to generate PDF. ';
+    if (error instanceof Error) {
+      if (error.message.includes('WinAnsi')) {
+        errorMessage += 'Special characters encoding issue detected.';
+      } else if (error.message.includes('template')) {
+        errorMessage += 'Template loading failed.';
+      } else if (error.message.includes('storage')) {
+        errorMessage += 'Failed to upload to storage.';
+      } else {
+        errorMessage += error.message;
+      }
+    }
+    toast.error(errorMessage);
+  };
+
+  // Generate, upload, and return the public URL (no download)
+  const handleGenerateAndUpload = async (): Promise<string | null> => {
+    setIsGenerating(true);
+    try {
+      const result = await generateCore();
+      toast.success('PDF generated and uploaded successfully!');
+      return result.publicUrl;
+    } catch (error) {
+      handleGenerationError(error);
+      return null;
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  // Generate, upload, AND download to device
+  const generatePixelPerfectPDF = async () => {
+    setIsGenerating(true);
+    try {
+      const result = await generateCore();
+
       // Download the PDF
       console.log('⬇️ Step 10: Triggering browser download...');
-      const downloadUrl = URL.createObjectURL(blob);
+      const downloadUrl = URL.createObjectURL(result.blob);
       const a = document.createElement('a');
       a.href = downloadUrl;
-      a.download = `${suburb}_${state}_Investment_Report.pdf`;
+      a.download = `${result.suburb}_${result.state}_Investment_Report.pdf`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(downloadUrl);
-      console.log('✓ Download triggered');
 
       console.log('✅ PDF generation completed successfully!');
       toast.success('PDF generated and saved successfully!');
 
-      // Log activity
       logActivityDirect({
         actionType: 'report_pdf_downloaded',
         entityType: 'investment_report',
@@ -2924,32 +2965,16 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
         metadata: { format: 'pdf', source: 'pixel_perfect_generator' }
       });
     } catch (error) {
-      console.error('❌ PDF generation error:', error);
-      console.error('Error details:', {
-        name: error instanceof Error ? error.name : 'Unknown',
-        message: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined
-      });
-      
-      // More specific error message
-      let errorMessage = 'Failed to generate PDF. ';
-      if (error instanceof Error) {
-        if (error.message.includes('WinAnsi')) {
-          errorMessage += 'Special characters encoding issue detected.';
-        } else if (error.message.includes('template')) {
-          errorMessage += 'Template loading failed.';
-        } else if (error.message.includes('storage')) {
-          errorMessage += 'Failed to upload to storage.';
-        } else {
-          errorMessage += error.message;
-        }
-      }
-      
-      toast.error(errorMessage);
+      handleGenerationError(error);
     } finally {
       setIsGenerating(false);
     }
   };
+
+  // Expose generateAndUpload for external use (e.g., Send to Client)
+  useImperativeHandle(ref, () => ({
+    generateAndUpload: handleGenerateAndUpload,
+  }));
 
   return (
     <Button
@@ -2961,4 +2986,6 @@ export const PixelPerfectPDFGenerator: React.FC<PixelPerfectPDFGeneratorProps> =
       {isGenerating ? 'Generating PDF...' : 'Download Client PDF'}
     </Button>
   );
-};
+});
+
+PixelPerfectPDFGenerator.displayName = 'PixelPerfectPDFGenerator';

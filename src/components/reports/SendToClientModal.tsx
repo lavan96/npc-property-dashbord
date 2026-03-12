@@ -19,6 +19,7 @@ interface SendToClientModalProps {
   reportTitle: string;
   reportTier?: string;
   storagePath?: string | null;
+  onGeneratePDF?: () => Promise<string | null>;
 }
 
 interface ClientOption {
@@ -42,6 +43,7 @@ export function SendToClientModal({
   reportTitle,
   reportTier,
   storagePath,
+  onGeneratePDF,
 }: SendToClientModalProps) {
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -77,13 +79,25 @@ export function SendToClientModal({
       return;
     }
 
-    if (!storagePath) {
-      toast.error('Please generate the PDF first before sending to a client');
-      return;
-    }
-
     setSending(true);
     try {
+      // If no PDF exists yet, generate it first
+      let finalStoragePath = storagePath;
+      if (!finalStoragePath && onGeneratePDF) {
+        toast.info('Generating PDF before sending...');
+        finalStoragePath = await onGeneratePDF();
+        if (!finalStoragePath) {
+          toast.error('PDF generation failed. Please try again.');
+          setSending(false);
+          return;
+        }
+      }
+
+      if (!finalStoragePath) {
+        toast.error('Unable to generate PDF. Please try downloading the PDF first.');
+        setSending(false);
+        return;
+      }
       const { error } = await invokeSecureFunction('manage-client-data', {
         operation: 'create',
         table: 'client_portal_reports',
@@ -92,7 +106,7 @@ export function SendToClientModal({
           report_title: reportTitle,
           report_type: 'investment',
           report_tier: reportTier || null,
-          storage_path: storagePath || null,
+          storage_path: finalStoragePath,
           source_report_id: reportId,
           notes: notes || null,
           published_at: new Date().toISOString(),
@@ -161,12 +175,12 @@ export function SendToClientModal({
               </div>
             </div>
 
-            {/* PDF not generated warning */}
-            {!storagePath && (
-              <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 flex items-start gap-2">
-                <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
-                <p className="text-sm text-destructive">
-                  Please generate the PDF first (click "Generate PDF" on the report page) before sending to a client.
+            {/* PDF auto-generation notice */}
+            {!storagePath && onGeneratePDF && (
+              <div className="rounded-md border border-primary/30 bg-primary/5 p-3 flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                <p className="text-sm text-muted-foreground">
+                  The PDF will be automatically generated and uploaded when you send.
                 </p>
               </div>
             )}
@@ -243,12 +257,12 @@ export function SendToClientModal({
                 {sending ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                    Sending...
+                    {!storagePath ? 'Generating & Sending...' : 'Sending...'}
                   </>
                 ) : (
                   <>
                     <Send className="h-4 w-4 mr-1" />
-                    Send to {selectedClient ? selectedClient.primary_first_name : 'Client'}
+                    {!storagePath ? 'Generate & Send' : `Send to ${selectedClient ? selectedClient.primary_first_name : 'Client'}`}
                   </>
                 )}
               </Button>
