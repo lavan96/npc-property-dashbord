@@ -43,6 +43,7 @@ export interface PortalDataInclude {
   notifications?: boolean;
   messages?: boolean;
   reports?: boolean;
+  reportRequests?: boolean;
 }
 
 /**
