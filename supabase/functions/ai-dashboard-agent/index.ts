@@ -2975,7 +2975,7 @@ async function executeGetProactiveInsights(sb: any) {
     insights.push({
       category: '👻 Disengaged Clients', severity: 'info',
       title: `${inactiveClients.length} active client(s) with no activity in 30+ days`,
-      detail: inactiveClients.slice(0, 5).map((c: any) => `• ${c.primary_first_name || ''} ${c.primary_surname || ''} — ${c.pipeline_status} (last active ${c.updated_at?.substring(0, 10)})`).join('\n'),
+      detail: inactiveClients.slice(0, 5).map((c: any) => `• ${clientName(c)} — ${c.pipeline_status} (last active ${c.updated_at?.substring(0, 10)})`).join('\n'),
       action_suggestion: 'Consider a re-engagement follow-up or pipeline status review.',
     });
   }
