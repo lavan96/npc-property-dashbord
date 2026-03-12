@@ -115,14 +115,69 @@ serve(async (req) => {
       );
     }
 
-    // Insert operation (only for messages)
+    // Insert operation (messages and report requests)
     if (operation === 'insert') {
-      if (table !== 'client_portal_messages') {
+      const insertableTables = ['client_portal_messages', 'client_portal_report_requests'];
+      if (!insertableTables.includes(table)) {
         return new Response(
-          JSON.stringify({ error: 'Insert only allowed for messages', success: false }),
+          JSON.stringify({ error: `Insert not allowed for table '${table}'`, success: false }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+
+      if (table === 'client_portal_report_requests') {
+        // Validate request_type
+        const validTypes = ['portfolio_review', 'borrowing_capacity', 'investment_property'];
+        if (!payload?.request_type || !validTypes.includes(payload.request_type)) {
+          return new Response(
+            JSON.stringify({ error: 'Invalid request_type', success: false }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const insertData = {
+          client_id: clientId,
+          portal_user_id: session.client_portal_users.id,
+          request_type: payload.request_type,
+          property_address: payload.property_address || null,
+          client_property_id: payload.client_property_id || null,
+          notes: payload.notes || null,
+          status: 'pending',
+          created_at: new Date().toISOString(),
+        };
+
+        const { data: result, error } = await supabase
+          .from('client_portal_report_requests')
+          .insert(insertData)
+          .select()
+          .single();
+
+        if (error) {
+          return new Response(
+            JSON.stringify({ error: error.message, success: false }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Create a notification for the internal team
+        try {
+          await supabase.from('notifications').insert({
+            type: 'report_request',
+            title: `New Report Request: ${payload.request_type.replace(/_/g, ' ')}`,
+            message: `A client has requested a ${payload.request_type.replace(/_/g, ' ')} report.${payload.property_address ? ' Property: ' + payload.property_address : ''}`,
+            metadata: { request_id: result.id, client_id: clientId, request_type: payload.request_type },
+          });
+        } catch (notifErr) {
+          console.error('Failed to create notification:', notifErr);
+        }
+
+        return new Response(
+          JSON.stringify({ success: true, data: result }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Messages insert (existing logic)
       const insertData = {
         ...payload,
         client_id: clientId,
