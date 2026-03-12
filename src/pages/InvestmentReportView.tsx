@@ -388,7 +388,7 @@ export default function InvestmentReportView() {
           <CardContent className="p-0 flex-1 flex flex-col">
             <div className="p-4 border-b bg-muted/50 flex flex-wrap items-center gap-3">
               <ErrorBoundary fallback={<div className="text-sm text-muted-foreground">PDF tools are unavailable.</div>}>
-                <ClientPDFGenerator report={report} includeSources={includeSources} includeScoring={includeScoring} />
+                <ClientPDFGenerator ref={pdfGeneratorRef} report={report} includeSources={includeSources} includeScoring={includeScoring} />
               </ErrorBoundary>
 
               <RegenerateWithPerplexityButton
