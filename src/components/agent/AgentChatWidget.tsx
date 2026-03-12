@@ -322,6 +322,8 @@ export function AgentChatWidget() {
         const { data: refreshed } = await invokeSecureFunction('ai-dashboard-agent', { action: 'get-messages', conversation_id: convId });
         if (refreshed?.messages) setMessages(refreshed.messages);
         loadConversations();
+        // Auto-refresh settings panel if it's open (e.g. after creating a playbook/task via chat)
+        if (panelView === 'settings') loadSettingsData(settingsTab);
       }
     } catch (err: any) {
       setRetryMessage(msg);
@@ -338,6 +340,8 @@ export function AgentChatWidget() {
       const { data } = await invokeSecureFunction('ai-dashboard-agent', { action: 'get-messages', conversation_id: activeConversation });
       if (data?.messages) setMessages(data.messages);
       toast.success(approved ? 'Action approved and executed' : 'Action cancelled');
+      // Refresh settings panel after action approval (playbook/task creation etc.)
+      if (approved && panelView === 'settings') loadSettingsData(settingsTab);
     } catch (err) { toast.error('Failed to process action'); }
     setLoading(false);
   };
