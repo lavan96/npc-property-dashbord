@@ -130,6 +130,7 @@ serve(async (req) => {
           is_video: isVideo,
           video_id: media.videoId,
           video_url: null as string | null,
+          preview_url: null as string | null,
           width: media.width,
           height: media.height,
           spend: spend,
