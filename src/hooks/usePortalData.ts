@@ -150,13 +150,14 @@ export function usePortalEmailsData() {
 }
 
 /**
- * Fetch portal reports (published to client)
+ * Fetch portal reports and report requests
  */
-export function usePortalReportsData() {
+export function usePortalReportsAndRequestsData() {
   return usePortalClientData({
     client: false,
-    properties: false,
+    properties: true,
     reports: true,
+    reportRequests: true,
   });
 }
 
