@@ -161,6 +161,16 @@ export function SendToClientModal({
               </div>
             </div>
 
+            {/* PDF not generated warning */}
+            {!storagePath && (
+              <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+                <p className="text-sm text-destructive">
+                  Please generate the PDF first (click "Generate PDF" on the report page) before sending to a client.
+                </p>
+              </div>
+            )}
+
             {/* Client search */}
             <div className="space-y-2">
               <Label>Select Client</Label>
