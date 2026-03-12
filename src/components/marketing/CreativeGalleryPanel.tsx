@@ -226,10 +226,11 @@ function CreativePreviewModal({ creative, onClose }: { creative: Creative | null
   // Prefer image_url (hi-res) over thumbnail_url (low-res 64x64)
   const mediaUrl = creative?.image_url || creative?.thumbnail_url;
 
-  // Calculate aspect ratio string for inline styles
-  const aspectRatio = creative?.width && creative?.height
-    ? `${creative.width} / ${creative.height}`
-    : creative?.is_video ? '9 / 16' : '1 / 1';
+  // Only set explicit aspect ratio if we have real dimensions; otherwise let media render naturally
+  const hasRealDimensions = creative?.width && creative?.height;
+  const aspectStyle: React.CSSProperties = hasRealDimensions
+    ? { aspectRatio: `${creative!.width} / ${creative!.height}` }
+    : {};
 
   return (
     <Dialog open={!!creative} onOpenChange={(open) => !open && onClose()}>
