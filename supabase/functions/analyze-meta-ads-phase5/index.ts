@@ -14,6 +14,36 @@ interface Phase5Request {
   limit?: number;
 }
 
+function pickFirstTextAsset(assets: any): string | null {
+  if (!Array.isArray(assets) || assets.length === 0) return null;
+  const first = assets.find((entry: any) => entry?.text) || assets[0];
+  return first?.text || null;
+}
+
+function extractCreativeMediaData(creative: any) {
+  const storySpec = creative?.object_story_spec || {};
+  const linkData = storySpec?.link_data || {};
+  const videoData = storySpec?.video_data || {};
+  const photoData = storySpec?.photo_data || {};
+  const assetFeed = creative?.asset_feed_spec || {};
+
+  const assetFeedImages = Array.isArray(assetFeed.images) ? assetFeed.images : [];
+  const assetFeedVideos = Array.isArray(assetFeed.videos) ? assetFeed.videos : [];
+
+  const firstImageAsset = assetFeedImages.find((img: any) => img?.hash || img?.image_hash || img?.url || img?.url_128) || null;
+  const firstVideoAsset = assetFeedVideos.find((video: any) => video?.video_id || video?.id) || null;
+
+  const videoId = videoData.video_id || linkData.video_id || firstVideoAsset?.video_id || firstVideoAsset?.id || null;
+  const imageHash = creative?.image_hash || linkData.image_hash || videoData.image_hash || photoData.image_hash || firstImageAsset?.hash || firstImageAsset?.image_hash || null;
+  const imageUrl = creative?.image_url || linkData.picture || photoData.url || firstImageAsset?.url || firstImageAsset?.url_128 || null;
+  const width = Number(firstImageAsset?.width || firstImageAsset?.original_width || 0) || null;
+  const height = Number(firstImageAsset?.height || firstImageAsset?.original_height || 0) || null;
+  const title = creative?.title || linkData.name || videoData.title || pickFirstTextAsset(assetFeed.titles);
+  const body = creative?.body || linkData.message || videoData.message || pickFirstTextAsset(assetFeed.bodies);
+
+  return { videoId, imageHash, imageUrl, width, height, title, body };
+}
+
 serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = createCorsHeaders(origin);
