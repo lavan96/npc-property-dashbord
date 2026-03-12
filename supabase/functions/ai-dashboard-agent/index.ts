@@ -5,7 +5,19 @@ import { logApiUsage, estimateCost, extractOpenAIUsage } from "../_shared/logApi
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
 const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY')!;
+const AI_GATEWAY_URL = 'https://ai.gateway.lovable.dev/v1/chat/completions';
+
+// Helper: format client name from joined client object
+function clientName(c: any): string {
+  return `${c?.primary_first_name || ''} ${c?.primary_surname || ''}`.trim() || 'Unknown';
+}
+
+// Helper: days between now and a date (positive = future, negative = past)
+function daysFromNow(dateStr: string): number {
+  return Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86400000);
+}
 
 // ============================================================
 //  TOOL DEFINITIONS — 71 tools across 12 domains
