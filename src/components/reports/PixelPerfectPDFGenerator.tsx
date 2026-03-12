@@ -1196,10 +1196,9 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
     });
   };
 
-  const generateCore = async (): Promise<{ blob: Blob; publicUrl: string; suburb: string; state: string } | null> => {
+  const generateCore = async (): Promise<{ blob: Blob; publicUrl: string; suburb: string; state: string }> => {
     console.log('🚀 Starting PDF generation for report:', report.id);
     
-    {
       // Fetch global report settings (contact details and disclaimer)
       console.log('⚙️ Step 0: Fetching global report settings...');
       const globalSettings = await fetchGlobalReportSettings();
