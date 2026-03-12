@@ -2153,7 +2153,7 @@ async function executeGetSettlementCountdown(sb: any, args: any) {
   const days = args.days || 30;
   const future = new Date(Date.now() + days * 86400000).toISOString();
   const { data } = await sb.from('client_deals').select('id, property_address, loan_amount, settlement_date, current_stage, clients:client_id(primary_first_name, primary_surname)').gte('settlement_date', new Date().toISOString()).lte('settlement_date', future).order('settlement_date');
-  return { settlements: (data || []).map((d: any) => ({ ...d, client_name: `${d.clients?.primary_first_name||''} ${d.clients?.primary_surname||''}`.trim(), days_remaining: Math.ceil((new Date(d.settlement_date).getTime() - Date.now()) / 86400000) })) };
+  return { settlements: (data || []).map((d: any) => ({ ...d, client_name: clientName(d.clients), days_remaining: daysFromNow(d.settlement_date) })) };
 }
 
 async function executeGetStaleDeals(sb: any, args: any) {
