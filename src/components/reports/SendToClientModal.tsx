@@ -79,13 +79,25 @@ export function SendToClientModal({
       return;
     }
 
-    if (!storagePath) {
-      toast.error('Please generate the PDF first before sending to a client');
-      return;
-    }
-
     setSending(true);
     try {
+      // If no PDF exists yet, generate it first
+      let finalStoragePath = storagePath;
+      if (!finalStoragePath && onGeneratePDF) {
+        toast.info('Generating PDF before sending...');
+        finalStoragePath = await onGeneratePDF();
+        if (!finalStoragePath) {
+          toast.error('PDF generation failed. Please try again.');
+          setSending(false);
+          return;
+        }
+      }
+
+      if (!finalStoragePath) {
+        toast.error('Unable to generate PDF. Please try downloading the PDF first.');
+        setSending(false);
+        return;
+      }
       const { error } = await invokeSecureFunction('manage-client-data', {
         operation: 'create',
         table: 'client_portal_reports',
