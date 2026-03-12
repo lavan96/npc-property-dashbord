@@ -42,20 +42,14 @@ interface Creative {
   cpl: number;
 }
 
-/** Returns a CSS aspect-ratio value based on creative dimensions */
-function getAspectClass(creative: Creative): string {
+/** Returns inline aspect-ratio style based on creative dimensions */
+function getAspectStyle(creative: Creative): React.CSSProperties {
   if (creative.width && creative.height) {
-    const ratio = creative.width / creative.height;
-    // Portrait (9:16, 4:5, etc.)
-    if (ratio < 0.9) return 'aspect-[4/5]';
-    // Square (1:1)
-    if (ratio >= 0.9 && ratio <= 1.1) return 'aspect-square';
-    // Landscape (16:9, 1.91:1, etc.)
-    return 'aspect-video';
+    return { aspectRatio: `${creative.width} / ${creative.height}` };
   }
-  // Default: video=9:16 portrait, image=square
-  if (creative.is_video) return 'aspect-[4/5]';
-  return 'aspect-square';
+  // No dimensions known — use sensible defaults
+  if (creative.is_video) return { aspectRatio: '4 / 5' };
+  return { aspectRatio: '4 / 5' }; // safer default than 1:1 for ad creatives
 }
 
 export function CreativeGalleryPanel({ datePreset }: CreativeGalleryProps) {
@@ -120,7 +114,8 @@ export function CreativeGalleryPanel({ datePreset }: CreativeGalleryProps) {
                   >
                     {/* Media */}
                     <div
-                      className={cn(getAspectClass(creative), "bg-muted relative overflow-hidden cursor-pointer")}
+                      className="bg-muted relative overflow-hidden cursor-pointer"
+                      style={getAspectStyle(creative)}
                       onClick={() => setPreviewCreative(creative)}
                     >
                       {displayUrl ? (
@@ -231,10 +226,11 @@ function CreativePreviewModal({ creative, onClose }: { creative: Creative | null
   // Prefer image_url (hi-res) over thumbnail_url (low-res 64x64)
   const mediaUrl = creative?.image_url || creative?.thumbnail_url;
 
-  // Calculate aspect ratio string for inline styles
-  const aspectRatio = creative?.width && creative?.height
-    ? `${creative.width} / ${creative.height}`
-    : creative?.is_video ? '9 / 16' : '1 / 1';
+  // Only set explicit aspect ratio if we have real dimensions; otherwise let media render naturally
+  const hasRealDimensions = creative?.width && creative?.height;
+  const aspectStyle: React.CSSProperties = hasRealDimensions
+    ? { aspectRatio: `${creative!.width} / ${creative!.height}` }
+    : {};
 
   return (
     <Dialog open={!!creative} onOpenChange={(open) => !open && onClose()}>
@@ -251,14 +247,14 @@ function CreativePreviewModal({ creative, onClose }: { creative: Creative | null
                   playsInline
                   autoPlay
                   className="w-full max-h-[80vh] object-contain"
-                  style={{ aspectRatio }}
+                  style={aspectStyle}
                 />
               ) : mediaUrl ? (
                 <img
                   src={mediaUrl}
                   alt={creative.ad_name}
                   className="w-full max-h-[80vh] object-contain"
-                  style={{ aspectRatio }}
+                  style={aspectStyle}
                 />
               ) : (
                 <div className="py-24 flex items-center justify-center">
