@@ -47,9 +47,8 @@ function getAspectStyle(creative: Creative): React.CSSProperties {
   if (creative.width && creative.height) {
     return { aspectRatio: `${creative.width} / ${creative.height}` };
   }
-  // No dimensions known — use sensible defaults
-  if (creative.is_video) return { aspectRatio: '4 / 5' };
-  return { aspectRatio: '4 / 5' }; // safer default than 1:1 for ad creatives
+  // If Meta does not return dimensions, avoid forcing portrait/square crops.
+  return {};
 }
 
 export function CreativeGalleryPanel({ datePreset }: CreativeGalleryProps) {
@@ -122,11 +121,11 @@ export function CreativeGalleryPanel({ datePreset }: CreativeGalleryProps) {
                         <img
                           src={displayUrl}
                           alt={creative.ad_name}
-                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          className="w-full h-auto object-contain transition-transform duration-300 group-hover:scale-[1.02]"
                           loading="lazy"
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center">
+                        <div className="w-full min-h-40 flex items-center justify-center">
                           <Image className="h-8 w-8 text-muted-foreground/30" />
                         </div>
                       )}

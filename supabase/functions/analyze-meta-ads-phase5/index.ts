@@ -14,6 +14,36 @@ interface Phase5Request {
   limit?: number;
 }
 
+function pickFirstTextAsset(assets: any): string | null {
+  if (!Array.isArray(assets) || assets.length === 0) return null;
+  const first = assets.find((entry: any) => entry?.text) || assets[0];
+  return first?.text || null;
+}
+
+function extractCreativeMediaData(creative: any) {
+  const storySpec = creative?.object_story_spec || {};
+  const linkData = storySpec?.link_data || {};
+  const videoData = storySpec?.video_data || {};
+  const photoData = storySpec?.photo_data || {};
+  const assetFeed = creative?.asset_feed_spec || {};
+
+  const assetFeedImages = Array.isArray(assetFeed.images) ? assetFeed.images : [];
+  const assetFeedVideos = Array.isArray(assetFeed.videos) ? assetFeed.videos : [];
+
+  const firstImageAsset = assetFeedImages.find((img: any) => img?.hash || img?.image_hash || img?.url || img?.url_128) || null;
+  const firstVideoAsset = assetFeedVideos.find((video: any) => video?.video_id || video?.id) || null;
+
+  const videoId = videoData.video_id || linkData.video_id || firstVideoAsset?.video_id || firstVideoAsset?.id || null;
+  const imageHash = creative?.image_hash || linkData.image_hash || videoData.image_hash || photoData.image_hash || firstImageAsset?.hash || firstImageAsset?.image_hash || null;
+  const imageUrl = creative?.image_url || linkData.picture || photoData.url || firstImageAsset?.url || firstImageAsset?.url_128 || null;
+  const width = Number(firstImageAsset?.width || firstImageAsset?.original_width || 0) || null;
+  const height = Number(firstImageAsset?.height || firstImageAsset?.original_height || 0) || null;
+  const title = creative?.title || linkData.name || videoData.title || pickFirstTextAsset(assetFeed.titles);
+  const body = creative?.body || linkData.message || videoData.message || pickFirstTextAsset(assetFeed.bodies);
+
+  return { videoId, imageHash, imageUrl, width, height, title, body };
+}
+
 serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = createCorsHeaders(origin);
@@ -52,7 +82,7 @@ serve(async (req) => {
       const limit = Math.min(body.limit || 20, 50);
 
       // Fetch ads with creative fields including video and image dimensions
-      const adsUrl = `${META_BASE_URL}/${accountId}/ads?access_token=${accessToken}&fields=id,name,status,creative{id,thumbnail_url,image_url,image_hash,title,body,call_to_action_type,object_story_spec,effective_object_story_id},insights.date_preset(${body.datePreset || 'last_30d'}){spend,impressions,clicks,ctr,cpc,actions,cost_per_action_type,reach}&limit=${limit}`;
+      const adsUrl = `${META_BASE_URL}/${accountId}/ads?access_token=${accessToken}&fields=id,name,status,creative{id,thumbnail_url,image_url,image_hash,title,body,call_to_action_type,object_story_spec,asset_feed_spec,effective_object_story_id,object_type},insights.date_preset(${body.datePreset || 'last_30d'}){spend,impressions,clicks,ctr,cpc,actions,cost_per_action_type,reach}&limit=${limit}`;
 
       console.log(`[meta-ads-phase5] Fetching creatives for ${accountId}`);
 
@@ -76,37 +106,32 @@ serve(async (req) => {
         const spend = Number(insightsData.spend || 0);
         const cpl = leadCount > 0 ? spend / leadCount : 0;
 
-        // Extract video ID from object_story_spec
-        const storySpec = creative.object_story_spec || {};
-        const videoData = storySpec.video_data || {};
-        const linkData = storySpec.link_data || {};
-        let videoId = videoData.video_id || linkData.video_id || null;
+        const media = extractCreativeMediaData(creative);
+        const hasVideoAssets = Array.isArray(creative?.asset_feed_spec?.videos) && creative.asset_feed_spec.videos.length > 0;
+        const isVideo = !!media.videoId || hasVideoAssets || creative?.object_type === 'VIDEO';
+        const storyKeys = creative?.object_story_spec ? Object.keys(creative.object_story_spec) : [];
+        const assetFeedKeys = creative?.asset_feed_spec ? Object.keys(creative.asset_feed_spec) : [];
 
-        const isVideo = !!videoId;
-
-        // Extract image_hash: try creative level, then link_data, then video_data
-        const imageHash = creative.image_hash || linkData.image_hash || videoData.image_hash || null;
-        
-        // For image_url: prefer creative.image_url, then link_data.picture (full-size)
-        const imageUrl = creative.image_url || linkData.picture || null;
-
-        console.log(`[meta-ads-phase5] Ad ${ad.id} (${ad.name}): isVideo=${isVideo}, imageHash=${imageHash}, hasImageUrl=${!!imageUrl}, videoId=${videoId}`);
+        console.log(
+          `[meta-ads-phase5] Ad ${ad.id} (${ad.name}): isVideo=${isVideo}, imageHash=${media.imageHash}, hasImageUrl=${!!media.imageUrl}, videoId=${media.videoId}, storyKeys=${storyKeys.join('|') || 'none'}, assetFeedKeys=${assetFeedKeys.join('|') || 'none'}`
+        );
 
         return {
           ad_id: ad.id,
+          creative_id: creative.id || null,
           ad_name: ad.name,
           status: ad.status,
           thumbnail_url: creative.thumbnail_url || null,
-          image_url: imageUrl,
-          image_hash: imageHash,
-          title: creative.title || null,
-          body: creative.body || null,
+          image_url: media.imageUrl,
+          image_hash: media.imageHash,
+          title: media.title,
+          body: media.body,
           cta_type: creative.call_to_action_type || null,
           is_video: isVideo,
-          video_id: videoId,
+          video_id: media.videoId,
           video_url: null as string | null,
-          width: null as number | null,
-          height: null as number | null,
+          width: media.width,
+          height: media.height,
           spend: spend,
           impressions: Number(insightsData.impressions || 0),
           clicks: Number(insightsData.clicks || 0),
@@ -119,40 +144,93 @@ serve(async (req) => {
       }).filter((c: any) => c.spend > 0)
         .sort((a: any, b: any) => b.spend - a.spend);
 
+      // Deep fallback: resolve missing media via direct creative lookup (covers dynamic creatives and banners)
+      const unresolvedCreatives = rawCreatives.filter((c: any) => c.creative_id && ((c.is_video && !c.video_id) || (!c.video_id && !c.image_hash && !c.image_url)));
+      if (unresolvedCreatives.length > 0) {
+        await Promise.all(unresolvedCreatives.map(async (c: any) => {
+          try {
+            const creativeRes = await fetch(
+              `${META_BASE_URL}/${c.creative_id}?fields=id,image_url,image_hash,title,body,thumbnail_url,object_type,object_story_spec,asset_feed_spec,effective_object_story_id&access_token=${accessToken}`
+            );
+            const creativeJson = await creativeRes.json();
+
+            if (!creativeRes.ok) {
+              console.warn(`[meta-ads-phase5] Creative fallback fetch failed for ${c.creative_id}:`, creativeJson?.error?.message || 'unknown');
+              return;
+            }
+
+            const media = extractCreativeMediaData(creativeJson);
+            if (!c.video_id && media.videoId) c.video_id = media.videoId;
+            if (!c.image_hash && media.imageHash) c.image_hash = media.imageHash;
+            if (!c.image_url && media.imageUrl) c.image_url = media.imageUrl;
+            if (!c.title && media.title) c.title = media.title;
+            if (!c.body && media.body) c.body = media.body;
+            if (!c.width && media.width) c.width = media.width;
+            if (!c.height && media.height) c.height = media.height;
+            if (!c.thumbnail_url && creativeJson.thumbnail_url) c.thumbnail_url = creativeJson.thumbnail_url;
+
+            const hasFallbackVideoAssets = Array.isArray(creativeJson?.asset_feed_spec?.videos) && creativeJson.asset_feed_spec.videos.length > 0;
+            if (!c.is_video && (media.videoId || hasFallbackVideoAssets || creativeJson?.object_type === 'VIDEO')) {
+              c.is_video = true;
+            }
+
+            console.log(`[meta-ads-phase5] Fallback creative ${c.creative_id}: videoId=${c.video_id}, imageHash=${c.image_hash}, hasImageUrl=${!!c.image_url}`);
+          } catch (e) {
+            console.warn(`[meta-ads-phase5] Failed creative fallback for ${c.creative_id}:`, e);
+          }
+        }));
+      }
+
       // Fetch video source URLs and image dimensions in parallel
       const videoCreatives = rawCreatives.filter((c: any) => c.video_id);
       const imageCreatives = rawCreatives.filter((c: any) => !c.video_id && c.image_hash);
       
       const allFetches: Promise<void>[] = [];
+      const videoMetaCache = new Map<string, { video_url: string | null; image_url: string | null; width: number | null; height: number | null }>();
+      const imageMetaCache = new Map<string, { image_url: string | null; width: number | null; height: number | null }>();
       
       // Video fetches - get source URL, hi-res picture, dimensions
       for (const c of videoCreatives) {
         allFetches.push((async () => {
           try {
+            if (videoMetaCache.has(c.video_id)) {
+              const cached = videoMetaCache.get(c.video_id)!;
+              if (cached.video_url) c.video_url = cached.video_url;
+              if (cached.image_url) c.image_url = cached.image_url;
+              if (cached.width) c.width = cached.width;
+              if (cached.height) c.height = cached.height;
+              return;
+            }
+
             // 'picture' gives a high-res thumbnail (720p+), 'source' gives the playable URL
             const videoRes = await fetch(`${META_BASE_URL}/${c.video_id}?fields=source,picture,format{width,height}&access_token=${accessToken}`);
             const videoJson = await videoRes.json();
-            
+
+            const cachedVideo = {
+              video_url: videoJson.source || null,
+              image_url: videoJson.picture || null,
+              width: null as number | null,
+              height: null as number | null,
+            };
+
             console.log(`[meta-ads-phase5] Video ${c.video_id} response keys:`, Object.keys(videoJson));
-            
-            if (videoJson.source) {
-              c.video_url = videoJson.source;
-            }
-            
-            // Use 'picture' for high-res thumbnail (much better than creative.thumbnail_url which is 64x64)
-            if (videoJson.picture) {
-              c.image_url = videoJson.picture;
-            }
-            
+
             // Get video dimensions from format
             const formats = videoJson.format;
             if (formats && formats.length > 0) {
               // Pick the largest format for accurate dimensions
               const bestFormat = formats.reduce((best: any, f: any) => (f.width > (best?.width || 0)) ? f : best, formats[0]);
-              c.width = bestFormat.width;
-              c.height = bestFormat.height;
-              console.log(`[meta-ads-phase5] Video ${c.video_id} dimensions: ${c.width}x${c.height}`);
+              cachedVideo.width = bestFormat.width;
+              cachedVideo.height = bestFormat.height;
+              console.log(`[meta-ads-phase5] Video ${c.video_id} dimensions: ${cachedVideo.width}x${cachedVideo.height}`);
             }
+
+            videoMetaCache.set(c.video_id, cachedVideo);
+
+            if (cachedVideo.video_url) c.video_url = cachedVideo.video_url;
+            if (cachedVideo.image_url) c.image_url = cachedVideo.image_url;
+            if (cachedVideo.width) c.width = cachedVideo.width;
+            if (cachedVideo.height) c.height = cachedVideo.height;
           } catch (e) {
             console.warn(`[meta-ads-phase5] Failed to fetch video ${c.video_id}:`, e);
           }
@@ -163,11 +241,24 @@ serve(async (req) => {
       for (const c of imageCreatives) {
         allFetches.push((async () => {
           try {
+            if (imageMetaCache.has(c.image_hash)) {
+              const cached = imageMetaCache.get(c.image_hash)!;
+              if (cached.image_url) c.image_url = cached.image_url;
+              if (cached.width) c.width = cached.width;
+              if (cached.height) c.height = cached.height;
+              return;
+            }
+
             const imgRes = await fetch(`${META_BASE_URL}/${accountId}/adimages?hashes[]=${c.image_hash}&fields=url,url_128,width,height,hash&access_token=${accessToken}`);
             const imgJson = await imgRes.json();
-            
+
+            if (!imgRes.ok) {
+              console.warn(`[meta-ads-phase5] Failed image lookup for hash ${c.image_hash}:`, imgJson?.error?.message || 'unknown');
+              return;
+            }
+
             console.log(`[meta-ads-phase5] Image hash ${c.image_hash} response keys:`, Object.keys(imgJson));
-            
+
             // The adimages endpoint returns { data: [ { hash, url, width, height, ... } ] }
             // Try data array first, then images object keyed by hash
             let imgData = null;
@@ -176,15 +267,22 @@ serve(async (req) => {
             } else if (imgJson.images && imgJson.images[c.image_hash]) {
               imgData = imgJson.images[c.image_hash];
             }
-            
+
             if (imgData) {
-              // 'url' is the original full-resolution image
-              if (imgData.url) {
-                c.image_url = imgData.url;
+              const cachedImage = {
+                image_url: imgData.url || imgData.url_128 || null,
+                width: Number(imgData.width || 0) || null,
+                height: Number(imgData.height || 0) || null,
+              };
+
+              imageMetaCache.set(c.image_hash, cachedImage);
+
+              if (cachedImage.image_url) {
+                c.image_url = cachedImage.image_url;
                 console.log(`[meta-ads-phase5] Got full-res image URL for hash ${c.image_hash}`);
               }
-              if (imgData.width) c.width = imgData.width;
-              if (imgData.height) c.height = imgData.height;
+              if (cachedImage.width) c.width = cachedImage.width;
+              if (cachedImage.height) c.height = cachedImage.height;
               console.log(`[meta-ads-phase5] Image ${c.image_hash} dimensions: ${c.width}x${c.height}`);
             } else {
               console.warn(`[meta-ads-phase5] No image data found for hash ${c.image_hash}, response:`, JSON.stringify(imgJson).slice(0, 200));
