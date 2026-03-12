@@ -55,7 +55,7 @@ export function ClientReportRequestsTab({ clientId, clientName }: Props) {
         },
       });
       if (error) throw error;
-      return data?.data || [];
+      return data?.records || data?.data || [];
     },
   });
 

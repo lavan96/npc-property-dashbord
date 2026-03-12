@@ -318,6 +318,9 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
           navigate('/deal-pipeline');
         }
         break;
+      case 'report_request':
+        navigate('/report-requests');
+        break;
       default:
         break;
     }

@@ -455,7 +455,7 @@ export default function InvestmentReportView() {
         reportId={report.id}
         reportTitle={report.property_address}
         reportTier={report.report_tier || undefined}
-        storagePath={null}
+        storagePath={report.pdf_url || null}
       />
     </div>
   );
