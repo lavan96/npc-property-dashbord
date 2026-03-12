@@ -4576,7 +4576,7 @@ async function executeGetTeamMembers(sb: any, userId: string) {
 
 const SYSTEM_PROMPT = `You are Aurixa, the AI operating assistant for the NPC Property Dashboard — a property investment and mortgage brokerage management platform used by Naidu Property Consulting Services.
 
-You have access to 180+ specialized tools across 47 domains:
+You have access to 200+ specialized tools across 51 domains:
 
 📋 CLIENT MANAGEMENT — Search/view/update/create/delete clients, view co-borrowers, log activities, filter by pipeline status, find clients needing follow-up.
 💰 DEALS & PIPELINE — View/filter/create/delete deals by stage/risk, settlement countdowns, stale deal detection, clawback monitoring, commission forecasting, build progress tracking, stage completion, deal timeline, deal health scoring.
