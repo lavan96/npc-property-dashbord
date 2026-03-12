@@ -5,7 +5,19 @@ import { logApiUsage, estimateCost, extractOpenAIUsage } from "../_shared/logApi
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
 const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY')!;
+const AI_GATEWAY_URL = 'https://ai.gateway.lovable.dev/v1/chat/completions';
+
+// Helper: format client name from joined client object
+function clientName(c: any): string {
+  return `${c?.primary_first_name || ''} ${c?.primary_surname || ''}`.trim() || 'Unknown';
+}
+
+// Helper: days between now and a date (positive = future, negative = past)
+function daysFromNow(dateStr: string): number {
+  return Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86400000);
+}
 
 // ============================================================
 //  TOOL DEFINITIONS — 71 tools across 12 domains
@@ -2077,7 +2089,7 @@ async function executeSearchClients(sb: any, args: any) {
   const { data } = await sb.from('clients').select('id, primary_first_name, primary_surname, primary_email, primary_mobile, pipeline_status, follow_up_date')
     .or(`primary_first_name.ilike.%${q}%,primary_surname.ilike.%${q}%,primary_email.ilike.%${q}%,primary_mobile.ilike.%${q}%`)
     .order('updated_at', { ascending: false }).limit(20);
-  return { clients: (data || []).map((c: any) => ({ id: c.id, name: `${c.primary_first_name||''} ${c.primary_surname||''}`.trim(), email: c.primary_email, mobile: c.primary_mobile, pipeline_status: c.pipeline_status, follow_up_date: c.follow_up_date })), count: data?.length || 0 };
+  return { clients: (data || []).map((c: any) => ({ id: c.id, name: clientName(c), email: c.primary_email, mobile: c.primary_mobile, pipeline_status: c.pipeline_status, follow_up_date: c.follow_up_date })), count: data?.length || 0 };
 }
 
 async function executeGetClientDetails(sb: any, args: any) {
@@ -2129,26 +2141,26 @@ async function executeGetPipelineOverview(sb: any) {
 
 async function executeGetDealsByStage(sb: any, args: any) {
   const { data } = await sb.from('client_deals').select('id, deal_type, current_stage, property_address, loan_amount, risk_status, clients:client_id(primary_first_name, primary_surname)').ilike('current_stage', `%${args.stage}%`);
-  return { deals: (data || []).map((d: any) => ({ ...d, client_name: `${d.clients?.primary_first_name||''} ${d.clients?.primary_surname||''}`.trim() })), count: data?.length || 0 };
+  return { deals: (data || []).map((d: any) => ({ ...d, client_name: clientName(d.clients) })), count: data?.length || 0 };
 }
 
 async function executeGetDealsByRisk(sb: any, args: any) {
   const { data } = await sb.from('client_deals').select('id, deal_type, current_stage, property_address, loan_amount, risk_status, clients:client_id(primary_first_name, primary_surname)').eq('risk_status', args.risk_status);
-  return { deals: (data || []).map((d: any) => ({ ...d, client_name: `${d.clients?.primary_first_name||''} ${d.clients?.primary_surname||''}`.trim() })), count: data?.length || 0 };
+  return { deals: (data || []).map((d: any) => ({ ...d, client_name: clientName(d.clients) })), count: data?.length || 0 };
 }
 
 async function executeGetSettlementCountdown(sb: any, args: any) {
   const days = args.days || 30;
   const future = new Date(Date.now() + days * 86400000).toISOString();
   const { data } = await sb.from('client_deals').select('id, property_address, loan_amount, settlement_date, current_stage, clients:client_id(primary_first_name, primary_surname)').gte('settlement_date', new Date().toISOString()).lte('settlement_date', future).order('settlement_date');
-  return { settlements: (data || []).map((d: any) => ({ ...d, client_name: `${d.clients?.primary_first_name||''} ${d.clients?.primary_surname||''}`.trim(), days_remaining: Math.ceil((new Date(d.settlement_date).getTime() - Date.now()) / 86400000) })) };
+  return { settlements: (data || []).map((d: any) => ({ ...d, client_name: clientName(d.clients), days_remaining: daysFromNow(d.settlement_date) })) };
 }
 
 async function executeGetStaleDeals(sb: any, args: any) {
   const threshold = args.days_threshold || 14;
   const cutoff = new Date(Date.now() - threshold * 86400000).toISOString();
   const { data } = await sb.from('client_deals').select('id, property_address, current_stage, risk_status, updated_at, clients:client_id(primary_first_name, primary_surname)').lt('updated_at', cutoff).not('current_stage', 'ilike', '%settled%').not('current_stage', 'ilike', '%cancelled%').not('current_stage', 'ilike', '%fallen%');
-  return { stale_deals: (data || []).map((d: any) => ({ ...d, client_name: `${d.clients?.primary_first_name||''} ${d.clients?.primary_surname||''}`.trim(), days_stale: Math.floor((Date.now() - new Date(d.updated_at).getTime()) / 86400000) })) };
+  return { stale_deals: (data || []).map((d: any) => ({ ...d, client_name: clientName(d.clients), days_stale: Math.abs(daysFromNow(d.updated_at)) })) };
 }
 
 async function executeUpdateDealStage(sb: any, args: any) {
@@ -2174,7 +2186,7 @@ async function executeUpdateDealField(sb: any, args: any) {
 
 async function executeGetClawbackMonitor(sb: any) {
   const { data } = await sb.from('client_deals').select('id, property_address, clawback_expiry_date, commission_estimate, current_stage, clients:client_id(primary_first_name, primary_surname)').not('clawback_expiry_date', 'is', null).order('clawback_expiry_date');
-  return { clawback_deals: (data || []).map((d: any) => ({ ...d, client_name: `${d.clients?.primary_first_name||''} ${d.clients?.primary_surname||''}`.trim(), months_remaining: Math.ceil((new Date(d.clawback_expiry_date).getTime() - Date.now()) / (30 * 86400000)) })) };
+  return { clawback_deals: (data || []).map((d: any) => ({ ...d, client_name: clientName(d.clients), months_remaining: Math.ceil(daysFromNow(d.clawback_expiry_date) / 30) })) };
 }
 
 async function executeGetCommissionForecast(sb: any, args: any) {
@@ -2357,13 +2369,10 @@ async function executeLinkEmailToClient(sb: any, args: any) {
 }
 
 async function executeSendEmail(sb: any, args: any) {
-  const SUPABASE_URL_INNER = Deno.env.get('SUPABASE_URL')!;
-  const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-  const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkdXpiY2h1c3d3YmVmZHVuZmN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0NDM4NzksImV4cCI6MjA3MTAxOTg3OX0.eSYU6fxIc3tBQuGLsdBRff0alBMkNfvv7OpW0efNjxk';
   try {
-    const resp = await fetch(`${SUPABASE_URL_INNER.trim()}/functions/v1/send-email-reply`, {
+    const resp = await fetch(`${SUPABASE_URL.trim()}/functions/v1/send-email-reply`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SERVICE_KEY.trim()}`, 'apikey': ANON_KEY.trim() },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY.trim()}`, 'apikey': SUPABASE_ANON_KEY.trim() },
       body: JSON.stringify({ to: args.to, subject: args.subject, body: args.body, cc: args.cc, bcc: args.bcc, original_email_id: args.original_email_id, mailbox_source: args.mailbox_source || 'admin' }),
     });
     const result = await resp.json();
@@ -2902,7 +2911,7 @@ async function executeGetProactiveInsights(sb: any) {
     insights.push({
       category: '🐌 Stalling Deals', severity: 'warning',
       title: `${staleDeals.length} deal(s) with no movement in 14+ days`,
-      detail: staleDeals.map((d: any) => `• ${d.clients?.primary_first_name || ''} ${d.clients?.primary_surname || ''} — "${d.current_stage}" (${Math.floor((now.getTime() - new Date(d.updated_at).getTime()) / 86400000)}d stale)`).join('\n'),
+      detail: staleDeals.map((d: any) => `• ${clientName(d.clients)} — "${d.current_stage}" (${Math.abs(daysFromNow(d.updated_at))}d stale)`).join('\n'),
       action_suggestion: 'Review these deals and update their stages or add notes.',
       affected_ids: staleDeals.map((d: any) => d.id),
     });
@@ -2934,8 +2943,7 @@ async function executeGetProactiveInsights(sb: any) {
       category: '⚠️ Clawback Risk', severity: 'critical',
       title: `${clawbackDeals.length} deal(s) with clawback expiring within 90 days ($${totalAtRisk.toLocaleString()} at risk)`,
       detail: clawbackDeals.map((d: any) => {
-        const days = Math.ceil((new Date(d.clawback_expiry_date).getTime() - now.getTime()) / 86400000);
-        return `• ${d.clients?.primary_first_name || ''} ${d.clients?.primary_surname || ''} — ${days} days remaining ($${(d.commission_estimate || 0).toLocaleString()})`;
+        return `• ${clientName(d.clients)} — ${daysFromNow(d.clawback_expiry_date)} days remaining ($${(d.commission_estimate || 0).toLocaleString()})`;
       }).join('\n'),
       action_suggestion: 'Monitor these clients closely and ensure loan retention.',
     });
@@ -2951,7 +2959,7 @@ async function executeGetProactiveInsights(sb: any) {
     insights.push({
       category: '🔥 Finance Clause Expiry', severity: 'critical',
       title: `${financeExpiring.length} deal(s) with finance expiring within 7 days`,
-      detail: financeExpiring.map((d: any) => `• ${d.clients?.primary_first_name || ''} ${d.clients?.primary_surname || ''} — expires ${d.finance_clause_expiry?.substring(0, 10)}`).join('\n'),
+      detail: financeExpiring.map((d: any) => `• ${clientName(d.clients)} — expires ${d.finance_clause_expiry?.substring(0, 10)}`).join('\n'),
       action_suggestion: 'Urgently follow up on approvals and lender timelines.',
     });
   }
@@ -2967,7 +2975,7 @@ async function executeGetProactiveInsights(sb: any) {
     insights.push({
       category: '👻 Disengaged Clients', severity: 'info',
       title: `${inactiveClients.length} active client(s) with no activity in 30+ days`,
-      detail: inactiveClients.slice(0, 5).map((c: any) => `• ${c.primary_first_name || ''} ${c.primary_surname || ''} — ${c.pipeline_status} (last active ${c.updated_at?.substring(0, 10)})`).join('\n'),
+      detail: inactiveClients.slice(0, 5).map((c: any) => `• ${clientName(c)} — ${c.pipeline_status} (last active ${c.updated_at?.substring(0, 10)})`).join('\n'),
       action_suggestion: 'Consider a re-engagement follow-up or pipeline status review.',
     });
   }
@@ -2981,7 +2989,7 @@ async function executeGetProactiveInsights(sb: any) {
     insights.push({
       category: '🏠 Upcoming Settlements', severity: 'opportunity',
       title: `${upcomingSettlements.length} settlement(s) this week`,
-      detail: upcomingSettlements.map((d: any) => `• ${d.clients?.primary_first_name || ''} ${d.clients?.primary_surname || ''} — ${d.settlement_date?.substring(0, 10)} ($${(d.loan_amount || 0).toLocaleString()})`).join('\n'),
+      detail: upcomingSettlements.map((d: any) => `• ${clientName(d.clients)} — ${d.settlement_date?.substring(0, 10)} ($${(d.loan_amount || 0).toLocaleString()})`).join('\n'),
       action_suggestion: 'Ensure all settlement documents are ready and clients are informed.',
     });
   }
@@ -3993,11 +4001,10 @@ async function executeGetIntegrationStatus(sb: any) {
 
 async function executeGetCloudflareStatus() {
   try {
-    const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
     const url = `${SUPABASE_URL}/functions/v1/cloudflare-proxy`;
     const resp = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`, 'apikey': ANON_KEY },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`, 'apikey': SUPABASE_ANON_KEY },
       body: JSON.stringify({ action: 'get-analytics' }),
     });
     if (!resp.ok) return { status: 'unavailable', message: 'Cloudflare proxy returned an error. Check configuration.' };
@@ -4712,7 +4719,7 @@ BATCH 7 MARKETING & AGREEMENTS RULES:
 async function callAI(messages: any[], supabase: any, userId: string): Promise<{ message: any; usage: any }> {
   const startTime = Date.now();
 
-  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+  const response = await fetch(AI_GATEWAY_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -4914,7 +4921,7 @@ async function handleChat(sb: any, body: any, userId: string, username: string, 
   const { count: msgTotal } = await sb.from('agent_messages').select('id', { count: 'exact', head: true }).eq('conversation_id', conversation_id);
   if (msgTotal !== null && msgTotal <= 2) {
     try {
-      const titleResp = await fetch('https://api.lovable.dev/v1/chat/completions', {
+      const titleResp = await fetch(AI_GATEWAY_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${LOVABLE_API_KEY}` },
         body: JSON.stringify({
@@ -4957,14 +4964,13 @@ async function handleChat(sb: any, body: any, userId: string, username: string, 
 // ─── PROPERTY LISTINGS (Airtable proxy) ───
 
 async function callAirtableProxy(body: any = {}) {
-  const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkdXpiY2h1c3d3YmVmZHVuZmN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0NDM4NzksImV4cCI6MjA3MTAxOTg3OX0.eSYU6fxIc3tBQuGLsdBRff0alBMkNfvv7OpW0efNjxk';
   const url = `${SUPABASE_URL}/functions/v1/airtable-proxy`;
   const resp = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-      'apikey': ANON_KEY,
+      'apikey': SUPABASE_ANON_KEY,
     },
     body: JSON.stringify(body),
   });
@@ -5152,8 +5158,9 @@ serve(async (req) => {
       }
       case 'execute-tool': {
         // Service-to-service call from agent-task-runner for scheduled task execution
-        const authHeader = req.headers.get('Authorization') || '';
-        const isService = authHeader.includes(SUPABASE_SERVICE_ROLE_KEY) || body.source === 'scheduled_task';
+        // Use verifyAuth's authMethod detection instead of raw key comparison
+        const { authMethod } = await verifyAuth(sb, req.headers, body);
+        const isService = authMethod === 'service_role' || body.source === 'scheduled_task';
         if (!isService) {
           return new Response(JSON.stringify({ error: 'Forbidden: service calls only' }), { status: 403, headers: { ...cors, 'Content-Type': 'application/json' } });
         }
