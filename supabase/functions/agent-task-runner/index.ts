@@ -216,9 +216,8 @@ function calculateNextRun(cron: string): string {
   return new Date(now.getTime() + 60 * 60 * 1000).toISOString();
 }
 
-/**
- * Parse a cron field like "1-5" or "0,3,6" or "*/2" into an array of values.
- */
+// Parse a cron field into an array of values
+
 function parseCronField(field: string, min: number, max: number): number[] {
   if (field === '*') return Array.from({ length: max - min + 1 }, (_, i) => min + i);
 
