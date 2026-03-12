@@ -44,37 +44,39 @@ export function AIDigestPanel({ digest, loading, error, onRegenerate, regenerati
   return (
     <Card className="border-primary/20 bg-primary/[0.02]">
       <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary" />
-            AI Performance Digest
-            <Badge variant="secondary" className="text-[10px]">Gemini 3 Flash</Badge>
-          </CardTitle>
-          <div className="flex items-center gap-1.5">
-            {onRegenerate && (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2 min-w-0">
+              <Sparkles className="h-4 w-4 text-primary shrink-0" />
+              <span className="truncate">AI Performance Digest</span>
+              <Badge variant="secondary" className="text-[10px] shrink-0 hidden sm:inline-flex">Gemini 3 Flash</Badge>
+            </CardTitle>
+            <div className="flex items-center gap-1 shrink-0 ml-2">
+              {onRegenerate && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onRegenerate}
+                  disabled={regenerating}
+                  className="h-7 px-2 text-xs"
+                >
+                  {regenerating ? (
+                    <Loader2 className="h-3 w-3 animate-spin sm:mr-1" />
+                  ) : (
+                    <RefreshCw className="h-3 w-3 sm:mr-1" />
+                  )}
+                  <span className="hidden sm:inline">Regenerate</span>
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={onRegenerate}
-                disabled={regenerating}
-                className="h-7 px-2 text-xs"
+                onClick={() => setExpanded(!expanded)}
+                className="h-7 w-7 p-0"
               >
-                {regenerating ? (
-                  <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                ) : (
-                  <RefreshCw className="h-3 w-3 mr-1" />
-                )}
-                Regenerate
+                {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
               </Button>
-            )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setExpanded(!expanded)}
-              className="h-7 w-7 p-0"
-            >
-              {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-            </Button>
+            </div>
           </div>
         </div>
       </CardHeader>
