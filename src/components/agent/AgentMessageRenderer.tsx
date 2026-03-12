@@ -77,7 +77,7 @@ function parseBlocks(raw: string): RichBlock[] {
 // ──────────────────────────────────────────────
 function MarkdownContent({ content }: { content: string }) {
   return (
-    <div className="prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_table]:text-xs [&_th]:py-1 [&_td]:py-1 [&_p]:leading-relaxed">
+    <div className="prose prose-sm dark:prose-invert max-w-none break-words overflow-hidden [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_table]:text-xs [&_th]:py-1 [&_td]:py-1 [&_p]:leading-relaxed [&_pre]:overflow-x-auto [&_pre]:max-w-full [&_code]:break-all [&_table]:block [&_table]:overflow-x-auto">
       <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
     </div>
   );
