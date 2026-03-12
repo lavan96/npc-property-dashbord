@@ -80,20 +80,22 @@ serve(async (req) => {
         // Extract video ID from object_story_spec
         const storySpec = creative.object_story_spec || {};
         const videoData = storySpec.video_data || {};
-        const videoId = videoData.video_id || null;
+        let videoId = videoData.video_id || null;
         
-        // Extract image dimensions from story spec if available
+        // Also check link_data for video_id (slideshows/link ads with video)
         const linkData = storySpec.link_data || {};
-        const photoData = storySpec.photo_data || {};
+        if (!videoId && linkData.video_id) {
+          videoId = linkData.video_id;
+        }
 
-        // Determine media type
+        // Determine media type - also check if thumbnail_url contains 'video' patterns
         const isVideo = !!videoId;
 
         return {
           ad_id: ad.id,
           ad_name: ad.name,
           status: ad.status,
-          thumbnail_url: creative.thumbnail_url || creative.image_url || null,
+          thumbnail_url: creative.thumbnail_url || null,
           image_url: creative.image_url || null,
           image_hash: creative.image_hash || null,
           title: creative.title || null,
