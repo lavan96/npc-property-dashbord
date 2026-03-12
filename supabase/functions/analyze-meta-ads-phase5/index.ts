@@ -241,11 +241,24 @@ serve(async (req) => {
       for (const c of imageCreatives) {
         allFetches.push((async () => {
           try {
+            if (imageMetaCache.has(c.image_hash)) {
+              const cached = imageMetaCache.get(c.image_hash)!;
+              if (cached.image_url) c.image_url = cached.image_url;
+              if (cached.width) c.width = cached.width;
+              if (cached.height) c.height = cached.height;
+              return;
+            }
+
             const imgRes = await fetch(`${META_BASE_URL}/${accountId}/adimages?hashes[]=${c.image_hash}&fields=url,url_128,width,height,hash&access_token=${accessToken}`);
             const imgJson = await imgRes.json();
-            
+
+            if (!imgRes.ok) {
+              console.warn(`[meta-ads-phase5] Failed image lookup for hash ${c.image_hash}:`, imgJson?.error?.message || 'unknown');
+              return;
+            }
+
             console.log(`[meta-ads-phase5] Image hash ${c.image_hash} response keys:`, Object.keys(imgJson));
-            
+
             // The adimages endpoint returns { data: [ { hash, url, width, height, ... } ] }
             // Try data array first, then images object keyed by hash
             let imgData = null;
@@ -254,15 +267,22 @@ serve(async (req) => {
             } else if (imgJson.images && imgJson.images[c.image_hash]) {
               imgData = imgJson.images[c.image_hash];
             }
-            
+
             if (imgData) {
-              // 'url' is the original full-resolution image
-              if (imgData.url) {
-                c.image_url = imgData.url;
+              const cachedImage = {
+                image_url: imgData.url || imgData.url_128 || null,
+                width: Number(imgData.width || 0) || null,
+                height: Number(imgData.height || 0) || null,
+              };
+
+              imageMetaCache.set(c.image_hash, cachedImage);
+
+              if (cachedImage.image_url) {
+                c.image_url = cachedImage.image_url;
                 console.log(`[meta-ads-phase5] Got full-res image URL for hash ${c.image_hash}`);
               }
-              if (imgData.width) c.width = imgData.width;
-              if (imgData.height) c.height = imgData.height;
+              if (cachedImage.width) c.width = cachedImage.width;
+              if (cachedImage.height) c.height = cachedImage.height;
               console.log(`[meta-ads-phase5] Image ${c.image_hash} dimensions: ${c.width}x${c.height}`);
             } else {
               console.warn(`[meta-ads-phase5] No image data found for hash ${c.image_hash}, response:`, JSON.stringify(imgJson).slice(0, 200));
