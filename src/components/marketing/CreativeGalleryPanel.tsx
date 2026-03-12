@@ -30,6 +30,8 @@ interface Creative {
   body: string | null;
   is_video: boolean;
   video_url: string | null;
+  width: number | null;
+  height: number | null;
   spend: number;
   impressions: number;
   clicks: number;
@@ -38,6 +40,22 @@ interface Creative {
   reach: number;
   leads: number;
   cpl: number;
+}
+
+/** Returns a CSS aspect-ratio value based on creative dimensions */
+function getAspectClass(creative: Creative): string {
+  if (creative.width && creative.height) {
+    const ratio = creative.width / creative.height;
+    // Portrait (9:16, 4:5, etc.)
+    if (ratio < 0.9) return 'aspect-[4/5]';
+    // Square (1:1)
+    if (ratio >= 0.9 && ratio <= 1.1) return 'aspect-square';
+    // Landscape (16:9, 1.91:1, etc.)
+    return 'aspect-video';
+  }
+  // Default: video=9:16 portrait, image=square
+  if (creative.is_video) return 'aspect-[4/5]';
+  return 'aspect-square';
 }
 
 export function CreativeGalleryPanel({ datePreset }: CreativeGalleryProps) {
@@ -102,7 +120,7 @@ export function CreativeGalleryPanel({ datePreset }: CreativeGalleryProps) {
                   >
                     {/* Media */}
                     <div
-                      className="aspect-video bg-muted relative overflow-hidden cursor-pointer"
+                      className={cn(getAspectClass(creative), "bg-muted relative overflow-hidden cursor-pointer")}
                       onClick={() => setPreviewCreative(creative)}
                     >
                       {displayUrl ? (
@@ -217,8 +235,8 @@ function CreativePreviewModal({ creative, onClose }: { creative: Creative | null
       <DialogContent className="max-w-3xl w-[calc(100vw-32px)] p-0 overflow-hidden bg-background border-border">
         {creative && (
           <div className="flex flex-col">
-            {/* Media area */}
-            <div className="relative bg-black flex items-center justify-center min-h-[300px] max-h-[65vh]">
+            {/* Media area - dynamic sizing */}
+            <div className="relative bg-black flex items-center justify-center">
               {creative.is_video && creative.video_url ? (
                 <video
                   src={creative.video_url}
@@ -226,13 +244,15 @@ function CreativePreviewModal({ creative, onClose }: { creative: Creative | null
                   controls
                   playsInline
                   autoPlay
-                  className="w-full max-h-[65vh] object-contain"
+                  className="w-full max-h-[75vh] object-contain"
+                  style={creative.width && creative.height ? { aspectRatio: `${creative.width}/${creative.height}` } : undefined}
                 />
               ) : mediaUrl ? (
                 <img
                   src={mediaUrl}
                   alt={creative.ad_name}
-                  className="w-full max-h-[65vh] object-contain"
+                  className="w-full max-h-[75vh] object-contain"
+                  style={creative.width && creative.height ? { aspectRatio: `${creative.width}/${creative.height}` } : undefined}
                 />
               ) : (
                 <div className="py-24 flex items-center justify-center">

@@ -51,8 +51,8 @@ serve(async (req) => {
       const accountId = adAccountId.startsWith('act_') ? adAccountId : `act_${adAccountId}`;
       const limit = Math.min(body.limit || 20, 50);
 
-      // Fetch ads with creative fields including video
-      const adsUrl = `${META_BASE_URL}/${accountId}/ads?access_token=${accessToken}&fields=id,name,status,creative{id,thumbnail_url,image_url,image_hash,title,body,call_to_action_type,object_story_spec},insights.date_preset(${body.datePreset || 'last_30d'}){spend,impressions,clicks,ctr,cpc,actions,cost_per_action_type,reach}&limit=${limit}`;
+      // Fetch ads with creative fields including video and image dimensions
+      const adsUrl = `${META_BASE_URL}/${accountId}/ads?access_token=${accessToken}&fields=id,name,status,creative{id,thumbnail_url,image_url,image_hash,title,body,call_to_action_type,object_story_spec,effective_object_story_id},insights.date_preset(${body.datePreset || 'last_30d'}){spend,impressions,clicks,ctr,cpc,actions,cost_per_action_type,reach}&limit=${limit}`;
 
       console.log(`[meta-ads-phase5] Fetching creatives for ${accountId}`);
 
@@ -80,6 +80,10 @@ serve(async (req) => {
         const storySpec = creative.object_story_spec || {};
         const videoData = storySpec.video_data || {};
         const videoId = videoData.video_id || null;
+        
+        // Extract image dimensions from story spec if available
+        const linkData = storySpec.link_data || {};
+        const photoData = storySpec.photo_data || {};
 
         // Determine media type
         const isVideo = !!videoId;
@@ -90,12 +94,15 @@ serve(async (req) => {
           status: ad.status,
           thumbnail_url: creative.thumbnail_url || creative.image_url || null,
           image_url: creative.image_url || null,
+          image_hash: creative.image_hash || null,
           title: creative.title || null,
           body: creative.body || null,
           cta_type: creative.call_to_action_type || null,
           is_video: isVideo,
           video_id: videoId,
           video_url: null as string | null,
+          width: null as number | null,
+          height: null as number | null,
           spend: spend,
           impressions: Number(insightsData.impressions || 0),
           clicks: Number(insightsData.clicks || 0),
@@ -108,31 +115,67 @@ serve(async (req) => {
       }).filter((c: any) => c.spend > 0)
         .sort((a: any, b: any) => b.spend - a.spend);
 
-      // Fetch video source URLs in parallel
+      // Fetch video source URLs and image dimensions in parallel
       const videoCreatives = rawCreatives.filter((c: any) => c.video_id);
-      if (videoCreatives.length > 0) {
-        const videoFetches = videoCreatives.map(async (c: any) => {
+      const imageCreatives = rawCreatives.filter((c: any) => !c.video_id && c.image_hash);
+      
+      const allFetches: Promise<void>[] = [];
+      
+      // Video fetches - get source URL, dimensions, and hi-res thumbnails
+      for (const c of videoCreatives) {
+        allFetches.push((async () => {
           try {
-            const videoRes = await fetch(`${META_BASE_URL}/${c.video_id}?fields=source,thumbnails{uri,width,height}&access_token=${accessToken}`);
+            const videoRes = await fetch(`${META_BASE_URL}/${c.video_id}?fields=source,thumbnails{uri,width,height},format{width,height}&access_token=${accessToken}`);
             const videoJson = await videoRes.json();
             if (videoJson.source) {
               c.video_url = videoJson.source;
             }
+            // Get video dimensions from format
+            const formats = videoJson.format;
+            if (formats && formats.length > 0) {
+              // Pick the largest format
+              const bestFormat = formats.reduce((best: any, f: any) => (f.width > (best?.width || 0)) ? f : best, formats[0]);
+              c.width = bestFormat.width;
+              c.height = bestFormat.height;
+            }
             // Get highest-res thumbnail for video creatives
             const thumbs = videoJson.thumbnails?.data;
             if (thumbs && thumbs.length > 0) {
-              // Pick the largest thumbnail available
               const bestThumb = thumbs.reduce((best: any, t: any) => (t.width > (best?.width || 0)) ? t : best, thumbs[0]);
               if (bestThumb?.uri) {
                 c.image_url = bestThumb.uri;
+                // Use thumbnail dims as fallback if no format dims
+                if (!c.width && bestThumb.width) {
+                  c.width = bestThumb.width;
+                  c.height = bestThumb.height;
+                }
               }
             }
           } catch (e) {
             console.warn(`[meta-ads-phase5] Failed to fetch video ${c.video_id}:`, e);
           }
-        });
-        await Promise.all(videoFetches);
+        })());
       }
+      
+      // Image fetches - get full-size image URL and dimensions via image_hash
+      for (const c of imageCreatives) {
+        allFetches.push((async () => {
+          try {
+            const imgRes = await fetch(`${META_BASE_URL}/${accountId}/adimages?hashes=${c.image_hash}&fields=url_128,url,width,height&access_token=${accessToken}`);
+            const imgJson = await imgRes.json();
+            const imgData = imgJson.data?.[0] || imgJson.images?.[c.image_hash];
+            if (imgData) {
+              if (imgData.url) c.image_url = imgData.url;
+              if (imgData.width) c.width = imgData.width;
+              if (imgData.height) c.height = imgData.height;
+            }
+          } catch (e) {
+            console.warn(`[meta-ads-phase5] Failed to fetch image dims for hash ${c.image_hash}:`, e);
+          }
+        })());
+      }
+      
+      await Promise.all(allFetches);
 
       const creatives = rawCreatives;
 
