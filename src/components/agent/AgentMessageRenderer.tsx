@@ -158,9 +158,9 @@ function MetricBlock({ content }: { content: string }) {
   const isNegative = change ? change.includes('-') || change.toLowerCase().includes('down') : null;
 
   return (
-    <div className="my-2 rounded-lg border border-border/40 bg-gradient-to-br from-muted/30 to-muted/10 p-3">
-      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{label}</p>
-      <div className="flex items-end gap-2 mt-0.5">
+    <div className="my-2 rounded-lg border border-border/40 bg-gradient-to-br from-muted/30 to-muted/10 p-3 overflow-hidden">
+      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium truncate">{label}</p>
+      <div className="flex items-end gap-2 mt-0.5 flex-wrap">
         <span className="text-xl font-bold text-foreground leading-none">{value}</span>
         {change && (
           <span className={cn(
