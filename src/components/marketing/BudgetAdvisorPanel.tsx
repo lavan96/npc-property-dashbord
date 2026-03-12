@@ -103,22 +103,7 @@ export function BudgetAdvisorPanel({ recommendations, aiAnalysis, aiError, loadi
                 {aiError ? (
                   <p className="text-xs text-destructive">{aiError}</p>
                 ) : (
-                  <div className="prose prose-sm dark:prose-invert max-w-none
-                    prose-p:text-xs prose-p:my-1.5 prose-p:leading-relaxed
-                    prose-strong:text-foreground prose-strong:font-bold
-                    prose-em:text-primary/80 prose-em:font-medium
-                    prose-li:text-xs prose-li:my-0.5 prose-li:leading-relaxed
-                    prose-headings:text-foreground prose-headings:font-semibold prose-headings:tracking-tight
-                    prose-h2:text-sm prose-h2:mt-3 prose-h2:mb-1.5 prose-h2:border-b prose-h2:border-border prose-h2:pb-1
-                    prose-h3:text-[0.8rem] prose-h3:mt-2.5 prose-h3:mb-1
-                    prose-h4:text-xs prose-h4:mt-2 prose-h4:mb-0.5 prose-h4:text-primary
-                    prose-ul:my-1.5 prose-ol:my-1.5
-                    prose-a:text-primary prose-a:underline prose-a:underline-offset-2
-                    prose-blockquote:border-l-primary prose-blockquote:bg-primary/5 prose-blockquote:rounded-r-md prose-blockquote:py-0.5 prose-blockquote:px-2 prose-blockquote:not-italic prose-blockquote:text-xs
-                    prose-code:text-primary prose-code:bg-primary/10 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-[10px] prose-code:font-mono
-                    prose-hr:border-border prose-hr:my-2">
-                    <ReactMarkdown>{aiAnalysis}</ReactMarkdown>
-                  </div>
+                  <AgentMessageRenderer content={aiAnalysis} />
                 )}
               </div>
             )}
