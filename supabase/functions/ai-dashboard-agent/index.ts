@@ -2943,8 +2943,7 @@ async function executeGetProactiveInsights(sb: any) {
       category: '⚠️ Clawback Risk', severity: 'critical',
       title: `${clawbackDeals.length} deal(s) with clawback expiring within 90 days ($${totalAtRisk.toLocaleString()} at risk)`,
       detail: clawbackDeals.map((d: any) => {
-        const days = Math.ceil((new Date(d.clawback_expiry_date).getTime() - now.getTime()) / 86400000);
-        return `• ${d.clients?.primary_first_name || ''} ${d.clients?.primary_surname || ''} — ${days} days remaining ($${(d.commission_estimate || 0).toLocaleString()})`;
+        return `• ${clientName(d.clients)} — ${daysFromNow(d.clawback_expiry_date)} days remaining ($${(d.commission_estimate || 0).toLocaleString()})`;
       }).join('\n'),
       action_suggestion: 'Monitor these clients closely and ensure loan retention.',
     });
