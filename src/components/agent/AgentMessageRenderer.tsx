@@ -161,7 +161,7 @@ function MetricBlock({ content }: { content: string }) {
     <div className="my-2 rounded-lg border border-border/40 bg-gradient-to-br from-muted/30 to-muted/10 p-3 overflow-hidden">
       <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium truncate">{label}</p>
       <div className="flex items-end gap-2 mt-0.5 flex-wrap">
-        <span className="text-xl font-bold text-foreground leading-none">{value}</span>
+        <span className="text-xl font-bold text-foreground leading-none break-all">{value}</span>
         {change && (
           <span className={cn(
             "inline-flex items-center gap-0.5 text-[11px] font-medium px-1.5 py-0.5 rounded-full",
