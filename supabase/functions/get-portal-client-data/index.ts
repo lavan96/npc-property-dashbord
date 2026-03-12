@@ -126,7 +126,7 @@ serve(async (req) => {
         );
       }
 
-      const storagePath = report.storage_path;
+      // storagePath is now resolved above
 
       // If storage_path is already a full URL (e.g. investment-reports bucket public URL), return it directly
       if (storagePath.startsWith('http://') || storagePath.startsWith('https://')) {
