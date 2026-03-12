@@ -19,6 +19,7 @@ interface SendToClientModalProps {
   reportTitle: string;
   reportTier?: string;
   storagePath?: string | null;
+  onGeneratePDF?: () => Promise<string | null>;
 }
 
 interface ClientOption {
