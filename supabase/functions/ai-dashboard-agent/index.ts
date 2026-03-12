@@ -2989,7 +2989,7 @@ async function executeGetProactiveInsights(sb: any) {
     insights.push({
       category: '🏠 Upcoming Settlements', severity: 'opportunity',
       title: `${upcomingSettlements.length} settlement(s) this week`,
-      detail: upcomingSettlements.map((d: any) => `• ${d.clients?.primary_first_name || ''} ${d.clients?.primary_surname || ''} — ${d.settlement_date?.substring(0, 10)} ($${(d.loan_amount || 0).toLocaleString()})`).join('\n'),
+      detail: upcomingSettlements.map((d: any) => `• ${clientName(d.clients)} — ${d.settlement_date?.substring(0, 10)} ($${(d.loan_amount || 0).toLocaleString()})`).join('\n'),
       action_suggestion: 'Ensure all settlement documents are ready and clients are informed.',
     });
   }
