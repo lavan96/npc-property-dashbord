@@ -4720,7 +4720,7 @@ BATCH 7 MARKETING & AGREEMENTS RULES:
 async function callAI(messages: any[], supabase: any, userId: string): Promise<{ message: any; usage: any }> {
   const startTime = Date.now();
 
-  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+  const response = await fetch(AI_GATEWAY_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
