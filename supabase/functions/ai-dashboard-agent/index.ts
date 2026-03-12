@@ -4281,6 +4281,239 @@ async function executeSearchUploadedFiles(sb: any, args: any, userId: string) {
   return { files, count: files.length };
 }
 
+// ─── BATCH 7 EXECUTORS — AGENCY AGREEMENTS ───
+
+async function executeGetAgreementsOverview(sb: any) {
+  const { data: all } = await sb.from('agency_agreements').select('id, status, docusign_status, created_at, agreement_date').order('created_at', { ascending: false });
+  const agreements = all || [];
+  const statusCounts: Record<string, number> = {};
+  const docusignCounts: Record<string, number> = {};
+  agreements.forEach((a: any) => {
+    statusCounts[a.status || 'unknown'] = (statusCounts[a.status || 'unknown'] || 0) + 1;
+    if (a.docusign_status) docusignCounts[a.docusign_status] = (docusignCounts[a.docusign_status] || 0) + 1;
+  });
+  const recent = agreements.slice(0, 5).map((a: any) => ({ id: a.id, status: a.status, docusign_status: a.docusign_status, date: a.agreement_date }));
+  return { total: agreements.length, by_status: statusCounts, by_docusign_status: docusignCounts, recent_agreements: recent };
+}
+
+async function executeGetClientAgreements(sb: any, args: any) {
+  const { data, error } = await sb.from('agency_agreements')
+    .select('id, buyer_names, secondary_buyer_name, status, docusign_status, docusign_sent_at, docusign_signed_at, agreement_date, initial_commitment_fee, notes, template_id, sent_via, created_at')
+    .eq('client_id', args.client_id).order('created_at', { ascending: false });
+  if (error) return { error: error.message };
+  return { agreements: data || [], count: (data || []).length };
+}
+
+async function executeGetAgreementDetails(sb: any, args: any) {
+  const { data, error } = await sb.from('agency_agreements')
+    .select('*, gamma_agreement_templates(name, description)')
+    .eq('id', args.agreement_id).single();
+  if (error) return { error: error.message };
+  return { agreement: data };
+}
+
+async function executeSearchAgreements(sb: any, args: any) {
+  const limit = args.limit || 20;
+  let q = sb.from('agency_agreements')
+    .select('id, buyer_names, secondary_buyer_name, status, docusign_status, agreement_date, client_id, created_at')
+    .order('created_at', { ascending: false }).limit(limit);
+  if (args.query) q = q.ilike('buyer_names', `%${args.query}%`);
+  if (args.status) q = q.eq('status', args.status);
+  if (args.docusign_status) q = q.eq('docusign_status', args.docusign_status);
+  const { data, error } = await q;
+  if (error) return { error: error.message };
+  return { agreements: data || [], count: (data || []).length };
+}
+
+async function executeGetAgreementTemplates(sb: any) {
+  const { data } = await sb.from('gamma_agreement_templates').select('id, name, description, gamma_template_id, is_active, is_default').order('name');
+  return { templates: data || [] };
+}
+
+// ─── BATCH 7 EXECUTORS — MARKETING & LEAD ATTRIBUTION ───
+
+async function executeGetLeadAttributions(sb: any, args: any) {
+  const limit = args.limit || 30;
+  let q = sb.from('lead_source_attributions')
+    .select('id, client_id, source_type, utm_source, utm_medium, utm_campaign, utm_content, meta_campaign_name, meta_adset_name, meta_ad_name, meta_campaign_objective, enrichment_status, attributed_at, landing_page_url, ghl_attribution_source')
+    .order('attributed_at', { ascending: false }).limit(limit);
+  if (args.client_id) q = q.eq('client_id', args.client_id);
+  if (args.source_type) q = q.eq('source_type', args.source_type);
+  if (args.enrichment_status) q = q.eq('enrichment_status', args.enrichment_status);
+  const { data, error } = await q;
+  if (error) return { error: error.message };
+  return { attributions: data || [], count: (data || []).length };
+}
+
+async function executeGetAttributionSummary(sb: any, args: any) {
+  const days = args.days || 90;
+  const since = new Date(Date.now() - days * 86400000).toISOString();
+  const { data: all } = await sb.from('lead_source_attributions')
+    .select('source_type, utm_source, utm_campaign, meta_campaign_name, enrichment_status, attributed_at')
+    .gte('attributed_at', since);
+  const records = all || [];
+  const bySource: Record<string, number> = {};
+  const byCampaign: Record<string, number> = {};
+  const byEnrichment: Record<string, number> = {};
+  records.forEach((r: any) => {
+    bySource[r.source_type || 'unknown'] = (bySource[r.source_type || 'unknown'] || 0) + 1;
+    const campaign = r.meta_campaign_name || r.utm_campaign || 'uncategorized';
+    byCampaign[campaign] = (byCampaign[campaign] || 0) + 1;
+    byEnrichment[r.enrichment_status || 'unknown'] = (byEnrichment[r.enrichment_status || 'unknown'] || 0) + 1;
+  });
+  const topCampaigns = Object.entries(byCampaign).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([name, count]) => ({ name, leads: count }));
+  return { total_leads: records.length, period_days: days, by_source: bySource, by_enrichment_status: byEnrichment, top_campaigns: topCampaigns };
+}
+
+async function executeGetCampaignPerformance(sb: any, args: any) {
+  const limit = args.limit || 20;
+  let q = sb.from('lead_source_attributions')
+    .select('meta_campaign_name, meta_campaign_id, meta_campaign_objective, meta_adset_name, meta_ad_name, client_id, deal_id, attributed_at')
+    .not('meta_campaign_name', 'is', null);
+  if (args.campaign_name) q = q.ilike('meta_campaign_name', `%${args.campaign_name}%`);
+  const { data } = await q;
+  const records = data || [];
+  const campaigns: Record<string, { name: string; objective: string; leads: number; with_deals: number; ad_sets: Set<string>; ads: Set<string> }> = {};
+  records.forEach((r: any) => {
+    const key = r.meta_campaign_name;
+    if (!campaigns[key]) campaigns[key] = { name: key, objective: r.meta_campaign_objective || 'N/A', leads: 0, with_deals: 0, ad_sets: new Set(), ads: new Set() };
+    campaigns[key].leads++;
+    if (r.deal_id) campaigns[key].with_deals++;
+    if (r.meta_adset_name) campaigns[key].ad_sets.add(r.meta_adset_name);
+    if (r.meta_ad_name) campaigns[key].ads.add(r.meta_ad_name);
+  });
+  const result = Object.values(campaigns).map((c: any) => ({
+    campaign: c.name, objective: c.objective, total_leads: c.leads, leads_with_deals: c.with_deals,
+    conversion_rate: c.leads > 0 ? `${((c.with_deals / c.leads) * 100).toFixed(1)}%` : '0%',
+    ad_set_count: c.ad_sets.size, ad_count: c.ads.size,
+  })).sort((a, b) => b.total_leads - a.total_leads).slice(0, limit);
+  return { campaigns: result, total_campaigns: result.length };
+}
+
+async function executeGetMarketingFunnel(sb: any, args: any) {
+  const days = args.days || 30;
+  const since = new Date(Date.now() - days * 86400000).toISOString();
+  const [attribResult, dealsResult, clientsResult] = await Promise.all([
+    sb.from('lead_source_attributions').select('id, client_id, deal_id, source_type, meta_campaign_name').gte('attributed_at', since),
+    sb.from('client_deals').select('id, client_id, commission_estimate, current_stage, created_at').gte('created_at', since),
+    sb.from('clients').select('id', { count: 'exact', head: true }).gte('created_at', since),
+  ]);
+  const attributions = attribResult.data || [];
+  const deals = dealsResult.data || [];
+  const totalLeads = attributions.length;
+  const leadsWithDeals = attributions.filter((a: any) => a.deal_id).length;
+  const totalDeals = deals.length;
+  const totalCommission = deals.reduce((s: number, d: any) => s + (d.commission_estimate || 0), 0);
+  const metaLeads = attributions.filter((a: any) => a.source_type === 'meta_ads').length;
+  return {
+    period_days: days,
+    funnel: {
+      new_clients: clientsResult.count || 0,
+      attributed_leads: totalLeads,
+      meta_ads_leads: metaLeads,
+      leads_with_deals: leadsWithDeals,
+      total_deals: totalDeals,
+      lead_to_deal_rate: totalLeads > 0 ? `${((leadsWithDeals / totalLeads) * 100).toFixed(1)}%` : 'N/A',
+      total_pipeline_commission: totalCommission,
+    },
+  };
+}
+
+async function executeGetMarketingReports(sb: any, args: any) {
+  const limit = args.limit || 10;
+  let q = sb.from('marketing_reports')
+    .select('id, title, report_type, date_preset, period_start, period_end, recommendations, created_at')
+    .order('created_at', { ascending: false }).limit(limit);
+  if (args.report_type) q = q.eq('report_type', args.report_type);
+  const { data, error } = await q;
+  if (error) return { error: error.message };
+  return { reports: data || [], count: (data || []).length };
+}
+
+async function executeGetClientLeadSource(sb: any, args: any) {
+  const { data } = await sb.from('lead_source_attributions')
+    .select('*')
+    .eq('client_id', args.client_id)
+    .order('attributed_at', { ascending: false })
+    .limit(5);
+  if (!data || data.length === 0) return { message: 'No lead source attribution found for this client.', attributions: [] };
+  return { attributions: data, primary_source: data[0] };
+}
+
+// ─── BATCH 7 EXECUTORS — CLIENT PORTAL ───
+
+async function executeGetPortalUsers(sb: any, args: any) {
+  const limit = args.limit || 30;
+  let q = sb.from('client_portal_users')
+    .select('id, email, status, last_login_at, created_at, client_id')
+    .order('created_at', { ascending: false }).limit(limit);
+  if (args.status) q = q.eq('status', args.status);
+  const { data, error } = await q;
+  if (error) return { error: error.message };
+  // Enrich with client names
+  const clientIds = [...new Set((data || []).map((u: any) => u.client_id))];
+  const { data: clients } = await sb.from('clients').select('id, primary_first_name, primary_surname').in('id', clientIds);
+  const clientMap: Record<string, string> = {};
+  (clients || []).forEach((c: any) => { clientMap[c.id] = `${c.primary_first_name || ''} ${c.primary_surname || ''}`.trim(); });
+  const users = (data || []).map((u: any) => ({ ...u, client_name: clientMap[u.client_id] || 'Unknown' }));
+  return { users, count: users.length };
+}
+
+async function executeGetPortalOverview(sb: any) {
+  const [usersResult, sessionsResult, clientsResult] = await Promise.all([
+    sb.from('client_portal_users').select('id, status, last_login_at, created_at'),
+    sb.from('client_portal_sessions').select('id', { count: 'exact', head: true }).gt('expires_at', new Date().toISOString()),
+    sb.from('clients').select('id', { count: 'exact', head: true }),
+  ]);
+  const users = usersResult.data || [];
+  const statusCounts: Record<string, number> = {};
+  let recentLogins = 0;
+  const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
+  users.forEach((u: any) => {
+    statusCounts[u.status || 'unknown'] = (statusCounts[u.status || 'unknown'] || 0) + 1;
+    if (u.last_login_at && u.last_login_at >= weekAgo) recentLogins++;
+  });
+  const totalClients = clientsResult.count || 0;
+  const adoptionRate = totalClients > 0 ? `${((users.length / totalClients) * 100).toFixed(1)}%` : 'N/A';
+  return {
+    total_portal_users: users.length,
+    active_sessions: sessionsResult.count || 0,
+    by_status: statusCounts,
+    logins_last_7_days: recentLogins,
+    total_clients: totalClients,
+    adoption_rate: adoptionRate,
+  };
+}
+
+async function executeGetClientPortalStatus(sb: any, args: any) {
+  const { data } = await sb.from('client_portal_users')
+    .select('id, email, status, last_login_at, created_at, invite_expires_at')
+    .eq('client_id', args.client_id)
+    .maybeSingle();
+  if (!data) return { has_portal_access: false, message: 'This client does not have a portal account.' };
+  return {
+    has_portal_access: true,
+    portal_user: {
+      email: data.email,
+      status: data.status,
+      last_login: data.last_login_at,
+      created_at: data.created_at,
+      invite_expires: data.invite_expires_at,
+    },
+  };
+}
+
+// ─── BATCH 7 EXECUTORS — APPOINTMENTS ───
+
+async function executeGetAppointmentNotifications(sb: any, args: any) {
+  const limit = args.limit || 20;
+  const { data, error } = await sb.from('appointment_secondary_recipients')
+    .select('id, contact_name, contact_email, appointment_title, appointment_type, appointment_start, appointment_end, calendar_name, notification_sent, notification_sent_at, notification_error, created_at')
+    .order('created_at', { ascending: false }).limit(limit);
+  if (error) return { error: error.message };
+  return { notifications: data || [], count: (data || []).length };
+}
+
 // ─── BATCH 5 EXECUTORS ───
 
 async function executeSaveMemory(sb: any, args: any, userId: string) {
