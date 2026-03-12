@@ -2903,7 +2903,7 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
       console.log('✓ Database updated');
 
       return { blob, publicUrl, suburb, state };
-    };
+  };
 
     // Generate, upload, and return the public URL (no download)
     const handleGenerateAndUpload = async (): Promise<string | null> => {
