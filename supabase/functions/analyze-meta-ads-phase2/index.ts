@@ -250,8 +250,32 @@ ${topAudiences || 'No audience data available.'}
 2. Identify the single highest-ROI budget move available right now
 3. Provide audience targeting insights — which segments to double down on and which to cut
 4. Suggest one creative strategy based on the performance patterns
-5. Keep response under 250 words, use markdown, be specific with numbers
-6. Frame all advice in terms of property buyer lead generation`;
+5. Keep response under 300 words, be specific with numbers
+6. Frame all advice in terms of property buyer lead generation
+
+**CRITICAL FORMATTING RULES — You MUST use these custom fence blocks to structure your response:**
+- Wrap your opening assessment in :::note or :::warning depending on urgency
+- Wrap the highest-ROI budget move in a :::success block
+- Wrap each actionable recommendation in a :::tip block
+- Wrap any risks or concerns in :::warning blocks
+- Wrap deeper strategic reasoning in :::insight blocks
+- Use :::metric blocks for key numbers (Label/Value/Change fields)
+- You can still use standard markdown (bold, headers) BETWEEN blocks
+
+Example:
+:::success
+**Consolidate Spend**: Shift 100% of daily budget into the "NPC – Property Strategy" set for maximum ROI.
+:::
+
+:::tip
+**Audience Insight**: Segment into High-Net-Worth interest overlays to improve lead quality.
+:::
+
+:::warning
+**Cut Underperformer**: The "7 Property in 7 Years" quiz funnel has zero conversions — pause or refresh creative.
+:::
+
+Do NOT output raw plain text paragraphs — structure everything using these blocks.`;
 
   try {
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {

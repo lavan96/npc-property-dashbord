@@ -52,7 +52,7 @@ serve(async (req) => {
       const limit = Math.min(body.limit || 20, 50);
 
       // Fetch ads with creative fields including video
-      const adsUrl = `${META_BASE_URL}/${accountId}/ads?access_token=${accessToken}&fields=id,name,status,creative{id,thumbnail_url,image_url,title,body,call_to_action_type,object_story_spec},insights.date_preset(${body.datePreset || 'last_30d'}){spend,impressions,clicks,ctr,cpc,actions,cost_per_action_type,reach}&limit=${limit}`;
+      const adsUrl = `${META_BASE_URL}/${accountId}/ads?access_token=${accessToken}&fields=id,name,status,creative{id,thumbnail_url,image_url,image_hash,title,body,call_to_action_type,object_story_spec},insights.date_preset(${body.datePreset || 'last_30d'}){spend,impressions,clicks,ctr,cpc,actions,cost_per_action_type,reach}&limit=${limit}`;
 
       console.log(`[meta-ads-phase5] Fetching creatives for ${accountId}`);
 
@@ -113,10 +113,19 @@ serve(async (req) => {
       if (videoCreatives.length > 0) {
         const videoFetches = videoCreatives.map(async (c: any) => {
           try {
-            const videoRes = await fetch(`${META_BASE_URL}/${c.video_id}?fields=source&access_token=${accessToken}`);
+            const videoRes = await fetch(`${META_BASE_URL}/${c.video_id}?fields=source,thumbnails{uri,width,height}&access_token=${accessToken}`);
             const videoJson = await videoRes.json();
             if (videoJson.source) {
               c.video_url = videoJson.source;
+            }
+            // Get highest-res thumbnail for video creatives
+            const thumbs = videoJson.thumbnails?.data;
+            if (thumbs && thumbs.length > 0) {
+              // Pick the largest thumbnail available
+              const bestThumb = thumbs.reduce((best: any, t: any) => (t.width > (best?.width || 0)) ? t : best, thumbs[0]);
+              if (bestThumb?.uri) {
+                c.image_url = bestThumb.uri;
+              }
             }
           } catch (e) {
             console.warn(`[meta-ads-phase5] Failed to fetch video ${c.video_id}:`, e);

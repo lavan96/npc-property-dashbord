@@ -418,7 +418,34 @@ ${anomalySummary}
 6. Keep the tone professional but direct — this is for internal use by the agency director
 7. Use Australian dollar formatting
 8. Keep the entire response under 300 words
-9. Use markdown formatting with bold for key metrics and campaign names`;
+9. Use markdown formatting with bold for key metrics and campaign names
+
+**CRITICAL FORMATTING RULES — You MUST use these custom fence blocks to structure your response:**
+- Wrap your opening verdict in :::success or :::warning depending on performance
+- Wrap key KPI callouts using :::metric blocks with Label/Value/Change fields
+- Wrap each actionable recommendation in a :::tip block
+- Wrap any risk or concern in a :::warning block
+- Wrap deeper analytical insights in :::insight blocks
+- You can still use standard markdown (bold, headers) BETWEEN blocks
+
+Example metric block:
+:::metric
+Label: Average CPL
+Value: $36.09
+Change: -12% vs last period
+:::
+
+Example tip block:
+:::tip
+**Scale Top Performer**: Increase budget on "Campaign Name" by 10-15% — it has the lowest CPL at $31.96.
+:::
+
+Example warning block:
+:::warning
+**Quiz Funnel Underperforming**: CTR of 1.05% with zero conversions suggests creative fatigue or targeting issues.
+:::
+
+Do NOT output raw plain text paragraphs — structure everything using these blocks.`;
 
   try {
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
