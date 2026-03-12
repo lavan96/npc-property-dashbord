@@ -4975,7 +4975,7 @@ async function callAirtableProxy(body: any = {}) {
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-      'apikey': ANON_KEY,
+      'apikey': SUPABASE_ANON_KEY,
     },
     body: JSON.stringify(body),
   });
