@@ -51,7 +51,7 @@ serve(async (req) => {
       const accountId = adAccountId.startsWith('act_') ? adAccountId : `act_${adAccountId}`;
       const limit = Math.min(body.limit || 20, 50);
 
-      // Fetch ads with creative fields
+      // Fetch ads with creative fields including video
       const adsUrl = `${META_BASE_URL}/${accountId}/ads?access_token=${accessToken}&fields=id,name,status,creative{id,thumbnail_url,image_url,title,body,call_to_action_type,object_story_spec},insights.date_preset(${body.datePreset || 'last_30d'}){spend,impressions,clicks,ctr,cpc,actions,cost_per_action_type,reach}&limit=${limit}`;
 
       console.log(`[meta-ads-phase5] Fetching creatives for ${accountId}`);
@@ -68,13 +68,21 @@ serve(async (req) => {
       }
 
       // Process ads into creative cards
-      const creatives = (metaData.data || []).map((ad: any) => {
+      const rawCreatives = (metaData.data || []).map((ad: any) => {
         const creative = ad.creative || {};
         const insightsData = ad.insights?.data?.[0] || {};
         const leads = (insightsData.actions || []).find((a: any) => a.action_type === 'lead');
         const leadCount = leads ? Number(leads.value) : 0;
         const spend = Number(insightsData.spend || 0);
         const cpl = leadCount > 0 ? spend / leadCount : 0;
+
+        // Extract video ID from object_story_spec
+        const storySpec = creative.object_story_spec || {};
+        const videoData = storySpec.video_data || {};
+        const videoId = videoData.video_id || null;
+
+        // Determine media type
+        const isVideo = !!videoId;
 
         return {
           ad_id: ad.id,
@@ -85,6 +93,9 @@ serve(async (req) => {
           title: creative.title || null,
           body: creative.body || null,
           cta_type: creative.call_to_action_type || null,
+          is_video: isVideo,
+          video_id: videoId,
+          video_url: null as string | null,
           spend: spend,
           impressions: Number(insightsData.impressions || 0),
           clicks: Number(insightsData.clicks || 0),
@@ -94,8 +105,27 @@ serve(async (req) => {
           leads: leadCount,
           cpl: cpl,
         };
-      }).filter((c: any) => c.spend > 0) // Only show ads with spend
+      }).filter((c: any) => c.spend > 0)
         .sort((a: any, b: any) => b.spend - a.spend);
+
+      // Fetch video source URLs in parallel
+      const videoCreatives = rawCreatives.filter((c: any) => c.video_id);
+      if (videoCreatives.length > 0) {
+        const videoFetches = videoCreatives.map(async (c: any) => {
+          try {
+            const videoRes = await fetch(`${META_BASE_URL}/${c.video_id}?fields=source&access_token=${accessToken}`);
+            const videoJson = await videoRes.json();
+            if (videoJson.source) {
+              c.video_url = videoJson.source;
+            }
+          } catch (e) {
+            console.warn(`[meta-ads-phase5] Failed to fetch video ${c.video_id}:`, e);
+          }
+        });
+        await Promise.all(videoFetches);
+      }
+
+      const creatives = rawCreatives;
 
       // Log API usage
       await supabase.from('api_usage_log').insert({
