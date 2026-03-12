@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sparkles, RefreshCw, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
+import { AgentMessageRenderer } from '@/components/agent/AgentMessageRenderer';
 
 interface AIDigestPanelProps {
   digest: string;
@@ -97,22 +97,7 @@ export function AIDigestPanel({ digest, loading, error, onRegenerate, regenerati
             </div>
           ) : (
             <ScrollArea className="max-h-[400px]">
-              <div className="prose prose-sm dark:prose-invert max-w-none
-                prose-p:text-sm prose-p:leading-relaxed prose-p:my-2
-                prose-strong:text-foreground prose-strong:font-bold
-                prose-em:text-primary/80 prose-em:font-medium
-                prose-li:text-sm prose-li:my-0.5 prose-li:leading-relaxed
-                prose-headings:text-foreground prose-headings:font-semibold prose-headings:tracking-tight
-                prose-h2:text-base prose-h2:mt-4 prose-h2:mb-2 prose-h2:border-b prose-h2:border-border prose-h2:pb-1
-                prose-h3:text-[0.9rem] prose-h3:mt-3 prose-h3:mb-1.5
-                prose-h4:text-sm prose-h4:mt-2.5 prose-h4:mb-1 prose-h4:text-primary
-                prose-ul:my-2 prose-ol:my-2
-                prose-a:text-primary prose-a:underline prose-a:underline-offset-2
-                prose-blockquote:border-l-primary prose-blockquote:bg-primary/5 prose-blockquote:rounded-r-md prose-blockquote:py-1 prose-blockquote:px-3 prose-blockquote:not-italic prose-blockquote:text-sm
-                prose-code:text-primary prose-code:bg-primary/10 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-xs prose-code:font-mono
-                prose-hr:border-border prose-hr:my-3">
-                <ReactMarkdown>{digest}</ReactMarkdown>
-              </div>
+              <AgentMessageRenderer content={digest} />
             </ScrollArea>
           )}
         </CardContent>
