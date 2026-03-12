@@ -81,6 +81,7 @@ import { ClientPortfolioActions } from './ClientPortfolioActions';
 import { ReviewWizard } from './review-wizard';
 import { ClientEmailsTab } from './ClientEmailsTab';
 import { ClientSentReportsTab } from './ClientSentReportsTab';
+import { ClientReportRequestsTab } from './ClientReportRequestsTab';
 import { ClientAppointmentsTab } from './ClientAppointmentsTab';
 import { DealTrackerTab } from './deal-tracker';
 import { SendAgreementDialog } from '../agreements/SendAgreementDialog';
@@ -117,7 +118,7 @@ export function ClientDetailsModal({ client, open, onOpenChange, initialTab, ini
   const [showPortalInviteDialog, setShowPortalInviteDialog] = useState(false);
   const [activeTab, setActiveTab] = useState(initialTab || 'overview');
 
-  const tabOrder = ['overview', 'personal', 'properties', 'deals', 'employment', 'financials', 'reports', 'sent-reports', 'emails', 'appointments', 'notes', 'reminders', 'vownet-forms', 'files', 'activity', 'insights'];
+  const tabOrder = ['overview', 'personal', 'properties', 'deals', 'employment', 'financials', 'reports', 'sent-reports', 'report-requests', 'emails', 'appointments', 'notes', 'reminders', 'vownet-forms', 'files', 'activity', 'insights'];
 
   const tabSwipeHandlers = useSwipeGesture(
     useCallback(() => {
@@ -360,6 +361,10 @@ NPC Team`
             <TabsTrigger value="sent-reports" className="text-xs sm:text-sm">
               <Send className="h-3 w-3 mr-0.5" />
               Sent Reports
+            </TabsTrigger>
+            <TabsTrigger value="report-requests" className="text-xs sm:text-sm">
+              <Inbox className="h-3 w-3 mr-0.5" />
+              Requests
             </TabsTrigger>
             <TabsTrigger value="emails" className="text-xs sm:text-sm">
               <Inbox className="h-3 w-3 mr-0.5" />
@@ -751,6 +756,13 @@ NPC Team`
 
             <TabsContent value="sent-reports" className={cn("mt-4", !isMobile && "max-w-3xl mx-auto w-full")}>
               <ClientSentReportsTab
+                clientId={client.id}
+                clientName={`${client.primary_first_name} ${client.primary_surname}`}
+              />
+            </TabsContent>
+
+            <TabsContent value="report-requests" className={cn("mt-4", !isMobile && "max-w-3xl mx-auto w-full")}>
+              <ClientReportRequestsTab
                 clientId={client.id}
                 clientName={`${client.primary_first_name} ${client.primary_surname}`}
               />

@@ -31,6 +31,7 @@ import {
   ClipboardList,
   FileSignature,
   Globe,
+  Send,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -60,6 +61,7 @@ const navigationItems = [
   { title: 'Clients', url: '/clients', icon: UserCircle, moduleKey: 'clients' },
   { title: 'Client Tracker', url: '/client-tracker', icon: Target, moduleKey: 'client_tracker' },
   { title: 'Portfolio Reports', url: '/portfolio-reports', icon: FileText, moduleKey: 'portfolio_reports' },
+  { title: 'Report Requests', url: '/report-requests', icon: Send, moduleKey: 'report_requests' },
   { title: 'Deal Pipeline', url: '/deal-pipeline', icon: TrendingUp, moduleKey: 'deal_pipeline' },
   { title: 'Reminders', url: '/reminders', icon: Bell, moduleKey: 'reminders' },
   { title: 'Checklists', url: '/checklists', icon: ClipboardList, moduleKey: 'checklists' },

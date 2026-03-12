@@ -54,6 +54,7 @@ import CloudflareManagement from "./pages/CloudflareManagement";
 import ClientManagement from "./pages/ClientManagement";
 import ClientTracker from "./pages/ClientTracker";
 import PortfolioReports from "./pages/PortfolioReports";
+import ReportRequests from "./pages/ReportRequests";
 import ApiUsage from "./pages/ApiUsage";
 import DealPipeline from "./pages/DealPipeline";
 import RemindersHub from "./pages/RemindersHub";
@@ -155,6 +156,7 @@ const App = () => (
                           <Route path="employment" element={<PortalEmployment />} />
                           <Route path="emails" element={<PortalReports />} />
                           <Route path="reports" element={<PortalReports />} />
+                          <Route path="request-report" element={<PortalReports />} />
                           <Route path="documents" element={<PortalDocuments />} />
                           <Route path="notifications" element={<PortalNotifications />} />
                           <Route path="deal-progress" element={<PortalDealProgress />} />
@@ -210,7 +212,8 @@ const App = () => (
                           <Route path="api-usage" element={<ApiUsage />} />
                           <Route path="clients" element={<ClientManagement />} />
                           <Route path="client-tracker" element={<ClientTracker />} />
-                          <Route path="portfolio-reports" element={<PortfolioReports />} />
+                           <Route path="portfolio-reports" element={<PortfolioReports />} />
+                           <Route path="report-requests" element={<ReportRequests />} />
                            <Route path="deal-pipeline" element={<DealPipeline />} />
                            <Route path="reminders" element={<RemindersHub />} />
                            <Route path="checklists" element={<Checklists />} />
