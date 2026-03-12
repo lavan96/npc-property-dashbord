@@ -2950,6 +2950,83 @@ export type Database = {
           },
         ]
       }
+      client_portal_report_requests: {
+        Row: {
+          admin_notes: string | null
+          assigned_to: string | null
+          client_id: string
+          client_property_id: string | null
+          created_at: string
+          fulfilled_report_id: string | null
+          id: string
+          notes: string | null
+          portal_user_id: string | null
+          property_address: string | null
+          request_type: Database["public"]["Enums"]["portal_report_request_type"]
+          status: Database["public"]["Enums"]["portal_report_request_status"]
+          updated_at: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          assigned_to?: string | null
+          client_id: string
+          client_property_id?: string | null
+          created_at?: string
+          fulfilled_report_id?: string | null
+          id?: string
+          notes?: string | null
+          portal_user_id?: string | null
+          property_address?: string | null
+          request_type: Database["public"]["Enums"]["portal_report_request_type"]
+          status?: Database["public"]["Enums"]["portal_report_request_status"]
+          updated_at?: string
+        }
+        Update: {
+          admin_notes?: string | null
+          assigned_to?: string | null
+          client_id?: string
+          client_property_id?: string | null
+          created_at?: string
+          fulfilled_report_id?: string | null
+          id?: string
+          notes?: string | null
+          portal_user_id?: string | null
+          property_address?: string | null
+          request_type?: Database["public"]["Enums"]["portal_report_request_type"]
+          status?: Database["public"]["Enums"]["portal_report_request_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_portal_report_requests_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_portal_report_requests_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_portal_report_requests_client_property_id_fkey"
+            columns: ["client_property_id"]
+            isOneToOne: false
+            referencedRelation: "client_properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_portal_report_requests_portal_user_id_fkey"
+            columns: ["portal_user_id"]
+            isOneToOne: false
+            referencedRelation: "client_portal_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_portal_reports: {
         Row: {
           client_id: string
@@ -6878,6 +6955,15 @@ export type Database = {
         | "pre_budget"
         | "post_budget_second_hand"
         | "post_budget_brand_new"
+      portal_report_request_status:
+        | "pending"
+        | "in_progress"
+        | "completed"
+        | "declined"
+      portal_report_request_type:
+        | "portfolio_review"
+        | "borrowing_capacity"
+        | "investment_property"
       report_category_enum:
         | "investment"
         | "comparison"
@@ -7177,6 +7263,17 @@ export const Constants = {
         "pre_budget",
         "post_budget_second_hand",
         "post_budget_brand_new",
+      ],
+      portal_report_request_status: [
+        "pending",
+        "in_progress",
+        "completed",
+        "declined",
+      ],
+      portal_report_request_type: [
+        "portfolio_review",
+        "borrowing_capacity",
+        "investment_property",
       ],
       report_category_enum: [
         "investment",
