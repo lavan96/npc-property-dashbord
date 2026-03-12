@@ -77,7 +77,7 @@ function parseBlocks(raw: string): RichBlock[] {
 // ──────────────────────────────────────────────
 function MarkdownContent({ content }: { content: string }) {
   return (
-    <div className="prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_table]:text-xs [&_th]:py-1 [&_td]:py-1 [&_p]:leading-relaxed">
+    <div className="prose prose-sm dark:prose-invert max-w-none break-words overflow-hidden [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_table]:text-xs [&_th]:py-1 [&_td]:py-1 [&_p]:leading-relaxed [&_pre]:overflow-x-auto [&_pre]:max-w-full [&_code]:break-all [&_table]:block [&_table]:overflow-x-auto">
       <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
     </div>
   );
@@ -158,10 +158,10 @@ function MetricBlock({ content }: { content: string }) {
   const isNegative = change ? change.includes('-') || change.toLowerCase().includes('down') : null;
 
   return (
-    <div className="my-2 rounded-lg border border-border/40 bg-gradient-to-br from-muted/30 to-muted/10 p-3">
-      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{label}</p>
-      <div className="flex items-end gap-2 mt-0.5">
-        <span className="text-xl font-bold text-foreground leading-none">{value}</span>
+    <div className="my-2 rounded-lg border border-border/40 bg-gradient-to-br from-muted/30 to-muted/10 p-3 overflow-hidden">
+      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium truncate">{label}</p>
+      <div className="flex items-end gap-2 mt-0.5 flex-wrap">
+        <span className="text-xl font-bold text-foreground leading-none break-all">{value}</span>
         {change && (
           <span className={cn(
             "inline-flex items-center gap-0.5 text-[11px] font-medium px-1.5 py-0.5 rounded-full",
@@ -383,7 +383,7 @@ export function AgentMessageRenderer({ content }: AgentMessageRendererProps) {
   const blocks = parseBlocks(content);
 
   return (
-    <div>
+    <div className="min-w-0 overflow-hidden break-words">
       {blocks.map((block, i) => {
         switch (block.kind) {
           case 'tip':
@@ -406,7 +406,7 @@ export function AgentMessageRenderer({ content }: AgentMessageRendererProps) {
             return <DetailBlock key={i} content={block.content} meta={block.meta} />;
           case 'markdown':
             return (
-              <div key={i} className="prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_table]:text-xs [&_th]:py-1 [&_td]:py-1 [&_p]:leading-relaxed">
+              <div key={i} className="prose prose-sm dark:prose-invert max-w-none break-words overflow-hidden [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_table]:text-xs [&_th]:py-1 [&_td]:py-1 [&_p]:leading-relaxed [&_pre]:overflow-x-auto [&_pre]:max-w-full [&_code]:break-all [&_table]:block [&_table]:overflow-x-auto">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{block.content}</ReactMarkdown>
               </div>
             );
