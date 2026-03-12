@@ -3159,7 +3159,13 @@ function parseCronDays(field: string): number[] {
   return values;
 }
 async function executeToggleScheduledTask(sb: any, args: any) {
-  await sb.from('agent_scheduled_tasks').update({ is_enabled: args.is_enabled }).eq('id', args.task_id);
+  const updates: any = { is_enabled: args.is_enabled };
+  // Recalculate next_run_at when enabling
+  if (args.is_enabled) {
+    const { data: task } = await sb.from('agent_scheduled_tasks').select('schedule_cron').eq('id', args.task_id).single();
+    if (task?.schedule_cron) updates.next_run_at = calculateNextRunFromCron(task.schedule_cron);
+  }
+  await sb.from('agent_scheduled_tasks').update(updates).eq('id', args.task_id);
   return { success: true, message: `Task ${args.is_enabled?'enabled':'disabled'}.` };
 }
 async function executeDeleteScheduledTask(sb: any, args: any) {
