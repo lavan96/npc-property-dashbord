@@ -213,33 +213,38 @@ serve(async (req) => {
             if (videoJson.error) {
               console.warn(`[meta-ads-phase5] Video ${c.video_id} direct fetch error: ${videoJson.error?.message || 'unknown'}. Trying fallbacks...`);
 
-              // Fallback 1: Use account-level /advideos endpoint (works with ad account permissions
-              // even when direct video object access is denied - common for dynamic creative videos)
+              // Fallback 1: Use account-level /advideos endpoint with properly URL-encoded filtering
               try {
-                const adVideosUrl = `${META_BASE_URL}/${accountId}/advideos?filtering=[{"field":"id","operator":"IN","value":["${c.video_id}"]}]&fields=id,source,picture,thumbnails,length,title&access_token=${accessToken}`;
+                const filterJson = JSON.stringify([{field: "id", operator: "EQUAL", value: c.video_id}]);
+                const adVideosParams = new URLSearchParams({
+                  filtering: filterJson,
+                  fields: 'id,source,picture,thumbnails,length,title',
+                  access_token: accessToken,
+                });
+                const adVideosUrl = `${META_BASE_URL}/${accountId}/advideos?${adVideosParams.toString()}`;
                 const adVideosRes = await fetch(adVideosUrl);
                 const adVideosJson = await adVideosRes.json();
+
+                console.log(`[meta-ads-phase5] advideos fallback for ${c.video_id}: ok=${adVideosRes.ok}, hasData=${!!adVideosJson.data}, count=${adVideosJson.data?.length || 0}, error=${adVideosJson.error?.message || 'none'}`);
 
                 if (adVideosRes.ok && adVideosJson.data?.length > 0) {
                   const vid = adVideosJson.data[0];
                   if (vid.source) c.video_url = vid.source;
                   if (vid.picture) c.image_url = vid.picture;
-                  // Try to get best thumbnail for dimensions
                   if (vid.thumbnails?.data?.length > 0) {
                     const best = vid.thumbnails.data.reduce((b: any, t: any) => (t.width > (b?.width || 0)) ? t : b, vid.thumbnails.data[0]);
                     if (best.width && best.height) {
                       c.width = best.width;
                       c.height = best.height;
                     }
-                    // Use highest-res thumbnail as image if no picture
                     if (!c.image_url && best.uri) c.image_url = best.uri;
                   }
-                  console.log(`[meta-ads-phase5] Account advideos fallback SUCCESS for ${c.video_id}: hasVideoUrl=${!!c.video_url}, hasImageUrl=${!!c.image_url}`);
+                  console.log(`[meta-ads-phase5] advideos fallback SUCCESS for ${c.video_id}: hasVideoUrl=${!!c.video_url}, hasImageUrl=${!!c.image_url}`);
                 } else {
-                  console.warn(`[meta-ads-phase5] Account advideos fallback returned no data for ${c.video_id}`);
+                  console.warn(`[meta-ads-phase5] advideos fallback returned no data for ${c.video_id}`);
                 }
               } catch (advErr) {
-                console.warn(`[meta-ads-phase5] Account advideos fallback failed for ${c.video_id}:`, advErr);
+                console.warn(`[meta-ads-phase5] advideos fallback failed for ${c.video_id}:`, advErr);
               }
 
               // Fallback 2: Fetch the creative object itself for effective_object_story_id
@@ -250,7 +255,7 @@ serve(async (req) => {
                   );
                   const creativeFallbackJson = await creativeFallbackRes.json();
 
-                  if (creativeFallbackRes.ok) {
+                  if (creativeFallbackRes.ok && !creativeFallbackJson.error) {
                     const storyId = creativeFallbackJson.effective_object_story_id;
                     if (storyId) {
                       try {
@@ -259,9 +264,9 @@ serve(async (req) => {
                         );
                         const postJson = await postRes.json();
 
-                        console.log(`[meta-ads-phase5] Post ${storyId} response keys:`, Object.keys(postJson));
+                        console.log(`[meta-ads-phase5] Post ${storyId} response keys:`, Object.keys(postJson), postJson.error ? `error: ${postJson.error.message}` : '');
 
-                        if (postRes.ok) {
+                        if (postRes.ok && !postJson.error) {
                           if (postJson.source) c.video_url = postJson.source;
                           const attachment = postJson.attachments?.data?.[0];
                           if (!c.video_url && attachment?.media?.source) c.video_url = attachment.media.source;
@@ -286,7 +291,7 @@ serve(async (req) => {
                 }
               }
 
-              // Fallback 3: Try fetching ad-level previews for the video URL
+              // Fallback 3: Try fetching ad-level previews and extract video URL from rendered HTML
               if (!c.video_url) {
                 try {
                   const previewRes = await fetch(
@@ -294,15 +299,76 @@ serve(async (req) => {
                   );
                   const previewJson = await previewRes.json();
                   const previewBody = previewJson?.data?.[0]?.body || '';
-                  const videoSrcMatch = previewBody.match(/src="(https:\/\/video[^"]+)"/);
-                  if (videoSrcMatch?.[1]) {
-                    c.video_url = videoSrcMatch[1].replace(/&amp;/g, '&');
-                    console.log(`[meta-ads-phase5] Extracted video URL from ad preview for ${c.ad_id}`);
+
+                  // Decode HTML entities first
+                  const decoded = previewBody.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#x3D;/g, '=').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+
+                  // Try multiple patterns to find video URLs in the preview HTML
+                  const patterns = [
+                    /src="(https:\/\/video[^"]+)"/,
+                    /src="(https:\/\/[^"]*?(?:video|\.mp4|fbcdn)[^"]+)"/,
+                    /"source"\s*:\s*"(https:\/\/[^"]+)"/,
+                    /data-video-url="(https:\/\/[^"]+)"/,
+                    /video_url['"]\s*:\s*['"](https:\/\/[^'"]+)['"]/,
+                  ];
+
+                  for (const pattern of patterns) {
+                    const match = decoded.match(pattern);
+                    if (match?.[1]) {
+                      c.video_url = match[1].replace(/\\/g, '');
+                      console.log(`[meta-ads-phase5] Extracted video URL from ad preview for ${c.ad_id} using pattern ${pattern.source.slice(0, 30)}`);
+                      break;
+                    }
+                  }
+
+                  if (!c.video_url) {
+                    // Log a snippet of the preview to diagnose what's available
+                    console.log(`[meta-ads-phase5] Preview fallback: no video URL found for ${c.ad_id}. Preview length=${previewBody.length}, snippet=${decoded.slice(0, 500)}`);
+                  }
+
+                  // Also try to extract a high-res image from the preview if we don't have one
+                  if (!c.image_url) {
+                    const imgMatch = decoded.match(/src="(https:\/\/scontent[^"]+)"/);
+                    if (imgMatch?.[1]) {
+                      c.image_url = imgMatch[1];
+                    }
                   }
                 } catch (prevErr) {
                   console.warn(`[meta-ads-phase5] Preview fallback failed for ${c.ad_id}:`, prevErr);
                 }
               }
+
+              // Fallback 4: Last resort - fetch the ad itself asking for video fields directly
+              if (!c.video_url) {
+                try {
+                  const adDirectRes = await fetch(
+                    `${META_BASE_URL}/${c.ad_id}?fields=creative{video_id,effective_object_story_id,object_story_spec{video_data{video_id}}}&access_token=${accessToken}`
+                  );
+                  const adDirectJson = await adDirectRes.json();
+                  const directVideoId = adDirectJson?.creative?.video_id || adDirectJson?.creative?.object_story_spec?.video_data?.video_id;
+                  
+                  if (directVideoId && directVideoId !== c.video_id) {
+                    console.log(`[meta-ads-phase5] Found alternative video ID ${directVideoId} for ad ${c.ad_id}`);
+                    // Try fetching this alternative video ID directly
+                    const altVideoRes = await fetch(`${META_BASE_URL}/${directVideoId}?fields=source,picture,format{width,height}&access_token=${accessToken}`);
+                    const altVideoJson = await altVideoRes.json();
+                    if (altVideoRes.ok && !altVideoJson.error && altVideoJson.source) {
+                      c.video_url = altVideoJson.source;
+                      if (altVideoJson.picture) c.image_url = altVideoJson.picture;
+                      if (altVideoJson.format?.length > 0) {
+                        const best = altVideoJson.format.reduce((b: any, f: any) => (f.width > (b?.width || 0)) ? f : b, altVideoJson.format[0]);
+                        c.width = best.width;
+                        c.height = best.height;
+                      }
+                      console.log(`[meta-ads-phase5] Alt video ID ${directVideoId} fetch SUCCESS for ad ${c.ad_id}`);
+                    }
+                  }
+                } catch (adErr) {
+                  console.warn(`[meta-ads-phase5] Ad direct video fetch failed for ${c.ad_id}:`, adErr);
+                }
+              }
+
+              console.log(`[meta-ads-phase5] FINAL result for video ${c.video_id} (ad ${c.ad_id}): hasVideoUrl=${!!c.video_url}, hasImageUrl=${!!c.image_url}, width=${c.width}, height=${c.height}`);
 
               // Cache whatever we got (even if partial)
               videoMetaCache.set(c.video_id, {
