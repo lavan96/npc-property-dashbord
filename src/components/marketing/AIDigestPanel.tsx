@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sparkles, RefreshCw, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
+import { AgentMessageRenderer } from '@/components/agent/AgentMessageRenderer';
 
 interface AIDigestPanelProps {
   digest: string;
