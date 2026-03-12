@@ -19,9 +19,15 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
     const body = await req.json().catch(() => ({}));
 
-    const authResult = await verifyAuth(supabase, req.headers, body);
-    if (authResult.error) {
-      return createUnauthorizedResponse(authResult.error, corsHeaders);
+    // Allow scheduled/cron invocations (called by pg_cron with anon key)
+    const isScheduled = body.source === 'scheduled';
+    if (!isScheduled) {
+      const authResult = await verifyAuth(supabase, req.headers, body);
+      if (authResult.error) {
+        return createUnauthorizedResponse(authResult.error, corsHeaders);
+      }
+    } else {
+      console.log('[enrich] Scheduled cron invocation');
     }
 
     const accessToken = Deno.env.get('META_ADS_ACCESS_TOKEN');
