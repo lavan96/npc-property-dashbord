@@ -4926,7 +4926,7 @@ async function handleChat(sb: any, body: any, userId: string, username: string, 
   const { count: msgTotal } = await sb.from('agent_messages').select('id', { count: 'exact', head: true }).eq('conversation_id', conversation_id);
   if (msgTotal !== null && msgTotal <= 2) {
     try {
-      const titleResp = await fetch('https://api.lovable.dev/v1/chat/completions', {
+      const titleResp = await fetch(AI_GATEWAY_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${LOVABLE_API_KEY}` },
         body: JSON.stringify({
