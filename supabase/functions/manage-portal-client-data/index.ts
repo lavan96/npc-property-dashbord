@@ -19,6 +19,7 @@ const ALLOWED_TABLES = [
   'client_expenses',
   'client_portal_messages',
   'client_portal_notifications',
+  'client_portal_report_requests',
 ] as const;
 
 // Fields that portal users are NOT allowed to modify on the clients table
