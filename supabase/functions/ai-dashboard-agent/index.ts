@@ -2369,13 +2369,10 @@ async function executeLinkEmailToClient(sb: any, args: any) {
 }
 
 async function executeSendEmail(sb: any, args: any) {
-  const SUPABASE_URL_INNER = Deno.env.get('SUPABASE_URL')!;
-  const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-  const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkdXpiY2h1c3d3YmVmZHVuZmN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0NDM4NzksImV4cCI6MjA3MTAxOTg3OX0.eSYU6fxIc3tBQuGLsdBRff0alBMkNfvv7OpW0efNjxk';
   try {
-    const resp = await fetch(`${SUPABASE_URL_INNER.trim()}/functions/v1/send-email-reply`, {
+    const resp = await fetch(`${SUPABASE_URL.trim()}/functions/v1/send-email-reply`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SERVICE_KEY.trim()}`, 'apikey': ANON_KEY.trim() },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY.trim()}`, 'apikey': SUPABASE_ANON_KEY.trim() },
       body: JSON.stringify({ to: args.to, subject: args.subject, body: args.body, cc: args.cc, bcc: args.bcc, original_email_id: args.original_email_id, mailbox_source: args.mailbox_source || 'admin' }),
     });
     const result = await resp.json();
