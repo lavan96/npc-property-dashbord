@@ -47,9 +47,8 @@ function getAspectStyle(creative: Creative): React.CSSProperties {
   if (creative.width && creative.height) {
     return { aspectRatio: `${creative.width} / ${creative.height}` };
   }
-  // No dimensions known — use sensible defaults
-  if (creative.is_video) return { aspectRatio: '4 / 5' };
-  return { aspectRatio: '4 / 5' }; // safer default than 1:1 for ad creatives
+  // If Meta does not return dimensions, avoid forcing portrait/square crops.
+  return {};
 }
 
 export function CreativeGalleryPanel({ datePreset }: CreativeGalleryProps) {
