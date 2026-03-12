@@ -121,11 +121,11 @@ export function CreativeGalleryPanel({ datePreset }: CreativeGalleryProps) {
                         <img
                           src={displayUrl}
                           alt={creative.ad_name}
-                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          className="w-full h-auto object-contain transition-transform duration-300 group-hover:scale-[1.02]"
                           loading="lazy"
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center">
+                        <div className="w-full min-h-40 flex items-center justify-center">
                           <Image className="h-8 w-8 text-muted-foreground/30" />
                         </div>
                       )}
