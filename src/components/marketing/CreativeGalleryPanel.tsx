@@ -254,7 +254,7 @@ function CreativePreviewModal({ creative, onClose }: { creative: Creative | null
                   src={mediaUrl}
                   alt={creative.ad_name}
                   className="w-full max-h-[80vh] object-contain"
-                  style={{ aspectRatio }}
+                  style={aspectStyle}
                 />
               ) : (
                 <div className="py-24 flex items-center justify-center">
