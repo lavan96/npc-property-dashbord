@@ -2186,7 +2186,7 @@ async function executeUpdateDealField(sb: any, args: any) {
 
 async function executeGetClawbackMonitor(sb: any) {
   const { data } = await sb.from('client_deals').select('id, property_address, clawback_expiry_date, commission_estimate, current_stage, clients:client_id(primary_first_name, primary_surname)').not('clawback_expiry_date', 'is', null).order('clawback_expiry_date');
-  return { clawback_deals: (data || []).map((d: any) => ({ ...d, client_name: `${d.clients?.primary_first_name||''} ${d.clients?.primary_surname||''}`.trim(), months_remaining: Math.ceil((new Date(d.clawback_expiry_date).getTime() - Date.now()) / (30 * 86400000)) })) };
+  return { clawback_deals: (data || []).map((d: any) => ({ ...d, client_name: clientName(d.clients), months_remaining: Math.ceil(daysFromNow(d.clawback_expiry_date) / 30) })) };
 }
 
 async function executeGetCommissionForecast(sb: any, args: any) {
