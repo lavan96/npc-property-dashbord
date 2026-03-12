@@ -81,6 +81,7 @@ import { ClientPortfolioActions } from './ClientPortfolioActions';
 import { ReviewWizard } from './review-wizard';
 import { ClientEmailsTab } from './ClientEmailsTab';
 import { ClientSentReportsTab } from './ClientSentReportsTab';
+import { ClientReportRequestsTab } from './ClientReportRequestsTab';
 import { ClientAppointmentsTab } from './ClientAppointmentsTab';
 import { DealTrackerTab } from './deal-tracker';
 import { SendAgreementDialog } from '../agreements/SendAgreementDialog';
