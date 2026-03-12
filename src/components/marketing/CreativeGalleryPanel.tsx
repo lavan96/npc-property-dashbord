@@ -30,6 +30,8 @@ interface Creative {
   body: string | null;
   is_video: boolean;
   video_url: string | null;
+  width: number | null;
+  height: number | null;
   spend: number;
   impressions: number;
   clicks: number;
@@ -38,6 +40,22 @@ interface Creative {
   reach: number;
   leads: number;
   cpl: number;
+}
+
+/** Returns a CSS aspect-ratio value based on creative dimensions */
+function getAspectClass(creative: Creative): string {
+  if (creative.width && creative.height) {
+    const ratio = creative.width / creative.height;
+    // Portrait (9:16, 4:5, etc.)
+    if (ratio < 0.9) return 'aspect-[4/5]';
+    // Square (1:1)
+    if (ratio >= 0.9 && ratio <= 1.1) return 'aspect-square';
+    // Landscape (16:9, 1.91:1, etc.)
+    return 'aspect-video';
+  }
+  // Default: video=9:16 portrait, image=square
+  if (creative.is_video) return 'aspect-[4/5]';
+  return 'aspect-square';
 }
 
 export function CreativeGalleryPanel({ datePreset }: CreativeGalleryProps) {
