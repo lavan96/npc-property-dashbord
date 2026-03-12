@@ -54,6 +54,7 @@ import CloudflareManagement from "./pages/CloudflareManagement";
 import ClientManagement from "./pages/ClientManagement";
 import ClientTracker from "./pages/ClientTracker";
 import PortfolioReports from "./pages/PortfolioReports";
+import ReportRequests from "./pages/ReportRequests";
 import ApiUsage from "./pages/ApiUsage";
 import DealPipeline from "./pages/DealPipeline";
 import RemindersHub from "./pages/RemindersHub";
