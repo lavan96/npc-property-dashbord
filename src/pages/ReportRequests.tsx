@@ -77,7 +77,7 @@ export default function ReportRequests() {
         },
       });
       if (error) throw error;
-      const requests = data?.records || data?.data || [];
+      const requests = (data as any)?.records || (data as any)?.data || [];
 
       // Fetch client names for all unique client_ids
       const clientIds = [...new Set(requests.map((r: any) => r.client_id))];
