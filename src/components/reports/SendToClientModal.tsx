@@ -77,6 +77,11 @@ export function SendToClientModal({
       return;
     }
 
+    if (!storagePath) {
+      toast.error('Please generate the PDF first before sending to a client');
+      return;
+    }
+
     setSending(true);
     try {
       const { error } = await invokeSecureFunction('manage-client-data', {
