@@ -114,7 +114,8 @@ export function CreativeGalleryPanel({ datePreset }: CreativeGalleryProps) {
                   >
                     {/* Media */}
                     <div
-                      className={cn(getAspectClass(creative), "bg-muted relative overflow-hidden cursor-pointer")}
+                      className="bg-muted relative overflow-hidden cursor-pointer"
+                      style={getAspectStyle(creative)}
                       onClick={() => setPreviewCreative(creative)}
                     >
                       {displayUrl ? (
