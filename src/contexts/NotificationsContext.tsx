@@ -49,7 +49,8 @@ export type NotificationType =
   | 'deal_build_date_warning'
   // Phase 5 - Assignment notifications
   | 'reminder_assigned'
-  | 'deal_assigned';
+  | 'deal_assigned'
+  | 'report_request';
 
 export interface Notification {
   id: string;
