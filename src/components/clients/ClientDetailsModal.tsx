@@ -362,6 +362,10 @@ NPC Team`
               <Send className="h-3 w-3 mr-0.5" />
               Sent Reports
             </TabsTrigger>
+            <TabsTrigger value="report-requests" className="text-xs sm:text-sm">
+              <Inbox className="h-3 w-3 mr-0.5" />
+              Requests
+            </TabsTrigger>
             <TabsTrigger value="emails" className="text-xs sm:text-sm">
               <Inbox className="h-3 w-3 mr-0.5" />
               Emails
