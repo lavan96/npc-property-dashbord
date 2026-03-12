@@ -4002,11 +4002,10 @@ async function executeGetIntegrationStatus(sb: any) {
 
 async function executeGetCloudflareStatus() {
   try {
-    const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
     const url = `${SUPABASE_URL}/functions/v1/cloudflare-proxy`;
     const resp = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`, 'apikey': ANON_KEY },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`, 'apikey': SUPABASE_ANON_KEY },
       body: JSON.stringify({ action: 'get-analytics' }),
     });
     if (!resp.ok) return { status: 'unavailable', message: 'Cloudflare proxy returned an error. Check configuration.' };
