@@ -145,7 +145,7 @@ serve(async (req) => {
         .sort((a: any, b: any) => b.spend - a.spend);
 
       // Deep fallback: resolve missing media via direct creative lookup (covers dynamic creatives and banners)
-      const unresolvedCreatives = rawCreatives.filter((c: any) => c.creative_id && !c.video_id && !c.image_hash && !c.image_url);
+      const unresolvedCreatives = rawCreatives.filter((c: any) => c.creative_id && ((c.is_video && !c.video_id) || (!c.video_id && !c.image_hash && !c.image_url)));
       if (unresolvedCreatives.length > 0) {
         await Promise.all(unresolvedCreatives.map(async (c: any) => {
           try {
