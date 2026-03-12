@@ -88,19 +88,45 @@ serve(async (req) => {
       // Verify the report belongs to this client
       const { data: report, error: reportError } = await supabase
         .from('client_portal_reports')
-        .select('id, storage_path, report_title')
+        .select('id, storage_path, report_title, source_report_id')
         .eq('id', reportId)
         .eq('client_id', clientId)
         .maybeSingle();
 
-      if (reportError || !report || !report.storage_path) {
+      if (reportError || !report) {
         return new Response(
-          JSON.stringify({ error: 'Report not found or no file available', success: false }),
+          JSON.stringify({ error: 'Report not found', success: false }),
           { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      const storagePath = report.storage_path;
+      let storagePath = report.storage_path;
+
+      // If no storage_path, try to look up the source investment report's pdf_url
+      if (!storagePath && report.source_report_id) {
+        const { data: sourceReport } = await supabase
+          .from('investment_reports')
+          .select('pdf_url')
+          .eq('id', report.source_report_id)
+          .maybeSingle();
+        if (sourceReport?.pdf_url) {
+          storagePath = sourceReport.pdf_url;
+          // Also update the portal report record so future downloads are faster
+          await supabase
+            .from('client_portal_reports')
+            .update({ storage_path: sourceReport.pdf_url })
+            .eq('id', reportId);
+        }
+      }
+
+      if (!storagePath) {
+        return new Response(
+          JSON.stringify({ error: 'No file available for this report', success: false }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // storagePath is now resolved above
 
       // If storage_path is already a full URL (e.g. investment-reports bucket public URL), return it directly
       if (storagePath.startsWith('http://') || storagePath.startsWith('https://')) {

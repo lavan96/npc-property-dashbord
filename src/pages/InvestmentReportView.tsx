@@ -38,6 +38,7 @@ interface InvestmentReport {
   is_client_report?: boolean;
   client_property_id?: string | null;
   report_tier?: string | null;
+  pdf_url?: string | null;
 }
 interface ClientInfo {
   id: string;
@@ -454,7 +455,7 @@ export default function InvestmentReportView() {
         reportId={report.id}
         reportTitle={report.property_address}
         reportTier={report.report_tier || undefined}
-        storagePath={null}
+        storagePath={report.pdf_url || null}
       />
     </div>
   );
