@@ -1900,6 +1900,142 @@ const TOOLS: any[] = [
       parameters: { type: "object", properties: { query: { type: "string", description: "Search term to match against filenames or extracted text" }, mime_type: { type: "string", description: "Filter by MIME type (e.g. application/pdf, image/png)" }, limit: { type: "number", description: "Max results (default 10)" } }, required: [] },
     },
   },
+
+  // ═══════════════════════════════════════════════════════════
+  // BATCH 7 — AGENCY AGREEMENTS
+  // ═══════════════════════════════════════════════════════════
+  {
+    type: "function",
+    function: {
+      name: "get_agreements_overview",
+      description: "Get summary of all agency agreements: total count, status breakdown (draft/sent/signed/voided), recent activity.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_client_agreements",
+      description: "List all agency agreements for a specific client including status, DocuSign status, dates, and template used.",
+      parameters: { type: "object", properties: { client_id: { type: "string", description: "UUID of the client" } }, required: ["client_id"] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_agreement_details",
+      description: "Fetch full details of a specific agency agreement including buyer info, DocuSign envelope status, template, dates, and notes.",
+      parameters: { type: "object", properties: { agreement_id: { type: "string", description: "UUID of the agreement" } }, required: ["agreement_id"] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "search_agreements",
+      description: "Search agreements by buyer name, status, or DocuSign status. Useful for finding pending or signed agreements.",
+      parameters: { type: "object", properties: { query: { type: "string", description: "Search term (buyer name)" }, status: { type: "string", enum: ["draft", "sent", "signed", "voided", "expired"], description: "Filter by agreement status" }, docusign_status: { type: "string", description: "Filter by DocuSign status (e.g. sent, delivered, completed, voided)" }, limit: { type: "number", description: "Max results (default 20)" } } },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_agreement_templates",
+      description: "List available Gamma agreement templates with names, descriptions, and active status.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+
+  // ═══════════════════════════════════════════════════════════
+  // BATCH 7 — MARKETING ANALYTICS & LEAD ATTRIBUTION
+  // ═══════════════════════════════════════════════════════════
+  {
+    type: "function",
+    function: {
+      name: "get_lead_attributions",
+      description: "Get lead source attribution data showing where CRM leads came from (UTM source, campaign, Meta Ads). Filter by client, source type, or date range.",
+      parameters: { type: "object", properties: { client_id: { type: "string", description: "Filter by specific client UUID" }, source_type: { type: "string", description: "Filter by source type (e.g. meta_ads, google_ads, organic, direct, referral)" }, enrichment_status: { type: "string", enum: ["pending", "enriched", "failed", "skipped"], description: "Filter by enrichment status" }, limit: { type: "number", description: "Max results (default 30)" } } },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_attribution_summary",
+      description: "Aggregate lead attribution statistics: total leads by source, campaign performance, top performing ads/adsets, enrichment status breakdown.",
+      parameters: { type: "object", properties: { days: { type: "number", description: "Look-back period in days (default 90)" } } },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_campaign_performance",
+      description: "Get performance metrics for Meta Ads campaigns showing leads generated, deals created, and estimated ROI per campaign.",
+      parameters: { type: "object", properties: { campaign_name: { type: "string", description: "Filter by specific campaign name" }, limit: { type: "number", description: "Max results (default 20)" } } },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_marketing_funnel",
+      description: "Full-funnel analysis: Meta impressions → clicks → CRM leads → deals → conversions. Cross-references lead attributions with pipeline data to show True ROI.",
+      parameters: { type: "object", properties: { days: { type: "number", description: "Analysis period in days (default 30)" } } },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_marketing_reports",
+      description: "List saved marketing analysis reports with AI-generated insights, metrics snapshots, and recommendations.",
+      parameters: { type: "object", properties: { report_type: { type: "string", description: "Filter by type (e.g. weekly, monthly, campaign)" }, limit: { type: "number", description: "Max results (default 10)" } } },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_client_lead_source",
+      description: "Get the lead source/attribution for a specific client: which campaign, ad, and channel brought them in.",
+      parameters: { type: "object", properties: { client_id: { type: "string", description: "UUID of the client" } }, required: ["client_id"] },
+    },
+  },
+
+  // ═══════════════════════════════════════════════════════════
+  // BATCH 7 — CLIENT PORTAL
+  // ═══════════════════════════════════════════════════════════
+  {
+    type: "function",
+    function: {
+      name: "get_portal_users",
+      description: "List all client portal users with their status (active/invited/disabled), linked client, last login, and email.",
+      parameters: { type: "object", properties: { status: { type: "string", enum: ["active", "invited", "disabled"], description: "Filter by user status" }, limit: { type: "number", description: "Max results (default 30)" } } },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_portal_overview",
+      description: "Client portal statistics: total users, active sessions, invite statuses, recent logins, and adoption rate (portal users vs total clients).",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_client_portal_status",
+      description: "Check if a specific client has portal access: account status, last login, invite status.",
+      parameters: { type: "object", properties: { client_id: { type: "string", description: "UUID of the client" } }, required: ["client_id"] },
+    },
+  },
+
+  // ═══════════════════════════════════════════════════════════
+  // BATCH 7 — APPOINTMENTS (SECONDARY RECIPIENTS)
+  // ═══════════════════════════════════════════════════════════
+  {
+    type: "function",
+    function: {
+      name: "get_appointment_notifications",
+      description: "List appointment secondary recipient notifications: who was notified, appointment details, send status.",
+      parameters: { type: "object", properties: { limit: { type: "number", description: "Max results (default 20)" } } },
+    },
+  },
 ];
 
 // ============================================================
