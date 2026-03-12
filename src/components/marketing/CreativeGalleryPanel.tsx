@@ -249,6 +249,14 @@ function CreativePreviewModal({ creative, onClose }: { creative: Creative | null
                   className="w-full max-h-[80vh] object-contain"
                   style={aspectStyle}
                 />
+              ) : creative.is_video && creative.preview_url ? (
+                <iframe
+                  src={creative.preview_url}
+                  className="w-full border-0"
+                  style={{ minHeight: '500px', maxHeight: '80vh', aspectRatio: '9 / 16' }}
+                  allow="autoplay; fullscreen"
+                  sandbox="allow-scripts allow-same-origin allow-popups"
+                />
               ) : mediaUrl ? (
                 <img
                   src={mediaUrl}
