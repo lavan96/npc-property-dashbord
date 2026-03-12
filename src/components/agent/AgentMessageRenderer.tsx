@@ -383,7 +383,7 @@ export function AgentMessageRenderer({ content }: AgentMessageRendererProps) {
   const blocks = parseBlocks(content);
 
   return (
-    <div>
+    <div className="min-w-0 overflow-hidden break-words">
       {blocks.map((block, i) => {
         switch (block.kind) {
           case 'tip':
