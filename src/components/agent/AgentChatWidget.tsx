@@ -340,6 +340,8 @@ export function AgentChatWidget() {
       const { data } = await invokeSecureFunction('ai-dashboard-agent', { action: 'get-messages', conversation_id: activeConversation });
       if (data?.messages) setMessages(data.messages);
       toast.success(approved ? 'Action approved and executed' : 'Action cancelled');
+      // Refresh settings panel after action approval (playbook/task creation etc.)
+      if (approved && panelView === 'settings') loadSettingsData(settingsTab);
     } catch (err) { toast.error('Failed to process action'); }
     setLoading(false);
   };
