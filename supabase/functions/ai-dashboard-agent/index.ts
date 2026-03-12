@@ -2959,7 +2959,7 @@ async function executeGetProactiveInsights(sb: any) {
     insights.push({
       category: '🔥 Finance Clause Expiry', severity: 'critical',
       title: `${financeExpiring.length} deal(s) with finance expiring within 7 days`,
-      detail: financeExpiring.map((d: any) => `• ${d.clients?.primary_first_name || ''} ${d.clients?.primary_surname || ''} — expires ${d.finance_clause_expiry?.substring(0, 10)}`).join('\n'),
+      detail: financeExpiring.map((d: any) => `• ${clientName(d.clients)} — expires ${d.finance_clause_expiry?.substring(0, 10)}`).join('\n'),
       action_suggestion: 'Urgently follow up on approvals and lender timelines.',
     });
   }
