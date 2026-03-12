@@ -322,6 +322,8 @@ export function AgentChatWidget() {
         const { data: refreshed } = await invokeSecureFunction('ai-dashboard-agent', { action: 'get-messages', conversation_id: convId });
         if (refreshed?.messages) setMessages(refreshed.messages);
         loadConversations();
+        // Auto-refresh settings panel if it's open (e.g. after creating a playbook/task via chat)
+        if (panelView === 'settings') loadSettingsData(settingsTab);
       }
     } catch (err: any) {
       setRetryMessage(msg);
