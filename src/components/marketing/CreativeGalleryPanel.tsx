@@ -42,20 +42,14 @@ interface Creative {
   cpl: number;
 }
 
-/** Returns a CSS aspect-ratio value based on creative dimensions */
-function getAspectClass(creative: Creative): string {
+/** Returns inline aspect-ratio style based on creative dimensions */
+function getAspectStyle(creative: Creative): React.CSSProperties {
   if (creative.width && creative.height) {
-    const ratio = creative.width / creative.height;
-    // Portrait (9:16, 4:5, etc.)
-    if (ratio < 0.9) return 'aspect-[4/5]';
-    // Square (1:1)
-    if (ratio >= 0.9 && ratio <= 1.1) return 'aspect-square';
-    // Landscape (16:9, 1.91:1, etc.)
-    return 'aspect-video';
+    return { aspectRatio: `${creative.width} / ${creative.height}` };
   }
-  // Default: video=9:16 portrait, image=square
-  if (creative.is_video) return 'aspect-[4/5]';
-  return 'aspect-square';
+  // No dimensions known — use sensible defaults
+  if (creative.is_video) return { aspectRatio: '4 / 5' };
+  return { aspectRatio: '4 / 5' }; // safer default than 1:1 for ad creatives
 }
 
 export function CreativeGalleryPanel({ datePreset }: CreativeGalleryProps) {

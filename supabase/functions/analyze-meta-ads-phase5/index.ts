@@ -79,24 +79,26 @@ serve(async (req) => {
         // Extract video ID from object_story_spec
         const storySpec = creative.object_story_spec || {};
         const videoData = storySpec.video_data || {};
-        let videoId = videoData.video_id || null;
-        
-        // Also check link_data for video_id (slideshows/link ads with video)
         const linkData = storySpec.link_data || {};
-        if (!videoId && linkData.video_id) {
-          videoId = linkData.video_id;
-        }
+        let videoId = videoData.video_id || linkData.video_id || null;
 
-        // Determine media type - also check if thumbnail_url contains 'video' patterns
         const isVideo = !!videoId;
+
+        // Extract image_hash: try creative level, then link_data, then video_data
+        const imageHash = creative.image_hash || linkData.image_hash || videoData.image_hash || null;
+        
+        // For image_url: prefer creative.image_url, then link_data.picture (full-size)
+        const imageUrl = creative.image_url || linkData.picture || null;
+
+        console.log(`[meta-ads-phase5] Ad ${ad.id} (${ad.name}): isVideo=${isVideo}, imageHash=${imageHash}, hasImageUrl=${!!imageUrl}, videoId=${videoId}`);
 
         return {
           ad_id: ad.id,
           ad_name: ad.name,
           status: ad.status,
           thumbnail_url: creative.thumbnail_url || null,
-          image_url: creative.image_url || null,
-          image_hash: creative.image_hash || null,
+          image_url: imageUrl,
+          image_hash: imageHash,
           title: creative.title || null,
           body: creative.body || null,
           cta_type: creative.call_to_action_type || null,
