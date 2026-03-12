@@ -761,6 +761,13 @@ NPC Team`
               />
             </TabsContent>
 
+            <TabsContent value="report-requests" className={cn("mt-4", !isMobile && "max-w-3xl mx-auto w-full")}>
+              <ClientReportRequestsTab
+                clientId={client.id}
+                clientName={`${client.primary_first_name} ${client.primary_surname}`}
+              />
+            </TabsContent>
+
             <TabsContent value="emails" className="mt-4 w-full min-w-0">
               <ClientEmailsTab clientId={client.id} clientName={`${client.primary_first_name} ${client.primary_surname}`} />
             </TabsContent>
