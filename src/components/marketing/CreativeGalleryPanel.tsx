@@ -211,31 +211,33 @@ export function CreativeGalleryPanel({ datePreset }: CreativeGalleryProps) {
 /* ── Preview Modal ── */
 
 function CreativePreviewModal({ creative, onClose }: { creative: Creative | null; onClose: () => void }) {
+  const mediaUrl = creative?.image_url || creative?.thumbnail_url;
+
   return (
     <Dialog open={!!creative} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-4xl w-[calc(100vw-32px)] p-0 overflow-hidden bg-background border-border">
+      <DialogContent className="max-w-3xl w-[calc(100vw-32px)] p-0 overflow-hidden bg-background border-border">
         {creative && (
           <div className="flex flex-col">
             {/* Media area */}
-            <div className="relative bg-muted">
+            <div className="relative bg-black flex items-center justify-center min-h-[300px] max-h-[65vh]">
               {creative.is_video && creative.video_url ? (
-                <VideoPlayer
+                <video
                   src={creative.video_url}
-                  poster={creative.image_url || creative.thumbnail_url || undefined}
+                  poster={mediaUrl || undefined}
+                  controls
+                  playsInline
+                  autoPlay
+                  className="w-full max-h-[65vh] object-contain"
+                />
+              ) : mediaUrl ? (
+                <img
+                  src={mediaUrl}
+                  alt={creative.ad_name}
+                  className="w-full max-h-[65vh] object-contain"
                 />
               ) : (
-                <div className="flex items-center justify-center max-h-[70vh]">
-                  {(creative.image_url || creative.thumbnail_url) ? (
-                    <img
-                      src={creative.image_url || creative.thumbnail_url!}
-                      alt={creative.ad_name}
-                      className="max-w-full max-h-[70vh] object-contain"
-                    />
-                  ) : (
-                    <div className="py-24 flex items-center justify-center">
-                      <Image className="h-16 w-16 text-muted-foreground/20" />
-                    </div>
-                  )}
+                <div className="py-24 flex items-center justify-center">
+                  <Image className="h-16 w-16 text-muted-foreground/20" />
                 </div>
               )}
             </div>
