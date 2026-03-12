@@ -1900,6 +1900,142 @@ const TOOLS: any[] = [
       parameters: { type: "object", properties: { query: { type: "string", description: "Search term to match against filenames or extracted text" }, mime_type: { type: "string", description: "Filter by MIME type (e.g. application/pdf, image/png)" }, limit: { type: "number", description: "Max results (default 10)" } }, required: [] },
     },
   },
+
+  // ═══════════════════════════════════════════════════════════
+  // BATCH 7 — AGENCY AGREEMENTS
+  // ═══════════════════════════════════════════════════════════
+  {
+    type: "function",
+    function: {
+      name: "get_agreements_overview",
+      description: "Get summary of all agency agreements: total count, status breakdown (draft/sent/signed/voided), recent activity.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_client_agreements",
+      description: "List all agency agreements for a specific client including status, DocuSign status, dates, and template used.",
+      parameters: { type: "object", properties: { client_id: { type: "string", description: "UUID of the client" } }, required: ["client_id"] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_agreement_details",
+      description: "Fetch full details of a specific agency agreement including buyer info, DocuSign envelope status, template, dates, and notes.",
+      parameters: { type: "object", properties: { agreement_id: { type: "string", description: "UUID of the agreement" } }, required: ["agreement_id"] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "search_agreements",
+      description: "Search agreements by buyer name, status, or DocuSign status. Useful for finding pending or signed agreements.",
+      parameters: { type: "object", properties: { query: { type: "string", description: "Search term (buyer name)" }, status: { type: "string", enum: ["draft", "sent", "signed", "voided", "expired"], description: "Filter by agreement status" }, docusign_status: { type: "string", description: "Filter by DocuSign status (e.g. sent, delivered, completed, voided)" }, limit: { type: "number", description: "Max results (default 20)" } } },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_agreement_templates",
+      description: "List available Gamma agreement templates with names, descriptions, and active status.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+
+  // ═══════════════════════════════════════════════════════════
+  // BATCH 7 — MARKETING ANALYTICS & LEAD ATTRIBUTION
+  // ═══════════════════════════════════════════════════════════
+  {
+    type: "function",
+    function: {
+      name: "get_lead_attributions",
+      description: "Get lead source attribution data showing where CRM leads came from (UTM source, campaign, Meta Ads). Filter by client, source type, or date range.",
+      parameters: { type: "object", properties: { client_id: { type: "string", description: "Filter by specific client UUID" }, source_type: { type: "string", description: "Filter by source type (e.g. meta_ads, google_ads, organic, direct, referral)" }, enrichment_status: { type: "string", enum: ["pending", "enriched", "failed", "skipped"], description: "Filter by enrichment status" }, limit: { type: "number", description: "Max results (default 30)" } } },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_attribution_summary",
+      description: "Aggregate lead attribution statistics: total leads by source, campaign performance, top performing ads/adsets, enrichment status breakdown.",
+      parameters: { type: "object", properties: { days: { type: "number", description: "Look-back period in days (default 90)" } } },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_campaign_performance",
+      description: "Get performance metrics for Meta Ads campaigns showing leads generated, deals created, and estimated ROI per campaign.",
+      parameters: { type: "object", properties: { campaign_name: { type: "string", description: "Filter by specific campaign name" }, limit: { type: "number", description: "Max results (default 20)" } } },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_marketing_funnel",
+      description: "Full-funnel analysis: Meta impressions → clicks → CRM leads → deals → conversions. Cross-references lead attributions with pipeline data to show True ROI.",
+      parameters: { type: "object", properties: { days: { type: "number", description: "Analysis period in days (default 30)" } } },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_marketing_reports",
+      description: "List saved marketing analysis reports with AI-generated insights, metrics snapshots, and recommendations.",
+      parameters: { type: "object", properties: { report_type: { type: "string", description: "Filter by type (e.g. weekly, monthly, campaign)" }, limit: { type: "number", description: "Max results (default 10)" } } },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_client_lead_source",
+      description: "Get the lead source/attribution for a specific client: which campaign, ad, and channel brought them in.",
+      parameters: { type: "object", properties: { client_id: { type: "string", description: "UUID of the client" } }, required: ["client_id"] },
+    },
+  },
+
+  // ═══════════════════════════════════════════════════════════
+  // BATCH 7 — CLIENT PORTAL
+  // ═══════════════════════════════════════════════════════════
+  {
+    type: "function",
+    function: {
+      name: "get_portal_users",
+      description: "List all client portal users with their status (active/invited/disabled), linked client, last login, and email.",
+      parameters: { type: "object", properties: { status: { type: "string", enum: ["active", "invited", "disabled"], description: "Filter by user status" }, limit: { type: "number", description: "Max results (default 30)" } } },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_portal_overview",
+      description: "Client portal statistics: total users, active sessions, invite statuses, recent logins, and adoption rate (portal users vs total clients).",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_client_portal_status",
+      description: "Check if a specific client has portal access: account status, last login, invite status.",
+      parameters: { type: "object", properties: { client_id: { type: "string", description: "UUID of the client" } }, required: ["client_id"] },
+    },
+  },
+
+  // ═══════════════════════════════════════════════════════════
+  // BATCH 7 — APPOINTMENTS (SECONDARY RECIPIENTS)
+  // ═══════════════════════════════════════════════════════════
+  {
+    type: "function",
+    function: {
+      name: "get_appointment_notifications",
+      description: "List appointment secondary recipient notifications: who was notified, appointment details, send status.",
+      parameters: { type: "object", properties: { limit: { type: "number", description: "Max results (default 20)" } } },
+    },
+  },
 ];
 
 // ============================================================
@@ -4101,6 +4237,25 @@ async function executeTool(sb: any, name: string, args: any, userId: string): Pr
     case 'get_depreciation_summary': return executeGetDepreciationSummary(sb);
     // File uploads
     case 'search_uploaded_files': return executeSearchUploadedFiles(sb, args, userId);
+    // Batch 7 — Agency Agreements
+    case 'get_agreements_overview': return executeGetAgreementsOverview(sb);
+    case 'get_client_agreements': return executeGetClientAgreements(sb, args);
+    case 'get_agreement_details': return executeGetAgreementDetails(sb, args);
+    case 'search_agreements': return executeSearchAgreements(sb, args);
+    case 'get_agreement_templates': return executeGetAgreementTemplates(sb);
+    // Batch 7 — Marketing & Lead Attribution
+    case 'get_lead_attributions': return executeGetLeadAttributions(sb, args);
+    case 'get_attribution_summary': return executeGetAttributionSummary(sb, args);
+    case 'get_campaign_performance': return executeGetCampaignPerformance(sb, args);
+    case 'get_marketing_funnel': return executeGetMarketingFunnel(sb, args);
+    case 'get_marketing_reports': return executeGetMarketingReports(sb, args);
+    case 'get_client_lead_source': return executeGetClientLeadSource(sb, args);
+    // Batch 7 — Client Portal
+    case 'get_portal_users': return executeGetPortalUsers(sb, args);
+    case 'get_portal_overview': return executeGetPortalOverview(sb);
+    case 'get_client_portal_status': return executeGetClientPortalStatus(sb, args);
+    // Batch 7 — Appointments
+    case 'get_appointment_notifications': return executeGetAppointmentNotifications(sb, args);
 
     default: return { error: `Unknown tool: ${name}` };
   }
@@ -4124,6 +4279,239 @@ async function executeSearchUploadedFiles(sb: any, args: any, userId: string) {
     size_display: f.file_size < 1024 ? `${f.file_size}B` : f.file_size < 1048576 ? `${(f.file_size / 1024).toFixed(1)}KB` : `${(f.file_size / 1048576).toFixed(1)}MB`,
   }));
   return { files, count: files.length };
+}
+
+// ─── BATCH 7 EXECUTORS — AGENCY AGREEMENTS ───
+
+async function executeGetAgreementsOverview(sb: any) {
+  const { data: all } = await sb.from('agency_agreements').select('id, status, docusign_status, created_at, agreement_date').order('created_at', { ascending: false });
+  const agreements = all || [];
+  const statusCounts: Record<string, number> = {};
+  const docusignCounts: Record<string, number> = {};
+  agreements.forEach((a: any) => {
+    statusCounts[a.status || 'unknown'] = (statusCounts[a.status || 'unknown'] || 0) + 1;
+    if (a.docusign_status) docusignCounts[a.docusign_status] = (docusignCounts[a.docusign_status] || 0) + 1;
+  });
+  const recent = agreements.slice(0, 5).map((a: any) => ({ id: a.id, status: a.status, docusign_status: a.docusign_status, date: a.agreement_date }));
+  return { total: agreements.length, by_status: statusCounts, by_docusign_status: docusignCounts, recent_agreements: recent };
+}
+
+async function executeGetClientAgreements(sb: any, args: any) {
+  const { data, error } = await sb.from('agency_agreements')
+    .select('id, buyer_names, secondary_buyer_name, status, docusign_status, docusign_sent_at, docusign_signed_at, agreement_date, initial_commitment_fee, notes, template_id, sent_via, created_at')
+    .eq('client_id', args.client_id).order('created_at', { ascending: false });
+  if (error) return { error: error.message };
+  return { agreements: data || [], count: (data || []).length };
+}
+
+async function executeGetAgreementDetails(sb: any, args: any) {
+  const { data, error } = await sb.from('agency_agreements')
+    .select('*, gamma_agreement_templates(name, description)')
+    .eq('id', args.agreement_id).single();
+  if (error) return { error: error.message };
+  return { agreement: data };
+}
+
+async function executeSearchAgreements(sb: any, args: any) {
+  const limit = args.limit || 20;
+  let q = sb.from('agency_agreements')
+    .select('id, buyer_names, secondary_buyer_name, status, docusign_status, agreement_date, client_id, created_at')
+    .order('created_at', { ascending: false }).limit(limit);
+  if (args.query) q = q.ilike('buyer_names', `%${args.query}%`);
+  if (args.status) q = q.eq('status', args.status);
+  if (args.docusign_status) q = q.eq('docusign_status', args.docusign_status);
+  const { data, error } = await q;
+  if (error) return { error: error.message };
+  return { agreements: data || [], count: (data || []).length };
+}
+
+async function executeGetAgreementTemplates(sb: any) {
+  const { data } = await sb.from('gamma_agreement_templates').select('id, name, description, gamma_template_id, is_active, is_default').order('name');
+  return { templates: data || [] };
+}
+
+// ─── BATCH 7 EXECUTORS — MARKETING & LEAD ATTRIBUTION ───
+
+async function executeGetLeadAttributions(sb: any, args: any) {
+  const limit = args.limit || 30;
+  let q = sb.from('lead_source_attributions')
+    .select('id, client_id, source_type, utm_source, utm_medium, utm_campaign, utm_content, meta_campaign_name, meta_adset_name, meta_ad_name, meta_campaign_objective, enrichment_status, attributed_at, landing_page_url, ghl_attribution_source')
+    .order('attributed_at', { ascending: false }).limit(limit);
+  if (args.client_id) q = q.eq('client_id', args.client_id);
+  if (args.source_type) q = q.eq('source_type', args.source_type);
+  if (args.enrichment_status) q = q.eq('enrichment_status', args.enrichment_status);
+  const { data, error } = await q;
+  if (error) return { error: error.message };
+  return { attributions: data || [], count: (data || []).length };
+}
+
+async function executeGetAttributionSummary(sb: any, args: any) {
+  const days = args.days || 90;
+  const since = new Date(Date.now() - days * 86400000).toISOString();
+  const { data: all } = await sb.from('lead_source_attributions')
+    .select('source_type, utm_source, utm_campaign, meta_campaign_name, enrichment_status, attributed_at')
+    .gte('attributed_at', since);
+  const records = all || [];
+  const bySource: Record<string, number> = {};
+  const byCampaign: Record<string, number> = {};
+  const byEnrichment: Record<string, number> = {};
+  records.forEach((r: any) => {
+    bySource[r.source_type || 'unknown'] = (bySource[r.source_type || 'unknown'] || 0) + 1;
+    const campaign = r.meta_campaign_name || r.utm_campaign || 'uncategorized';
+    byCampaign[campaign] = (byCampaign[campaign] || 0) + 1;
+    byEnrichment[r.enrichment_status || 'unknown'] = (byEnrichment[r.enrichment_status || 'unknown'] || 0) + 1;
+  });
+  const topCampaigns = Object.entries(byCampaign).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([name, count]) => ({ name, leads: count }));
+  return { total_leads: records.length, period_days: days, by_source: bySource, by_enrichment_status: byEnrichment, top_campaigns: topCampaigns };
+}
+
+async function executeGetCampaignPerformance(sb: any, args: any) {
+  const limit = args.limit || 20;
+  let q = sb.from('lead_source_attributions')
+    .select('meta_campaign_name, meta_campaign_id, meta_campaign_objective, meta_adset_name, meta_ad_name, client_id, deal_id, attributed_at')
+    .not('meta_campaign_name', 'is', null);
+  if (args.campaign_name) q = q.ilike('meta_campaign_name', `%${args.campaign_name}%`);
+  const { data } = await q;
+  const records = data || [];
+  const campaigns: Record<string, { name: string; objective: string; leads: number; with_deals: number; ad_sets: Set<string>; ads: Set<string> }> = {};
+  records.forEach((r: any) => {
+    const key = r.meta_campaign_name;
+    if (!campaigns[key]) campaigns[key] = { name: key, objective: r.meta_campaign_objective || 'N/A', leads: 0, with_deals: 0, ad_sets: new Set(), ads: new Set() };
+    campaigns[key].leads++;
+    if (r.deal_id) campaigns[key].with_deals++;
+    if (r.meta_adset_name) campaigns[key].ad_sets.add(r.meta_adset_name);
+    if (r.meta_ad_name) campaigns[key].ads.add(r.meta_ad_name);
+  });
+  const result = Object.values(campaigns).map((c: any) => ({
+    campaign: c.name, objective: c.objective, total_leads: c.leads, leads_with_deals: c.with_deals,
+    conversion_rate: c.leads > 0 ? `${((c.with_deals / c.leads) * 100).toFixed(1)}%` : '0%',
+    ad_set_count: c.ad_sets.size, ad_count: c.ads.size,
+  })).sort((a, b) => b.total_leads - a.total_leads).slice(0, limit);
+  return { campaigns: result, total_campaigns: result.length };
+}
+
+async function executeGetMarketingFunnel(sb: any, args: any) {
+  const days = args.days || 30;
+  const since = new Date(Date.now() - days * 86400000).toISOString();
+  const [attribResult, dealsResult, clientsResult] = await Promise.all([
+    sb.from('lead_source_attributions').select('id, client_id, deal_id, source_type, meta_campaign_name').gte('attributed_at', since),
+    sb.from('client_deals').select('id, client_id, commission_estimate, current_stage, created_at').gte('created_at', since),
+    sb.from('clients').select('id', { count: 'exact', head: true }).gte('created_at', since),
+  ]);
+  const attributions = attribResult.data || [];
+  const deals = dealsResult.data || [];
+  const totalLeads = attributions.length;
+  const leadsWithDeals = attributions.filter((a: any) => a.deal_id).length;
+  const totalDeals = deals.length;
+  const totalCommission = deals.reduce((s: number, d: any) => s + (d.commission_estimate || 0), 0);
+  const metaLeads = attributions.filter((a: any) => a.source_type === 'meta_ads').length;
+  return {
+    period_days: days,
+    funnel: {
+      new_clients: clientsResult.count || 0,
+      attributed_leads: totalLeads,
+      meta_ads_leads: metaLeads,
+      leads_with_deals: leadsWithDeals,
+      total_deals: totalDeals,
+      lead_to_deal_rate: totalLeads > 0 ? `${((leadsWithDeals / totalLeads) * 100).toFixed(1)}%` : 'N/A',
+      total_pipeline_commission: totalCommission,
+    },
+  };
+}
+
+async function executeGetMarketingReports(sb: any, args: any) {
+  const limit = args.limit || 10;
+  let q = sb.from('marketing_reports')
+    .select('id, title, report_type, date_preset, period_start, period_end, recommendations, created_at')
+    .order('created_at', { ascending: false }).limit(limit);
+  if (args.report_type) q = q.eq('report_type', args.report_type);
+  const { data, error } = await q;
+  if (error) return { error: error.message };
+  return { reports: data || [], count: (data || []).length };
+}
+
+async function executeGetClientLeadSource(sb: any, args: any) {
+  const { data } = await sb.from('lead_source_attributions')
+    .select('*')
+    .eq('client_id', args.client_id)
+    .order('attributed_at', { ascending: false })
+    .limit(5);
+  if (!data || data.length === 0) return { message: 'No lead source attribution found for this client.', attributions: [] };
+  return { attributions: data, primary_source: data[0] };
+}
+
+// ─── BATCH 7 EXECUTORS — CLIENT PORTAL ───
+
+async function executeGetPortalUsers(sb: any, args: any) {
+  const limit = args.limit || 30;
+  let q = sb.from('client_portal_users')
+    .select('id, email, status, last_login_at, created_at, client_id')
+    .order('created_at', { ascending: false }).limit(limit);
+  if (args.status) q = q.eq('status', args.status);
+  const { data, error } = await q;
+  if (error) return { error: error.message };
+  // Enrich with client names
+  const clientIds = [...new Set((data || []).map((u: any) => u.client_id))];
+  const { data: clients } = await sb.from('clients').select('id, primary_first_name, primary_surname').in('id', clientIds);
+  const clientMap: Record<string, string> = {};
+  (clients || []).forEach((c: any) => { clientMap[c.id] = `${c.primary_first_name || ''} ${c.primary_surname || ''}`.trim(); });
+  const users = (data || []).map((u: any) => ({ ...u, client_name: clientMap[u.client_id] || 'Unknown' }));
+  return { users, count: users.length };
+}
+
+async function executeGetPortalOverview(sb: any) {
+  const [usersResult, sessionsResult, clientsResult] = await Promise.all([
+    sb.from('client_portal_users').select('id, status, last_login_at, created_at'),
+    sb.from('client_portal_sessions').select('id', { count: 'exact', head: true }).gt('expires_at', new Date().toISOString()),
+    sb.from('clients').select('id', { count: 'exact', head: true }),
+  ]);
+  const users = usersResult.data || [];
+  const statusCounts: Record<string, number> = {};
+  let recentLogins = 0;
+  const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
+  users.forEach((u: any) => {
+    statusCounts[u.status || 'unknown'] = (statusCounts[u.status || 'unknown'] || 0) + 1;
+    if (u.last_login_at && u.last_login_at >= weekAgo) recentLogins++;
+  });
+  const totalClients = clientsResult.count || 0;
+  const adoptionRate = totalClients > 0 ? `${((users.length / totalClients) * 100).toFixed(1)}%` : 'N/A';
+  return {
+    total_portal_users: users.length,
+    active_sessions: sessionsResult.count || 0,
+    by_status: statusCounts,
+    logins_last_7_days: recentLogins,
+    total_clients: totalClients,
+    adoption_rate: adoptionRate,
+  };
+}
+
+async function executeGetClientPortalStatus(sb: any, args: any) {
+  const { data } = await sb.from('client_portal_users')
+    .select('id, email, status, last_login_at, created_at, invite_expires_at')
+    .eq('client_id', args.client_id)
+    .maybeSingle();
+  if (!data) return { has_portal_access: false, message: 'This client does not have a portal account.' };
+  return {
+    has_portal_access: true,
+    portal_user: {
+      email: data.email,
+      status: data.status,
+      last_login: data.last_login_at,
+      created_at: data.created_at,
+      invite_expires: data.invite_expires_at,
+    },
+  };
+}
+
+// ─── BATCH 7 EXECUTORS — APPOINTMENTS ───
+
+async function executeGetAppointmentNotifications(sb: any, args: any) {
+  const limit = args.limit || 20;
+  const { data, error } = await sb.from('appointment_secondary_recipients')
+    .select('id, contact_name, contact_email, appointment_title, appointment_type, appointment_start, appointment_end, calendar_name, notification_sent, notification_sent_at, notification_error, created_at')
+    .order('created_at', { ascending: false }).limit(limit);
+  if (error) return { error: error.message };
+  return { notifications: data || [], count: (data || []).length };
 }
 
 // ─── BATCH 5 EXECUTORS ───
@@ -4188,7 +4576,7 @@ async function executeGetTeamMembers(sb: any, userId: string) {
 
 const SYSTEM_PROMPT = `You are Aurixa, the AI operating assistant for the NPC Property Dashboard — a property investment and mortgage brokerage management platform used by Naidu Property Consulting Services.
 
-You have access to 180+ specialized tools across 47 domains:
+You have access to 200+ specialized tools across 51 domains:
 
 📋 CLIENT MANAGEMENT — Search/view/update/create/delete clients, view co-borrowers, log activities, filter by pipeline status, find clients needing follow-up.
 💰 DEALS & PIPELINE — View/filter/create/delete deals by stage/risk, settlement countdowns, stale deal detection, clawback monitoring, commission forecasting, build progress tracking, stage completion, deal timeline, deal health scoring.
@@ -4242,6 +4630,10 @@ You have access to 180+ specialized tools across 47 domains:
 ☁️ CLOUDFLARE — Read-only analytics via cloudflare-proxy.
 👤 USER MANAGEMENT — Full user list with roles and login history.
 🏗️ DEPRECIATION — Search/summarize depreciation comps by property type.
+📑 AGENCY AGREEMENTS — Overview, client agreements, agreement details, search by status/buyer, DocuSign tracking (sent/signed/voided), Gamma templates.
+📣 MARKETING ANALYTICS — Lead source attributions (UTM/Meta Ads), attribution summaries, campaign performance with conversion rates, full marketing funnel (impressions → leads → deals → ROI), saved marketing reports, per-client lead source lookup.
+🌐 CLIENT PORTAL — Portal user list with status, portal overview (adoption rate, active sessions, login activity), per-client portal access check.
+🔔 APPOINTMENT NOTIFICATIONS — Secondary recipient notification history for appointments.
 
 CRITICAL RULES:
 1. When the user asks about a client, ALWAYS use search_clients first to find their ID, then use that ID for subsequent lookups.
@@ -4300,7 +4692,17 @@ BATCH 5 MEMORY & INTELLIGENCE RULES:
 28. When asked to "generate a report for [address]", use trigger_investment_report.
 29. For "what needs my attention" or "any alerts" queries, use get_notification_summary for a quick badge-style response, then get_proactive_insights for detail.
 30. When sharing conversations, use get_team_members first to validate the target user, then share_conversation.
-31. Respond naturally and concisely. Your personality is professional yet approachable — like a highly competent executive assistant.`;
+31. Respond naturally and concisely. Your personality is professional yet approachable — like a highly competent executive assistant.
+
+BATCH 7 MARKETING & AGREEMENTS RULES:
+32. For "where did this lead come from" or "how did they find us" queries about a client, use get_client_lead_source.
+33. For "campaign performance" or "which ads are working", use get_campaign_performance.
+34. For "marketing ROI" or "funnel" queries, use get_marketing_funnel for full-funnel analysis.
+35. For "agreement status" or "DocuSign" queries about a client, use get_client_agreements.
+36. For "agreements overview" or "how many agreements", use get_agreements_overview.
+37. For "portal status" of a client, use get_client_portal_status. For overall portal health, use get_portal_overview.
+38. When showing campaign performance, always include conversion rate (leads → deals) and highlight top performers.
+39. When showing agreements, highlight pending DocuSign actions (sent but not signed).`;
 
 
 // ============================================================
