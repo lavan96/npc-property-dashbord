@@ -98,11 +98,9 @@ export function AIDigestPanel({ digest, loading, error, onRegenerate, regenerati
               <p className="text-xs mt-1">Click "Regenerate" to generate an AI analysis</p>
             </div>
           ) : (
-            <ScrollArea className="max-h-none sm:max-h-[400px]">
-              <div className="min-w-0 overflow-hidden">
-                <AgentMessageRenderer content={digest} />
-              </div>
-            </ScrollArea>
+            <div className="min-w-0 overflow-hidden">
+              <AgentMessageRenderer content={digest} />
+            </div>
           )}
         </CardContent>
       )}
