@@ -544,7 +544,7 @@ Provide a concise 3-4 sentence analysis of what these trends mean for the busine
 
       const { data: reports, error } = await supabase
         .from('marketing_reports')
-        .select('id, title, report_type, period_start, period_end, metrics_snapshot, forecast_data, created_at')
+        .select('id, title, report_type, period_start, period_end, metrics_snapshot, forecast_data, content, created_at')
         .eq('report_type', 'weekly_brief')
         .order('created_at', { ascending: false })
         .limit(limit);
