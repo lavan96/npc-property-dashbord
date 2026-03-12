@@ -458,6 +458,16 @@ export default function InvestmentReportView() {
         reportTitle={report.property_address}
         reportTier={report.report_tier || undefined}
         storagePath={report.pdf_url || null}
+        onGeneratePDF={async () => {
+          if (pdfGeneratorRef.current) {
+            const url = await pdfGeneratorRef.current.generateAndUpload();
+            if (url) {
+              setReport((prev) => prev ? { ...prev, pdf_url: url } : prev);
+            }
+            return url;
+          }
+          return null;
+        }}
       />
     </div>
   );
