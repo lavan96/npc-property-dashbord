@@ -257,12 +257,12 @@ export function SendToClientModal({
                 {sending ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                    Sending...
+                    {!storagePath ? 'Generating & Sending...' : 'Sending...'}
                   </>
                 ) : (
                   <>
                     <Send className="h-4 w-4 mr-1" />
-                    Send to {selectedClient ? selectedClient.primary_first_name : 'Client'}
+                    {!storagePath ? 'Generate & Send' : `Send to ${selectedClient ? selectedClient.primary_first_name : 'Client'}`}
                   </>
                 )}
               </Button>
