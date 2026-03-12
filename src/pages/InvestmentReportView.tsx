@@ -38,6 +38,7 @@ interface InvestmentReport {
   is_client_report?: boolean;
   client_property_id?: string | null;
   report_tier?: string | null;
+  pdf_url?: string | null;
 }
 interface ClientInfo {
   id: string;
