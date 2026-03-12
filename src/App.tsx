@@ -212,7 +212,8 @@ const App = () => (
                           <Route path="api-usage" element={<ApiUsage />} />
                           <Route path="clients" element={<ClientManagement />} />
                           <Route path="client-tracker" element={<ClientTracker />} />
-                          <Route path="portfolio-reports" element={<PortfolioReports />} />
+                           <Route path="portfolio-reports" element={<PortfolioReports />} />
+                           <Route path="report-requests" element={<ReportRequests />} />
                            <Route path="deal-pipeline" element={<DealPipeline />} />
                            <Route path="reminders" element={<RemindersHub />} />
                            <Route path="checklists" element={<Checklists />} />
