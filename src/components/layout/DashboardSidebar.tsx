@@ -31,6 +31,7 @@ import {
   ClipboardList,
   FileSignature,
   Globe,
+  Send,
 } from 'lucide-react';
 import {
   Sidebar,
