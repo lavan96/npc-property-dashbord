@@ -2911,7 +2911,7 @@ async function executeGetProactiveInsights(sb: any) {
     insights.push({
       category: '🐌 Stalling Deals', severity: 'warning',
       title: `${staleDeals.length} deal(s) with no movement in 14+ days`,
-      detail: staleDeals.map((d: any) => `• ${d.clients?.primary_first_name || ''} ${d.clients?.primary_surname || ''} — "${d.current_stage}" (${Math.floor((now.getTime() - new Date(d.updated_at).getTime()) / 86400000)}d stale)`).join('\n'),
+      detail: staleDeals.map((d: any) => `• ${clientName(d.clients)} — "${d.current_stage}" (${Math.abs(daysFromNow(d.updated_at))}d stale)`).join('\n'),
       action_suggestion: 'Review these deals and update their stages or add notes.',
       affected_ids: staleDeals.map((d: any) => d.id),
     });
