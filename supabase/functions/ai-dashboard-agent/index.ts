@@ -4700,6 +4700,17 @@ serve(async (req) => {
         if (insertErr) return new Response(JSON.stringify({ success: false, error: insertErr.message }), { status: 500, headers: { ...cors, 'Content-Type': 'application/json' } });
         return new Response(JSON.stringify({ success: true }), { headers: { ...cors, 'Content-Type': 'application/json' } });
       }
+      case 'execute-tool': {
+        // Service-to-service call from agent-task-runner for scheduled task execution
+        const authHeader = req.headers.get('Authorization') || '';
+        const isService = authHeader.includes(SUPABASE_SERVICE_ROLE_KEY) || body.source === 'scheduled_task';
+        if (!isService) {
+          return new Response(JSON.stringify({ error: 'Forbidden: service calls only' }), { status: 403, headers: { ...cors, 'Content-Type': 'application/json' } });
+        }
+        const targetUserId = body.user_id || userId!;
+        const toolResult = await executeTool(sb, body.tool_name, body.tool_args || {}, targetUserId);
+        return new Response(JSON.stringify({ success: true, result: toolResult }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+      }
       default:
         return new Response(JSON.stringify({ error: `Unknown action: ${body.action}` }), { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } });
     }
