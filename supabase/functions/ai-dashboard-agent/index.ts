@@ -2089,7 +2089,7 @@ async function executeSearchClients(sb: any, args: any) {
   const { data } = await sb.from('clients').select('id, primary_first_name, primary_surname, primary_email, primary_mobile, pipeline_status, follow_up_date')
     .or(`primary_first_name.ilike.%${q}%,primary_surname.ilike.%${q}%,primary_email.ilike.%${q}%,primary_mobile.ilike.%${q}%`)
     .order('updated_at', { ascending: false }).limit(20);
-  return { clients: (data || []).map((c: any) => ({ id: c.id, name: `${c.primary_first_name||''} ${c.primary_surname||''}`.trim(), email: c.primary_email, mobile: c.primary_mobile, pipeline_status: c.pipeline_status, follow_up_date: c.follow_up_date })), count: data?.length || 0 };
+  return { clients: (data || []).map((c: any) => ({ id: c.id, name: clientName(c), email: c.primary_email, mobile: c.primary_mobile, pipeline_status: c.pipeline_status, follow_up_date: c.follow_up_date })), count: data?.length || 0 };
 }
 
 async function executeGetClientDetails(sb: any, args: any) {
