@@ -193,30 +193,44 @@ serve(async (req) => {
       for (const c of videoCreatives) {
         allFetches.push((async () => {
           try {
+            if (videoMetaCache.has(c.video_id)) {
+              const cached = videoMetaCache.get(c.video_id)!;
+              if (cached.video_url) c.video_url = cached.video_url;
+              if (cached.image_url) c.image_url = cached.image_url;
+              if (cached.width) c.width = cached.width;
+              if (cached.height) c.height = cached.height;
+              return;
+            }
+
             // 'picture' gives a high-res thumbnail (720p+), 'source' gives the playable URL
             const videoRes = await fetch(`${META_BASE_URL}/${c.video_id}?fields=source,picture,format{width,height}&access_token=${accessToken}`);
             const videoJson = await videoRes.json();
-            
+
+            const cachedVideo = {
+              video_url: videoJson.source || null,
+              image_url: videoJson.picture || null,
+              width: null as number | null,
+              height: null as number | null,
+            };
+
             console.log(`[meta-ads-phase5] Video ${c.video_id} response keys:`, Object.keys(videoJson));
-            
-            if (videoJson.source) {
-              c.video_url = videoJson.source;
-            }
-            
-            // Use 'picture' for high-res thumbnail (much better than creative.thumbnail_url which is 64x64)
-            if (videoJson.picture) {
-              c.image_url = videoJson.picture;
-            }
-            
+
             // Get video dimensions from format
             const formats = videoJson.format;
             if (formats && formats.length > 0) {
               // Pick the largest format for accurate dimensions
               const bestFormat = formats.reduce((best: any, f: any) => (f.width > (best?.width || 0)) ? f : best, formats[0]);
-              c.width = bestFormat.width;
-              c.height = bestFormat.height;
-              console.log(`[meta-ads-phase5] Video ${c.video_id} dimensions: ${c.width}x${c.height}`);
+              cachedVideo.width = bestFormat.width;
+              cachedVideo.height = bestFormat.height;
+              console.log(`[meta-ads-phase5] Video ${c.video_id} dimensions: ${cachedVideo.width}x${cachedVideo.height}`);
             }
+
+            videoMetaCache.set(c.video_id, cachedVideo);
+
+            if (cachedVideo.video_url) c.video_url = cachedVideo.video_url;
+            if (cachedVideo.image_url) c.image_url = cachedVideo.image_url;
+            if (cachedVideo.width) c.width = cachedVideo.width;
+            if (cachedVideo.height) c.height = cachedVideo.height;
           } catch (e) {
             console.warn(`[meta-ads-phase5] Failed to fetch video ${c.video_id}:`, e);
           }
