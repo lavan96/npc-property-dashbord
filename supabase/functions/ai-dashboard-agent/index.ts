@@ -4237,6 +4237,25 @@ async function executeTool(sb: any, name: string, args: any, userId: string): Pr
     case 'get_depreciation_summary': return executeGetDepreciationSummary(sb);
     // File uploads
     case 'search_uploaded_files': return executeSearchUploadedFiles(sb, args, userId);
+    // Batch 7 — Agency Agreements
+    case 'get_agreements_overview': return executeGetAgreementsOverview(sb);
+    case 'get_client_agreements': return executeGetClientAgreements(sb, args);
+    case 'get_agreement_details': return executeGetAgreementDetails(sb, args);
+    case 'search_agreements': return executeSearchAgreements(sb, args);
+    case 'get_agreement_templates': return executeGetAgreementTemplates(sb);
+    // Batch 7 — Marketing & Lead Attribution
+    case 'get_lead_attributions': return executeGetLeadAttributions(sb, args);
+    case 'get_attribution_summary': return executeGetAttributionSummary(sb, args);
+    case 'get_campaign_performance': return executeGetCampaignPerformance(sb, args);
+    case 'get_marketing_funnel': return executeGetMarketingFunnel(sb, args);
+    case 'get_marketing_reports': return executeGetMarketingReports(sb, args);
+    case 'get_client_lead_source': return executeGetClientLeadSource(sb, args);
+    // Batch 7 — Client Portal
+    case 'get_portal_users': return executeGetPortalUsers(sb, args);
+    case 'get_portal_overview': return executeGetPortalOverview(sb);
+    case 'get_client_portal_status': return executeGetClientPortalStatus(sb, args);
+    // Batch 7 — Appointments
+    case 'get_appointment_notifications': return executeGetAppointmentNotifications(sb, args);
 
     default: return { error: `Unknown tool: ${name}` };
   }
