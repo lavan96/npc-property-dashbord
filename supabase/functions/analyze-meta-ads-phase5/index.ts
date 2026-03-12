@@ -51,7 +51,7 @@ serve(async (req) => {
       const accountId = adAccountId.startsWith('act_') ? adAccountId : `act_${adAccountId}`;
       const limit = Math.min(body.limit || 20, 50);
 
-      // Fetch ads with creative fields
+      // Fetch ads with creative fields including video
       const adsUrl = `${META_BASE_URL}/${accountId}/ads?access_token=${accessToken}&fields=id,name,status,creative{id,thumbnail_url,image_url,title,body,call_to_action_type,object_story_spec},insights.date_preset(${body.datePreset || 'last_30d'}){spend,impressions,clicks,ctr,cpc,actions,cost_per_action_type,reach}&limit=${limit}`;
 
       console.log(`[meta-ads-phase5] Fetching creatives for ${accountId}`);
