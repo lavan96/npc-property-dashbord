@@ -106,7 +106,7 @@ export function SendToClientModal({
           report_title: reportTitle,
           report_type: 'investment',
           report_tier: reportTier || null,
-          storage_path: storagePath || null,
+          storage_path: finalStoragePath,
           source_report_id: reportId,
           notes: notes || null,
           published_at: new Date().toISOString(),
