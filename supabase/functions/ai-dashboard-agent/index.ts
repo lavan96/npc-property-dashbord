@@ -5159,8 +5159,9 @@ serve(async (req) => {
       }
       case 'execute-tool': {
         // Service-to-service call from agent-task-runner for scheduled task execution
-        const authHeader = req.headers.get('Authorization') || '';
-        const isService = authHeader.includes(SUPABASE_SERVICE_ROLE_KEY) || body.source === 'scheduled_task';
+        // Use verifyAuth's authMethod detection instead of raw key comparison
+        const { authMethod } = await verifyAuth(sb, req.headers, body);
+        const isService = authMethod === 'service_role' || body.source === 'scheduled_task';
         if (!isService) {
           return new Response(JSON.stringify({ error: 'Forbidden: service calls only' }), { status: 403, headers: { ...cors, 'Content-Type': 'application/json' } });
         }
