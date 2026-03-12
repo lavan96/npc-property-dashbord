@@ -106,37 +106,32 @@ serve(async (req) => {
         const spend = Number(insightsData.spend || 0);
         const cpl = leadCount > 0 ? spend / leadCount : 0;
 
-        // Extract video ID from object_story_spec
-        const storySpec = creative.object_story_spec || {};
-        const videoData = storySpec.video_data || {};
-        const linkData = storySpec.link_data || {};
-        let videoId = videoData.video_id || linkData.video_id || null;
+        const media = extractCreativeMediaData(creative);
+        const hasVideoAssets = Array.isArray(creative?.asset_feed_spec?.videos) && creative.asset_feed_spec.videos.length > 0;
+        const isVideo = !!media.videoId || hasVideoAssets || creative?.object_type === 'VIDEO';
+        const storyKeys = creative?.object_story_spec ? Object.keys(creative.object_story_spec) : [];
+        const assetFeedKeys = creative?.asset_feed_spec ? Object.keys(creative.asset_feed_spec) : [];
 
-        const isVideo = !!videoId;
-
-        // Extract image_hash: try creative level, then link_data, then video_data
-        const imageHash = creative.image_hash || linkData.image_hash || videoData.image_hash || null;
-        
-        // For image_url: prefer creative.image_url, then link_data.picture (full-size)
-        const imageUrl = creative.image_url || linkData.picture || null;
-
-        console.log(`[meta-ads-phase5] Ad ${ad.id} (${ad.name}): isVideo=${isVideo}, imageHash=${imageHash}, hasImageUrl=${!!imageUrl}, videoId=${videoId}`);
+        console.log(
+          `[meta-ads-phase5] Ad ${ad.id} (${ad.name}): isVideo=${isVideo}, imageHash=${media.imageHash}, hasImageUrl=${!!media.imageUrl}, videoId=${media.videoId}, storyKeys=${storyKeys.join('|') || 'none'}, assetFeedKeys=${assetFeedKeys.join('|') || 'none'}`
+        );
 
         return {
           ad_id: ad.id,
+          creative_id: creative.id || null,
           ad_name: ad.name,
           status: ad.status,
           thumbnail_url: creative.thumbnail_url || null,
-          image_url: imageUrl,
-          image_hash: imageHash,
-          title: creative.title || null,
-          body: creative.body || null,
+          image_url: media.imageUrl,
+          image_hash: media.imageHash,
+          title: media.title,
+          body: media.body,
           cta_type: creative.call_to_action_type || null,
           is_video: isVideo,
-          video_id: videoId,
+          video_id: media.videoId,
           video_url: null as string | null,
-          width: null as number | null,
-          height: null as number | null,
+          width: media.width,
+          height: media.height,
           spend: spend,
           impressions: Number(insightsData.impressions || 0),
           clicks: Number(insightsData.clicks || 0),
@@ -148,6 +143,43 @@ serve(async (req) => {
         };
       }).filter((c: any) => c.spend > 0)
         .sort((a: any, b: any) => b.spend - a.spend);
+
+      // Deep fallback: resolve missing media via direct creative lookup (covers dynamic creatives and banners)
+      const unresolvedCreatives = rawCreatives.filter((c: any) => c.creative_id && !c.video_id && !c.image_hash && !c.image_url);
+      if (unresolvedCreatives.length > 0) {
+        await Promise.all(unresolvedCreatives.map(async (c: any) => {
+          try {
+            const creativeRes = await fetch(
+              `${META_BASE_URL}/${c.creative_id}?fields=id,image_url,image_hash,title,body,thumbnail_url,object_type,object_story_spec,asset_feed_spec,effective_object_story_id&access_token=${accessToken}`
+            );
+            const creativeJson = await creativeRes.json();
+
+            if (!creativeRes.ok) {
+              console.warn(`[meta-ads-phase5] Creative fallback fetch failed for ${c.creative_id}:`, creativeJson?.error?.message || 'unknown');
+              return;
+            }
+
+            const media = extractCreativeMediaData(creativeJson);
+            if (!c.video_id && media.videoId) c.video_id = media.videoId;
+            if (!c.image_hash && media.imageHash) c.image_hash = media.imageHash;
+            if (!c.image_url && media.imageUrl) c.image_url = media.imageUrl;
+            if (!c.title && media.title) c.title = media.title;
+            if (!c.body && media.body) c.body = media.body;
+            if (!c.width && media.width) c.width = media.width;
+            if (!c.height && media.height) c.height = media.height;
+            if (!c.thumbnail_url && creativeJson.thumbnail_url) c.thumbnail_url = creativeJson.thumbnail_url;
+
+            const hasFallbackVideoAssets = Array.isArray(creativeJson?.asset_feed_spec?.videos) && creativeJson.asset_feed_spec.videos.length > 0;
+            if (!c.is_video && (media.videoId || hasFallbackVideoAssets || creativeJson?.object_type === 'VIDEO')) {
+              c.is_video = true;
+            }
+
+            console.log(`[meta-ads-phase5] Fallback creative ${c.creative_id}: videoId=${c.video_id}, imageHash=${c.image_hash}, hasImageUrl=${!!c.image_url}`);
+          } catch (e) {
+            console.warn(`[meta-ads-phase5] Failed creative fallback for ${c.creative_id}:`, e);
+          }
+        }));
+      }
 
       // Fetch video source URLs and image dimensions in parallel
       const videoCreatives = rawCreatives.filter((c: any) => c.video_id);
