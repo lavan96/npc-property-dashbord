@@ -2160,7 +2160,7 @@ async function executeGetStaleDeals(sb: any, args: any) {
   const threshold = args.days_threshold || 14;
   const cutoff = new Date(Date.now() - threshold * 86400000).toISOString();
   const { data } = await sb.from('client_deals').select('id, property_address, current_stage, risk_status, updated_at, clients:client_id(primary_first_name, primary_surname)').lt('updated_at', cutoff).not('current_stage', 'ilike', '%settled%').not('current_stage', 'ilike', '%cancelled%').not('current_stage', 'ilike', '%fallen%');
-  return { stale_deals: (data || []).map((d: any) => ({ ...d, client_name: `${d.clients?.primary_first_name||''} ${d.clients?.primary_surname||''}`.trim(), days_stale: Math.floor((Date.now() - new Date(d.updated_at).getTime()) / 86400000) })) };
+  return { stale_deals: (data || []).map((d: any) => ({ ...d, client_name: clientName(d.clients), days_stale: Math.abs(daysFromNow(d.updated_at)) })) };
 }
 
 async function executeUpdateDealStage(sb: any, args: any) {
