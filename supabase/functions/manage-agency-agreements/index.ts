@@ -134,6 +134,104 @@ async function getDocuSignAccessToken(): Promise<string> {
   return tokenData.access_token;
 }
 
+
+// ─── Helper: Fetch PDF from Gamma with content-type validation ────
+async function fetchGammaPdfBuffer(
+  exportUrl: string | null,
+  gammaDocId: string,
+  gammaApiKey: string
+): Promise<ArrayBuffer | null> {
+  const GAMMA_API_URL = 'https://public-api.gamma.app/v1.0';
+
+  // 1. Try the provided export URL first
+  if (exportUrl) {
+    try {
+      console.log('[Gamma PDF] Downloading from exportUrl:', exportUrl);
+      const res = await fetch(exportUrl);
+      const contentType = res.headers.get('content-type') || '';
+      console.log('[Gamma PDF] Response status:', res.status, 'content-type:', contentType);
+
+      if (res.ok) {
+        const buf = await res.arrayBuffer();
+        const header = new Uint8Array(buf.slice(0, 5));
+        const headerStr = String.fromCharCode(...header);
+        if (contentType.includes('application/pdf') || headerStr.startsWith('%PDF')) {
+          console.log('[Gamma PDF] Valid PDF received, size:', buf.byteLength, 'bytes');
+          return buf;
+        }
+        console.warn('[Gamma PDF] Export URL returned non-PDF content (', contentType, '), header:', headerStr, '— will try explicit export');
+      }
+    } catch (err: any) {
+      console.error('[Gamma PDF] Export URL fetch error:', err.message);
+    }
+  }
+
+  // 2. Try explicit PDF export via Gamma API
+  try {
+    console.log('[Gamma PDF] Attempting explicit export for gammaId:', gammaDocId);
+    const exportRes = await fetch(`${GAMMA_API_URL}/gammas/${gammaDocId}/export`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-KEY': gammaApiKey,
+      },
+      body: JSON.stringify({ format: 'pdf' }),
+    });
+
+    if (exportRes.ok) {
+      const exportData = await exportRes.json();
+      console.log('[Gamma PDF] Export response:', JSON.stringify(exportData).substring(0, 500));
+      const pdfDownloadUrl = exportData.url || exportData.downloadUrl || exportData.exportUrl || exportData.fileUrl;
+      if (pdfDownloadUrl) {
+        await new Promise(r => setTimeout(r, 2000));
+        const dlRes = await fetch(pdfDownloadUrl);
+        if (dlRes.ok) {
+          const buf = await dlRes.arrayBuffer();
+          const header = new Uint8Array(buf.slice(0, 5));
+          if (String.fromCharCode(...header).startsWith('%PDF') || (dlRes.headers.get('content-type') || '').includes('application/pdf')) {
+            console.log('[Gamma PDF] Explicit export PDF received, size:', buf.byteLength);
+            return buf;
+          }
+        }
+      }
+    } else {
+      const errText = await exportRes.text();
+      console.warn('[Gamma PDF] Export endpoint returned', exportRes.status, ':', errText.substring(0, 300));
+    }
+  } catch (err: any) {
+    console.error('[Gamma PDF] Explicit export error:', err.message);
+  }
+
+  // 3. Try re-fetching generation with exportAs query param
+  try {
+    console.log('[Gamma PDF] Trying generation endpoint with export param for:', gammaDocId);
+    const genRes = await fetch(`${GAMMA_API_URL}/generations/${gammaDocId}?exportAs=pdf`, {
+      headers: { 'X-API-KEY': gammaApiKey },
+    });
+    if (genRes.ok) {
+      const genData = await genRes.json();
+      const pdfUrl2 = genData.exportUrl || genData.pdfUrl || genData.fileUrl;
+      if (pdfUrl2 && pdfUrl2 !== exportUrl) {
+        console.log('[Gamma PDF] Found alternate PDF URL:', pdfUrl2);
+        const dlRes = await fetch(pdfUrl2);
+        if (dlRes.ok) {
+          const buf = await dlRes.arrayBuffer();
+          const header = new Uint8Array(buf.slice(0, 5));
+          if (String.fromCharCode(...header).startsWith('%PDF')) {
+            console.log('[Gamma PDF] Alternate URL PDF received, size:', buf.byteLength);
+            return buf;
+          }
+        }
+      }
+    }
+  } catch (err: any) {
+    console.error('[Gamma PDF] Generation re-fetch error:', err.message);
+  }
+
+  console.warn('[Gamma PDF] All PDF fetch attempts failed for gammaDocId:', gammaDocId);
+  return null;
+}
+
 serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = createCorsHeaders(origin);
@@ -347,34 +445,24 @@ serve(async (req) => {
                 gamma_document_url: gammaUrl,
               };
 
-              // Download and store PDF
-              if (pdfUrl) {
-                try {
-                  console.log('[Gamma] Downloading PDF from:', pdfUrl);
-                  const pdfRes = await fetch(pdfUrl);
-                  console.log('[Gamma] PDF download status:', pdfRes.status, 'content-type:', pdfRes.headers.get('content-type'));
-                  if (pdfRes.ok) {
-                    const pdfBuffer = await pdfRes.arrayBuffer();
-                    console.log('[Gamma] PDF size:', pdfBuffer.byteLength, 'bytes');
-                    const storagePath = `agreements/${agreement.id}/agreement.pdf`;
-                    const { error: uploadErr } = await supabase.storage
-                      .from('agency-agreements')
-                      .upload(storagePath, new Uint8Array(pdfBuffer), {
-                        contentType: 'application/pdf',
-                        upsert: true,
-                      });
-                    if (!uploadErr) {
-                      updateData.pdf_storage_path = storagePath;
-                      console.log('[Gamma] PDF stored at:', storagePath);
-                    } else {
-                      console.error('[Gamma] PDF upload error:', uploadErr.message);
-                    }
-                  }
-                } catch (dlErr: any) {
-                  console.error('[Gamma] PDF download error:', dlErr.message);
+              // Download and store PDF — with content-type validation & explicit export fallback
+              const pdfBuffer = await fetchGammaPdfBuffer(pdfUrl, gammaDocId, gammaApiKey!);
+              if (pdfBuffer) {
+                const storagePath = `agreements/${agreement.id}/agreement.pdf`;
+                const { error: uploadErr } = await supabase.storage
+                  .from('agency-agreements')
+                  .upload(storagePath, new Uint8Array(pdfBuffer), {
+                    contentType: 'application/pdf',
+                    upsert: true,
+                  });
+                if (!uploadErr) {
+                  updateData.pdf_storage_path = storagePath;
+                  console.log('[Gamma] PDF stored at:', storagePath);
+                } else {
+                  console.error('[Gamma] PDF upload error:', uploadErr.message);
                 }
               } else {
-                console.warn('[Gamma] No PDF URL in response. Available keys:', Object.keys(gammaResult).join(', '));
+                console.warn('[Gamma] Could not obtain a valid PDF for this agreement');
               }
 
               await supabase.from('agency_agreements').update(updateData).eq('id', agreement.id);
@@ -447,42 +535,34 @@ serve(async (req) => {
         const gammaApiKey = Deno.env.get('GAMMA_API_KEY');
         if (gammaApiKey) {
           try {
-            // Poll Gamma to get the latest generation data (it might have the export URL)
+            // Use the shared helper to get a valid PDF
             const pollRes = await fetch(`https://public-api.gamma.app/v1.0/generations/${agreement.gamma_document_id}`, {
               headers: { 'X-API-KEY': gammaApiKey },
             });
             if (pollRes.ok) {
               const gammaData = await pollRes.json();
-              const pdfUrl = gammaData.exportUrl || gammaData.pdfUrl || gammaData.fileUrl;
-              if (pdfUrl) {
-                console.log('[preview] Found PDF URL in Gamma, downloading:', pdfUrl);
-                const pdfRes = await fetch(pdfUrl);
-                if (pdfRes.ok) {
-                  const pdfBuffer = await pdfRes.arrayBuffer();
-                  console.log('[preview] PDF size:', pdfBuffer.byteLength, 'bytes');
-                  const storagePath = `agreements/${agreement.id}/agreement.pdf`;
-                  const { error: uploadErr } = await supabase.storage
+              const rawPdfUrl = gammaData.exportUrl || gammaData.pdfUrl || gammaData.fileUrl;
+              const pdfBuffer = await fetchGammaPdfBuffer(rawPdfUrl, agreement.gamma_document_id, gammaApiKey);
+              if (pdfBuffer) {
+                const storagePath = `agreements/${agreement.id}/agreement.pdf`;
+                const { error: uploadErr } = await supabase.storage
+                  .from('agency-agreements')
+                  .upload(storagePath, new Uint8Array(pdfBuffer), {
+                    contentType: 'application/pdf',
+                    upsert: true,
+                  });
+                if (!uploadErr) {
+                  await supabase.from('agency_agreements').update({ pdf_storage_path: storagePath }).eq('id', agreement.id);
+                  console.log('[preview] PDF backfilled to storage:', storagePath);
+                  const { data: signedData } = await supabase.storage
                     .from('agency-agreements')
-                    .upload(storagePath, new Uint8Array(pdfBuffer), {
-                      contentType: 'application/pdf',
-                      upsert: true,
-                    });
-                  if (!uploadErr) {
-                    await supabase.from('agency_agreements').update({ pdf_storage_path: storagePath }).eq('id', agreement.id);
-                    console.log('[preview] PDF backfilled to storage:', storagePath);
-                    // Create signed URL for this newly stored PDF
-                    const { data: signedData } = await supabase.storage
-                      .from('agency-agreements')
-                      .createSignedUrl(storagePath, 3600);
-                    if (signedData?.signedUrl) {
-                      pdfSignedUrl = signedData.signedUrl;
-                    }
-                  } else {
-                    console.error('[preview] PDF upload error:', uploadErr.message);
+                    .createSignedUrl(storagePath, 3600);
+                  if (signedData?.signedUrl) {
+                    pdfSignedUrl = signedData.signedUrl;
                   }
+                } else {
+                  console.error('[preview] PDF upload error:', uploadErr.message);
                 }
-              } else {
-                console.warn('[preview] No PDF export URL found in Gamma response');
               }
             }
           } catch (err: any) {
