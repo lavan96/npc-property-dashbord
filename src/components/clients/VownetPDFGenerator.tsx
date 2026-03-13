@@ -1236,7 +1236,7 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
         }
         .cover-doc-title-positioned {
           color: ${NPC_COLORS.white};
-          font-family: 'Playfair Display', Georgia, serif;
+          font-family: Georgia, 'Times New Roman', serif;
           font-size: 28pt;
           font-weight: 600;
           margin-bottom: 20px;
