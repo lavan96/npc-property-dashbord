@@ -186,7 +186,7 @@ export function PortalAuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <PortalAuthContext.Provider value={{ user, loading, signIn, signOut, requestPasswordReset, verifyOTP, resetPassword, completeOnboarding }}>
+    <PortalAuthContext.Provider value={{ user, loading, signIn, signOut, requestPasswordReset, verifyOTP, resetPassword, completeOnboarding, acceptTerms }}>
       {children}
     </PortalAuthContext.Provider>
   );
