@@ -93,6 +93,7 @@ export function PortalLayout() {
                 key={item.to}
                 to={item.to}
                 end={item.end}
+                data-tour={item.tourId}
                 className={({ isActive }) => cn(
                   'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200',
                   isActive
