@@ -201,6 +201,9 @@ export function PortalLayout() {
           <Outlet />
         </div>
       </main>
+
+      {/* Onboarding Tour */}
+      <PortalOnboardingTour />
     </div>
   );
 }
