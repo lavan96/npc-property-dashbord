@@ -3688,7 +3688,9 @@ async function executeExportPipelineData(sb: any, args: any) {
 }
 
 async function executeExportClientPortfolio(sb: any, args: any) {
-  const cid = args.client_id;
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
   const [client, deals, props, inc, liab, bc] = await Promise.all([
     sb.from('clients').select('*').eq('id', cid).single(),
     sb.from('client_deals').select('deal_type, current_stage, property_address, loan_amount, commission_estimate, settlement_date, risk_status').eq('client_id', cid),
