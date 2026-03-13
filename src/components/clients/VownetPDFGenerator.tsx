@@ -260,13 +260,22 @@ export function VownetPDFGenerator({
 
   const generatePDF = async (forEmail: boolean = false): Promise<Blob | null> => {
     setIsGenerating(true);
-    
+    let container: HTMLDivElement | null = null;
+
     try {
+      const generationDeadline = Date.now() + 90000; // hard cap to avoid endless generation
+      const ensureWithinBudget = () => {
+        if (Date.now() > generationDeadline) {
+          throw new Error('PDF generation timed out');
+        }
+      };
+
       // Pre-load cover image as data URL to avoid cross-origin / hanging issues
-      const coverDataUrl = await preloadImageAsDataUrl('/templates/npc-vownet-cover.jpg');
-      
+      // Fall back silently to normal URL if preload fails.
+      const coverDataUrl = await preloadImageAsDataUrl('/templates/npc-vownet-cover.jpg', 5000);
+
       // Create hidden container for rendering
-      const container = document.createElement('div');
+      container = document.createElement('div');
       container.style.position = 'absolute';
       container.style.left = '-9999px';
       container.style.top = '0';
@@ -286,7 +295,13 @@ export function VownetPDFGenerator({
       }
 
       // Wait for styles to apply
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const pages = container.querySelectorAll('.page');
+      const totalHtmlPages = pages.length;
+      if (totalHtmlPages === 0) {
+        throw new Error('No PDF pages were generated from template');
+      }
 
       // Create PDF
       const pdf = new jsPDF({
@@ -295,51 +310,62 @@ export function VownetPDFGenerator({
         format: 'a4',
       });
 
-      const pages = container.querySelectorAll('.page');
-      const totalHtmlPages = pages.length;
       // The last HTML page is the disclaimer/contact page — render it AFTER BC pages
       const contentPages = totalHtmlPages > 1 ? totalHtmlPages - 1 : totalHtmlPages;
       const hasDisclaimerPage = totalHtmlPages > 1;
-      
-      // Use lower scale for large documents to prevent memory exhaustion
-      const renderScale = totalHtmlPages > 8 ? 1.5 : 2;
-      
+
+      // Adaptive render scale to avoid browser memory spikes/crashes
+      const navWithMemory = navigator as Navigator & { deviceMemory?: number };
+      const deviceMemory = navWithMemory.deviceMemory ?? 4;
+      const renderScale = totalHtmlPages > 8
+        ? 1
+        : deviceMemory <= 4
+          ? 1.25
+          : 1.6;
+
+      const renderOptions: Parameters<typeof html2canvas>[1] = {
+        scale: renderScale,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        width: 794,
+        height: 1123,
+        logging: false,
+      };
+
       // Render all content pages (everything except the final disclaimer page)
       for (let i = 0; i < contentPages; i++) {
-        const page = pages[i] as HTMLElement;
-        
-        const canvas = await html2canvasWithTimeout(page, {
-          scale: renderScale,
-          useCORS: true,
-          allowTaint: true,
-          backgroundColor: '#ffffff',
-          width: 794, // A4 width in pixels at 96dpi
-          height: 1123, // A4 height in pixels at 96dpi
-        });
+        ensureWithinBudget();
+        await new Promise(resolve => setTimeout(resolve, 0));
 
-        const imgData = canvas.toDataURL('image/jpeg', 0.92);
-        
+        const page = pages[i] as HTMLElement;
+        const canvas = await html2canvasWithTimeout(page, renderOptions, 12000);
+
         if (i > 0) {
           pdf.addPage();
         }
-        
-        pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+
+        // Pass canvas directly to jsPDF to avoid large base64 memory spikes
+        pdf.addImage(canvas, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+        canvas.width = 1;
+        canvas.height = 1;
       }
 
       // ── Append Borrowing Capacity pages BEFORE disclaimer ──
       if (includeBorrowingCapacity && data.client.id) {
         try {
+          ensureWithinBudget();
           console.log('📊 Fetching borrowing capacity data for Vownet PDF...');
           const { latestAssessment } = await fetchLatestBorrowingCapacity(data.client.id);
 
           if (latestAssessment) {
             const bcPdfData = transformAssessmentToSectionData(latestAssessment);
             const pageNum = { value: pdf.getNumberOfPages() + 1 };
-            
+
             // Add a new page and draw all BC sections
             pdf.addPage();
             drawBorrowingCapacitySections(pdf, bcPdfData, 20, pageNum, false);
-            
+
             console.log('✓ Borrowing capacity pages appended to Vownet PDF');
           } else {
             console.log('ℹ No borrowing capacity data found — skipping BC pages');
@@ -351,26 +377,24 @@ export function VownetPDFGenerator({
 
       // ── Render the disclaimer/contact page LAST (always the final page) ──
       if (hasDisclaimerPage) {
+        ensureWithinBudget();
+        await new Promise(resolve => setTimeout(resolve, 0));
+
         const disclaimerPage = pages[totalHtmlPages - 1] as HTMLElement;
         const disclaimerCanvas = await html2canvasWithTimeout(disclaimerPage, {
-          scale: renderScale,
-          useCORS: true,
-          allowTaint: true,
+          ...renderOptions,
           backgroundColor: '#141414',
-          width: 794,
-          height: 1123,
-        });
-        const disclaimerImg = disclaimerCanvas.toDataURL('image/jpeg', 0.92);
-        pdf.addPage();
-        pdf.addImage(disclaimerImg, 'JPEG', 0, 0, 210, 297);
-      }
+        }, 12000);
 
-      // Cleanup
-      document.body.removeChild(container);
+        pdf.addPage();
+        pdf.addImage(disclaimerCanvas, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+        disclaimerCanvas.width = 1;
+        disclaimerCanvas.height = 1;
+      }
 
       const generatedStamp = new Date().toISOString().replace(/[:.]/g, '-');
       const fileName = `Vownet_Form_${clientName.replace(/\s+/g, '_')}_${generatedStamp}.pdf`;
-      
+
       if (forEmail) {
         const pdfBlob = pdf.output('blob');
         // Also persist in background when emailing
@@ -392,9 +416,15 @@ export function VownetPDFGenerator({
       }
     } catch (error) {
       console.error('Error generating PDF:', error);
-      toast.error('Failed to generate PDF');
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(message.toLowerCase().includes('timed out')
+        ? 'PDF generation timed out. Please try again.'
+        : 'Failed to generate PDF');
       return null;
     } finally {
+      if (container && container.parentNode) {
+        container.parentNode.removeChild(container);
+      }
       setIsGenerating(false);
     }
   };
