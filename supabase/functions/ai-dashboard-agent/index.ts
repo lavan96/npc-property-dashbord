@@ -2082,6 +2082,23 @@ const WRITE_TOOLS = [
 //  TOOL EXECUTORS
 // ============================================================
 
+// ─── SHARED VALIDATION HELPERS ───
+
+const CLIENT_NOT_FOUND_MSG = (id: string) => `Client with ID "${id}" not found. Please use search_clients to find the correct client ID first.`;
+
+async function validateClientExists(sb: any, clientId: string): Promise<{ valid: boolean; client?: any; error?: string }> {
+  if (!clientId) return { valid: false, error: 'client_id is required.' };
+  const { data: client } = await sb.from('clients').select('id, primary_first_name, primary_surname').eq('id', clientId).maybeSingle();
+  if (!client) return { valid: false, error: CLIENT_NOT_FOUND_MSG(clientId) };
+  return { valid: true, client };
+}
+
+async function validateClientsExist(sb: any, clientIds: string[]): Promise<{ validIds: string[]; invalidIds: string[] }> {
+  const { data } = await sb.from('clients').select('id').in('id', clientIds);
+  const foundIds = new Set((data || []).map((c: any) => c.id));
+  return { validIds: clientIds.filter(id => foundIds.has(id)), invalidIds: clientIds.filter(id => !foundIds.has(id)) };
+}
+
 // ─── CLIENT MANAGEMENT ───
 
 async function executeSearchClients(sb: any, args: any) {
