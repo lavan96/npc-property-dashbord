@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { LenderCombobox } from './LenderCombobox';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
