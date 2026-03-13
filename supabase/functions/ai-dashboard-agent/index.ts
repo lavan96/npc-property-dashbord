@@ -2164,10 +2164,11 @@ async function executeGetClientActivities(sb: any, args: any) {
 async function executeLogClientActivity(sb: any, args: any, userId: string) {
   const v = await validateClientExists(sb, args.client_id);
   if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
   const { data: u } = await sb.from('custom_users').select('id').eq('id', userId).maybeSingle();
-  const { data, error } = await sb.from('client_activities').insert({ client_id: args.client_id, title: args.title, description: args.description || null, activity_type: args.activity_type, created_by: u ? userId : null }).select().single();
+  const { data, error } = await sb.from('client_activities').insert({ client_id: cid, title: args.title, description: args.description || null, activity_type: args.activity_type, created_by: u ? userId : null }).select().single();
   if (error) return { error: error.message };
-  return { success: true, message: `Activity "${args.title}" logged.`, activity: data };
+  return { success: true, message: `Activity "${args.title}" logged for ${clientName(v.client)}.`, activity: data };
 }
 
 // ─── DEALS & PIPELINE ───
