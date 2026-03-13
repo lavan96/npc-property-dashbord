@@ -2365,7 +2365,10 @@ async function executeGetBorrowingCapacity(sb: any, args: any) {
 }
 
 async function executeGetBCHistory(sb: any, args: any) {
-  const { data } = await sb.from('borrowing_capacity_assessments').select('id, borrowing_capacity, serviceability_band, monthly_surplus, gross_annual_income, created_at').eq('client_id', args.client_id).order('created_at', { ascending: false }).limit(10);
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
+  const { data } = await sb.from('borrowing_capacity_assessments').select('id, borrowing_capacity, serviceability_band, monthly_surplus, gross_annual_income, created_at').eq('client_id', cid).order('created_at', { ascending: false }).limit(10);
   return { history: data || [] };
 }
 
