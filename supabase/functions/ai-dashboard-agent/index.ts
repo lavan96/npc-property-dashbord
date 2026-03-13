@@ -2653,9 +2653,11 @@ async function executeCreateClient(sb: any, args: any, userId: string) {
 }
 
 async function executeDeleteClient(sb: any, args: any) {
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
   const { error } = await sb.from('clients').delete().eq('id', args.client_id);
   if (error) return { error: error.message };
-  return { success: true, message: 'Client deleted.' };
+  return { success: true, message: `Client "${v.client.primary_first_name || ''} ${v.client.primary_surname || ''}" deleted.`.trim() };
 }
 
 async function executeGetClientsByPipelineStatus(sb: any, args: any) {
