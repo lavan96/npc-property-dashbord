@@ -215,17 +215,62 @@ function drawProgressBar(
   }
 }
 
+function wrapText(text: string, font: PDFFont, fontSize: number, maxWidth: number): string[] {
+  const words = text.split(' ');
+  const lines: string[] = [];
+  let currentLine = '';
+
+  for (const word of words) {
+    const testLine = currentLine ? `${currentLine} ${word}` : word;
+    if (font.widthOfTextAtSize(testLine, fontSize) > maxWidth && currentLine) {
+      lines.push(currentLine);
+      currentLine = word;
+    } else {
+      currentLine = testLine;
+    }
+  }
+  if (currentLine) lines.push(currentLine);
+  return lines.length > 0 ? lines : [''];
+}
+
 function drawTableRow(
-  page: PDFPage, y: number, cols: { text: string; x: number; font: PDFFont; color?: Color; size?: number }[],
+  page: PDFPage, y: number, cols: { text: string; x: number; font: PDFFont; color?: Color; size?: number; maxWidth?: number }[],
   bg?: Color, rowH = TABLE_ROW_HEIGHT,
 ): number {
-  if (bg) {
-    page.drawRectangle({ x: MARGIN_LEFT, y: y - rowH + 4, width: CONTENT_WIDTH, height: rowH, color: bg });
-  }
+  // Calculate actual row height based on wrapped text in any column
+  const LINE_HEIGHT = 11;
+  let maxLines = 1;
+  const wrappedCols: string[][] = [];
+
   for (const col of cols) {
-    page.drawText(sanitize(col.text), { x: col.x, y, size: col.size || 9, font: col.font, color: col.color || DARK_TEXT });
+    if (col.maxWidth) {
+      const lines = wrapText(sanitize(col.text), col.font, col.size || 9, col.maxWidth);
+      wrappedCols.push(lines);
+      if (lines.length > maxLines) maxLines = lines.length;
+    } else {
+      wrappedCols.push([sanitize(col.text)]);
+    }
   }
-  return y - rowH;
+
+  const actualRowH = maxLines > 1 ? Math.max(rowH, maxLines * LINE_HEIGHT + 8) : rowH;
+
+  if (bg) {
+    page.drawRectangle({ x: MARGIN_LEFT, y: y - actualRowH + 4, width: CONTENT_WIDTH, height: actualRowH, color: bg });
+  }
+  for (let i = 0; i < cols.length; i++) {
+    const col = cols[i];
+    const lines = wrappedCols[i];
+    for (let li = 0; li < lines.length; li++) {
+      page.drawText(lines[li], {
+        x: col.x,
+        y: y - li * LINE_HEIGHT,
+        size: col.size || 9,
+        font: col.font,
+        color: col.color || DARK_TEXT,
+      });
+    }
+  }
+  return y - actualRowH;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
