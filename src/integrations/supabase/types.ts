@@ -3126,6 +3126,7 @@ export type Database = {
           client_id: string
           created_at: string
           email: string
+          has_accepted_terms: boolean
           has_completed_onboarding: boolean
           id: string
           invite_expires_at: string | null
@@ -3135,12 +3136,14 @@ export type Database = {
           password_reset_expires_at: string | null
           password_reset_token: string | null
           status: string
+          terms_accepted_at: string | null
           updated_at: string
         }
         Insert: {
           client_id: string
           created_at?: string
           email: string
+          has_accepted_terms?: boolean
           has_completed_onboarding?: boolean
           id?: string
           invite_expires_at?: string | null
@@ -3150,12 +3153,14 @@ export type Database = {
           password_reset_expires_at?: string | null
           password_reset_token?: string | null
           status?: string
+          terms_accepted_at?: string | null
           updated_at?: string
         }
         Update: {
           client_id?: string
           created_at?: string
           email?: string
+          has_accepted_terms?: boolean
           has_completed_onboarding?: boolean
           id?: string
           invite_expires_at?: string | null
@@ -3165,6 +3170,7 @@ export type Database = {
           password_reset_expires_at?: string | null
           password_reset_token?: string | null
           status?: string
+          terms_accepted_at?: string | null
           updated_at?: string
         }
         Relationships: [
