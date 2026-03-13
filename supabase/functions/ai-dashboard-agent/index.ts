@@ -2716,10 +2716,11 @@ async function executeGetClientNotes(sb: any, args: any) {
 async function executeCreateClientNote(sb: any, args: any, userId: string) {
   const v = await validateClientExists(sb, args.client_id);
   if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
   const { data: u } = await sb.from('custom_users').select('id').eq('id', userId).maybeSingle();
-  const { data, error } = await sb.from('client_notes').insert({ client_id: args.client_id, content: args.content, note_type: args.note_type || 'general', created_by: u ? userId : null }).select().single();
+  const { data, error } = await sb.from('client_notes').insert({ client_id: cid, content: args.content, note_type: args.note_type || 'general', created_by: u ? userId : null }).select().single();
   if (error) return { error: error.message };
-  return { success: true, message: `Note created for ${v.client.primary_first_name || ''} ${v.client.primary_surname || ''}.`.trim(), note: data };
+  return { success: true, message: `Note created for ${clientName(v.client)}.`, note: data };
 }
 
 async function executeUpdateClientNote(sb: any, args: any) {
