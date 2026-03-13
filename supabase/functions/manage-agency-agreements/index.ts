@@ -655,6 +655,66 @@ serve(async (req) => {
       );
     }
 
+    // ─── RETRY PDF (deferred fetch for timed-out generations) ─────
+    if (action === 'retry_pdf') {
+      const { agreement_id } = body;
+      if (!agreement_id) {
+        return new Response(
+          JSON.stringify({ error: 'Missing agreement_id' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data: agreement, error: fetchErr } = await supabase
+        .from('agency_agreements')
+        .select('*')
+        .eq('id', agreement_id)
+        .single();
+
+      if (fetchErr || !agreement) {
+        return new Response(
+          JSON.stringify({ error: 'Agreement not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (agreement.pdf_storage_path) {
+        // Already has PDF
+        const { data: signedData } = await supabase.storage
+          .from('agency-agreements')
+          .createSignedUrl(agreement.pdf_storage_path, 3600);
+        return new Response(
+          JSON.stringify({ success: true, pdf_url: signedData?.signedUrl || null, status: 'already_exists' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (!agreement.gamma_document_id) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'No Gamma generation ID found for this agreement' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const gammaApiKey = Deno.env.get('GAMMA_API_KEY');
+      if (!gammaApiKey) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Gamma API key not configured' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const pdfSignedUrl = await attemptDeferredPdfFetch(supabase, agreement, gammaApiKey);
+      return new Response(
+        JSON.stringify({
+          success: !!pdfSignedUrl,
+          pdf_url: pdfSignedUrl,
+          status: pdfSignedUrl ? 'pdf_retrieved' : 'still_pending',
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // ─── SEND VIA DOCUSIGN ─────────────────────────────────
     if (action === 'send_docusign') {
       const { agreement_id } = body;
