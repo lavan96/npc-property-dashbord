@@ -2547,7 +2547,10 @@ async function executeGetFlaggedCalls(sb: any, args: any) {
 // ─── REPORTS & DOCUMENTS ───
 
 async function executeGetClientFiles(sb: any, args: any) {
-  const { data } = await sb.from('client_files').select('*').eq('client_id', args.client_id).order('created_at', { ascending: false });
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
+  const { data } = await sb.from('client_files').select('*').eq('client_id', cid).order('created_at', { ascending: false });
   return { files: data || [] };
 }
 
