@@ -134,6 +134,110 @@ async function updateClientPipelineFields(
   }
 }
 
+// ─── Note Event Handler ─────────────────────────────────────────────────────
+
+async function handleNoteEvent(supabase: any, body: any, eventType: string) {
+  const noteId = body.id || body.noteId || body.note_id;
+  const contactId = body.contactId || body.contact_id || body.contact?.id;
+  const noteBody = body.body || body.content || body.note || '';
+  const dateAdded = body.dateAdded || body.date_added || new Date().toISOString();
+
+  if (!contactId) {
+    console.error('[ghl-webhook] Note event missing contactId');
+    return { success: false, error: 'Missing contactId in note event' };
+  }
+
+  if (!noteId) {
+    console.error('[ghl-webhook] Note event missing note ID');
+    return { success: false, error: 'Missing note ID' };
+  }
+
+  console.log(`[ghl-webhook] Processing note event: type=${eventType}, noteId=${noteId}, contact=${contactId}`);
+
+  // Find client by ghl_contact_id
+  const { data: client } = await supabase
+    .from('clients')
+    .select('id')
+    .eq('ghl_contact_id', contactId)
+    .maybeSingle();
+
+  if (!client) {
+    console.warn(`[ghl-webhook] No client found for GHL contact ${contactId} — note event ignored`);
+    return { success: false, error: 'Client not found for this contact' };
+  }
+
+  // Handle delete
+  if (eventType.includes('delete')) {
+    const { error } = await supabase
+      .from('client_notes')
+      .delete()
+      .eq('ghl_note_id', noteId);
+
+    if (error) {
+      console.error('[ghl-webhook] Error deleting note:', error);
+      return { success: false, error: error.message };
+    }
+    console.log(`[ghl-webhook] Deleted note with ghl_note_id=${noteId}`);
+    return { success: true, action: 'deleted', noteId };
+  }
+
+  // Handle create/update — upsert by ghl_note_id
+  // Strip type prefix if present (e.g., "[GENERAL] content" → "content")
+  let cleanContent = noteBody;
+  const prefixMatch = noteBody.match(/^\[([A-Z_]+)\]\s*/);
+  let noteType = 'general';
+  if (prefixMatch) {
+    noteType = prefixMatch[1].toLowerCase();
+    cleanContent = noteBody.replace(prefixMatch[0], '');
+  }
+
+  // Check if note already exists
+  const { data: existingNote } = await supabase
+    .from('client_notes')
+    .select('id')
+    .eq('ghl_note_id', noteId)
+    .maybeSingle();
+
+  if (existingNote) {
+    // Update existing
+    const { error } = await supabase
+      .from('client_notes')
+      .update({
+        content: cleanContent,
+        note_type: noteType,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', existingNote.id);
+
+    if (error) {
+      console.error('[ghl-webhook] Error updating note:', error);
+      return { success: false, error: error.message };
+    }
+    console.log(`[ghl-webhook] Updated existing note ${existingNote.id} from GHL`);
+    return { success: true, action: 'updated', noteId: existingNote.id };
+  } else {
+    // Insert new
+    const { data: inserted, error } = await supabase
+      .from('client_notes')
+      .insert({
+        client_id: client.id,
+        content: cleanContent,
+        note_type: noteType,
+        ghl_note_id: noteId,
+        created_at: dateAdded,
+      })
+      .select('id')
+      .single();
+
+    if (error) {
+      console.error('[ghl-webhook] Error inserting note:', error);
+      return { success: false, error: error.message };
+    }
+    console.log(`[ghl-webhook] Created new note ${inserted.id} from GHL note ${noteId}`);
+    return { success: true, action: 'created', noteId: inserted.id };
+  }
+}
+
 // ─── Opportunity Event Handler ──────────────────────────────────────────────
 
 async function handleOpportunityEvent(supabase: any, body: any) {
@@ -407,6 +511,20 @@ serve(async (req) => {
     // OpportunityStageUpdate, OpportunityStatusUpdate, OpportunityMonetaryValueUpdate, etc.
     const eventType = (body.type || body.event || body.eventType || '').toLowerCase();
 
+    // ── Note events ──
+    const isNoteEvent = eventType.includes('note')
+      || (body.type && body.type.toLowerCase().includes('note'));
+
+    if (isNoteEvent) {
+      console.log(`[ghl-webhook] Detected note event: ${eventType}`);
+      const result = await handleNoteEvent(supabase, body, eventType);
+      return new Response(JSON.stringify(result), {
+        status: result.success ? 200 : 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // ── Opportunity events ──
     const isOpportunityEvent = eventType.includes('opportunity')
       || body.pipelineStageId
       || body.pipelineId
