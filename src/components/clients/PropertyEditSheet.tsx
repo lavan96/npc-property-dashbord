@@ -183,6 +183,8 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
     sourced_by: 'unknown',
     deal_closed_at: '',
     sourced_notes: '',
+    loan_repayment: createExpenseField(),
+    lender_name: '',
   });
 
   // Populate form with existing property data when sheet opens
