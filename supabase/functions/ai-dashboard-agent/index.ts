@@ -3359,8 +3359,27 @@ async function executeRunPlaybook(sb: any, args: any, userId: string) {
   for (let i = 0; i < (pb.steps || []).length; i++) {
     const step = pb.steps[i];
     const stepArgs = args.overrides?.[i] ? { ...step.arguments, ...args.overrides[i] } : (step.arguments || {});
-    try { results.push({ step: i+1, tool: step.tool_name, status: 'success', result: await executeTool(sb, step.tool_name, stepArgs, userId) }); }
-    catch (e: any) { results.push({ step: i+1, tool: step.tool_name, status: 'error', error: e.message }); }
+    const stepStart = Date.now();
+    try {
+      const stepResult = await executeTool(sb, step.tool_name, stepArgs, userId);
+      results.push({ step: i+1, tool: step.tool_name, status: 'success', result: stepResult });
+      // Log each step to audit trail
+      await sb.from('agent_action_log').insert({
+        user_id: userId, tool_name: step.tool_name, tool_arguments: stepArgs,
+        tool_result: stepResult, status: stepResult.error ? 'error' : 'success',
+        execution_time_ms: Date.now() - stepStart,
+        metadata: { source: 'playbook', playbook_id: args.playbook_id, playbook_name: pb.name, step_index: i },
+      }).then(() => {}).catch(() => {}); // fire and forget
+    }
+    catch (e: any) {
+      results.push({ step: i+1, tool: step.tool_name, status: 'error', error: e.message });
+      await sb.from('agent_action_log').insert({
+        user_id: userId, tool_name: step.tool_name, tool_arguments: stepArgs,
+        tool_result: { error: e.message }, status: 'error',
+        execution_time_ms: Date.now() - stepStart,
+        metadata: { source: 'playbook', playbook_id: args.playbook_id, playbook_name: pb.name, step_index: i },
+      }).then(() => {}).catch(() => {});
+    }
   }
   await sb.from('agent_playbooks').update({ run_count: (pb.run_count||0)+1, last_run_at: new Date().toISOString() }).eq('id', args.playbook_id);
   return { success: true, message: `Playbook "${pb.name}": ${results.filter(r=>r.status==='success').length}/${pb.steps.length} steps succeeded.`, results };
