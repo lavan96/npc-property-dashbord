@@ -2575,23 +2575,122 @@ async function executeSendEmail(sb: any, args: any) {
   } catch (err: any) { return { error: `Email send failed: ${err.message}` }; }
 }
 
-// ─── CALENDAR ───
+// ─── CALENDAR (Live GHL Bridge) ───
 
-async function executeGetUpcomingCalendar(sb: any, args: any) {
-  const days = Math.min(args.days_ahead || 7, 30);
-  const future = new Date(Date.now() + days * 86400000).toISOString();
-  const { data } = await sb.from('appointment_secondary_recipients').select('*').gte('appointment_start', new Date().toISOString()).lte('appointment_start', future).order('appointment_start');
-  return { appointments: data || [] };
+/** Helper to call ghl-calendar edge function */
+async function callGHLCalendar(payload: Record<string, unknown>) {
+  const resp = await fetch(`${SUPABASE_URL.trim()}/functions/v1/ghl-calendar`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY.trim()}`,
+      'apikey': SUPABASE_ANON_KEY.trim(),
+    },
+    body: JSON.stringify(payload),
+  });
+  const data = await resp.json();
+  if (!resp.ok || !data.success) {
+    return { error: data.error || `GHL Calendar error (HTTP ${resp.status})`, details: data.details };
+  }
+  return data;
+}
+
+async function executeGetUpcomingCalendar(_sb: any, args: any) {
+  const daysAhead = Math.min(args.days_ahead || 7, 30);
+  const now = new Date();
+  const startTime = now.toISOString();
+  const endTime = new Date(now.getTime() + daysAhead * 86400000).toISOString();
+
+  try {
+    const data = await callGHLCalendar({ action: 'events', startTime, endTime });
+    if (data.error) return data;
+
+    const events = (data.events || []).map((e: any) => ({
+      id: e.id,
+      title: e.title || 'Untitled',
+      startTime: e.startTime,
+      endTime: e.endTime,
+      status: e.appointmentStatus || e.status || 'confirmed',
+      calendarName: e.calendarName,
+      contactId: e.contactId,
+      notes: e.notes,
+    }));
+
+    return { appointments: events, count: events.length, source: 'live_ghl' };
+  } catch (err: any) {
+    return { error: `Failed to fetch calendar: ${err.message}` };
+  }
 }
 
 async function executeGetAppointmentsForClient(sb: any, args: any) {
   const v = await validateClientExists(sb, args.client_id);
   if (!v.valid) return { error: v.error };
   const cid = v.resolvedId || args.client_id;
-  const { data: client } = await sb.from('clients').select('primary_email').eq('id', cid).single();
-  if (!client?.primary_email) return { appointments: [], message: 'No email on file for this client.' };
-  const { data } = await sb.from('appointment_secondary_recipients').select('*').eq('contact_email', client.primary_email).order('appointment_start', { ascending: false }).limit(20);
-  return { appointments: data || [] };
+  const { data: client } = await sb.from('clients').select('primary_email, ghl_contact_id').eq('id', cid).single();
+
+  if (client?.ghl_contact_id) {
+    try {
+      const resp = await fetch(`${SUPABASE_URL.trim()}/functions/v1/ghl-calendar-proxy`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY.trim()}`,
+          'apikey': SUPABASE_ANON_KEY.trim(),
+        },
+        body: JSON.stringify({ action: 'getContactAppointments', contactId: client.ghl_contact_id }),
+      });
+      const data = await resp.json();
+      if (resp.ok && data.success) {
+        return { appointments: data.events || [], count: (data.events || []).length, source: 'live_ghl', client_name: clientName(v.client) };
+      }
+    } catch (err: any) {
+      console.error('GHL contact appointments fetch failed:', err.message);
+    }
+  }
+
+  if (client?.primary_email) {
+    const { data } = await sb.from('appointment_secondary_recipients').select('*').eq('contact_email', client.primary_email).order('appointment_start', { ascending: false }).limit(20);
+    return { appointments: data || [], count: (data || []).length, source: 'local_records', client_name: clientName(v.client) };
+  }
+
+  return { appointments: [], message: 'No GHL contact ID or email on file for this client.' };
+}
+
+async function executeSearchCalendarEvents(args: any) {
+  const { query, days_back = 7, days_ahead = 30 } = args;
+  if (!query) return { error: 'query is required.' };
+
+  const now = new Date();
+  const startTime = new Date(now.getTime() - days_back * 86400000).toISOString();
+  const endTime = new Date(now.getTime() + days_ahead * 86400000).toISOString();
+
+  try {
+    const data = await callGHLCalendar({ action: 'events', startTime, endTime });
+    if (data.error) return data;
+
+    const searchLower = query.toLowerCase();
+    const matched = (data.events || []).filter((e: any) => {
+      const title = (e.title || '').toLowerCase();
+      const notes = (e.notes || '').toLowerCase();
+      const contactName = (e.contactName || e.contact?.name || '').toLowerCase();
+      const contactEmail = (e.contactEmail || e.contact?.email || '').toLowerCase();
+      return title.includes(searchLower) || notes.includes(searchLower) || contactName.includes(searchLower) || contactEmail.includes(searchLower);
+    }).map((e: any) => ({
+      id: e.id,
+      title: e.title || 'Untitled',
+      startTime: e.startTime,
+      endTime: e.endTime,
+      status: e.appointmentStatus || e.status || 'confirmed',
+      calendarName: e.calendarName,
+      contactId: e.contactId,
+      contactName: e.contactName || e.contact?.name,
+      notes: e.notes,
+    }));
+
+    return { events: matched, count: matched.length, query, source: 'live_ghl' };
+  } catch (err: any) {
+    return { error: `Calendar search failed: ${err.message}` };
+  }
 }
 
 async function executeRescheduleAppointment(args: any) {
@@ -2599,9 +2698,6 @@ async function executeRescheduleAppointment(args: any) {
   if (!event_id || !new_start_time || !new_end_time) {
     return { error: 'event_id, new_start_time, and new_end_time are required.' };
   }
-
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
   const payload: Record<string, unknown> = {
     action: 'update',
@@ -2615,22 +2711,83 @@ async function executeRescheduleAppointment(args: any) {
   if (appointment_status) payload.appointmentStatus = appointment_status;
 
   try {
-    const resp = await fetch(`${supabaseUrl}/functions/v1/ghl-calendar`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${serviceRoleKey}`,
-      },
-      body: JSON.stringify(payload),
-    });
-
-    const data = await resp.json();
-    if (!resp.ok || !data.success) {
-      return { error: data.error || `Failed to reschedule (HTTP ${resp.status})`, details: data.details };
-    }
+    const data = await callGHLCalendar(payload);
+    if (data.error) return data;
     return { success: true, message: `Appointment ${event_id} rescheduled to ${new_start_time}`, event: data.event };
   } catch (err: any) {
     return { error: `Reschedule failed: ${err.message}` };
+  }
+}
+
+async function executeCreateAppointment(args: any) {
+  const { calendar_id, title, start_time, end_time, contact_id, notes } = args;
+  if (!calendar_id || !start_time || !end_time) {
+    return { error: 'calendar_id, start_time, and end_time are required.' };
+  }
+
+  const payload: Record<string, unknown> = {
+    action: 'create',
+    calendarId: calendar_id,
+    startTime: start_time,
+    endTime: end_time,
+    title: title || 'New Appointment',
+    overrideAvailability: true,
+  };
+  if (contact_id) payload.contactId = contact_id;
+  if (notes) payload.notes = notes;
+
+  try {
+    const data = await callGHLCalendar(payload);
+    if (data.error) return data;
+    return { success: true, message: `Appointment "${title}" created`, event: data.event };
+  } catch (err: any) {
+    return { error: `Create appointment failed: ${err.message}` };
+  }
+}
+
+async function executeCancelAppointment(args: any) {
+  const { event_id } = args;
+  if (!event_id) return { error: 'event_id is required.' };
+
+  try {
+    const data = await callGHLCalendar({ action: 'delete', eventId: event_id });
+    if (data.error) return data;
+    return { success: true, message: `Appointment ${event_id} cancelled.` };
+  } catch (err: any) {
+    return { error: `Cancel failed: ${err.message}` };
+  }
+}
+
+async function executeGetCalendars() {
+  try {
+    const data = await callGHLCalendar({ action: 'calendars' });
+    if (data.error) return data;
+    const calendars = (data.calendars || []).map((c: any) => ({
+      id: c.id,
+      name: c.name,
+      description: c.description,
+      calendarType: c.calendarType,
+      isActive: c.isActive,
+      teamMembers: c.teamMembers,
+    }));
+    return { calendars, count: calendars.length };
+  } catch (err: any) {
+    return { error: `Failed to fetch calendars: ${err.message}` };
+  }
+}
+
+async function executeGetFreeSlots(args: any) {
+  const { calendar_id, start_date, end_date } = args;
+  if (!calendar_id || !start_date || !end_date) {
+    return { error: 'calendar_id, start_date, and end_date are required.' };
+  }
+
+  try {
+    const data = await callGHLCalendar({ action: 'freeSlots', calendarId: calendar_id, startDate: start_date, endDate: end_date });
+    if (data.error) return data;
+    return { success: true, slots: data.slots };
+  } catch (err: any) {
+    return { error: `Failed to fetch free slots: ${err.message}` };
   }
 }
 
