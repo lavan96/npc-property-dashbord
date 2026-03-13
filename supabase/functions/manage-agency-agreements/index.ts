@@ -410,9 +410,14 @@ serve(async (req) => {
             const generationId = createData.generationId || createData.id;
             console.log('[Gamma] Generation started, generationId:', generationId);
 
-            // Poll for completion (max 90 seconds)
+            // Always store the generationId immediately so we can retry later
+            await supabase.from('agency_agreements').update({
+              gamma_document_id: generationId,
+            }).eq('id', agreement.id);
+
+            // Poll for completion (max 150 seconds = 50 polls × 3s)
             let gammaResult: any = null;
-            for (let i = 0; i < 30; i++) {
+            for (let i = 0; i < 50; i++) {
               await new Promise(r => setTimeout(r, 3000));
               const pollRes = await fetch(`${GAMMA_API_URL}/generations/${generationId}`, {
                 headers: { 'X-API-KEY': gammaApiKey },
@@ -420,7 +425,7 @@ serve(async (req) => {
               const pollText = await pollRes.text();
               let pollData: any;
               try { pollData = JSON.parse(pollText); } catch { pollData = {}; }
-              console.log(`[Gamma] Poll ${i + 1}: status=${pollData.status}, keys=${Object.keys(pollData).join(',')}`);
+              console.log(`[Gamma] Poll ${i + 1}/50: status=${pollData.status}, keys=${Object.keys(pollData).join(',')}`);
 
               if (pollData.status === 'completed') {
                 gammaResult = pollData;
@@ -468,8 +473,12 @@ serve(async (req) => {
               await supabase.from('agency_agreements').update(updateData).eq('id', agreement.id);
               console.log('[Gamma] Agreement record updated');
             } else {
-              await supabase.from('agency_agreements').update({ status: 'generated' }).eq('id', agreement.id);
-              console.warn('[Gamma] Timed out — agreement generated without Gamma');
+              // Timed out but generationId is already stored — can retry later
+              await supabase.from('agency_agreements').update({
+                status: 'pending_pdf',
+                gamma_document_id: generationId,
+              }).eq('id', agreement.id);
+              console.warn('[Gamma] Timed out — generationId stored for deferred retry:', generationId);
             }
           } else {
             console.error('[Gamma] Create failed - status:', createRes.status, 'body:', createText.substring(0, 500));
