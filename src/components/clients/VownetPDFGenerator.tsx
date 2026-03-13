@@ -1244,7 +1244,7 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
         }
         .cover-client-name-positioned {
           color: ${NPC_COLORS.gold};
-          font-family: 'Cinzel', Georgia, serif;
+          font-family: Georgia, 'Times New Roman', serif;
           font-size: 18pt;
           font-weight: 600;
           letter-spacing: 1px;
