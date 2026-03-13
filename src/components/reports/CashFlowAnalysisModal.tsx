@@ -4604,12 +4604,12 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                               <TableRow className="bg-primary/10">
                                 <TableCell className="font-bold text-primary">Total</TableCell>
                                 <TableCell className="text-right font-bold text-primary">
-                                  {formatCurrency(
-                                    (baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - baseFinancialData.loanToValueRatio / 100))) +
-                                    baseFinancialData.stampDuty +
-                                    baseFinancialData.solicitorFees +
-                                    baseFinancialData.agentFee +
-                                    (baseFinancialData.lmiAmount || 0)
+                                   {formatCurrency(
+                                     baseFinancialData.purchasePrice +
+                                     baseFinancialData.stampDuty +
+                                     baseFinancialData.solicitorFees +
+                                     baseFinancialData.agentFee +
+                                     (baseFinancialData.lmiAmount || 0)
                                   )}
                                 </TableCell>
                               </TableRow>
