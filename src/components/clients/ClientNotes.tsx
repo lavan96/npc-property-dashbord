@@ -97,7 +97,7 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
       if (!data?.success) throw new Error(data?.error || 'Failed to add note');
       return data.result;
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['client-notes', clientId] });
       logActivityDirect({
         actionType: 'client_note_added',
@@ -105,6 +105,14 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
         entityId: clientId,
         metadata: { note_type: noteType }
       });
+      // Sync to GHL (non-blocking)
+      invokeSecureFunction('sync-notes-to-ghl', {
+        action: 'create',
+        clientId,
+        noteId: result?.id,
+        noteContent: newNote.trim(),
+        noteType,
+      }).catch(err => console.warn('GHL note sync failed:', err));
       setNewNote('');
       setIsAdding(false);
       toast.success('Note added');
@@ -126,7 +134,13 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
       if (error) throw new Error(error.message);
       if (!data?.success) throw new Error(data?.error || 'Failed to delete note');
     },
-    onSuccess: () => {
+    onSuccess: (_result, noteId) => {
+      // Sync delete to GHL (non-blocking)
+      invokeSecureFunction('sync-notes-to-ghl', {
+        action: 'delete',
+        clientId,
+        noteId,
+      }).catch(err => console.warn('GHL note delete sync failed:', err));
       queryClient.invalidateQueries({ queryKey: ['client-notes', clientId] });
       toast.success('Note deleted');
     }
