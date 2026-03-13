@@ -4278,6 +4278,7 @@ async function executeTool(sb: any, name: string, args: any, userId: string): Pr
     // Calendar
     case 'get_upcoming_calendar': return executeGetUpcomingCalendar(sb, args);
     case 'get_appointments_for_client': return executeGetAppointmentsForClient(sb, args);
+    case 'reschedule_appointment': return executeRescheduleAppointment(args);
     // Calls
     case 'get_recent_calls': return executeGetRecentCalls(sb, args);
     case 'get_call_details': return executeGetCallDetails(sb, args);
