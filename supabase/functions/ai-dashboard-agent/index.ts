@@ -2136,13 +2136,19 @@ async function executeSearchClients(sb: any, args: any) {
 }
 
 async function executeGetClientDetails(sb: any, args: any) {
-  const { data, error } = await sb.from('clients').select('*').eq('id', args.client_id).single();
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
+  const { data, error } = await sb.from('clients').select('*').eq('id', cid).single();
   if (error || !data) return { error: 'Client not found.' };
   return { client: data };
 }
 
 async function executeGetClientAdditionalContacts(sb: any, args: any) {
-  const { data } = await sb.from('client_additional_contacts').select('*').eq('client_id', args.client_id).order('display_order');
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
+  const { data } = await sb.from('client_additional_contacts').select('*').eq('client_id', cid).order('display_order');
   return { contacts: data || [] };
 }
 
