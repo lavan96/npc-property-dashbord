@@ -511,6 +511,20 @@ serve(async (req) => {
     // OpportunityStageUpdate, OpportunityStatusUpdate, OpportunityMonetaryValueUpdate, etc.
     const eventType = (body.type || body.event || body.eventType || '').toLowerCase();
 
+    // ── Note events ──
+    const isNoteEvent = eventType.includes('note')
+      || (body.type && body.type.toLowerCase().includes('note'));
+
+    if (isNoteEvent) {
+      console.log(`[ghl-webhook] Detected note event: ${eventType}`);
+      const result = await handleNoteEvent(supabase, body, eventType);
+      return new Response(JSON.stringify(result), {
+        status: result.success ? 200 : 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // ── Opportunity events ──
     const isOpportunityEvent = eventType.includes('opportunity')
       || body.pipelineStageId
       || body.pipelineId
