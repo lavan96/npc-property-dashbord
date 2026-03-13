@@ -463,12 +463,12 @@ const TOOLS: any[] = [
     },
   },
 
-  // ─── CALENDAR & APPOINTMENTS ───
+  // ─── CALENDAR & APPOINTMENTS (Live GHL) ───
   {
     type: "function",
     function: {
       name: "get_upcoming_calendar",
-      description: "Get upcoming appointments and meetings for the next N days.",
+      description: "Get upcoming appointments and meetings for the next N days from the LIVE GoHighLevel calendar. Returns all events across all calendars with titles, times, contact info, and calendar names.",
       parameters: { type: "object", properties: { days_ahead: { type: "number", description: "Days to look ahead (default 7, max 30)" } } },
     },
   },
@@ -476,9 +476,25 @@ const TOOLS: any[] = [
     type: "function",
     function: {
       name: "get_appointments_for_client",
-      description: "Fetch all appointments linked to a specific client/contact by email.",
+      description: "Fetch all appointments linked to a specific client from the LIVE GHL calendar by looking up their GHL contact ID.",
       parameters: { type: "object", properties: { client_id: { type: "string", description: "UUID of the client" } }, required: ["client_id"] },
+    },
   },
+  {
+    type: "function",
+    function: {
+      name: "search_calendar_events",
+      description: "Search the live GHL calendar for events matching a query (by title, contact name, or notes). Use this to find a specific appointment before rescheduling or cancelling.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Search term to match against event titles, contact names, or notes" },
+          days_back: { type: "number", description: "Days to look back (default 7)" },
+          days_ahead: { type: "number", description: "Days to look forward (default 30)" },
+        },
+        required: ["query"],
+      },
+    },
   },
   {
     type: "function",
@@ -496,6 +512,63 @@ const TOOLS: any[] = [
           appointment_status: { type: "string", description: "Optional status: confirmed, cancelled, showed, noshow, invalid" },
         },
         required: ["event_id", "new_start_time", "new_end_time"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_appointment",
+      description: "Create a new appointment on a GHL calendar. Requires calendar ID, start/end times. Optionally link to a GHL contact. Use get_calendars first to find the right calendar ID.",
+      parameters: {
+        type: "object",
+        properties: {
+          calendar_id: { type: "string", description: "GHL calendar ID to create the appointment on" },
+          title: { type: "string", description: "Appointment title" },
+          start_time: { type: "string", description: "Start time in ISO 8601 format" },
+          end_time: { type: "string", description: "End time in ISO 8601 format" },
+          contact_id: { type: "string", description: "Optional GHL contact ID to link" },
+          notes: { type: "string", description: "Optional notes for the appointment" },
+        },
+        required: ["calendar_id", "title", "start_time", "end_time"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "cancel_appointment",
+      description: "Cancel an existing GHL appointment by setting its status to cancelled. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          event_id: { type: "string", description: "The GHL event/appointment ID to cancel" },
+        },
+        required: ["event_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_calendars",
+      description: "List all available GHL calendars with their IDs, names, and team members. Use this to find the correct calendar_id before creating appointments.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_free_slots",
+      description: "Get available free time slots for a specific GHL calendar on given dates. Useful for suggesting booking times.",
+      parameters: {
+        type: "object",
+        properties: {
+          calendar_id: { type: "string", description: "GHL calendar ID" },
+          start_date: { type: "string", description: "Start date in YYYY-MM-DD format" },
+          end_date: { type: "string", description: "End date in YYYY-MM-DD format" },
+        },
+        required: ["calendar_id", "start_date", "end_date"],
       },
     },
   },
@@ -2501,23 +2574,122 @@ async function executeSendEmail(sb: any, args: any) {
   } catch (err: any) { return { error: `Email send failed: ${err.message}` }; }
 }
 
-// ─── CALENDAR ───
+// ─── CALENDAR (Live GHL Bridge) ───
 
-async function executeGetUpcomingCalendar(sb: any, args: any) {
-  const days = Math.min(args.days_ahead || 7, 30);
-  const future = new Date(Date.now() + days * 86400000).toISOString();
-  const { data } = await sb.from('appointment_secondary_recipients').select('*').gte('appointment_start', new Date().toISOString()).lte('appointment_start', future).order('appointment_start');
-  return { appointments: data || [] };
+/** Helper to call ghl-calendar edge function */
+async function callGHLCalendar(payload: Record<string, unknown>) {
+  const resp = await fetch(`${SUPABASE_URL.trim()}/functions/v1/ghl-calendar`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY.trim()}`,
+      'apikey': SUPABASE_ANON_KEY.trim(),
+    },
+    body: JSON.stringify(payload),
+  });
+  const data = await resp.json();
+  if (!resp.ok || !data.success) {
+    return { error: data.error || `GHL Calendar error (HTTP ${resp.status})`, details: data.details };
+  }
+  return data;
+}
+
+async function executeGetUpcomingCalendar(_sb: any, args: any) {
+  const daysAhead = Math.min(args.days_ahead || 7, 30);
+  const now = new Date();
+  const startTime = now.toISOString();
+  const endTime = new Date(now.getTime() + daysAhead * 86400000).toISOString();
+
+  try {
+    const data = await callGHLCalendar({ action: 'events', startTime, endTime });
+    if (data.error) return data;
+
+    const events = (data.events || []).map((e: any) => ({
+      id: e.id,
+      title: e.title || 'Untitled',
+      startTime: e.startTime,
+      endTime: e.endTime,
+      status: e.appointmentStatus || e.status || 'confirmed',
+      calendarName: e.calendarName,
+      contactId: e.contactId,
+      notes: e.notes,
+    }));
+
+    return { appointments: events, count: events.length, source: 'live_ghl' };
+  } catch (err: any) {
+    return { error: `Failed to fetch calendar: ${err.message}` };
+  }
 }
 
 async function executeGetAppointmentsForClient(sb: any, args: any) {
   const v = await validateClientExists(sb, args.client_id);
   if (!v.valid) return { error: v.error };
   const cid = v.resolvedId || args.client_id;
-  const { data: client } = await sb.from('clients').select('primary_email').eq('id', cid).single();
-  if (!client?.primary_email) return { appointments: [], message: 'No email on file for this client.' };
-  const { data } = await sb.from('appointment_secondary_recipients').select('*').eq('contact_email', client.primary_email).order('appointment_start', { ascending: false }).limit(20);
-  return { appointments: data || [] };
+  const { data: client } = await sb.from('clients').select('primary_email, ghl_contact_id').eq('id', cid).single();
+
+  if (client?.ghl_contact_id) {
+    try {
+      const resp = await fetch(`${SUPABASE_URL.trim()}/functions/v1/ghl-calendar-proxy`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY.trim()}`,
+          'apikey': SUPABASE_ANON_KEY.trim(),
+        },
+        body: JSON.stringify({ action: 'getContactAppointments', contactId: client.ghl_contact_id }),
+      });
+      const data = await resp.json();
+      if (resp.ok && data.success) {
+        return { appointments: data.events || [], count: (data.events || []).length, source: 'live_ghl', client_name: clientName(v.client) };
+      }
+    } catch (err: any) {
+      console.error('GHL contact appointments fetch failed:', err.message);
+    }
+  }
+
+  if (client?.primary_email) {
+    const { data } = await sb.from('appointment_secondary_recipients').select('*').eq('contact_email', client.primary_email).order('appointment_start', { ascending: false }).limit(20);
+    return { appointments: data || [], count: (data || []).length, source: 'local_records', client_name: clientName(v.client) };
+  }
+
+  return { appointments: [], message: 'No GHL contact ID or email on file for this client.' };
+}
+
+async function executeSearchCalendarEvents(args: any) {
+  const { query, days_back = 7, days_ahead = 30 } = args;
+  if (!query) return { error: 'query is required.' };
+
+  const now = new Date();
+  const startTime = new Date(now.getTime() - days_back * 86400000).toISOString();
+  const endTime = new Date(now.getTime() + days_ahead * 86400000).toISOString();
+
+  try {
+    const data = await callGHLCalendar({ action: 'events', startTime, endTime });
+    if (data.error) return data;
+
+    const searchLower = query.toLowerCase();
+    const matched = (data.events || []).filter((e: any) => {
+      const title = (e.title || '').toLowerCase();
+      const notes = (e.notes || '').toLowerCase();
+      const contactName = (e.contactName || e.contact?.name || '').toLowerCase();
+      const contactEmail = (e.contactEmail || e.contact?.email || '').toLowerCase();
+      return title.includes(searchLower) || notes.includes(searchLower) || contactName.includes(searchLower) || contactEmail.includes(searchLower);
+    }).map((e: any) => ({
+      id: e.id,
+      title: e.title || 'Untitled',
+      startTime: e.startTime,
+      endTime: e.endTime,
+      status: e.appointmentStatus || e.status || 'confirmed',
+      calendarName: e.calendarName,
+      contactId: e.contactId,
+      contactName: e.contactName || e.contact?.name,
+      notes: e.notes,
+    }));
+
+    return { events: matched, count: matched.length, query, source: 'live_ghl' };
+  } catch (err: any) {
+    return { error: `Calendar search failed: ${err.message}` };
+  }
 }
 
 async function executeRescheduleAppointment(args: any) {
@@ -2525,9 +2697,6 @@ async function executeRescheduleAppointment(args: any) {
   if (!event_id || !new_start_time || !new_end_time) {
     return { error: 'event_id, new_start_time, and new_end_time are required.' };
   }
-
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
   const payload: Record<string, unknown> = {
     action: 'update',
@@ -2541,22 +2710,83 @@ async function executeRescheduleAppointment(args: any) {
   if (appointment_status) payload.appointmentStatus = appointment_status;
 
   try {
-    const resp = await fetch(`${supabaseUrl}/functions/v1/ghl-calendar`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${serviceRoleKey}`,
-      },
-      body: JSON.stringify(payload),
-    });
-
-    const data = await resp.json();
-    if (!resp.ok || !data.success) {
-      return { error: data.error || `Failed to reschedule (HTTP ${resp.status})`, details: data.details };
-    }
+    const data = await callGHLCalendar(payload);
+    if (data.error) return data;
     return { success: true, message: `Appointment ${event_id} rescheduled to ${new_start_time}`, event: data.event };
   } catch (err: any) {
     return { error: `Reschedule failed: ${err.message}` };
+  }
+}
+
+async function executeCreateAppointment(args: any) {
+  const { calendar_id, title, start_time, end_time, contact_id, notes } = args;
+  if (!calendar_id || !start_time || !end_time) {
+    return { error: 'calendar_id, start_time, and end_time are required.' };
+  }
+
+  const payload: Record<string, unknown> = {
+    action: 'create',
+    calendarId: calendar_id,
+    startTime: start_time,
+    endTime: end_time,
+    title: title || 'New Appointment',
+    overrideAvailability: true,
+  };
+  if (contact_id) payload.contactId = contact_id;
+  if (notes) payload.notes = notes;
+
+  try {
+    const data = await callGHLCalendar(payload);
+    if (data.error) return data;
+    return { success: true, message: `Appointment "${title}" created`, event: data.event };
+  } catch (err: any) {
+    return { error: `Create appointment failed: ${err.message}` };
+  }
+}
+
+async function executeCancelAppointment(args: any) {
+  const { event_id } = args;
+  if (!event_id) return { error: 'event_id is required.' };
+
+  try {
+    const data = await callGHLCalendar({ action: 'delete', eventId: event_id });
+    if (data.error) return data;
+    return { success: true, message: `Appointment ${event_id} cancelled.` };
+  } catch (err: any) {
+    return { error: `Cancel failed: ${err.message}` };
+  }
+}
+
+async function executeGetCalendars() {
+  try {
+    const data = await callGHLCalendar({ action: 'calendars' });
+    if (data.error) return data;
+    const calendars = (data.calendars || []).map((c: any) => ({
+      id: c.id,
+      name: c.name,
+      description: c.description,
+      calendarType: c.calendarType,
+      isActive: c.isActive,
+      teamMembers: c.teamMembers,
+    }));
+    return { calendars, count: calendars.length };
+  } catch (err: any) {
+    return { error: `Failed to fetch calendars: ${err.message}` };
+  }
+}
+
+async function executeGetFreeSlots(args: any) {
+  const { calendar_id, start_date, end_date } = args;
+  if (!calendar_id || !start_date || !end_date) {
+    return { error: 'calendar_id, start_date, and end_date are required.' };
+  }
+
+  try {
+    const data = await callGHLCalendar({ action: 'freeSlots', calendarId: calendar_id, startDate: start_date, endDate: end_date });
+    if (data.error) return data;
+    return { success: true, slots: data.slots };
+  } catch (err: any) {
+    return { error: `Failed to fetch free slots: ${err.message}` };
   }
 }
 
@@ -4315,10 +4545,15 @@ async function executeTool(sb: any, name: string, args: any, userId: string): Pr
     case 'get_unlinked_emails': return executeGetUnlinkedEmails(sb, args);
     case 'link_email_to_client': return executeLinkEmailToClient(sb, args);
     case 'send_email': return executeSendEmail(sb, args);
-    // Calendar
+    // Calendar (Live GHL)
     case 'get_upcoming_calendar': return executeGetUpcomingCalendar(sb, args);
     case 'get_appointments_for_client': return executeGetAppointmentsForClient(sb, args);
+    case 'search_calendar_events': return executeSearchCalendarEvents(args);
     case 'reschedule_appointment': return executeRescheduleAppointment(args);
+    case 'create_appointment': return executeCreateAppointment(args);
+    case 'cancel_appointment': return executeCancelAppointment(args);
+    case 'get_calendars': return executeGetCalendars();
+    case 'get_free_slots': return executeGetFreeSlots(args);
     // Calls
     case 'get_recent_calls': return executeGetRecentCalls(sb, args);
     case 'get_call_details': return executeGetCallDetails(sb, args);
@@ -4841,7 +5076,7 @@ You have access to 200+ specialized tools across 51 domains:
 🔔 REMINDERS — Create/complete/snooze/delete reminders, view overdue/today/upcoming, set follow-up dates, track deal milestones.
 💵 FINANCIAL — Borrowing capacity (current + history), income sources, expenses, liabilities, assets, properties, employment, client scores, what-if scenario analysis.
 📧 EMAIL — Search/view emails, browse threads, find unlinked emails, link to clients, email statistics.
-📅 CALENDAR — View upcoming appointments, find client appointments, today's full schedule, reschedule existing appointments.
+📅 CALENDAR — View upcoming appointments (live GHL), search events by name/contact, find client appointments, today's schedule, reschedule appointments, create new appointments, cancel appointments, list calendars, check free slots.
 📞 CALLS — View/search call logs, call details with transcripts, alerts, analytics, flagged calls.
 📊 REPORTS — Client files, investment reports, report details, search by address, portfolio reviews with full content, cash flow analyses, data export.
 📝 CLIENT NOTES — Full CRUD: create, read, update, delete client notes.
