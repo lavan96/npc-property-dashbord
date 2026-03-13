@@ -444,11 +444,11 @@ export function drawBorrowingCapacityPdfLib(
       const item = data.incomeBreakdown[i];
       const bg = i % 2 === 0 ? LIGHT_BG : undefined;
       const shadingColor = item.shadingRate >= 1 ? SUCCESS : item.shadingRate >= 0.8 ? WARNING : MUTED;
-      let label = sanitize(item.label);
-      if (label.length > 30) label = label.slice(0, 27) + '...';
+      const label = sanitize(item.label);
+      const labelMaxWidth = col2 - col1 - 10;
 
       y = drawTableRow(page, y, [
-        { text: label, x: col1, font },
+        { text: label, x: col1, font, maxWidth: labelMaxWidth },
         { text: fmt(item.grossAmount), x: col2, font },
         { text: `${(item.shadingRate * 100).toFixed(0)}%`, x: col3, font: boldFont, color: shadingColor },
         { text: fmt(item.shadedAmount), x: col4 - 50, font: boldFont },
