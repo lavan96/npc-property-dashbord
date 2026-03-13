@@ -440,7 +440,7 @@ export function drawBorrowingCapacityPdfLib(
     y -= 6;
 
     for (let i = 0; i < data.incomeBreakdown.length; i++) {
-      ensureSpace(18);
+      ensureSpace(TABLE_ROW_HEIGHT + 10);
       const item = data.incomeBreakdown[i];
       const bg = i % 2 === 0 ? LIGHT_BG : undefined;
       const shadingColor = item.shadingRate >= 1 ? SUCCESS : item.shadingRate >= 0.8 ? WARNING : MUTED;
