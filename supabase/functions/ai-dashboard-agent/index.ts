@@ -2413,9 +2413,12 @@ async function executeGetClientProperties(sb: any, args: any) {
 }
 
 async function executeGetEmploymentDetails(sb: any, args: any) {
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
   const [primary, contacts] = await Promise.all([
-    sb.from('client_employment').select('*').eq('client_id', args.client_id),
-    sb.from('client_additional_contacts').select('id, first_name, surname').eq('client_id', args.client_id),
+    sb.from('client_employment').select('*').eq('client_id', cid),
+    sb.from('client_additional_contacts').select('id, first_name, surname').eq('client_id', cid),
   ]);
   const contactEmployment: any[] = [];
   for (const c of (contacts.data || [])) {
