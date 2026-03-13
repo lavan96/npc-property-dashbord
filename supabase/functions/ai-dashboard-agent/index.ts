@@ -3803,7 +3803,10 @@ async function executeSmartSearch(sb: any, args: any) {
 }
 
 async function executeWhatIfAnalysis(sb: any, args: any) {
-  const { data: bc } = await sb.from('borrowing_capacity_assessments').select('*').eq('client_id', args.client_id).order('created_at', { ascending: false }).limit(1);
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
+  const { data: bc } = await sb.from('borrowing_capacity_assessments').select('*').eq('client_id', cid).order('created_at', { ascending: false }).limit(1);
   if (!bc?.[0]) return { error: 'No borrowing capacity assessment found for this client.' };
   const current = bc[0];
   const adj = args.adjustment_value;
