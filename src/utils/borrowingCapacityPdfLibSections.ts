@@ -630,7 +630,7 @@ export function drawBorrowingCapacityPdfLib(
 
     let totalServicing = 0;
     for (let i = 0; i < data.liabilityBreakdown.length; i++) {
-      ensureSpace(20);
+      ensureSpace(TABLE_ROW_HEIGHT + 10);
       const lib = data.liabilityBreakdown[i];
       const bg = i % 2 === 0 ? LIGHT_BG : undefined;
       totalServicing += lib.monthlyServicing;
