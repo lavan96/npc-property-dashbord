@@ -460,3 +460,7 @@ verify_jwt = true
 [functions.agent-task-runner]
 verify_jwt = false
 request_timeout = 120
+
+[functions.backfill-notes-to-ghl]
+verify_jwt = false
+request_timeout = 300
