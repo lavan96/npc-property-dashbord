@@ -110,6 +110,7 @@ serve(async (req) => {
           email: portalUser.email,
           name: clientData ? smartCapitalizeStr(`${clientData.primary_first_name || ''} ${clientData.primary_surname || ''}`.trim()) : portalUser.email,
           has_completed_onboarding: portalUser.has_completed_onboarding ?? false,
+          has_accepted_terms: portalUser.has_accepted_terms ?? false,
         },
         session_token: sessionToken,
       }),

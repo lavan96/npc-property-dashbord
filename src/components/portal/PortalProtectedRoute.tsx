@@ -18,5 +18,10 @@ export function PortalProtectedRoute({ children }: { children: ReactNode }) {
     return <Navigate to="/client/login" replace />;
   }
 
+  // Redirect to consent wall if terms not accepted
+  if (!user.has_accepted_terms) {
+    return <Navigate to="/client/consent" replace />;
+  }
+
   return <>{children}</>;
 }

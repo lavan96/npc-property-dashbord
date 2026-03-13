@@ -209,6 +209,8 @@ serve(async (req) => {
           invite_expires_at: expiresAt.toISOString(),
           status: 'invited',
           has_completed_onboarding: false,
+          has_accepted_terms: false,
+          terms_accepted_at: null,
         })
         .eq('id', existingUser.id)
     } else {
