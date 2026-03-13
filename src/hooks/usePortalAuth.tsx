@@ -153,6 +153,16 @@ export function PortalAuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const acceptTerms = useCallback(async () => {
+    try {
+      await invokePortalFunction('client-portal-verify', { action: 'accept_terms' });
+      setUser(prev => prev ? { ...prev, has_accepted_terms: true } : prev);
+    } catch (e) {
+      console.error('Failed to accept terms:', e);
+      throw e;
+    }
+  }, []);
+
   const requestPasswordReset = useCallback(async (email: string) => {
     const { data, error } = await invokePortalFunction('client-portal-forgot-password', { email });
     if (error) return { error: error.message };
