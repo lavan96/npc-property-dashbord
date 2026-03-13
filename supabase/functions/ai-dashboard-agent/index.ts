@@ -2162,8 +2162,11 @@ async function executeUpdateClientField(sb: any, args: any) {
 }
 
 async function executeGetClientActivities(sb: any, args: any) {
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
   const limit = args.limit || 20;
-  const { data } = await sb.from('client_activities').select('*').eq('client_id', args.client_id).order('created_at', { ascending: false }).limit(limit);
+  const { data } = await sb.from('client_activities').select('*').eq('client_id', cid).order('created_at', { ascending: false }).limit(limit);
   return { activities: data || [] };
 }
 
