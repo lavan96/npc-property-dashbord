@@ -3180,13 +3180,13 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                   <tr><td style="font-weight: 500;">${constructionProgressSchedule.durationMonths} Month Staged Progress</td><td style="text-align: right;">${formatCurrency(constructionProgressSchedule.totals.totalInterest)}</td></tr>
                   <tr style="background: #dbeafe;"><td style="font-weight: bold; color: #2563eb;">Total</td><td style="text-align: right; font-weight: bold; color: #2563eb;">${formatCurrency(constructionProgressSchedule.grandTotal)}</td></tr>
                 ` : `
-                  <tr><td style="font-weight: 500; width: 50%;">Deposit Value</td><td style="text-align: right;">${formatCurrency(baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - baseFinancialData.loanToValueRatio / 100)))}</td></tr>
-                  <tr><td style="font-weight: 500;">Stamp Duty</td><td style="text-align: right;">${formatCurrency(baseFinancialData.stampDuty)}</td></tr>
-                  <tr><td style="font-weight: 500;">Solicitor Cost</td><td style="text-align: right;">${formatCurrency(baseFinancialData.solicitorFees)}</td></tr>
-                   <tr><td style="font-weight: 500;">Agent Fee</td><td style="text-align: right;">${formatCurrency(baseFinancialData.agentFee)}</td></tr>
-                   ${baseFinancialData.lmiAmount > 0 ? `<tr><td style="font-weight: 500;">LMI (Lenders Mortgage Insurance)</td><td style="text-align: right;">${formatCurrency(baseFinancialData.lmiAmount)}</td></tr>` : ''}
-                   <tr style="background: #e5e7eb;"><td style="font-weight: 600;">Total Upfront Cost</td><td style="text-align: right; font-weight: 600;">${formatCurrency((baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - baseFinancialData.loanToValueRatio / 100))) + baseFinancialData.stampDuty + baseFinancialData.solicitorFees + baseFinancialData.agentFee + (baseFinancialData.lmiAmount || 0))}</td></tr>
-                   <tr style="background: #dbeafe;"><td style="font-weight: bold; color: #2563eb;">Total</td><td style="text-align: right; font-weight: bold; color: #2563eb;">${formatCurrency((baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - baseFinancialData.loanToValueRatio / 100))) + baseFinancialData.stampDuty + baseFinancialData.solicitorFees + baseFinancialData.agentFee + (baseFinancialData.lmiAmount || 0))}</td></tr>
+                   <tr><td style="font-weight: 500; width: 50%;">Purchase Price</td><td style="text-align: right;">${formatCurrency(baseFinancialData.purchasePrice)}</td></tr>
+                   <tr><td style="font-weight: 500;">Stamp Duty</td><td style="text-align: right;">${formatCurrency(baseFinancialData.stampDuty)}</td></tr>
+                   <tr><td style="font-weight: 500;">Solicitor Cost</td><td style="text-align: right;">${formatCurrency(baseFinancialData.solicitorFees)}</td></tr>
+                    <tr><td style="font-weight: 500;">Agent Fee</td><td style="text-align: right;">${formatCurrency(baseFinancialData.agentFee)}</td></tr>
+                    ${baseFinancialData.lmiAmount > 0 ? `<tr><td style="font-weight: 500;">LMI (Lenders Mortgage Insurance)</td><td style="text-align: right;">${formatCurrency(baseFinancialData.lmiAmount)}</td></tr>` : ''}
+                    <tr style="background: #e5e7eb;"><td style="font-weight: 600;">Total Upfront Cost</td><td style="text-align: right; font-weight: 600;">${formatCurrency(baseFinancialData.purchasePrice + baseFinancialData.stampDuty + baseFinancialData.solicitorFees + baseFinancialData.agentFee + (baseFinancialData.lmiAmount || 0))}</td></tr>
+                    <tr style="background: #dbeafe;"><td style="font-weight: bold; color: #2563eb;">Total</td><td style="text-align: right; font-weight: bold; color: #2563eb;">${formatCurrency(baseFinancialData.purchasePrice + baseFinancialData.stampDuty + baseFinancialData.solicitorFees + baseFinancialData.agentFee + (baseFinancialData.lmiAmount || 0))}</td></tr>
                 `}
               </tbody>
             </table>
