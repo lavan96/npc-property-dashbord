@@ -6,6 +6,7 @@ interface PortalUser {
   email: string;
   name: string;
   has_completed_onboarding: boolean;
+  has_accepted_terms: boolean;
 }
 
 interface PortalAuthContextType {
