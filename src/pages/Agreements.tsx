@@ -23,7 +23,8 @@ import { invokeSecureFunction } from '@/lib/secureInvoke';
 import GammaTemplateManager from '@/components/agreements/GammaTemplateManager';
 
 const STATUS_CONFIG: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: React.ComponentType<any> }> = {
-  draft: { label: 'Draft', variant: 'secondary', icon: Clock },
+  pending_pdf: { label: 'Processing PDF', variant: 'secondary', icon: Clock },
+  generating: { label: 'Generating', variant: 'secondary', icon: Loader2 },
   generated: { label: 'Generated', variant: 'outline', icon: FileSignature },
   sent: { label: 'Sent', variant: 'default', icon: Send },
   delivered: { label: 'Delivered', variant: 'default', icon: CheckCircle2 },
