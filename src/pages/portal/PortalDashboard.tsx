@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   Building2, User, Briefcase, Mail, FileText,
   DollarSign, Home, TrendingUp, Loader2, ArrowRight,
-  Sparkles, ChevronRight, Send
+  Sparkles, ChevronRight
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
