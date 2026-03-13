@@ -2683,16 +2683,12 @@ async function executeGetClientNotes(sb: any, args: any) {
 }
 
 async function executeCreateClientNote(sb: any, args: any, userId: string) {
-  // Validate client exists to prevent FK violations from hallucinated IDs
-  const { data: client } = await sb.from('clients').select('id, primary_first_name, primary_surname').eq('id', args.client_id).maybeSingle();
-  if (!client) {
-    // Attempt fuzzy recovery: search by name if a name-like string was passed
-    return { error: `Client with ID "${args.client_id}" not found. Please use search_clients to find the correct client ID first.` };
-  }
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
   const { data: u } = await sb.from('custom_users').select('id').eq('id', userId).maybeSingle();
   const { data, error } = await sb.from('client_notes').insert({ client_id: args.client_id, content: args.content, note_type: args.note_type || 'general', created_by: u ? userId : null }).select().single();
   if (error) return { error: error.message };
-  return { success: true, message: `Note created for ${client.primary_first_name || ''} ${client.primary_surname || ''}.`.trim(), note: data };
+  return { success: true, message: `Note created for ${v.client.primary_first_name || ''} ${v.client.primary_surname || ''}.`.trim(), note: data };
 }
 
 async function executeUpdateClientNote(sb: any, args: any) {
