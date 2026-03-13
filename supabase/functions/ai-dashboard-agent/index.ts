@@ -5135,7 +5135,7 @@ async function handleChat(sb: any, body: any, userId: string, username: string, 
           const args = JSON.parse(tc.function.arguments);
           console.log(`[ai-dashboard-agent] Tool: ${tc.function.name}`, JSON.stringify(args).substring(0, 200));
           const result = await executeTool(sb, tc.function.name, args, userId);
-          messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(result).substring(0, 4000) });
+          messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(result).substring(0, 8000) });
         }
         continue;
       }
