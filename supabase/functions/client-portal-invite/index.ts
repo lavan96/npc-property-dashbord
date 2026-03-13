@@ -200,7 +200,7 @@ serve(async (req) => {
         )
       }
 
-      // Update existing record with new invite token
+      // Update existing record with new invite token and reset onboarding
       await supabase
         .from('client_portal_users')
         .update({
@@ -208,6 +208,7 @@ serve(async (req) => {
           invite_token: inviteToken,
           invite_expires_at: expiresAt.toISOString(),
           status: 'invited',
+          has_completed_onboarding: false,
         })
         .eq('id', existingUser.id)
     } else {
