@@ -3550,12 +3550,22 @@ async function executeGetRevenueForecast(sb: any, args: any) {
 }
 
 async function executeGetClientEngagementScore(sb: any, args: any) {
-  const cid = args.client_id;
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString();
+  
+  // Get client's phone number for call matching
+  const { data: clientData } = await sb.from('clients').select('primary_mobile').eq('id', cid).maybeSingle();
+  const clientPhone = clientData?.primary_mobile;
+  
   const [activities, emails, calls, reminders, deals] = await Promise.all([
     sb.from('client_activities').select('id, created_at').eq('client_id', cid).gte('created_at', thirtyDaysAgo),
     sb.from('email_copilot_emails').select('id').eq('client_id', cid).gte('received_at', thirtyDaysAgo),
-    sb.from('vapi_call_logs').select('id').ilike('caller_phone', `%${cid.substring(0, 8)}%`).gte('created_at', thirtyDaysAgo),
+    // Fix: Match calls by the client's actual phone number, not UUID substring
+    clientPhone
+      ? sb.from('vapi_call_logs').select('id').ilike('caller_phone', `%${clientPhone.replace(/\s+/g, '').slice(-8)}%`).gte('created_at', thirtyDaysAgo)
+      : Promise.resolve({ data: [] }),
     sb.from('client_reminders').select('id, status').eq('client_id', cid).gte('created_at', thirtyDaysAgo),
     sb.from('client_deals').select('id, updated_at, risk_status').eq('client_id', cid),
   ]);
