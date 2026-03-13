@@ -2440,9 +2440,10 @@ async function executeGetUnlinkedEmails(sb: any, args: any) {
 async function executeLinkEmailToClient(sb: any, args: any) {
   const v = await validateClientExists(sb, args.client_id);
   if (!v.valid) return { error: v.error };
-  const { error } = await sb.from('email_copilot_emails').update({ client_id: args.client_id }).eq('id', args.email_id);
+  const cid = v.resolvedId || args.client_id;
+  const { error } = await sb.from('email_copilot_emails').update({ client_id: cid }).eq('id', args.email_id);
   if (error) return { error: error.message };
-  return { success: true, message: `Email linked to ${v.client.primary_first_name || ''} ${v.client.primary_surname || ''}.`.trim() };
+  return { success: true, message: `Email linked to ${clientName(v.client)}.` };
 }
 
 async function executeSendEmail(sb: any, args: any) {
