@@ -2488,7 +2488,10 @@ async function executeGetUpcomingCalendar(sb: any, args: any) {
 }
 
 async function executeGetAppointmentsForClient(sb: any, args: any) {
-  const { data: client } = await sb.from('clients').select('primary_email').eq('id', args.client_id).single();
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
+  const { data: client } = await sb.from('clients').select('primary_email').eq('id', cid).single();
   if (!client?.primary_email) return { appointments: [], message: 'No email on file for this client.' };
   const { data } = await sb.from('appointment_secondary_recipients').select('*').eq('contact_email', client.primary_email).order('appointment_start', { ascending: false }).limit(20);
   return { appointments: data || [] };
