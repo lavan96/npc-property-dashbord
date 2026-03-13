@@ -127,6 +127,8 @@ interface PropertyFormData {
   sourced_by: SourcedByType;
   deal_closed_at: string;
   sourced_notes: string;
+  loan_repayment: ExpenseField;
+  lender_name: string;
 }
 
 const convertToMonthly = (value: number, frequency: FrequencyType): number => {
