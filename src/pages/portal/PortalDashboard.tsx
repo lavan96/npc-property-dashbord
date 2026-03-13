@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   Building2, User, Briefcase, Mail, FileText,
   DollarSign, Home, TrendingUp, Loader2, ArrowRight,
-  Sparkles, ChevronRight, Send
+  Sparkles, ChevronRight
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -17,7 +17,6 @@ const quickLinks = [
   { to: '/client/properties', icon: Building2, label: 'Properties', desc: 'View your property portfolio', color: 'from-emerald-500/10 to-teal-500/10' },
   { to: '/client/employment', icon: Briefcase, label: 'Employment & Finances', desc: 'Employment and income details', color: 'from-amber-500/10 to-orange-500/10' },
   { to: '/client/reports', icon: FileText, label: 'Reports', desc: 'View reports shared by your advisor', color: 'from-purple-500/10 to-fuchsia-500/10' },
-  { to: '/client/request-report', icon: Send, label: 'Request Report', desc: 'Request a new analysis from your advisor', color: 'from-cyan-500/10 to-sky-500/10' },
   { to: '/client/documents', icon: FileText, label: 'Documents', desc: 'Access your uploaded documents', color: 'from-rose-500/10 to-pink-500/10' },
 ];
 

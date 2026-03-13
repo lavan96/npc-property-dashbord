@@ -7,27 +7,26 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
-  Building2, User, Home as HomeIcon, Briefcase, Mail,
+  Building2, User, Home as HomeIcon, Briefcase,
   FileText, LogOut, Menu, X, Shield, Bell, TrendingUp,
-  MessageSquare, BarChart3, CalendarDays, Send
+  MessageSquare, BarChart3, CalendarDays
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 
 const portalNavItems = [
   { to: '/client', icon: HomeIcon, label: 'Dashboard', end: true },
-  { to: '/client/profile', icon: User, label: 'My Profile' },
-  { to: '/client/deal-progress', icon: TrendingUp, label: 'Deal Progress' },
-  { to: '/client/properties', icon: Building2, label: 'Properties' },
-  { to: '/client/property-insights', icon: BarChart3, label: 'Property Insights' },
-  { to: '/client/employment', icon: Briefcase, label: 'Finances' },
-  { to: '/client/documents', icon: FileText, label: 'Documents' },
-  { to: '/client/reports', icon: FileText, label: 'Reports' },
-  { to: '/client/request-report', icon: Send, label: 'Request Report' },
-  { to: '/client/messages', icon: MessageSquare, label: 'Messages' },
-  { to: '/client/notifications', icon: Bell, label: 'Notifications' },
-  { to: '/client/appointments', icon: CalendarDays, label: 'My Appointments' },
-  { to: '/client/booking', icon: CalendarDays, label: 'Book Appointment' },
+  { to: '/client/profile', icon: User, label: 'My Profile', end: true },
+  { to: '/client/deal-progress', icon: TrendingUp, label: 'Deal Progress', end: true },
+  { to: '/client/properties', icon: Building2, label: 'Properties', end: true },
+  { to: '/client/property-insights', icon: BarChart3, label: 'Property Insights', end: true },
+  { to: '/client/employment', icon: Briefcase, label: 'Finances', end: true },
+  { to: '/client/documents', icon: FileText, label: 'Documents', end: true },
+  { to: '/client/reports', icon: FileText, label: 'Reports', end: true },
+  { to: '/client/messages', icon: MessageSquare, label: 'Messages', end: true },
+  { to: '/client/notifications', icon: Bell, label: 'Notifications', end: true },
+  { to: '/client/appointments', icon: CalendarDays, label: 'My Appointments', end: true },
+  { to: '/client/booking', icon: CalendarDays, label: 'Book Appointment', end: true },
 ];
 
 function getInitials(name?: string): string {
