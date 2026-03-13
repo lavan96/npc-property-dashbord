@@ -2086,11 +2086,37 @@ const WRITE_TOOLS = [
 
 const CLIENT_NOT_FOUND_MSG = (id: string) => `Client with ID "${id}" not found. Please use search_clients to find the correct client ID first.`;
 
-async function validateClientExists(sb: any, clientId: string): Promise<{ valid: boolean; client?: any; error?: string }> {
+async function validateClientExists(sb: any, clientId: string): Promise<{ valid: boolean; client?: any; error?: string; resolvedId?: string }> {
   if (!clientId) return { valid: false, error: 'client_id is required.' };
+  
+  // Step 1: Try exact UUID match
   const { data: client } = await sb.from('clients').select('id, primary_first_name, primary_surname').eq('id', clientId).maybeSingle();
-  if (!client) return { valid: false, error: CLIENT_NOT_FOUND_MSG(clientId) };
-  return { valid: true, client };
+  if (client) return { valid: true, client, resolvedId: client.id };
+  
+  // Step 2: Smart fallback — if the value looks like it could be a name (not a valid UUID pattern), try name-based resolution
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(clientId)) {
+    // Treat as a name search
+    const parts = clientId.trim().split(/\s+/);
+    let query = sb.from('clients').select('id, primary_first_name, primary_surname');
+    if (parts.length >= 2) {
+      query = query.ilike('primary_first_name', `%${parts[0]}%`).ilike('primary_surname', `%${parts.slice(1).join(' ')}%`);
+    } else {
+      query = query.or(`primary_first_name.ilike.%${parts[0]}%,primary_surname.ilike.%${parts[0]}%`);
+    }
+    const { data: matches } = await query.limit(5);
+    if (matches && matches.length === 1) {
+      return { valid: true, client: matches[0], resolvedId: matches[0].id };
+    }
+    if (matches && matches.length > 1) {
+      const names = matches.map((m: any) => `• ${clientName(m)} (ID: ${m.id})`).join('\n');
+      return { valid: false, error: `Multiple clients match "${clientId}". Please clarify which one:\n${names}` };
+    }
+  }
+  
+  // Step 3: UUID was provided but doesn't exist — attempt fuzzy recovery from recent search context
+  // This catches hallucinated UUIDs: return clear error
+  return { valid: false, error: CLIENT_NOT_FOUND_MSG(clientId) };
 }
 
 async function validateClientsExist(sb: any, clientIds: string[]): Promise<{ validIds: string[]; invalidIds: string[] }> {
