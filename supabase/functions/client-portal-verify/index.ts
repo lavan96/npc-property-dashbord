@@ -29,11 +29,13 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Extract session token
+    // Extract session token and action
     let sessionToken: string | null = null;
+    let action: string | null = null;
     try {
       const body = await req.json();
       sessionToken = body?.portal_session_token || extractPortalSessionToken(req.headers, body);
+      action = body?.action || null;
     } catch {
       sessionToken = extractPortalSessionToken(req.headers);
     }
