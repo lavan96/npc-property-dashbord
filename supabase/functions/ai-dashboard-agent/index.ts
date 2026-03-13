@@ -478,6 +478,25 @@ const TOOLS: any[] = [
       name: "get_appointments_for_client",
       description: "Fetch all appointments linked to a specific client/contact by email.",
       parameters: { type: "object", properties: { client_id: { type: "string", description: "UUID of the client" } }, required: ["client_id"] },
+  },
+  },
+  {
+    type: "function",
+    function: {
+      name: "reschedule_appointment",
+      description: "Reschedule an existing GHL appointment to a new date/time. Requires the GHL event ID and the new start/end times in ISO format. Can also update title, notes, or status.",
+      parameters: {
+        type: "object",
+        properties: {
+          event_id: { type: "string", description: "The GHL event/appointment ID to reschedule" },
+          new_start_time: { type: "string", description: "New start time in ISO 8601 format (e.g. 2025-03-15T10:00:00+11:00)" },
+          new_end_time: { type: "string", description: "New end time in ISO 8601 format (e.g. 2025-03-15T11:00:00+11:00)" },
+          title: { type: "string", description: "Optional new title for the appointment" },
+          notes: { type: "string", description: "Optional updated notes" },
+          appointment_status: { type: "string", description: "Optional status: confirmed, cancelled, showed, noshow, invalid" },
+        },
+        required: ["event_id", "new_start_time", "new_end_time"],
+      },
     },
   },
 
