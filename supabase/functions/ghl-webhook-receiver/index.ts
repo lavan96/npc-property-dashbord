@@ -44,26 +44,30 @@ async function resolveStage(supabase: any, ghlStageId: string) {
   };
 }
 
-/** Look up the contact's opportunity in GHL via the API */
+/** Look up the contact's opportunity in GHL via the API (GET endpoint with query params) */
 async function fetchOpportunityForContact(
   contactId: string,
   apiKey: string,
   locationId: string
 ): Promise<{ id: string; pipelineStageId: string; pipelineId: string; status: string; monetaryValue?: number } | null> {
   try {
-    const res = await fetch(`${GHL_API_BASE}/opportunities/search`, {
-      method: 'POST',
+    // Use GET /opportunities/search with query params — the POST endpoint rejects contactId
+    const params = new URLSearchParams({
+      location_id: locationId,
+      contact_id: contactId,
+    });
+    const res = await fetch(`${GHL_API_BASE}/opportunities/search?${params.toString()}`, {
+      method: 'GET',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Version': '2021-07-28',
-        'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
-      body: JSON.stringify({ locationId, contactId, limit: 10 }),
     });
 
     if (!res.ok) {
-      console.warn('[ghl-webhook] Opportunity search failed:', res.status, await res.text());
+      const errText = await res.text();
+      console.warn('[ghl-webhook] Opportunity search failed:', res.status, errText);
       return null;
     }
 
