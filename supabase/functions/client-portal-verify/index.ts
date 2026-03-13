@@ -88,6 +88,19 @@ serve(async (req) => {
       )
     }
 
+    // Handle accept_terms action
+    if (action === 'accept_terms') {
+      await supabase
+        .from('client_portal_users')
+        .update({ has_accepted_terms: true, terms_accepted_at: new Date().toISOString() })
+        .eq('id', portalUser.id)
+
+      return new Response(
+        JSON.stringify({ success: true }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     return new Response(
       JSON.stringify({
         valid: true,
