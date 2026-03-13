@@ -2571,7 +2571,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         }
 
         // Grand Total highlight box (yellow/amber)
-        yPos += 2;
+        yPos += 6;
         pdf.setFillColor(254, 243, 199); // amber-100
         pdf.roundedRect(margin, yPos - 3, brkTableWidth, 7, 1, 1, 'F');
         pdf.setDrawColor(245, 158, 11); // amber-500 border
