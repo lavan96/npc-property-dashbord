@@ -5,6 +5,7 @@ interface PortalUser {
   client_id: string;
   email: string;
   name: string;
+  has_completed_onboarding: boolean;
 }
 
 interface PortalAuthContextType {
