@@ -5185,6 +5185,27 @@ async function handleChat(sb: any, body: any, userId: string, username: string, 
     messages.push(...convMessages);
   }
 
+  // If image attachments are present, convert the last user message to multimodal content
+  if (image_attachments && Array.isArray(image_attachments) && image_attachments.length > 0) {
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg && lastMsg.role === 'user') {
+      const contentParts: any[] = [{ type: 'text', text: typeof lastMsg.content === 'string' ? lastMsg.content : '' }];
+      for (const img of image_attachments) {
+        if (img.base64) {
+          // Strip data URI prefix if present (e.g. "data:image/png;base64,...")
+          const rawBase64 = img.base64.includes(',') ? img.base64.split(',')[1] : img.base64;
+          const mimeType = img.mime_type || 'image/png';
+          contentParts.push({
+            type: 'image_url',
+            image_url: { url: `data:${mimeType};base64,${rawBase64}` },
+          });
+        }
+      }
+      messages[messages.length - 1] = { role: 'user', content: contentParts };
+      console.log(`[ai-dashboard-agent] Attached ${image_attachments.length} image(s) for vision analysis`);
+    }
+  }
+
   let finalResponse = '';
   let pendingConfirmation = false;
   let pendingToolCalls: any[] = [];
