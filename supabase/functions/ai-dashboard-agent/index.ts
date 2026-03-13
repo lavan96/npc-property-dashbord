@@ -2373,27 +2373,42 @@ async function executeGetBCHistory(sb: any, args: any) {
 }
 
 async function executeGetIncomeSources(sb: any, args: any) {
-  const { data } = await sb.from('client_income').select('*').eq('client_id', args.client_id);
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
+  const { data } = await sb.from('client_income').select('*').eq('client_id', cid);
   return { income_sources: data || [] };
 }
 
 async function executeGetClientExpenses(sb: any, args: any) {
-  const { data } = await sb.from('client_expenses').select('*').eq('client_id', args.client_id);
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
+  const { data } = await sb.from('client_expenses').select('*').eq('client_id', cid);
   return { expenses: data || [] };
 }
 
 async function executeGetClientLiabilities(sb: any, args: any) {
-  const { data } = await sb.from('client_liabilities').select('*').eq('client_id', args.client_id);
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
+  const { data } = await sb.from('client_liabilities').select('*').eq('client_id', cid);
   return { liabilities: data || [] };
 }
 
 async function executeGetClientAssets(sb: any, args: any) {
-  const { data } = await sb.from('client_assets').select('*').eq('client_id', args.client_id);
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
+  const { data } = await sb.from('client_assets').select('*').eq('client_id', cid);
   return { assets: data || [] };
 }
 
 async function executeGetClientProperties(sb: any, args: any) {
-  const { data } = await sb.from('client_properties').select('*').eq('client_id', args.client_id);
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
+  const { data } = await sb.from('client_properties').select('*').eq('client_id', cid);
   return { properties: data || [] };
 }
 
