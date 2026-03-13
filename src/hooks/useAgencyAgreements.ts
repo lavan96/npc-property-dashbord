@@ -136,5 +136,21 @@ export function useAgreementMutations() {
     },
   });
 
-  return { generateAgreement, sendViaDocuSign, checkStatus, voidAgreement };
+  const retryPdf = useMutation({
+    mutationFn: async (agreementId: string) => {
+      const { data, error } = await invokeSecureFunction<{ success: boolean; pdf_url: string | null; status: string }>('manage-agency-agreements', {
+        action: 'retry_pdf',
+        agreement_id: agreementId,
+      });
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    onSuccess: (data) => {
+      if (data?.success) {
+        queryClient.invalidateQueries({ queryKey: ['agency-agreements'] });
+      }
+    },
+  });
+
+  return { generateAgreement, sendViaDocuSign, checkStatus, voidAgreement, retryPdf };
 }

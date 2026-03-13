@@ -23,7 +23,8 @@ import { invokeSecureFunction } from '@/lib/secureInvoke';
 import GammaTemplateManager from '@/components/agreements/GammaTemplateManager';
 
 const STATUS_CONFIG: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: React.ComponentType<any> }> = {
-  draft: { label: 'Draft', variant: 'secondary', icon: Clock },
+  pending_pdf: { label: 'Processing PDF', variant: 'secondary', icon: Clock },
+  generating: { label: 'Generating', variant: 'secondary', icon: Loader2 },
   generated: { label: 'Generated', variant: 'outline', icon: FileSignature },
   sent: { label: 'Sent', variant: 'default', icon: Send },
   delivered: { label: 'Delivered', variant: 'default', icon: CheckCircle2 },
@@ -36,7 +37,7 @@ const STATUS_CONFIG: Record<string, { label: string; variant: 'default' | 'secon
 
 export default function Agreements() {
   const { data: agreements = [], isLoading } = useAgencyAgreements();
-  const { checkStatus, voidAgreement, sendViaDocuSign } = useAgreementMutations();
+  const { checkStatus, voidAgreement, sendViaDocuSign, retryPdf } = useAgreementMutations();
   const [searchTerm, setSearchTerm] = useState('');
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewTitle, setPreviewTitle] = useState('');
@@ -83,10 +84,22 @@ export default function Agreements() {
 
   const handleDownloadAgreement = async (agreement: AgencyAgreement) => {
     toast.loading('Preparing download...', { id: 'download-agreement' });
-    const { html, pdf_url } = await fetchAgreementPreview(agreement.id);
+    let { html, pdf_url } = await fetchAgreementPreview(agreement.id);
     
+    // If no PDF, attempt a retry (deferred generation may have completed)
+    if (!pdf_url && !agreement.pdf_storage_path) {
+      toast.loading('PDF not ready yet, retrying...', { id: 'download-agreement' });
+      try {
+        const retryResult = await retryPdf.mutateAsync(agreement.id);
+        if (retryResult?.pdf_url) {
+          pdf_url = retryResult.pdf_url;
+        }
+      } catch {
+        // Retry failed, will fall back to HTML
+      }
+    }
+
     if (pdf_url) {
-      // Download PDF directly
       try {
         const res = await fetch(pdf_url);
         if (!res.ok) throw new Error('Failed to fetch PDF');
@@ -107,7 +120,7 @@ export default function Agreements() {
     }
 
     if (!html) {
-      toast.dismiss('download-agreement');
+      toast.error('Agreement PDF is still being generated. Please try again in a minute.', { id: 'download-agreement' });
       return;
     }
     // Fallback: Download as HTML file
@@ -120,7 +133,7 @@ export default function Agreements() {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    toast.success('Agreement downloaded', { id: 'download-agreement' });
+    toast.success('Agreement downloaded (HTML fallback)', { id: 'download-agreement' });
   };
 
   const handleRefreshStatus = async (id: string) => {

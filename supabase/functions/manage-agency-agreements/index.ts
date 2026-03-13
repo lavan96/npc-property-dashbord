@@ -232,6 +232,104 @@ async function fetchGammaPdfBuffer(
   return null;
 }
 
+// ─── Helper: Deferred PDF fetch (re-polls generation + downloads PDF) ────
+async function attemptDeferredPdfFetch(
+  supabase: any,
+  agreement: any,
+  gammaApiKey: string,
+): Promise<string | null> {
+  const GAMMA_API_URL = 'https://public-api.gamma.app/v1.0';
+  const generationId = agreement.gamma_document_id;
+
+  try {
+    // Step 1: Check if the generation has completed
+    console.log('[deferred] Checking generation status for:', generationId);
+    const pollRes = await fetch(`${GAMMA_API_URL}/generations/${generationId}`, {
+      headers: { 'X-API-KEY': gammaApiKey },
+    });
+
+    if (!pollRes.ok) {
+      console.warn('[deferred] Generation poll failed:', pollRes.status);
+      return null;
+    }
+
+    const gammaData = await pollRes.json();
+    console.log('[deferred] Generation status:', gammaData.status, 'keys:', Object.keys(gammaData).join(','));
+
+    if (gammaData.status === 'pending' || gammaData.status === 'processing') {
+      // Still not ready — do a short additional poll (up to 30s)
+      console.log('[deferred] Generation still pending, doing short poll (10 attempts)...');
+      for (let i = 0; i < 10; i++) {
+        await new Promise(r => setTimeout(r, 3000));
+        const retryRes = await fetch(`${GAMMA_API_URL}/generations/${generationId}`, {
+          headers: { 'X-API-KEY': gammaApiKey },
+        });
+        if (retryRes.ok) {
+          const retryData = await retryRes.json();
+          console.log(`[deferred] Short poll ${i + 1}/10: status=${retryData.status}`);
+          if (retryData.status === 'completed') {
+            Object.assign(gammaData, retryData);
+            break;
+          } else if (retryData.status === 'failed' || retryData.status === 'error') {
+            console.error('[deferred] Generation failed:', JSON.stringify(retryData));
+            return null;
+          }
+        }
+      }
+    }
+
+    if (gammaData.status !== 'completed') {
+      console.warn('[deferred] Generation not yet completed:', gammaData.status);
+      return null;
+    }
+
+    // Step 2: Generation completed — extract URLs and fetch PDF
+    const rawPdfUrl = gammaData.exportUrl || gammaData.pdfUrl || gammaData.fileUrl;
+    const gammaDocId = gammaData.gammaId || generationId;
+    const gammaUrl = gammaData.gammaUrl || gammaData.url;
+
+    const pdfBuffer = await fetchGammaPdfBuffer(rawPdfUrl, gammaDocId, gammaApiKey);
+    if (!pdfBuffer) {
+      console.warn('[deferred] Could not obtain valid PDF');
+      return null;
+    }
+
+    // Step 3: Upload to storage
+    const storagePath = `agreements/${agreement.id}/agreement.pdf`;
+    const { error: uploadErr } = await supabase.storage
+      .from('agency-agreements')
+      .upload(storagePath, new Uint8Array(pdfBuffer), {
+        contentType: 'application/pdf',
+        upsert: true,
+      });
+
+    if (uploadErr) {
+      console.error('[deferred] PDF upload error:', uploadErr.message);
+      return null;
+    }
+
+    // Step 4: Update agreement record
+    await supabase.from('agency_agreements').update({
+      pdf_storage_path: storagePath,
+      gamma_document_id: gammaDocId,
+      gamma_document_url: gammaUrl || agreement.gamma_document_url,
+      status: agreement.status === 'pending_pdf' ? 'generated' : agreement.status,
+    }).eq('id', agreement.id);
+
+    console.log('[deferred] PDF successfully backfilled to:', storagePath);
+
+    // Step 5: Return signed URL
+    const { data: signedData } = await supabase.storage
+      .from('agency-agreements')
+      .createSignedUrl(storagePath, 3600);
+
+    return signedData?.signedUrl || null;
+  } catch (err: any) {
+    console.error('[deferred] Error:', err.message);
+    return null;
+  }
+}
+
 serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = createCorsHeaders(origin);
@@ -410,9 +508,14 @@ serve(async (req) => {
             const generationId = createData.generationId || createData.id;
             console.log('[Gamma] Generation started, generationId:', generationId);
 
-            // Poll for completion (max 90 seconds)
+            // Always store the generationId immediately so we can retry later
+            await supabase.from('agency_agreements').update({
+              gamma_document_id: generationId,
+            }).eq('id', agreement.id);
+
+            // Poll for completion (max 150 seconds = 50 polls × 3s)
             let gammaResult: any = null;
-            for (let i = 0; i < 30; i++) {
+            for (let i = 0; i < 50; i++) {
               await new Promise(r => setTimeout(r, 3000));
               const pollRes = await fetch(`${GAMMA_API_URL}/generations/${generationId}`, {
                 headers: { 'X-API-KEY': gammaApiKey },
@@ -420,7 +523,7 @@ serve(async (req) => {
               const pollText = await pollRes.text();
               let pollData: any;
               try { pollData = JSON.parse(pollText); } catch { pollData = {}; }
-              console.log(`[Gamma] Poll ${i + 1}: status=${pollData.status}, keys=${Object.keys(pollData).join(',')}`);
+              console.log(`[Gamma] Poll ${i + 1}/50: status=${pollData.status}, keys=${Object.keys(pollData).join(',')}`);
 
               if (pollData.status === 'completed') {
                 gammaResult = pollData;
@@ -468,8 +571,12 @@ serve(async (req) => {
               await supabase.from('agency_agreements').update(updateData).eq('id', agreement.id);
               console.log('[Gamma] Agreement record updated');
             } else {
-              await supabase.from('agency_agreements').update({ status: 'generated' }).eq('id', agreement.id);
-              console.warn('[Gamma] Timed out — agreement generated without Gamma');
+              // Timed out but generationId is already stored — can retry later
+              await supabase.from('agency_agreements').update({
+                status: 'pending_pdf',
+                gamma_document_id: generationId,
+              }).eq('id', agreement.id);
+              console.warn('[Gamma] Timed out — generationId stored for deferred retry:', generationId);
             }
           } else {
             console.error('[Gamma] Create failed - status:', createRes.status, 'body:', createText.substring(0, 500));
@@ -530,44 +637,11 @@ serve(async (req) => {
           pdfSignedUrl = signedData.signedUrl;
         }
       } else if (agreement.gamma_document_id) {
-        // PDF not stored but Gamma doc exists - try to fetch and store it now (backfill)
-        console.log('[preview] PDF not stored, attempting to fetch from Gamma:', agreement.gamma_document_id);
+        // PDF not stored but Gamma doc/generation ID exists - try to fetch and store it now
+        console.log('[preview] PDF not stored, attempting deferred fetch for:', agreement.gamma_document_id);
         const gammaApiKey = Deno.env.get('GAMMA_API_KEY');
         if (gammaApiKey) {
-          try {
-            // Use the shared helper to get a valid PDF
-            const pollRes = await fetch(`https://public-api.gamma.app/v1.0/generations/${agreement.gamma_document_id}`, {
-              headers: { 'X-API-KEY': gammaApiKey },
-            });
-            if (pollRes.ok) {
-              const gammaData = await pollRes.json();
-              const rawPdfUrl = gammaData.exportUrl || gammaData.pdfUrl || gammaData.fileUrl;
-              const pdfBuffer = await fetchGammaPdfBuffer(rawPdfUrl, agreement.gamma_document_id, gammaApiKey);
-              if (pdfBuffer) {
-                const storagePath = `agreements/${agreement.id}/agreement.pdf`;
-                const { error: uploadErr } = await supabase.storage
-                  .from('agency-agreements')
-                  .upload(storagePath, new Uint8Array(pdfBuffer), {
-                    contentType: 'application/pdf',
-                    upsert: true,
-                  });
-                if (!uploadErr) {
-                  await supabase.from('agency_agreements').update({ pdf_storage_path: storagePath }).eq('id', agreement.id);
-                  console.log('[preview] PDF backfilled to storage:', storagePath);
-                  const { data: signedData } = await supabase.storage
-                    .from('agency-agreements')
-                    .createSignedUrl(storagePath, 3600);
-                  if (signedData?.signedUrl) {
-                    pdfSignedUrl = signedData.signedUrl;
-                  }
-                } else {
-                  console.error('[preview] PDF upload error:', uploadErr.message);
-                }
-              }
-            }
-          } catch (err: any) {
-            console.error('[preview] Gamma backfill error:', err.message);
-          }
+          pdfSignedUrl = await attemptDeferredPdfFetch(supabase, agreement, gammaApiKey);
         }
       }
 
@@ -577,6 +651,66 @@ serve(async (req) => {
       const html = generateAgreementHtml(agreement);
       return new Response(
         JSON.stringify({ success: true, html, agreement, pdf_url: pdfSignedUrl, gamma_url: gammaUrl }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ─── RETRY PDF (deferred fetch for timed-out generations) ─────
+    if (action === 'retry_pdf') {
+      const { agreement_id } = body;
+      if (!agreement_id) {
+        return new Response(
+          JSON.stringify({ error: 'Missing agreement_id' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data: agreement, error: fetchErr } = await supabase
+        .from('agency_agreements')
+        .select('*')
+        .eq('id', agreement_id)
+        .single();
+
+      if (fetchErr || !agreement) {
+        return new Response(
+          JSON.stringify({ error: 'Agreement not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (agreement.pdf_storage_path) {
+        // Already has PDF
+        const { data: signedData } = await supabase.storage
+          .from('agency-agreements')
+          .createSignedUrl(agreement.pdf_storage_path, 3600);
+        return new Response(
+          JSON.stringify({ success: true, pdf_url: signedData?.signedUrl || null, status: 'already_exists' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (!agreement.gamma_document_id) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'No Gamma generation ID found for this agreement' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const gammaApiKey = Deno.env.get('GAMMA_API_KEY');
+      if (!gammaApiKey) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Gamma API key not configured' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const pdfSignedUrl = await attemptDeferredPdfFetch(supabase, agreement, gammaApiKey);
+      return new Response(
+        JSON.stringify({
+          success: !!pdfSignedUrl,
+          pdf_url: pdfSignedUrl,
+          status: pdfSignedUrl ? 'pdf_retrieved' : 'still_pending',
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
