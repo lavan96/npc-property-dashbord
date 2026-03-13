@@ -2082,6 +2082,23 @@ const WRITE_TOOLS = [
 //  TOOL EXECUTORS
 // ============================================================
 
+// ─── SHARED VALIDATION HELPERS ───
+
+const CLIENT_NOT_FOUND_MSG = (id: string) => `Client with ID "${id}" not found. Please use search_clients to find the correct client ID first.`;
+
+async function validateClientExists(sb: any, clientId: string): Promise<{ valid: boolean; client?: any; error?: string }> {
+  if (!clientId) return { valid: false, error: 'client_id is required.' };
+  const { data: client } = await sb.from('clients').select('id, primary_first_name, primary_surname').eq('id', clientId).maybeSingle();
+  if (!client) return { valid: false, error: CLIENT_NOT_FOUND_MSG(clientId) };
+  return { valid: true, client };
+}
+
+async function validateClientsExist(sb: any, clientIds: string[]): Promise<{ validIds: string[]; invalidIds: string[] }> {
+  const { data } = await sb.from('clients').select('id').in('id', clientIds);
+  const foundIds = new Set((data || []).map((c: any) => c.id));
+  return { validIds: clientIds.filter(id => foundIds.has(id)), invalidIds: clientIds.filter(id => !foundIds.has(id)) };
+}
+
 // ─── CLIENT MANAGEMENT ───
 
 async function executeSearchClients(sb: any, args: any) {
@@ -2104,9 +2121,11 @@ async function executeGetClientAdditionalContacts(sb: any, args: any) {
 }
 
 async function executeUpdateClientField(sb: any, args: any) {
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
   const { error } = await sb.from('clients').update({ [args.field]: args.value }).eq('id', args.client_id);
   if (error) return { error: error.message };
-  return { success: true, message: `Updated "${args.field}" for client.` };
+  return { success: true, message: `Updated "${args.field}" for ${v.client.primary_first_name || ''} ${v.client.primary_surname || ''}.`.trim() };
 }
 
 async function executeGetClientActivities(sb: any, args: any) {
@@ -2116,6 +2135,8 @@ async function executeGetClientActivities(sb: any, args: any) {
 }
 
 async function executeLogClientActivity(sb: any, args: any, userId: string) {
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
   const { data: u } = await sb.from('custom_users').select('id').eq('id', userId).maybeSingle();
   const { data, error } = await sb.from('client_activities').insert({ client_id: args.client_id, title: args.title, description: args.description || null, activity_type: args.activity_type, created_by: u ? userId : null }).select().single();
   if (error) return { error: error.message };
@@ -2290,9 +2311,11 @@ async function executeDeleteReminder(sb: any, args: any) {
 }
 
 async function executeSetFollowUpDate(sb: any, args: any) {
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
   const { error } = await sb.from('clients').update({ follow_up_date: args.follow_up_date }).eq('id', args.client_id);
   if (error) return { error: error.message };
-  return { success: true, message: `Follow-up date set to ${args.follow_up_date.substring(0, 10)}.` };
+  return { success: true, message: `Follow-up date set to ${args.follow_up_date.substring(0, 10)} for ${v.client.primary_first_name || ''} ${v.client.primary_surname || ''}.`.trim() };
 }
 
 async function executeGetUpcomingMilestones(sb: any, args: any) {
@@ -2386,9 +2409,11 @@ async function executeGetUnlinkedEmails(sb: any, args: any) {
 }
 
 async function executeLinkEmailToClient(sb: any, args: any) {
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
   const { error } = await sb.from('email_copilot_emails').update({ client_id: args.client_id }).eq('id', args.email_id);
   if (error) return { error: error.message };
-  return { success: true, message: 'Email linked to client.' };
+  return { success: true, message: `Email linked to ${v.client.primary_first_name || ''} ${v.client.primary_surname || ''}.`.trim() };
 }
 
 async function executeSendEmail(sb: any, args: any) {
@@ -2628,9 +2653,11 @@ async function executeCreateClient(sb: any, args: any, userId: string) {
 }
 
 async function executeDeleteClient(sb: any, args: any) {
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
   const { error } = await sb.from('clients').delete().eq('id', args.client_id);
   if (error) return { error: error.message };
-  return { success: true, message: 'Client deleted.' };
+  return { success: true, message: `Client "${v.client.primary_first_name || ''} ${v.client.primary_surname || ''}" deleted.`.trim() };
 }
 
 async function executeGetClientsByPipelineStatus(sb: any, args: any) {
@@ -2656,16 +2683,12 @@ async function executeGetClientNotes(sb: any, args: any) {
 }
 
 async function executeCreateClientNote(sb: any, args: any, userId: string) {
-  // Validate client exists to prevent FK violations from hallucinated IDs
-  const { data: client } = await sb.from('clients').select('id, primary_first_name, primary_surname').eq('id', args.client_id).maybeSingle();
-  if (!client) {
-    // Attempt fuzzy recovery: search by name if a name-like string was passed
-    return { error: `Client with ID "${args.client_id}" not found. Please use search_clients to find the correct client ID first.` };
-  }
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
   const { data: u } = await sb.from('custom_users').select('id').eq('id', userId).maybeSingle();
   const { data, error } = await sb.from('client_notes').insert({ client_id: args.client_id, content: args.content, note_type: args.note_type || 'general', created_by: u ? userId : null }).select().single();
   if (error) return { error: error.message };
-  return { success: true, message: `Note created for ${client.primary_first_name || ''} ${client.primary_surname || ''}.`.trim(), note: data };
+  return { success: true, message: `Note created for ${v.client.primary_first_name || ''} ${v.client.primary_surname || ''}.`.trim(), note: data };
 }
 
 async function executeUpdateClientNote(sb: any, args: any) {
@@ -2691,12 +2714,14 @@ async function executeGetPortfolioReviewDetails(sb: any, args: any) {
 }
 
 async function executeCreateDeal(sb: any, args: any, userId: string) {
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
   const { data: u } = await sb.from('custom_users').select('id').eq('id', userId).maybeSingle();
   const insert: any = { client_id: args.client_id, deal_type: args.deal_type || 'Purchase', deal_name: args.deal_name || args.property_address || 'New Deal', property_address: args.property_address, loan_amount: args.loan_amount, current_stage: args.stage || 'New Lead', risk_status: 'on_track' };
   if (u) insert.created_by = userId;
   const { data, error } = await sb.from('client_deals').insert(insert).select().single();
   if (error) return { error: error.message };
-  return { success: true, message: `Deal "${insert.deal_name}" created.`, deal: data };
+  return { success: true, message: `Deal "${insert.deal_name}" created for ${v.client.primary_first_name || ''} ${v.client.primary_surname || ''}.`.trim(), deal: data };
 }
 
 async function executeDeleteDeal(sb: any, args: any) {
@@ -2736,11 +2761,13 @@ async function executeGetCommissionActuals(sb: any, args: any) {
 }
 
 async function executeAddAdditionalContact(sb: any, args: any) {
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
   const { data: existing } = await sb.from('client_additional_contacts').select('display_order').eq('client_id', args.client_id).order('display_order', { ascending: false }).limit(1);
   const nextOrder = (existing?.[0]?.display_order || 0) + 1;
   const { data, error } = await sb.from('client_additional_contacts').insert({ client_id: args.client_id, first_name: args.first_name, surname: args.surname, relationship: args.relationship || 'co_borrower', email: args.email || null, mobile: args.mobile || null, dob: args.dob || null, display_order: nextOrder }).select().single();
   if (error) return { error: error.message };
-  return { success: true, message: `Contact "${args.first_name} ${args.surname}" added.`, contact: data };
+  return { success: true, message: `Contact "${args.first_name} ${args.surname}" added to ${v.client.primary_first_name || ''} ${v.client.primary_surname || ''}.`.trim(), contact: data };
 }
 
 async function executeUpdateAdditionalContact(sb: any, args: any) {
@@ -3347,19 +3374,28 @@ async function executeDeleteScheduledTask(sb: any, args: any) {
 }
 async function executeBulkUpdateClients(sb: any, args: any) {
   if (!args.client_ids?.length) return { error: 'No client IDs.' };
-  let ok = 0; for (const id of args.client_ids) { const { error } = await sb.from('clients').update({ [args.field]: args.value }).eq('id', id); if (!error) ok++; }
-  return { success: true, message: `Updated "${args.field}" on ${ok} client(s).` };
+  const { validIds, invalidIds } = await validateClientsExist(sb, args.client_ids);
+  if (validIds.length === 0) return { error: `None of the provided client IDs exist. Invalid IDs: ${invalidIds.join(', ')}. Use search_clients first.` };
+  let ok = 0; for (const id of validIds) { const { error } = await sb.from('clients').update({ [args.field]: args.value }).eq('id', id); if (!error) ok++; }
+  const warn = invalidIds.length > 0 ? ` (${invalidIds.length} invalid ID(s) skipped)` : '';
+  return { success: true, message: `Updated "${args.field}" on ${ok} client(s)${warn}.` };
 }
 async function executeBulkCreateReminders(sb: any, args: any, userId: string) {
   if (!args.client_ids?.length) return { error: 'No client IDs.' };
-  const { data: u } = await sb.from('custom_users').select('id').eq('id', userId).single();
-  let ok = 0; for (const cid of args.client_ids) { const { error } = await sb.from('client_reminders').insert({ client_id: cid, title: args.title, description: args.description||null, due_date: args.due_date, priority: args.priority||'medium', reminder_type: args.reminder_type||'task', status: 'pending', created_by: u?userId:null }); if (!error) ok++; }
-  return { success: true, message: `Created "${args.title}" for ${ok} client(s).` };
+  const { validIds, invalidIds } = await validateClientsExist(sb, args.client_ids);
+  if (validIds.length === 0) return { error: `None of the provided client IDs exist. Invalid IDs: ${invalidIds.join(', ')}. Use search_clients first.` };
+  const { data: u } = await sb.from('custom_users').select('id').eq('id', userId).maybeSingle();
+  let ok = 0; for (const cid of validIds) { const { error } = await sb.from('client_reminders').insert({ client_id: cid, title: args.title, description: args.description||null, due_date: args.due_date, priority: args.priority||'medium', reminder_type: args.reminder_type||'task', status: 'pending', created_by: u?userId:null }); if (!error) ok++; }
+  const warn = invalidIds.length > 0 ? ` (${invalidIds.length} invalid ID(s) skipped)` : '';
+  return { success: true, message: `Created "${args.title}" for ${ok} client(s)${warn}.` };
 }
 async function executeBulkSetFollowUpDates(sb: any, args: any) {
   if (!args.client_ids?.length) return { error: 'No client IDs.' };
-  let ok = 0; for (const id of args.client_ids) { const { error } = await sb.from('clients').update({ follow_up_date: args.follow_up_date }).eq('id', id); if (!error) ok++; }
-  return { success: true, message: `Set follow-up for ${ok} client(s).` };
+  const { validIds, invalidIds } = await validateClientsExist(sb, args.client_ids);
+  if (validIds.length === 0) return { error: `None of the provided client IDs exist. Invalid IDs: ${invalidIds.join(', ')}. Use search_clients first.` };
+  let ok = 0; for (const id of validIds) { const { error } = await sb.from('clients').update({ follow_up_date: args.follow_up_date }).eq('id', id); if (!error) ok++; }
+  const warn = invalidIds.length > 0 ? ` (${invalidIds.length} invalid ID(s) skipped)` : '';
+  return { success: true, message: `Set follow-up for ${ok} client(s)${warn}.` };
 }
 async function executeGenerateChartData(sb: any, args: any) {
   const q = (args.query||'').toLowerCase(); let chartType = args.chart_type||'bar', title='', labels: string[]=[], values: number[]=[];
