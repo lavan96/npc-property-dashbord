@@ -38,7 +38,7 @@ verify_jwt = true
 verify_jwt = false
 
 [functions.sync-notes-to-ghl]
-verify_jwt = true
+verify_jwt = false
 
 [functions.manage-call-settings]
 verify_jwt = true

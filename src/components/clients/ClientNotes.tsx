@@ -134,7 +134,13 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
       if (error) throw new Error(error.message);
       if (!data?.success) throw new Error(data?.error || 'Failed to delete note');
     },
-    onSuccess: () => {
+    onSuccess: (_result, noteId) => {
+      // Sync delete to GHL (non-blocking)
+      invokeSecureFunction('sync-notes-to-ghl', {
+        action: 'delete',
+        clientId,
+        noteId,
+      }).catch(err => console.warn('GHL note delete sync failed:', err));
       queryClient.invalidateQueries({ queryKey: ['client-notes', clientId] });
       toast.success('Note deleted');
     }
