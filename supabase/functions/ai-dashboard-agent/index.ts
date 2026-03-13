@@ -478,6 +478,25 @@ const TOOLS: any[] = [
       name: "get_appointments_for_client",
       description: "Fetch all appointments linked to a specific client/contact by email.",
       parameters: { type: "object", properties: { client_id: { type: "string", description: "UUID of the client" } }, required: ["client_id"] },
+  },
+  },
+  {
+    type: "function",
+    function: {
+      name: "reschedule_appointment",
+      description: "Reschedule an existing GHL appointment to a new date/time. Requires the GHL event ID and the new start/end times in ISO format. Can also update title, notes, or status.",
+      parameters: {
+        type: "object",
+        properties: {
+          event_id: { type: "string", description: "The GHL event/appointment ID to reschedule" },
+          new_start_time: { type: "string", description: "New start time in ISO 8601 format (e.g. 2025-03-15T10:00:00+11:00)" },
+          new_end_time: { type: "string", description: "New end time in ISO 8601 format (e.g. 2025-03-15T11:00:00+11:00)" },
+          title: { type: "string", description: "Optional new title for the appointment" },
+          notes: { type: "string", description: "Optional updated notes" },
+          appointment_status: { type: "string", description: "Optional status: confirmed, cancelled, showed, noshow, invalid" },
+        },
+        required: ["event_id", "new_start_time", "new_end_time"],
+      },
     },
   },
 
@@ -2501,6 +2520,46 @@ async function executeGetAppointmentsForClient(sb: any, args: any) {
   return { appointments: data || [] };
 }
 
+async function executeRescheduleAppointment(args: any) {
+  const { event_id, new_start_time, new_end_time, title, notes, appointment_status } = args;
+  if (!event_id || !new_start_time || !new_end_time) {
+    return { error: 'event_id, new_start_time, and new_end_time are required.' };
+  }
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+  const payload: Record<string, unknown> = {
+    action: 'update',
+    eventId: event_id,
+    newStartTime: new_start_time,
+    newEndTime: new_end_time,
+    overrideAvailability: true,
+  };
+  if (title !== undefined) payload.title = title;
+  if (notes !== undefined) payload.notes = notes;
+  if (appointment_status) payload.appointmentStatus = appointment_status;
+
+  try {
+    const resp = await fetch(`${supabaseUrl}/functions/v1/ghl-calendar`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${serviceRoleKey}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await resp.json();
+    if (!resp.ok || !data.success) {
+      return { error: data.error || `Failed to reschedule (HTTP ${resp.status})`, details: data.details };
+    }
+    return { success: true, message: `Appointment ${event_id} rescheduled to ${new_start_time}`, event: data.event };
+  } catch (err: any) {
+    return { error: `Reschedule failed: ${err.message}` };
+  }
+}
+
 // ─── CALLS ───
 
 async function executeGetRecentCalls(sb: any, args: any) {
@@ -4259,6 +4318,7 @@ async function executeTool(sb: any, name: string, args: any, userId: string): Pr
     // Calendar
     case 'get_upcoming_calendar': return executeGetUpcomingCalendar(sb, args);
     case 'get_appointments_for_client': return executeGetAppointmentsForClient(sb, args);
+    case 'reschedule_appointment': return executeRescheduleAppointment(args);
     // Calls
     case 'get_recent_calls': return executeGetRecentCalls(sb, args);
     case 'get_call_details': return executeGetCallDetails(sb, args);
@@ -4781,7 +4841,7 @@ You have access to 200+ specialized tools across 51 domains:
 🔔 REMINDERS — Create/complete/snooze/delete reminders, view overdue/today/upcoming, set follow-up dates, track deal milestones.
 💵 FINANCIAL — Borrowing capacity (current + history), income sources, expenses, liabilities, assets, properties, employment, client scores, what-if scenario analysis.
 📧 EMAIL — Search/view emails, browse threads, find unlinked emails, link to clients, email statistics.
-📅 CALENDAR — View upcoming appointments, find client appointments, today's full schedule.
+📅 CALENDAR — View upcoming appointments, find client appointments, today's full schedule, reschedule existing appointments.
 📞 CALLS — View/search call logs, call details with transcripts, alerts, analytics, flagged calls.
 📊 REPORTS — Client files, investment reports, report details, search by address, portfolio reviews with full content, cash flow analyses, data export.
 📝 CLIENT NOTES — Full CRUD: create, read, update, delete client notes.
