@@ -859,6 +859,22 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
                     disabled={formData.autoCalculateInterest}
                   />
                 </div>
+                </div>
+
+              {/* Loan Repayment */}
+              <Separator className="my-2" />
+              <h4 className="text-sm font-medium flex items-center gap-2">
+                <Building2 className="h-4 w-4" />
+                Loan Repayment
+              </h4>
+              <ExpenseInput label="Loan Repayment Amount" field="loan_repayment" />
+              
+              <div className="space-y-2">
+                <Label className="text-xs">Lender / Bank</Label>
+                <LenderCombobox
+                  value={formData.lender_name}
+                  onChange={(v) => updateField('lender_name', v)}
+                />
               </div>
             </div>
             )}
