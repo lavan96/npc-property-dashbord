@@ -55,6 +55,7 @@ serve(async (req) => {
           client_id,
           email,
           status,
+          has_completed_onboarding,
           clients:client_id (id, primary_first_name, primary_surname, primary_email)
         )
       `)
@@ -72,6 +73,19 @@ serve(async (req) => {
     const portalUser = session.client_portal_users as any;
     const clientData = portalUser.clients as any;
 
+    // Handle complete_onboarding action
+    if (action === 'complete_onboarding') {
+      await supabase
+        .from('client_portal_users')
+        .update({ has_completed_onboarding: true })
+        .eq('id', portalUser.id)
+
+      return new Response(
+        JSON.stringify({ success: true }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     return new Response(
       JSON.stringify({
         valid: true,
@@ -80,6 +94,7 @@ serve(async (req) => {
           client_id: portalUser.client_id,
           email: portalUser.email,
           name: clientData ? smartCapitalizeStr(`${clientData.primary_first_name || ''} ${clientData.primary_surname || ''}`.trim()) : portalUser.email,
+          has_completed_onboarding: portalUser.has_completed_onboarding ?? false,
         },
         session_token: sessionToken,
       }),
