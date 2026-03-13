@@ -2500,7 +2500,9 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         pdf.setFontSize(9);
         pdf.setFont('helvetica', 'bold');
         pdf.setTextColor(darkText.r, darkText.g, darkText.b);
-        const totalExpenditure = baseFinancialData.purchasePrice + baseFinancialData.stampDuty + baseFinancialData.solicitorFees + (baseFinancialData.lmiAmount || 0);
+        const totalExpenditure = isNewBuild && constructionProgressSchedule
+          ? constructionProgressSchedule.grandTotal
+          : (baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - baseFinancialData.loanToValueRatio / 100))) + baseFinancialData.stampDuty + baseFinancialData.solicitorFees + (baseFinancialData.agentFee || 0) + (baseFinancialData.lmiAmount || 0);
         pdf.text('Total Overall Expenditure to Completion:', margin + 4, yPos + 1);
         pdf.setTextColor(primaryColor.r, primaryColor.g, primaryColor.b);
         pdf.text(formatCurrency(totalExpenditure), margin + 80, yPos + 1);
