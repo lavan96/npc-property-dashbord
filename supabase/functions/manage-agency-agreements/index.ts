@@ -347,34 +347,24 @@ serve(async (req) => {
                 gamma_document_url: gammaUrl,
               };
 
-              // Download and store PDF
-              if (pdfUrl) {
-                try {
-                  console.log('[Gamma] Downloading PDF from:', pdfUrl);
-                  const pdfRes = await fetch(pdfUrl);
-                  console.log('[Gamma] PDF download status:', pdfRes.status, 'content-type:', pdfRes.headers.get('content-type'));
-                  if (pdfRes.ok) {
-                    const pdfBuffer = await pdfRes.arrayBuffer();
-                    console.log('[Gamma] PDF size:', pdfBuffer.byteLength, 'bytes');
-                    const storagePath = `agreements/${agreement.id}/agreement.pdf`;
-                    const { error: uploadErr } = await supabase.storage
-                      .from('agency-agreements')
-                      .upload(storagePath, new Uint8Array(pdfBuffer), {
-                        contentType: 'application/pdf',
-                        upsert: true,
-                      });
-                    if (!uploadErr) {
-                      updateData.pdf_storage_path = storagePath;
-                      console.log('[Gamma] PDF stored at:', storagePath);
-                    } else {
-                      console.error('[Gamma] PDF upload error:', uploadErr.message);
-                    }
-                  }
-                } catch (dlErr: any) {
-                  console.error('[Gamma] PDF download error:', dlErr.message);
+              // Download and store PDF — with content-type validation & explicit export fallback
+              const pdfBuffer = await fetchGammaPdfBuffer(pdfUrl, gammaDocId, gammaApiKey!);
+              if (pdfBuffer) {
+                const storagePath = `agreements/${agreement.id}/agreement.pdf`;
+                const { error: uploadErr } = await supabase.storage
+                  .from('agency-agreements')
+                  .upload(storagePath, new Uint8Array(pdfBuffer), {
+                    contentType: 'application/pdf',
+                    upsert: true,
+                  });
+                if (!uploadErr) {
+                  updateData.pdf_storage_path = storagePath;
+                  console.log('[Gamma] PDF stored at:', storagePath);
+                } else {
+                  console.error('[Gamma] PDF upload error:', uploadErr.message);
                 }
               } else {
-                console.warn('[Gamma] No PDF URL in response. Available keys:', Object.keys(gammaResult).join(', '));
+                console.warn('[Gamma] Could not obtain a valid PDF for this agreement');
               }
 
               await supabase.from('agency_agreements').update(updateData).eq('id', agreement.id);
