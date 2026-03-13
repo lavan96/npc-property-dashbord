@@ -5077,7 +5077,7 @@ You have access to 200+ specialized tools across 51 domains:
 🔔 REMINDERS — Create/complete/snooze/delete reminders, view overdue/today/upcoming, set follow-up dates, track deal milestones.
 💵 FINANCIAL — Borrowing capacity (current + history), income sources, expenses, liabilities, assets, properties, employment, client scores, what-if scenario analysis.
 📧 EMAIL — Search/view emails, browse threads, find unlinked emails, link to clients, email statistics.
-📅 CALENDAR — View upcoming appointments, find client appointments, today's full schedule, reschedule existing appointments.
+📅 CALENDAR — View upcoming appointments (live GHL), search events by name/contact, find client appointments, today's schedule, reschedule appointments, create new appointments, cancel appointments, list calendars, check free slots.
 📞 CALLS — View/search call logs, call details with transcripts, alerts, analytics, flagged calls.
 📊 REPORTS — Client files, investment reports, report details, search by address, portfolio reviews with full content, cash flow analyses, data export.
 📝 CLIENT NOTES — Full CRUD: create, read, update, delete client notes.
