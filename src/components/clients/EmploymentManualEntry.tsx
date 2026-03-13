@@ -257,7 +257,7 @@ export function EmploymentManualEntry({ clientId, contacts, onComplete }: Employ
           {existingEmployment.map((emp: any) => {
             const totalIncome = getEmploymentIncome(emp);
             return (
-              <Card key={emp.id} className="mb-2">
+              <Card key={emp.id} className="group mb-2">
                 <CardContent className="pt-4">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -266,6 +266,9 @@ export function EmploymentManualEntry({ clientId, contacts, onComplete }: Employ
                         <span className="font-medium">{emp.employer_name || 'Unknown Employer'}</span>
                         {emp.is_current && (
                           <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">Current</span>
+                        )}
+                        {!emp.is_current && (
+                          <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">Previous</span>
                         )}
                         <span className="text-xs text-muted-foreground capitalize">({emp.contact_type})</span>
                       </div>
@@ -279,6 +282,14 @@ export function EmploymentManualEntry({ clientId, contacts, onComplete }: Employ
                           <span className="text-sm font-medium text-success">{formatCurrency(totalIncome)}/yr</span>
                         </div>
                       )}
+                    </div>
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { startEdit(emp); setOpen(true); }}>
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => deleteMutation.mutate(emp.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
                 </CardContent>

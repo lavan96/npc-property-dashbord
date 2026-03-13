@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { LenderCombobox } from './LenderCombobox';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -78,6 +79,9 @@ interface PropertyData {
   sourced_by?: string | null;
   deal_closed_at?: string | null;
   sourced_notes?: string | null;
+  loan_repayment_amount?: number | null;
+  loan_repayment_frequency?: string | null;
+  lender_name?: string | null;
 }
 
 interface PropertyEditSheetProps {
@@ -123,6 +127,8 @@ interface PropertyFormData {
   sourced_by: SourcedByType;
   deal_closed_at: string;
   sourced_notes: string;
+  loan_repayment: ExpenseField;
+  lender_name: string;
 }
 
 const convertToMonthly = (value: number, frequency: FrequencyType): number => {
@@ -177,6 +183,8 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
     sourced_by: 'unknown',
     deal_closed_at: '',
     sourced_notes: '',
+    loan_repayment: createExpenseField(),
+    lender_name: '',
   });
 
   // Populate form with existing property data when sheet opens
@@ -213,6 +221,8 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
         sourced_by: (property.sourced_by as SourcedByType) || 'unknown',
         deal_closed_at: property.deal_closed_at ? property.deal_closed_at.split('T')[0] : '',
         sourced_notes: property.sourced_notes || '',
+        loan_repayment: createExpenseField(Number(property.loan_repayment_amount) || 0),
+        lender_name: property.lender_name || '',
       });
     }
   }, [open, property]);
@@ -236,7 +246,7 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
   };
 
   const updateExpenseField = (
-    field: keyof Pick<PropertyFormData, 'body_corporate' | 'council_rates' | 'water_rates' | 'repairs_maintenance' | 'landlord_insurance' | 'building_insurance' | 'rental_income'>,
+    field: keyof Pick<PropertyFormData, 'body_corporate' | 'council_rates' | 'water_rates' | 'repairs_maintenance' | 'landlord_insurance' | 'building_insurance' | 'rental_income' | 'loan_repayment'>,
     key: 'value' | 'frequency',
     newValue: number | FrequencyType
   ) => {
@@ -307,6 +317,9 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
         sourced_by: formData.sourced_by,
         deal_closed_at: formData.sourced_by === 'npc' && formData.deal_closed_at ? formData.deal_closed_at : null,
         sourced_notes: formData.sourced_notes || null,
+        loan_repayment_amount: isRental ? null : (formData.loan_repayment.monthlyValue || null),
+        loan_repayment_frequency: isRental ? null : (formData.loan_repayment.frequency || 'monthly'),
+        lender_name: isRental ? null : (formData.lender_name || null),
       };
 
       const { data, error } = await invokeSecureFunction('manage-client-data', {
@@ -433,7 +446,7 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
     showMonthlyEquivalent = true,
   }: {
     label: string;
-    field: keyof Pick<PropertyFormData, 'body_corporate' | 'council_rates' | 'water_rates' | 'repairs_maintenance' | 'landlord_insurance' | 'building_insurance' | 'rental_income'>;
+    field: keyof Pick<PropertyFormData, 'body_corporate' | 'council_rates' | 'water_rates' | 'repairs_maintenance' | 'landlord_insurance' | 'building_insurance' | 'rental_income' | 'loan_repayment'>;
     showMonthlyEquivalent?: boolean;
   }) => {
     const expense = formData[field];
@@ -846,6 +859,22 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
                     disabled={formData.autoCalculateInterest}
                   />
                 </div>
+                </div>
+
+              {/* Loan Repayment */}
+              <Separator className="my-2" />
+              <h4 className="text-sm font-medium flex items-center gap-2">
+                <Building2 className="h-4 w-4" />
+                Loan Repayment
+              </h4>
+              <ExpenseInput label="Loan Repayment Amount" field="loan_repayment" />
+              
+              <div className="space-y-2">
+                <Label className="text-xs">Lender / Bank</Label>
+                <LenderCombobox
+                  value={formData.lender_name}
+                  onChange={(v) => updateField('lender_name', v)}
+                />
               </div>
             </div>
             )}
