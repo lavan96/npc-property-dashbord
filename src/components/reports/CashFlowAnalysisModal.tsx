@@ -2559,15 +2559,15 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
           drawBrkRow(`${constructionProgressSchedule.durationMonths} Month Staged Progress Interest`, formatCurrency(constructionProgressSchedule.totals.totalInterest));
           totalExpenditure = constructionProgressSchedule.grandTotal;
         } else {
-          const depositVal = baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - baseFinancialData.loanToValueRatio / 100));
-          drawBrkRow('Deposit Value', formatCurrency(depositVal));
+          const purchasePrice = baseFinancialData.purchasePrice;
+          drawBrkRow('Purchase Price', formatCurrency(purchasePrice));
           drawBrkRow('Stamp Duty', formatCurrency(baseFinancialData.stampDuty));
           drawBrkRow('Solicitor Cost', formatCurrency(baseFinancialData.solicitorFees));
           drawBrkRow('Agent Fee', formatCurrency(baseFinancialData.agentFee || 0));
           if (baseFinancialData.lmiAmount > 0) {
             drawBrkRow('LMI (Lenders Mortgage Insurance)', formatCurrency(baseFinancialData.lmiAmount));
           }
-          totalExpenditure = depositVal + baseFinancialData.stampDuty + baseFinancialData.solicitorFees + (baseFinancialData.agentFee || 0) + (baseFinancialData.lmiAmount || 0);
+          totalExpenditure = purchasePrice + baseFinancialData.stampDuty + baseFinancialData.solicitorFees + (baseFinancialData.agentFee || 0) + (baseFinancialData.lmiAmount || 0);
         }
 
         // Grand Total highlight box (yellow/amber)
