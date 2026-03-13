@@ -2284,7 +2284,11 @@ async function executeGetBuilderInvoices(sb: any, args: any) {
 
 async function executeGetClientReminders(sb: any, args: any) {
   let query = sb.from('client_reminders').select('*').eq('status', 'pending');
-  if (args.client_id) query = query.eq('client_id', args.client_id);
+  if (args.client_id) {
+    const v = await validateClientExists(sb, args.client_id);
+    if (!v.valid) return { error: v.error };
+    query = query.eq('client_id', v.resolvedId || args.client_id);
+  }
   const { data } = await query.order('due_date').limit(30);
   return { reminders: data || [] };
 }
