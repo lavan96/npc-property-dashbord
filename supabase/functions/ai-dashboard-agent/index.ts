@@ -2341,9 +2341,10 @@ async function executeDeleteReminder(sb: any, args: any) {
 async function executeSetFollowUpDate(sb: any, args: any) {
   const v = await validateClientExists(sb, args.client_id);
   if (!v.valid) return { error: v.error };
-  const { error } = await sb.from('clients').update({ follow_up_date: args.follow_up_date }).eq('id', args.client_id);
+  const cid = v.resolvedId || args.client_id;
+  const { error } = await sb.from('clients').update({ follow_up_date: args.follow_up_date }).eq('id', cid);
   if (error) return { error: error.message };
-  return { success: true, message: `Follow-up date set to ${args.follow_up_date.substring(0, 10)} for ${v.client.primary_first_name || ''} ${v.client.primary_surname || ''}.`.trim() };
+  return { success: true, message: `Follow-up date set to ${args.follow_up_date.substring(0, 10)} for ${clientName(v.client)}.` };
 }
 
 async function executeGetUpcomingMilestones(sb: any, args: any) {
