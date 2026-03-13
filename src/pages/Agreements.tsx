@@ -37,7 +37,7 @@ const STATUS_CONFIG: Record<string, { label: string; variant: 'default' | 'secon
 
 export default function Agreements() {
   const { data: agreements = [], isLoading } = useAgencyAgreements();
-  const { checkStatus, voidAgreement, sendViaDocuSign } = useAgreementMutations();
+  const { checkStatus, voidAgreement, sendViaDocuSign, retryPdf } = useAgreementMutations();
   const [searchTerm, setSearchTerm] = useState('');
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewTitle, setPreviewTitle] = useState('');
