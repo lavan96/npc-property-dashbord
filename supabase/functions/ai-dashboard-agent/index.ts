@@ -3505,13 +3505,16 @@ async function executeGenerateChartData(sb: any, args: any) {
   return { chart: { type: chartType, title, labels, datasets: [{ label: title, data: values, backgroundColor: colors.slice(0,labels.length) }] }, summary: `${title}: ${labels.map((l,i)=>`${l}(${values[i]})`).join(', ')}`, __chart_data: true };
 }
 async function executeGenerateClientSummaryReport(sb: any, args: any) {
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
   const secs = args.sections||['profile','financials','deals','properties','reminders'];
   const r: string[] = [];
-  const { data: client } = await sb.from('clients').select('*').eq('id', args.client_id).single();
+  const { data: client } = await sb.from('clients').select('*').eq('id', cid).single();
   if (!client) return { error: 'Client not found.' };
   if (secs.includes('profile')) { r.push(`# Client Summary: ${client.primary_first_name||''} ${client.primary_surname||''}\n- Email: ${client.primary_email||'N/A'} | Phone: ${client.primary_mobile||'N/A'}\n- Pipeline: ${client.pipeline_status||'N/A'} | Follow-up: ${client.follow_up_date?.substring(0,10)||'None'}\n`); }
   if (secs.includes('financials')) {
-    const [inc,exp,liab,ass,bc] = await Promise.all([sb.from('client_income').select('*').eq('client_id',args.client_id),sb.from('client_expenses').select('*').eq('client_id',args.client_id),sb.from('client_liabilities').select('*').eq('client_id',args.client_id),sb.from('client_assets').select('*').eq('client_id',args.client_id),sb.from('borrowing_capacity_assessments').select('borrowing_capacity,serviceability_band,monthly_surplus').eq('client_id',args.client_id).order('created_at',{ascending:false}).limit(1)]);
+    const [inc,exp,liab,ass,bc] = await Promise.all([sb.from('client_income').select('*').eq('client_id',cid),sb.from('client_expenses').select('*').eq('client_id',cid),sb.from('client_liabilities').select('*').eq('client_id',cid),sb.from('client_assets').select('*').eq('client_id',cid),sb.from('borrowing_capacity_assessments').select('borrowing_capacity,serviceability_band,monthly_surplus').eq('client_id',cid).order('created_at',{ascending:false}).limit(1)]);
     r.push(`## Financials\n- Income: $${(inc.data||[]).reduce((s:number,i:any)=>s+(i.annual_amount||i.amount||0),0).toLocaleString()}/yr\n- Assets: $${(ass.data||[]).reduce((s:number,a:any)=>s+(a.value||0),0).toLocaleString()}\n- Liabilities: $${(liab.data||[]).reduce((s:number,l:any)=>s+(l.balance||l.amount||0),0).toLocaleString()}`);
     if (bc.data?.[0]) r.push(`- Borrowing Capacity: $${bc.data[0].borrowing_capacity?.toLocaleString()||'N/A'} (${bc.data[0].serviceability_band||'N/A'})\n`);
   }
