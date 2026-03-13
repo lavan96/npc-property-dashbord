@@ -1295,26 +1295,25 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
         }
         .cover-doc-title-positioned {
           color: ${NPC_COLORS.white};
-          font-family: Georgia, 'Times New Roman', serif;
+          font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, Georgia, serif;
           font-size: 28pt;
-          font-weight: 600;
+          font-weight: 500;
           margin-bottom: 20px;
-          text-shadow: 0 2px 4px rgba(0,0,0,0.3);
         }
         .cover-client-name-positioned {
           color: ${NPC_COLORS.gold};
-          font-family: Georgia, 'Times New Roman', serif;
-          font-size: 18pt;
+          font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, Georgia, serif;
+          font-size: 16pt;
           font-weight: 600;
-          letter-spacing: 1px;
+          letter-spacing: 3px;
+          text-transform: uppercase;
           margin-bottom: 40px;
-          text-shadow: 0 2px 4px rgba(0,0,0,0.3);
         }
         .cover-date-positioned {
-          color: ${NPC_COLORS.goldLight};
+          color: ${NPC_COLORS.white};
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
           font-size: 11pt;
-          letter-spacing: 2px;
-          text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+          letter-spacing: 1px;
         }
         
         /* Final Page - Image Based */
