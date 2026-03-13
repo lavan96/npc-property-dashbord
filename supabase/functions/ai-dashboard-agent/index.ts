@@ -463,12 +463,12 @@ const TOOLS: any[] = [
     },
   },
 
-  // ─── CALENDAR & APPOINTMENTS ───
+  // ─── CALENDAR & APPOINTMENTS (Live GHL) ───
   {
     type: "function",
     function: {
       name: "get_upcoming_calendar",
-      description: "Get upcoming appointments and meetings for the next N days.",
+      description: "Get upcoming appointments and meetings for the next N days from the LIVE GoHighLevel calendar. Returns all events across all calendars with titles, times, contact info, and calendar names.",
       parameters: { type: "object", properties: { days_ahead: { type: "number", description: "Days to look ahead (default 7, max 30)" } } },
     },
   },
@@ -476,9 +476,25 @@ const TOOLS: any[] = [
     type: "function",
     function: {
       name: "get_appointments_for_client",
-      description: "Fetch all appointments linked to a specific client/contact by email.",
+      description: "Fetch all appointments linked to a specific client from the LIVE GHL calendar by looking up their GHL contact ID.",
       parameters: { type: "object", properties: { client_id: { type: "string", description: "UUID of the client" } }, required: ["client_id"] },
+    },
   },
+  {
+    type: "function",
+    function: {
+      name: "search_calendar_events",
+      description: "Search the live GHL calendar for events matching a query (by title, contact name, or notes). Use this to find a specific appointment before rescheduling or cancelling.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Search term to match against event titles, contact names, or notes" },
+          days_back: { type: "number", description: "Days to look back (default 7)" },
+          days_ahead: { type: "number", description: "Days to look forward (default 30)" },
+        },
+        required: ["query"],
+      },
+    },
   },
   {
     type: "function",
@@ -498,6 +514,64 @@ const TOOLS: any[] = [
         required: ["event_id", "new_start_time", "new_end_time"],
       },
     },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_appointment",
+      description: "Create a new appointment on a GHL calendar. Requires calendar ID, start/end times. Optionally link to a GHL contact. Use get_calendars first to find the right calendar ID.",
+      parameters: {
+        type: "object",
+        properties: {
+          calendar_id: { type: "string", description: "GHL calendar ID to create the appointment on" },
+          title: { type: "string", description: "Appointment title" },
+          start_time: { type: "string", description: "Start time in ISO 8601 format" },
+          end_time: { type: "string", description: "End time in ISO 8601 format" },
+          contact_id: { type: "string", description: "Optional GHL contact ID to link" },
+          notes: { type: "string", description: "Optional notes for the appointment" },
+        },
+        required: ["calendar_id", "title", "start_time", "end_time"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "cancel_appointment",
+      description: "Cancel an existing GHL appointment by setting its status to cancelled. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          event_id: { type: "string", description: "The GHL event/appointment ID to cancel" },
+        },
+        required: ["event_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_calendars",
+      description: "List all available GHL calendars with their IDs, names, and team members. Use this to find the correct calendar_id before creating appointments.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_free_slots",
+      description: "Get available free time slots for a specific GHL calendar on given dates. Useful for suggesting booking times.",
+      parameters: {
+        type: "object",
+        properties: {
+          calendar_id: { type: "string", description: "GHL calendar ID" },
+          start_date: { type: "string", description: "Start date in YYYY-MM-DD format" },
+          end_date: { type: "string", description: "End date in YYYY-MM-DD format" },
+        },
+        required: ["calendar_id", "start_date", "end_date"],
+      },
+    },
+  },
   },
 
   // ─── CALL LOGS & VOICE AI ───
