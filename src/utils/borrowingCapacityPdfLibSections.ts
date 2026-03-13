@@ -630,14 +630,14 @@ export function drawBorrowingCapacityPdfLib(
       const bg = i % 2 === 0 ? LIGHT_BG : undefined;
       totalServicing += lib.monthlyServicing;
 
-      let label = sanitize(`${formatLiabilityType(lib.type)} - ${lib.label}`);
-      if (label.length > 25) label = label.slice(0, 22) + '...';
+      const label = sanitize(`${formatLiabilityType(lib.type)} - ${lib.label}`);
+      const labelMaxWidth = lCol2 - lCol1 - 10;
 
       const noteText = lib.calculationNote ? sanitize(lib.calculationNote) : '';
       let shortNote = noteText.length > 12 ? noteText.slice(0, 10) + '..' : noteText;
 
       y = drawTableRow(page, y, [
-        { text: label, x: lCol1, font, size: 8 },
+        { text: label, x: lCol1, font, size: 8, maxWidth: labelMaxWidth },
         { text: fmt(lib.balance), x: lCol2, font, size: 8 },
         { text: lib.limit ? fmt(lib.limit) : '-', x: lCol3, font, size: 8 },
         { text: `${fmt(lib.monthlyServicing)}/mo`, x: lCol4, font: boldFont, color: DANGER, size: 8 },
