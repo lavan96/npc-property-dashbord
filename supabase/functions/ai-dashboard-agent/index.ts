@@ -2748,12 +2748,13 @@ async function executeGetPortfolioReviewDetails(sb: any, args: any) {
 async function executeCreateDeal(sb: any, args: any, userId: string) {
   const v = await validateClientExists(sb, args.client_id);
   if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
   const { data: u } = await sb.from('custom_users').select('id').eq('id', userId).maybeSingle();
-  const insert: any = { client_id: args.client_id, deal_type: args.deal_type || 'Purchase', deal_name: args.deal_name || args.property_address || 'New Deal', property_address: args.property_address, loan_amount: args.loan_amount, current_stage: args.stage || 'New Lead', risk_status: 'on_track' };
+  const insert: any = { client_id: cid, deal_type: args.deal_type || 'Purchase', deal_name: args.deal_name || args.property_address || 'New Deal', property_address: args.property_address, loan_amount: args.loan_amount, current_stage: args.stage || 'New Lead', risk_status: 'on_track' };
   if (u) insert.created_by = userId;
   const { data, error } = await sb.from('client_deals').insert(insert).select().single();
   if (error) return { error: error.message };
-  return { success: true, message: `Deal "${insert.deal_name}" created for ${v.client.primary_first_name || ''} ${v.client.primary_surname || ''}.`.trim(), deal: data };
+  return { success: true, message: `Deal "${insert.deal_name}" created for ${clientName(v.client)}.`, deal: data };
 }
 
 async function executeDeleteDeal(sb: any, args: any) {
