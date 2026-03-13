@@ -446,7 +446,7 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
     showMonthlyEquivalent = true,
   }: {
     label: string;
-    field: keyof Pick<PropertyFormData, 'body_corporate' | 'council_rates' | 'water_rates' | 'repairs_maintenance' | 'landlord_insurance' | 'building_insurance' | 'rental_income'>;
+    field: keyof Pick<PropertyFormData, 'body_corporate' | 'council_rates' | 'water_rates' | 'repairs_maintenance' | 'landlord_insurance' | 'building_insurance' | 'rental_income' | 'loan_repayment'>;
     showMonthlyEquivalent?: boolean;
   }) => {
     const expense = formData[field];
