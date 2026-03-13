@@ -3374,19 +3374,28 @@ async function executeDeleteScheduledTask(sb: any, args: any) {
 }
 async function executeBulkUpdateClients(sb: any, args: any) {
   if (!args.client_ids?.length) return { error: 'No client IDs.' };
-  let ok = 0; for (const id of args.client_ids) { const { error } = await sb.from('clients').update({ [args.field]: args.value }).eq('id', id); if (!error) ok++; }
-  return { success: true, message: `Updated "${args.field}" on ${ok} client(s).` };
+  const { validIds, invalidIds } = await validateClientsExist(sb, args.client_ids);
+  if (validIds.length === 0) return { error: `None of the provided client IDs exist. Invalid IDs: ${invalidIds.join(', ')}. Use search_clients first.` };
+  let ok = 0; for (const id of validIds) { const { error } = await sb.from('clients').update({ [args.field]: args.value }).eq('id', id); if (!error) ok++; }
+  const warn = invalidIds.length > 0 ? ` (${invalidIds.length} invalid ID(s) skipped)` : '';
+  return { success: true, message: `Updated "${args.field}" on ${ok} client(s)${warn}.` };
 }
 async function executeBulkCreateReminders(sb: any, args: any, userId: string) {
   if (!args.client_ids?.length) return { error: 'No client IDs.' };
-  const { data: u } = await sb.from('custom_users').select('id').eq('id', userId).single();
-  let ok = 0; for (const cid of args.client_ids) { const { error } = await sb.from('client_reminders').insert({ client_id: cid, title: args.title, description: args.description||null, due_date: args.due_date, priority: args.priority||'medium', reminder_type: args.reminder_type||'task', status: 'pending', created_by: u?userId:null }); if (!error) ok++; }
-  return { success: true, message: `Created "${args.title}" for ${ok} client(s).` };
+  const { validIds, invalidIds } = await validateClientsExist(sb, args.client_ids);
+  if (validIds.length === 0) return { error: `None of the provided client IDs exist. Invalid IDs: ${invalidIds.join(', ')}. Use search_clients first.` };
+  const { data: u } = await sb.from('custom_users').select('id').eq('id', userId).maybeSingle();
+  let ok = 0; for (const cid of validIds) { const { error } = await sb.from('client_reminders').insert({ client_id: cid, title: args.title, description: args.description||null, due_date: args.due_date, priority: args.priority||'medium', reminder_type: args.reminder_type||'task', status: 'pending', created_by: u?userId:null }); if (!error) ok++; }
+  const warn = invalidIds.length > 0 ? ` (${invalidIds.length} invalid ID(s) skipped)` : '';
+  return { success: true, message: `Created "${args.title}" for ${ok} client(s)${warn}.` };
 }
 async function executeBulkSetFollowUpDates(sb: any, args: any) {
   if (!args.client_ids?.length) return { error: 'No client IDs.' };
-  let ok = 0; for (const id of args.client_ids) { const { error } = await sb.from('clients').update({ follow_up_date: args.follow_up_date }).eq('id', id); if (!error) ok++; }
-  return { success: true, message: `Set follow-up for ${ok} client(s).` };
+  const { validIds, invalidIds } = await validateClientsExist(sb, args.client_ids);
+  if (validIds.length === 0) return { error: `None of the provided client IDs exist. Invalid IDs: ${invalidIds.join(', ')}. Use search_clients first.` };
+  let ok = 0; for (const id of validIds) { const { error } = await sb.from('clients').update({ follow_up_date: args.follow_up_date }).eq('id', id); if (!error) ok++; }
+  const warn = invalidIds.length > 0 ? ` (${invalidIds.length} invalid ID(s) skipped)` : '';
+  return { success: true, message: `Set follow-up for ${ok} client(s)${warn}.` };
 }
 async function executeGenerateChartData(sb: any, args: any) {
   const q = (args.query||'').toLowerCase(); let chartType = args.chart_type||'bar', title='', labels: string[]=[], values: number[]=[];
