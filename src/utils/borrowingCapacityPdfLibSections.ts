@@ -48,7 +48,7 @@ const CONTENT_WIDTH = PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT;
 const SECTION_SPACING = 35;        // Space after major sections
 const SUBSECTION_SPACING = 24;     // Space after subsections
 const PARAGRAPH_SPACING = 18;      // Space between paragraphs
-const TABLE_ROW_HEIGHT = 18;       // Consistent row height for tables
+const TABLE_ROW_HEIGHT = 22;       // Consistent row height for tables
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 export interface BCPdfLibIncomeItem {
