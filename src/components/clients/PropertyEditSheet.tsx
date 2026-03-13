@@ -317,6 +317,9 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
         sourced_by: formData.sourced_by,
         deal_closed_at: formData.sourced_by === 'npc' && formData.deal_closed_at ? formData.deal_closed_at : null,
         sourced_notes: formData.sourced_notes || null,
+        loan_repayment_amount: isRental ? null : (formData.loan_repayment.monthlyValue || null),
+        loan_repayment_frequency: isRental ? null : (formData.loan_repayment.frequency || 'monthly'),
+        lender_name: isRental ? null : (formData.lender_name || null),
       };
 
       const { data, error } = await invokeSecureFunction('manage-client-data', {
