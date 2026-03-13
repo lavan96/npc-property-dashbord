@@ -5153,6 +5153,12 @@ async function handleChat(sb: any, body: any, userId: string, username: string, 
   let pendingConfirmation = false;
   let pendingToolCalls: any[] = [];
 
+  // Rate limiting: track tool calls per tool name to detect loops
+  const toolCallCounts: Record<string, number> = {};
+  const MAX_SAME_TOOL_CALLS = 3; // Max times the same tool can be called in one conversation turn
+  const MAX_TOTAL_TOOL_CALLS = 15; // Max total tool calls across all rounds
+  let totalToolCalls = 0;
+
   try {
     for (let round = 0; round < 8; round++) {
       const { message: assistantMsg } = await callAI(messages, sb, userId);
@@ -5167,12 +5173,30 @@ async function handleChat(sb: any, body: any, userId: string, username: string, 
           break;
         }
 
+        // Check total tool call budget
+        totalToolCalls += assistantMsg.tool_calls.length;
+        if (totalToolCalls > MAX_TOTAL_TOOL_CALLS) {
+          console.warn(`[ai-dashboard-agent] Tool call budget exceeded: ${totalToolCalls} calls`);
+          finalResponse = (assistantMsg.content || '') + '\n\n⚠️ I reached the maximum number of tool calls for this request. Please ask a more focused question or break your request into smaller parts.';
+          break;
+        }
+
         messages.push(assistantMsg);
         for (const tc of assistantMsg.tool_calls) {
+          const toolName = tc.function.name;
+
+          // Per-tool rate limit check
+          toolCallCounts[toolName] = (toolCallCounts[toolName] || 0) + 1;
+          if (toolCallCounts[toolName] > MAX_SAME_TOOL_CALLS) {
+            console.warn(`[ai-dashboard-agent] Tool "${toolName}" called ${toolCallCounts[toolName]} times, rate limited`);
+            messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify({ error: `Tool "${toolName}" has been called too many times in this turn. Use the data you already have or try a different approach.` }) });
+            continue;
+          }
+
           const args = JSON.parse(tc.function.arguments);
-          console.log(`[ai-dashboard-agent] Tool: ${tc.function.name}`, JSON.stringify(args).substring(0, 200));
-          const result = await executeTool(sb, tc.function.name, args, userId);
-          messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(result).substring(0, 8000) });
+          console.log(`[ai-dashboard-agent] Tool: ${toolName} [${toolCallCounts[toolName]}/${MAX_SAME_TOOL_CALLS}]`, JSON.stringify(args).substring(0, 200));
+          const result = await executeTool(sb, toolName, args, userId);
+          messages.push({ role: 'tool', tool_call_id: tc.id, content: smartTruncateResult(result) });
         }
         continue;
       }
