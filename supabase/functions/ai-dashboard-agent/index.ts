@@ -4546,10 +4546,15 @@ async function executeTool(sb: any, name: string, args: any, userId: string): Pr
     case 'get_unlinked_emails': return executeGetUnlinkedEmails(sb, args);
     case 'link_email_to_client': return executeLinkEmailToClient(sb, args);
     case 'send_email': return executeSendEmail(sb, args);
-    // Calendar
+    // Calendar (Live GHL)
     case 'get_upcoming_calendar': return executeGetUpcomingCalendar(sb, args);
     case 'get_appointments_for_client': return executeGetAppointmentsForClient(sb, args);
+    case 'search_calendar_events': return executeSearchCalendarEvents(args);
     case 'reschedule_appointment': return executeRescheduleAppointment(args);
+    case 'create_appointment': return executeCreateAppointment(args);
+    case 'cancel_appointment': return executeCancelAppointment(args);
+    case 'get_calendars': return executeGetCalendars();
+    case 'get_free_slots': return executeGetFreeSlots(args);
     // Calls
     case 'get_recent_calls': return executeGetRecentCalls(sb, args);
     case 'get_call_details': return executeGetCallDetails(sb, args);
