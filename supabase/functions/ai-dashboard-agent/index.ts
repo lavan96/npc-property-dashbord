@@ -5133,7 +5133,7 @@ async function handleConfirmAction(sb: any, body: any, cors: Record<string, stri
 // ============================================================
 
 async function handleChat(sb: any, body: any, userId: string, username: string, cors: Record<string, string>) {
-  const { conversation_id, message } = body;
+  const { conversation_id, message, image_attachments } = body;
   if (!conversation_id || !message) {
     return new Response(JSON.stringify({ error: 'conversation_id and message are required' }), { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } });
   }
