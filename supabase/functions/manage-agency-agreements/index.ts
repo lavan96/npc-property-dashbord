@@ -232,6 +232,104 @@ async function fetchGammaPdfBuffer(
   return null;
 }
 
+// ─── Helper: Deferred PDF fetch (re-polls generation + downloads PDF) ────
+async function attemptDeferredPdfFetch(
+  supabase: any,
+  agreement: any,
+  gammaApiKey: string,
+): Promise<string | null> {
+  const GAMMA_API_URL = 'https://public-api.gamma.app/v1.0';
+  const generationId = agreement.gamma_document_id;
+
+  try {
+    // Step 1: Check if the generation has completed
+    console.log('[deferred] Checking generation status for:', generationId);
+    const pollRes = await fetch(`${GAMMA_API_URL}/generations/${generationId}`, {
+      headers: { 'X-API-KEY': gammaApiKey },
+    });
+
+    if (!pollRes.ok) {
+      console.warn('[deferred] Generation poll failed:', pollRes.status);
+      return null;
+    }
+
+    const gammaData = await pollRes.json();
+    console.log('[deferred] Generation status:', gammaData.status, 'keys:', Object.keys(gammaData).join(','));
+
+    if (gammaData.status === 'pending' || gammaData.status === 'processing') {
+      // Still not ready — do a short additional poll (up to 30s)
+      console.log('[deferred] Generation still pending, doing short poll (10 attempts)...');
+      for (let i = 0; i < 10; i++) {
+        await new Promise(r => setTimeout(r, 3000));
+        const retryRes = await fetch(`${GAMMA_API_URL}/generations/${generationId}`, {
+          headers: { 'X-API-KEY': gammaApiKey },
+        });
+        if (retryRes.ok) {
+          const retryData = await retryRes.json();
+          console.log(`[deferred] Short poll ${i + 1}/10: status=${retryData.status}`);
+          if (retryData.status === 'completed') {
+            Object.assign(gammaData, retryData);
+            break;
+          } else if (retryData.status === 'failed' || retryData.status === 'error') {
+            console.error('[deferred] Generation failed:', JSON.stringify(retryData));
+            return null;
+          }
+        }
+      }
+    }
+
+    if (gammaData.status !== 'completed') {
+      console.warn('[deferred] Generation not yet completed:', gammaData.status);
+      return null;
+    }
+
+    // Step 2: Generation completed — extract URLs and fetch PDF
+    const rawPdfUrl = gammaData.exportUrl || gammaData.pdfUrl || gammaData.fileUrl;
+    const gammaDocId = gammaData.gammaId || generationId;
+    const gammaUrl = gammaData.gammaUrl || gammaData.url;
+
+    const pdfBuffer = await fetchGammaPdfBuffer(rawPdfUrl, gammaDocId, gammaApiKey);
+    if (!pdfBuffer) {
+      console.warn('[deferred] Could not obtain valid PDF');
+      return null;
+    }
+
+    // Step 3: Upload to storage
+    const storagePath = `agreements/${agreement.id}/agreement.pdf`;
+    const { error: uploadErr } = await supabase.storage
+      .from('agency-agreements')
+      .upload(storagePath, new Uint8Array(pdfBuffer), {
+        contentType: 'application/pdf',
+        upsert: true,
+      });
+
+    if (uploadErr) {
+      console.error('[deferred] PDF upload error:', uploadErr.message);
+      return null;
+    }
+
+    // Step 4: Update agreement record
+    await supabase.from('agency_agreements').update({
+      pdf_storage_path: storagePath,
+      gamma_document_id: gammaDocId,
+      gamma_document_url: gammaUrl || agreement.gamma_document_url,
+      status: agreement.status === 'pending_pdf' ? 'generated' : agreement.status,
+    }).eq('id', agreement.id);
+
+    console.log('[deferred] PDF successfully backfilled to:', storagePath);
+
+    // Step 5: Return signed URL
+    const { data: signedData } = await supabase.storage
+      .from('agency-agreements')
+      .createSignedUrl(storagePath, 3600);
+
+    return signedData?.signedUrl || null;
+  } catch (err: any) {
+    console.error('[deferred] Error:', err.message);
+    return null;
+  }
+}
+
 serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = createCorsHeaders(origin);
