@@ -217,10 +217,39 @@ export function VownetPDFGenerator({
     }
   };
 
+  // Helper: preload an image and convert to data URL for html2canvas compatibility
+  const preloadImageAsDataUrl = async (src: string): Promise<string | null> => {
+    try {
+      const response = await fetch(src);
+      const blob = await response.blob();
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(blob);
+      });
+    } catch {
+      return null;
+    }
+  };
+
+  // Helper: html2canvas with a timeout to prevent infinite hangs
+  const html2canvasWithTimeout = (element: HTMLElement, options: Parameters<typeof html2canvas>[1], timeoutMs = 15000): Promise<HTMLCanvasElement> => {
+    return Promise.race([
+      html2canvas(element, options),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('html2canvas timed out')), timeoutMs)
+      ),
+    ]);
+  };
+
   const generatePDF = async (forEmail: boolean = false): Promise<Blob | null> => {
     setIsGenerating(true);
     
     try {
+      // Pre-load cover image as data URL to avoid cross-origin / hanging issues
+      const coverDataUrl = await preloadImageAsDataUrl('/templates/npc-vownet-cover.jpg');
+      
       // Create hidden container for rendering
       const container = document.createElement('div');
       container.style.position = 'absolute';
@@ -233,8 +262,16 @@ export function VownetPDFGenerator({
       const htmlContent = generateHTMLContent(data, includeOwnerOccupied);
       container.innerHTML = htmlContent;
 
+      // Replace cover background-image with preloaded data URL
+      if (coverDataUrl) {
+        const coverEl = container.querySelector('.cover-page-image') as HTMLElement;
+        if (coverEl) {
+          coverEl.style.backgroundImage = `url('${coverDataUrl}')`;
+        }
+      }
+
       // Wait for styles to apply
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 200));
 
       // Create PDF
       const pdf = new jsPDF({
@@ -249,12 +286,15 @@ export function VownetPDFGenerator({
       const contentPages = totalHtmlPages > 1 ? totalHtmlPages - 1 : totalHtmlPages;
       const hasDisclaimerPage = totalHtmlPages > 1;
       
+      // Use lower scale for large documents to prevent memory exhaustion
+      const renderScale = totalHtmlPages > 8 ? 1.5 : 2;
+      
       // Render all content pages (everything except the final disclaimer page)
       for (let i = 0; i < contentPages; i++) {
         const page = pages[i] as HTMLElement;
         
-        const canvas = await html2canvas(page, {
-          scale: 2,
+        const canvas = await html2canvasWithTimeout(page, {
+          scale: renderScale,
           useCORS: true,
           allowTaint: true,
           backgroundColor: '#ffffff',
@@ -262,7 +302,7 @@ export function VownetPDFGenerator({
           height: 1123, // A4 height in pixels at 96dpi
         });
 
-        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        const imgData = canvas.toDataURL('image/jpeg', 0.92);
         
         if (i > 0) {
           pdf.addPage();
@@ -297,15 +337,15 @@ export function VownetPDFGenerator({
       // ── Render the disclaimer/contact page LAST (always the final page) ──
       if (hasDisclaimerPage) {
         const disclaimerPage = pages[totalHtmlPages - 1] as HTMLElement;
-        const disclaimerCanvas = await html2canvas(disclaimerPage, {
-          scale: 2,
+        const disclaimerCanvas = await html2canvasWithTimeout(disclaimerPage, {
+          scale: renderScale,
           useCORS: true,
           allowTaint: true,
           backgroundColor: '#141414',
           width: 794,
           height: 1123,
         });
-        const disclaimerImg = disclaimerCanvas.toDataURL('image/jpeg', 0.95);
+        const disclaimerImg = disclaimerCanvas.toDataURL('image/jpeg', 0.92);
         pdf.addPage();
         pdf.addImage(disclaimerImg, 'JPEG', 0, 0, 210, 297);
       }
