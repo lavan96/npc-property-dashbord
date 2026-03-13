@@ -5111,17 +5111,42 @@ async function handleChat(sb: any, body: any, userId: string, username: string, 
     ? `\n\nUser Preferences:\n${prefs.map((p: any) => `- ${p.preference_key}: ${JSON.stringify(p.preference_value)}`).join('\n')}`
     : '';
 
+  // Smart context window: fetch more history, then intelligently compress
   const { data: history } = await sb.from('agent_messages')
     .select('role, content, tool_calls, tool_results')
-    .eq('conversation_id', conversation_id).order('created_at', { ascending: true }).limit(30);
+    .eq('conversation_id', conversation_id).order('created_at', { ascending: true }).limit(60);
 
   const messages: any[] = [
     { role: 'system', content: SYSTEM_PROMPT + `\n\nCurrent user: ${username} (ID: ${userId})\nCurrent conversation_id: ${conversation_id}\nCurrent time: ${new Date().toISOString()}${prefsContext}` },
   ];
+
+  // Build conversation messages from history
+  const convMessages: any[] = [];
   for (const msg of (history || [])) {
     if (msg.role === 'user' || msg.role === 'assistant') {
-      messages.push({ role: msg.role, content: msg.content || '' });
+      convMessages.push({ role: msg.role, content: msg.content || '' });
     }
+  }
+
+  // Smart windowing: if conversation exceeds 24 messages, summarize older ones
+  const MAX_RECENT = 24;
+  if (convMessages.length > MAX_RECENT) {
+    const olderMessages = convMessages.slice(0, convMessages.length - MAX_RECENT);
+    const recentMessages = convMessages.slice(-MAX_RECENT);
+
+    // Compress older messages into a summary block
+    const summaryParts: string[] = [];
+    for (const m of olderMessages) {
+      const prefix = m.role === 'user' ? 'User' : 'Assistant';
+      const truncated = (m.content || '').substring(0, 150);
+      summaryParts.push(`${prefix}: ${truncated}${m.content?.length > 150 ? '...' : ''}`);
+    }
+    const summaryContent = `[CONVERSATION HISTORY SUMMARY — ${olderMessages.length} earlier messages condensed]\n${summaryParts.join('\n')}`;
+    messages.push({ role: 'user', content: summaryContent });
+    messages.push({ role: 'assistant', content: 'Understood, I have the conversation context.' });
+    messages.push(...recentMessages);
+  } else {
+    messages.push(...convMessages);
   }
 
   let finalResponse = '';
@@ -5213,9 +5238,23 @@ async function handleChat(sb: any, body: any, userId: string, username: string, 
   }), { headers: { ...cors, 'Content-Type': 'application/json' } });
 }
 
-// ─── PROPERTY LISTINGS (Airtable proxy) ───
+// ─── PROPERTY LISTINGS (Airtable proxy with in-memory cache) ───
+
+// In-memory cache for Airtable data within a single edge function invocation
+// Prevents redundant API calls when multiple listing tools are called in the same conversation turn
+const airtableCache: { data: any | null; fetchedAt: number; key: string } = { data: null, fetchedAt: 0, key: '' };
+const AIRTABLE_CACHE_TTL_MS = 60_000; // 60 seconds
 
 async function callAirtableProxy(body: any = {}) {
+  const cacheKey = JSON.stringify(body);
+  const now = Date.now();
+
+  // Return cached data if within TTL and same request shape
+  if (airtableCache.data && airtableCache.key === cacheKey && (now - airtableCache.fetchedAt) < AIRTABLE_CACHE_TTL_MS) {
+    console.log('[airtable-cache] Cache hit, skipping API call');
+    return airtableCache.data;
+  }
+
   const url = `${SUPABASE_URL}/functions/v1/airtable-proxy`;
   const resp = await fetch(url, {
     method: 'POST',
@@ -5227,7 +5266,15 @@ async function callAirtableProxy(body: any = {}) {
     body: JSON.stringify(body),
   });
   if (!resp.ok) throw new Error(`Airtable proxy error: ${resp.status}`);
-  return resp.json();
+  const result = await resp.json();
+
+  // Cache the result
+  airtableCache.data = result;
+  airtableCache.fetchedAt = now;
+  airtableCache.key = cacheKey;
+  console.log('[airtable-cache] Cache miss, fetched fresh data');
+
+  return result;
 }
 
 async function executeSearchPropertyListings(args: any) {
