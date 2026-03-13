@@ -134,6 +134,104 @@ async function getDocuSignAccessToken(): Promise<string> {
   return tokenData.access_token;
 }
 
+
+// ─── Helper: Fetch PDF from Gamma with content-type validation ────
+async function fetchGammaPdfBuffer(
+  exportUrl: string | null,
+  gammaDocId: string,
+  gammaApiKey: string
+): Promise<ArrayBuffer | null> {
+  const GAMMA_API_URL = 'https://public-api.gamma.app/v1.0';
+
+  // 1. Try the provided export URL first
+  if (exportUrl) {
+    try {
+      console.log('[Gamma PDF] Downloading from exportUrl:', exportUrl);
+      const res = await fetch(exportUrl);
+      const contentType = res.headers.get('content-type') || '';
+      console.log('[Gamma PDF] Response status:', res.status, 'content-type:', contentType);
+
+      if (res.ok) {
+        const buf = await res.arrayBuffer();
+        const header = new Uint8Array(buf.slice(0, 5));
+        const headerStr = String.fromCharCode(...header);
+        if (contentType.includes('application/pdf') || headerStr.startsWith('%PDF')) {
+          console.log('[Gamma PDF] Valid PDF received, size:', buf.byteLength, 'bytes');
+          return buf;
+        }
+        console.warn('[Gamma PDF] Export URL returned non-PDF content (', contentType, '), header:', headerStr, '— will try explicit export');
+      }
+    } catch (err: any) {
+      console.error('[Gamma PDF] Export URL fetch error:', err.message);
+    }
+  }
+
+  // 2. Try explicit PDF export via Gamma API
+  try {
+    console.log('[Gamma PDF] Attempting explicit export for gammaId:', gammaDocId);
+    const exportRes = await fetch(`${GAMMA_API_URL}/gammas/${gammaDocId}/export`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-KEY': gammaApiKey,
+      },
+      body: JSON.stringify({ format: 'pdf' }),
+    });
+
+    if (exportRes.ok) {
+      const exportData = await exportRes.json();
+      console.log('[Gamma PDF] Export response:', JSON.stringify(exportData).substring(0, 500));
+      const pdfDownloadUrl = exportData.url || exportData.downloadUrl || exportData.exportUrl || exportData.fileUrl;
+      if (pdfDownloadUrl) {
+        await new Promise(r => setTimeout(r, 2000));
+        const dlRes = await fetch(pdfDownloadUrl);
+        if (dlRes.ok) {
+          const buf = await dlRes.arrayBuffer();
+          const header = new Uint8Array(buf.slice(0, 5));
+          if (String.fromCharCode(...header).startsWith('%PDF') || (dlRes.headers.get('content-type') || '').includes('application/pdf')) {
+            console.log('[Gamma PDF] Explicit export PDF received, size:', buf.byteLength);
+            return buf;
+          }
+        }
+      }
+    } else {
+      const errText = await exportRes.text();
+      console.warn('[Gamma PDF] Export endpoint returned', exportRes.status, ':', errText.substring(0, 300));
+    }
+  } catch (err: any) {
+    console.error('[Gamma PDF] Explicit export error:', err.message);
+  }
+
+  // 3. Try re-fetching generation with exportAs query param
+  try {
+    console.log('[Gamma PDF] Trying generation endpoint with export param for:', gammaDocId);
+    const genRes = await fetch(`${GAMMA_API_URL}/generations/${gammaDocId}?exportAs=pdf`, {
+      headers: { 'X-API-KEY': gammaApiKey },
+    });
+    if (genRes.ok) {
+      const genData = await genRes.json();
+      const pdfUrl2 = genData.exportUrl || genData.pdfUrl || genData.fileUrl;
+      if (pdfUrl2 && pdfUrl2 !== exportUrl) {
+        console.log('[Gamma PDF] Found alternate PDF URL:', pdfUrl2);
+        const dlRes = await fetch(pdfUrl2);
+        if (dlRes.ok) {
+          const buf = await dlRes.arrayBuffer();
+          const header = new Uint8Array(buf.slice(0, 5));
+          if (String.fromCharCode(...header).startsWith('%PDF')) {
+            console.log('[Gamma PDF] Alternate URL PDF received, size:', buf.byteLength);
+            return buf;
+          }
+        }
+      }
+    }
+  } catch (err: any) {
+    console.error('[Gamma PDF] Generation re-fetch error:', err.message);
+  }
+
+  console.warn('[Gamma PDF] All PDF fetch attempts failed for gammaDocId:', gammaDocId);
+  return null;
+}
+
 serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = createCorsHeaders(origin);
