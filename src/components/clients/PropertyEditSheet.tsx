@@ -221,6 +221,8 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
         sourced_by: (property.sourced_by as SourcedByType) || 'unknown',
         deal_closed_at: property.deal_closed_at ? property.deal_closed_at.split('T')[0] : '',
         sourced_notes: property.sourced_notes || '',
+        loan_repayment: createExpenseField(Number(property.loan_repayment_amount) || 0),
+        lender_name: property.lender_name || '',
       });
     }
   }, [open, property]);
