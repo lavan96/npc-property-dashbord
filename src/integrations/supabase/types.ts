@@ -3182,7 +3182,10 @@ export type Database = {
           deal_closed_at: string | null
           id: string
           interest_rate: number | null
+          lender_name: string | null
           loan_remaining: number | null
+          loan_repayment_amount: number | null
+          loan_repayment_frequency: string | null
           monthly_body_corporate: number | null
           monthly_building_insurance: number | null
           monthly_council_rates: number | null
@@ -3217,7 +3220,10 @@ export type Database = {
           deal_closed_at?: string | null
           id?: string
           interest_rate?: number | null
+          lender_name?: string | null
           loan_remaining?: number | null
+          loan_repayment_amount?: number | null
+          loan_repayment_frequency?: string | null
           monthly_body_corporate?: number | null
           monthly_building_insurance?: number | null
           monthly_council_rates?: number | null
@@ -3252,7 +3258,10 @@ export type Database = {
           deal_closed_at?: string | null
           id?: string
           interest_rate?: number | null
+          lender_name?: string | null
           loan_remaining?: number | null
+          loan_repayment_amount?: number | null
+          loan_repayment_frequency?: string | null
           monthly_body_corporate?: number | null
           monthly_building_insurance?: number | null
           monthly_council_rates?: number | null
