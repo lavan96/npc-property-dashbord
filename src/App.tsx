@@ -79,6 +79,7 @@ import PortalPropertyInsights from "./pages/portal/PortalPropertyInsights";
 import PortalBooking from "./pages/portal/PortalBooking";
 import PortalAppointments from "./pages/portal/PortalAppointments";
 import PortalConfig from "./pages/PortalConfig";
+import { PortalConsentWall } from "@/components/portal/PortalConsentWall";
 
 const queryClient = new QueryClient();
 
@@ -142,6 +143,11 @@ const App = () => (
                         } />
                         <Route path="/portal/accept-invite" element={
                           <PortalAcceptInvite />
+                        } />
+                        <Route path="/client/consent" element={
+                          <PortalAuthProvider>
+                            <PortalConsentWall />
+                          </PortalAuthProvider>
                         } />
                         <Route path="/client" element={
                           <PortalAuthProvider>

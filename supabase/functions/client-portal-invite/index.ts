@@ -69,10 +69,10 @@ serve(async (req) => {
         )
       }
 
-      // Disable the portal user and reset onboarding so it re-triggers on next invite
+      // Disable the portal user and reset onboarding/consent so it re-triggers on next invite
       await supabase
         .from('client_portal_users')
-        .update({ status: 'disabled', has_completed_onboarding: false })
+        .update({ status: 'disabled', has_completed_onboarding: false, has_accepted_terms: false, terms_accepted_at: null })
         .eq('client_id', client_id)
 
       // Delete all their sessions
@@ -209,6 +209,8 @@ serve(async (req) => {
           invite_expires_at: expiresAt.toISOString(),
           status: 'invited',
           has_completed_onboarding: false,
+          has_accepted_terms: false,
+          terms_accepted_at: null,
         })
         .eq('id', existingUser.id)
     } else {

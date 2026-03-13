@@ -88,6 +88,19 @@ serve(async (req) => {
       )
     }
 
+    // Handle accept_terms action
+    if (action === 'accept_terms') {
+      await supabase
+        .from('client_portal_users')
+        .update({ has_accepted_terms: true, terms_accepted_at: new Date().toISOString() })
+        .eq('id', portalUser.id)
+
+      return new Response(
+        JSON.stringify({ success: true }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     return new Response(
       JSON.stringify({
         valid: true,
@@ -97,6 +110,7 @@ serve(async (req) => {
           email: portalUser.email,
           name: clientData ? smartCapitalizeStr(`${clientData.primary_first_name || ''} ${clientData.primary_surname || ''}`.trim()) : portalUser.email,
           has_completed_onboarding: portalUser.has_completed_onboarding ?? false,
+          has_accepted_terms: portalUser.has_accepted_terms ?? false,
         },
         session_token: sessionToken,
       }),

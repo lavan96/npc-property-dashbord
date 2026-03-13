@@ -6,6 +6,7 @@ interface PortalUser {
   email: string;
   name: string;
   has_completed_onboarding: boolean;
+  has_accepted_terms: boolean;
 }
 
 interface PortalAuthContextType {
@@ -17,6 +18,7 @@ interface PortalAuthContextType {
   verifyOTP: (email: string, otp: string) => Promise<{ error?: string; success?: boolean }>;
   resetPassword: (email: string, otp: string, newPassword: string) => Promise<{ error?: string; success?: boolean }>;
   completeOnboarding: () => Promise<void>;
+  acceptTerms: () => Promise<void>;
 }
 
 const PortalAuthContext = createContext<PortalAuthContextType | undefined>(undefined);
@@ -151,6 +153,16 @@ export function PortalAuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const acceptTerms = useCallback(async () => {
+    try {
+      await invokePortalFunction('client-portal-verify', { action: 'accept_terms' });
+      setUser(prev => prev ? { ...prev, has_accepted_terms: true } : prev);
+    } catch (e) {
+      console.error('Failed to accept terms:', e);
+      throw e;
+    }
+  }, []);
+
   const requestPasswordReset = useCallback(async (email: string) => {
     const { data, error } = await invokePortalFunction('client-portal-forgot-password', { email });
     if (error) return { error: error.message };
@@ -174,7 +186,7 @@ export function PortalAuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <PortalAuthContext.Provider value={{ user, loading, signIn, signOut, requestPasswordReset, verifyOTP, resetPassword, completeOnboarding }}>
+    <PortalAuthContext.Provider value={{ user, loading, signIn, signOut, requestPasswordReset, verifyOTP, resetPassword, completeOnboarding, acceptTerms }}>
       {children}
     </PortalAuthContext.Provider>
   );
