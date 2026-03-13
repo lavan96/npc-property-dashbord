@@ -2121,9 +2121,11 @@ async function executeGetClientAdditionalContacts(sb: any, args: any) {
 }
 
 async function executeUpdateClientField(sb: any, args: any) {
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
   const { error } = await sb.from('clients').update({ [args.field]: args.value }).eq('id', args.client_id);
   if (error) return { error: error.message };
-  return { success: true, message: `Updated "${args.field}" for client.` };
+  return { success: true, message: `Updated "${args.field}" for ${v.client.primary_first_name || ''} ${v.client.primary_surname || ''}.`.trim() };
 }
 
 async function executeGetClientActivities(sb: any, args: any) {
