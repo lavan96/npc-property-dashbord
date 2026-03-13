@@ -2293,33 +2293,13 @@ async function executeGetOverdueReminders(sb: any) {
 }
 
 async function executeCreateReminder(sb: any, args: any, userId: string) {
-  let clientId = args.client_id;
-  // Smart ID resolution: if not a valid UUID, try to resolve by name
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  if (clientId && !uuidRegex.test(clientId)) {
-    const nameParts = clientId.trim().split(/\s+/);
-    let query = sb.from('clients').select('id, primary_first_name, primary_surname');
-    if (nameParts.length >= 2) {
-      query = query.ilike('primary_first_name', `%${nameParts[0]}%`).ilike('primary_surname', `%${nameParts[nameParts.length - 1]}%`);
-    } else {
-      query = query.or(`primary_first_name.ilike.%${nameParts[0]}%,primary_surname.ilike.%${nameParts[0]}%`);
-    }
-    const { data: matches } = await query.limit(5);
-    if (!matches || matches.length === 0) return { error: `No client found matching "${clientId}". Please provide a valid client name or ID.` };
-    if (matches.length > 1) return { error: `Multiple clients match "${clientId}": ${matches.map((m: any) => `${m.primary_first_name} ${m.primary_surname}`).join(', ')}. Please be more specific.` };
-    clientId = matches[0].id;
-  }
-  // Validate client_id exists in clients table
-  if (clientId) {
-    const { data: client } = await sb.from('clients').select('id').eq('id', clientId).maybeSingle();
-    if (!client) return { error: `Client with ID "${clientId}" not found. Cannot create reminder without a valid client.` };
-  } else {
-    return { error: 'client_id is required to create a reminder.' };
-  }
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
   const { data: u } = await sb.from('custom_users').select('id').eq('id', userId).maybeSingle();
-  const { data, error } = await sb.from('client_reminders').insert({ client_id: clientId, title: args.title, description: args.description || null, due_date: args.due_date, priority: args.priority || 'medium', reminder_type: args.reminder_type || 'task', status: 'pending', created_by: u ? userId : null }).select().single();
+  const { data, error } = await sb.from('client_reminders').insert({ client_id: cid, title: args.title, description: args.description || null, due_date: args.due_date, priority: args.priority || 'medium', reminder_type: args.reminder_type || 'task', status: 'pending', created_by: u ? userId : null }).select().single();
   if (error) return { error: error.message };
-  return { success: true, message: `Reminder "${args.title}" created.`, reminder: data };
+  return { success: true, message: `Reminder "${args.title}" created for ${clientName(v.client)}.`, reminder: data };
 }
 
 async function executeUpdateReminder(sb: any, args: any) {
