@@ -5111,17 +5111,42 @@ async function handleChat(sb: any, body: any, userId: string, username: string, 
     ? `\n\nUser Preferences:\n${prefs.map((p: any) => `- ${p.preference_key}: ${JSON.stringify(p.preference_value)}`).join('\n')}`
     : '';
 
+  // Smart context window: fetch more history, then intelligently compress
   const { data: history } = await sb.from('agent_messages')
     .select('role, content, tool_calls, tool_results')
-    .eq('conversation_id', conversation_id).order('created_at', { ascending: true }).limit(30);
+    .eq('conversation_id', conversation_id).order('created_at', { ascending: true }).limit(60);
 
   const messages: any[] = [
     { role: 'system', content: SYSTEM_PROMPT + `\n\nCurrent user: ${username} (ID: ${userId})\nCurrent conversation_id: ${conversation_id}\nCurrent time: ${new Date().toISOString()}${prefsContext}` },
   ];
+
+  // Build conversation messages from history
+  const convMessages: any[] = [];
   for (const msg of (history || [])) {
     if (msg.role === 'user' || msg.role === 'assistant') {
-      messages.push({ role: msg.role, content: msg.content || '' });
+      convMessages.push({ role: msg.role, content: msg.content || '' });
     }
+  }
+
+  // Smart windowing: if conversation exceeds 24 messages, summarize older ones
+  const MAX_RECENT = 24;
+  if (convMessages.length > MAX_RECENT) {
+    const olderMessages = convMessages.slice(0, convMessages.length - MAX_RECENT);
+    const recentMessages = convMessages.slice(-MAX_RECENT);
+
+    // Compress older messages into a summary block
+    const summaryParts: string[] = [];
+    for (const m of olderMessages) {
+      const prefix = m.role === 'user' ? 'User' : 'Assistant';
+      const truncated = (m.content || '').substring(0, 150);
+      summaryParts.push(`${prefix}: ${truncated}${m.content?.length > 150 ? '...' : ''}`);
+    }
+    const summaryContent = `[CONVERSATION HISTORY SUMMARY — ${olderMessages.length} earlier messages condensed]\n${summaryParts.join('\n')}`;
+    messages.push({ role: 'user', content: summaryContent });
+    messages.push({ role: 'assistant', content: 'Understood, I have the conversation context.' });
+    messages.push(...recentMessages);
+  } else {
+    messages.push(...convMessages);
   }
 
   let finalResponse = '';
