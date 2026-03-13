@@ -572,7 +572,6 @@ const TOOLS: any[] = [
       },
     },
   },
-  },
 
   // ─── CALL LOGS & VOICE AI ───
   {
