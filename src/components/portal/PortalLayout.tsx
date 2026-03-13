@@ -8,7 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   Building2, User, Home as HomeIcon, Briefcase,
-  FileText, LogOut, Menu, X, Bell, TrendingUp,
+  FileText, LogOut, Menu, X, Shield, Bell, TrendingUp,
   MessageSquare, BarChart3, CalendarDays
 } from 'lucide-react';
 import { useState } from 'react';
