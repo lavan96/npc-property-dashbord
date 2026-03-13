@@ -2520,6 +2520,46 @@ async function executeGetAppointmentsForClient(sb: any, args: any) {
   return { appointments: data || [] };
 }
 
+async function executeRescheduleAppointment(args: any) {
+  const { event_id, new_start_time, new_end_time, title, notes, appointment_status } = args;
+  if (!event_id || !new_start_time || !new_end_time) {
+    return { error: 'event_id, new_start_time, and new_end_time are required.' };
+  }
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+  const payload: Record<string, unknown> = {
+    action: 'update',
+    eventId: event_id,
+    newStartTime: new_start_time,
+    newEndTime: new_end_time,
+    overrideAvailability: true,
+  };
+  if (title !== undefined) payload.title = title;
+  if (notes !== undefined) payload.notes = notes;
+  if (appointment_status) payload.appointmentStatus = appointment_status;
+
+  try {
+    const resp = await fetch(`${supabaseUrl}/functions/v1/ghl-calendar`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${serviceRoleKey}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await resp.json();
+    if (!resp.ok || !data.success) {
+      return { error: data.error || `Failed to reschedule (HTTP ${resp.status})`, details: data.details };
+    }
+    return { success: true, message: `Appointment ${event_id} rescheduled to ${new_start_time}`, event: data.event };
+  } catch (err: any) {
+    return { error: `Reschedule failed: ${err.message}` };
+  }
+}
+
 // ─── CALLS ───
 
 async function executeGetRecentCalls(sb: any, args: any) {
