@@ -2136,13 +2136,19 @@ async function executeSearchClients(sb: any, args: any) {
 }
 
 async function executeGetClientDetails(sb: any, args: any) {
-  const { data, error } = await sb.from('clients').select('*').eq('id', args.client_id).single();
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
+  const { data, error } = await sb.from('clients').select('*').eq('id', cid).single();
   if (error || !data) return { error: 'Client not found.' };
   return { client: data };
 }
 
 async function executeGetClientAdditionalContacts(sb: any, args: any) {
-  const { data } = await sb.from('client_additional_contacts').select('*').eq('client_id', args.client_id).order('display_order');
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
+  const { data } = await sb.from('client_additional_contacts').select('*').eq('client_id', cid).order('display_order');
   return { contacts: data || [] };
 }
 
@@ -2156,8 +2162,11 @@ async function executeUpdateClientField(sb: any, args: any) {
 }
 
 async function executeGetClientActivities(sb: any, args: any) {
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
   const limit = args.limit || 20;
-  const { data } = await sb.from('client_activities').select('*').eq('client_id', args.client_id).order('created_at', { ascending: false }).limit(limit);
+  const { data } = await sb.from('client_activities').select('*').eq('client_id', cid).order('created_at', { ascending: false }).limit(limit);
   return { activities: data || [] };
 }
 
@@ -2174,7 +2183,10 @@ async function executeLogClientActivity(sb: any, args: any, userId: string) {
 // ─── DEALS & PIPELINE ───
 
 async function executeGetClientDeals(sb: any, args: any) {
-  const { data } = await sb.from('client_deals').select('*').eq('client_id', args.client_id).order('created_at', { ascending: false });
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
+  const { data } = await sb.from('client_deals').select('*').eq('client_id', cid).order('created_at', { ascending: false });
   return { deals: data || [] };
 }
 
@@ -2272,7 +2284,11 @@ async function executeGetBuilderInvoices(sb: any, args: any) {
 
 async function executeGetClientReminders(sb: any, args: any) {
   let query = sb.from('client_reminders').select('*').eq('status', 'pending');
-  if (args.client_id) query = query.eq('client_id', args.client_id);
+  if (args.client_id) {
+    const v = await validateClientExists(sb, args.client_id);
+    if (!v.valid) return { error: v.error };
+    query = query.eq('client_id', v.resolvedId || args.client_id);
+  }
   const { data } = await query.order('due_date').limit(30);
   return { reminders: data || [] };
 }
@@ -2345,44 +2361,68 @@ async function executeGetUpcomingMilestones(sb: any, args: any) {
 // ─── FINANCIAL ───
 
 async function executeGetBorrowingCapacity(sb: any, args: any) {
-  const { data } = await sb.from('borrowing_capacity_assessments').select('*').eq('client_id', args.client_id).order('created_at', { ascending: false }).limit(1);
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
+  const { data } = await sb.from('borrowing_capacity_assessments').select('*').eq('client_id', cid).order('created_at', { ascending: false }).limit(1);
   return data?.[0] ? { assessment: data[0] } : { message: 'No borrowing capacity assessment found.' };
 }
 
 async function executeGetBCHistory(sb: any, args: any) {
-  const { data } = await sb.from('borrowing_capacity_assessments').select('id, borrowing_capacity, serviceability_band, monthly_surplus, gross_annual_income, created_at').eq('client_id', args.client_id).order('created_at', { ascending: false }).limit(10);
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
+  const { data } = await sb.from('borrowing_capacity_assessments').select('id, borrowing_capacity, serviceability_band, monthly_surplus, gross_annual_income, created_at').eq('client_id', cid).order('created_at', { ascending: false }).limit(10);
   return { history: data || [] };
 }
 
 async function executeGetIncomeSources(sb: any, args: any) {
-  const { data } = await sb.from('client_income').select('*').eq('client_id', args.client_id);
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
+  const { data } = await sb.from('client_income').select('*').eq('client_id', cid);
   return { income_sources: data || [] };
 }
 
 async function executeGetClientExpenses(sb: any, args: any) {
-  const { data } = await sb.from('client_expenses').select('*').eq('client_id', args.client_id);
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
+  const { data } = await sb.from('client_expenses').select('*').eq('client_id', cid);
   return { expenses: data || [] };
 }
 
 async function executeGetClientLiabilities(sb: any, args: any) {
-  const { data } = await sb.from('client_liabilities').select('*').eq('client_id', args.client_id);
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
+  const { data } = await sb.from('client_liabilities').select('*').eq('client_id', cid);
   return { liabilities: data || [] };
 }
 
 async function executeGetClientAssets(sb: any, args: any) {
-  const { data } = await sb.from('client_assets').select('*').eq('client_id', args.client_id);
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
+  const { data } = await sb.from('client_assets').select('*').eq('client_id', cid);
   return { assets: data || [] };
 }
 
 async function executeGetClientProperties(sb: any, args: any) {
-  const { data } = await sb.from('client_properties').select('*').eq('client_id', args.client_id);
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
+  const { data } = await sb.from('client_properties').select('*').eq('client_id', cid);
   return { properties: data || [] };
 }
 
 async function executeGetEmploymentDetails(sb: any, args: any) {
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
   const [primary, contacts] = await Promise.all([
-    sb.from('client_employment').select('*').eq('client_id', args.client_id),
-    sb.from('client_additional_contacts').select('id, first_name, surname').eq('client_id', args.client_id),
+    sb.from('client_employment').select('*').eq('client_id', cid),
+    sb.from('client_additional_contacts').select('id, first_name, surname').eq('client_id', cid),
   ]);
   const contactEmployment: any[] = [];
   for (const c of (contacts.data || [])) {
@@ -2395,8 +2435,11 @@ async function executeGetEmploymentDetails(sb: any, args: any) {
 // ─── EMAIL ───
 
 async function executeGetClientEmails(sb: any, args: any) {
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
   const limit = args.limit || 15;
-  const { data } = await sb.from('email_copilot_emails').select('id, subject, sender, received_at, body_preview, is_read, conversation_id').eq('client_id', args.client_id).order('received_at', { ascending: false }).limit(limit);
+  const { data } = await sb.from('email_copilot_emails').select('id, subject, sender, received_at, body_preview, is_read, conversation_id').eq('client_id', cid).order('received_at', { ascending: false }).limit(limit);
   return { emails: data || [] };
 }
 
@@ -2449,7 +2492,10 @@ async function executeGetUpcomingCalendar(sb: any, args: any) {
 }
 
 async function executeGetAppointmentsForClient(sb: any, args: any) {
-  const { data: client } = await sb.from('clients').select('primary_email').eq('id', args.client_id).single();
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
+  const { data: client } = await sb.from('clients').select('primary_email').eq('id', cid).single();
   if (!client?.primary_email) return { appointments: [], message: 'No email on file for this client.' };
   const { data } = await sb.from('appointment_secondary_recipients').select('*').eq('contact_email', client.primary_email).order('appointment_start', { ascending: false }).limit(20);
   return { appointments: data || [] };
@@ -2505,7 +2551,10 @@ async function executeGetFlaggedCalls(sb: any, args: any) {
 // ─── REPORTS & DOCUMENTS ───
 
 async function executeGetClientFiles(sb: any, args: any) {
-  const { data } = await sb.from('client_files').select('*').eq('client_id', args.client_id).order('created_at', { ascending: false });
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
+  const { data } = await sb.from('client_files').select('*').eq('client_id', cid).order('created_at', { ascending: false });
   return { files: data || [] };
 }
 
@@ -2528,7 +2577,10 @@ async function executeSearchReportsByAddress(sb: any, args: any) {
 }
 
 async function executeGetPortfolioReviews(sb: any, args: any) {
-  const { data } = await sb.from('portfolio_reviews').select('*').eq('client_id', args.client_id).order('created_at', { ascending: false });
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
+  const { data } = await sb.from('portfolio_reviews').select('*').eq('client_id', cid).order('created_at', { ascending: false });
   return { reviews: data || [] };
 }
 
@@ -3311,8 +3363,27 @@ async function executeRunPlaybook(sb: any, args: any, userId: string) {
   for (let i = 0; i < (pb.steps || []).length; i++) {
     const step = pb.steps[i];
     const stepArgs = args.overrides?.[i] ? { ...step.arguments, ...args.overrides[i] } : (step.arguments || {});
-    try { results.push({ step: i+1, tool: step.tool_name, status: 'success', result: await executeTool(sb, step.tool_name, stepArgs, userId) }); }
-    catch (e: any) { results.push({ step: i+1, tool: step.tool_name, status: 'error', error: e.message }); }
+    const stepStart = Date.now();
+    try {
+      const stepResult = await executeTool(sb, step.tool_name, stepArgs, userId);
+      results.push({ step: i+1, tool: step.tool_name, status: 'success', result: stepResult });
+      // Log each step to audit trail
+      await sb.from('agent_action_log').insert({
+        user_id: userId, tool_name: step.tool_name, tool_arguments: stepArgs,
+        tool_result: stepResult, status: stepResult.error ? 'error' : 'success',
+        execution_time_ms: Date.now() - stepStart,
+        metadata: { source: 'playbook', playbook_id: args.playbook_id, playbook_name: pb.name, step_index: i },
+      }).then(() => {}).catch(() => {}); // fire and forget
+    }
+    catch (e: any) {
+      results.push({ step: i+1, tool: step.tool_name, status: 'error', error: e.message });
+      await sb.from('agent_action_log').insert({
+        user_id: userId, tool_name: step.tool_name, tool_arguments: stepArgs,
+        tool_result: { error: e.message }, status: 'error',
+        execution_time_ms: Date.now() - stepStart,
+        metadata: { source: 'playbook', playbook_id: args.playbook_id, playbook_name: pb.name, step_index: i },
+      }).then(() => {}).catch(() => {});
+    }
   }
   await sb.from('agent_playbooks').update({ run_count: (pb.run_count||0)+1, last_run_at: new Date().toISOString() }).eq('id', args.playbook_id);
   return { success: true, message: `Playbook "${pb.name}": ${results.filter(r=>r.status==='success').length}/${pb.steps.length} steps succeeded.`, results };
@@ -3434,13 +3505,16 @@ async function executeGenerateChartData(sb: any, args: any) {
   return { chart: { type: chartType, title, labels, datasets: [{ label: title, data: values, backgroundColor: colors.slice(0,labels.length) }] }, summary: `${title}: ${labels.map((l,i)=>`${l}(${values[i]})`).join(', ')}`, __chart_data: true };
 }
 async function executeGenerateClientSummaryReport(sb: any, args: any) {
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
   const secs = args.sections||['profile','financials','deals','properties','reminders'];
   const r: string[] = [];
-  const { data: client } = await sb.from('clients').select('*').eq('id', args.client_id).single();
+  const { data: client } = await sb.from('clients').select('*').eq('id', cid).single();
   if (!client) return { error: 'Client not found.' };
   if (secs.includes('profile')) { r.push(`# Client Summary: ${client.primary_first_name||''} ${client.primary_surname||''}\n- Email: ${client.primary_email||'N/A'} | Phone: ${client.primary_mobile||'N/A'}\n- Pipeline: ${client.pipeline_status||'N/A'} | Follow-up: ${client.follow_up_date?.substring(0,10)||'None'}\n`); }
   if (secs.includes('financials')) {
-    const [inc,exp,liab,ass,bc] = await Promise.all([sb.from('client_income').select('*').eq('client_id',args.client_id),sb.from('client_expenses').select('*').eq('client_id',args.client_id),sb.from('client_liabilities').select('*').eq('client_id',args.client_id),sb.from('client_assets').select('*').eq('client_id',args.client_id),sb.from('borrowing_capacity_assessments').select('borrowing_capacity,serviceability_band,monthly_surplus').eq('client_id',args.client_id).order('created_at',{ascending:false}).limit(1)]);
+    const [inc,exp,liab,ass,bc] = await Promise.all([sb.from('client_income').select('*').eq('client_id',cid),sb.from('client_expenses').select('*').eq('client_id',cid),sb.from('client_liabilities').select('*').eq('client_id',cid),sb.from('client_assets').select('*').eq('client_id',cid),sb.from('borrowing_capacity_assessments').select('borrowing_capacity,serviceability_band,monthly_surplus').eq('client_id',cid).order('created_at',{ascending:false}).limit(1)]);
     r.push(`## Financials\n- Income: $${(inc.data||[]).reduce((s:number,i:any)=>s+(i.annual_amount||i.amount||0),0).toLocaleString()}/yr\n- Assets: $${(ass.data||[]).reduce((s:number,a:any)=>s+(a.value||0),0).toLocaleString()}\n- Liabilities: $${(liab.data||[]).reduce((s:number,l:any)=>s+(l.balance||l.amount||0),0).toLocaleString()}`);
     if (bc.data?.[0]) r.push(`- Borrowing Capacity: $${bc.data[0].borrowing_capacity?.toLocaleString()||'N/A'} (${bc.data[0].serviceability_band||'N/A'})\n`);
   }
@@ -3502,12 +3576,22 @@ async function executeGetRevenueForecast(sb: any, args: any) {
 }
 
 async function executeGetClientEngagementScore(sb: any, args: any) {
-  const cid = args.client_id;
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString();
+  
+  // Get client's phone number for call matching
+  const { data: clientData } = await sb.from('clients').select('primary_mobile').eq('id', cid).maybeSingle();
+  const clientPhone = clientData?.primary_mobile;
+  
   const [activities, emails, calls, reminders, deals] = await Promise.all([
     sb.from('client_activities').select('id, created_at').eq('client_id', cid).gte('created_at', thirtyDaysAgo),
     sb.from('email_copilot_emails').select('id').eq('client_id', cid).gte('received_at', thirtyDaysAgo),
-    sb.from('vapi_call_logs').select('id').ilike('caller_phone', `%${cid.substring(0, 8)}%`).gte('created_at', thirtyDaysAgo),
+    // Fix: Match calls by the client's actual phone number, not UUID substring
+    clientPhone
+      ? sb.from('vapi_call_logs').select('id').ilike('caller_phone', `%${clientPhone.replace(/\s+/g, '').slice(-8)}%`).gte('created_at', thirtyDaysAgo)
+      : Promise.resolve({ data: [] }),
     sb.from('client_reminders').select('id, status').eq('client_id', cid).gte('created_at', thirtyDaysAgo),
     sb.from('client_deals').select('id, updated_at, risk_status').eq('client_id', cid),
   ]);
@@ -3607,7 +3691,9 @@ async function executeExportPipelineData(sb: any, args: any) {
 }
 
 async function executeExportClientPortfolio(sb: any, args: any) {
-  const cid = args.client_id;
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
   const [client, deals, props, inc, liab, bc] = await Promise.all([
     sb.from('clients').select('*').eq('id', cid).single(),
     sb.from('client_deals').select('deal_type, current_stage, property_address, loan_amount, commission_estimate, settlement_date, risk_status').eq('client_id', cid),
@@ -3717,7 +3803,10 @@ async function executeSmartSearch(sb: any, args: any) {
 }
 
 async function executeWhatIfAnalysis(sb: any, args: any) {
-  const { data: bc } = await sb.from('borrowing_capacity_assessments').select('*').eq('client_id', args.client_id).order('created_at', { ascending: false }).limit(1);
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
+  const { data: bc } = await sb.from('borrowing_capacity_assessments').select('*').eq('client_id', cid).order('created_at', { ascending: false }).limit(1);
   if (!bc?.[0]) return { error: 'No borrowing capacity assessment found for this client.' };
   const current = bc[0];
   const adj = args.adjustment_value;
@@ -4625,10 +4714,33 @@ async function executeTriggerInvestmentReport(sb: any, args: any, userId: string
   const { property_address, client_id } = args;
   // Create a pending investment report record
   const insertData: any = { property_address, status: 'pending' };
-  if (client_id) insertData.client_property_id = client_id;
+  if (client_id) {
+    const v = await validateClientExists(sb, client_id);
+    if (v.valid) insertData.client_property_id = v.resolvedId || client_id;
+  }
   const { data: report, error } = await sb.from('investment_reports').insert(insertData).select().maybeSingle();
   if (error) return { error: `Failed to create report: ${error.message}` };
-  return { success: true, message: `Investment report queued for "${property_address}". Report ID: ${report.id}. The report will be generated in the background — check the Reports section for progress.`, report_id: report.id };
+
+  // Actually invoke the report generation edge function
+  try {
+    const genResp = await fetch(`${SUPABASE_URL}/functions/v1/generate-investment-report`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        'apikey': SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({ report_id: report.id, property_address }),
+    });
+    if (!genResp.ok) {
+      console.error(`[ai-dashboard-agent] Report generation trigger failed: ${genResp.status}`);
+      // Don't fail the whole operation — report is queued, generation may just need manual trigger
+    }
+  } catch (genErr: any) {
+    console.error(`[ai-dashboard-agent] Report generation trigger error: ${genErr.message}`);
+  }
+
+  return { success: true, message: `Investment report triggered for "${property_address}". Report ID: ${report.id}. Generation has started — check the Reports section for progress.`, report_id: report.id };
 }
 
 async function executeGetNotificationSummary(sb: any) {
@@ -5035,7 +5147,7 @@ async function handleChat(sb: any, body: any, userId: string, username: string, 
           const args = JSON.parse(tc.function.arguments);
           console.log(`[ai-dashboard-agent] Tool: ${tc.function.name}`, JSON.stringify(args).substring(0, 200));
           const result = await executeTool(sb, tc.function.name, args, userId);
-          messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(result).substring(0, 4000) });
+          messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(result).substring(0, 8000) });
         }
         continue;
       }
