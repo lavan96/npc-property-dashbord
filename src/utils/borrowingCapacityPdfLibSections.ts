@@ -576,12 +576,17 @@ export function drawBorrowingCapacityPdfLib(
     page.drawText('Properties with negative cash flow are added to your expense obligations:', { x: MARGIN_LEFT, y, size: 7, font, color: MUTED });
     y -= PARAGRAPH_SPACING;
 
-    for (const ncf of data.negativePropertyCashFlows) {
-      let addr = sanitize(ncf.address);
-      if (addr.length > 50) addr = addr.slice(0, 47) + '...';
-      page.drawText(addr, { x: MARGIN_LEFT + 8, y, size: 8, font, color: DARK_TEXT });
-      page.drawText(fmt(ncf.monthlyCashflow) + '/mo', { x: MARGIN_LEFT + CONTENT_WIDTH - 60, y, size: 8, font: boldFont, color: DANGER });
-      y -= TABLE_ROW_HEIGHT;
+    for (let i = 0; i < data.negativePropertyCashFlows.length; i++) {
+      ensureSpace(TABLE_ROW_HEIGHT);
+      const ncf = data.negativePropertyCashFlows[i];
+      const bg = i % 2 === 0 ? LIGHT_BG : undefined;
+      const addr = sanitize(ncf.address);
+      const addrMaxWidth = CONTENT_WIDTH - 80;
+
+      y = drawTableRow(page, y, [
+        { text: addr, x: MARGIN_LEFT + 8, font, size: 8, maxWidth: addrMaxWidth },
+        { text: fmt(ncf.monthlyCashflow) + '/mo', x: MARGIN_LEFT + CONTENT_WIDTH - 60, font: boldFont, color: DANGER, size: 8 },
+      ], bg);
     }
 
     page.drawRectangle({ x: MARGIN_LEFT, y: y + 2, width: CONTENT_WIDTH, height: 1, color: BORDER_COLOR });
