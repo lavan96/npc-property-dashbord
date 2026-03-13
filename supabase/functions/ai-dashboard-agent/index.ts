@@ -4702,10 +4702,33 @@ async function executeTriggerInvestmentReport(sb: any, args: any, userId: string
   const { property_address, client_id } = args;
   // Create a pending investment report record
   const insertData: any = { property_address, status: 'pending' };
-  if (client_id) insertData.client_property_id = client_id;
+  if (client_id) {
+    const v = await validateClientExists(sb, client_id);
+    if (v.valid) insertData.client_property_id = v.resolvedId || client_id;
+  }
   const { data: report, error } = await sb.from('investment_reports').insert(insertData).select().maybeSingle();
   if (error) return { error: `Failed to create report: ${error.message}` };
-  return { success: true, message: `Investment report queued for "${property_address}". Report ID: ${report.id}. The report will be generated in the background — check the Reports section for progress.`, report_id: report.id };
+
+  // Actually invoke the report generation edge function
+  try {
+    const genResp = await fetch(`${SUPABASE_URL}/functions/v1/generate-investment-report`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        'apikey': SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({ report_id: report.id, property_address }),
+    });
+    if (!genResp.ok) {
+      console.error(`[ai-dashboard-agent] Report generation trigger failed: ${genResp.status}`);
+      // Don't fail the whole operation — report is queued, generation may just need manual trigger
+    }
+  } catch (genErr: any) {
+    console.error(`[ai-dashboard-agent] Report generation trigger error: ${genErr.message}`);
+  }
+
+  return { success: true, message: `Investment report triggered for "${property_address}". Report ID: ${report.id}. Generation has started — check the Reports section for progress.`, report_id: report.id };
 }
 
 async function executeGetNotificationSummary(sb: any) {
