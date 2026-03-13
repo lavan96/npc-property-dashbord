@@ -2796,11 +2796,12 @@ async function executeGetCommissionActuals(sb: any, args: any) {
 async function executeAddAdditionalContact(sb: any, args: any) {
   const v = await validateClientExists(sb, args.client_id);
   if (!v.valid) return { error: v.error };
-  const { data: existing } = await sb.from('client_additional_contacts').select('display_order').eq('client_id', args.client_id).order('display_order', { ascending: false }).limit(1);
+  const cid = v.resolvedId || args.client_id;
+  const { data: existing } = await sb.from('client_additional_contacts').select('display_order').eq('client_id', cid).order('display_order', { ascending: false }).limit(1);
   const nextOrder = (existing?.[0]?.display_order || 0) + 1;
-  const { data, error } = await sb.from('client_additional_contacts').insert({ client_id: args.client_id, first_name: args.first_name, surname: args.surname, relationship: args.relationship || 'co_borrower', email: args.email || null, mobile: args.mobile || null, dob: args.dob || null, display_order: nextOrder }).select().single();
+  const { data, error } = await sb.from('client_additional_contacts').insert({ client_id: cid, first_name: args.first_name, surname: args.surname, relationship: args.relationship || 'co_borrower', email: args.email || null, mobile: args.mobile || null, dob: args.dob || null, display_order: nextOrder }).select().single();
   if (error) return { error: error.message };
-  return { success: true, message: `Contact "${args.first_name} ${args.surname}" added to ${v.client.primary_first_name || ''} ${v.client.primary_surname || ''}.`.trim(), contact: data };
+  return { success: true, message: `Contact "${args.first_name} ${args.surname}" added to ${clientName(v.client)}.`, contact: data };
 }
 
 async function executeUpdateAdditionalContact(sb: any, args: any) {
