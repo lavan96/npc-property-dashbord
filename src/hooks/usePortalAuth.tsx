@@ -142,6 +142,15 @@ export function PortalAuthProvider({ children }: { children: ReactNode }) {
     clearAuthState();
   }, []);
 
+  const completeOnboarding = useCallback(async () => {
+    try {
+      await invokePortalFunction('client-portal-verify', { action: 'complete_onboarding' });
+      setUser(prev => prev ? { ...prev, has_completed_onboarding: true } : prev);
+    } catch (e) {
+      console.error('Failed to complete onboarding:', e);
+    }
+  }, []);
+
   const requestPasswordReset = useCallback(async (email: string) => {
     const { data, error } = await invokePortalFunction('client-portal-forgot-password', { email });
     if (error) return { error: error.message };
@@ -165,7 +174,7 @@ export function PortalAuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <PortalAuthContext.Provider value={{ user, loading, signIn, signOut, requestPasswordReset, verifyOTP, resetPassword }}>
+    <PortalAuthContext.Provider value={{ user, loading, signIn, signOut, requestPasswordReset, verifyOTP, resetPassword, completeOnboarding }}>
       {children}
     </PortalAuthContext.Provider>
   );
