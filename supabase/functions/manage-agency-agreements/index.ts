@@ -539,44 +539,11 @@ serve(async (req) => {
           pdfSignedUrl = signedData.signedUrl;
         }
       } else if (agreement.gamma_document_id) {
-        // PDF not stored but Gamma doc exists - try to fetch and store it now (backfill)
-        console.log('[preview] PDF not stored, attempting to fetch from Gamma:', agreement.gamma_document_id);
+        // PDF not stored but Gamma doc/generation ID exists - try to fetch and store it now
+        console.log('[preview] PDF not stored, attempting deferred fetch for:', agreement.gamma_document_id);
         const gammaApiKey = Deno.env.get('GAMMA_API_KEY');
         if (gammaApiKey) {
-          try {
-            // Use the shared helper to get a valid PDF
-            const pollRes = await fetch(`https://public-api.gamma.app/v1.0/generations/${agreement.gamma_document_id}`, {
-              headers: { 'X-API-KEY': gammaApiKey },
-            });
-            if (pollRes.ok) {
-              const gammaData = await pollRes.json();
-              const rawPdfUrl = gammaData.exportUrl || gammaData.pdfUrl || gammaData.fileUrl;
-              const pdfBuffer = await fetchGammaPdfBuffer(rawPdfUrl, agreement.gamma_document_id, gammaApiKey);
-              if (pdfBuffer) {
-                const storagePath = `agreements/${agreement.id}/agreement.pdf`;
-                const { error: uploadErr } = await supabase.storage
-                  .from('agency-agreements')
-                  .upload(storagePath, new Uint8Array(pdfBuffer), {
-                    contentType: 'application/pdf',
-                    upsert: true,
-                  });
-                if (!uploadErr) {
-                  await supabase.from('agency_agreements').update({ pdf_storage_path: storagePath }).eq('id', agreement.id);
-                  console.log('[preview] PDF backfilled to storage:', storagePath);
-                  const { data: signedData } = await supabase.storage
-                    .from('agency-agreements')
-                    .createSignedUrl(storagePath, 3600);
-                  if (signedData?.signedUrl) {
-                    pdfSignedUrl = signedData.signedUrl;
-                  }
-                } else {
-                  console.error('[preview] PDF upload error:', uploadErr.message);
-                }
-              }
-            }
-          } catch (err: any) {
-            console.error('[preview] Gamma backfill error:', err.message);
-          }
+          pdfSignedUrl = await attemptDeferredPdfFetch(supabase, agreement, gammaApiKey);
         }
       }
 
