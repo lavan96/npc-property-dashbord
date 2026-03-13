@@ -5238,9 +5238,23 @@ async function handleChat(sb: any, body: any, userId: string, username: string, 
   }), { headers: { ...cors, 'Content-Type': 'application/json' } });
 }
 
-// ─── PROPERTY LISTINGS (Airtable proxy) ───
+// ─── PROPERTY LISTINGS (Airtable proxy with in-memory cache) ───
+
+// In-memory cache for Airtable data within a single edge function invocation
+// Prevents redundant API calls when multiple listing tools are called in the same conversation turn
+const airtableCache: { data: any | null; fetchedAt: number; key: string } = { data: null, fetchedAt: 0, key: '' };
+const AIRTABLE_CACHE_TTL_MS = 60_000; // 60 seconds
 
 async function callAirtableProxy(body: any = {}) {
+  const cacheKey = JSON.stringify(body);
+  const now = Date.now();
+
+  // Return cached data if within TTL and same request shape
+  if (airtableCache.data && airtableCache.key === cacheKey && (now - airtableCache.fetchedAt) < AIRTABLE_CACHE_TTL_MS) {
+    console.log('[airtable-cache] Cache hit, skipping API call');
+    return airtableCache.data;
+  }
+
   const url = `${SUPABASE_URL}/functions/v1/airtable-proxy`;
   const resp = await fetch(url, {
     method: 'POST',
@@ -5252,7 +5266,15 @@ async function callAirtableProxy(body: any = {}) {
     body: JSON.stringify(body),
   });
   if (!resp.ok) throw new Error(`Airtable proxy error: ${resp.status}`);
-  return resp.json();
+  const result = await resp.json();
+
+  // Cache the result
+  airtableCache.data = result;
+  airtableCache.fetchedAt = now;
+  airtableCache.key = cacheKey;
+  console.log('[airtable-cache] Cache miss, fetched fresh data');
+
+  return result;
 }
 
 async function executeSearchPropertyListings(args: any) {
