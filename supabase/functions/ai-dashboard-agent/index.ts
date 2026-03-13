@@ -2431,8 +2431,11 @@ async function executeGetEmploymentDetails(sb: any, args: any) {
 // ─── EMAIL ───
 
 async function executeGetClientEmails(sb: any, args: any) {
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
   const limit = args.limit || 15;
-  const { data } = await sb.from('email_copilot_emails').select('id, subject, sender, received_at, body_preview, is_read, conversation_id').eq('client_id', args.client_id).order('received_at', { ascending: false }).limit(limit);
+  const { data } = await sb.from('email_copilot_emails').select('id, subject, sender, received_at, body_preview, is_read, conversation_id').eq('client_id', cid).order('received_at', { ascending: false }).limit(limit);
   return { emails: data || [] };
 }
 
