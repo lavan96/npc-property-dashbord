@@ -215,17 +215,62 @@ function drawProgressBar(
   }
 }
 
+function wrapText(text: string, font: PDFFont, fontSize: number, maxWidth: number): string[] {
+  const words = text.split(' ');
+  const lines: string[] = [];
+  let currentLine = '';
+
+  for (const word of words) {
+    const testLine = currentLine ? `${currentLine} ${word}` : word;
+    if (font.widthOfTextAtSize(testLine, fontSize) > maxWidth && currentLine) {
+      lines.push(currentLine);
+      currentLine = word;
+    } else {
+      currentLine = testLine;
+    }
+  }
+  if (currentLine) lines.push(currentLine);
+  return lines.length > 0 ? lines : [''];
+}
+
 function drawTableRow(
-  page: PDFPage, y: number, cols: { text: string; x: number; font: PDFFont; color?: Color; size?: number }[],
+  page: PDFPage, y: number, cols: { text: string; x: number; font: PDFFont; color?: Color; size?: number; maxWidth?: number }[],
   bg?: Color, rowH = TABLE_ROW_HEIGHT,
 ): number {
-  if (bg) {
-    page.drawRectangle({ x: MARGIN_LEFT, y: y - rowH + 4, width: CONTENT_WIDTH, height: rowH, color: bg });
-  }
+  // Calculate actual row height based on wrapped text in any column
+  const LINE_HEIGHT = 11;
+  let maxLines = 1;
+  const wrappedCols: string[][] = [];
+
   for (const col of cols) {
-    page.drawText(sanitize(col.text), { x: col.x, y, size: col.size || 9, font: col.font, color: col.color || DARK_TEXT });
+    if (col.maxWidth) {
+      const lines = wrapText(sanitize(col.text), col.font, col.size || 9, col.maxWidth);
+      wrappedCols.push(lines);
+      if (lines.length > maxLines) maxLines = lines.length;
+    } else {
+      wrappedCols.push([sanitize(col.text)]);
+    }
   }
-  return y - rowH;
+
+  const actualRowH = maxLines > 1 ? Math.max(rowH, maxLines * LINE_HEIGHT + 8) : rowH;
+
+  if (bg) {
+    page.drawRectangle({ x: MARGIN_LEFT, y: y - actualRowH + 4, width: CONTENT_WIDTH, height: actualRowH, color: bg });
+  }
+  for (let i = 0; i < cols.length; i++) {
+    const col = cols[i];
+    const lines = wrappedCols[i];
+    for (let li = 0; li < lines.length; li++) {
+      page.drawText(lines[li], {
+        x: col.x,
+        y: y - li * LINE_HEIGHT,
+        size: col.size || 9,
+        font: col.font,
+        color: col.color || DARK_TEXT,
+      });
+    }
+  }
+  return y - actualRowH;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -399,11 +444,11 @@ export function drawBorrowingCapacityPdfLib(
       const item = data.incomeBreakdown[i];
       const bg = i % 2 === 0 ? LIGHT_BG : undefined;
       const shadingColor = item.shadingRate >= 1 ? SUCCESS : item.shadingRate >= 0.8 ? WARNING : MUTED;
-      let label = sanitize(item.label);
-      if (label.length > 30) label = label.slice(0, 27) + '...';
+      const label = sanitize(item.label);
+      const labelMaxWidth = col2 - col1 - 10;
 
       y = drawTableRow(page, y, [
-        { text: label, x: col1, font },
+        { text: label, x: col1, font, maxWidth: labelMaxWidth },
         { text: fmt(item.grossAmount), x: col2, font },
         { text: `${(item.shadingRate * 100).toFixed(0)}%`, x: col3, font: boldFont, color: shadingColor },
         { text: fmt(item.shadedAmount), x: col4 - 50, font: boldFont },
@@ -585,14 +630,14 @@ export function drawBorrowingCapacityPdfLib(
       const bg = i % 2 === 0 ? LIGHT_BG : undefined;
       totalServicing += lib.monthlyServicing;
 
-      let label = sanitize(`${formatLiabilityType(lib.type)} - ${lib.label}`);
-      if (label.length > 25) label = label.slice(0, 22) + '...';
+      const label = sanitize(`${formatLiabilityType(lib.type)} - ${lib.label}`);
+      const labelMaxWidth = lCol2 - lCol1 - 10;
 
       const noteText = lib.calculationNote ? sanitize(lib.calculationNote) : '';
       let shortNote = noteText.length > 12 ? noteText.slice(0, 10) + '..' : noteText;
 
       y = drawTableRow(page, y, [
-        { text: label, x: lCol1, font, size: 8 },
+        { text: label, x: lCol1, font, size: 8, maxWidth: labelMaxWidth },
         { text: fmt(lib.balance), x: lCol2, font, size: 8 },
         { text: lib.limit ? fmt(lib.limit) : '-', x: lCol3, font, size: 8 },
         { text: `${fmt(lib.monthlyServicing)}/mo`, x: lCol4, font: boldFont, color: DANGER, size: 8 },
