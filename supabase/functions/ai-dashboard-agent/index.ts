@@ -4965,6 +4965,42 @@ FORMATTING RULES:
 
 
 // ============================================================
+//  SMART TRUNCATION — preserves structure for large tool results
+// ============================================================
+
+const MAX_RESULT_CHARS = 12000;
+
+function smartTruncateResult(result: any): string {
+  const raw = JSON.stringify(result);
+  if (raw.length <= MAX_RESULT_CHARS) return raw;
+
+  // If result is an object with arrays, intelligently trim the arrays
+  if (result && typeof result === 'object' && !Array.isArray(result)) {
+    const trimmed: any = {};
+    for (const [key, value] of Object.entries(result)) {
+      if (Array.isArray(value) && value.length > 0) {
+        // Keep first N items that fit, add a count summary
+        const itemSize = JSON.stringify(value[0]).length;
+        const maxItems = Math.max(3, Math.floor(MAX_RESULT_CHARS / (Object.keys(result).length * itemSize)));
+        const sliced = value.slice(0, maxItems);
+        trimmed[key] = sliced;
+        if (value.length > maxItems) {
+          trimmed[`_${key}_truncated`] = { showing: maxItems, total: value.length, note: 'Use filters or pagination for more results' };
+        }
+      } else {
+        trimmed[key] = value;
+      }
+    }
+    const trimmedStr = JSON.stringify(trimmed);
+    if (trimmedStr.length <= MAX_RESULT_CHARS) return trimmedStr;
+    // Still too large — fall through to hard truncation with indicator
+  }
+
+  // Hard truncation with clear indicator
+  return raw.substring(0, MAX_RESULT_CHARS - 100) + `...[TRUNCATED — full result was ${raw.length} chars. Ask user to narrow query for complete data.]`;
+}
+
+// ============================================================
 //  AI GATEWAY CALL
 // ============================================================
 
