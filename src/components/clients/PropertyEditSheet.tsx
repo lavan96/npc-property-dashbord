@@ -79,6 +79,9 @@ interface PropertyData {
   sourced_by?: string | null;
   deal_closed_at?: string | null;
   sourced_notes?: string | null;
+  loan_repayment_amount?: number | null;
+  loan_repayment_frequency?: string | null;
+  lender_name?: string | null;
 }
 
 interface PropertyEditSheetProps {
