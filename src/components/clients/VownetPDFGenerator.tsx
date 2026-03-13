@@ -218,11 +218,20 @@ export function VownetPDFGenerator({
   };
 
   // Helper: preload an image and convert to data URL for html2canvas compatibility
-  const preloadImageAsDataUrl = async (src: string): Promise<string | null> => {
+  // Adds timeout + content-type validation to avoid indefinite hangs.
+  const preloadImageAsDataUrl = async (src: string, timeoutMs = 5000): Promise<string | null> => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
     try {
-      const response = await fetch(src);
+      const response = await fetch(src, { signal: controller.signal });
+      if (!response.ok) return null;
+
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.includes('image/')) return null;
+
       const blob = await response.blob();
-      return new Promise((resolve) => {
+      return await new Promise((resolve) => {
         const reader = new FileReader();
         reader.onloadend = () => resolve(reader.result as string);
         reader.onerror = () => resolve(null);
@@ -230,11 +239,17 @@ export function VownetPDFGenerator({
       });
     } catch {
       return null;
+    } finally {
+      clearTimeout(timeoutId);
     }
   };
 
   // Helper: html2canvas with a timeout to prevent infinite hangs
-  const html2canvasWithTimeout = (element: HTMLElement, options: Parameters<typeof html2canvas>[1], timeoutMs = 15000): Promise<HTMLCanvasElement> => {
+  const html2canvasWithTimeout = (
+    element: HTMLElement,
+    options: Parameters<typeof html2canvas>[1],
+    timeoutMs = 15000
+  ): Promise<HTMLCanvasElement> => {
     return Promise.race([
       html2canvas(element, options),
       new Promise<never>((_, reject) =>
