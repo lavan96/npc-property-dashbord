@@ -2086,11 +2086,37 @@ const WRITE_TOOLS = [
 
 const CLIENT_NOT_FOUND_MSG = (id: string) => `Client with ID "${id}" not found. Please use search_clients to find the correct client ID first.`;
 
-async function validateClientExists(sb: any, clientId: string): Promise<{ valid: boolean; client?: any; error?: string }> {
+async function validateClientExists(sb: any, clientId: string): Promise<{ valid: boolean; client?: any; error?: string; resolvedId?: string }> {
   if (!clientId) return { valid: false, error: 'client_id is required.' };
+  
+  // Step 1: Try exact UUID match
   const { data: client } = await sb.from('clients').select('id, primary_first_name, primary_surname').eq('id', clientId).maybeSingle();
-  if (!client) return { valid: false, error: CLIENT_NOT_FOUND_MSG(clientId) };
-  return { valid: true, client };
+  if (client) return { valid: true, client, resolvedId: client.id };
+  
+  // Step 2: Smart fallback — if the value looks like it could be a name (not a valid UUID pattern), try name-based resolution
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(clientId)) {
+    // Treat as a name search
+    const parts = clientId.trim().split(/\s+/);
+    let query = sb.from('clients').select('id, primary_first_name, primary_surname');
+    if (parts.length >= 2) {
+      query = query.ilike('primary_first_name', `%${parts[0]}%`).ilike('primary_surname', `%${parts.slice(1).join(' ')}%`);
+    } else {
+      query = query.or(`primary_first_name.ilike.%${parts[0]}%,primary_surname.ilike.%${parts[0]}%`);
+    }
+    const { data: matches } = await query.limit(5);
+    if (matches && matches.length === 1) {
+      return { valid: true, client: matches[0], resolvedId: matches[0].id };
+    }
+    if (matches && matches.length > 1) {
+      const names = matches.map((m: any) => `• ${clientName(m)} (ID: ${m.id})`).join('\n');
+      return { valid: false, error: `Multiple clients match "${clientId}". Please clarify which one:\n${names}` };
+    }
+  }
+  
+  // Step 3: UUID was provided but doesn't exist — attempt fuzzy recovery from recent search context
+  // This catches hallucinated UUIDs: return clear error
+  return { valid: false, error: CLIENT_NOT_FOUND_MSG(clientId) };
 }
 
 async function validateClientsExist(sb: any, clientIds: string[]): Promise<{ validIds: string[]; invalidIds: string[] }> {
@@ -2123,9 +2149,10 @@ async function executeGetClientAdditionalContacts(sb: any, args: any) {
 async function executeUpdateClientField(sb: any, args: any) {
   const v = await validateClientExists(sb, args.client_id);
   if (!v.valid) return { error: v.error };
-  const { error } = await sb.from('clients').update({ [args.field]: args.value }).eq('id', args.client_id);
+  const cid = v.resolvedId || args.client_id;
+  const { error } = await sb.from('clients').update({ [args.field]: args.value }).eq('id', cid);
   if (error) return { error: error.message };
-  return { success: true, message: `Updated "${args.field}" for ${v.client.primary_first_name || ''} ${v.client.primary_surname || ''}.`.trim() };
+  return { success: true, message: `Updated "${args.field}" for ${clientName(v.client)}.` };
 }
 
 async function executeGetClientActivities(sb: any, args: any) {
@@ -2137,10 +2164,11 @@ async function executeGetClientActivities(sb: any, args: any) {
 async function executeLogClientActivity(sb: any, args: any, userId: string) {
   const v = await validateClientExists(sb, args.client_id);
   if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
   const { data: u } = await sb.from('custom_users').select('id').eq('id', userId).maybeSingle();
-  const { data, error } = await sb.from('client_activities').insert({ client_id: args.client_id, title: args.title, description: args.description || null, activity_type: args.activity_type, created_by: u ? userId : null }).select().single();
+  const { data, error } = await sb.from('client_activities').insert({ client_id: cid, title: args.title, description: args.description || null, activity_type: args.activity_type, created_by: u ? userId : null }).select().single();
   if (error) return { error: error.message };
-  return { success: true, message: `Activity "${args.title}" logged.`, activity: data };
+  return { success: true, message: `Activity "${args.title}" logged for ${clientName(v.client)}.`, activity: data };
 }
 
 // ─── DEALS & PIPELINE ───
@@ -2265,33 +2293,13 @@ async function executeGetOverdueReminders(sb: any) {
 }
 
 async function executeCreateReminder(sb: any, args: any, userId: string) {
-  let clientId = args.client_id;
-  // Smart ID resolution: if not a valid UUID, try to resolve by name
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  if (clientId && !uuidRegex.test(clientId)) {
-    const nameParts = clientId.trim().split(/\s+/);
-    let query = sb.from('clients').select('id, primary_first_name, primary_surname');
-    if (nameParts.length >= 2) {
-      query = query.ilike('primary_first_name', `%${nameParts[0]}%`).ilike('primary_surname', `%${nameParts[nameParts.length - 1]}%`);
-    } else {
-      query = query.or(`primary_first_name.ilike.%${nameParts[0]}%,primary_surname.ilike.%${nameParts[0]}%`);
-    }
-    const { data: matches } = await query.limit(5);
-    if (!matches || matches.length === 0) return { error: `No client found matching "${clientId}". Please provide a valid client name or ID.` };
-    if (matches.length > 1) return { error: `Multiple clients match "${clientId}": ${matches.map((m: any) => `${m.primary_first_name} ${m.primary_surname}`).join(', ')}. Please be more specific.` };
-    clientId = matches[0].id;
-  }
-  // Validate client_id exists in clients table
-  if (clientId) {
-    const { data: client } = await sb.from('clients').select('id').eq('id', clientId).maybeSingle();
-    if (!client) return { error: `Client with ID "${clientId}" not found. Cannot create reminder without a valid client.` };
-  } else {
-    return { error: 'client_id is required to create a reminder.' };
-  }
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
   const { data: u } = await sb.from('custom_users').select('id').eq('id', userId).maybeSingle();
-  const { data, error } = await sb.from('client_reminders').insert({ client_id: clientId, title: args.title, description: args.description || null, due_date: args.due_date, priority: args.priority || 'medium', reminder_type: args.reminder_type || 'task', status: 'pending', created_by: u ? userId : null }).select().single();
+  const { data, error } = await sb.from('client_reminders').insert({ client_id: cid, title: args.title, description: args.description || null, due_date: args.due_date, priority: args.priority || 'medium', reminder_type: args.reminder_type || 'task', status: 'pending', created_by: u ? userId : null }).select().single();
   if (error) return { error: error.message };
-  return { success: true, message: `Reminder "${args.title}" created.`, reminder: data };
+  return { success: true, message: `Reminder "${args.title}" created for ${clientName(v.client)}.`, reminder: data };
 }
 
 async function executeUpdateReminder(sb: any, args: any) {
@@ -2313,9 +2321,10 @@ async function executeDeleteReminder(sb: any, args: any) {
 async function executeSetFollowUpDate(sb: any, args: any) {
   const v = await validateClientExists(sb, args.client_id);
   if (!v.valid) return { error: v.error };
-  const { error } = await sb.from('clients').update({ follow_up_date: args.follow_up_date }).eq('id', args.client_id);
+  const cid = v.resolvedId || args.client_id;
+  const { error } = await sb.from('clients').update({ follow_up_date: args.follow_up_date }).eq('id', cid);
   if (error) return { error: error.message };
-  return { success: true, message: `Follow-up date set to ${args.follow_up_date.substring(0, 10)} for ${v.client.primary_first_name || ''} ${v.client.primary_surname || ''}.`.trim() };
+  return { success: true, message: `Follow-up date set to ${args.follow_up_date.substring(0, 10)} for ${clientName(v.client)}.` };
 }
 
 async function executeGetUpcomingMilestones(sb: any, args: any) {
@@ -2411,9 +2420,10 @@ async function executeGetUnlinkedEmails(sb: any, args: any) {
 async function executeLinkEmailToClient(sb: any, args: any) {
   const v = await validateClientExists(sb, args.client_id);
   if (!v.valid) return { error: v.error };
-  const { error } = await sb.from('email_copilot_emails').update({ client_id: args.client_id }).eq('id', args.email_id);
+  const cid = v.resolvedId || args.client_id;
+  const { error } = await sb.from('email_copilot_emails').update({ client_id: cid }).eq('id', args.email_id);
   if (error) return { error: error.message };
-  return { success: true, message: `Email linked to ${v.client.primary_first_name || ''} ${v.client.primary_surname || ''}.`.trim() };
+  return { success: true, message: `Email linked to ${clientName(v.client)}.` };
 }
 
 async function executeSendEmail(sb: any, args: any) {
@@ -2655,9 +2665,10 @@ async function executeCreateClient(sb: any, args: any, userId: string) {
 async function executeDeleteClient(sb: any, args: any) {
   const v = await validateClientExists(sb, args.client_id);
   if (!v.valid) return { error: v.error };
-  const { error } = await sb.from('clients').delete().eq('id', args.client_id);
+  const cid = v.resolvedId || args.client_id;
+  const { error } = await sb.from('clients').delete().eq('id', cid);
   if (error) return { error: error.message };
-  return { success: true, message: `Client "${v.client.primary_first_name || ''} ${v.client.primary_surname || ''}" deleted.`.trim() };
+  return { success: true, message: `Client "${clientName(v.client)}" deleted.` };
 }
 
 async function executeGetClientsByPipelineStatus(sb: any, args: any) {
@@ -2685,10 +2696,11 @@ async function executeGetClientNotes(sb: any, args: any) {
 async function executeCreateClientNote(sb: any, args: any, userId: string) {
   const v = await validateClientExists(sb, args.client_id);
   if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
   const { data: u } = await sb.from('custom_users').select('id').eq('id', userId).maybeSingle();
-  const { data, error } = await sb.from('client_notes').insert({ client_id: args.client_id, content: args.content, note_type: args.note_type || 'general', created_by: u ? userId : null }).select().single();
+  const { data, error } = await sb.from('client_notes').insert({ client_id: cid, content: args.content, note_type: args.note_type || 'general', created_by: u ? userId : null }).select().single();
   if (error) return { error: error.message };
-  return { success: true, message: `Note created for ${v.client.primary_first_name || ''} ${v.client.primary_surname || ''}.`.trim(), note: data };
+  return { success: true, message: `Note created for ${clientName(v.client)}.`, note: data };
 }
 
 async function executeUpdateClientNote(sb: any, args: any) {
@@ -2716,12 +2728,13 @@ async function executeGetPortfolioReviewDetails(sb: any, args: any) {
 async function executeCreateDeal(sb: any, args: any, userId: string) {
   const v = await validateClientExists(sb, args.client_id);
   if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
   const { data: u } = await sb.from('custom_users').select('id').eq('id', userId).maybeSingle();
-  const insert: any = { client_id: args.client_id, deal_type: args.deal_type || 'Purchase', deal_name: args.deal_name || args.property_address || 'New Deal', property_address: args.property_address, loan_amount: args.loan_amount, current_stage: args.stage || 'New Lead', risk_status: 'on_track' };
+  const insert: any = { client_id: cid, deal_type: args.deal_type || 'Purchase', deal_name: args.deal_name || args.property_address || 'New Deal', property_address: args.property_address, loan_amount: args.loan_amount, current_stage: args.stage || 'New Lead', risk_status: 'on_track' };
   if (u) insert.created_by = userId;
   const { data, error } = await sb.from('client_deals').insert(insert).select().single();
   if (error) return { error: error.message };
-  return { success: true, message: `Deal "${insert.deal_name}" created for ${v.client.primary_first_name || ''} ${v.client.primary_surname || ''}.`.trim(), deal: data };
+  return { success: true, message: `Deal "${insert.deal_name}" created for ${clientName(v.client)}.`, deal: data };
 }
 
 async function executeDeleteDeal(sb: any, args: any) {
@@ -2763,11 +2776,12 @@ async function executeGetCommissionActuals(sb: any, args: any) {
 async function executeAddAdditionalContact(sb: any, args: any) {
   const v = await validateClientExists(sb, args.client_id);
   if (!v.valid) return { error: v.error };
-  const { data: existing } = await sb.from('client_additional_contacts').select('display_order').eq('client_id', args.client_id).order('display_order', { ascending: false }).limit(1);
+  const cid = v.resolvedId || args.client_id;
+  const { data: existing } = await sb.from('client_additional_contacts').select('display_order').eq('client_id', cid).order('display_order', { ascending: false }).limit(1);
   const nextOrder = (existing?.[0]?.display_order || 0) + 1;
-  const { data, error } = await sb.from('client_additional_contacts').insert({ client_id: args.client_id, first_name: args.first_name, surname: args.surname, relationship: args.relationship || 'co_borrower', email: args.email || null, mobile: args.mobile || null, dob: args.dob || null, display_order: nextOrder }).select().single();
+  const { data, error } = await sb.from('client_additional_contacts').insert({ client_id: cid, first_name: args.first_name, surname: args.surname, relationship: args.relationship || 'co_borrower', email: args.email || null, mobile: args.mobile || null, dob: args.dob || null, display_order: nextOrder }).select().single();
   if (error) return { error: error.message };
-  return { success: true, message: `Contact "${args.first_name} ${args.surname}" added to ${v.client.primary_first_name || ''} ${v.client.primary_surname || ''}.`.trim(), contact: data };
+  return { success: true, message: `Contact "${args.first_name} ${args.surname}" added to ${clientName(v.client)}.`, contact: data };
 }
 
 async function executeUpdateAdditionalContact(sb: any, args: any) {
@@ -4708,13 +4722,13 @@ You have access to 200+ specialized tools across 51 domains:
 🔔 APPOINTMENT NOTIFICATIONS — Secondary recipient notification history for appointments.
 
 CRITICAL RULES:
-1. When the user asks about a client, ALWAYS use search_clients first to find their ID, then use that ID for subsequent lookups.
+1. When the user asks about a client, ALWAYS use search_clients first to find their ID, then use that EXACT ID (copy-paste the UUID) for ALL subsequent tool calls. NEVER invent, guess, or modify a client UUID — always use the exact value returned by search_clients.
 2. For write operations (any tool marked REQUIRES USER CONFIRMATION), describe what you're about to do and ask the user to confirm BEFORE the action executes.
 3. Present data in clean, readable markdown. Use tables for structured data, bullet points for lists.
 4. If a query is ambiguous, ask for clarification rather than guessing.
 5. You are an expert mortgage broker assistant. Provide context-aware insights.
 6. Format dates human-readable (e.g., "15 March 2026"), monetary values with $ and commas.
-7. Never fabricate data. If a tool returns no results, say so.
+7. Never fabricate data. If a tool returns no results, say so. NEVER fabricate or guess UUIDs — they MUST come from a prior tool result.
 8. For pipeline queries, highlight at-risk deals and upcoming settlements.
 9. For "morning briefing" or "what's happening" queries, use get_dashboard_summary first.
 10. Be concise but thorough. Synthesize and present insights — don't repeat raw data.
