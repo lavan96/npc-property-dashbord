@@ -16,6 +16,7 @@ interface PortalAuthContextType {
   requestPasswordReset: (email: string) => Promise<{ error?: string; success?: boolean }>;
   verifyOTP: (email: string, otp: string) => Promise<{ error?: string; success?: boolean }>;
   resetPassword: (email: string, otp: string, newPassword: string) => Promise<{ error?: string; success?: boolean }>;
+  completeOnboarding: () => Promise<void>;
 }
 
 const PortalAuthContext = createContext<PortalAuthContextType | undefined>(undefined);
