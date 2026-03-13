@@ -13,18 +13,19 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
+import { PortalOnboardingTour } from './PortalOnboardingTour';
 
 const portalNavItems = [
-  { to: '/client', icon: HomeIcon, label: 'Dashboard', end: true },
-  { to: '/client/profile', icon: User, label: 'My Profile', end: true },
-  { to: '/client/deal-progress', icon: TrendingUp, label: 'Deal Progress', end: true },
-  { to: '/client/properties', icon: Building2, label: 'Properties', end: true },
-  { to: '/client/property-insights', icon: BarChart3, label: 'Property Insights', end: true },
-  { to: '/client/employment', icon: Briefcase, label: 'Finances', end: true },
-  { to: '/client/documents', icon: FileText, label: 'Documents', end: true },
-  { to: '/client/reports', icon: FileText, label: 'Reports', end: true },
-  { to: '/client/messages', icon: MessageSquare, label: 'Messages', end: true },
-  { to: '/client/notifications', icon: Bell, label: 'Notifications', end: true },
+  { to: '/client', icon: HomeIcon, label: 'Dashboard', end: true, tourId: 'dashboard' },
+  { to: '/client/profile', icon: User, label: 'My Profile', end: true, tourId: 'profile' },
+  { to: '/client/deal-progress', icon: TrendingUp, label: 'Deal Progress', end: true, tourId: 'deal-progress' },
+  { to: '/client/properties', icon: Building2, label: 'Properties', end: true, tourId: 'properties' },
+  { to: '/client/property-insights', icon: BarChart3, label: 'Property Insights', end: true, tourId: 'property-insights' },
+  { to: '/client/employment', icon: Briefcase, label: 'Finances', end: true, tourId: 'finances' },
+  { to: '/client/documents', icon: FileText, label: 'Documents', end: true, tourId: 'documents' },
+  { to: '/client/reports', icon: FileText, label: 'Reports', end: true, tourId: 'reports' },
+  { to: '/client/messages', icon: MessageSquare, label: 'Messages', end: true, tourId: 'messages' },
+  { to: '/client/notifications', icon: Bell, label: 'Notifications', end: true, tourId: 'notifications' },
   { to: '/client/appointments', icon: CalendarDays, label: 'My Appointments', end: true },
   { to: '/client/booking', icon: CalendarDays, label: 'Book Appointment', end: true },
 ];
@@ -92,6 +93,7 @@ export function PortalLayout() {
                 key={item.to}
                 to={item.to}
                 end={item.end}
+                data-tour={item.tourId}
                 className={({ isActive }) => cn(
                   'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200',
                   isActive
@@ -199,6 +201,9 @@ export function PortalLayout() {
           <Outlet />
         </div>
       </main>
+
+      {/* Onboarding Tour */}
+      <PortalOnboardingTour />
     </div>
   );
 }

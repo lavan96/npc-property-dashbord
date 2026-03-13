@@ -29,11 +29,13 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Extract session token
+    // Extract session token and action
     let sessionToken: string | null = null;
+    let action: string | null = null;
     try {
       const body = await req.json();
       sessionToken = body?.portal_session_token || extractPortalSessionToken(req.headers, body);
+      action = body?.action || null;
     } catch {
       sessionToken = extractPortalSessionToken(req.headers);
     }
@@ -55,6 +57,7 @@ serve(async (req) => {
           client_id,
           email,
           status,
+          has_completed_onboarding,
           clients:client_id (id, primary_first_name, primary_surname, primary_email)
         )
       `)
@@ -72,6 +75,19 @@ serve(async (req) => {
     const portalUser = session.client_portal_users as any;
     const clientData = portalUser.clients as any;
 
+    // Handle complete_onboarding action
+    if (action === 'complete_onboarding') {
+      await supabase
+        .from('client_portal_users')
+        .update({ has_completed_onboarding: true })
+        .eq('id', portalUser.id)
+
+      return new Response(
+        JSON.stringify({ success: true }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     return new Response(
       JSON.stringify({
         valid: true,
@@ -80,6 +96,7 @@ serve(async (req) => {
           client_id: portalUser.client_id,
           email: portalUser.email,
           name: clientData ? smartCapitalizeStr(`${clientData.primary_first_name || ''} ${clientData.primary_surname || ''}`.trim()) : portalUser.email,
+          has_completed_onboarding: portalUser.has_completed_onboarding ?? false,
         },
         session_token: sessionToken,
       }),

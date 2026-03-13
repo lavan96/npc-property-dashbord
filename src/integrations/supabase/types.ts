@@ -3126,6 +3126,7 @@ export type Database = {
           client_id: string
           created_at: string
           email: string
+          has_completed_onboarding: boolean
           id: string
           invite_expires_at: string | null
           invite_token: string | null
@@ -3140,6 +3141,7 @@ export type Database = {
           client_id: string
           created_at?: string
           email: string
+          has_completed_onboarding?: boolean
           id?: string
           invite_expires_at?: string | null
           invite_token?: string | null
@@ -3154,6 +3156,7 @@ export type Database = {
           client_id?: string
           created_at?: string
           email?: string
+          has_completed_onboarding?: boolean
           id?: string
           invite_expires_at?: string | null
           invite_token?: string | null
