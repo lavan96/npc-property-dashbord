@@ -260,10 +260,10 @@ export function VownetPDFGenerator({
 
   const generatePDF = async (forEmail: boolean = false): Promise<Blob | null> => {
     setIsGenerating(true);
-    let container: HTMLDivElement | null = null;
+    let iframe: HTMLIFrameElement | null = null;
 
     try {
-      const generationDeadline = Date.now() + 90000; // hard cap to avoid endless generation
+      const generationDeadline = Date.now() + 120000; // 2-min hard cap
       const ensureWithinBudget = () => {
         if (Date.now() > generationDeadline) {
           throw new Error('PDF generation timed out');
@@ -271,37 +271,51 @@ export function VownetPDFGenerator({
       };
 
       // Pre-load cover image as data URL to avoid cross-origin / hanging issues
-      // Fall back silently to normal URL if preload fails.
       const coverDataUrl = await preloadImageAsDataUrl('/templates/npc-vownet-cover.jpg', 5000);
 
-      // Create hidden container for rendering
-      container = document.createElement('div');
-      container.style.position = 'absolute';
-      container.style.left = '-9999px';
-      container.style.top = '0';
-      container.style.width = '210mm';
-      document.body.appendChild(container);
+      // ── Render inside an isolated iframe to avoid dashboard DOM interference ──
+      // The main page has 1000+ DOM nodes (charts, listings, modals) that cause
+      // html2canvas to crawl or crash. An iframe gives a clean, lightweight document.
+      iframe = document.createElement('iframe');
+      iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:210mm;height:1123px;border:none;visibility:hidden;';
+      document.body.appendChild(iframe);
 
-      // Generate HTML content
+      // Wait for iframe to be ready
+      await new Promise<void>((resolve) => {
+        iframe!.onload = () => resolve();
+        // Some browsers fire onload immediately for about:blank
+        if (iframe!.contentDocument?.readyState === 'complete') resolve();
+      });
+
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!iframeDoc) throw new Error('Could not access iframe document');
+
+      // Generate HTML content (unchanged)
       const htmlContent = generateHTMLContent(data, includeOwnerOccupied);
-      container.innerHTML = htmlContent;
+
+      // Write the full HTML into the iframe's clean document
+      iframeDoc.open();
+      iframeDoc.write(htmlContent);
+      iframeDoc.close();
 
       // Replace cover background-image with preloaded data URL
       if (coverDataUrl) {
-        const coverEl = container.querySelector('.cover-page-image') as HTMLElement;
+        const coverEl = iframeDoc.querySelector('.cover-page-image') as HTMLElement;
         if (coverEl) {
           coverEl.style.backgroundImage = `url('${coverDataUrl}')`;
         }
       }
 
-      // Wait for styles to apply
-      await new Promise(resolve => setTimeout(resolve, 150));
+      // Wait for styles to apply inside the iframe
+      await new Promise(resolve => setTimeout(resolve, 300));
 
-      const pages = container.querySelectorAll('.page');
+      const pages = iframeDoc.querySelectorAll('.page');
       const totalHtmlPages = pages.length;
       if (totalHtmlPages === 0) {
         throw new Error('No PDF pages were generated from template');
       }
+
+      console.log(`[VownetPDF] Starting render: ${totalHtmlPages} pages in isolated iframe`);
 
       // Create PDF
       const pdf = new jsPDF({
@@ -314,7 +328,7 @@ export function VownetPDFGenerator({
       const contentPages = totalHtmlPages > 1 ? totalHtmlPages - 1 : totalHtmlPages;
       const hasDisclaimerPage = totalHtmlPages > 1;
 
-      // Adaptive render scale to avoid browser memory spikes/crashes
+      // Adaptive render scale
       const navWithMemory = navigator as Navigator & { deviceMemory?: number };
       const deviceMemory = navWithMemory.deviceMemory ?? 4;
       const renderScale = totalHtmlPages > 8
@@ -338,8 +352,10 @@ export function VownetPDFGenerator({
         ensureWithinBudget();
         await new Promise(resolve => setTimeout(resolve, 0));
 
+        const pageStart = Date.now();
         const page = pages[i] as HTMLElement;
-        const canvas = await html2canvasWithTimeout(page, renderOptions, 12000);
+        const canvas = await html2canvasWithTimeout(page, renderOptions, 15000);
+        console.log(`[VownetPDF] Page ${i + 1}/${totalHtmlPages} rendered in ${Date.now() - pageStart}ms`);
 
         if (i > 0) {
           pdf.addPage();
@@ -362,7 +378,6 @@ export function VownetPDFGenerator({
             const bcPdfData = transformAssessmentToSectionData(latestAssessment);
             const pageNum = { value: pdf.getNumberOfPages() + 1 };
 
-            // Add a new page and draw all BC sections
             pdf.addPage();
             drawBorrowingCapacitySections(pdf, bcPdfData, 20, pageNum, false);
 
@@ -384,7 +399,7 @@ export function VownetPDFGenerator({
         const disclaimerCanvas = await html2canvasWithTimeout(disclaimerPage, {
           ...renderOptions,
           backgroundColor: '#141414',
-        }, 12000);
+        }, 15000);
 
         pdf.addPage();
         pdf.addImage(disclaimerCanvas, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
@@ -395,13 +410,13 @@ export function VownetPDFGenerator({
       const generatedStamp = new Date().toISOString().replace(/[:.]/g, '-');
       const fileName = `Vownet_Form_${clientName.replace(/\s+/g, '_')}_${generatedStamp}.pdf`;
 
+      console.log(`[VownetPDF] Generation complete: ${pdf.getNumberOfPages()} total PDF pages`);
+
       if (forEmail) {
         const pdfBlob = pdf.output('blob');
-        // Also persist in background when emailing
         persistVownetPdf(pdfBlob, fileName, data.client.id);
         return pdfBlob;
       } else {
-        // Download directly
         const pdfBlob = pdf.output('blob');
         const url = URL.createObjectURL(pdfBlob);
         const a = document.createElement('a');
@@ -409,7 +424,6 @@ export function VownetPDFGenerator({
         a.download = fileName;
         a.click();
         URL.revokeObjectURL(url);
-        // Persist to storage + database
         persistVownetPdf(pdfBlob, fileName, data.client.id);
         toast.success('Vownet PDF downloaded & saved to Reports');
         return null;
@@ -422,8 +436,8 @@ export function VownetPDFGenerator({
         : 'Failed to generate PDF');
       return null;
     } finally {
-      if (container && container.parentNode) {
-        container.parentNode.removeChild(container);
+      if (iframe && iframe.parentNode) {
+        iframe.parentNode.removeChild(iframe);
       }
       setIsGenerating(false);
     }
