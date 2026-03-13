@@ -423,10 +423,10 @@ export function drawBorrowingCapacityPdfLib(
   y -= SUBSECTION_SPACING;
 
   if (data.incomeBreakdown.length > 0) {
-    // Table header
+    // Table header — wider first column for source labels
     const col1 = MARGIN_LEFT;
-    const col2 = MARGIN_LEFT + 180;
-    const col3 = MARGIN_LEFT + 290;
+    const col2 = MARGIN_LEFT + 210;
+    const col3 = MARGIN_LEFT + 310;
     const col4 = MARGIN_LEFT + CONTENT_WIDTH - 10;
 
     y = drawTableRow(page, y, [
