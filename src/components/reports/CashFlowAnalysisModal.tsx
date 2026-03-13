@@ -4591,13 +4591,13 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                               )}
                               <TableRow className="bg-muted/30">
                                 <TableCell className="font-semibold">Total Upfront Cost</TableCell>
-                                <TableCell className="text-right font-semibold">
-                                  {formatCurrency(
-                                    (baseFinancialData.depositValue || (baseFinancialData.purchasePrice * (1 - baseFinancialData.loanToValueRatio / 100))) +
-                                    baseFinancialData.stampDuty +
-                                    baseFinancialData.solicitorFees +
-                                    baseFinancialData.agentFee +
-                                    (baseFinancialData.lmiAmount || 0)
+                                 <TableCell className="text-right font-semibold">
+                                   {formatCurrency(
+                                     baseFinancialData.purchasePrice +
+                                     baseFinancialData.stampDuty +
+                                     baseFinancialData.solicitorFees +
+                                     baseFinancialData.agentFee +
+                                     (baseFinancialData.lmiAmount || 0)
                                   )}
                                 </TableCell>
                               </TableRow>
