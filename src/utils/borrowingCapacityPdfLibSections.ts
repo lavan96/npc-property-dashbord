@@ -423,10 +423,10 @@ export function drawBorrowingCapacityPdfLib(
   y -= SUBSECTION_SPACING;
 
   if (data.incomeBreakdown.length > 0) {
-    // Table header
+    // Table header — wider first column for source labels
     const col1 = MARGIN_LEFT;
-    const col2 = MARGIN_LEFT + 180;
-    const col3 = MARGIN_LEFT + 290;
+    const col2 = MARGIN_LEFT + 210;
+    const col3 = MARGIN_LEFT + 310;
     const col4 = MARGIN_LEFT + CONTENT_WIDTH - 10;
 
     y = drawTableRow(page, y, [
@@ -606,11 +606,11 @@ export function drawBorrowingCapacityPdfLib(
 
     y = drawSectionTitle(page, 'Liabilities Schedule', y, boldFont);
 
-    // Table header
+    // Table header — wider first column for liability labels
     const lCol1 = MARGIN_LEFT;
-    const lCol2 = MARGIN_LEFT + 140;
-    const lCol3 = MARGIN_LEFT + 230;
-    const lCol4 = MARGIN_LEFT + 310;
+    const lCol2 = MARGIN_LEFT + 200;
+    const lCol3 = MARGIN_LEFT + 270;
+    const lCol4 = MARGIN_LEFT + 340;
     const lCol5 = MARGIN_LEFT + CONTENT_WIDTH - 10;
 
     y = drawTableRow(page, y, [
@@ -630,7 +630,17 @@ export function drawBorrowingCapacityPdfLib(
       const bg = i % 2 === 0 ? LIGHT_BG : undefined;
       totalServicing += lib.monthlyServicing;
 
-      const label = sanitize(`${formatLiabilityType(lib.type)} - ${lib.label}`);
+      // Build a clean label: use label if it's descriptive, avoid duplicating type info
+      const typeLabel = formatLiabilityType(lib.type);
+      const rawLabel = sanitize(lib.label);
+      let label: string;
+      if (!rawLabel || rawLabel === lib.type || rawLabel === typeLabel || rawLabel.toLowerCase() === lib.type.replace(/[_-]/g, ' ').toLowerCase()) {
+        label = typeLabel;
+      } else if (rawLabel.toLowerCase().startsWith(typeLabel.toLowerCase())) {
+        label = rawLabel;
+      } else {
+        label = `${typeLabel} - ${rawLabel}`;
+      }
       const labelMaxWidth = lCol2 - lCol1 - 10;
 
       const noteText = lib.calculationNote ? sanitize(lib.calculationNote) : '';
