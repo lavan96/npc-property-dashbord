@@ -2183,7 +2183,10 @@ async function executeLogClientActivity(sb: any, args: any, userId: string) {
 // ─── DEALS & PIPELINE ───
 
 async function executeGetClientDeals(sb: any, args: any) {
-  const { data } = await sb.from('client_deals').select('*').eq('client_id', args.client_id).order('created_at', { ascending: false });
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
+  const { data } = await sb.from('client_deals').select('*').eq('client_id', cid).order('created_at', { ascending: false });
   return { deals: data || [] };
 }
 
