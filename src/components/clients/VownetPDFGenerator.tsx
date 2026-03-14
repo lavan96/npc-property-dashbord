@@ -74,6 +74,10 @@ interface PropertyData {
   weekly_rental_income?: number | null;
   total_monthly_expenditure?: number | null;
   net_monthly_cashflow?: number | null;
+  // Loan repayment & lender fields
+  loan_repayment_amount?: number | null;
+  loan_repayment_frequency?: string | null;
+  lender_name?: string | null;
   // SMSF-specific fields
   smsf_fund_name?: string | null;
   smsf_trustee_name?: string | null;
