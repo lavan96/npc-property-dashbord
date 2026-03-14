@@ -160,6 +160,8 @@ export function generateVownetTemplate(data: VownetExportData): XLSX.WorkBook {
     formData.push(['', '', '', '', 'Loan Remaining ($)', prop.loan_remaining || '', '', '', '', '', '']);
     formData.push(['', '', '', '', 'Interest Rate (%)', formatPercent(prop.interest_rate), '', '', '', '', '']);
     formData.push(['', '', '', '', 'Ownership (%)', formatPercent(prop.ownership_percentage), '', '', '', '', '']);
+    formData.push(['', '', '', '', 'Lender / Bank', (prop as any).lender_name || '', '', '', '', '', '']);
+    formData.push(['', '', '', '', 'Loan Repayment ($)', (prop as any).loan_repayment_amount || '', (prop as any).loan_repayment_frequency || 'monthly', '', '', '', '']);
     formData.push(['', '', '', '', 'Monthly Interest Repayment ($)', prop.monthly_interest_repayment || '', '', '', '', '', '']);
     formData.push(['', '', '', '', 'Monthly Body Corporate/Strata Fees', prop.monthly_body_corporate || '', '', '', '', '', '']);
     formData.push(['', '', '', '', 'Monthly Council Rate Charges', prop.monthly_council_rates || '', '', '', '', '', '']);
