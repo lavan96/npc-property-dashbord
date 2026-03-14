@@ -665,6 +665,32 @@ NPC Team`
                           <p className="font-medium">{property.ownership_percentage}%</p>
                         </div>
                       </div>
+                      {/* Lender & Loan Repayment row */}
+                      {(property.lender_name || property.loan_repayment_amount) && (
+                        <>
+                          <Separator className="my-3" />
+                          <div className="grid gap-4 md:grid-cols-3 text-sm">
+                            {property.lender_name && (
+                              <div>
+                                <p className="text-xs text-muted-foreground">Lender / Bank</p>
+                                <p className="font-medium">{property.lender_name}</p>
+                              </div>
+                            )}
+                            {property.loan_repayment_amount ? (
+                              <div>
+                                <p className="text-xs text-muted-foreground">Loan Repayment</p>
+                                <p className="font-medium">{formatCurrency(Number(property.loan_repayment_amount))}<span className="text-xs text-muted-foreground ml-1">/{property.loan_repayment_frequency || 'monthly'}</span></p>
+                              </div>
+                            ) : null}
+                            {property.monthly_interest_repayment ? (
+                              <div>
+                                <p className="text-xs text-muted-foreground">Monthly Interest Repayment</p>
+                                <p className="font-medium">{formatCurrency(Number(property.monthly_interest_repayment))}</p>
+                              </div>
+                            ) : null}
+                          </div>
+                        </>
+                      )}
                       {(property.property_type === 'investment' || property.property_type === 'smsf') && (
                         <>
                           <Separator className="my-4" />
