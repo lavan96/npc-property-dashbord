@@ -121,8 +121,9 @@ export function generateVownetTemplate(data: VownetExportData): XLSX.WorkBook {
   formData.push(['Surname', data.client.primary_surname || '', '', '', 'Loan Remaining ($)', getOwnerOccupiedProperty(data.properties)?.loan_remaining || '', '', '', '', '', '']);
   formData.push(['Mobile', data.client.primary_mobile || '', '', '', 'Interest Rate (%)', formatPercent(getOwnerOccupiedProperty(data.properties)?.interest_rate), '', '', '', '', '']);
   formData.push(['Email', data.client.primary_email || '', '', '', 'Ownership (%)', formatPercent(getOwnerOccupiedProperty(data.properties)?.ownership_percentage), '', '', '', '', '']);
-  formData.push(['Gender', data.client.primary_gender || '', '', '', 'Monthly Interest Repayment ($)', getOwnerOccupiedProperty(data.properties)?.monthly_interest_repayment || '', '', '', '', '', '']);
-  formData.push(['Date of Birth', data.client.primary_dob || '', '', '', '', '', '', '', '', '', '']);
+  formData.push(['Gender', data.client.primary_gender || '', '', '', 'Lender / Bank', (getOwnerOccupiedProperty(data.properties) as any)?.lender_name || '', '', '', '', '', '']);
+  formData.push(['Date of Birth', data.client.primary_dob || '', '', '', 'Loan Repayment ($)', (getOwnerOccupiedProperty(data.properties) as any)?.loan_repayment_amount || '', (getOwnerOccupiedProperty(data.properties) as any)?.loan_repayment_frequency || '', '', '', '', '']);
+  formData.push(['', '', '', '', 'Monthly Interest Repayment ($)', getOwnerOccupiedProperty(data.properties)?.monthly_interest_repayment || '', '', '', '', '', '']);
   formData.push(['', '', '', '', 'Net Monthly Cashflow ($)', getOwnerOccupiedProperty(data.properties)?.net_monthly_cashflow || '', '', '', '', '', '']);
 
   // Secondary Contact section
