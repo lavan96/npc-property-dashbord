@@ -28,6 +28,9 @@ interface ClientProperty {
   weekly_rental_income: number | null;
   total_monthly_expenditure: number | null;
   net_monthly_cashflow: number | null;
+  loan_repayment_amount: number | null;
+  loan_repayment_frequency: string | null;
+  lender_name: string | null;
 }
 
 interface ClientData {
@@ -287,6 +290,12 @@ serve(async (req) => {
         equity,
         lvr: lvr.toFixed(1),
         ownershipPercentage: prop.ownership_percentage || 100,
+        // Lender & repayment details
+        lenderName: prop.lender_name || null,
+        loanRepaymentAmount: prop.loan_repayment_amount || null,
+        loanRepaymentFrequency: prop.loan_repayment_frequency || null,
+        interestRate: prop.interest_rate || null,
+        monthlyInterestRepayment: prop.monthly_interest_repayment || null,
         // For owner-occupied: yield/cash-on-cash are N/A, but expenses and cashflow are real
         grossYield: grossYield !== null ? grossYield.toFixed(2) : 'N/A',
         monthlyRentalIncome: ownerOccupied ? null : monthlyIncome,

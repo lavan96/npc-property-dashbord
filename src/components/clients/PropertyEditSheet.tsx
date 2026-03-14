@@ -221,7 +221,14 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
         sourced_by: (property.sourced_by as SourcedByType) || 'unknown',
         deal_closed_at: property.deal_closed_at ? property.deal_closed_at.split('T')[0] : '',
         sourced_notes: property.sourced_notes || '',
-        loan_repayment: createExpenseField(Number(property.loan_repayment_amount) || 0),
+        loan_repayment: {
+          value: Number(property.loan_repayment_amount) || 0,
+          frequency: (property.loan_repayment_frequency as FrequencyType) || 'monthly',
+          monthlyValue: convertToMonthly(
+            Number(property.loan_repayment_amount) || 0,
+            (property.loan_repayment_frequency as FrequencyType) || 'monthly'
+          ),
+        },
         lender_name: property.lender_name || '',
       });
     }
@@ -317,7 +324,7 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
         sourced_by: formData.sourced_by,
         deal_closed_at: formData.sourced_by === 'npc' && formData.deal_closed_at ? formData.deal_closed_at : null,
         sourced_notes: formData.sourced_notes || null,
-        loan_repayment_amount: isRental ? null : (formData.loan_repayment.monthlyValue || null),
+        loan_repayment_amount: isRental ? null : (formData.loan_repayment.value ?? null),
         loan_repayment_frequency: isRental ? null : (formData.loan_repayment.frequency || 'monthly'),
         lender_name: isRental ? null : (formData.lender_name || null),
       };

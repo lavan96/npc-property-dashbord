@@ -121,8 +121,9 @@ export function generateVownetTemplate(data: VownetExportData): XLSX.WorkBook {
   formData.push(['Surname', data.client.primary_surname || '', '', '', 'Loan Remaining ($)', getOwnerOccupiedProperty(data.properties)?.loan_remaining || '', '', '', '', '', '']);
   formData.push(['Mobile', data.client.primary_mobile || '', '', '', 'Interest Rate (%)', formatPercent(getOwnerOccupiedProperty(data.properties)?.interest_rate), '', '', '', '', '']);
   formData.push(['Email', data.client.primary_email || '', '', '', 'Ownership (%)', formatPercent(getOwnerOccupiedProperty(data.properties)?.ownership_percentage), '', '', '', '', '']);
-  formData.push(['Gender', data.client.primary_gender || '', '', '', 'Monthly Interest Repayment ($)', getOwnerOccupiedProperty(data.properties)?.monthly_interest_repayment || '', '', '', '', '', '']);
-  formData.push(['Date of Birth', data.client.primary_dob || '', '', '', '', '', '', '', '', '', '']);
+  formData.push(['Gender', data.client.primary_gender || '', '', '', 'Lender / Bank', (getOwnerOccupiedProperty(data.properties) as any)?.lender_name || '', '', '', '', '', '']);
+  formData.push(['Date of Birth', data.client.primary_dob || '', '', '', 'Loan Repayment ($)', (getOwnerOccupiedProperty(data.properties) as any)?.loan_repayment_amount || '', (getOwnerOccupiedProperty(data.properties) as any)?.loan_repayment_frequency || '', '', '', '', '']);
+  formData.push(['', '', '', '', 'Monthly Interest Repayment ($)', getOwnerOccupiedProperty(data.properties)?.monthly_interest_repayment || '', '', '', '', '', '']);
   formData.push(['', '', '', '', 'Net Monthly Cashflow ($)', getOwnerOccupiedProperty(data.properties)?.net_monthly_cashflow || '', '', '', '', '', '']);
 
   // Secondary Contact section
@@ -160,6 +161,8 @@ export function generateVownetTemplate(data: VownetExportData): XLSX.WorkBook {
     formData.push(['', '', '', '', 'Loan Remaining ($)', prop.loan_remaining || '', '', '', '', '', '']);
     formData.push(['', '', '', '', 'Interest Rate (%)', formatPercent(prop.interest_rate), '', '', '', '', '']);
     formData.push(['', '', '', '', 'Ownership (%)', formatPercent(prop.ownership_percentage), '', '', '', '', '']);
+    formData.push(['', '', '', '', 'Lender / Bank', (prop as any).lender_name || '', '', '', '', '', '']);
+    formData.push(['', '', '', '', 'Loan Repayment ($)', (prop as any).loan_repayment_amount || '', (prop as any).loan_repayment_frequency || 'monthly', '', '', '', '']);
     formData.push(['', '', '', '', 'Monthly Interest Repayment ($)', prop.monthly_interest_repayment || '', '', '', '', '', '']);
     formData.push(['', '', '', '', 'Monthly Body Corporate/Strata Fees', prop.monthly_body_corporate || '', '', '', '', '', '']);
     formData.push(['', '', '', '', 'Monthly Council Rate Charges', prop.monthly_council_rates || '', '', '', '', '', '']);
