@@ -1881,6 +1881,8 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
                   <tr><td class="label">Loan Remaining ($)</td><td class="value currency">${formatCurrency(ownerOccupied?.loan_remaining)}</td></tr>
                   <tr><td class="label">Interest Rate (%)</td><td class="value percent">${formatPercent(ownerOccupied?.interest_rate)}</td></tr>
                   <tr><td class="label">Ownership (%)</td><td class="value percent">${formatPercent(ownerOccupied?.ownership_percentage)}</td></tr>
+                  ${ownerOccupied?.lender_name ? `<tr><td class="label">Lender / Bank</td><td class="value">${ownerOccupied.lender_name}</td></tr>` : ''}
+                  ${ownerOccupied?.loan_repayment_amount ? `<tr><td class="label">Loan Repayment</td><td class="value currency">${formatCurrency(ownerOccupied.loan_repayment_amount)} <span style="font-size:7px;color:#999">(${ownerOccupied.loan_repayment_frequency || 'monthly'})</span></td></tr>` : ''}
                   <tr><td class="label">Monthly Interest Repayment</td><td class="value currency">${formatCurrency(ownerOccupied?.monthly_interest_repayment)}</td></tr>
                   <tr><td class="label">Net Monthly Cashflow</td><td class="value currency">${formatCurrency(ownerOccupied?.net_monthly_cashflow)}</td></tr>
                 </table>
