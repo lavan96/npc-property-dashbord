@@ -221,7 +221,14 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
         sourced_by: (property.sourced_by as SourcedByType) || 'unknown',
         deal_closed_at: property.deal_closed_at ? property.deal_closed_at.split('T')[0] : '',
         sourced_notes: property.sourced_notes || '',
-        loan_repayment: createExpenseField(Number(property.loan_repayment_amount) || 0),
+        loan_repayment: {
+          value: Number(property.loan_repayment_amount) || 0,
+          frequency: (property.loan_repayment_frequency as FrequencyType) || 'monthly',
+          monthlyValue: convertToMonthly(
+            Number(property.loan_repayment_amount) || 0,
+            (property.loan_repayment_frequency as FrequencyType) || 'monthly'
+          ),
+        },
         lender_name: property.lender_name || '',
       });
     }
