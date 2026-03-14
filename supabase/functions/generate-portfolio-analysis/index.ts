@@ -28,6 +28,9 @@ interface ClientProperty {
   weekly_rental_income: number | null;
   total_monthly_expenditure: number | null;
   net_monthly_cashflow: number | null;
+  loan_repayment_amount: number | null;
+  loan_repayment_frequency: string | null;
+  lender_name: string | null;
 }
 
 interface ClientData {
