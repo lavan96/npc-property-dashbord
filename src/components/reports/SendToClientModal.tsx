@@ -34,6 +34,7 @@ const tierLabels: Record<string, string> = {
   compass: "Investor's Compass",
   briefing: 'Executive Briefing',
   snapshot: 'Snapshot',
+  cashflow: 'Cash Flow Analysis',
 };
 
 export function SendToClientModal({
