@@ -131,6 +131,8 @@ serve(async (req) => {
           client_id: portalUser.client_id,
           email: portalUser.email,
           name: displayName,
+          has_completed_onboarding: portalUser.has_completed_onboarding ?? false,
+          has_accepted_terms: portalUser.has_accepted_terms ?? false,
         },
         session_token: sessionToken,
         expires_at: expiresAt.toISOString()
