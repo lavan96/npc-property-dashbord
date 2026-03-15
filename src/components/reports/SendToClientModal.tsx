@@ -120,7 +120,7 @@ export function SendToClientModal({
       let finalStoragePath = storagePath;
       if (!finalStoragePath && onGeneratePDF) {
         toast.info('Generating PDF before sending...');
-        finalStoragePath = await onGeneratePDF();
+        finalStoragePath = await onGeneratePDF(isCashflow ? chartOptions : undefined);
         if (!finalStoragePath) {
           toast.error('PDF generation failed. Please try again.');
           setSending(false);
