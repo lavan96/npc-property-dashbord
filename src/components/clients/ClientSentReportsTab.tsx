@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import {
-  FileText, Loader2, EyeOff, Clock, Send, Plus, Trash2,
+  FileText, Loader2, EyeOff, Clock, Send, Plus, Trash2, Download,
   BarChart3, PiggyBank, TrendingUp, FileBarChart, Upload, X, File, CheckCircle2
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
