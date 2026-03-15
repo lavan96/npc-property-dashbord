@@ -433,29 +433,11 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
     }).format(value);
   };
 
-  const FrequencySelect = ({ value, onChange }: { value: FrequencyType; onChange: (v: FrequencyType) => void }) => (
-    <Select value={value} onValueChange={(v) => onChange(v as FrequencyType)}>
-      <SelectTrigger className="w-[100px]">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="weekly">Weekly</SelectItem>
-        <SelectItem value="monthly">Monthly</SelectItem>
-        <SelectItem value="quarterly">Quarterly</SelectItem>
-        <SelectItem value="annually">Annually</SelectItem>
-      </SelectContent>
-    </Select>
-  );
-
-  const ExpenseInput = ({
-    label,
-    field,
+  const renderExpenseInput = (
+    label: string,
+    field: keyof Pick<PropertyFormData, 'body_corporate' | 'council_rates' | 'water_rates' | 'repairs_maintenance' | 'landlord_insurance' | 'building_insurance' | 'rental_income' | 'loan_repayment'>,
     showMonthlyEquivalent = true,
-  }: {
-    label: string;
-    field: keyof Pick<PropertyFormData, 'body_corporate' | 'council_rates' | 'water_rates' | 'repairs_maintenance' | 'landlord_insurance' | 'building_insurance' | 'rental_income' | 'loan_repayment'>;
-    showMonthlyEquivalent?: boolean;
-  }) => {
+  ) => {
     const expense = formData[field];
     return (
       <div className="space-y-2">
@@ -471,10 +453,17 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
               placeholder="0"
             />
           </div>
-          <FrequencySelect 
-            value={expense.frequency} 
-            onChange={(v) => updateExpenseField(field, 'frequency', v)} 
-          />
+          <Select value={expense.frequency} onValueChange={(v) => updateExpenseField(field, 'frequency', v as FrequencyType)}>
+            <SelectTrigger className="w-[100px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="weekly">Weekly</SelectItem>
+              <SelectItem value="monthly">Monthly</SelectItem>
+              <SelectItem value="quarterly">Quarterly</SelectItem>
+              <SelectItem value="annually">Annually</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         {showMonthlyEquivalent && expense.frequency !== 'monthly' && expense.value > 0 && (
           <p className="text-xs text-muted-foreground">
