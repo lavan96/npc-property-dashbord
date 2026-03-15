@@ -26,7 +26,7 @@ import {
 import { format, formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { secureStorageUpload } from '@/hooks/useSecureStorage';
+import { secureStorageUpload, secureStorageDownload } from '@/hooks/useSecureStorage';
 
 interface ClientSentReportsTabProps {
   clientId: string;
