@@ -1,6 +1,12 @@
 /**
  * PDF to Images Conversion Utility
- * Uses PDF.js to render PDF pages as PNG images for GPT-4o Vision analysis
+ * Uses PDF.js to render PDF pages as PNG images for GPT-4o Vision analysis.
+ * 
+ * Supports documents of any size (100+ pages) with adaptive rendering:
+ * - Small docs (≤20 pages): render all at high quality
+ * - Medium docs (21-50 pages): render all at medium quality  
+ * - Large docs (51-100 pages): smart sample ~50 pages at compressed quality
+ * - Very large docs (100+ pages): strategic sampling with aggressive compression
  */
 
 // NOTE: We intentionally load PDF.js from a CDN at runtime.
@@ -16,7 +22,6 @@ async function getPdfJs() {
   if (!pdfjsPromise) {
     pdfjsPromise = (async () => {
       const mod = await import(/* @vite-ignore */ `${PDFJS_CDN_BASE}/pdf.min.mjs`);
-      // Set up the worker from the same CDN
       mod.GlobalWorkerOptions.workerSrc = `${PDFJS_CDN_BASE}/pdf.worker.min.mjs`;
       return mod;
     })();
@@ -38,30 +43,56 @@ export interface PdfConversionResult {
   error?: string;
 }
 
-const MAX_PAGES_TO_RENDER = 30; // Increased limit for large documents
-const MAX_PAGES_FOR_VISION_BATCH = 20; // Max images to send in a single vision API call
-const RENDER_SCALE = 2.0; // Higher scale for better OCR quality
-const LARGE_DOC_RENDER_SCALE = 1.5; // Lower scale for large documents to manage payload
-const MAX_DIMENSION = 2048; // Max dimension to avoid memory issues
-const LARGE_DOC_THRESHOLD = 15; // Pages above this use compressed rendering
+// ============= RENDERING CONFIGURATION =============
+
+/** Absolute maximum pages we'll ever render (memory safety) */
+const ABSOLUTE_MAX_PAGES = 60;
+
+/** Thresholds for adaptive quality */
+const SMALL_DOC_THRESHOLD = 20;
+const MEDIUM_DOC_THRESHOLD = 50;
+
+/** Render scales by document size tier */
+const SCALE_HIGH = 2.0;       // Small docs: crisp text
+const SCALE_MEDIUM = 1.5;     // Medium docs: good balance
+const SCALE_COMPRESSED = 1.2; // Large docs: save memory
+
+/** Max pixel dimension per page to avoid memory blowouts */
+const MAX_DIMENSION = 2048;
+
+/** Image format settings per tier */
+interface RenderConfig {
+  scale: number;
+  format: 'image/png' | 'image/jpeg';
+  quality: number | undefined;
+  maxPages: number;
+}
+
+function getRenderConfig(totalPages: number): RenderConfig {
+  if (totalPages <= SMALL_DOC_THRESHOLD) {
+    return { scale: SCALE_HIGH, format: 'image/png', quality: undefined, maxPages: totalPages };
+  }
+  if (totalPages <= MEDIUM_DOC_THRESHOLD) {
+    return { scale: SCALE_MEDIUM, format: 'image/jpeg', quality: 0.85, maxPages: totalPages };
+  }
+  // Large docs: sample strategically
+  return { scale: SCALE_COMPRESSED, format: 'image/jpeg', quality: 0.75, maxPages: ABSOLUTE_MAX_PAGES };
+}
 
 /**
- * Convert a PDF file to an array of base64 PNG images
+ * Convert a PDF file to an array of base64 PNG/JPEG images.
+ * Automatically adapts quality and page selection based on document size.
  */
 export async function convertPdfToImages(
   pdfFile: File,
   onProgress?: (current: number, total: number) => void
 ): Promise<PdfConversionResult> {
   try {
-    console.log('🔄 Starting PDF to image conversion:', pdfFile.name);
+    console.log('🔄 Starting PDF to image conversion:', pdfFile.name, `(${(pdfFile.size / 1024 / 1024).toFixed(1)}MB)`);
     
-    // Read the file as ArrayBuffer
     const arrayBuffer = await pdfFile.arrayBuffer();
-    
-    // Load PDF.js (from CDN)
     const pdfjs = await getPdfJs();
 
-    // Load the PDF document
     const loadingTask = pdfjs.getDocument({
       data: arrayBuffer,
       useSystemFonts: true,
@@ -70,41 +101,33 @@ export async function convertPdfToImages(
     const pdfDoc = await loadingTask.promise;
     const totalPages = pdfDoc.numPages;
     
-    // Determine which pages to render based on document size
-    const pagesToRenderIndices = selectPagesToRender(totalPages);
-    const isLargeDoc = totalPages > LARGE_DOC_THRESHOLD;
-    const renderScale = isLargeDoc ? LARGE_DOC_RENDER_SCALE : RENDER_SCALE;
-    // Use JPEG for large docs to reduce payload size
-    const imageFormat = isLargeDoc ? 'image/jpeg' : 'image/png';
-    const imageQuality = isLargeDoc ? 0.85 : undefined;
+    const config = getRenderConfig(totalPages);
+    const pagesToRender = selectPagesToRender(totalPages, config.maxPages);
     
-    console.log(`📄 PDF loaded: ${totalPages} pages, rendering ${pagesToRenderIndices.length} pages (scale: ${renderScale}, format: ${imageFormat})`);
+    console.log(`📄 PDF loaded: ${totalPages} pages total, rendering ${pagesToRender.length} pages (scale: ${config.scale}, format: ${config.format})`);
     
     const images: PdfPageImage[] = [];
     
-    // Render selected pages
-    for (let i = 0; i < pagesToRenderIndices.length; i++) {
-      const pageNum = pagesToRenderIndices[i];
+    for (let i = 0; i < pagesToRender.length; i++) {
+      const pageNum = pagesToRender[i];
       try {
-        onProgress?.(i + 1, pagesToRenderIndices.length);
-        console.log(`🖼️ Rendering page ${pageNum}/${totalPages} (${i + 1}/${pagesToRenderIndices.length})`);
+        onProgress?.(i + 1, pagesToRender.length);
         
         const page = await pdfDoc.getPage(pageNum);
-        const viewport = page.getViewport({ scale: renderScale });
+        const viewport = page.getViewport({ scale: config.scale });
         
-        // Calculate dimensions (limit to max dimension)
+        // Calculate dimensions with max-dimension cap
         let width = Math.floor(viewport.width);
         let height = Math.floor(viewport.height);
-        let scale = renderScale;
+        let scale = config.scale;
         
         if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
           const ratio = Math.min(MAX_DIMENSION / width, MAX_DIMENSION / height);
           width = Math.floor(width * ratio);
           height = Math.floor(height * ratio);
-          scale = renderScale * ratio;
+          scale = config.scale * ratio;
         }
         
-        // Create canvas
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
         
@@ -115,21 +138,19 @@ export async function convertPdfToImages(
         canvas.width = width;
         canvas.height = height;
         
-        // Fill with white background
+        // White background
         context.fillStyle = '#ffffff';
         context.fillRect(0, 0, width, height);
         
-        // Render the page
         const renderViewport = page.getViewport({ scale });
         await page.render({
           canvasContext: context,
           viewport: renderViewport,
         }).promise;
         
-        // Convert to base64 (JPEG for large docs, PNG for small)
-        const dataUrl = imageQuality 
-          ? canvas.toDataURL(imageFormat, imageQuality)
-          : canvas.toDataURL(imageFormat);
+        const dataUrl = config.quality 
+          ? canvas.toDataURL(config.format, config.quality)
+          : canvas.toDataURL(config.format);
         const base64 = dataUrl.split(',')[1];
         
         images.push({
@@ -139,9 +160,7 @@ export async function convertPdfToImages(
           height,
         });
         
-        console.log(`✅ Page ${pageNum} rendered: ${width}x${height}`);
-        
-        // Clean up canvas to free memory
+        // Free memory immediately
         canvas.width = 0;
         canvas.height = 0;
         
@@ -181,36 +200,46 @@ export async function convertPdfToImages(
 
 /**
  * Strategically select which pages to render based on document size.
- * For property brochures, key info is typically on first pages, middle (floorplans),
- * and last pages (financials/disclaimers).
+ * For property brochures, key info is typically on:
+ * - First pages (cover, key details, specs, pricing)
+ * - Middle pages (floorplans, site plans, inclusions)
+ * - Last pages (financials, disclaimers, cost breakdowns)
+ * 
+ * @param totalPages Total number of pages in the document
+ * @param maxPages Maximum pages to render (from RenderConfig)
  */
-function selectPagesToRender(totalPages: number): number[] {
-  if (totalPages <= MAX_PAGES_TO_RENDER) {
-    // Small doc: render all pages
+function selectPagesToRender(totalPages: number, maxPages: number): number[] {
+  if (totalPages <= maxPages) {
+    // Render ALL pages when within the limit
     return Array.from({ length: totalPages }, (_, i) => i + 1);
   }
   
-  // Large doc: strategic sampling
+  // Strategic sampling for very large documents
   const selected = new Set<number>();
   
-  // Always include first 8 pages (cover, key details, specs)
-  for (let i = 1; i <= Math.min(8, totalPages); i++) {
+  // Priority 1: First 10 pages (cover, key details, specs, pricing)
+  const firstPagesCount = Math.min(10, totalPages);
+  for (let i = 1; i <= firstPagesCount; i++) {
     selected.add(i);
   }
   
-  // Include last 4 pages (financial summaries, disclaimers, cost breakdowns)
-  for (let i = Math.max(totalPages - 3, 1); i <= totalPages; i++) {
+  // Priority 2: Last 6 pages (financial summaries, disclaimers, cost breakdowns)
+  const lastPagesCount = Math.min(6, totalPages);
+  for (let i = Math.max(totalPages - lastPagesCount + 1, 1); i <= totalPages; i++) {
     selected.add(i);
   }
   
-  // Sample evenly from the middle section
-  const middleStart = 9;
-  const middleEnd = totalPages - 4;
+  // Priority 3: Evenly sample the middle section to fill remaining slots
+  const middleStart = firstPagesCount + 1;
+  const middleEnd = totalPages - lastPagesCount;
+  
   if (middleEnd > middleStart) {
+    const remainingSlots = maxPages - selected.size;
     const middlePages = middleEnd - middleStart + 1;
-    const samplesToTake = Math.min(MAX_PAGES_FOR_VISION_BATCH - selected.size, middlePages);
+    const samplesToTake = Math.min(remainingSlots, middlePages);
     
-    if (samplesToTake > 0) {
+    if (samplesToTake > 0 && samplesToTake < middlePages) {
+      // Even distribution across the middle
       const step = middlePages / samplesToTake;
       for (let i = 0; i < samplesToTake; i++) {
         const pageNum = Math.round(middleStart + i * step);
@@ -218,12 +247,17 @@ function selectPagesToRender(totalPages: number): number[] {
           selected.add(pageNum);
         }
       }
+    } else if (samplesToTake >= middlePages) {
+      // Include all middle pages
+      for (let p = middleStart; p <= middleEnd; p++) {
+        selected.add(p);
+      }
     }
   }
   
-  // Sort and limit to MAX_PAGES_TO_RENDER
+  // Sort and enforce absolute max
   const sorted = Array.from(selected).sort((a, b) => a - b);
-  return sorted.slice(0, MAX_PAGES_TO_RENDER);
+  return sorted.slice(0, maxPages);
 }
 
 /**
@@ -248,7 +282,6 @@ export async function imageFileToBase64(file: File): Promise<string> {
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result as string;
-      // Remove data URL prefix to get pure base64
       const base64 = result.split(',')[1];
       resolve(base64);
     };
