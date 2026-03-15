@@ -2718,10 +2718,27 @@ async function executeRescheduleAppointment(args: any) {
   }
 }
 
-async function executeCreateAppointment(args: any) {
-  const { calendar_id, title, start_time, end_time, contact_id, notes } = args;
+async function executeCreateAppointment(sb: any, args: any) {
+  const { calendar_id, title, start_time, end_time, client_id, contact_id, notes } = args;
   if (!calendar_id || !start_time || !end_time) {
     return { error: 'calendar_id, start_time, and end_time are required.' };
+  }
+
+  // Resolve GHL contact ID from client_id if provided
+  let ghlContactId: string | null = contact_id || null;
+  let resolvedClientName: string | null = null;
+
+  if (client_id && !ghlContactId) {
+    const v = await validateClientExists(sb, client_id);
+    if (!v.valid) return { error: v.error };
+    const cid = v.resolvedId || client_id;
+    resolvedClientName = clientName(v.client);
+    const { data: clientRecord } = await sb.from('clients').select('ghl_contact_id').eq('id', cid).maybeSingle();
+    if (clientRecord?.ghl_contact_id) {
+      ghlContactId = clientRecord.ghl_contact_id;
+    } else {
+      console.log(`[create_appointment] Client ${cid} has no ghl_contact_id — creating appointment without contact link`);
+    }
   }
 
   const payload: Record<string, unknown> = {
@@ -2732,13 +2749,13 @@ async function executeCreateAppointment(args: any) {
     title: title || 'New Appointment',
     overrideAvailability: true,
   };
-  if (contact_id) payload.contactId = contact_id;
+  if (ghlContactId) payload.contactId = ghlContactId;
   if (notes) payload.notes = notes;
 
   try {
     const data = await callGHLCalendar(payload);
     if (data.error) return data;
-    return { success: true, message: `Appointment "${title}" created`, event: data.event };
+    return { success: true, message: `Appointment "${title}" created${resolvedClientName ? ` for ${resolvedClientName}` : ''}`, event: data.event };
   } catch (err: any) {
     return { error: `Create appointment failed: ${err.message}` };
   }
