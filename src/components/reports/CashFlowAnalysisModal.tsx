@@ -2340,7 +2340,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         }
       }
       
-      if (chartExportToggles.yieldChart && yieldChartRef.current) {
+      if (activeChartToggles.yieldChart && yieldChartRef.current) {
         try {
           const canvas = await html2canvas(yieldChartRef.current, {
             backgroundColor: '#ffffff',
