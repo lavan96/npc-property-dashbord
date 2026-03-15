@@ -3656,6 +3656,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                   <Printer className="h-4 w-4 mr-2" />
                   Print View
                 </Button>
+                <Button variant="outline" size="sm" onClick={() => setSendToClientOpen(true)}>
+                  <Send className="h-4 w-4 mr-2" />
+                  Send to Client
+                </Button>
               </div>
             </div>
           </DialogHeader>
