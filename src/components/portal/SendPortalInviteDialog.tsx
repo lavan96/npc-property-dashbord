@@ -7,7 +7,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { toast } from 'sonner';
-import { Loader2, Mail, CheckCircle, Copy, AlertCircle, ShieldOff, RefreshCw } from 'lucide-react';
+import { Loader2, Mail, CheckCircle, Copy, AlertCircle, ShieldOff, RefreshCw, CircleDot, FileCheck, GraduationCap } from 'lucide-react';
 
 interface SendPortalInviteDialogProps {
   open: boolean;
