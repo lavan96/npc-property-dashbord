@@ -234,6 +234,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
   // Land tax exclusion toggle
   const [excludeLandTaxFromCashFlow, setExcludeLandTaxFromCashFlow] = useState(false);
 
+  // Send to Client state
+  const [sendToClientOpen, setSendToClientOpen] = useState(false);
+  const [cashFlowStoragePath, setCashFlowStoragePath] = useState<string | null>(null);
+
   // Construction Progress Schedule state
   const [constructionScheduleOpen, setConstructionScheduleOpen] = useState(false);
   const [includeConstructionScheduleInExport, setIncludeConstructionScheduleInExport] = useState(true);
