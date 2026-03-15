@@ -3158,7 +3158,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       // Disclaimer page
       try {
         const globalSettings = await fetchGlobalReportSettings();
-        drawJsPDFDisclaimerPage(pdf, globalSettings);
+        drawJsPDFDisclaimerPage(pdf, globalSettings.contactDetails, globalSettings.disclaimer);
       } catch {
         // Skip disclaimer if settings fail
       }
@@ -3173,9 +3173,9 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         contentType: 'application/pdf',
       });
 
-      if (uploadResult) {
-        setCashFlowStoragePath(uploadResult);
-        return uploadResult;
+      if (uploadResult?.success && uploadResult.path) {
+        setCashFlowStoragePath(uploadResult.path);
+        return uploadResult.path;
       }
       return null;
     } catch (error) {
