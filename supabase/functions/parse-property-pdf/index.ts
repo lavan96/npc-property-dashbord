@@ -72,6 +72,8 @@ interface PageImage {
 
 // ============= GPT-4o VISION EXTRACTION =============
 
+const VISION_BATCH_SIZE = 10; // Max images per API call to avoid token limits
+
 async function extractWithVision(
   images: PageImage[], 
   openaiKey: string, 
@@ -79,6 +81,19 @@ async function extractWithVision(
 ): Promise<ExtractedPropertyData> {
   console.log(`🔍 Analyzing ${images.length} page images with GPT-4o Vision...`);
   
+  // For large documents, process in batches and merge results
+  if (images.length > VISION_BATCH_SIZE) {
+    return await extractWithVisionBatched(images, openaiKey, fileName);
+  }
+  
+  return await extractWithVisionSingle(images, openaiKey, fileName);
+}
+
+async function extractWithVisionSingle(
+  images: PageImage[], 
+  openaiKey: string, 
+  fileName: string
+): Promise<ExtractedPropertyData> {
   const systemPrompt = `You are an expert at extracting property details from Australian real estate documents and brochures.
 Analyze the provided images carefully. These are pages from a property brochure or listing document.
 
@@ -207,46 +222,110 @@ Return JSON format:
 
     console.log('📝 GPT-4o Vision response:', content);
     
-    // Parse JSON from response
-    let jsonStr = content.trim();
-    if (jsonStr.startsWith('```')) {
-      jsonStr = jsonStr.replace(/```json?\n?/g, '').replace(/```$/g, '').trim();
-    }
-    
-    const parsed = JSON.parse(jsonStr);
-    console.log('✅ Parsed Vision result:', JSON.stringify(parsed, null, 2));
-    
-    return {
-      address: parsed.address || undefined,
-      suburb: parsed.suburb || undefined,
-      state: parsed.state || undefined,
-      postcode: parsed.postcode?.toString() || undefined,
-      price: parsed.price || undefined,
-      weeklyRent: parsed.weeklyRent || undefined,
-      bedrooms: parsed.bedrooms || undefined,
-      bathrooms: parsed.bathrooms || undefined,
-      carSpaces: parsed.carSpaces || undefined,
-      landSize: parsed.landSize || undefined,
-      buildSize: parsed.buildSize || undefined,
-      propertyType: parsed.propertyType || undefined,
-      landPrice: parsed.landPrice || undefined,
-      buildPrice: parsed.buildPrice || undefined,
-      isNewBuild: parsed.isNewBuild || false,
-      // Extended fields
-      councilRates: parsed.councilRates || undefined,
-      waterRates: parsed.waterRates || undefined,
-      strataFees: parsed.strataFees || undefined,
-      insuranceEstimate: parsed.insuranceEstimate || undefined,
-      propertyManagementPercent: parsed.propertyManagementPercent || undefined,
-      yearBuilt: parsed.yearBuilt || undefined,
-      stampDuty: parsed.stampDuty || undefined,
-      agentFee: parsed.agentFee || undefined,
-    };
+    return parseVisionResponse(content);
     
   } catch (error) {
     console.error('❌ Vision extraction error:', error);
     throw error;
   }
+}
+
+/**
+ * For large documents (>10 pages), process in batches and merge results.
+ * Each batch extracts what it can, and results are merged with priority
+ * given to non-null values from earlier batches (usually more relevant pages).
+ */
+async function extractWithVisionBatched(
+  images: PageImage[],
+  openaiKey: string,
+  fileName: string
+): Promise<ExtractedPropertyData> {
+  console.log(`📚 Large document: processing ${images.length} pages in batches of ${VISION_BATCH_SIZE}`);
+  
+  const batches: PageImage[][] = [];
+  for (let i = 0; i < images.length; i += VISION_BATCH_SIZE) {
+    batches.push(images.slice(i, i + VISION_BATCH_SIZE));
+  }
+  
+  console.log(`📦 Split into ${batches.length} batches`);
+  
+  let mergedResult: ExtractedPropertyData = {};
+  
+  for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+    const batch = batches[batchIndex];
+    console.log(`🔍 Processing batch ${batchIndex + 1}/${batches.length} (pages: ${batch.map(b => b.pageNumber).join(', ')})`);
+    
+    try {
+      const batchResult = await extractWithVisionSingle(batch, openaiKey, fileName);
+      
+      // Merge: keep existing non-null values, fill in missing ones from new batch
+      mergedResult = mergeExtractedData(mergedResult, batchResult);
+      
+      console.log(`✅ Batch ${batchIndex + 1} complete, merged result has ${Object.values(mergedResult).filter(v => v != null).length} fields`);
+    } catch (batchError) {
+      console.error(`❌ Batch ${batchIndex + 1} failed:`, batchError);
+      // Continue with other batches
+    }
+  }
+  
+  return mergedResult;
+}
+
+/**
+ * Merge two extraction results, preferring non-null values.
+ * First result takes priority for conflicts.
+ */
+function mergeExtractedData(existing: ExtractedPropertyData, incoming: ExtractedPropertyData): ExtractedPropertyData {
+  const result: any = { ...existing };
+  
+  for (const [key, value] of Object.entries(incoming)) {
+    if (value != null && value !== undefined && value !== false) {
+      if (result[key] == null || result[key] === undefined) {
+        result[key] = value;
+      }
+    }
+  }
+  
+  return result;
+}
+
+/**
+ * Parse GPT-4o vision response JSON
+ */
+function parseVisionResponse(content: string): ExtractedPropertyData {
+  let jsonStr = content.trim();
+  if (jsonStr.startsWith('```')) {
+    jsonStr = jsonStr.replace(/```json?\n?/g, '').replace(/```$/g, '').trim();
+  }
+  
+  const parsed = JSON.parse(jsonStr);
+  console.log('✅ Parsed Vision result:', JSON.stringify(parsed, null, 2));
+  
+  return {
+    address: parsed.address || undefined,
+    suburb: parsed.suburb || undefined,
+    state: parsed.state || undefined,
+    postcode: parsed.postcode?.toString() || undefined,
+    price: parsed.price || undefined,
+    weeklyRent: parsed.weeklyRent || undefined,
+    bedrooms: parsed.bedrooms || undefined,
+    bathrooms: parsed.bathrooms || undefined,
+    carSpaces: parsed.carSpaces || undefined,
+    landSize: parsed.landSize || undefined,
+    buildSize: parsed.buildSize || undefined,
+    propertyType: parsed.propertyType || undefined,
+    landPrice: parsed.landPrice || undefined,
+    buildPrice: parsed.buildPrice || undefined,
+    isNewBuild: parsed.isNewBuild || false,
+    councilRates: parsed.councilRates || undefined,
+    waterRates: parsed.waterRates || undefined,
+    strataFees: parsed.strataFees || undefined,
+    insuranceEstimate: parsed.insuranceEstimate || undefined,
+    propertyManagementPercent: parsed.propertyManagementPercent || undefined,
+    yearBuilt: parsed.yearBuilt || undefined,
+    stampDuty: parsed.stampDuty || undefined,
+    agentFee: parsed.agentFee || undefined,
+  };
 }
 
 // ============= SINGLE IMAGE EXTRACTION =============
