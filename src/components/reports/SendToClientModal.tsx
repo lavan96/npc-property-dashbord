@@ -213,12 +213,55 @@ export function SendToClientModal({
             </div>
 
             {/* PDF auto-generation notice */}
-            {!storagePath && onGeneratePDF && (
-              <div className="rounded-md border border-primary/30 bg-primary/5 p-3 flex items-start gap-2">
-                <AlertCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                <p className="text-sm text-muted-foreground">
-                  The PDF will be automatically generated and uploaded when you send.
-                </p>
+            {needsGeneration && (
+              <div className="rounded-md border border-primary/30 bg-primary/5 p-3 space-y-3">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                  <p className="text-sm text-muted-foreground">
+                    The PDF will be automatically generated and uploaded when you send.
+                  </p>
+                </div>
+
+                {/* Chart inclusion options for cashflow */}
+                {isCashflow && (
+                  <div className="space-y-2 pt-1 border-t border-primary/10">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                        <Label className="text-sm font-medium">Include Charts</Label>
+                      </div>
+                      <Switch
+                        checked={includeCharts}
+                        onCheckedChange={handleIncludeChartsToggle}
+                      />
+                    </div>
+                    {includeCharts && (
+                      <div className="pl-6 space-y-1.5">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <Checkbox
+                            checked={chartOptions.cashFlowTrends}
+                            onCheckedChange={(checked) => handleChartOptionToggle('cashFlowTrends', checked === true)}
+                          />
+                          <span className="text-sm text-muted-foreground">Cash Flow Trends</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <Checkbox
+                            checked={chartOptions.yieldChart}
+                            onCheckedChange={(checked) => handleChartOptionToggle('yieldChart', checked === true)}
+                          />
+                          <span className="text-sm text-muted-foreground">Yield Analysis</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <Checkbox
+                            checked={chartOptions.comparisonChart}
+                            onCheckedChange={(checked) => handleChartOptionToggle('comparisonChart', checked === true)}
+                          />
+                          <span className="text-sm text-muted-foreground">Comparison Chart</span>
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
