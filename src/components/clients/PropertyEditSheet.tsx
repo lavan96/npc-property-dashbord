@@ -433,29 +433,11 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
     }).format(value);
   };
 
-  const FrequencySelect = ({ value, onChange }: { value: FrequencyType; onChange: (v: FrequencyType) => void }) => (
-    <Select value={value} onValueChange={(v) => onChange(v as FrequencyType)}>
-      <SelectTrigger className="w-[100px]">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="weekly">Weekly</SelectItem>
-        <SelectItem value="monthly">Monthly</SelectItem>
-        <SelectItem value="quarterly">Quarterly</SelectItem>
-        <SelectItem value="annually">Annually</SelectItem>
-      </SelectContent>
-    </Select>
-  );
-
-  const ExpenseInput = ({
-    label,
-    field,
+  const renderExpenseInput = (
+    label: string,
+    field: keyof Pick<PropertyFormData, 'body_corporate' | 'council_rates' | 'water_rates' | 'repairs_maintenance' | 'landlord_insurance' | 'building_insurance' | 'rental_income' | 'loan_repayment'>,
     showMonthlyEquivalent = true,
-  }: {
-    label: string;
-    field: keyof Pick<PropertyFormData, 'body_corporate' | 'council_rates' | 'water_rates' | 'repairs_maintenance' | 'landlord_insurance' | 'building_insurance' | 'rental_income' | 'loan_repayment'>;
-    showMonthlyEquivalent?: boolean;
-  }) => {
+  ) => {
     const expense = formData[field];
     return (
       <div className="space-y-2">
@@ -471,10 +453,17 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
               placeholder="0"
             />
           </div>
-          <FrequencySelect 
-            value={expense.frequency} 
-            onChange={(v) => updateExpenseField(field, 'frequency', v)} 
-          />
+          <Select value={expense.frequency} onValueChange={(v) => updateExpenseField(field, 'frequency', v as FrequencyType)}>
+            <SelectTrigger className="w-[100px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="weekly">Weekly</SelectItem>
+              <SelectItem value="monthly">Monthly</SelectItem>
+              <SelectItem value="quarterly">Quarterly</SelectItem>
+              <SelectItem value="annually">Annually</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         {showMonthlyEquivalent && expense.frequency !== 'monthly' && expense.value > 0 && (
           <p className="text-xs text-muted-foreground">
@@ -675,7 +664,7 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
                       This property is where you currently live and pay rent. The rent you pay will be treated as a personal expense in borrowing capacity calculations.
                     </p>
                     
-                    <ExpenseInput label="Rent You Pay" field="rental_income" />
+                    {renderExpenseInput("Rent You Pay", "rental_income")}
                   </div>
                 </CardContent>
               </Card>
@@ -874,7 +863,7 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
                 <Building2 className="h-4 w-4" />
                 Loan Repayment
               </h4>
-              <ExpenseInput label="Loan Repayment Amount" field="loan_repayment" />
+              {renderExpenseInput("Loan Repayment Amount", "loan_repayment")}
               
               <div className="space-y-2">
                 <Label className="text-xs">Lender / Bank</Label>
@@ -892,17 +881,17 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
                 <Separator />
                 <div className="space-y-4">
                   <h4 className="text-sm font-medium">Rental Income</h4>
-                  <ExpenseInput label="Rental Income" field="rental_income" />
+                  {renderExpenseInput("Rental Income", "rental_income")}
                 </div>
 
                 <Separator />
                 <div className="space-y-4">
                   <h4 className="text-sm font-medium">Monthly Expenses</h4>
                   <div className="grid grid-cols-2 gap-4">
-                    <ExpenseInput label="Body Corporate" field="body_corporate" />
-                    <ExpenseInput label="Council Rates" field="council_rates" />
-                    <ExpenseInput label="Water Rates" field="water_rates" />
-                    <ExpenseInput label="Repairs & Maintenance" field="repairs_maintenance" />
+                    {renderExpenseInput("Body Corporate", "body_corporate")}
+                    {renderExpenseInput("Council Rates", "council_rates")}
+                    {renderExpenseInput("Water Rates", "water_rates")}
+                    {renderExpenseInput("Repairs & Maintenance", "repairs_maintenance")}
                     <div className="space-y-2">
                       <Label className="text-xs">Property Management (%)</Label>
                       <div className="flex gap-2">
@@ -924,8 +913,8 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
                         </p>
                       )}
                     </div>
-                    <ExpenseInput label="Landlord Insurance" field="landlord_insurance" />
-                    <ExpenseInput label="Building Insurance" field="building_insurance" />
+                    {renderExpenseInput("Landlord Insurance", "landlord_insurance")}
+                    {renderExpenseInput("Building Insurance", "building_insurance")}
                   </div>
                 </div>
 
