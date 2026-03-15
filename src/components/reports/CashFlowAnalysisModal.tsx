@@ -2352,7 +2352,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         }
       }
       
-      if (chartExportToggles.comparisonChart && comparisonChartRef.current) {
+      if (activeChartToggles.comparisonChart && comparisonChartRef.current) {
         try {
           const canvas = await html2canvas(comparisonChartRef.current, {
             backgroundColor: '#ffffff',
