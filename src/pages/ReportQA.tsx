@@ -704,15 +704,21 @@ export default function ReportQA() {
   };
 
   const buildChatHistoryForRequest = (history: ChatMessage[]) => {
+    // Send up to MAX_CHAT_HISTORY_MESSAGES recent messages
     const recentHistory = history.slice(-MAX_CHAT_HISTORY_MESSAGES);
 
-    return recentHistory.map((msg) => ({
+    const formatted = recentHistory.map((msg) => ({
       role: msg.role,
       content:
         msg.content.length > MAX_HISTORY_MESSAGE_CHARS
           ? `${msg.content.slice(0, MAX_HISTORY_MESSAGE_CHARS)}\n\n[Message truncated for context window]`
           : msg.content,
     }));
+
+    // If there are older messages beyond the window, flag for server-side summarization
+    const needsSummary = history.length > SUMMARY_THRESHOLD;
+
+    return { formatted, needsSummary, totalMessages: history.length };
   };
 
   const handleSendMessage = async (retryContent?: string, retryAudioUrl?: string) => {
