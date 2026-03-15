@@ -863,7 +863,7 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
                 <Building2 className="h-4 w-4" />
                 Loan Repayment
               </h4>
-              <ExpenseInput label="Loan Repayment Amount" field="loan_repayment" />
+              {renderExpenseInput("Loan Repayment Amount", "loan_repayment")}
               
               <div className="space-y-2">
                 <Label className="text-xs">Lender / Bank</Label>
