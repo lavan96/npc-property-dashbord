@@ -2320,6 +2320,9 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       const sectionBg = { r: 254, g: 249, b: 235 }; // Warmer cream #fef9eb
       const negativeRed = { r: 185, g: 28, b: 28 }; // Darker red for negatives #B91C1C
 
+      // Use chartOverrides if provided (from Send to Client), otherwise use the component's toggle state
+      const activeChartToggles = options?.chartOverrides || chartExportToggles;
+      
       // Capture charts first (only if toggles are enabled)
       let cashFlowChartImage: string | null = null;
       let yieldChartImage: string | null = null;
