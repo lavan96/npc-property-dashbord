@@ -2257,7 +2257,8 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
   };
 
   // Export single report 10-year cash flow as PDF with charts
-  const exportSingleReportPDF = useCallback(async () => {
+  // When returnBlob is true, returns the PDF blob instead of triggering a download
+  const exportSingleReportPDF = useCallback(async (options?: { returnBlob?: boolean }): Promise<Blob | void> => {
     if (!report || !baseFinancialData) return;
 
     try {
