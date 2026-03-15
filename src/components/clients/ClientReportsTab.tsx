@@ -80,18 +80,18 @@ interface ClientReportsTabProps {
   onOpenEmailCompose: () => void;
 }
 
-type ReportType = 'all' | 'portfolio' | 'vownet' | 'investment' | 'property' | 'borrowing';
+type ReportType = 'all' | 'portfolio' | 'vownet' | 'investment' | 'property' | 'borrowing' | 'published';
 type SortMode = 'newest' | 'oldest' | 'name';
 
 interface UnifiedReport {
   id: string;
-  type: 'vownet' | 'portfolio' | 'property' | 'investment' | 'borrowing';
+  type: 'vownet' | 'portfolio' | 'property' | 'investment' | 'borrowing' | 'published';
   name: string;
   generatedAt: string;
   status: 'completed' | 'pending' | 'failed';
   fileUrl?: string | null;
   propertyAddress?: string;
-  source: 'file' | 'investment_report' | 'portfolio_report' | 'borrowing_assessment';
+  source: 'file' | 'investment_report' | 'portfolio_report' | 'borrowing_assessment' | 'portal_report';
   // Portfolio-specific fields
   healthScore?: number | null;
   overallHealth?: string | null;
@@ -225,7 +225,30 @@ export function ClientReportsTab({
     },
   });
 
-  // Delete portfolio report mutation
+  // Fetch published portal reports for this client
+  const { data: portalReports = [] } = useQuery({
+    queryKey: ['client-portal-reports-unified', clientId],
+    enabled: canFetchReports,
+    retry: false,
+    queryFn: async () => {
+      const { data, error } = await invokeSecureFunction('get-client-data', {
+        listMode: true,
+        listOptions: {
+          table: 'client_portal_reports',
+          select: '*',
+          filters: { client_id: clientId },
+          orderBy: 'published_at',
+          order_asc: false,
+        },
+      });
+      if (error) {
+        console.warn('[ClientReportsTab] Failed to fetch portal reports:', error.message);
+        return [] as any[];
+      }
+      return (data?.records || []) as any[];
+    },
+  });
+
   const deletePortfolioMutation = useMutation({
     mutationFn: async (reportId: string) => {
       const { error } = await invokeSecureFunction('manage-client-data', {
@@ -331,8 +354,21 @@ export function ClientReportsTab({
       });
     });
 
+    // Published portal reports
+    portalReports.forEach((r: any) => {
+      reports.push({
+        id: `portal-${r.id}`,
+        type: 'published',
+        name: r.report_title || 'Published Report',
+        generatedAt: r.published_at || r.created_at,
+        status: 'completed',
+        fileUrl: r.storage_path,
+        source: 'portal_report',
+      });
+    });
+
     return reports;
-  }, [reportFiles, investmentReports, portfolioReports, bcAssessments]);
+  }, [reportFiles, investmentReports, portfolioReports, bcAssessments, portalReports]);
 
   // Filter + sort
   const filteredReports = useMemo(() => {
@@ -355,6 +391,7 @@ export function ClientReportsTab({
     investment: allReports.filter(r => r.type === 'investment').length,
     property: allReports.filter(r => r.type === 'property').length,
     borrowing: allReports.filter(r => r.type === 'borrowing').length,
+    published: allReports.filter(r => r.type === 'published').length,
   }), [allReports]);
 
   const getReportIcon = (type: string) => {
@@ -364,6 +401,7 @@ export function ClientReportsTab({
       case 'borrowing': return <Landmark className="h-4 w-4" />;
       case 'property':
       case 'investment': return <Building2 className="h-4 w-4" />;
+      case 'published': return <Send className="h-4 w-4" />;
       default: return <FileText className="h-4 w-4" />;
     }
   };
@@ -375,6 +413,7 @@ export function ClientReportsTab({
       case 'investment': return 'bg-secondary/50 text-secondary-foreground border-secondary';
       case 'borrowing': return 'bg-primary/15 text-primary border-primary/25';
       case 'property': return 'bg-muted text-muted-foreground border-border';
+      case 'published': return 'bg-accent/50 text-accent-foreground border-accent';
       default: return '';
     }
   };
@@ -562,6 +601,7 @@ export function ClientReportsTab({
     { key: 'vownet', label: 'Client Forms' },
     { key: 'investment', label: 'Investment' },
     { key: 'property', label: 'Property' },
+    { key: 'published', label: 'Published' },
   ];
 
   return (
@@ -867,7 +907,8 @@ export function ClientReportsTab({
                   </>
                 )}
 
-                {/* Send to Client Portal */}
+                {/* Send to Client Portal (hide for already-published portal reports) */}
+                {report.source !== 'portal_report' && (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -877,6 +918,7 @@ export function ClientReportsTab({
                 >
                   <Send className="h-4 w-4" />
                 </Button>
+                )}
 
                 {/* More actions (delete for portfolio reports) */}
                 {report.source === 'portfolio_report' && (

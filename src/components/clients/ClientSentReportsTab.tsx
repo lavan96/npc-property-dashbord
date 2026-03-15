@@ -20,13 +20,13 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import {
-  FileText, Loader2, EyeOff, Clock, Send, Plus, Trash2,
+  FileText, Loader2, EyeOff, Clock, Send, Plus, Trash2, Download,
   BarChart3, PiggyBank, TrendingUp, FileBarChart, Upload, X, File, CheckCircle2
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { secureStorageUpload } from '@/hooks/useSecureStorage';
+import { secureStorageUpload, secureStorageDownload } from '@/hooks/useSecureStorage';
 
 interface ClientSentReportsTabProps {
   clientId: string;
@@ -57,6 +57,33 @@ export function ClientSentReportsTab({ clientId, clientName }: ClientSentReports
   const [publishing, setPublishing] = useState(false);
   const [reportToDelete, setReportToDelete] = useState<any>(null);
   const [deleting, setDeleting] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  const handleDownload = async (report: any) => {
+    if (!report.storage_path) {
+      toast.error('No file available for this report');
+      return;
+    }
+    setDownloadingId(report.id);
+    try {
+      const result = await secureStorageDownload('client-files', report.storage_path);
+      if (!result.success || !result.blob) {
+        throw new Error(result.error || 'Download failed');
+      }
+      const url = URL.createObjectURL(result.blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const ext = report.storage_path.split('.').pop() || 'pdf';
+      a.download = `${(report.report_title || 'Report').replace(/\s+/g, '_')}.${ext}`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Report downloaded');
+    } catch (err: any) {
+      toast.error('Failed to download: ' + (err.message || 'Unknown error'));
+    } finally {
+      setDownloadingId(null);
+    }
+  };
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -282,6 +309,20 @@ export function ClientSentReportsTab({ clientId, clientName }: ClientSentReports
                       <span className="text-xs text-muted-foreground hidden sm:inline">
                         {report.published_at && format(new Date(report.published_at), 'dd MMM yyyy')}
                       </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => handleDownload(report)}
+                        disabled={downloadingId === report.id || !report.storage_path}
+                        title="Download report"
+                      >
+                        {downloadingId === report.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Download className="h-3.5 w-3.5" />
+                        )}
+                      </Button>
                       <Button
                         variant="ghost"
                         size="icon"
