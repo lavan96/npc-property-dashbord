@@ -888,10 +888,10 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
                 <div className="space-y-4">
                   <h4 className="text-sm font-medium">Monthly Expenses</h4>
                   <div className="grid grid-cols-2 gap-4">
-                    <ExpenseInput label="Body Corporate" field="body_corporate" />
-                    <ExpenseInput label="Council Rates" field="council_rates" />
-                    <ExpenseInput label="Water Rates" field="water_rates" />
-                    <ExpenseInput label="Repairs & Maintenance" field="repairs_maintenance" />
+                    {renderExpenseInput("Body Corporate", "body_corporate")}
+                    {renderExpenseInput("Council Rates", "council_rates")}
+                    {renderExpenseInput("Water Rates", "water_rates")}
+                    {renderExpenseInput("Repairs & Maintenance", "repairs_maintenance")}
                     <div className="space-y-2">
                       <Label className="text-xs">Property Management (%)</Label>
                       <div className="flex gap-2">
