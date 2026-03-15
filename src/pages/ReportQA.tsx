@@ -1626,7 +1626,7 @@ export default function ReportQA() {
               Upload PDF reports to use as context. Add multiple for comparison.
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex-1 flex flex-col space-y-4">
+          <CardContent className="flex-1 flex flex-col space-y-4 min-h-0 overflow-hidden">
             {/* Upload Zone */}
             <div
               className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer
