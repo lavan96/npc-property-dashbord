@@ -4567,7 +4567,7 @@ async function executeTool(sb: any, name: string, args: any, userId: string): Pr
     case 'get_appointments_for_client': return executeGetAppointmentsForClient(sb, args);
     case 'search_calendar_events': return executeSearchCalendarEvents(args);
     case 'reschedule_appointment': return executeRescheduleAppointment(args);
-    case 'create_appointment': return executeCreateAppointment(args);
+    case 'create_appointment': return executeCreateAppointment(sb, args);
     case 'cancel_appointment': return executeCancelAppointment(args);
     case 'get_calendars': return executeGetCalendars();
     case 'get_free_slots': return executeGetFreeSlots(args);
