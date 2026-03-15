@@ -83,7 +83,7 @@ function base64ToBlob(base64: string, contentType: string = 'application/octet-s
     chunks.push(chunk);
   }
   
-  return new Blob(chunks, { type: contentType });
+  return new Blob(chunks as unknown as BlobPart[], { type: contentType });
 }
 
 /**
