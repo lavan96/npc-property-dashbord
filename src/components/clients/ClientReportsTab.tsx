@@ -601,6 +601,7 @@ export function ClientReportsTab({
     { key: 'vownet', label: 'Client Forms' },
     { key: 'investment', label: 'Investment' },
     { key: 'property', label: 'Property' },
+    { key: 'published', label: 'Published' },
   ];
 
   return (
