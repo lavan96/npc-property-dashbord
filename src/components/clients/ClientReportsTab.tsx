@@ -354,8 +354,21 @@ export function ClientReportsTab({
       });
     });
 
+    // Published portal reports
+    portalReports.forEach((r: any) => {
+      reports.push({
+        id: `portal-${r.id}`,
+        type: 'published',
+        name: r.report_title || 'Published Report',
+        generatedAt: r.published_at || r.created_at,
+        status: 'completed',
+        fileUrl: r.storage_path,
+        source: 'portal_report',
+      });
+    });
+
     return reports;
-  }, [reportFiles, investmentReports, portfolioReports, bcAssessments]);
+  }, [reportFiles, investmentReports, portfolioReports, bcAssessments, portalReports]);
 
   // Filter + sort
   const filteredReports = useMemo(() => {
