@@ -913,8 +913,8 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
                         </p>
                       )}
                     </div>
-                    <ExpenseInput label="Landlord Insurance" field="landlord_insurance" />
-                    <ExpenseInput label="Building Insurance" field="building_insurance" />
+                    {renderExpenseInput("Landlord Insurance", "landlord_insurance")}
+                    {renderExpenseInput("Building Insurance", "building_insurance")}
                   </div>
                 </div>
 
