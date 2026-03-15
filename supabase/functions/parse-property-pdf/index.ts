@@ -25,7 +25,6 @@ interface ExtractedPropertyData {
   landPrice?: number;
   buildPrice?: number;
   isNewBuild?: boolean;
-  // Extended fields for pre-generation overrides
   councilRates?: number;
   waterRates?: number;
   strataFees?: number;
@@ -52,7 +51,6 @@ interface StructuredPropertyPayload {
   landPrice?: number;
   buildPrice?: number;
   isNewBuild: boolean;
-  // Extended fields
   councilRates?: number;
   waterRates?: number;
   strataFees?: number;
@@ -70,31 +68,23 @@ interface PageImage {
   height: number;
 }
 
-// ============= GPT-4o VISION EXTRACTION =============
+// ============= VISION EXTRACTION CONFIG =============
 
-const VISION_BATCH_SIZE = 10; // Max images per API call to avoid token limits
+/**
+ * Max images per single API call. GPT-4o can handle ~20 images but
+ * we keep it at 8 to stay well within token limits and improve reliability.
+ */
+const VISION_BATCH_SIZE = 8;
 
-async function extractWithVision(
-  images: PageImage[], 
-  openaiKey: string, 
-  fileName: string
-): Promise<ExtractedPropertyData> {
-  console.log(`🔍 Analyzing ${images.length} page images with GPT-4o Vision...`);
-  
-  // For large documents, process in batches and merge results
-  if (images.length > VISION_BATCH_SIZE) {
-    return await extractWithVisionBatched(images, openaiKey, fileName);
-  }
-  
-  return await extractWithVisionSingle(images, openaiKey, fileName);
-}
+/**
+ * Max concurrent batch calls. We run 2 batches in parallel to speed up
+ * large document processing while staying within rate limits.
+ */
+const MAX_PARALLEL_BATCHES = 2;
 
-async function extractWithVisionSingle(
-  images: PageImage[], 
-  openaiKey: string, 
-  fileName: string
-): Promise<ExtractedPropertyData> {
-  const systemPrompt = `You are an expert at extracting property details from Australian real estate documents and brochures.
+// ============= SYSTEM PROMPT =============
+
+const EXTRACTION_SYSTEM_PROMPT = `You are an expert at extracting property details from Australian real estate documents and brochures.
 Analyze the provided images carefully. These are pages from a property brochure or listing document.
 
 Extract ALL property information you can find, including:
@@ -131,10 +121,9 @@ Pay special attention to:
 
 Return ONLY valid JSON with these exact fields (use null for values not found).`;
 
-  const userContent: any[] = [
-    {
-      type: "text",
-      text: `Extract all property details from these ${images.length} page(s) of the document "${fileName}".
+function buildUserPrompt(imageCount: number, fileName: string, batchInfo?: string): string {
+  const batchNote = batchInfo ? `\n${batchInfo}` : '';
+  return `Extract all property details from these ${imageCount} page(s) of the document "${fileName}".${batchNote}
 
 Return JSON format:
 {
@@ -161,20 +150,48 @@ Return JSON format:
   "yearBuilt": numeric year of construction,
   "stampDuty": numeric stamp duty amount,
   "agentFee": numeric agent/buyer's agent fee
-}`
+}`;
+}
+
+// ============= GPT-4o VISION EXTRACTION =============
+
+async function extractWithVision(
+  images: PageImage[], 
+  openaiKey: string, 
+  fileName: string
+): Promise<ExtractedPropertyData> {
+  console.log(`🔍 Analyzing ${images.length} page images with GPT-4o Vision...`);
+  
+  if (images.length <= VISION_BATCH_SIZE) {
+    return await extractWithVisionSingle(images, openaiKey, fileName);
+  }
+  
+  return await extractWithVisionBatched(images, openaiKey, fileName);
+}
+
+async function extractWithVisionSingle(
+  images: PageImage[], 
+  openaiKey: string, 
+  fileName: string,
+  batchInfo?: string
+): Promise<ExtractedPropertyData> {
+  const userContent: any[] = [
+    {
+      type: "text",
+      text: buildUserPrompt(images.length, fileName, batchInfo),
     }
   ];
 
-  // Add all page images
   for (const image of images) {
+    // Detect format from base64 header or default to jpeg for compressed images
+    const mimeType = image.base64.startsWith('/9j/') ? 'image/jpeg' : 'image/png';
     userContent.push({
       type: "image_url",
       image_url: {
-        url: `data:image/png;base64,${image.base64}`,
-        detail: "high" // Use high detail for better text extraction
+        url: `data:${mimeType};base64,${image.base64}`,
+        detail: "high"
       }
     });
-    console.log(`📷 Added page ${image.pageNumber} image (${image.width}x${image.height})`);
   }
 
   try {
@@ -187,11 +204,11 @@ Return JSON format:
       body: JSON.stringify({
         model: 'gpt-4o',
         messages: [
-          { role: 'system', content: systemPrompt },
+          { role: 'system', content: EXTRACTION_SYSTEM_PROMPT },
           { role: 'user', content: userContent }
         ],
         temperature: 0.1,
-        max_tokens: 2000,
+        max_tokens: 3000,
       }),
     });
 
@@ -220,7 +237,7 @@ Return JSON format:
       metadata: { function: 'parse-property-pdf', action: 'vision-extract', pages: images.length },
     });
 
-    console.log('📝 GPT-4o Vision response:', content);
+    console.log(`📝 GPT-4o Vision response (${images.length} pages):`, content.substring(0, 200));
     
     return parseVisionResponse(content);
     
@@ -231,40 +248,53 @@ Return JSON format:
 }
 
 /**
- * For large documents (>10 pages), process in batches and merge results.
- * Each batch extracts what it can, and results are merged with priority
- * given to non-null values from earlier batches (usually more relevant pages).
+ * Process large documents in batches with controlled parallelism.
+ * - Splits images into batches of VISION_BATCH_SIZE
+ * - Runs up to MAX_PARALLEL_BATCHES concurrently
+ * - Merges all results with priority to earlier pages (cover/specs)
  */
 async function extractWithVisionBatched(
   images: PageImage[],
   openaiKey: string,
   fileName: string
 ): Promise<ExtractedPropertyData> {
-  console.log(`📚 Large document: processing ${images.length} pages in batches of ${VISION_BATCH_SIZE}`);
-  
+  // Create batches
   const batches: PageImage[][] = [];
   for (let i = 0; i < images.length; i += VISION_BATCH_SIZE) {
     batches.push(images.slice(i, i + VISION_BATCH_SIZE));
   }
   
-  console.log(`📦 Split into ${batches.length} batches`);
+  console.log(`📚 Large document: ${images.length} pages → ${batches.length} batches (batch size: ${VISION_BATCH_SIZE}, parallel: ${MAX_PARALLEL_BATCHES})`);
   
   let mergedResult: ExtractedPropertyData = {};
   
-  for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
-    const batch = batches[batchIndex];
-    console.log(`🔍 Processing batch ${batchIndex + 1}/${batches.length} (pages: ${batch.map(b => b.pageNumber).join(', ')})`);
+  // Process batches with controlled parallelism
+  for (let i = 0; i < batches.length; i += MAX_PARALLEL_BATCHES) {
+    const parallelBatches = batches.slice(i, i + MAX_PARALLEL_BATCHES);
     
-    try {
-      const batchResult = await extractWithVisionSingle(batch, openaiKey, fileName);
+    const promises = parallelBatches.map((batch, offset) => {
+      const batchIndex = i + offset;
+      const pageRange = `${batch[0].pageNumber}-${batch[batch.length - 1].pageNumber}`;
+      const batchInfo = `This is batch ${batchIndex + 1} of ${batches.length} (pages ${pageRange} of a ${images.length}-page document). Extract whatever property information is visible on these pages.`;
       
-      // Merge: keep existing non-null values, fill in missing ones from new batch
-      mergedResult = mergeExtractedData(mergedResult, batchResult);
+      console.log(`🔍 Starting batch ${batchIndex + 1}/${batches.length} (pages: ${pageRange})`);
       
-      console.log(`✅ Batch ${batchIndex + 1} complete, merged result has ${Object.values(mergedResult).filter(v => v != null).length} fields`);
-    } catch (batchError) {
-      console.error(`❌ Batch ${batchIndex + 1} failed:`, batchError);
-      // Continue with other batches
+      return extractWithVisionSingle(batch, openaiKey, fileName, batchInfo)
+        .then(result => ({ batchIndex, result, error: null as Error | null }))
+        .catch(error => {
+          console.error(`❌ Batch ${batchIndex + 1} failed:`, error);
+          return { batchIndex, result: {} as ExtractedPropertyData, error };
+        });
+    });
+    
+    const results = await Promise.all(promises);
+    
+    for (const { batchIndex, result, error } of results) {
+      if (!error) {
+        mergedResult = mergeExtractedData(mergedResult, result);
+        const fieldCount = Object.values(mergedResult).filter(v => v != null).length;
+        console.log(`✅ Batch ${batchIndex + 1} merged (${fieldCount} fields populated)`);
+      }
     }
   }
   
@@ -272,17 +302,26 @@ async function extractWithVisionBatched(
 }
 
 /**
- * Merge two extraction results, preferring non-null values.
- * First result takes priority for conflicts.
+ * Merge two extraction results.
+ * - For the address/suburb/state/postcode: prefer non-null from first result
+ * - For numeric fields: prefer the first non-null value (earlier pages are usually more authoritative)
+ * - For isNewBuild: true takes precedence (if ANY page indicates it's new build)
  */
 function mergeExtractedData(existing: ExtractedPropertyData, incoming: ExtractedPropertyData): ExtractedPropertyData {
   const result: any = { ...existing };
   
   for (const [key, value] of Object.entries(incoming)) {
-    if (value != null && value !== undefined && value !== false) {
-      if (result[key] == null || result[key] === undefined) {
-        result[key] = value;
-      }
+    if (value == null || value === undefined) continue;
+    
+    // Special handling: isNewBuild — true is sticky
+    if (key === 'isNewBuild' && value === true) {
+      result[key] = true;
+      continue;
+    }
+    
+    // Only fill in missing fields, don't overwrite existing
+    if (result[key] == null || result[key] === undefined) {
+      result[key] = value;
     }
   }
   
@@ -290,7 +329,7 @@ function mergeExtractedData(existing: ExtractedPropertyData, incoming: Extracted
 }
 
 /**
- * Parse GPT-4o vision response JSON
+ * Parse GPT-4o vision response JSON, handling markdown code blocks
  */
 function parseVisionResponse(content: string): ExtractedPropertyData {
   let jsonStr = content.trim();
@@ -298,34 +337,38 @@ function parseVisionResponse(content: string): ExtractedPropertyData {
     jsonStr = jsonStr.replace(/```json?\n?/g, '').replace(/```$/g, '').trim();
   }
   
-  const parsed = JSON.parse(jsonStr);
-  console.log('✅ Parsed Vision result:', JSON.stringify(parsed, null, 2));
-  
-  return {
-    address: parsed.address || undefined,
-    suburb: parsed.suburb || undefined,
-    state: parsed.state || undefined,
-    postcode: parsed.postcode?.toString() || undefined,
-    price: parsed.price || undefined,
-    weeklyRent: parsed.weeklyRent || undefined,
-    bedrooms: parsed.bedrooms || undefined,
-    bathrooms: parsed.bathrooms || undefined,
-    carSpaces: parsed.carSpaces || undefined,
-    landSize: parsed.landSize || undefined,
-    buildSize: parsed.buildSize || undefined,
-    propertyType: parsed.propertyType || undefined,
-    landPrice: parsed.landPrice || undefined,
-    buildPrice: parsed.buildPrice || undefined,
-    isNewBuild: parsed.isNewBuild || false,
-    councilRates: parsed.councilRates || undefined,
-    waterRates: parsed.waterRates || undefined,
-    strataFees: parsed.strataFees || undefined,
-    insuranceEstimate: parsed.insuranceEstimate || undefined,
-    propertyManagementPercent: parsed.propertyManagementPercent || undefined,
-    yearBuilt: parsed.yearBuilt || undefined,
-    stampDuty: parsed.stampDuty || undefined,
-    agentFee: parsed.agentFee || undefined,
-  };
+  try {
+    const parsed = JSON.parse(jsonStr);
+    
+    return {
+      address: parsed.address || undefined,
+      suburb: parsed.suburb || undefined,
+      state: parsed.state || undefined,
+      postcode: parsed.postcode?.toString() || undefined,
+      price: typeof parsed.price === 'number' ? parsed.price : undefined,
+      weeklyRent: typeof parsed.weeklyRent === 'number' ? parsed.weeklyRent : undefined,
+      bedrooms: typeof parsed.bedrooms === 'number' ? parsed.bedrooms : undefined,
+      bathrooms: typeof parsed.bathrooms === 'number' ? parsed.bathrooms : undefined,
+      carSpaces: typeof parsed.carSpaces === 'number' ? parsed.carSpaces : undefined,
+      landSize: typeof parsed.landSize === 'number' ? parsed.landSize : undefined,
+      buildSize: typeof parsed.buildSize === 'number' ? parsed.buildSize : undefined,
+      propertyType: parsed.propertyType || undefined,
+      landPrice: typeof parsed.landPrice === 'number' ? parsed.landPrice : undefined,
+      buildPrice: typeof parsed.buildPrice === 'number' ? parsed.buildPrice : undefined,
+      isNewBuild: parsed.isNewBuild === true,
+      councilRates: typeof parsed.councilRates === 'number' ? parsed.councilRates : undefined,
+      waterRates: typeof parsed.waterRates === 'number' ? parsed.waterRates : undefined,
+      strataFees: typeof parsed.strataFees === 'number' ? parsed.strataFees : undefined,
+      insuranceEstimate: typeof parsed.insuranceEstimate === 'number' ? parsed.insuranceEstimate : undefined,
+      propertyManagementPercent: typeof parsed.propertyManagementPercent === 'number' ? parsed.propertyManagementPercent : undefined,
+      yearBuilt: typeof parsed.yearBuilt === 'number' ? parsed.yearBuilt : undefined,
+      stampDuty: typeof parsed.stampDuty === 'number' ? parsed.stampDuty : undefined,
+      agentFee: typeof parsed.agentFee === 'number' ? parsed.agentFee : undefined,
+    };
+  } catch (parseError) {
+    console.error('❌ Failed to parse vision response as JSON:', parseError, 'Content:', jsonStr.substring(0, 500));
+    return {};
+  }
 }
 
 // ============= SINGLE IMAGE EXTRACTION =============
@@ -338,9 +381,6 @@ async function extractFromSingleImage(
 ): Promise<ExtractedPropertyData> {
   console.log(`🔍 Analyzing single image with GPT-4o Vision...`);
   
-  const systemPrompt = `You are an expert at extracting property details from Australian real estate documents.
-Extract ALL property information from this image including financial details like rates, fees, and insurance.`;
-
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -350,38 +390,13 @@ Extract ALL property information from this image including financial details lik
     body: JSON.stringify({
       model: 'gpt-4o',
       messages: [
-        { role: 'system', content: systemPrompt },
+        { role: 'system', content: EXTRACTION_SYSTEM_PROMPT },
         { 
           role: 'user', 
           content: [
             {
               type: "text",
-              text: `Extract property details from this image "${fileName}". Return JSON:
-{
-  "address": "full street address",
-  "suburb": "suburb name",
-  "state": "state abbreviation",
-  "postcode": "4-digit postcode",
-  "price": numeric price,
-  "weeklyRent": numeric weekly rent,
-  "bedrooms": number,
-  "bathrooms": number,
-  "carSpaces": number,
-  "landSize": numeric sqm,
-  "buildSize": numeric sqm,
-  "propertyType": "house/apartment/townhouse/land",
-  "landPrice": numeric,
-  "buildPrice": numeric,
-  "isNewBuild": boolean,
-  "councilRates": numeric annual,
-  "waterRates": numeric annual,
-  "strataFees": numeric annual,
-  "insuranceEstimate": numeric annual,
-  "propertyManagementPercent": numeric percentage,
-  "yearBuilt": numeric year,
-  "stampDuty": numeric,
-  "agentFee": numeric
-}`
+              text: buildUserPrompt(1, fileName),
             },
             {
               type: "image_url",
@@ -394,7 +409,7 @@ Extract ALL property information from this image including financial details lik
         }
       ],
       temperature: 0.1,
-      max_tokens: 2500,
+      max_tokens: 3000,
     }),
   });
 
@@ -407,12 +422,12 @@ Extract ALL property information from this image including financial details lik
   const data = await response.json();
   const content = data.choices?.[0]?.message?.content || '';
   
-  // Log API usage for single image
-  const supabaseUrl2 = Deno.env.get('SUPABASE_URL')!;
-  const supabaseKey2 = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-  const sb2 = createClient(supabaseUrl2, supabaseKey2);
+  // Log API usage
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const sb = createClient(supabaseUrl, supabaseKey);
   const singleUsage = extractOpenAIUsage(data);
-  await logApiUsage(sb2, {
+  await logApiUsage(sb, {
     service_name: 'openai',
     endpoint: '/v1/chat/completions',
     model_used: 'gpt-4o',
@@ -423,41 +438,9 @@ Extract ALL property information from this image including financial details lik
     metadata: { function: 'parse-property-pdf', action: 'single-image-extract' },
   });
 
-  console.log('📝 Single image Vision response:', content);
+  console.log('📝 Single image Vision response:', content.substring(0, 200));
   
-  let jsonStr = content.trim();
-  if (jsonStr.startsWith('```')) {
-    jsonStr = jsonStr.replace(/```json?\n?/g, '').replace(/```$/g, '').trim();
-  }
-  
-  const parsed = JSON.parse(jsonStr);
-  
-  return {
-    address: parsed.address || undefined,
-    suburb: parsed.suburb || undefined,
-    state: parsed.state || undefined,
-    postcode: parsed.postcode?.toString() || undefined,
-    price: parsed.price || undefined,
-    weeklyRent: parsed.weeklyRent || undefined,
-    bedrooms: parsed.bedrooms || undefined,
-    bathrooms: parsed.bathrooms || undefined,
-    carSpaces: parsed.carSpaces || undefined,
-    landSize: parsed.landSize || undefined,
-    buildSize: parsed.buildSize || undefined,
-    propertyType: parsed.propertyType || undefined,
-    landPrice: parsed.landPrice || undefined,
-    buildPrice: parsed.buildPrice || undefined,
-    isNewBuild: parsed.isNewBuild || false,
-    // Extended fields
-    councilRates: parsed.councilRates || undefined,
-    waterRates: parsed.waterRates || undefined,
-    strataFees: parsed.strataFees || undefined,
-    insuranceEstimate: parsed.insuranceEstimate || undefined,
-    propertyManagementPercent: parsed.propertyManagementPercent || undefined,
-    yearBuilt: parsed.yearBuilt || undefined,
-    stampDuty: parsed.stampDuty || undefined,
-    agentFee: parsed.agentFee || undefined,
-  };
+  return parseVisionResponse(content);
 }
 
 // ============= STRUCTURED PAYLOAD =============
@@ -469,7 +452,6 @@ function processToStructuredPayload(extractedData: ExtractedPropertyData): Struc
     propertyAddress = extractedData.address;
   }
   
-  // Build full address if we have components
   const addressParts: string[] = [];
   
   if (extractedData.suburb && !propertyAddress.toLowerCase().includes(extractedData.suburb.toLowerCase())) {
@@ -506,7 +488,6 @@ function processToStructuredPayload(extractedData: ExtractedPropertyData): Struc
     landPrice: extractedData.landPrice,
     buildPrice: extractedData.buildPrice,
     isNewBuild: extractedData.isNewBuild || false,
-    // Extended fields
     councilRates: extractedData.councilRates,
     waterRates: extractedData.waterRates,
     strataFees: extractedData.strataFees,
@@ -525,31 +506,24 @@ async function completeAddressWithGoogleMaps(
   googleMapsApiKey: string,
   originalExtractedAddress: string | undefined
 ): Promise<StructuredPropertyPayload> {
-  // CRITICAL: Preserve the original extracted street address
-  // Geocoding should ONLY fill in missing suburb/state/postcode, NOT replace the street address
   const originalStreetAddress = originalExtractedAddress || payload.propertyAddress;
   
-  // Don't geocode if we have all the key components
   if (payload.suburb && payload.state && payload.postcode) {
     console.log('✅ All address components present, skipping geocoding');
-    // Still build a proper full address using all components
     payload.propertyAddress = buildFullAddress(originalStreetAddress, payload.suburb, payload.state, payload.postcode);
     return payload;
   }
   
-  // Don't geocode if address is too generic
   if (!payload.propertyAddress || payload.propertyAddress === 'Address Not Found') {
     return payload;
   }
   
-  // Check if address is just a lot number (too generic for geocoding alone)
   if (/^Lot\s+\d+$/i.test(payload.propertyAddress.trim())) {
     console.log('⚠️ Address is just a lot number, skipping geocoding');
     return payload;
   }
   
   const parts: string[] = [payload.propertyAddress];
-  
   if (!payload.propertyAddress.toLowerCase().includes('australia')) {
     parts.push('Australia');
   }
@@ -559,7 +533,6 @@ async function completeAddressWithGoogleMaps(
   
   try {
     const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(searchQuery)}&key=${googleMapsApiKey}&region=au&components=country:AU`;
-    
     const response = await fetch(geocodeUrl);
     
     if (!response.ok) {
@@ -577,23 +550,18 @@ async function completeAddressWithGoogleMaps(
     const result = data.results[0];
     const types = result.types || [];
     
-    // Reject results that are too generic (country or state level)
     if (types.includes('country') || 
         (types.includes('administrative_area_level_1') && !types.includes('locality'))) {
-      console.log('⚠️ Geocoding result too generic (country/state level), keeping original');
+      console.log('⚠️ Geocoding result too generic, keeping original');
       return payload;
     }
     
-    console.log('✅ Geocoding result (for components only):', result.formatted_address);
-    
-    // Extract address components from geocoding - but DON'T overwrite the street address
     let geocodedSuburb = payload.suburb;
     let geocodedState = payload.state;
     let geocodedPostcode = payload.postcode;
     
     for (const component of result.address_components) {
       const componentTypes = component.types;
-      
       if ((componentTypes.includes('locality') || componentTypes.includes('sublocality')) && !geocodedSuburb) {
         geocodedSuburb = component.long_name;
       } else if (componentTypes.includes('administrative_area_level_1') && !geocodedState) {
@@ -603,18 +571,10 @@ async function completeAddressWithGoogleMaps(
       }
     }
     
-    // Update payload with geocoded components
     payload.suburb = geocodedSuburb || payload.suburb;
     payload.state = geocodedState || payload.state;
     payload.postcode = geocodedPostcode || payload.postcode;
-    
-    // CRITICAL: Build the full address preserving the original street address
-    payload.propertyAddress = buildFullAddress(
-      originalStreetAddress, 
-      payload.suburb, 
-      payload.state, 
-      payload.postcode
-    );
+    payload.propertyAddress = buildFullAddress(originalStreetAddress, payload.suburb, payload.state, payload.postcode);
     
     console.log('✅ Final composed address:', payload.propertyAddress);
     
@@ -625,7 +585,6 @@ async function completeAddressWithGoogleMaps(
   return payload;
 }
 
-// Helper to build full address while preserving street address
 function buildFullAddress(
   streetAddress: string | undefined,
   suburb: string | undefined,
@@ -634,32 +593,17 @@ function buildFullAddress(
 ): string {
   const parts: string[] = [];
   
-  // Start with street address
   if (streetAddress && streetAddress !== 'Address Not Found') {
-    // Clean up the street address - remove any suburb/state/postcode already in it
     let cleanStreet = streetAddress;
-    if (suburb) {
-      cleanStreet = cleanStreet.replace(new RegExp(`,?\\s*${suburb}`, 'gi'), '');
-    }
-    if (state) {
-      cleanStreet = cleanStreet.replace(new RegExp(`,?\\s*${state}\\b`, 'gi'), '');
-    }
-    if (postcode) {
-      cleanStreet = cleanStreet.replace(new RegExp(`,?\\s*${postcode}`, 'g'), '');
-    }
+    if (suburb) cleanStreet = cleanStreet.replace(new RegExp(`,?\\s*${suburb}`, 'gi'), '');
+    if (state) cleanStreet = cleanStreet.replace(new RegExp(`,?\\s*${state}\\b`, 'gi'), '');
+    if (postcode) cleanStreet = cleanStreet.replace(new RegExp(`,?\\s*${postcode}`, 'g'), '');
     cleanStreet = cleanStreet.replace(/,\s*Australia$/i, '').replace(/,\s*,/g, ',').replace(/,\s*$/,'').trim();
-    
-    if (cleanStreet) {
-      parts.push(cleanStreet);
-    }
+    if (cleanStreet) parts.push(cleanStreet);
   }
   
-  // Add suburb
-  if (suburb) {
-    parts.push(suburb);
-  }
+  if (suburb) parts.push(suburb);
   
-  // Add state and postcode together
   if (state && postcode) {
     parts.push(`${state} ${postcode}`);
   } else if (state) {
@@ -684,7 +628,6 @@ serve(async (req) => {
   }
 
   try {
-    // SECURITY: Verify authentication
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -697,12 +640,13 @@ serve(async (req) => {
       return createUnauthorizedResponse(authError, corsHeaders);
     }
     console.log(`[parse-property-pdf] Authenticated user: ${userId}`);
+    
     const { 
-      pageImages,        // Array of page images from client-side PDF rendering
-      singleImage,       // Single image file (for direct image uploads)
-      imageMimeType,     // MIME type for single image
+      pageImages,
+      singleImage,
+      imageMimeType,
       fileName,
-      base64Content,     // Legacy: raw base64 PDF (fallback)
+      base64Content,
     } = body;
     
     const fileNameToUse = fileName || 'document.pdf';
@@ -722,7 +666,7 @@ serve(async (req) => {
     if (pageImages && Array.isArray(pageImages) && pageImages.length > 0) {
       console.log(`📚 Received ${pageImages.length} page images from client`);
       extractedData = await extractWithVision(pageImages, openaiKey, fileNameToUse);
-      extractionMethod = 'gpt-4o-vision-pages';
+      extractionMethod = `gpt-4o-vision-pages-${pageImages.length}`;
     }
     // Method 2: Single image file
     else if (singleImage && imageMimeType) {
@@ -730,12 +674,12 @@ serve(async (req) => {
       extractedData = await extractFromSingleImage(singleImage, imageMimeType, openaiKey, fileNameToUse);
       extractionMethod = 'gpt-4o-vision-image';
     }
-    // Method 3: Legacy fallback - raw PDF base64 (will fail for vision, kept for compatibility)
+    // Method 3: Legacy fallback
     else if (base64Content) {
       console.error('❌ Raw PDF base64 received - client must render pages to images first');
       return new Response(JSON.stringify({
         success: false,
-        error: 'PDF must be converted to images on the client before sending. Please ensure PDF.js rendering is working.',
+        error: 'PDF must be converted to images on the client before sending.',
         hint: 'The client should use convertPdfToImages() to render PDF pages as PNG images before calling this function.',
       }), {
         status: 400,
@@ -745,7 +689,7 @@ serve(async (req) => {
     else {
       return new Response(JSON.stringify({ 
         success: false, 
-        error: 'No valid content provided. Send pageImages (array of rendered PDF pages) or singleImage (for image files).' 
+        error: 'No valid content provided.' 
       }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -754,35 +698,16 @@ serve(async (req) => {
 
     console.log('📊 Extracted data:', JSON.stringify(extractedData, null, 2));
     
-    // CRITICAL: Preserve the original street address from GPT-4o extraction
     const originalExtractedStreetAddress = extractedData.address;
-    console.log('📍 Original extracted street address:', originalExtractedStreetAddress);
-    
-    // Process into structured payload
     let structuredPayload = processToStructuredPayload(extractedData);
     
-    // Complete address with Google Maps if needed (fills in suburb/state/postcode)
-    const needsGeocoding = !structuredPayload.postcode || 
-                          !structuredPayload.state || 
-                          !structuredPayload.suburb;
+    const needsGeocoding = !structuredPayload.postcode || !structuredPayload.state || !structuredPayload.suburb;
     
-    if (googleMapsApiKey && needsGeocoding && 
-        structuredPayload.propertyAddress !== 'Address Not Found') {
+    if (googleMapsApiKey && needsGeocoding && structuredPayload.propertyAddress !== 'Address Not Found') {
       console.log('🗺️ Attempting to complete address with Google Maps...');
-      // Pass original street address so it doesn't get overwritten
-      structuredPayload = await completeAddressWithGoogleMaps(
-        structuredPayload, 
-        googleMapsApiKey, 
-        originalExtractedStreetAddress
-      );
+      structuredPayload = await completeAddressWithGoogleMaps(structuredPayload, googleMapsApiKey, originalExtractedStreetAddress);
     } else if (structuredPayload.suburb && structuredPayload.state && structuredPayload.postcode) {
-      // Even without geocoding, ensure we build a proper full address
-      structuredPayload.propertyAddress = buildFullAddress(
-        originalExtractedStreetAddress,
-        structuredPayload.suburb,
-        structuredPayload.state,
-        structuredPayload.postcode
-      );
+      structuredPayload.propertyAddress = buildFullAddress(originalExtractedStreetAddress, structuredPayload.suburb, structuredPayload.state, structuredPayload.postcode);
       console.log('✅ Built full address without geocoding:', structuredPayload.propertyAddress);
     }
 
