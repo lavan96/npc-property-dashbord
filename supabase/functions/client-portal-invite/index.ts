@@ -45,7 +45,7 @@ serve(async (req) => {
 
       const { data: portalUser } = await supabase
         .from('client_portal_users')
-        .select('id, email, status, created_at, last_login_at, invite_expires_at')
+        .select('id, email, status, created_at, last_login_at, invite_expires_at, has_completed_onboarding, has_accepted_terms, terms_accepted_at')
         .eq('client_id', client_id)
         .maybeSingle()
 

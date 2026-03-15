@@ -27,6 +27,9 @@ interface PortalStatus {
     created_at: string;
     last_login_at: string | null;
     invite_expires_at: string | null;
+    has_completed_onboarding: boolean;
+    has_accepted_terms: boolean;
+    terms_accepted_at: string | null;
   } | null;
 }
 
