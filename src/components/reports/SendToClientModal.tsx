@@ -60,6 +60,32 @@ export function SendToClientModal({
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
 
+  // Chart inclusion options for cashflow reports
+  const [includeCharts, setIncludeCharts] = useState(true);
+  const [chartOptions, setChartOptions] = useState<CashFlowChartOptions>({
+    cashFlowTrends: true,
+    yieldChart: true,
+    comparisonChart: true,
+  });
+
+  const isCashflow = reportTier === 'cashflow';
+  const needsGeneration = !storagePath && !!onGeneratePDF;
+
+  const handleIncludeChartsToggle = (checked: boolean) => {
+    setIncludeCharts(checked);
+    setChartOptions({
+      cashFlowTrends: checked,
+      yieldChart: checked,
+      comparisonChart: checked,
+    });
+  };
+
+  const handleChartOptionToggle = (key: keyof CashFlowChartOptions, checked: boolean) => {
+    const updated = { ...chartOptions, [key]: checked };
+    setChartOptions(updated);
+    setIncludeCharts(Object.values(updated).some(v => v));
+  };
+
   const { data: clients = [], isLoading } = useQuery({
     queryKey: ['clients-for-send'],
     queryFn: async () => {
