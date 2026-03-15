@@ -3035,6 +3035,11 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         pdf.text(`Page ${contentPageNum} of ${totalContentPages}`, pageWidth - margin, pageHeight - 6, { align: 'right' });
       }
 
+      // If returnBlob requested, return the blob without saving to disk
+      if (options?.returnBlob) {
+        return pdf.output('blob');
+      }
+
       // Save PDF - use cleaned address for filename
       const cleanedAddressForFile = report.property_address.replace(/[_\s]?Copy[_\s]?\d*$/i, '').trim();
       const fileName = `Cash_Flow_10Year_${cleanedAddressForFile.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
