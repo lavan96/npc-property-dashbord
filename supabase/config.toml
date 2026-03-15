@@ -285,7 +285,7 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.ghl-calendar]
-verify_jwt = true
+verify_jwt = false
 
 [functions.admin-password-reset]
 verify_jwt = true
