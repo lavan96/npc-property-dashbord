@@ -3063,12 +3063,12 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
   }, [report, baseFinancialData, projections, includeInputsSummaryInExport, includeConstructionScheduleInExport, constructionProgressSchedule, isNewBuild, chartExportToggles, toast]);
 
   // Generate PDF and upload to storage (for Send to Client)
-  const generateAndUploadCashFlowPDF = useCallback(async (): Promise<string | null> => {
+  const generateAndUploadCashFlowPDF = useCallback(async (chartOverrides?: { cashFlowTrends: boolean; yieldChart: boolean; comparisonChart: boolean }): Promise<string | null> => {
     if (!report || !baseFinancialData) return null;
 
     try {
-      // Use the full PDF generator in blob mode
-      const pdfBlob = await exportSingleReportPDF({ returnBlob: true });
+      // Use the full PDF generator in blob mode, with optional chart overrides from Send to Client
+      const pdfBlob = await exportSingleReportPDF({ returnBlob: true, chartOverrides });
       if (!pdfBlob || !(pdfBlob instanceof Blob)) {
         console.error('PDF generation returned no blob');
         return null;
