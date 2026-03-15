@@ -2258,7 +2258,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
 
   // Export single report 10-year cash flow as PDF with charts
   // When returnBlob is true, returns the PDF blob instead of triggering a download
-  const exportSingleReportPDF = useCallback(async (options?: { returnBlob?: boolean }): Promise<Blob | void> => {
+  const exportSingleReportPDF = useCallback(async (options?: { returnBlob?: boolean; chartOverrides?: { cashFlowTrends: boolean; yieldChart: boolean; comparisonChart: boolean } }): Promise<Blob | void> => {
     if (!report || !baseFinancialData) return;
 
     try {
@@ -2320,12 +2320,15 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       const sectionBg = { r: 254, g: 249, b: 235 }; // Warmer cream #fef9eb
       const negativeRed = { r: 185, g: 28, b: 28 }; // Darker red for negatives #B91C1C
 
+      // Use chartOverrides if provided (from Send to Client), otherwise use the component's toggle state
+      const activeChartToggles = options?.chartOverrides || chartExportToggles;
+      
       // Capture charts first (only if toggles are enabled)
       let cashFlowChartImage: string | null = null;
       let yieldChartImage: string | null = null;
       let comparisonChartImage: string | null = null;
       
-      if (chartExportToggles.cashFlowTrends && cashFlowChartRef.current) {
+      if (activeChartToggles.cashFlowTrends && cashFlowChartRef.current) {
         try {
           const canvas = await html2canvas(cashFlowChartRef.current, {
             backgroundColor: '#ffffff',
@@ -2337,7 +2340,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         }
       }
       
-      if (chartExportToggles.yieldChart && yieldChartRef.current) {
+      if (activeChartToggles.yieldChart && yieldChartRef.current) {
         try {
           const canvas = await html2canvas(yieldChartRef.current, {
             backgroundColor: '#ffffff',
@@ -2349,7 +2352,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         }
       }
       
-      if (chartExportToggles.comparisonChart && comparisonChartRef.current) {
+      if (activeChartToggles.comparisonChart && comparisonChartRef.current) {
         try {
           const canvas = await html2canvas(comparisonChartRef.current, {
             backgroundColor: '#ffffff',
@@ -3060,12 +3063,12 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
   }, [report, baseFinancialData, projections, includeInputsSummaryInExport, includeConstructionScheduleInExport, constructionProgressSchedule, isNewBuild, chartExportToggles, toast]);
 
   // Generate PDF and upload to storage (for Send to Client)
-  const generateAndUploadCashFlowPDF = useCallback(async (): Promise<string | null> => {
+  const generateAndUploadCashFlowPDF = useCallback(async (chartOverrides?: { cashFlowTrends: boolean; yieldChart: boolean; comparisonChart: boolean }): Promise<string | null> => {
     if (!report || !baseFinancialData) return null;
 
     try {
-      // Use the full PDF generator in blob mode
-      const pdfBlob = await exportSingleReportPDF({ returnBlob: true });
+      // Use the full PDF generator in blob mode, with optional chart overrides from Send to Client
+      const pdfBlob = await exportSingleReportPDF({ returnBlob: true, chartOverrides });
       if (!pdfBlob || !(pdfBlob instanceof Blob)) {
         console.error('PDF generation returned no blob');
         return null;

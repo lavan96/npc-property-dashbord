@@ -8,9 +8,17 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Send, Search, User, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
+import { Loader2, Send, Search, User, CheckCircle2, AlertCircle, BarChart3 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+
+export interface CashFlowChartOptions {
+  cashFlowTrends: boolean;
+  yieldChart: boolean;
+  comparisonChart: boolean;
+}
 
 interface SendToClientModalProps {
   isOpen: boolean;
@@ -19,7 +27,7 @@ interface SendToClientModalProps {
   reportTitle: string;
   reportTier?: string;
   storagePath?: string | null;
-  onGeneratePDF?: () => Promise<string | null>;
+  onGeneratePDF?: (chartOptions?: CashFlowChartOptions) => Promise<string | null>;
 }
 
 interface ClientOption {
@@ -51,6 +59,32 @@ export function SendToClientModal({
   const [notes, setNotes] = useState('');
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+
+  // Chart inclusion options for cashflow reports
+  const [includeCharts, setIncludeCharts] = useState(true);
+  const [chartOptions, setChartOptions] = useState<CashFlowChartOptions>({
+    cashFlowTrends: true,
+    yieldChart: true,
+    comparisonChart: true,
+  });
+
+  const isCashflow = reportTier === 'cashflow';
+  const needsGeneration = !storagePath && !!onGeneratePDF;
+
+  const handleIncludeChartsToggle = (checked: boolean) => {
+    setIncludeCharts(checked);
+    setChartOptions({
+      cashFlowTrends: checked,
+      yieldChart: checked,
+      comparisonChart: checked,
+    });
+  };
+
+  const handleChartOptionToggle = (key: keyof CashFlowChartOptions, checked: boolean) => {
+    const updated = { ...chartOptions, [key]: checked };
+    setChartOptions(updated);
+    setIncludeCharts(Object.values(updated).some(v => v));
+  };
 
   const { data: clients = [], isLoading } = useQuery({
     queryKey: ['clients-for-send'],
@@ -86,7 +120,7 @@ export function SendToClientModal({
       let finalStoragePath = storagePath;
       if (!finalStoragePath && onGeneratePDF) {
         toast.info('Generating PDF before sending...');
-        finalStoragePath = await onGeneratePDF();
+        finalStoragePath = await onGeneratePDF(isCashflow ? chartOptions : undefined);
         if (!finalStoragePath) {
           toast.error('PDF generation failed. Please try again.');
           setSending(false);
@@ -139,6 +173,8 @@ export function SendToClientModal({
       setSearch('');
       setNotes('');
       setSent(false);
+      setIncludeCharts(true);
+      setChartOptions({ cashFlowTrends: true, yieldChart: true, comparisonChart: true });
       onClose();
     }
   };
@@ -177,12 +213,55 @@ export function SendToClientModal({
             </div>
 
             {/* PDF auto-generation notice */}
-            {!storagePath && onGeneratePDF && (
-              <div className="rounded-md border border-primary/30 bg-primary/5 p-3 flex items-start gap-2">
-                <AlertCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                <p className="text-sm text-muted-foreground">
-                  The PDF will be automatically generated and uploaded when you send.
-                </p>
+            {needsGeneration && (
+              <div className="rounded-md border border-primary/30 bg-primary/5 p-3 space-y-3">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                  <p className="text-sm text-muted-foreground">
+                    The PDF will be automatically generated and uploaded when you send.
+                  </p>
+                </div>
+
+                {/* Chart inclusion options for cashflow */}
+                {isCashflow && (
+                  <div className="space-y-2 pt-1 border-t border-primary/10">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                        <Label className="text-sm font-medium">Include Charts</Label>
+                      </div>
+                      <Switch
+                        checked={includeCharts}
+                        onCheckedChange={handleIncludeChartsToggle}
+                      />
+                    </div>
+                    {includeCharts && (
+                      <div className="pl-6 space-y-1.5">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <Checkbox
+                            checked={chartOptions.cashFlowTrends}
+                            onCheckedChange={(checked) => handleChartOptionToggle('cashFlowTrends', checked === true)}
+                          />
+                          <span className="text-sm text-muted-foreground">Cash Flow Trends</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <Checkbox
+                            checked={chartOptions.yieldChart}
+                            onCheckedChange={(checked) => handleChartOptionToggle('yieldChart', checked === true)}
+                          />
+                          <span className="text-sm text-muted-foreground">Yield Analysis</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <Checkbox
+                            checked={chartOptions.comparisonChart}
+                            onCheckedChange={(checked) => handleChartOptionToggle('comparisonChart', checked === true)}
+                          />
+                          <span className="text-sm text-muted-foreground">Comparison Chart</span>
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
