@@ -225,7 +225,30 @@ export function ClientReportsTab({
     },
   });
 
-  // Delete portfolio report mutation
+  // Fetch published portal reports for this client
+  const { data: portalReports = [] } = useQuery({
+    queryKey: ['client-portal-reports-unified', clientId],
+    enabled: canFetchReports,
+    retry: false,
+    queryFn: async () => {
+      const { data, error } = await invokeSecureFunction('get-client-data', {
+        listMode: true,
+        listOptions: {
+          table: 'client_portal_reports',
+          select: '*',
+          filters: { client_id: clientId },
+          orderBy: 'published_at',
+          order_asc: false,
+        },
+      });
+      if (error) {
+        console.warn('[ClientReportsTab] Failed to fetch portal reports:', error.message);
+        return [] as any[];
+      }
+      return (data?.records || []) as any[];
+    },
+  });
+
   const deletePortfolioMutation = useMutation({
     mutationFn: async (reportId: string) => {
       const { error } = await invokeSecureFunction('manage-client-data', {
