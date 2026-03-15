@@ -1016,6 +1016,115 @@ ${ragContext}`;
 No investment report has been uploaded. You are having an open conversation about property investment. If the user wants specific property analysis, encourage them to upload a report.`;
       }
 
+      // === ROLLING CONVERSATION SUMMARY ===
+      // When conversations get long, load/generate a summary of older messages
+      // to preserve context without bloating the payload
+      let conversationSummaryContext = "";
+      
+      if (conversationId && needsConversationSummary && totalMessageCount > 12) {
+        try {
+          // First, try to load existing summary from DB
+          const { data: convSummary } = await supabase
+            .from("report_qa_conversations")
+            .select("conversation_summary, summary_message_count")
+            .eq("id", conversationId)
+            .single();
+          
+          const existingSummary = convSummary?.conversation_summary;
+          const summarizedCount = convSummary?.summary_message_count || 0;
+          
+          // Check if we need to generate/update the summary
+          // Regenerate if we have 6+ new messages since last summary
+          const currentMessageCount = totalMessageCount;
+          const unsummarizedMessages = currentMessageCount - summarizedCount;
+          
+          if (unsummarizedMessages >= 6 || (!existingSummary && currentMessageCount > 12)) {
+            console.log(`[report-qa] Generating rolling summary (${unsummarizedMessages} new messages since last summary)`);
+            
+            // Fetch older messages that aren't in the current chat window
+            const { data: olderMessages } = await supabase
+              .from("report_qa_messages")
+              .select("role, content, created_at")
+              .eq("conversation_id", conversationId)
+              .order("created_at", { ascending: true })
+              .limit(currentMessageCount); // Get all messages
+            
+            if (olderMessages && olderMessages.length > 0) {
+              // Build a transcript of messages to summarize (everything except the most recent window)
+              const messagesToSummarize = olderMessages.slice(0, Math.max(0, olderMessages.length - 20));
+              
+              if (messagesToSummarize.length > 0) {
+                const transcript = messagesToSummarize.map((m: any) => 
+                  `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content.substring(0, 3000)}`
+                ).join('\n\n');
+                
+                // Generate summary using a fast model
+                const summaryResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+                  method: "POST",
+                  headers: {
+                    Authorization: `Bearer ${LOVABLE_API_KEY}`,
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    model: "google/gemini-2.5-flash",
+                    messages: [
+                      {
+                        role: "system",
+                        content: `You are a conversation summarizer. Create a concise but comprehensive summary of this Q&A conversation about property investment. Preserve:
+1. ALL specific numbers, figures, property addresses, and financial data mentioned
+2. Key questions asked and conclusions reached
+3. Any recommendations or action items discussed
+4. The user's apparent investment goals and preferences
+5. Any specific properties, suburbs, or markets discussed
+
+Format as a structured summary with bullet points. Be thorough but concise. Max 2000 words.`,
+                      },
+                      {
+                        role: "user",
+                        content: `${existingSummary ? `PREVIOUS SUMMARY:\n${existingSummary}\n\n---\n\nNEW MESSAGES TO INCORPORATE:\n` : ''}${transcript}`,
+                      },
+                    ],
+                    max_tokens: 4096,
+                  }),
+                });
+                
+                if (summaryResponse.ok) {
+                  const summaryData = await summaryResponse.json();
+                  const newSummary = summaryData.choices?.[0]?.message?.content || "";
+                  
+                  if (newSummary.length > 50) {
+                    conversationSummaryContext = newSummary;
+                    
+                    // Store summary in DB (fire-and-forget)
+                    supabase
+                      .from("report_qa_conversations")
+                      .update({
+                        conversation_summary: newSummary,
+                        last_summarized_at: new Date().toISOString(),
+                        summary_message_count: currentMessageCount,
+                      })
+                      .eq("id", conversationId)
+                      .then(() => console.log(`[report-qa] Saved rolling summary (${newSummary.length} chars)`))
+                      .catch((e: any) => console.error(`[report-qa] Failed to save summary:`, e));
+                  }
+                }
+              }
+            }
+          } else if (existingSummary) {
+            // Use existing summary
+            conversationSummaryContext = existingSummary;
+            console.log(`[report-qa] Using existing conversation summary (${existingSummary.length} chars)`);
+          }
+        } catch (summaryError) {
+          console.error(`[report-qa] Conversation summary error (non-critical):`, summaryError);
+        }
+      }
+      
+      // Inject conversation summary into system prompt if available
+      if (conversationSummaryContext) {
+        systemPrompt += `\n\n## EARLIER CONVERSATION CONTEXT\nThe following is a summary of earlier messages in this conversation that are beyond the recent chat window. Use this to maintain continuity and avoid repeating information:\n\n${conversationSummaryContext}`;
+      }
+
       // Build messages ensuring strict alternation (required by Perplexity)
       const rawHistory = chatHistory || [];
       const sanitizedHistory: { role: string; content: string }[] = [];
