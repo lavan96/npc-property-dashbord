@@ -664,7 +664,7 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
                       This property is where you currently live and pay rent. The rent you pay will be treated as a personal expense in borrowing capacity calculations.
                     </p>
                     
-                    <ExpenseInput label="Rent You Pay" field="rental_income" />
+                    {renderExpenseInput("Rent You Pay", "rental_income")}
                   </div>
                 </CardContent>
               </Card>
