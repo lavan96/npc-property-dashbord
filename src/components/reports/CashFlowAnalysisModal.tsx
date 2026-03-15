@@ -5239,6 +5239,19 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+
+    {/* Send to Client Modal */}
+    {report && (
+      <SendToClientModal
+        isOpen={sendToClientOpen}
+        onClose={() => setSendToClientOpen(false)}
+        reportId={report.id}
+        reportTitle={`Cash Flow Analysis - ${report.property_address}`}
+        reportTier="cashflow"
+        storagePath={cashFlowStoragePath}
+        onGeneratePDF={generateAndUploadCashFlowPDF}
+      />
+    )}
   </>
   );
 }
