@@ -907,7 +907,8 @@ export function ClientReportsTab({
                   </>
                 )}
 
-                {/* Send to Client Portal */}
+                {/* Send to Client Portal (hide for already-published portal reports) */}
+                {report.source !== 'portal_report' && (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -917,6 +918,7 @@ export function ClientReportsTab({
                 >
                   <Send className="h-4 w-4" />
                 </Button>
+                )}
 
                 {/* More actions (delete for portfolio reports) */}
                 {report.source === 'portfolio_report' && (
