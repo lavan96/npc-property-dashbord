@@ -413,6 +413,7 @@ export function ClientReportsTab({
       case 'investment': return 'bg-secondary/50 text-secondary-foreground border-secondary';
       case 'borrowing': return 'bg-primary/15 text-primary border-primary/25';
       case 'property': return 'bg-muted text-muted-foreground border-border';
+      case 'published': return 'bg-accent/50 text-accent-foreground border-accent';
       default: return '';
     }
   };
