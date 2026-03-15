@@ -881,7 +881,7 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
                 <Separator />
                 <div className="space-y-4">
                   <h4 className="text-sm font-medium">Rental Income</h4>
-                  <ExpenseInput label="Rental Income" field="rental_income" />
+                  {renderExpenseInput("Rental Income", "rental_income")}
                 </div>
 
                 <Separator />
