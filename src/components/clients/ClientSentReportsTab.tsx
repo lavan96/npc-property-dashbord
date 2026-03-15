@@ -57,6 +57,33 @@ export function ClientSentReportsTab({ clientId, clientName }: ClientSentReports
   const [publishing, setPublishing] = useState(false);
   const [reportToDelete, setReportToDelete] = useState<any>(null);
   const [deleting, setDeleting] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  const handleDownload = async (report: any) => {
+    if (!report.storage_path) {
+      toast.error('No file available for this report');
+      return;
+    }
+    setDownloadingId(report.id);
+    try {
+      const result = await secureStorageDownload('client-files', report.storage_path);
+      if (!result.success || !result.blob) {
+        throw new Error(result.error || 'Download failed');
+      }
+      const url = URL.createObjectURL(result.blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const ext = report.storage_path.split('.').pop() || 'pdf';
+      a.download = `${(report.report_title || 'Report').replace(/\s+/g, '_')}.${ext}`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Report downloaded');
+    } catch (err: any) {
+      toast.error('Failed to download: ' + (err.message || 'Unknown error'));
+    } finally {
+      setDownloadingId(null);
+    }
+  };
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
