@@ -519,7 +519,7 @@ const TOOLS: any[] = [
     type: "function",
     function: {
       name: "create_appointment",
-      description: "Create a new appointment on a GHL calendar. Requires calendar ID, start/end times. Optionally link to a GHL contact. Use get_calendars first to find the right calendar ID.",
+      description: "Create a new appointment on a GHL calendar. Requires calendar ID, start/end times. Optionally link to a client by providing their internal client_id (the system will automatically resolve their GHL contact ID). Use get_calendars first to find the right calendar ID, and search_clients to find the client_id.",
       parameters: {
         type: "object",
         properties: {
@@ -527,7 +527,7 @@ const TOOLS: any[] = [
           title: { type: "string", description: "Appointment title" },
           start_time: { type: "string", description: "Start time in ISO 8601 format" },
           end_time: { type: "string", description: "End time in ISO 8601 format" },
-          contact_id: { type: "string", description: "Optional GHL contact ID to link" },
+          client_id: { type: "string", description: "Internal client ID or client name — will be resolved to GHL contact ID automatically" },
           notes: { type: "string", description: "Optional notes for the appointment" },
         },
         required: ["calendar_id", "title", "start_time", "end_time"],
