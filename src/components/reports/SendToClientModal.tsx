@@ -14,6 +14,12 @@ import { Loader2, Send, Search, User, CheckCircle2, AlertCircle, BarChart3 } fro
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
+export interface CashFlowChartOptions {
+  cashFlowTrends: boolean;
+  yieldChart: boolean;
+  comparisonChart: boolean;
+}
+
 interface SendToClientModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -21,7 +27,7 @@ interface SendToClientModalProps {
   reportTitle: string;
   reportTier?: string;
   storagePath?: string | null;
-  onGeneratePDF?: () => Promise<string | null>;
+  onGeneratePDF?: (chartOptions?: CashFlowChartOptions) => Promise<string | null>;
 }
 
 interface ClientOption {
