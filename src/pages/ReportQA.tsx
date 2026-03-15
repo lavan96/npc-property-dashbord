@@ -196,8 +196,9 @@ export default function ReportQA() {
   const [failedMessage, setFailedMessage] = useState<{ content: string; audioUrl?: string } | null>(null);
   const [isRetrying, setIsRetrying] = useState(false);
   const MAX_MESSAGE_LENGTH = 12000;
-  const MAX_CHAT_HISTORY_MESSAGES = 16;
-  const MAX_HISTORY_MESSAGE_CHARS = 6000;
+  const MAX_CHAT_HISTORY_MESSAGES = 30;
+  const MAX_HISTORY_MESSAGE_CHARS = 10000;
+  const SUMMARY_THRESHOLD = 12; // Summarize older messages beyond this count
   
   // Phase 2 UX improvements
   const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
@@ -703,15 +704,21 @@ export default function ReportQA() {
   };
 
   const buildChatHistoryForRequest = (history: ChatMessage[]) => {
+    // Send up to MAX_CHAT_HISTORY_MESSAGES recent messages
     const recentHistory = history.slice(-MAX_CHAT_HISTORY_MESSAGES);
 
-    return recentHistory.map((msg) => ({
+    const formatted = recentHistory.map((msg) => ({
       role: msg.role,
       content:
         msg.content.length > MAX_HISTORY_MESSAGE_CHARS
           ? `${msg.content.slice(0, MAX_HISTORY_MESSAGE_CHARS)}\n\n[Message truncated for context window]`
           : msg.content,
     }));
+
+    // If there are older messages beyond the window, flag for server-side summarization
+    const needsSummary = history.length > SUMMARY_THRESHOLD;
+
+    return { formatted, needsSummary, totalMessages: history.length };
   };
 
   const handleSendMessage = async (retryContent?: string, retryAudioUrl?: string) => {
@@ -776,7 +783,7 @@ export default function ReportQA() {
       const accessToken = sessionStorage.getItem('supabase_access_token') || localStorage.getItem('supabase_access_token');
       const bearerToken = accessToken || SUPABASE_KEY;
       
-      const chatHistoryForRequest = buildChatHistoryForRequest(messages);
+      const { formatted: chatHistoryForRequest, needsSummary, totalMessages } = buildChatHistoryForRequest(messages);
 
       const response = await fetch(`${SUPABASE_URL}/functions/v1/report-qa`, {
         method: 'POST',
@@ -799,6 +806,8 @@ export default function ReportQA() {
           stream: true,
           session_token: sessionToken, // Add session token to body as fallback
           modelProvider: selectedModel,
+          needsConversationSummary: needsSummary,
+          totalMessageCount: totalMessages,
         }),
       });
 
