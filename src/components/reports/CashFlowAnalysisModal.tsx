@@ -3651,7 +3651,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                         </label>
                       </div>
                       <Separator className="my-2" />
-                      <Button size="sm" className="w-full" onClick={exportSingleReportPDF}>
+                      <Button size="sm" className="w-full" onClick={() => exportSingleReportPDF()}>
                         <FileText className="h-4 w-4 mr-2" />
                         Generate PDF
                       </Button>
