@@ -1616,7 +1616,7 @@ export default function ReportQA() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-0 sm:gap-4 md:gap-6 h-[calc(100%-3rem)] sm:h-[calc(100%-4rem)] md:h-[calc(100%-5rem)] min-w-0">
         {/* Upload Section - Hidden on mobile, accessible via MobileReportsPanel */}
         {showReportsPanel && (
-        <Card className="hidden lg:flex lg:col-span-1 flex-col">
+        <Card className="hidden lg:flex lg:col-span-1 flex-col overflow-hidden min-h-0">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
@@ -1626,7 +1626,7 @@ export default function ReportQA() {
               Upload PDF reports to use as context. Add multiple for comparison.
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex-1 flex flex-col space-y-4">
+          <CardContent className="flex-1 flex flex-col space-y-4 min-h-0 overflow-hidden">
             {/* Upload Zone */}
             <div
               className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer
