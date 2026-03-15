@@ -519,7 +519,7 @@ const TOOLS: any[] = [
     type: "function",
     function: {
       name: "create_appointment",
-      description: "Create a new appointment on a GHL calendar. Requires calendar ID, start/end times. Optionally link to a GHL contact. Use get_calendars first to find the right calendar ID.",
+      description: "Create a new appointment on a GHL calendar. Requires calendar ID, start/end times. Optionally link to a client by providing their internal client_id (the system will automatically resolve their GHL contact ID). Use get_calendars first to find the right calendar ID, and search_clients to find the client_id.",
       parameters: {
         type: "object",
         properties: {
@@ -527,7 +527,7 @@ const TOOLS: any[] = [
           title: { type: "string", description: "Appointment title" },
           start_time: { type: "string", description: "Start time in ISO 8601 format" },
           end_time: { type: "string", description: "End time in ISO 8601 format" },
-          contact_id: { type: "string", description: "Optional GHL contact ID to link" },
+          client_id: { type: "string", description: "Internal client ID or client name — will be resolved to GHL contact ID automatically" },
           notes: { type: "string", description: "Optional notes for the appointment" },
         },
         required: ["calendar_id", "title", "start_time", "end_time"],
@@ -2718,10 +2718,27 @@ async function executeRescheduleAppointment(args: any) {
   }
 }
 
-async function executeCreateAppointment(args: any) {
-  const { calendar_id, title, start_time, end_time, contact_id, notes } = args;
+async function executeCreateAppointment(sb: any, args: any) {
+  const { calendar_id, title, start_time, end_time, client_id, contact_id, notes } = args;
   if (!calendar_id || !start_time || !end_time) {
     return { error: 'calendar_id, start_time, and end_time are required.' };
+  }
+
+  // Resolve GHL contact ID from client_id if provided
+  let ghlContactId: string | null = contact_id || null;
+  let resolvedClientName: string | null = null;
+
+  if (client_id && !ghlContactId) {
+    const v = await validateClientExists(sb, client_id);
+    if (!v.valid) return { error: v.error };
+    const cid = v.resolvedId || client_id;
+    resolvedClientName = clientName(v.client);
+    const { data: clientRecord } = await sb.from('clients').select('ghl_contact_id').eq('id', cid).maybeSingle();
+    if (clientRecord?.ghl_contact_id) {
+      ghlContactId = clientRecord.ghl_contact_id;
+    } else {
+      console.log(`[create_appointment] Client ${cid} has no ghl_contact_id — creating appointment without contact link`);
+    }
   }
 
   const payload: Record<string, unknown> = {
@@ -2732,13 +2749,13 @@ async function executeCreateAppointment(args: any) {
     title: title || 'New Appointment',
     overrideAvailability: true,
   };
-  if (contact_id) payload.contactId = contact_id;
+  if (ghlContactId) payload.contactId = ghlContactId;
   if (notes) payload.notes = notes;
 
   try {
     const data = await callGHLCalendar(payload);
     if (data.error) return data;
-    return { success: true, message: `Appointment "${title}" created`, event: data.event };
+    return { success: true, message: `Appointment "${title}" created${resolvedClientName ? ` for ${resolvedClientName}` : ''}`, event: data.event };
   } catch (err: any) {
     return { error: `Create appointment failed: ${err.message}` };
   }
@@ -4550,7 +4567,7 @@ async function executeTool(sb: any, name: string, args: any, userId: string): Pr
     case 'get_appointments_for_client': return executeGetAppointmentsForClient(sb, args);
     case 'search_calendar_events': return executeSearchCalendarEvents(args);
     case 'reschedule_appointment': return executeRescheduleAppointment(args);
-    case 'create_appointment': return executeCreateAppointment(args);
+    case 'create_appointment': return executeCreateAppointment(sb, args);
     case 'cancel_appointment': return executeCancelAppointment(args);
     case 'get_calendars': return executeGetCalendars();
     case 'get_free_slots': return executeGetFreeSlots(args);
