@@ -2257,7 +2257,8 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
   };
 
   // Export single report 10-year cash flow as PDF with charts
-  const exportSingleReportPDF = useCallback(async () => {
+  // When returnBlob is true, returns the PDF blob instead of triggering a download
+  const exportSingleReportPDF = useCallback(async (options?: { returnBlob?: boolean }): Promise<Blob | void> => {
     if (!report || !baseFinancialData) return;
 
     try {
@@ -3034,6 +3035,11 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         pdf.text(`Page ${contentPageNum} of ${totalContentPages}`, pageWidth - margin, pageHeight - 6, { align: 'right' });
       }
 
+      // If returnBlob requested, return the blob without saving to disk
+      if (options?.returnBlob) {
+        return pdf.output('blob');
+      }
+
       // Save PDF - use cleaned address for filename
       const cleanedAddressForFile = report.property_address.replace(/[_\s]?Copy[_\s]?\d*$/i, '').trim();
       const fileName = `Cash_Flow_10Year_${cleanedAddressForFile.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
@@ -3058,113 +3064,14 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
     if (!report || !baseFinancialData) return null;
 
     try {
-      // Re-use the same PDF generation logic but output as blob instead of download
-      const templateConfig = await loadActiveCashFlowTemplate();
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const margin = 12;
-      const footerHeight = 32;
-      const contentMaxY = pageHeight - footerHeight;
-
-      // Simplified PDF generation: cover page + data table
-      // Use same core logic as exportSingleReportPDF but we just need the blob
-      // For efficiency, we call exportSingleReportPDF's logic inline
-      // Instead of duplicating 800 lines, we generate via the same jsPDF instance pattern
-
-      // Generate the PDF content by triggering the same flow
-      // We'll use a trick: generate pdf blob from the existing function's logic
-      // by extracting the pdf object before .save()
-
-      // Actually, the cleanest approach: call the same generation but intercept the output
-      // We'll refactor to share the generation, but for now, generate a simpler version
-      // that still includes the key data
-
-      const goldColor = { r: 201, g: 165, b: 90 };
-      const darkText = { r: 30, g: 30, b: 30 };
-      const grayText = { r: 120, g: 120, b: 120 };
-
-      // Cover page
-      try {
-        const coverImageUrl = '/templates/npc-cashflow-cover.jpg';
-        pdf.addImage(coverImageUrl, 'JPEG', 0, 0, pageWidth, pageHeight);
-      } catch {
-        pdf.setFillColor(26, 26, 26);
-        pdf.rect(0, 0, pageWidth, pageHeight, 'F');
+      // Use the full PDF generator in blob mode
+      const pdfBlob = await exportSingleReportPDF({ returnBlob: true });
+      if (!pdfBlob || !(pdfBlob instanceof Blob)) {
+        console.error('PDF generation returned no blob');
+        return null;
       }
 
       const cleanedAddress = report.property_address.replace(/[_\s]?Copy[_\s]?\d*$/i, '').trim();
-      pdf.setTextColor(255, 255, 255);
-      pdf.setFontSize(24);
-      pdf.text('10-Year Cash Flow Analysis', pageWidth / 2, pageHeight * 0.45, { align: 'center' });
-      pdf.setFontSize(14);
-      pdf.text(cleanedAddress, pageWidth / 2, pageHeight * 0.52, { align: 'center' });
-      pdf.setFontSize(10);
-      pdf.setTextColor(goldColor.r, goldColor.g, goldColor.b);
-      pdf.text(`Generated: ${new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}`, pageWidth / 2, pageHeight * 0.58, { align: 'center' });
-
-      // Data page - 10 year projections table
-      pdf.addPage();
-      let yPos = margin + 10;
-      pdf.setTextColor(darkText.r, darkText.g, darkText.b);
-      pdf.setFontSize(14);
-      pdf.text('10-Year Cash Flow Projections', margin, yPos);
-      yPos += 10;
-
-      // Table headers
-      const cols = ['Year', 'Property Value', 'Rental Income', 'Net Cash Flow', 'Equity', 'Gross Yield'];
-      const colWidths = [18, 35, 30, 30, 35, 35];
-      let xPos = margin;
-
-      pdf.setFontSize(7);
-      pdf.setFont('helvetica', 'bold');
-      pdf.setFillColor(245, 245, 245);
-      pdf.rect(margin, yPos - 4, pageWidth - margin * 2, 8, 'F');
-      cols.forEach((col, i) => {
-        pdf.text(col, xPos + 2, yPos);
-        xPos += colWidths[i];
-      });
-      yPos += 8;
-
-      // Table rows
-      pdf.setFont('helvetica', 'normal');
-      if (projections) {
-        projections.forEach((proj: any, idx: number) => {
-          if (yPos > contentMaxY) {
-            pdf.addPage();
-            yPos = margin + 10;
-          }
-          xPos = margin;
-          if (idx % 2 === 0) {
-            pdf.setFillColor(250, 250, 250);
-            pdf.rect(margin, yPos - 4, pageWidth - margin * 2, 7, 'F');
-          }
-          const rowData = [
-            `Year ${proj.year}`,
-            `$${(proj.propertyMarketValue || 0).toLocaleString()}`,
-            `$${(proj.rentalIncome || 0).toLocaleString()}`,
-            `$${(proj.netCashFlowAfterTax || 0).toLocaleString()}`,
-            `$${(proj.equity || 0).toLocaleString()}`,
-            `${(proj.grossRentalYield || 0).toFixed(2)}%`,
-          ];
-          rowData.forEach((val, i) => {
-            pdf.text(val, xPos + 2, yPos);
-            xPos += colWidths[i];
-          });
-          yPos += 7;
-        });
-      }
-
-      // Disclaimer page
-      try {
-        const globalSettings = await fetchGlobalReportSettings();
-        drawJsPDFDisclaimerPage(pdf, globalSettings.contactDetails, globalSettings.disclaimer);
-      } catch {
-        // Skip disclaimer if settings fail
-      }
-
-      // Generate blob and upload
-      const pdfBlob = pdf.output('blob');
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const fileName = `cashflow-analysis/${report.id}/${timestamp}_Cash_Flow_${cleanedAddress.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
       const file = new File([pdfBlob], fileName.split('/').pop() || 'cashflow.pdf', { type: 'application/pdf' });
@@ -3182,7 +3089,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       console.error('Error generating cash flow PDF for upload:', error);
       return null;
     }
-  }, [report, baseFinancialData, projections]);
+  }, [report, baseFinancialData, exportSingleReportPDF]);
 
   // Print-friendly view in new window
   const openPrintView = useCallback(() => {
@@ -3645,7 +3552,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                         </label>
                       </div>
                       <Separator className="my-2" />
-                      <Button size="sm" className="w-full" onClick={exportSingleReportPDF}>
+                      <Button size="sm" className="w-full" onClick={() => exportSingleReportPDF()}>
                         <FileText className="h-4 w-4 mr-2" />
                         Generate PDF
                       </Button>
