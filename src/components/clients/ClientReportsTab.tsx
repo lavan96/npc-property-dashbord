@@ -80,18 +80,18 @@ interface ClientReportsTabProps {
   onOpenEmailCompose: () => void;
 }
 
-type ReportType = 'all' | 'portfolio' | 'vownet' | 'investment' | 'property' | 'borrowing';
+type ReportType = 'all' | 'portfolio' | 'vownet' | 'investment' | 'property' | 'borrowing' | 'published';
 type SortMode = 'newest' | 'oldest' | 'name';
 
 interface UnifiedReport {
   id: string;
-  type: 'vownet' | 'portfolio' | 'property' | 'investment' | 'borrowing';
+  type: 'vownet' | 'portfolio' | 'property' | 'investment' | 'borrowing' | 'published';
   name: string;
   generatedAt: string;
   status: 'completed' | 'pending' | 'failed';
   fileUrl?: string | null;
   propertyAddress?: string;
-  source: 'file' | 'investment_report' | 'portfolio_report' | 'borrowing_assessment';
+  source: 'file' | 'investment_report' | 'portfolio_report' | 'borrowing_assessment' | 'portal_report';
   // Portfolio-specific fields
   healthScore?: number | null;
   overallHealth?: string | null;
