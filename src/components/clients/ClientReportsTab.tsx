@@ -391,6 +391,7 @@ export function ClientReportsTab({
     investment: allReports.filter(r => r.type === 'investment').length,
     property: allReports.filter(r => r.type === 'property').length,
     borrowing: allReports.filter(r => r.type === 'borrowing').length,
+    published: allReports.filter(r => r.type === 'published').length,
   }), [allReports]);
 
   const getReportIcon = (type: string) => {
