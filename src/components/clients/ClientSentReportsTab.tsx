@@ -312,6 +312,20 @@ export function ClientSentReportsTab({ clientId, clientName }: ClientSentReports
                       <Button
                         variant="ghost"
                         size="icon"
+                        className="h-7 w-7"
+                        onClick={() => handleDownload(report)}
+                        disabled={downloadingId === report.id || !report.storage_path}
+                        title="Download report"
+                      >
+                        {downloadingId === report.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Download className="h-3.5 w-3.5" />
+                        )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
                         onClick={() => setReportToDelete(report)}
                         title="Remove from portal"
