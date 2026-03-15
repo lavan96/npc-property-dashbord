@@ -67,15 +67,23 @@ async function fileToBase64(file: File | Blob): Promise<string> {
 }
 
 /**
- * Convert base64 string to Blob
+ * Convert base64 string to Blob — chunked to avoid call stack overflow on large files
  */
 function base64ToBlob(base64: string, contentType: string = 'application/octet-stream'): Blob {
+  const CHUNK_SIZE = 8192;
   const binaryString = atob(base64);
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
+  const chunks: Uint8Array[] = [];
+  
+  for (let offset = 0; offset < binaryString.length; offset += CHUNK_SIZE) {
+    const end = Math.min(offset + CHUNK_SIZE, binaryString.length);
+    const chunk = new Uint8Array(end - offset);
+    for (let i = 0; i < chunk.length; i++) {
+      chunk[i] = binaryString.charCodeAt(offset + i);
+    }
+    chunks.push(chunk);
   }
-  return new Blob([bytes], { type: contentType });
+  
+  return new Blob(chunks as unknown as BlobPart[], { type: contentType });
 }
 
 /**
