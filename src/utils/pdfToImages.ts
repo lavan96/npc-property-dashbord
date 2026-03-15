@@ -38,9 +38,12 @@ export interface PdfConversionResult {
   error?: string;
 }
 
-const MAX_PAGES_TO_RENDER = 6; // Limit pages to avoid token limits
+const MAX_PAGES_TO_RENDER = 30; // Increased limit for large documents
+const MAX_PAGES_FOR_VISION_BATCH = 20; // Max images to send in a single vision API call
 const RENDER_SCALE = 2.0; // Higher scale for better OCR quality
+const LARGE_DOC_RENDER_SCALE = 1.5; // Lower scale for large documents to manage payload
 const MAX_DIMENSION = 2048; // Max dimension to avoid memory issues
+const LARGE_DOC_THRESHOLD = 15; // Pages above this use compressed rendering
 
 /**
  * Convert a PDF file to an array of base64 PNG images
