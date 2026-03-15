@@ -783,7 +783,7 @@ export default function ReportQA() {
       const accessToken = sessionStorage.getItem('supabase_access_token') || localStorage.getItem('supabase_access_token');
       const bearerToken = accessToken || SUPABASE_KEY;
       
-      const chatHistoryForRequest = buildChatHistoryForRequest(messages);
+      const { formatted: chatHistoryForRequest, needsSummary, totalMessages } = buildChatHistoryForRequest(messages);
 
       const response = await fetch(`${SUPABASE_URL}/functions/v1/report-qa`, {
         method: 'POST',
@@ -806,6 +806,8 @@ export default function ReportQA() {
           stream: true,
           session_token: sessionToken, // Add session token to body as fallback
           modelProvider: selectedModel,
+          needsConversationSummary: needsSummary,
+          totalMessageCount: totalMessages,
         }),
       });
 
