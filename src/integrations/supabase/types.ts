@@ -5794,35 +5794,44 @@ export type Database = {
       }
       report_qa_conversations: {
         Row: {
+          conversation_summary: string | null
           created_at: string
           created_by: string | null
           id: string
+          last_summarized_at: string | null
           report_contents: string[]
           report_names: string[]
           status: string
           structured_report: string | null
+          summary_message_count: number | null
           title: string | null
           updated_at: string
         }
         Insert: {
+          conversation_summary?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
+          last_summarized_at?: string | null
           report_contents?: string[]
           report_names?: string[]
           status?: string
           structured_report?: string | null
+          summary_message_count?: number | null
           title?: string | null
           updated_at?: string
         }
         Update: {
+          conversation_summary?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
+          last_summarized_at?: string | null
           report_contents?: string[]
           report_names?: string[]
           status?: string
           structured_report?: string | null
+          summary_message_count?: number | null
           title?: string | null
           updated_at?: string
         }
