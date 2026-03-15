@@ -173,6 +173,8 @@ export function SendToClientModal({
       setSearch('');
       setNotes('');
       setSent(false);
+      setIncludeCharts(true);
+      setChartOptions({ cashFlowTrends: true, yieldChart: true, comparisonChart: true });
       onClose();
     }
   };
