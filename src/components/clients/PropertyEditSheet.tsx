@@ -279,7 +279,7 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
   const monthlyPropertyManagement = (formData.property_management_percent / 100) * monthlyRentalIncome;
 
   const totalMonthlyExpenditure = 
-    formData.monthly_interest_repayment +
+    formData.loan_repayment.monthlyValue +
     formData.body_corporate.monthlyValue +
     formData.council_rates.monthlyValue +
     formData.water_rates.monthlyValue +
