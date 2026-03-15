@@ -196,8 +196,9 @@ export default function ReportQA() {
   const [failedMessage, setFailedMessage] = useState<{ content: string; audioUrl?: string } | null>(null);
   const [isRetrying, setIsRetrying] = useState(false);
   const MAX_MESSAGE_LENGTH = 12000;
-  const MAX_CHAT_HISTORY_MESSAGES = 16;
-  const MAX_HISTORY_MESSAGE_CHARS = 6000;
+  const MAX_CHAT_HISTORY_MESSAGES = 30;
+  const MAX_HISTORY_MESSAGE_CHARS = 10000;
+  const SUMMARY_THRESHOLD = 12; // Summarize older messages beyond this count
   
   // Phase 2 UX improvements
   const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
