@@ -401,6 +401,7 @@ export function ClientReportsTab({
       case 'borrowing': return <Landmark className="h-4 w-4" />;
       case 'property':
       case 'investment': return <Building2 className="h-4 w-4" />;
+      case 'published': return <Send className="h-4 w-4" />;
       default: return <FileText className="h-4 w-4" />;
     }
   };
