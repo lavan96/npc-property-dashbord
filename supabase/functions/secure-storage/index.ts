@@ -132,9 +132,15 @@ serve(async (req) => {
           });
         }
 
-        // Convert blob to base64 for transport
+        // Convert blob to base64 for transport — chunked to avoid call stack overflow on large files
         const arrayBuffer = await data.arrayBuffer();
-        const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+        const bytes = new Uint8Array(arrayBuffer);
+        const CHUNK = 8192;
+        let binaryStr = '';
+        for (let i = 0; i < bytes.length; i += CHUNK) {
+          binaryStr += String.fromCharCode(...bytes.subarray(i, Math.min(i + CHUNK, bytes.length)));
+        }
+        const base64 = btoa(binaryStr);
         
         console.log(`[Secure Storage] Downloaded: ${bucket}/${path}`);
         
