@@ -2328,7 +2328,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       let yieldChartImage: string | null = null;
       let comparisonChartImage: string | null = null;
       
-      if (chartExportToggles.cashFlowTrends && cashFlowChartRef.current) {
+      if (activeChartToggles.cashFlowTrends && cashFlowChartRef.current) {
         try {
           const canvas = await html2canvas(cashFlowChartRef.current, {
             backgroundColor: '#ffffff',
