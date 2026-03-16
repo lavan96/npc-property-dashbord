@@ -325,11 +325,34 @@ export function SendToClientModal({
             <div className="space-y-2">
               <Label>Notes (optional)</Label>
               <Textarea
-                placeholder="Add a note for internal tracking..."
+                placeholder={noteVisibility === 'both' ? "This note will be visible to the client..." : "Add a note for internal tracking..."}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={2}
               />
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant={noteVisibility === 'internal' ? 'default' : 'outline'}
+                  size="sm"
+                  className="text-xs h-7"
+                  onClick={() => setNoteVisibility('internal')}
+                >
+                  🔒 Internal Only
+                </Button>
+                <Button
+                  type="button"
+                  variant={noteVisibility === 'both' ? 'default' : 'outline'}
+                  size="sm"
+                  className="text-xs h-7"
+                  onClick={() => setNoteVisibility('both')}
+                >
+                  👁 Visible to Client
+                </Button>
+              </div>
+              {noteVisibility === 'both' && notes && (
+                <p className="text-[10px] text-amber-600">This note will be displayed to the client on their portal.</p>
+              )}
             </div>
 
             {/* Actions */}
