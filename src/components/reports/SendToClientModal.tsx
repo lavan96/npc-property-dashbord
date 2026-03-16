@@ -57,6 +57,7 @@ export function SendToClientModal({
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [notes, setNotes] = useState('');
+  const [noteVisibility, setNoteVisibility] = useState<'internal' | 'both'>('internal');
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
 
