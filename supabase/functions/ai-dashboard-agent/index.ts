@@ -5266,9 +5266,12 @@ async function executeGetPortalOverview(sb: any) {
 }
 
 async function executeGetClientPortalStatus(sb: any, args: any) {
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
   const { data } = await sb.from('client_portal_users')
     .select('id, email, status, last_login_at, created_at, invite_expires_at')
-    .eq('client_id', args.client_id)
+    .eq('client_id', cid)
     .maybeSingle();
   if (!data) return { has_portal_access: false, message: 'This client does not have a portal account.' };
   return {
