@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Mail, Plus, Trash2, Users, Clock, RefreshCw, Settings, Check, X, MapPin, FileText, Bell, Tag, ChevronDown, ChevronUp, Shield } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -83,6 +83,8 @@ export function OutlookCalendarPanel({
   const [showQuickCreate, setShowQuickCreate] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showTeam, setShowTeam] = useState(false);
+  const [testingConnection, setTestingConnection] = useState(false);
+  const [testResults, setTestResults] = useState<any>(null);
 
   // Event creation form
   const [newSubject, setNewSubject] = useState('');
@@ -120,6 +122,23 @@ export function OutlookCalendarPanel({
       if (trimmed) onRefresh();
     }
   };
+
+  const handleTestConnection = useCallback(async () => {
+    setTestingConnection(true);
+    setTestResults(null);
+    try {
+      const { invokeSecureFunction } = await import('@/lib/secureInvoke');
+      const { data } = await invokeSecureFunction('outlook-calendar', {
+        action: 'testPermissions',
+        testEmail: emailInput.trim() || microsoftEmail,
+      });
+      setTestResults(data?.diagnostics || { error: 'No diagnostics returned' });
+    } catch (err: any) {
+      setTestResults({ error: err.message });
+    } finally {
+      setTestingConnection(false);
+    }
+  }, [emailInput, microsoftEmail]);
 
   const resetForm = () => {
     setNewSubject('');
@@ -222,6 +241,45 @@ export function OutlookCalendarPanel({
           <p className="text-[10px] text-muted-foreground">
             This links your Outlook calendar. Events will appear as an overlay on the calendar.
           </p>
+          <Button 
+            size="sm" 
+            variant="outline" 
+            className="w-full h-7 text-xs gap-1.5"
+            onClick={handleTestConnection}
+            disabled={testingConnection || (!emailInput.trim() && !microsoftEmail)}
+          >
+            {testingConnection ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Shield className="h-3 w-3" />}
+            {testingConnection ? 'Testing...' : 'Test Connection & Permissions'}
+          </Button>
+          {testResults && (
+            <Card className="p-2.5 space-y-1.5 bg-background/50 text-[10px]">
+              <p className="font-medium text-xs">Diagnostics</p>
+              {testResults.error && (
+                <p className="text-destructive">❌ Error: {testResults.error}</p>
+              )}
+              {testResults.tenantId && (
+                <p className="text-muted-foreground">Tenant: {testResults.tenantId}</p>
+              )}
+              {testResults.testEmail && (
+                <p className="text-muted-foreground">Testing: {testResults.testEmail}</p>
+              )}
+              {testResults.tokenAcquired !== undefined && (
+                <p>{testResults.tokenAcquired ? '✅' : '❌'} Token acquired</p>
+              )}
+              {testResults.userLookup && (
+                <p>{testResults.userLookup.success ? '✅' : '❌'} User lookup {testResults.userLookup.success ? `(${testResults.userLookup.displayName})` : `— ${testResults.userLookup.error}`}</p>
+              )}
+              {testResults.calendarAccess && (
+                <p>{testResults.calendarAccess.success ? '✅' : '❌'} Calendar access {testResults.calendarAccess.success ? `(${testResults.calendarAccess.calendarName})` : `— ${testResults.calendarAccess.error}`}</p>
+              )}
+              {testResults.eventsList && (
+                <p>{testResults.eventsList.success ? '✅' : '❌'} List events {testResults.eventsList.success ? `(${testResults.eventsList.count} found)` : `— ${testResults.eventsList.error}`}</p>
+              )}
+              {testResults.hint && (
+                <p className="text-amber-500 font-medium mt-1">💡 {testResults.hint}</p>
+              )}
+            </Card>
+          )}
         </Card>
       )}
 
