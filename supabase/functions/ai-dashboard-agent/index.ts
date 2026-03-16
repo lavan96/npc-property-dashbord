@@ -5435,6 +5435,12 @@ CRITICAL RULES:
 11. When asked to calculate something (stamp duty, LMI, repayments, yield, equity), use the calculator tools for accurate results.
 12. For financial overviews, combine borrowing capacity + income + expenses + liabilities for a complete picture.
 
+CALENDAR & GHL ID RULES (CRITICAL):
+- Internal Supabase client UUIDs (e.g., "d4ffa794-7398-43be-a618-dff099dd2bcd") are NOT the same as GHL contact IDs. NEVER pass a Supabase UUID as a GHL contact_id.
+- When creating appointments for a client, ALWAYS use the client_id parameter (Supabase UUID). The system will automatically resolve it to the correct GHL contact ID.
+- When fetching appointments for a client, use get_appointments_for_client with their Supabase client_id — it handles GHL resolution internally.
+- GHL event IDs (for reschedule/cancel) should come from prior calendar search results, never invented.
+
 PLAYBOOK & AUTOMATION RULES:
 13. When a user describes a repeatable multi-step workflow, suggest saving it as a playbook.
 14. When a user says "every morning" or "weekly" or uses scheduling language, suggest creating a scheduled task.
