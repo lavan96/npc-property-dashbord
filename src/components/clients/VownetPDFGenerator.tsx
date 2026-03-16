@@ -1198,6 +1198,22 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
   // Calculate equity based on filtered properties (respects toggle setting)
   const summaryEquity = totalValue - totalLoans;
 
+  // Check if secondary contact has any data
+  const hasSecondaryContact = !!(
+    client.secondary_first_name || client.secondary_surname || 
+    client.secondary_middle_name || client.secondary_mobile || 
+    client.secondary_email || client.secondary_gender || client.secondary_dob
+  );
+
+  // Check if owner occupied property has any meaningful data
+  const hasOwnerOccupied = !!(
+    ownerOccupied && (
+      ownerOccupied.address || ownerOccupied.value || ownerOccupied.loan_remaining ||
+      ownerOccupied.interest_rate || ownerOccupied.ownership_percentage ||
+      ownerOccupied.monthly_interest_repayment || ownerOccupied.net_monthly_cashflow
+    )
+  );
+
   // Generate individual investment property pages HTML (one per page)
   const investmentPropertyPagesHTML = investmentPropertyPages.map((item, pageIndex) => `
     <!-- INVESTMENT PROPERTY PAGE ${pageIndex + 1} -->
