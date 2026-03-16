@@ -1455,6 +1455,7 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
         .page-footer { position: absolute; bottom: 0; left: 0; right: 0; height: 52px; background: ${NPC_COLORS.lightGray}; border-top: 2px solid ${NPC_COLORS.borderGray}; display: flex; justify-content: space-between; align-items: center; padding: 0 40px; font-size: 8pt; color: #4a5568; }
         .footer-contact { display: flex; gap: 24px; }
         .footer-item { display: flex; align-items: center; gap: 6px; }
+        .footer-confidential { font-size: 6pt; color: ${NPC_COLORS.gold}; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; }
         
         /* Section Headers - Enhanced readability */
         .section { margin-bottom: 20px; }
