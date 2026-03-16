@@ -1014,8 +1014,13 @@ export function AgentChatWidget() {
                       <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 rounded-xl" onClick={() => fileInputRef.current?.click()} disabled={loading || attachedFiles.length >= 5} title="Attach files">
                         <Paperclip className="h-4 w-4" />
                       </Button>
-                      <Textarea ref={textareaRef} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown}
-                        placeholder="Ask Aurixa..." className="min-h-[40px] max-h-[100px] resize-none text-sm rounded-xl" rows={1} disabled={loading} />
+                      <Textarea ref={textareaRef} value={input} onChange={(e) => {
+                        setInput(e.target.value);
+                        const ta = e.target;
+                        ta.style.height = 'auto';
+                        ta.style.height = Math.min(ta.scrollHeight, 160) + 'px';
+                      }} onKeyDown={handleKeyDown}
+                        placeholder="Ask Aurixa..." className="min-h-[40px] max-h-[160px] resize-none text-sm rounded-xl" rows={1} disabled={loading} />
                       <VoiceToTextButton onTranscript={(text) => setInput(prev => prev ? `${prev} ${text}` : text)} disabled={loading} size="sm" className="shrink-0" />
                       <Button size="icon" onClick={() => sendMessage()} disabled={(!input.trim() && extractedFiles.length === 0) || loading || extractingFiles} className="h-10 w-10 shrink-0 rounded-xl"><Send className="h-4 w-4" /></Button>
                     </div>

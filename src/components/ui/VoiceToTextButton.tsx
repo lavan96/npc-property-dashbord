@@ -95,7 +95,6 @@ export function VoiceToTextButton({ onTranscript, disabled, size = 'default', cl
           if (error) throw new Error(error.message || 'Transcription failed');
           if (data?.text) {
             onTranscript(data.text);
-            toast.success('Transcription complete');
           } else {
             toast.error('No speech detected');
           }
