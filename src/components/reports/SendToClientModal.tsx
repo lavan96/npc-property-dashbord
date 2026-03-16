@@ -145,6 +145,7 @@ export function SendToClientModal({
           storage_path: finalStoragePath,
           source_report_id: reportId,
           notes: notes || null,
+          client_visible_notes: noteVisibility === 'both' && notes ? notes : null,
           published_at: new Date().toISOString(),
         },
       });
