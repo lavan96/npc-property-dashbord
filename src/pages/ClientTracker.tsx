@@ -290,6 +290,7 @@ export default function ClientTracker() {
           setLastSyncTime(new Date());
           queryClient.invalidateQueries({ queryKey: ['ghl-pipelines'] });
           queryClient.invalidateQueries({ queryKey: ['ghl-pipeline-stages'] });
+          queryClient.invalidateQueries({ queryKey: ['ghl-client-opportunities'] });
           queryClient.invalidateQueries({ queryKey: ['client-tracker'] });
           queryClient.invalidateQueries({ queryKey: ['clients'] });
           
