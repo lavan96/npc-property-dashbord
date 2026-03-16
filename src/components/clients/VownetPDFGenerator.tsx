@@ -1486,7 +1486,7 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
         .column-right { flex: 1.05; }
         
         /* Data Tables - Enhanced for better readability */
-        .data-table { width: 100%; border-collapse: collapse; font-size: 9pt; border: 1px solid ${NPC_COLORS.borderGray}; line-height: 1.5; }
+        .data-table { width: 100%; border-collapse: collapse; font-size: 9.5pt; border: 1px solid ${NPC_COLORS.borderGray}; line-height: 1.6; }
         .data-table th { 
           background: linear-gradient(180deg, ${NPC_COLORS.darkGray} 0%, #1a202c 100%); 
           color: ${NPC_COLORS.white};
