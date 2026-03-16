@@ -1827,11 +1827,243 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
         </div>
       </div>
       
-      <!-- PAGE 1: Personal Details & Properties -->
+      <!-- PAGE 1: Portfolio Summary (immediately after cover) -->
+      <div class="page">
+        <div class="page-header">
+          <div class="header-title-group">
+            <div class="header-title">Portfolio Summary</div>
+            <div class="header-subtitle">CLIENT PORTFOLIO FORM</div>
+          </div>
+        </div>
+        <div class="page-content">
+          <div class="kpi-grid">
+            <div class="kpi-card">
+              <span class="kpi-icon">🏠</span>
+              <div class="kpi-label">TOTAL PORTFOLIO VALUE</div>
+              <div class="kpi-value">${formatCurrency(totalValue)}</div>
+            </div>
+            <div class="kpi-card">
+              <span class="kpi-icon">💳</span>
+              <div class="kpi-label">TOTAL DEBT</div>
+              <div class="kpi-value">${formatCurrency(totalLoans)}</div>
+            </div>
+            <div class="kpi-card">
+              <span class="kpi-icon">📈</span>
+              <div class="kpi-label">PORTFOLIO EQUITY</div>
+              <div class="kpi-value ${summaryEquity >= 0 ? 'positive' : 'negative'}">${formatCurrency(summaryEquity)}</div>
+            </div>
+          </div>
+          
+          <div class="summary-box">
+            <div class="summary-title">📊 Monthly Cashflow Analysis</div>
+            <table class="data-table alt-rows compact">
+              <tr><td class="label">Total Monthly Income</td><td class="value currency income-value">${formatCurrency(client.total_monthly_income || 0)}</td></tr>
+              <tr><td class="label">Total Monthly Expenditure</td><td class="value currency">${formatCurrency(client.total_monthly_expenditure || 0)}</td></tr>
+              <tr class="cashflow-row ${(client.net_monthly_cash_flow || totalNetCF || 0) >= 0 ? 'cf-positive-row' : 'cf-negative-row'}">
+                <td class="label"><strong>Net Monthly Cash Flow</strong></td>
+                <td class="value currency">
+                  ${getCashflowIndicator(client.net_monthly_cash_flow || totalNetCF)}
+                  <strong>${formatCurrency(client.net_monthly_cash_flow || totalNetCF)}</strong>
+                </td>
+              </tr>
+            </table>
+          </div>
+          
+          <div class="section" style="margin-top: 20px;">
+            <div class="section-header gold">Properties Overview</div>
+            <table class="financial-table">
+              <thead>
+                <tr>
+                  <th>PROPERTY</th>
+                  <th class="text-right">VALUE</th>
+                  <th class="text-right">LOAN</th>
+                  <th class="text-right">RENTAL</th>
+                  <th class="text-right">NET CF</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${propertiesSummaryRows}
+              </tbody>
+              <tfoot>
+                <tr class="total-row">
+                  <td><strong>TOTAL</strong></td>
+                  <td class="text-right">${formatCurrency(totalValue)}</td>
+                  <td class="text-right">${formatCurrency(totalLoans)}</td>
+                  <td class="text-right">${formatCurrency(totalRental)}</td>
+                  <td class="text-right ${totalNetCF >= 0 ? 'text-green' : 'text-red'}">${formatCurrency(totalNetCF)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+        <div class="page-footer">
+          <div class="footer-contact">
+            <span class="footer-item">📞 (02) 8609 3299</span>
+            <span class="footer-item">✉ admin@npcservices.com.au</span>
+            <span class="footer-item">🌐 npcservices.com.au</span>
+          </div>
+          <div>Page ${summaryPageNumber} of ${totalPages}</div>
+        </div>
+      </div>
+      
+      <!-- PAGE 2: Personal Details & Properties -->
       <div class="page">
         <div class="page-header">
           <div class="header-title-group">
             <div class="header-title">Personal Details</div>
+            <div class="header-subtitle">CLIENT PORTFOLIO FORM</div>
+          </div>
+        </div>
+        <div class="page-content">
+          <div class="two-columns" style="align-items: flex-start;">
+            <div class="column column-left">
+              <div class="section">
+                <div class="section-header gold">Primary Contact</div>
+                <table class="data-table">
+                  <tr><td class="label">First name</td><td class="value">${client.primary_first_name || '-'}</td></tr>
+                  <tr><td class="label">Middle name</td><td class="value">${client.primary_middle_name || '-'}</td></tr>
+                  <tr><td class="label">Surname</td><td class="value">${client.primary_surname || '-'}</td></tr>
+                  <tr><td class="label">Mobile</td><td class="value">${client.primary_mobile || '-'}</td></tr>
+                  <tr><td class="label">Email</td><td class="value">${client.primary_email || '-'}</td></tr>
+                  <tr><td class="label">Gender</td><td class="value">${client.primary_gender || '-'}</td></tr>
+                  <tr><td class="label">Date of Birth</td><td class="value">${formatDate(client.primary_dob)}</td></tr>
+                </table>
+              </div>
+              <div class="section">
+                <div class="section-header">Secondary Contact</div>
+                <table class="data-table">
+                  <tr><td class="label">First name</td><td class="value">${client.secondary_first_name || '-'}</td></tr>
+                  <tr><td class="label">Middle name</td><td class="value">${client.secondary_middle_name || '-'}</td></tr>
+                  <tr><td class="label">Surname</td><td class="value">${client.secondary_surname || '-'}</td></tr>
+                  <tr><td class="label">Mobile</td><td class="value">${client.secondary_mobile || '-'}</td></tr>
+                  <tr><td class="label">Email</td><td class="value">${client.secondary_email || '-'}</td></tr>
+                  <tr><td class="label">Gender</td><td class="value">${client.secondary_gender || '-'}</td></tr>
+                  <tr><td class="label">Date of Birth</td><td class="value">${formatDate(client.secondary_dob)}</td></tr>
+                </table>
+              </div>
+            </div>
+            <div class="column column-right">
+              <div class="section">
+                <div class="section-header gold">Address & Status</div>
+                <table class="data-table">
+                  <tr><td class="label">Current address</td><td class="value">${client.current_address || '-'}</td></tr>
+                  <tr><td class="label">Country</td><td class="value">${client.country || 'Australia'}</td></tr>
+                  <tr><td class="label">Living Situation</td><td class="value">${client.living_situation || '-'}</td></tr>
+                  <tr><td class="label">Residential status</td><td class="value">${client.residential_status || '-'}</td></tr>
+                  <tr><td class="label">Marital status</td><td class="value">${client.marital_status || '-'}</td></tr>
+                  <tr><td class="label">Number of dependents</td><td class="value">${client.dependents_count ?? 0}</td></tr>
+                </table>
+              </div>
+              <div class="section">
+                <div class="section-header">Property (Owner Occupied)</div>
+                <table class="data-table">
+                  <tr><td class="label">Address</td><td class="value">${ownerOccupied?.address || '-'}</td></tr>
+                  <tr><td class="label">Value</td><td class="value currency">${formatCurrency(ownerOccupied?.value)}</td></tr>
+                  <tr><td class="label">Loan Remaining ($)</td><td class="value currency">${formatCurrency(ownerOccupied?.loan_remaining)}</td></tr>
+                  <tr><td class="label">Interest Rate (%)</td><td class="value percent">${formatPercent(ownerOccupied?.interest_rate)}</td></tr>
+                  <tr><td class="label">Ownership (%)</td><td class="value percent">${formatPercent(ownerOccupied?.ownership_percentage)}</td></tr>
+                  ${ownerOccupied?.lender_name ? `<tr><td class="label">Lender / Bank</td><td class="value">${ownerOccupied.lender_name}</td></tr>` : ''}
+                  ${ownerOccupied?.loan_repayment_amount ? `<tr><td class="label">Loan Repayment</td><td class="value currency">${formatCurrency(ownerOccupied.loan_repayment_amount)} <span style="font-size:7px;color:#999">(${ownerOccupied.loan_repayment_frequency || 'monthly'})</span></td></tr>` : ''}
+                  <tr><td class="label">Monthly Interest Repayment</td><td class="value currency">${formatCurrency(ownerOccupied?.monthly_interest_repayment)}</td></tr>
+                  <tr><td class="label">Net Monthly Cashflow</td><td class="value currency">${formatCurrency(ownerOccupied?.net_monthly_cashflow)}</td></tr>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="page-footer">
+          <div class="footer-contact">
+            <span class="footer-item">📞 (02) 8609 3299</span>
+            <span class="footer-item">✉ admin@npcservices.com.au</span>
+            <span class="footer-item">🌐 npcservices.com.au</span>
+          </div>
+          <div>Page ${page1Number} of ${totalPages}</div>
+        </div>
+      </div>
+      
+      ${allPropertyPagesHTML}
+      
+      <!-- Employment & Income -->
+      <div class="page">
+        <div class="page-header">
+          <div class="header-title-group">
+            <div class="header-title">Employment & Income</div>
+            <div class="header-subtitle">CLIENT PORTFOLIO FORM</div>
+          </div>
+        </div>
+        <div class="page-content">
+          <div class="two-columns" style="align-items: flex-start;">
+            <div class="column">
+              <div class="section" style="margin-bottom: 20px;">
+                <div class="section-header gold">Primary Contact - Employment</div>
+                ${generateEmploymentTable(primaryEmployment, true)}
+              </div>
+              <div class="section">
+                <div class="section-header">Secondary Contact - Employment</div>
+                ${generateEmploymentTable(secondaryEmployment, false)}
+              </div>
+            </div>
+            <div class="column">
+              <div class="section" style="margin-bottom: 20px;">
+                <div class="section-header gold">Primary Contact - Income</div>
+                ${generateIncomeTable(primaryIncome)}
+              </div>
+              <div class="section">
+                <div class="section-header">Secondary Contact - Income</div>
+                ${generateIncomeTable(secondaryIncome)}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="page-footer">
+          <div class="footer-contact">
+            <span class="footer-item">📞 (02) 8609 3299</span>
+            <span class="footer-item">✉ admin@npcservices.com.au</span>
+            <span class="footer-item">🌐 npcservices.com.au</span>
+          </div>
+          <div>Page ${employmentPageNumber} of ${totalPages}</div>
+        </div>
+      </div>
+      
+      <!-- Assets, Liabilities & Expenses -->
+      <div class="page">
+        <div class="page-header">
+          <div class="header-title-group">
+            <div class="header-title">Assets, Liabilities & Expenses</div>
+            <div class="header-subtitle">CLIENT PORTFOLIO FORM</div>
+          </div>
+        </div>
+        <div class="page-content">
+          <div class="two-columns">
+            <div class="column">
+              <div class="section">
+                <div class="section-header gold">Assets</div>
+                ${generateAssetsTable()}
+              </div>
+            </div>
+            <div class="column">
+              <div class="section" style="margin-bottom: 20px;">
+                <div class="section-header">Liabilities</div>
+                ${generateLiabilitiesTable()}
+              </div>
+              <div class="section">
+                <div class="section-header" style="background: linear-gradient(135deg, ${NPC_COLORS.warning} 0%, ${NPC_COLORS.goldDark} 100%); border-left-color: ${NPC_COLORS.darkBlue};">
+                  <span class="section-header-text">💸 Personal Expenses</span>
+                </div>
+                ${generateExpensesTable()}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="page-footer">
+          <div class="footer-contact">
+            <span class="footer-item">📞 (02) 8609 3299</span>
+            <span class="footer-item">✉ admin@npcservices.com.au</span>
+            <span class="footer-item">🌐 npcservices.com.au</span>
+          </div>
+          <div>Page ${assetsPageNumber} of ${totalPages}</div>
+        </div>
+      </div>
             <div class="header-subtitle">CLIENT PORTFOLIO FORM</div>
           </div>
         </div>
