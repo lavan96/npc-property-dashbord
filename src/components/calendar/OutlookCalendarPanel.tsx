@@ -525,6 +525,14 @@ export function OutlookCalendarPanel({
         </div>
       )}
 
+      {/* Automation Settings */}
+      {microsoftEmail && (
+        <>
+          <Separator />
+          <OutlookCalendarSettingsComponent microsoftEmail={microsoftEmail} />
+        </>
+      )}
+
       <Separator />
 
       {/* Event List */}
