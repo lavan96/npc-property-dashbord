@@ -1219,7 +1219,7 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
   // Generate individual SMSF property pages HTML (one per page)
   const smsfPropertyPagesHTML = smsfPropertyPages.map((item, pageIndex) => `
     <!-- SMSF PROPERTY PAGE ${pageIndex + 1} -->
-    <div class="page">
+    <div class="page-auto" data-property-page="true">
       <div class="page-header">
         <div class="header-title-group">
           <div class="header-title">SMSF Property ${item.index}</div>
@@ -1230,14 +1230,6 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
         <div class="property-page-content">
           ${generateSmsfPropertyHTML(item.prop, item.index)}
         </div>
-      </div>
-      <div class="page-footer">
-        <div class="footer-contact">
-          <span class="footer-item">📞 (02) 8609 3299</span>
-          <span class="footer-item">✉ admin@npcservices.com.au</span>
-          <span class="footer-item">🌐 npcservices.com.au</span>
-        </div>
-        <div>Page ${pageIndex + 3 + investmentPropertyPages.length} of ${totalPages}</div>
       </div>
     </div>
   `).join('');
