@@ -99,6 +99,12 @@ const SIDEBAR_TABS: { id: SidebarTab; icon: React.ReactNode; label: string; shor
 export default function Calendar() {
   const isMobile = useIsMobile();
   const { calendars, events, calendarGroups, contactCache, isLoading, isUpdating, error, fetchCalendarData, fetchCalendarGroups, fetchContact, getCalendarColor, rescheduleEvent, updateEvent, deleteEvent, createAppointment, searchContacts, blockSlot, fetchFreeSlots } = useGHLCalendar();
+  const {
+    outlookEvents, teamAvailability, isLoading: outlookLoading, isCreating: outlookCreating,
+    outlookEnabled, microsoftEmail, fetchOutlookEvents, createOutlookEvent, deleteOutlookEvent,
+    fetchTeamAvailability, getMicrosoftEmail, setMicrosoftEmail,
+  } = useOutlookCalendar();
+  const [outlookVisible, setOutlookVisible] = useState(true);
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('events');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
