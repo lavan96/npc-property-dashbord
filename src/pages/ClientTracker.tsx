@@ -509,7 +509,17 @@ export default function ClientTracker() {
     return allStages.filter(s => s.pipeline_id === selectedPipelineId);
   }, [allStages, selectedPipelineId]);
 
-  // Filter clients
+  // Build a map of client_id -> opportunities for fast lookups
+  const clientOpportunitiesMap = useMemo(() => {
+    const map: Record<string, ClientOpportunity[]> = {};
+    for (const opp of opportunities) {
+      if (!map[opp.client_id]) map[opp.client_id] = [];
+      map[opp.client_id].push(opp);
+    }
+    return map;
+  }, [opportunities]);
+
+  // Filter clients - now considers opportunities for pipeline matching
   const filteredClients = useMemo(() => {
     return clients.filter(client => {
       const matchesSearch = searchQuery === '' || 
@@ -518,37 +528,77 @@ export default function ClientTracker() {
       
       const matchesStatus = statusFilter === 'all' || client.pipeline_status === statusFilter;
       
-      const matchesPipeline = selectedPipelineId === 'all' || 
-        client.current_pipeline_id === selectedPipelineId;
+      // When filtering by pipeline, check opportunities table too
+      let matchesPipeline = selectedPipelineId === 'all';
+      if (!matchesPipeline) {
+        // Check legacy field
+        if (client.current_pipeline_id === selectedPipelineId) {
+          matchesPipeline = true;
+        }
+        // Check opportunities table
+        const clientOpps = clientOpportunitiesMap[client.id] || [];
+        if (clientOpps.some(o => o.pipeline_id === selectedPipelineId)) {
+          matchesPipeline = true;
+        }
+      }
       
       return matchesSearch && matchesStatus && matchesPipeline;
     });
-  }, [clients, searchQuery, statusFilter, selectedPipelineId]);
+  }, [clients, searchQuery, statusFilter, selectedPipelineId, clientOpportunitiesMap]);
 
-  // Calculate stats
+  // Calculate stats - now using opportunities count
   const stats = useMemo(() => ({
     total: clients.length,
     withFollowUp: clients.filter(c => c.follow_up_date).length,
     overdue: clients.filter(c => c.follow_up_date && new Date(c.follow_up_date) < new Date()).length,
     financeStage: clients.filter(c => c.pipeline_status?.includes('FA -') || c.pipeline_status?.includes('Finance')).length,
-  }), [clients]);
+    totalOpportunities: opportunities.length,
+  }), [clients, opportunities]);
 
-  // Group clients by stage for Kanban view
+  // Group clients by stage for Kanban view - using opportunities table
   const groupedByStage = useMemo(() => {
     const grouped: Record<string, TrackedClient[]> = {};
     
     for (const stage of stagesForPipeline) {
-      grouped[stage.id] = filteredClients.filter(c => c.current_stage_id === stage.id);
+      grouped[stage.id] = [];
+    }
+
+    // Track which clients have been placed in at least one stage
+    const placedClientIds = new Set<string>();
+
+    // Use opportunities to place clients in stages
+    for (const client of filteredClients) {
+      const clientOpps = clientOpportunitiesMap[client.id] || [];
+      
+      for (const opp of clientOpps) {
+        if (opp.stage_id && grouped[opp.stage_id]) {
+          // Check if client already in this stage (avoid duplicates)
+          if (!grouped[opp.stage_id].find(c => c.id === client.id)) {
+            grouped[opp.stage_id].push(client);
+          }
+          placedClientIds.add(client.id);
+        }
+      }
+
+      // Fallback: if client has no opportunities but has legacy stage_id
+      if (!placedClientIds.has(client.id) && client.current_stage_id) {
+        const stageExists = stagesForPipeline.find(s => s.id === client.current_stage_id);
+        if (stageExists) {
+          if (!grouped[client.current_stage_id]) grouped[client.current_stage_id] = [];
+          grouped[client.current_stage_id].push(client);
+          placedClientIds.add(client.id);
+        }
+      }
     }
     
-    // Add "Unassigned" group for clients without a stage
-    const unassigned = filteredClients.filter(c => !c.current_stage_id || !stagesForPipeline.find(s => s.id === c.current_stage_id));
+    // Add "Unassigned" group for clients without any stage placement
+    const unassigned = filteredClients.filter(c => !placedClientIds.has(c.id));
     if (unassigned.length > 0) {
       grouped['unassigned'] = unassigned;
     }
     
     return grouped;
-  }, [filteredClients, stagesForPipeline]);
+  }, [filteredClients, stagesForPipeline, clientOpportunitiesMap]);
 
   const formatCurrency = (value: number | null) => {
     if (!value) return '-';
