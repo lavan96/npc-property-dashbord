@@ -632,9 +632,10 @@ export default function ClientTracker() {
         setLastSyncTime(new Date());
         queryClient.invalidateQueries({ queryKey: ['ghl-pipelines'] });
         queryClient.invalidateQueries({ queryKey: ['ghl-pipeline-stages'] });
+        queryClient.invalidateQueries({ queryKey: ['ghl-client-opportunities'] });
         queryClient.invalidateQueries({ queryKey: ['client-tracker'] });
         queryClient.invalidateQueries({ queryKey: ['clients'] });
-        toast.success(`Synced ${data.stats?.pipelinesFound || 0} pipelines, ${data.stats?.stagesSynced || 0} stages, ${data.stats?.clientsUpdated || 0} clients`);
+        toast.success(`Synced ${data.stats?.pipelinesFound || 0} pipelines, ${data.stats?.opportunitiesStored || 0} opportunities, ${data.stats?.clientsUpdated || 0} clients`);
       } else {
         throw new Error(data?.error || 'Sync failed');
       }
