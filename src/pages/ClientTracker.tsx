@@ -211,6 +211,25 @@ export default function ClientTracker() {
     },
   });
 
+  // Fetch ALL opportunities from the new table
+  const { data: opportunities = [] } = useQuery({
+    queryKey: ['ghl-client-opportunities'],
+    queryFn: async () => {
+      const { data, error } = await invokeSecureFunction('get-client-data', {
+        listMode: true,
+        listOptions: {
+          table: 'ghl_client_opportunities',
+          select: 'id, client_id, ghl_opportunity_id, pipeline_id, stage_id, pipeline_name, stage_name, opportunity_status, monetary_value, opportunity_name, follow_up_date, notes, synced_at',
+          orderBy: 'synced_at',
+          orderAsc: false,
+        }
+      });
+      
+      if (error || !data?.success) return [];
+      return (data.records || []) as ClientOpportunity[];
+    },
+  });
+
   // Fetch active clients (marked as favorite) and sort by most recent note activity
   const activeClients = useMemo(() => {
     return clients
