@@ -3002,8 +3002,14 @@ async function executeGetClientFiles(sb: any, args: any) {
 
 async function executeGetInvestmentReports(sb: any, args: any) {
   const limit = args.limit || 10;
+  let resolvedClientId = args.client_id;
+  if (args.client_id) {
+    const v = await validateClientExists(sb, args.client_id);
+    if (!v.valid) return { error: v.error };
+    resolvedClientId = v.resolvedId || args.client_id;
+  }
   let query = sb.from('investment_reports').select('id, property_address, status, quality_score, created_at, client_id');
-  if (args.client_id) query = query.eq('client_id', args.client_id);
+  if (resolvedClientId) query = query.eq('client_id', resolvedClientId);
   const { data } = await query.order('created_at', { ascending: false }).limit(limit);
   return { reports: data || [] };
 }
@@ -3182,8 +3188,11 @@ async function executeGetClientsNeedingFollowUp(sb: any, args: any) {
 }
 
 async function executeGetClientNotes(sb: any, args: any) {
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
   const limit = args.limit || 20;
-  const { data } = await sb.from('client_notes').select('*').eq('client_id', args.client_id).order('created_at', { ascending: false }).limit(limit);
+  const { data } = await sb.from('client_notes').select('*').eq('client_id', cid).order('created_at', { ascending: false }).limit(limit);
   return { notes: data || [] };
 }
 
@@ -3210,7 +3219,10 @@ async function executeDeleteClientNote(sb: any, args: any) {
 }
 
 async function executeGetClientScore(sb: any, args: any) {
-  const { data } = await sb.from('client_scores').select('*').eq('client_id', args.client_id).order('created_at', { ascending: false }).limit(1);
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
+  const { data } = await sb.from('client_scores').select('*').eq('client_id', cid).order('created_at', { ascending: false }).limit(1);
   return data?.[0] ? { score: data[0] } : { message: 'No score data found for this client.' };
 }
 
@@ -3598,12 +3610,16 @@ async function executeCompareClients(sb: any, args: any) {
 
   const comparisons: any[] = [];
   for (const id of ids) {
+    // Resolve name-based IDs
+    const v = await validateClientExists(sb, id);
+    if (!v.valid) { comparisons.push({ id, error: v.error }); continue; }
+    const cid = v.resolvedId || id;
     const [clientRes, dealsRes, bcRes, remindersRes, activitiesRes] = await Promise.all([
-      sb.from('clients').select('id, primary_first_name, primary_surname, primary_email, pipeline_status, follow_up_date, borrowing_capacity, created_at, updated_at').eq('id', id).single(),
-      sb.from('client_deals').select('id, deal_type, current_stage, risk_status, loan_amount, commission_estimate, settlement_date').eq('client_id', id),
-      sb.from('borrowing_capacity_assessments').select('borrowing_capacity, serviceability_band, monthly_surplus, dti_ratio, created_at').eq('client_id', id).order('created_at', { ascending: false }).limit(1),
-      sb.from('client_reminders').select('id').eq('client_id', id).eq('status', 'pending'),
-      sb.from('client_activities').select('id, created_at').eq('client_id', id).order('created_at', { ascending: false }).limit(1),
+      sb.from('clients').select('id, primary_first_name, primary_surname, primary_email, pipeline_status, follow_up_date, borrowing_capacity, created_at, updated_at').eq('id', cid).single(),
+      sb.from('client_deals').select('id, deal_type, current_stage, risk_status, loan_amount, commission_estimate, settlement_date').eq('client_id', cid),
+      sb.from('borrowing_capacity_assessments').select('borrowing_capacity, serviceability_band, monthly_surplus, dti_ratio, created_at').eq('client_id', cid).order('created_at', { ascending: false }).limit(1),
+      sb.from('client_reminders').select('id').eq('client_id', cid).eq('status', 'pending'),
+      sb.from('client_activities').select('id, created_at').eq('client_id', cid).order('created_at', { ascending: false }).limit(1),
     ]);
 
     const client = clientRes.data;
@@ -3641,10 +3657,15 @@ async function executeCompareClients(sb: any, args: any) {
 // ─── SMART FOLLOW-UP DRAFTING (Batch 2) ───
 
 async function executeDraftFollowUp(sb: any, args: any, userId: string) {
+  // Validate and resolve client ID (supports name-based resolution)
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
+
   // Gather client context
   const { data: client } = await sb.from('clients')
     .select('id, primary_first_name, primary_surname, primary_email, pipeline_status, follow_up_date')
-    .eq('id', args.client_id).single();
+    .eq('id', cid).single();
   if (!client) return { error: 'Client not found.' };
 
   const clientName = `${client.primary_first_name || ''} ${client.primary_surname || ''}`.trim();
@@ -3652,17 +3673,17 @@ async function executeDraftFollowUp(sb: any, args: any, userId: string) {
   // Get recent deals
   const { data: deals } = await sb.from('client_deals')
     .select('deal_type, current_stage, risk_status, property_address, settlement_date, loan_amount')
-    .eq('client_id', args.client_id).order('created_at', { ascending: false }).limit(3);
+    .eq('client_id', cid).order('created_at', { ascending: false }).limit(3);
 
   // Get recent activities  
   const { data: activities } = await sb.from('client_activities')
     .select('title, activity_type, created_at')
-    .eq('client_id', args.client_id).order('created_at', { ascending: false }).limit(5);
+    .eq('client_id', cid).order('created_at', { ascending: false }).limit(5);
 
   // Get recent emails
   const { data: emails } = await sb.from('email_copilot_emails')
     .select('subject, received_at, sender')
-    .eq('client_id', args.client_id).order('received_at', { ascending: false }).limit(3);
+    .eq('client_id', cid).order('received_at', { ascending: false }).limit(3);
 
   const type = args.follow_up_type || 'general_check_in';
   
@@ -5060,9 +5081,12 @@ async function executeGetAgreementsOverview(sb: any) {
 }
 
 async function executeGetClientAgreements(sb: any, args: any) {
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
   const { data, error } = await sb.from('agency_agreements')
     .select('id, buyer_names, secondary_buyer_name, status, docusign_status, docusign_sent_at, docusign_signed_at, agreement_date, initial_commitment_fee, notes, template_id, sent_via, created_at')
-    .eq('client_id', args.client_id).order('created_at', { ascending: false });
+    .eq('client_id', cid).order('created_at', { ascending: false });
   if (error) return { error: error.message };
   return { agreements: data || [], count: (data || []).length };
 }
@@ -5097,10 +5121,16 @@ async function executeGetAgreementTemplates(sb: any) {
 
 async function executeGetLeadAttributions(sb: any, args: any) {
   const limit = args.limit || 30;
+  let resolvedClientId = args.client_id;
+  if (args.client_id) {
+    const v = await validateClientExists(sb, args.client_id);
+    if (!v.valid) return { error: v.error };
+    resolvedClientId = v.resolvedId || args.client_id;
+  }
   let q = sb.from('lead_source_attributions')
     .select('id, client_id, source_type, utm_source, utm_medium, utm_campaign, utm_content, meta_campaign_name, meta_adset_name, meta_ad_name, meta_campaign_objective, enrichment_status, attributed_at, landing_page_url, ghl_attribution_source')
     .order('attributed_at', { ascending: false }).limit(limit);
-  if (args.client_id) q = q.eq('client_id', args.client_id);
+  if (resolvedClientId) q = q.eq('client_id', resolvedClientId);
   if (args.source_type) q = q.eq('source_type', args.source_type);
   if (args.enrichment_status) q = q.eq('enrichment_status', args.enrichment_status);
   const { data, error } = await q;
@@ -5194,9 +5224,12 @@ async function executeGetMarketingReports(sb: any, args: any) {
 }
 
 async function executeGetClientLeadSource(sb: any, args: any) {
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
   const { data } = await sb.from('lead_source_attributions')
     .select('*')
-    .eq('client_id', args.client_id)
+    .eq('client_id', cid)
     .order('attributed_at', { ascending: false })
     .limit(5);
   if (!data || data.length === 0) return { message: 'No lead source attribution found for this client.', attributions: [] };
@@ -5249,9 +5282,12 @@ async function executeGetPortalOverview(sb: any) {
 }
 
 async function executeGetClientPortalStatus(sb: any, args: any) {
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
   const { data } = await sb.from('client_portal_users')
     .select('id, email, status, last_login_at, created_at, invite_expires_at')
-    .eq('client_id', args.client_id)
+    .eq('client_id', cid)
     .maybeSingle();
   if (!data) return { has_portal_access: false, message: 'This client does not have a portal account.' };
   return {
