@@ -2877,6 +2877,21 @@ async function executeCreateAppointment(sb: any, args: any) {
     }
   }
 
+  // Auto-resolve assignedUserId from calendar's team members if not provided
+  let assignedUserId = args.assigned_user_id || null;
+  if (!assignedUserId) {
+    try {
+      const calData = await callGHLCalendar({ action: 'calendars' });
+      const targetCal = (calData.calendars || []).find((c: any) => c.id === calendar_id);
+      if (targetCal?.teamMembers?.length > 0) {
+        assignedUserId = targetCal.teamMembers[0].userId;
+        console.log(`[create_appointment] Auto-assigned team member: ${assignedUserId} (${targetCal.teamMembers[0].name || 'unknown'}) from calendar "${targetCal.name}"`);
+      }
+    } catch (e) {
+      console.warn('[create_appointment] Could not fetch calendar team members for auto-assign:', e);
+    }
+  }
+
   const payload: Record<string, unknown> = {
     action: 'create',
     calendarId: calendar_id,
@@ -2887,6 +2902,7 @@ async function executeCreateAppointment(sb: any, args: any) {
   };
   if (ghlContactId) payload.contactId = ghlContactId;
   if (notes) payload.notes = notes;
+  if (assignedUserId) payload.assignedUserId = assignedUserId;
 
   try {
     const data = await callGHLCalendar(payload);
