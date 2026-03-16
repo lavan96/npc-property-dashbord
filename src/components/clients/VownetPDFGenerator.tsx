@@ -1504,10 +1504,11 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
           font-weight: 500; 
           width: 48%; 
           color: ${NPC_COLORS.darkGray}; 
-          font-size: 8.5pt;
+          font-size: 9pt;
+          letter-spacing: 0.1px;
         }
-        .data-table .value { background: ${NPC_COLORS.white}; color: ${NPC_COLORS.black}; font-weight: 500; font-size: 9pt; }
-        .data-table .currency { text-align: right; font-family: 'Inter', monospace; font-weight: 600; }
+        .data-table .value { background: ${NPC_COLORS.white}; color: ${NPC_COLORS.black}; font-weight: 500; font-size: 9.5pt; }
+        .data-table .currency { text-align: right; font-family: 'Inter', -apple-system, monospace; font-weight: 600; }
         .data-table .percent { text-align: right; }
         
         /* Alternating Rows */
