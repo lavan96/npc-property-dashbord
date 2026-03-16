@@ -1420,6 +1420,25 @@ export default function Calendar() {
                   onHideAll={handleHideAllCalendars}
                 />
               )}
+              {sidebarTab === 'outlook' && (
+                <OutlookCalendarPanel
+                  outlookEvents={outlookEvents}
+                  teamAvailability={teamAvailability}
+                  isLoading={outlookLoading}
+                  isCreating={outlookCreating}
+                  outlookEnabled={outlookEnabled}
+                  microsoftEmail={microsoftEmail}
+                  onRefresh={() => { const { start, end } = getVisibleRange(); fetchOutlookEvents(start.toISOString(), end.toISOString()); }}
+                  onFetchTeam={() => { const { start, end } = getVisibleRange(); fetchTeamAvailability(start.toISOString(), end.toISOString()); }}
+                  onCreateEvent={createOutlookEvent}
+                  onDeleteEvent={deleteOutlookEvent}
+                  onSetMicrosoftEmail={setMicrosoftEmail}
+                  onGetMicrosoftEmail={getMicrosoftEmail}
+                  outlookVisible={outlookVisible}
+                  onToggleOutlookVisible={() => setOutlookVisible(v => !v)}
+                  selectedDate={selectedDate}
+                />
+              )}
               {sidebarTab === 'patterns' && (
                 <RecurringPatterns events={events} onPatternClick={(pattern) => toast({ title: 'Pattern detected', description: pattern.title })} />
               )}
