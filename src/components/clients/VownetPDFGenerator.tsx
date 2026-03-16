@@ -439,6 +439,28 @@ export function VownetPDFGenerator({
             ctx.drawImage(canvas, 0, srcY, canvas.width, srcH, 0, 0, canvas.width, srcH);
             
             pdf.addImage(tileCanvas, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+            
+            // Draw footer on each tiled property page
+            const footerY = 290;
+            const lineY = footerY - 3;
+            pdf.setDrawColor(200, 200, 200);
+            pdf.setLineWidth(0.4);
+            pdf.line(10, lineY, 200, lineY);
+            pdf.setFillColor(248, 249, 250);
+            pdf.rect(0, lineY, 210, 297 - lineY, 'F');
+            pdf.setDrawColor(200, 200, 200);
+            pdf.line(10, lineY, 200, lineY);
+            pdf.setFontSize(7);
+            pdf.setTextColor(74, 85, 104);
+            pdf.setFont('helvetica', 'normal');
+            pdf.text('\u{1F4DE} (02) 8609 3299     \u2709 admin@npcservices.com.au     \u{1F310} npcservices.com.au', 10, footerY);
+            pdf.setFontSize(6);
+            pdf.setTextColor(180, 140, 50);
+            pdf.text('CONFIDENTIAL', 105, footerY, { align: 'center' });
+            pdf.setFontSize(7);
+            pdf.setTextColor(74, 85, 104);
+            pdf.text(`Page ${pdfPageIndex} of ${totalPages}`, 200, footerY, { align: 'right' });
+            
             tileCanvas.width = 1;
             tileCanvas.height = 1;
             pdfPageIndex++;
