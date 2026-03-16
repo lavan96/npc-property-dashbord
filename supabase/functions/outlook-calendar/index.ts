@@ -364,7 +364,78 @@ serve(async (req) => {
     const userEmail = body.targetEmail || await resolveMicrosoftEmail(supabase, userId!);
 
     // Get Microsoft access token
-    const accessToken = await getAccessToken();
+    const { token: accessToken, scopes } = await getAccessToken();
+    console.log(`[outlook-calendar] Token scopes: ${scopes || 'N/A (app-only token - scopes not returned)'}`);
+
+    // ── Diagnostic action ────────────────────────────────────────────
+    if (action === 'testPermissions') {
+      const testEmail = body.testEmail || userEmail;
+      if (!testEmail) {
+        return jsonResponse({ error: 'No email to test. Provide testEmail or configure microsoft_email.' }, corsHeaders, 400);
+      }
+      console.log(`[outlook-calendar] Testing permissions for ${testEmail}`);
+      
+      // Test 1: Can we resolve the user in the directory?
+      let userTest = { success: false, error: '' };
+      try {
+        const userRes = await fetch(`https://graph.microsoft.com/v1.0/users/${encodeURIComponent(testEmail)}?$select=id,displayName,mail,userPrincipalName`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (userRes.ok) {
+          const userData = await userRes.json();
+          userTest = { success: true, error: '', ...userData };
+        } else {
+          const errText = await userRes.text();
+          userTest = { success: false, error: `${userRes.status}: ${errText}` };
+        }
+      } catch (e) {
+        userTest = { success: false, error: (e as Error).message };
+      }
+
+      // Test 2: Can we access their calendar?
+      let calendarTest = { success: false, error: '' };
+      try {
+        const calRes = await fetch(graphUrl(testEmail, '/calendar'), {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (calRes.ok) {
+          const calData = await calRes.json();
+          calendarTest = { success: true, error: '', calendarName: calData.name };
+        } else {
+          const errText = await calRes.text();
+          calendarTest = { success: false, error: `${calRes.status}: ${errText}` };
+        }
+      } catch (e) {
+        calendarTest = { success: false, error: (e as Error).message };
+      }
+
+      // Test 3: Can we list events?
+      let eventsTest = { success: false, error: '', count: 0 };
+      try {
+        const now = new Date();
+        const weekLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+        const events = await listEvents(accessToken, testEmail, now.toISOString(), weekLater.toISOString());
+        eventsTest = { success: true, error: '', count: events.length };
+      } catch (e) {
+        eventsTest = { success: false, error: (e as Error).message, count: 0 };
+      }
+
+      return jsonResponse({
+        success: true,
+        diagnostics: {
+          tenantId: MICROSOFT_TENANT_ID,
+          clientId: MICROSOFT_CLIENT_ID?.substring(0, 8) + '...',
+          testEmail,
+          tokenAcquired: true,
+          userLookup: userTest,
+          calendarAccess: calendarTest,
+          eventsList: eventsTest,
+          hint: !calendarTest.success 
+            ? 'Calendar access denied. In Azure Portal → App registrations → your app → API permissions, ensure "Calendars.ReadWrite" is added as APPLICATION (not Delegated) permission AND admin consent has been granted (green checkmark).'
+            : 'All permissions look good!',
+        },
+      }, corsHeaders);
+    }
 
     // ── Route actions ────────────────────────────────────────────────
 
