@@ -125,8 +125,47 @@ export function MultiCalendarOverlay({
         </div>
       </Card>
 
+      {/* Outlook calendar entry */}
+      {microsoftEmail && onToggleOutlook && (
+        <button
+          onClick={onToggleOutlook}
+          className={cn(
+            'w-full p-3 rounded-lg border text-left transition-all',
+            'hover:bg-muted/50',
+            outlookVisible
+              ? 'border-[hsl(207,89%,41%)]/30 bg-[hsl(207,89%,41%)]/5'
+              : 'border-border/50 opacity-60 hover:opacity-100'
+          )}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div
+                  className={cn('w-4 h-4 rounded-full transition-all', !outlookVisible && 'opacity-40')}
+                  style={{ backgroundColor: '#0078d4' }}
+                />
+                {outlookVisible && (
+                  <Check className="absolute -top-1 -right-1 h-3 w-3 text-green-500 bg-background rounded-full" />
+                )}
+              </div>
+              <div>
+                <p className="text-sm font-medium">Outlook</p>
+                <p className="text-xs text-muted-foreground">
+                  {outlookEventCount} event{outlookEventCount !== 1 ? 's' : ''} · {microsoftEmail}
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={!!outlookVisible}
+              onCheckedChange={onToggleOutlook}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        </button>
+      )}
+
       {/* Calendar list */}
-      <ScrollArea className="h-[320px]">
+      <ScrollArea className="h-[280px]">
         <div className="space-y-2 pr-2">
           {calendars.map(calendar => {
             const isVisible = visibleCalendars.has(calendar.id);
