@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Mail, Plus, Trash2, Users, Clock, RefreshCw, Settings, Check, X, MapPin, FileText, Bell, Tag, ChevronDown, ChevronUp, Shield } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
