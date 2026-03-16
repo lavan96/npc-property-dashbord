@@ -63,7 +63,7 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const body = await req.json();
-    const { action, clientId, clientIds } = body;
+    const { action, clientId, clientIds, pipelineStageGhlId, pipelineGhlId } = body;
     
     // SECURITY: Verify authentication
     const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
