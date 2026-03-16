@@ -1604,7 +1604,7 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
         .data-table.alt-rows tr:nth-child(even) td.value { background: #f5f7fa; }
         
         /* Compact Tables - still readable */
-        .data-table.compact td { padding: 12px 16px; font-size: 9pt; }
+        .data-table.compact td { padding: 8px 14px; font-size: 8.5pt; line-height: 1.3; }
         
         /* Financial Mini Tables */
         .financial-mini { font-size: 7.5pt; }
@@ -1691,15 +1691,15 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
         /* Income Highlight - Better readability */
         .income-highlight {
           background: linear-gradient(135deg, ${NPC_COLORS.gold} 0%, ${NPC_COLORS.goldDark} 100%);
-          padding: 16px 20px;
+          padding: 10px 16px;
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 10px;
+          margin-bottom: 8px;
           border-radius: 6px;
         }
-        .income-highlight-label { color: ${NPC_COLORS.white}; font-size: 9pt; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
-        .income-highlight-value { color: ${NPC_COLORS.white}; font-size: 18pt; font-weight: 700; }
+        .income-highlight-label { color: ${NPC_COLORS.white}; font-size: 8pt; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+        .income-highlight-value { color: ${NPC_COLORS.white}; font-size: 15pt; font-weight: 700; }
         
         /* Assets Summary */
         .assets-summary {
