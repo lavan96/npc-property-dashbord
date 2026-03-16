@@ -1498,7 +1498,7 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
           text-transform: uppercase;
           letter-spacing: 0.3px;
         }
-        .data-table td { border: 1px solid ${NPC_COLORS.borderGray}; padding: 12px 16px; vertical-align: middle; line-height: 1.4; }
+        .data-table td { border: 1px solid ${NPC_COLORS.borderGray}; padding: 14px 18px; vertical-align: middle; line-height: 1.5; }
         .data-table .label { 
           background: linear-gradient(90deg, ${NPC_COLORS.lightGray} 0%, #edf2f7 100%); 
           font-weight: 500; 
