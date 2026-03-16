@@ -1762,26 +1762,26 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
         }
         
         /* KPI Cards - Enhanced with emoji icons for character */
-        .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-bottom: 24px; }
+        .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 28px; }
         .kpi-card { 
           background: linear-gradient(135deg, ${NPC_COLORS.white} 0%, ${NPC_COLORS.lightGray} 100%);
           border: 1px solid ${NPC_COLORS.borderGray};
           border-left: 5px solid ${NPC_COLORS.gold};
-          padding: 18px 20px;
+          padding: 22px 24px;
           border-radius: 6px;
           box-shadow: 0 2px 8px rgba(0,0,0,0.05);
         }
         .kpi-icon { 
-          font-size: 24pt; 
-          margin-bottom: 12px; 
+          font-size: 26pt; 
+          margin-bottom: 14px; 
           display: block; 
           line-height: 1; 
         }
-        .kpi-label { font-size: 7.5pt; color: ${NPC_COLORS.mediumGray}; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; font-weight: 600; }
-        .kpi-value { font-size: 20pt; font-weight: 700; color: ${NPC_COLORS.darkBlue}; }
+        .kpi-label { font-size: 8pt; color: ${NPC_COLORS.mediumGray}; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 12px; font-weight: 600; }
+        .kpi-value { font-size: 22pt; font-weight: 700; color: ${NPC_COLORS.darkBlue}; }
         .kpi-value.positive { color: ${NPC_COLORS.success}; }
         .kpi-value.negative { color: ${NPC_COLORS.danger}; }
-        .kpi-trend { font-size: 8pt; color: ${NPC_COLORS.mediumGray}; margin-top: 6px; }
+        .kpi-trend { font-size: 8.5pt; color: ${NPC_COLORS.mediumGray}; margin-top: 8px; }
         .kpi-trend.up { color: ${NPC_COLORS.success}; }
         .kpi-trend.down { color: ${NPC_COLORS.danger}; }
         
