@@ -248,16 +248,24 @@ export function PersonalDetailsManualEntry({ clientId, clientData, additionalCon
         dependents_count: formData.dependents_count || null,
       };
 
+      let edgeSaved = false;
       try {
-        const { error } = await invokeSecureFunction('manage-client-data', {
+        const { data: resp, error } = await invokeSecureFunction('manage-client-data', {
           operation: 'update', table: 'clients', clientId, data: updateData,
         });
-        if (error && !error.message?.includes('401')) {
-          console.warn('Edge function failed for client update:', error);
+        if (error) {
+          console.warn('Edge function returned error for client update:', error);
+        } else if (resp?.success) {
+          edgeSaved = true;
         }
       } catch (err) {
-        console.warn('Edge function failed, falling back to direct query:', err);
-        const { error } = await supabase.from('clients').update(updateData).eq('id', clientId);
+        console.warn('Edge function call threw:', err);
+      }
+
+      // Fallback to direct Supabase if edge function didn't save
+      if (!edgeSaved) {
+        console.log('Falling back to direct Supabase update for client data');
+        const { error } = await supabase.from('clients').update(updateData as any).eq('id', clientId);
         if (error) throw error;
       }
 
