@@ -40,6 +40,11 @@ export function MultiCalendarOverlay({
   onToggleCalendar,
   onShowAll,
   onHideAll,
+  outlookEnabled,
+  outlookVisible,
+  onToggleOutlook,
+  outlookEventCount = 0,
+  microsoftEmail,
 }: MultiCalendarOverlayProps) {
   const [viewMode, setViewMode] = useState<'list' | 'compact'>('list');
 
