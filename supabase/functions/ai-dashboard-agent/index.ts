@@ -5071,9 +5071,12 @@ async function executeGetAgreementsOverview(sb: any) {
 }
 
 async function executeGetClientAgreements(sb: any, args: any) {
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
   const { data, error } = await sb.from('agency_agreements')
     .select('id, buyer_names, secondary_buyer_name, status, docusign_status, docusign_sent_at, docusign_signed_at, agreement_date, initial_commitment_fee, notes, template_id, sent_via, created_at')
-    .eq('client_id', args.client_id).order('created_at', { ascending: false });
+    .eq('client_id', cid).order('created_at', { ascending: false });
   if (error) return { error: error.message };
   return { agreements: data || [], count: (data || []).length };
 }
