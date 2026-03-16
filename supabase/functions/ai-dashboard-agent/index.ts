@@ -3213,7 +3213,10 @@ async function executeDeleteClientNote(sb: any, args: any) {
 }
 
 async function executeGetClientScore(sb: any, args: any) {
-  const { data } = await sb.from('client_scores').select('*').eq('client_id', args.client_id).order('created_at', { ascending: false }).limit(1);
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
+  const { data } = await sb.from('client_scores').select('*').eq('client_id', cid).order('created_at', { ascending: false }).limit(1);
   return data?.[0] ? { score: data[0] } : { message: 'No score data found for this client.' };
 }
 
