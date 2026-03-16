@@ -2140,6 +2140,112 @@ const TOOLS: any[] = [
       parameters: { type: "object", properties: { limit: { type: "number", description: "Max results (default 20)" } } },
     },
   },
+
+  // ═══════════════════════════════════════════════════════════
+  // OUTLOOK CALENDAR INTEGRATION
+  // ═══════════════════════════════════════════════════════════
+  {
+    type: "function",
+    function: {
+      name: "get_outlook_events",
+      description: "Get Outlook calendar events for the current user within a date range. Returns internal meetings, prep blocks, and other Outlook events.",
+      parameters: {
+        type: "object",
+        properties: {
+          start_date: { type: "string", description: "Start date (YYYY-MM-DD)" },
+          end_date: { type: "string", description: "End date (YYYY-MM-DD)" },
+        },
+        required: ["start_date", "end_date"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_outlook_event",
+      description: "Create an internal event on the user's Outlook calendar. Use for internal meetings, prep blocks, focus time, etc. Does NOT create GHL appointments. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          subject: { type: "string", description: "Event title" },
+          start_time: { type: "string", description: "Start time in ISO 8601 format" },
+          end_time: { type: "string", description: "End time in ISO 8601 format" },
+          body: { type: "string", description: "Optional event notes/description" },
+          location: { type: "string", description: "Optional location" },
+          attendees: { type: "array", items: { type: "string" }, description: "Optional attendee email addresses" },
+          show_as: { type: "string", enum: ["busy", "tentative", "free", "oof"], description: "Show as status (default: busy)" },
+          categories: { type: "array", items: { type: "string" }, description: "Optional categories (e.g. Internal Meeting, Client Prep)" },
+          reminder_minutes: { type: "number", description: "Reminder before event in minutes" },
+        },
+        required: ["subject", "start_time", "end_time"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_outlook_prep_block",
+      description: "Create a preparation block on the user's Outlook calendar before an appointment. Auto-fills with client context. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          appointment_title: { type: "string", description: "Title of the upcoming appointment" },
+          appointment_start_time: { type: "string", description: "Start time of the appointment (ISO 8601) — prep block will end at this time" },
+          client_name: { type: "string", description: "Client name for the prep block title" },
+          prep_minutes: { type: "number", description: "Duration of prep in minutes (default 15)" },
+          notes: { type: "string", description: "Additional prep notes" },
+        },
+        required: ["appointment_title", "appointment_start_time"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "delete_outlook_event",
+      description: "Delete an event from the user's Outlook calendar. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          event_id: { type: "string", description: "Outlook event ID to delete" },
+        },
+        required: ["event_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_team_outlook_availability",
+      description: "Check team members' Outlook calendar availability for a given date range. Shows who is busy and when.",
+      parameters: {
+        type: "object",
+        properties: {
+          start_date: { type: "string", description: "Start date (YYYY-MM-DD)" },
+          end_date: { type: "string", description: "End date (YYYY-MM-DD)" },
+        },
+        required: ["start_date", "end_date"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_follow_up_block",
+      description: "Create a follow-up time block on the user's Outlook calendar for a client follow-up. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          client_name: { type: "string", description: "Client name" },
+          follow_up_date: { type: "string", description: "Date for follow-up (YYYY-MM-DD)" },
+          duration_minutes: { type: "number", description: "Duration in minutes (default 30)" },
+          start_hour: { type: "number", description: "Start hour in 24h format (default 9)" },
+          notes: { type: "string", description: "Follow-up notes" },
+        },
+        required: ["client_name", "follow_up_date"],
+      },
+    },
+  },
 ];
 
 // ============================================================
