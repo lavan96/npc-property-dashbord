@@ -1604,7 +1604,7 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
         .data-table.alt-rows tr:nth-child(even) td.value { background: #f5f7fa; }
         
         /* Compact Tables - still readable */
-        .data-table.compact td { padding: 12px 16px; font-size: 9pt; }
+        .data-table.compact td { padding: 8px 14px; font-size: 8.5pt; line-height: 1.3; }
         
         /* Financial Mini Tables */
         .financial-mini { font-size: 7.5pt; }
