@@ -112,7 +112,7 @@ serve(async (req) => {
       });
     }
 
-    const result = await syncSingleClient(supabase, clientId, headers, locationId);
+    const result = await syncSingleClient(supabase, clientId, headers, locationId, pipelineStageGhlId, pipelineGhlId);
 
     return new Response(JSON.stringify(result), {
       status: result.success ? 200 : 500,
