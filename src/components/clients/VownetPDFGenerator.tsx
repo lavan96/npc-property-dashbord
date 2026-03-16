@@ -1272,7 +1272,7 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
         
         /* Page Layout */
         .page { width: 794px; height: 1123px; background: ${NPC_COLORS.white}; position: relative; overflow: hidden; }
-        .page-content { padding: 30px 40px; padding-top: 90px; }
+        .page-content { padding: 30px 40px; padding-top: 94px; }
         
         /* Cover Page - Image Based */
         .cover-page-image { 
