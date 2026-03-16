@@ -158,9 +158,10 @@ export function SendToClientModal({
       setTimeout(() => {
         setSent(false);
         setSelectedClientId(null);
-        setNotes('');
-        setSearch('');
-        onClose();
+      setNotes('');
+      setNoteVisibility('internal');
+      setSearch('');
+      onClose();
       }, 1500);
     } catch (err: any) {
       toast.error('Failed to send: ' + (err.message || 'Unknown error'));
