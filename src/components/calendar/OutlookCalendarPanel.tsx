@@ -1,14 +1,18 @@
-import { useState, useEffect } from 'react';
-import { Mail, Plus, Trash2, Users, Clock, RefreshCw, Settings, Check, X } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Mail, Plus, Trash2, Users, Clock, RefreshCw, Settings, Check, X, MapPin, FileText, Bell, Tag, ChevronDown, ChevronUp, Shield } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { OutlookEvent, OutlookTeamMember } from '@/hooks/useOutlookCalendar';
+import { OutlookEvent, OutlookTeamMember, CreateOutlookEventPayload } from '@/hooks/useOutlookCalendar';
+import { useTeamUsers } from '@/hooks/useTeamUsers';
 import { format, parseISO } from 'date-fns';
 
 interface OutlookCalendarPanelProps {
@@ -20,21 +24,40 @@ interface OutlookCalendarPanelProps {
   microsoftEmail: string | null;
   onRefresh: () => void;
   onFetchTeam: () => void;
-  onCreateEvent: (payload: {
-    subject: string;
-    startTime: string;
-    endTime: string;
-    body?: string;
-    attendees?: string[];
-    reminderMinutes?: number;
-  }) => Promise<any>;
+  onCreateEvent: (payload: CreateOutlookEventPayload) => Promise<any>;
   onDeleteEvent: (eventId: string) => Promise<boolean>;
   onSetMicrosoftEmail: (email: string | null) => Promise<boolean>;
   onGetMicrosoftEmail: () => Promise<string | null>;
   outlookVisible: boolean;
   onToggleOutlookVisible: () => void;
   selectedDate?: Date | null;
+  onCreatePrepBlock?: (opts: {
+    appointmentTitle: string;
+    appointmentStartTime: string;
+    clientName?: string;
+    prepMinutes?: number;
+    notes?: string;
+  }) => Promise<any>;
 }
+
+const SHOW_AS_OPTIONS = [
+  { value: 'busy', label: 'Busy' },
+  { value: 'tentative', label: 'Tentative' },
+  { value: 'free', label: 'Free' },
+  { value: 'oof', label: 'Out of Office' },
+];
+
+const REMINDER_OPTIONS = [
+  { value: '0', label: 'None' },
+  { value: '5', label: '5 min before' },
+  { value: '15', label: '15 min before' },
+  { value: '30', label: '30 min before' },
+  { value: '60', label: '1 hour before' },
+];
+
+const CATEGORY_PRESETS = [
+  'Internal Meeting', 'Client Prep', 'Follow-Up', 'Team Sync', 'Admin', 'Training',
+];
 
 export function OutlookCalendarPanel({
   outlookEvents,
@@ -52,14 +75,27 @@ export function OutlookCalendarPanel({
   outlookVisible,
   onToggleOutlookVisible,
   selectedDate,
+  onCreatePrepBlock,
 }: OutlookCalendarPanelProps) {
   const [showSettings, setShowSettings] = useState(false);
   const [emailInput, setEmailInput] = useState('');
   const [showQuickCreate, setShowQuickCreate] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showTeam, setShowTeam] = useState(false);
+
+  // Event creation form
   const [newSubject, setNewSubject] = useState('');
   const [newStartTime, setNewStartTime] = useState('');
   const [newEndTime, setNewEndTime] = useState('');
-  const [showTeam, setShowTeam] = useState(false);
+  const [newBody, setNewBody] = useState('');
+  const [newLocation, setNewLocation] = useState('');
+  const [newShowAs, setNewShowAs] = useState('busy');
+  const [newReminder, setNewReminder] = useState('15');
+  const [newCategories, setNewCategories] = useState<string[]>([]);
+  const [newAttendees, setNewAttendees] = useState<string[]>([]);
+  const [attendeeInput, setAttendeeInput] = useState('');
+
+  const { data: teamUsers = [] } = useTeamUsers();
 
   useEffect(() => {
     onGetMicrosoftEmail().then(email => {
@@ -67,7 +103,6 @@ export function OutlookCalendarPanel({
     });
   }, []);
 
-  // Set default times when selectedDate changes
   useEffect(() => {
     if (selectedDate) {
       const dateStr = format(selectedDate, 'yyyy-MM-dd');
@@ -85,33 +120,77 @@ export function OutlookCalendarPanel({
     }
   };
 
+  const resetForm = () => {
+    setNewSubject('');
+    setNewBody('');
+    setNewLocation('');
+    setNewShowAs('busy');
+    setNewReminder('15');
+    setNewCategories([]);
+    setNewAttendees([]);
+    setAttendeeInput('');
+    setShowAdvanced(false);
+  };
+
   const handleCreateEvent = async () => {
     if (!newSubject || !newStartTime || !newEndTime) return;
-    await onCreateEvent({
+    
+    const payload: CreateOutlookEventPayload = {
       subject: newSubject,
       startTime: new Date(newStartTime).toISOString(),
       endTime: new Date(newEndTime).toISOString(),
-    });
-    setNewSubject('');
-    setShowQuickCreate(false);
+    };
+
+    if (newBody.trim()) payload.body = newBody;
+    if (newLocation.trim()) payload.location = newLocation;
+    if (newShowAs !== 'busy') payload.showAs = newShowAs;
+    if (newReminder !== '0') payload.reminderMinutes = parseInt(newReminder);
+    if (newCategories.length > 0) payload.categories = newCategories;
+    if (newAttendees.length > 0) payload.attendees = newAttendees;
+
+    const result = await onCreateEvent(payload);
+    if (result) {
+      resetForm();
+      setShowQuickCreate(false);
+    }
   };
 
-  const dayEvents = selectedDate
-    ? outlookEvents.filter(e => {
-        if (!e.startTime) return false;
-        try {
-          const d = parseISO(e.startTime);
-          return format(d, 'yyyy-MM-dd') === format(selectedDate, 'yyyy-MM-dd');
-        } catch { return false; }
-      })
-    : outlookEvents;
+  const handleAddAttendee = () => {
+    const email = attendeeInput.trim().toLowerCase();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
+    if (newAttendees.includes(email)) return;
+    setNewAttendees(prev => [...prev, email]);
+    setAttendeeInput('');
+  };
+
+  const handleAddTeamMember = (userEmail: string) => {
+    if (!userEmail || newAttendees.includes(userEmail.toLowerCase())) return;
+    setNewAttendees(prev => [...prev, userEmail.toLowerCase()]);
+  };
+
+  const handleToggleCategory = (cat: string) => {
+    setNewCategories(prev =>
+      prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]
+    );
+  };
+
+  const dayEvents = useMemo(() => {
+    if (!selectedDate) return outlookEvents;
+    return outlookEvents.filter(e => {
+      if (!e.startTime) return false;
+      try {
+        const d = parseISO(e.startTime);
+        return format(d, 'yyyy-MM-dd') === format(selectedDate, 'yyyy-MM-dd');
+      } catch { return false; }
+    });
+  }, [outlookEvents, selectedDate]);
 
   return (
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-medium flex items-center gap-2">
-          <Mail className="h-4 w-4 text-[#0078d4]" />
+          <Mail className="h-4 w-4" style={{ color: 'hsl(207 89% 41%)' }} />
           Outlook Calendar
         </h3>
         <div className="flex items-center gap-1">
@@ -150,7 +229,7 @@ export function OutlookCalendarPanel({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div
-              className={cn('w-3 h-3 rounded-full', microsoftEmail ? 'bg-[#0078d4]' : 'bg-muted-foreground/30')}
+              className={cn('w-3 h-3 rounded-full', microsoftEmail ? 'bg-[hsl(207,89%,41%)]' : 'bg-muted-foreground/30')}
             />
             <span className="text-xs">
               {microsoftEmail ? (
@@ -172,14 +251,14 @@ export function OutlookCalendarPanel({
         </div>
         {microsoftEmail && (
           <div className="mt-2 flex items-center gap-2">
-            <Badge variant="outline" className="text-xs" style={{ borderColor: '#0078d4', color: '#0078d4' }}>
+            <Badge variant="outline" className="text-xs" style={{ borderColor: 'hsl(207,89%,41%)', color: 'hsl(207,89%,41%)' }}>
               {dayEvents.length} event{dayEvents.length !== 1 ? 's' : ''}{selectedDate ? ' today' : ''}
             </Badge>
           </div>
         )}
       </Card>
 
-      {/* Quick Create */}
+      {/* Quick Create — Enhanced */}
       {microsoftEmail && (
         <div>
           <Button
@@ -193,13 +272,16 @@ export function OutlookCalendarPanel({
           </Button>
 
           {showQuickCreate && (
-            <Card className="p-3 mt-2 space-y-2 bg-muted/30">
+            <Card className="p-3 mt-2 space-y-3 bg-muted/30">
+              {/* Title */}
               <Input
                 value={newSubject}
                 onChange={(e) => setNewSubject(e.target.value)}
                 placeholder="Event title (e.g. Prep: John Smith)"
                 className="h-8 text-xs"
               />
+              
+              {/* Date/Time */}
               <div className="grid grid-cols-2 gap-2">
                 <Input
                   type="datetime-local"
@@ -214,6 +296,162 @@ export function OutlookCalendarPanel({
                   className="h-8 text-xs"
                 />
               </div>
+
+              {/* Location */}
+              <div className="flex items-center gap-2">
+                <MapPin className="h-3 w-3 text-muted-foreground shrink-0" />
+                <Input
+                  value={newLocation}
+                  onChange={(e) => setNewLocation(e.target.value)}
+                  placeholder="Location (optional)"
+                  className="h-7 text-xs"
+                />
+              </div>
+
+              {/* Attendees — Team Quick Add */}
+              <div className="space-y-1.5">
+                <Label className="text-xs flex items-center gap-1">
+                  <Users className="h-3 w-3" /> Attendees
+                </Label>
+                <div className="flex gap-1 flex-wrap">
+                  {teamUsers.slice(0, 6).map(u => {
+                    const userEmail = u.email;
+                    if (!userEmail) return null;
+                    const isAdded = newAttendees.includes(userEmail.toLowerCase());
+                    return (
+                      <button
+                        key={u.id}
+                        type="button"
+                        onClick={() => isAdded
+                          ? setNewAttendees(prev => prev.filter(e => e !== userEmail.toLowerCase()))
+                          : handleAddTeamMember(userEmail)
+                        }
+                        className={cn(
+                          'text-[10px] px-2 py-1 rounded-full border transition-colors',
+                          isAdded
+                            ? 'bg-primary/10 border-primary/30 text-primary'
+                            : 'bg-muted/50 border-border hover:bg-muted'
+                        )}
+                      >
+                        {u.username}
+                        {isAdded && <Check className="h-2.5 w-2.5 ml-0.5 inline" />}
+                      </button>
+                    );
+                  })}
+                </div>
+                {/* Manual email add */}
+                <div className="flex gap-1">
+                  <Input
+                    value={attendeeInput}
+                    onChange={(e) => setAttendeeInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddAttendee())}
+                    placeholder="Add email..."
+                    className="h-7 text-xs"
+                  />
+                  <Button type="button" size="sm" variant="ghost" className="h-7 px-2" onClick={handleAddAttendee}>
+                    <Plus className="h-3 w-3" />
+                  </Button>
+                </div>
+                {newAttendees.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {newAttendees.map(email => (
+                      <Badge key={email} variant="secondary" className="text-[10px] gap-1">
+                        {email}
+                        <button onClick={() => setNewAttendees(prev => prev.filter(e => e !== email))}>
+                          <X className="h-2.5 w-2.5" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Advanced toggle */}
+              <button
+                type="button"
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+              >
+                {showAdvanced ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                {showAdvanced ? 'Less options' : 'More options'}
+              </button>
+
+              {showAdvanced && (
+                <div className="space-y-3 border-t pt-3">
+                  {/* Notes */}
+                  <div className="space-y-1">
+                    <Label className="text-xs flex items-center gap-1">
+                      <FileText className="h-3 w-3" /> Notes
+                    </Label>
+                    <Textarea
+                      value={newBody}
+                      onChange={(e) => setNewBody(e.target.value)}
+                      placeholder="Meeting notes, agenda..."
+                      className="text-xs min-h-[60px]"
+                    />
+                  </div>
+
+                  {/* Show As & Reminder */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs flex items-center gap-1">
+                        <Shield className="h-3 w-3" /> Show As
+                      </Label>
+                      <Select value={newShowAs} onValueChange={setNewShowAs}>
+                        <SelectTrigger className="h-7 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SHOW_AS_OPTIONS.map(o => (
+                            <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs flex items-center gap-1">
+                        <Bell className="h-3 w-3" /> Reminder
+                      </Label>
+                      <Select value={newReminder} onValueChange={setNewReminder}>
+                        <SelectTrigger className="h-7 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {REMINDER_OPTIONS.map(o => (
+                            <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Categories */}
+                  <div className="space-y-1">
+                    <Label className="text-xs flex items-center gap-1">
+                      <Tag className="h-3 w-3" /> Categories
+                    </Label>
+                    <div className="flex flex-wrap gap-1">
+                      {CATEGORY_PRESETS.map(cat => (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => handleToggleCategory(cat)}
+                          className={cn(
+                            'text-[10px] px-2 py-0.5 rounded-full border transition-colors',
+                            newCategories.includes(cat)
+                              ? 'bg-primary/10 border-primary/30 text-primary'
+                              : 'bg-muted/50 border-border hover:bg-muted'
+                          )}
+                        >
+                          {cat}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Create Button */}
               <Button
                 size="sm"
                 className="w-full h-8 text-xs"
@@ -242,23 +480,42 @@ export function OutlookCalendarPanel({
 
           {showTeam && teamAvailability.length > 0 && (
             <Card className="p-3 mt-2 bg-muted/30">
-              <ScrollArea className="h-[150px]">
+              <ScrollArea className="h-[180px]">
                 <div className="space-y-2">
                   {teamAvailability.map(member => (
-                    <div key={member.userId} className="flex items-center justify-between text-xs">
-                      <span className="font-medium truncate max-w-[120px]">{member.username}</span>
-                      <div className="flex items-center gap-1">
-                        {member.busySlots.length === 0 ? (
-                          <Badge variant="outline" className="text-[10px] text-green-500 border-green-500/30">Free</Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-[10px] text-amber-500 border-amber-500/30">
-                            {member.busySlots.length} busy
-                          </Badge>
-                        )}
-                        {member.error && (
-                          <Badge variant="outline" className="text-[10px] text-destructive border-destructive/30">Error</Badge>
-                        )}
+                    <div key={member.userId} className="space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-medium truncate max-w-[120px]">{member.username}</span>
+                        <div className="flex items-center gap-1">
+                          {member.busySlots.length === 0 ? (
+                            <Badge variant="outline" className="text-[10px] text-green-500 border-green-500/30">Free</Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-[10px] text-amber-500 border-amber-500/30">
+                              {member.busySlots.length} busy
+                            </Badge>
+                          )}
+                          {member.error && (
+                            <Badge variant="outline" className="text-[10px] text-destructive border-destructive/30">Error</Badge>
+                          )}
+                        </div>
                       </div>
+                      {/* Show busy slots inline */}
+                      {member.busySlots.length > 0 && (
+                        <div className="pl-2 space-y-0.5">
+                          {member.busySlots.slice(0, 3).map((slot, i) => (
+                            <div key={i} className="text-[10px] text-muted-foreground flex items-center gap-1">
+                              <div className="w-1.5 h-1.5 rounded-full bg-amber-500/60 shrink-0" />
+                              <span>
+                                {slot.start ? format(parseISO(slot.start), 'h:mm a') : '?'} – {slot.end ? format(parseISO(slot.end), 'h:mm a') : '?'}
+                              </span>
+                              <span className="truncate opacity-70">{slot.title}</span>
+                            </div>
+                          ))}
+                          {member.busySlots.length > 3 && (
+                            <p className="text-[9px] text-muted-foreground">+{member.busySlots.length - 3} more</p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -282,7 +539,7 @@ export function OutlookCalendarPanel({
               dayEvents.map(event => (
                 <div
                   key={event.id}
-                  className="p-2 rounded-md border bg-[#0078d4]/5 border-[#0078d4]/20 hover:bg-[#0078d4]/10 transition-colors group"
+                  className="p-2 rounded-md border bg-[hsl(207,89%,41%)]/5 border-[hsl(207,89%,41%)]/20 hover:bg-[hsl(207,89%,41%)]/10 transition-colors group"
                 >
                   <div className="flex items-start justify-between">
                     <div className="min-w-0 flex-1">
@@ -296,7 +553,27 @@ export function OutlookCalendarPanel({
                         </span>
                       </div>
                       {event.location && (
-                        <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{event.location}</p>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <MapPin className="h-2.5 w-2.5 text-muted-foreground" />
+                          <p className="text-[10px] text-muted-foreground truncate">{event.location}</p>
+                        </div>
+                      )}
+                      {event.attendees.length > 0 && (
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <Users className="h-2.5 w-2.5 text-muted-foreground" />
+                          <span className="text-[10px] text-muted-foreground">
+                            {event.attendees.length} attendee{event.attendees.length !== 1 ? 's' : ''}
+                          </span>
+                        </div>
+                      )}
+                      {event.categories.length > 0 && (
+                        <div className="flex gap-1 mt-1 flex-wrap">
+                          {event.categories.map(cat => (
+                            <Badge key={cat} variant="outline" className="text-[9px] px-1 py-0">
+                              {cat}
+                            </Badge>
+                          ))}
+                        </div>
                       )}
                     </div>
                     <Button

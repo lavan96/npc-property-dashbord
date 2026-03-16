@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useFinanceContacts, FinanceContact } from '@/hooks/useFinanceContacts';
 import { supabase } from '@/integrations/supabase/client';
 import type { GHLCalendar, GHLContact, GHLTeamMember } from '@/hooks/useGHLCalendar';
+import { TeamOutlookAvailability } from './TeamOutlookAvailability';
 
 export interface BookingRecipient {
   name: string;
@@ -793,6 +794,30 @@ export function QuickAddAppointmentModal({
           />
         </button>
       </div>
+
+      {/* Outlook Team Availability Check */}
+      {date && time && (
+        <TeamOutlookAvailability
+          selectedDate={date}
+          proposedStartTime={(() => {
+            try {
+              const startISO = toTimezoneISO(date, time, inputTimezone);
+              return startISO;
+            } catch { return undefined; }
+          })()}
+          proposedEndTime={(() => {
+            try {
+              const [h, m] = time.split(':').map(Number);
+              const endMin = h * 60 + m + parseInt(duration);
+              const endH = Math.floor(endMin / 60) % 24;
+              const endM = endMin % 60;
+              const endStr = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+              return toTimezoneISO(date, endStr, inputTimezone);
+            } catch { return undefined; }
+          })()}
+          compact
+        />
+      )}
 
       {!isMobile && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-md p-2">

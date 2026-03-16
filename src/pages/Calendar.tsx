@@ -101,8 +101,8 @@ export default function Calendar() {
   const { calendars, events, calendarGroups, contactCache, isLoading, isUpdating, error, fetchCalendarData, fetchCalendarGroups, fetchContact, getCalendarColor, rescheduleEvent, updateEvent, deleteEvent, createAppointment, searchContacts, blockSlot, fetchFreeSlots } = useGHLCalendar();
   const {
     outlookEvents, teamAvailability, isLoading: outlookLoading, isCreating: outlookCreating,
-    outlookEnabled, microsoftEmail, fetchOutlookEvents, createOutlookEvent, deleteOutlookEvent,
-    fetchTeamAvailability, getMicrosoftEmail, setMicrosoftEmail,
+    outlookEnabled, microsoftEmail, fetchOutlookEvents, createOutlookEvent, updateOutlookEvent,
+    deleteOutlookEvent, fetchTeamAvailability, getMicrosoftEmail, setMicrosoftEmail, createPrepBlock,
   } = useOutlookCalendar();
   const [outlookVisible, setOutlookVisible] = useState(true);
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('events');
@@ -815,6 +815,11 @@ export default function Calendar() {
                           onToggleCalendar={handleToggleCalendar}
                           onShowAll={handleShowAllCalendars}
                           onHideAll={handleHideAllCalendars}
+                          outlookEnabled={outlookEnabled}
+                          outlookVisible={outlookVisible}
+                          onToggleOutlook={() => setOutlookVisible(v => !v)}
+                          outlookEventCount={outlookEvents.length}
+                          microsoftEmail={microsoftEmail}
                         />
                       )}
                       {sidebarTab === 'outlook' && (
@@ -834,6 +839,7 @@ export default function Calendar() {
                           outlookVisible={outlookVisible}
                           onToggleOutlookVisible={() => setOutlookVisible(v => !v)}
                           selectedDate={selectedDate}
+                          onCreatePrepBlock={createPrepBlock}
                         />
                       )}
                       {sidebarTab === 'patterns' && (
@@ -1427,6 +1433,11 @@ export default function Calendar() {
                   onToggleCalendar={handleToggleCalendar}
                   onShowAll={handleShowAllCalendars}
                   onHideAll={handleHideAllCalendars}
+                  outlookEnabled={outlookEnabled}
+                  outlookVisible={outlookVisible}
+                  onToggleOutlook={() => setOutlookVisible(v => !v)}
+                  outlookEventCount={outlookEvents.length}
+                  microsoftEmail={microsoftEmail}
                 />
               )}
               {sidebarTab === 'outlook' && (
@@ -1446,6 +1457,7 @@ export default function Calendar() {
                   outlookVisible={outlookVisible}
                   onToggleOutlookVisible={() => setOutlookVisible(v => !v)}
                   selectedDate={selectedDate}
+                  onCreatePrepBlock={createPrepBlock}
                 />
               )}
               {sidebarTab === 'patterns' && (
@@ -1532,6 +1544,21 @@ export default function Calendar() {
                   description: err.message || 'Could not send email notifications.',
                   variant: 'destructive',
                 });
+              }
+            }
+
+            // Auto-create Outlook prep block if user has Outlook configured
+            if (microsoftEmail && outlookEnabled) {
+              try {
+                await createPrepBlock({
+                  appointmentTitle: data.title,
+                  appointmentStartTime: data.startTime,
+                  clientName: data.title,
+                  prepMinutes: 15,
+                  notes: data.notes,
+                });
+              } catch (err) {
+                console.log('[Calendar] Prep block creation failed (non-critical):', err);
               }
             }
           }
