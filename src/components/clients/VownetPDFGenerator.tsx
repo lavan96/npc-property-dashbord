@@ -440,7 +440,7 @@ export function VownetPDFGenerator({
             
             pdf.addImage(tileCanvas, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
             
-            // Draw footer on each tiled property page
+            // Draw footer on each tiled property page using html2canvas for emoji support
             const footerY = 291;
             const lineY = footerY - 5;
             pdf.setDrawColor(200, 200, 200);
@@ -448,18 +448,42 @@ export function VownetPDFGenerator({
             pdf.setFillColor(248, 249, 250);
             pdf.rect(0, lineY - 1, 210, 297 - lineY + 1, 'F');
             pdf.line(10, lineY, 200, lineY);
-            pdf.setFontSize(7);
-            pdf.setTextColor(74, 85, 104);
-            pdf.setFont('helvetica', 'normal');
-            pdf.text('Ph: (02) 8609 3299    |    admin@npcservices.com.au    |    npcservices.com.au', 10, footerY);
-            pdf.setFontSize(6);
-            pdf.setTextColor(180, 140, 50);
-            pdf.setFont('helvetica', 'bold');
-            pdf.text('CONFIDENTIAL', 105, footerY + 4, { align: 'center' });
-            pdf.setFontSize(7);
-            pdf.setTextColor(74, 85, 104);
-            pdf.setFont('helvetica', 'normal');
-            pdf.text(`Page ${pdfPageIndex}`, 200, footerY, { align: 'right' });
+
+            // Render footer HTML with emojis to a canvas
+            const footerDiv = document.createElement('div');
+            footerDiv.style.cssText = 'position:absolute;left:-9999px;top:0;width:794px;background:#f8f9fa;padding:4px 40px;font-family:Arial,sans-serif;display:flex;justify-content:space-between;align-items:center;';
+            footerDiv.innerHTML = `
+              <div style="display:flex;gap:18px;font-size:7.5pt;color:#4a5568;">
+                <span>\u{1F4DE} (02) 8609 3299</span>
+                <span>\u{2709}\u{FE0F} admin@npcservices.com.au</span>
+                <span>\u{1F310} npcservices.com.au</span>
+              </div>
+              <div style="font-size:6pt;color:#b48c32;font-weight:700;letter-spacing:1.5px;">CONFIDENTIAL</div>
+              <div style="font-size:7.5pt;color:#4a5568;">Page ${pdfPageIndex}</div>
+            `;
+            document.body.appendChild(footerDiv);
+            try {
+              const footerCanvas = await html2canvas(footerDiv, { scale: 2, backgroundColor: '#f8f9fa', useCORS: true });
+              const footerImgH = (footerCanvas.height / footerCanvas.width) * 190;
+              pdf.addImage(footerCanvas, 'PNG', 10, lineY + 0.5, 190, footerImgH);
+              footerCanvas.width = 1;
+              footerCanvas.height = 1;
+            } catch (e) {
+              // Fallback to plain text if html2canvas fails
+              pdf.setFontSize(7);
+              pdf.setTextColor(74, 85, 104);
+              pdf.setFont('helvetica', 'normal');
+              pdf.text('Ph: (02) 8609 3299  |  admin@npcservices.com.au  |  npcservices.com.au', 10, footerY);
+              pdf.setFontSize(6);
+              pdf.setTextColor(180, 140, 50);
+              pdf.setFont('helvetica', 'bold');
+              pdf.text('CONFIDENTIAL', 105, footerY + 4, { align: 'center' });
+              pdf.setFontSize(7);
+              pdf.setTextColor(74, 85, 104);
+              pdf.setFont('helvetica', 'normal');
+              pdf.text(`Page ${pdfPageIndex}`, 200, footerY, { align: 'right' });
+            }
+            document.body.removeChild(footerDiv);
             
             tileCanvas.width = 1;
             tileCanvas.height = 1;
