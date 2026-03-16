@@ -1457,6 +1457,7 @@ export default function Calendar() {
                   outlookVisible={outlookVisible}
                   onToggleOutlookVisible={() => setOutlookVisible(v => !v)}
                   selectedDate={selectedDate}
+                  onCreatePrepBlock={createPrepBlock}
                 />
               )}
               {sidebarTab === 'patterns' && (
