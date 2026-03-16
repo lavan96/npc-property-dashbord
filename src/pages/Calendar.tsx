@@ -382,8 +382,42 @@ export default function Calendar() {
       );
     }
 
+    // Merge Outlook events as GHLEvent-compatible objects when visible
+    if (outlookVisible && outlookEvents.length > 0) {
+      const outlookAsGHL: GHLEvent[] = outlookEvents
+        .filter(oe => oe.startTime && oe.endTime)
+        .map(oe => ({
+          id: oe.id,
+          title: oe.title,
+          startTime: oe.startTime!,
+          endTime: oe.endTime!,
+          calendarId: oe.calendarId,
+          calendarName: oe.calendarName,
+          calendarColor: oe.calendarColor,
+          status: oe.status,
+          appointmentStatus: undefined,
+          contactId: undefined,
+          notes: oe.bodyPreview || undefined,
+          address: oe.location || undefined,
+        }));
+
+      // Apply search filter to Outlook events too
+      let filteredOutlook = outlookAsGHL;
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
+        filteredOutlook = filteredOutlook.filter(
+          (event) =>
+            toSearchable(event.title).includes(query) ||
+            toSearchable(event.notes).includes(query) ||
+            toSearchable(event.address).includes(query)
+        );
+      }
+
+      filtered = [...filtered, ...filteredOutlook];
+    }
+
     return filtered;
-  }, [events, selectedCalendarId, searchQuery]);
+  }, [events, selectedCalendarId, searchQuery, outlookVisible, outlookEvents]);
 
   const selectedDateEvents = useMemo(() => {
     if (!selectedDate) return [];
