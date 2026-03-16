@@ -5008,6 +5008,8 @@ async function executeTool(sb: any, name: string, args: any, userId: string): Pr
     case 'get_agreement_details': return executeGetAgreementDetails(sb, args);
     case 'search_agreements': return executeSearchAgreements(sb, args);
     case 'get_agreement_templates': return executeGetAgreementTemplates(sb);
+    case 'generate_agreement': return executeGenerateAgreement(sb, args);
+    case 'send_agreement_docusign': return executeSendAgreementDocusign(args);
     // Batch 7 — Marketing & Lead Attribution
     case 'get_lead_attributions': return executeGetLeadAttributions(sb, args);
     case 'get_attribution_summary': return executeGetAttributionSummary(sb, args);
