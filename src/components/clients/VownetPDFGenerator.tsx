@@ -2065,8 +2065,7 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
         </div>
       </div>
       
-                <table class="data-table">
-                  <tr><td class="label">First name</td><td class="value">${client.primary_first_name || '-'}</td></tr>
+      
                   <tr><td class="label">Middle name</td><td class="value">${client.primary_middle_name || '-'}</td></tr>
                   <tr><td class="label">Surname</td><td class="value">${client.primary_surname || '-'}</td></tr>
                   <tr><td class="label">Mobile</td><td class="value">${client.primary_mobile || '-'}</td></tr>
