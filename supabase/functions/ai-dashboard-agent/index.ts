@@ -2049,6 +2049,44 @@ const TOOLS: any[] = [
       parameters: { type: "object", properties: {} },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "generate_agreement",
+      description: "Generate a Buyer's Agent Agreement for a client. Auto-fills buyer details from the client profile and creates a PDF via Gamma. Optionally specify a template. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          client_id: { type: "string", description: "Client UUID or name to resolve" },
+          template_id: { type: "string", description: "UUID of the Gamma agreement template to use (optional — uses default if omitted)" },
+          buyer_names: { type: "string", description: "Override buyer name(s) if different from client profile" },
+          buyer_address: { type: "string", description: "Buyer's current address" },
+          buyer_phone: { type: "string", description: "Buyer's phone number" },
+          buyer_email: { type: "string", description: "Buyer's email for DocuSign delivery" },
+          agreement_date: { type: "string", description: "Agreement date in YYYY-MM-DD format (defaults to today)" },
+          secondary_buyer_name: { type: "string", description: "Joint applicant / secondary buyer name" },
+          deal_id: { type: "string", description: "UUID of the associated deal (optional)" },
+          initial_commitment_fee: { type: "string", description: "Commitment fee amount e.g. '$1,500.00 + GST'" },
+          notes: { type: "string", description: "Internal notes about this agreement" },
+        },
+        required: ["client_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "send_agreement_docusign",
+      description: "Send a previously generated agreement to the client via DocuSign for e-signature. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          agreement_id: { type: "string", description: "UUID of the agreement to send" },
+        },
+        required: ["agreement_id"],
+      },
+    },
+  },
 
   // ═══════════════════════════════════════════════════════════
   // BATCH 7 — MARKETING ANALYTICS & LEAD ATTRIBUTION
