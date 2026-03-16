@@ -2729,7 +2729,7 @@ async function executeSendEmail(sb: any, args: any) {
     const resp = await fetch(`${SUPABASE_URL.trim()}/functions/v1/send-email-reply`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY.trim()}`, 'apikey': SUPABASE_ANON_KEY.trim() },
-      body: JSON.stringify({ to: args.to, subject: args.subject, body: args.body, cc: args.cc, bcc: args.bcc, original_email_id: args.original_email_id, mailbox_source: args.mailbox_source || 'admin' }),
+      body: JSON.stringify({ to: args.to, subject: args.subject, body: args.body, cc: args.cc, bcc: args.bcc, original_email_id: args.original_email_id, mailbox_source: args.mailbox_source || 'admin', source: 'agent' }),
     });
     const result = await resp.json();
     if (!resp.ok) return { error: result.error || `Failed to send email (${resp.status})` };
