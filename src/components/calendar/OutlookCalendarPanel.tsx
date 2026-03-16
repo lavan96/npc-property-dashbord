@@ -83,6 +83,8 @@ export function OutlookCalendarPanel({
   const [showQuickCreate, setShowQuickCreate] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showTeam, setShowTeam] = useState(false);
+  const [testingConnection, setTestingConnection] = useState(false);
+  const [testResults, setTestResults] = useState<any>(null);
 
   // Event creation form
   const [newSubject, setNewSubject] = useState('');
