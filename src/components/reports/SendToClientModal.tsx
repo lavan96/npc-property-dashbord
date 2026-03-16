@@ -10,7 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Send, Search, User, CheckCircle2, AlertCircle, BarChart3 } from 'lucide-react';
+import { Loader2, Send, Search, User, CheckCircle2, AlertCircle, BarChart3, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -38,6 +38,11 @@ interface ClientOption {
   pipeline_status: string | null;
 }
 
+interface ClientNoteEntry {
+  notes: string;
+  noteVisibility: 'internal' | 'both';
+}
+
 const tierLabels: Record<string, string> = {
   compass: "Investor's Compass",
   briefing: 'Executive Briefing',
@@ -54,12 +59,12 @@ export function SendToClientModal({
   storagePath,
   onGeneratePDF,
 }: SendToClientModalProps) {
-  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [selectedClientIds, setSelectedClientIds] = useState<string[]>([]);
+  const [clientNotes, setClientNotes] = useState<Record<string, ClientNoteEntry>>({});
   const [search, setSearch] = useState('');
-  const [notes, setNotes] = useState('');
-  const [noteVisibility, setNoteVisibility] = useState<'internal' | 'both'>('internal');
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [expandedNoteClient, setExpandedNoteClient] = useState<string | null>(null);
 
   // Chart inclusion options for cashflow reports
   const [includeCharts, setIncludeCharts] = useState(true);
@@ -109,15 +114,47 @@ export function SendToClientModal({
     return name.includes(search.toLowerCase()) || (c.primary_email || '').toLowerCase().includes(search.toLowerCase());
   });
 
+  const toggleClient = (clientId: string) => {
+    setSelectedClientIds(prev => {
+      if (prev.includes(clientId)) {
+        // Remove client and their notes
+        const newNotes = { ...clientNotes };
+        delete newNotes[clientId];
+        setClientNotes(newNotes);
+        if (expandedNoteClient === clientId) setExpandedNoteClient(null);
+        return prev.filter(id => id !== clientId);
+      } else {
+        // Add client with empty notes
+        setClientNotes(prev => ({
+          ...prev,
+          [clientId]: { notes: '', noteVisibility: 'internal' },
+        }));
+        return [...prev, clientId];
+      }
+    });
+  };
+
+  const updateClientNote = (clientId: string, field: keyof ClientNoteEntry, value: string) => {
+    setClientNotes(prev => ({
+      ...prev,
+      [clientId]: { ...prev[clientId], [field]: value },
+    }));
+  };
+
+  const getClientName = (clientId: string) => {
+    const c = clients.find(cl => cl.id === clientId);
+    return c ? `${c.primary_first_name} ${c.primary_surname}` : 'Client';
+  };
+
   const handleSend = async () => {
-    if (!selectedClientId) {
-      toast.error('Please select a client');
+    if (selectedClientIds.length === 0) {
+      toast.error('Please select at least one client');
       return;
     }
 
     setSending(true);
     try {
-      // If no PDF exists yet, generate it first
+      // If no PDF exists yet, generate it first (once for all clients)
       let finalStoragePath = storagePath;
       if (!finalStoragePath && onGeneratePDF) {
         toast.info('Generating PDF before sending...');
@@ -134,34 +171,49 @@ export function SendToClientModal({
         setSending(false);
         return;
       }
-      const { error } = await invokeSecureFunction('manage-client-data', {
-        operation: 'create',
-        table: 'client_portal_reports',
-        clientId: selectedClientId,
-        data: {
-          report_title: reportTitle,
-          report_type: 'investment',
-          report_tier: reportTier || null,
-          storage_path: finalStoragePath,
-          source_report_id: reportId,
-          notes: notes || null,
-          client_visible_notes: noteVisibility === 'both' && notes ? notes : null,
-          published_at: new Date().toISOString(),
-        },
-      });
 
-      if (error) throw error;
+      let successCount = 0;
+      let errorCount = 0;
 
-      setSent(true);
-      toast.success('Report sent to client portal');
+      for (const clientId of selectedClientIds) {
+        const entry = clientNotes[clientId] || { notes: '', noteVisibility: 'internal' };
+        try {
+          const { error } = await invokeSecureFunction('manage-client-data', {
+            operation: 'create',
+            table: 'client_portal_reports',
+            clientId,
+            data: {
+              report_title: reportTitle,
+              report_type: 'investment',
+              report_tier: reportTier || null,
+              storage_path: finalStoragePath,
+              source_report_id: reportId,
+              notes: entry.notes || null,
+              client_visible_notes: entry.noteVisibility === 'both' && entry.notes ? entry.notes : null,
+              published_at: new Date().toISOString(),
+            },
+          });
+          if (error) throw error;
+          successCount++;
+        } catch {
+          errorCount++;
+        }
+      }
+
+      if (errorCount === 0) {
+        setSent(true);
+        toast.success(`Report sent to ${successCount} client${successCount > 1 ? 's' : ''}`);
+      } else {
+        toast.warning(`Sent to ${successCount}, failed for ${errorCount} client${errorCount > 1 ? 's' : ''}`);
+      }
 
       setTimeout(() => {
         setSent(false);
-        setSelectedClientId(null);
-      setNotes('');
-      setNoteVisibility('internal');
-      setSearch('');
-      onClose();
+        setSelectedClientIds([]);
+        setClientNotes({});
+        setSearch('');
+        setExpandedNoteClient(null);
+        onClose();
       }, 1500);
     } catch (err: any) {
       toast.error('Failed to send: ' + (err.message || 'Unknown error'));
@@ -172,29 +224,27 @@ export function SendToClientModal({
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
-      setSelectedClientId(null);
+      setSelectedClientIds([]);
+      setClientNotes({});
       setSearch('');
-      setNotes('');
-      setNoteVisibility('internal');
       setSent(false);
+      setExpandedNoteClient(null);
       setIncludeCharts(true);
       setChartOptions({ cashFlowTrends: true, yieldChart: true, comparisonChart: true });
       onClose();
     }
   };
 
-  const selectedClient = clients.find((c) => c.id === selectedClientId);
-
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Send className="h-4 w-4" />
-            Send Report to Client
+            Send Report to Client{selectedClientIds.length > 1 ? 's' : ''}
           </DialogTitle>
           <DialogDescription>
-            Publish this {tierLabels[reportTier || ''] || 'investment'} report to a client's portal.
+            Publish this {tierLabels[reportTier || ''] || 'investment'} report to one or more client portals.
           </DialogDescription>
         </DialogHeader>
 
@@ -204,7 +254,7 @@ export function SendToClientModal({
             <p className="text-sm font-medium text-foreground">Report sent successfully!</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-4 overflow-y-auto flex-1 pr-1">
             {/* Report info */}
             <div className="rounded-md border bg-muted/50 p-3 space-y-1">
               <p className="text-sm font-medium text-foreground truncate">{reportTitle}</p>
@@ -225,8 +275,6 @@ export function SendToClientModal({
                     The PDF will be automatically generated and uploaded when you send.
                   </p>
                 </div>
-
-                {/* Chart inclusion options for cashflow */}
                 {isCashflow && (
                   <div className="space-y-2 pt-1 border-t border-primary/10">
                     <div className="flex items-center justify-between">
@@ -234,32 +282,20 @@ export function SendToClientModal({
                         <BarChart3 className="h-4 w-4 text-muted-foreground" />
                         <Label className="text-sm font-medium">Include Charts</Label>
                       </div>
-                      <Switch
-                        checked={includeCharts}
-                        onCheckedChange={handleIncludeChartsToggle}
-                      />
+                      <Switch checked={includeCharts} onCheckedChange={handleIncludeChartsToggle} />
                     </div>
                     {includeCharts && (
                       <div className="pl-6 space-y-1.5">
                         <label className="flex items-center gap-2 cursor-pointer">
-                          <Checkbox
-                            checked={chartOptions.cashFlowTrends}
-                            onCheckedChange={(checked) => handleChartOptionToggle('cashFlowTrends', checked === true)}
-                          />
+                          <Checkbox checked={chartOptions.cashFlowTrends} onCheckedChange={(checked) => handleChartOptionToggle('cashFlowTrends', checked === true)} />
                           <span className="text-sm text-muted-foreground">Cash Flow Trends</span>
                         </label>
                         <label className="flex items-center gap-2 cursor-pointer">
-                          <Checkbox
-                            checked={chartOptions.yieldChart}
-                            onCheckedChange={(checked) => handleChartOptionToggle('yieldChart', checked === true)}
-                          />
+                          <Checkbox checked={chartOptions.yieldChart} onCheckedChange={(checked) => handleChartOptionToggle('yieldChart', checked === true)} />
                           <span className="text-sm text-muted-foreground">Yield Analysis</span>
                         </label>
                         <label className="flex items-center gap-2 cursor-pointer">
-                          <Checkbox
-                            checked={chartOptions.comparisonChart}
-                            onCheckedChange={(checked) => handleChartOptionToggle('comparisonChart', checked === true)}
-                          />
+                          <Checkbox checked={chartOptions.comparisonChart} onCheckedChange={(checked) => handleChartOptionToggle('comparisonChart', checked === true)} />
                           <span className="text-sm text-muted-foreground">Comparison Chart</span>
                         </label>
                       </div>
@@ -269,9 +305,16 @@ export function SendToClientModal({
               </div>
             )}
 
-            {/* Client search */}
+            {/* Client search & selection */}
             <div className="space-y-2">
-              <Label>Select Client</Label>
+              <div className="flex items-center justify-between">
+                <Label>Select Clients</Label>
+                {selectedClientIds.length > 0 && (
+                  <Badge variant="secondary" className="text-xs">
+                    {selectedClientIds.length} selected
+                  </Badge>
+                )}
+              </div>
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -282,7 +325,7 @@ export function SendToClientModal({
                 />
               </div>
 
-              <ScrollArea className="h-48 rounded-md border">
+              <ScrollArea className="h-40 rounded-md border">
                 {isLoading ? (
                   <div className="flex items-center justify-center h-full">
                     <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -291,76 +334,115 @@ export function SendToClientModal({
                   <p className="text-sm text-muted-foreground text-center py-8">No clients found</p>
                 ) : (
                   <div className="p-1 space-y-0.5">
-                    {filtered.map((client) => (
-                      <button
-                        key={client.id}
-                        onClick={() => setSelectedClientId(client.id)}
-                        className={cn(
-                          'w-full flex items-center gap-3 px-3 py-2 rounded-md text-left text-sm transition-colors',
-                          selectedClientId === client.id
-                            ? 'bg-primary/10 border border-primary/30'
-                            : 'hover:bg-muted'
-                        )}
-                      >
-                        <User className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">
-                            {client.primary_first_name} {client.primary_surname}
-                          </p>
-                          {client.primary_email && (
-                            <p className="text-xs text-muted-foreground truncate">{client.primary_email}</p>
+                    {filtered.map((client) => {
+                      const isSelected = selectedClientIds.includes(client.id);
+                      return (
+                        <button
+                          key={client.id}
+                          onClick={() => toggleClient(client.id)}
+                          className={cn(
+                            'w-full flex items-center gap-3 px-3 py-2 rounded-md text-left text-sm transition-colors',
+                            isSelected
+                              ? 'bg-primary/10 border border-primary/30'
+                              : 'hover:bg-muted'
                           )}
-                        </div>
-                        {selectedClientId === client.id && (
-                          <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
-                        )}
-                      </button>
-                    ))}
+                        >
+                          <Checkbox checked={isSelected} className="pointer-events-none" />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium truncate">
+                              {client.primary_first_name} {client.primary_surname}
+                            </p>
+                            {client.primary_email && (
+                              <p className="text-xs text-muted-foreground truncate">{client.primary_email}</p>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </ScrollArea>
             </div>
 
-            {/* Notes */}
-            <div className="space-y-2">
-              <Label>Notes (optional)</Label>
-              <Textarea
-                placeholder={noteVisibility === 'both' ? "This note will be visible to the client..." : "Add a note for internal tracking..."}
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={2}
-              />
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant={noteVisibility === 'internal' ? 'default' : 'outline'}
-                  size="sm"
-                  className="text-xs h-7"
-                  onClick={() => setNoteVisibility('internal')}
-                >
-                  🔒 Internal Only
-                </Button>
-                <Button
-                  type="button"
-                  variant={noteVisibility === 'both' ? 'default' : 'outline'}
-                  size="sm"
-                  className="text-xs h-7"
-                  onClick={() => setNoteVisibility('both')}
-                >
-                  👁 Visible to Client
-                </Button>
+            {/* Per-client notes */}
+            {selectedClientIds.length > 0 && (
+              <div className="space-y-2">
+                <Label>Notes per Client (optional)</Label>
+                <div className="space-y-1.5">
+                  {selectedClientIds.map((clientId) => {
+                    const entry = clientNotes[clientId] || { notes: '', noteVisibility: 'internal' };
+                    const isExpanded = expandedNoteClient === clientId;
+                    const clientName = getClientName(clientId);
+                    return (
+                      <div key={clientId} className="rounded-md border bg-muted/30 overflow-hidden">
+                        <button
+                          onClick={() => setExpandedNoteClient(isExpanded ? null : clientId)}
+                          className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-muted/50 transition-colors"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                            <span className="font-medium truncate">{clientName}</span>
+                            {entry.notes && (
+                              <Badge variant="outline" className="text-[10px] h-4 shrink-0">has note</Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); toggleClient(clientId); }}
+                              className="p-0.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                            {isExpanded ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+                          </div>
+                        </button>
+                        {isExpanded && (
+                          <div className="px-3 pb-3 pt-1 space-y-2 border-t">
+                            <Textarea
+                              placeholder={entry.noteVisibility === 'both' ? "This note will be visible to the client..." : "Add a note for internal tracking..."}
+                              value={entry.notes}
+                              onChange={(e) => updateClientNote(clientId, 'notes', e.target.value)}
+                              rows={2}
+                              className="text-sm"
+                            />
+                            <div className="flex gap-2">
+                              <Button
+                                type="button"
+                                variant={entry.noteVisibility === 'internal' ? 'default' : 'outline'}
+                                size="sm"
+                                className="text-xs h-6"
+                                onClick={() => updateClientNote(clientId, 'noteVisibility', 'internal')}
+                              >
+                                🔒 Internal
+                              </Button>
+                              <Button
+                                type="button"
+                                variant={entry.noteVisibility === 'both' ? 'default' : 'outline'}
+                                size="sm"
+                                className="text-xs h-6"
+                                onClick={() => updateClientNote(clientId, 'noteVisibility', 'both')}
+                              >
+                                👁 Client Visible
+                              </Button>
+                            </div>
+                            {entry.noteVisibility === 'both' && entry.notes && (
+                              <p className="text-[10px] text-amber-600">This note will be displayed to {clientName} on their portal.</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-              {noteVisibility === 'both' && notes && (
-                <p className="text-[10px] text-amber-600">This note will be displayed to the client on their portal.</p>
-              )}
-            </div>
+            )}
 
             {/* Actions */}
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={onClose} disabled={sending}>
                 Cancel
               </Button>
-              <Button onClick={handleSend} disabled={sending || !selectedClientId}>
+              <Button onClick={handleSend} disabled={sending || selectedClientIds.length === 0}>
                 {sending ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-1 animate-spin" />
@@ -369,7 +451,10 @@ export function SendToClientModal({
                 ) : (
                   <>
                     <Send className="h-4 w-4 mr-1" />
-                    {!storagePath ? 'Generate & Send' : `Send to ${selectedClient ? selectedClient.primary_first_name : 'Client'}`}
+                    {!storagePath
+                      ? `Generate & Send${selectedClientIds.length > 1 ? ` to ${selectedClientIds.length}` : ''}`
+                      : `Send to ${selectedClientIds.length} Client${selectedClientIds.length !== 1 ? 's' : ''}`
+                    }
                   </>
                 )}
               </Button>
