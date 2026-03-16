@@ -105,9 +105,18 @@ export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
 
       // Sync to GHL if enabled
       if (syncToGHL && newClient) {
-        const { data: syncResult, error: syncError } = await invokeSecureFunction('sync-client-to-ghl', {
-          clientId: newClient.id
-        });
+        const syncPayload: any = { clientId: newClient.id };
+        
+        // If a pipeline stage was selected, include it for opportunity creation
+        if (selectedStageId) {
+          const stage = pipelineStages?.find((s: any) => s.id === selectedStageId);
+          if (stage) {
+            syncPayload.pipelineStageGhlId = stage.ghl_id;
+            syncPayload.pipelineGhlId = (stage as any).ghl_pipelines?.ghl_id;
+          }
+        }
+        
+        const { data: syncResult, error: syncError } = await invokeSecureFunction('sync-client-to-ghl', syncPayload);
 
         if (syncError) {
           console.error('GHL sync error:', syncError);
