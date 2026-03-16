@@ -68,18 +68,19 @@ async function listEvents(
     $select: 'id,subject,start,end,location,bodyPreview,isAllDay,showAs,organizer,attendees,categories',
   });
 
-  const res = await fetch(
-    graphUrl(email, `/calendarView?${params.toString()}`),
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        Prefer: 'outlook.timezone="UTC"',
-      },
+  const url = graphUrl(email, `/calendarView?${params.toString()}`);
+  console.log(`[outlook-calendar] listEvents for ${email}, url: ${url.substring(0, 80)}...`);
+
+  const res = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Prefer: 'outlook.timezone="UTC"',
     },
-  );
+  });
 
   if (!res.ok) {
     const err = await res.text();
+    console.error(`[outlook-calendar] Graph calendarView failed for ${email} (${res.status}):`, err);
     throw new Error(`Graph calendarView failed (${res.status}): ${err}`);
   }
 
