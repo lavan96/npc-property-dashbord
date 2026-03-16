@@ -47,7 +47,7 @@ import { formatInSydney } from '@/lib/timezoneUtils';
 import { getBookingTimezone } from '@/lib/bookingTimezone';
 
 // Sidebar tab type
-type SidebarTab = 'events' | 'availability' | 'templates' | 'heatmap' | 'analytics' | 'summary' | 'conflicts' | 'optimize' | 'overlay' | 'patterns' | 'reminders';
+type SidebarTab = 'events' | 'availability' | 'templates' | 'heatmap' | 'analytics' | 'summary' | 'conflicts' | 'optimize' | 'overlay' | 'outlook' | 'patterns' | 'reminders';
 
 // Module-level helper functions for date parsing/formatting
 const safeParseISO = (value: string | undefined | null): Date | null => {
