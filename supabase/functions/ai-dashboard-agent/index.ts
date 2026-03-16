@@ -5111,10 +5111,16 @@ async function executeGetAgreementTemplates(sb: any) {
 
 async function executeGetLeadAttributions(sb: any, args: any) {
   const limit = args.limit || 30;
+  let resolvedClientId = args.client_id;
+  if (args.client_id) {
+    const v = await validateClientExists(sb, args.client_id);
+    if (!v.valid) return { error: v.error };
+    resolvedClientId = v.resolvedId || args.client_id;
+  }
   let q = sb.from('lead_source_attributions')
     .select('id, client_id, source_type, utm_source, utm_medium, utm_campaign, utm_content, meta_campaign_name, meta_adset_name, meta_ad_name, meta_campaign_objective, enrichment_status, attributed_at, landing_page_url, ghl_attribution_source')
     .order('attributed_at', { ascending: false }).limit(limit);
-  if (args.client_id) q = q.eq('client_id', args.client_id);
+  if (resolvedClientId) q = q.eq('client_id', resolvedClientId);
   if (args.source_type) q = q.eq('source_type', args.source_type);
   if (args.enrichment_status) q = q.eq('enrichment_status', args.enrichment_status);
   const { data, error } = await q;
