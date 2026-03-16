@@ -3856,6 +3856,10 @@ export type Database = {
           id: string
           is_active: boolean
           microsoft_email: string | null
+          outlook_auto_prep_enabled: boolean | null
+          outlook_follow_up_blocking: boolean | null
+          outlook_follow_up_default_duration: number | null
+          outlook_prep_minutes: number | null
           password_hash: string
           personal_mailbox: string | null
           role: string
@@ -3870,6 +3874,10 @@ export type Database = {
           id?: string
           is_active?: boolean
           microsoft_email?: string | null
+          outlook_auto_prep_enabled?: boolean | null
+          outlook_follow_up_blocking?: boolean | null
+          outlook_follow_up_default_duration?: number | null
+          outlook_prep_minutes?: number | null
           password_hash: string
           personal_mailbox?: string | null
           role?: string
@@ -3884,6 +3892,10 @@ export type Database = {
           id?: string
           is_active?: boolean
           microsoft_email?: string | null
+          outlook_auto_prep_enabled?: boolean | null
+          outlook_follow_up_blocking?: boolean | null
+          outlook_follow_up_default_duration?: number | null
+          outlook_prep_minutes?: number | null
           password_hash?: string
           personal_mailbox?: string | null
           role?: string
