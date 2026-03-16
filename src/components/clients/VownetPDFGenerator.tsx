@@ -1959,6 +1959,7 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
                   <tr><td class="label">Number of dependents</td><td class="value">${client.dependents_count ?? 0}</td></tr>
                 </table>
               </div>
+              ${hasOwnerOccupied ? `
               <div class="section">
                 <div class="section-header">Property (Owner Occupied)</div>
                 <table class="data-table">
@@ -1973,6 +1974,7 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
                   <tr><td class="label">Net Monthly Cashflow</td><td class="value currency">${formatCurrency(ownerOccupied?.net_monthly_cashflow)}</td></tr>
                 </table>
               </div>
+              ` : ''}
             </div>
           </div>
         </div>
