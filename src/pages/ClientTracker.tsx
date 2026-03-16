@@ -1601,6 +1601,8 @@ interface KanbanCardProps {
   onDragStart?: (e: React.DragEvent) => void;
   onDragEnd?: (e: React.DragEvent) => void;
   isDragging?: boolean;
+  upcomingAppointment?: GHLEvent | null;
+  opportunities?: ClientOpportunity[];
 }
 
 function KanbanCard({ 
@@ -1610,9 +1612,13 @@ function KanbanCard({
   isDraggable = false,
   onDragStart,
   onDragEnd,
-  isDragging = false
+  isDragging = false,
+  upcomingAppointment,
+  opportunities = [],
 }: KanbanCardProps) {
   const isOverdue = client.follow_up_date && new Date(client.follow_up_date) < new Date();
+  const otherPipelines = opportunities.filter(o => o.pipeline_name).map(o => o.pipeline_name);
+  const uniquePipelines = [...new Set(otherPipelines)];
   
   return (
     <Card 
@@ -1635,17 +1641,31 @@ function KanbanCard({
             {formatFullName(client.primary_first_name, client.primary_surname)}
           </h4>
         </div>
-        {isOverdue && (
-          <Badge variant="destructive" className="text-[10px] px-1.5 py-0 flex-shrink-0">
-            Overdue
-          </Badge>
-        )}
+        <div className="flex items-center gap-1 flex-shrink-0">
+          {isOverdue && (
+            <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+              Overdue
+            </Badge>
+          )}
+          {client.deal_status === 'closed' && (
+            <Badge variant="default" className="text-[10px] px-1.5 py-0 bg-emerald-600">
+              🏆
+            </Badge>
+          )}
+        </div>
       </div>
       
       {client.primary_email && (
         <p className="text-xs text-muted-foreground mt-1 line-clamp-1 flex items-center gap-1">
           <Mail className="h-3 w-3" />
           {client.primary_email}
+        </p>
+      )}
+      
+      {client.primary_mobile && (
+        <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+          <Phone className="h-3 w-3" />
+          {client.primary_mobile}
         </p>
       )}
       
@@ -1665,6 +1685,34 @@ function KanbanCard({
           </p>
         )}
       </div>
+
+      {/* Upcoming appointment */}
+      {upcomingAppointment && (
+        <div className="mt-2 pt-2 border-t flex items-center gap-1.5 text-xs">
+          <Video className="h-3 w-3 text-primary flex-shrink-0" />
+          <span className="text-muted-foreground truncate">
+            {format(new Date(upcomingAppointment.startTime), 'MMM d, h:mm a')}
+          </span>
+        </div>
+      )}
+
+      {/* Other pipeline memberships */}
+      {uniquePipelines.length > 1 && (
+        <div className="mt-2 pt-2 border-t">
+          <div className="flex flex-wrap gap-1">
+            {uniquePipelines.slice(0, 2).map(name => (
+              <Badge key={name} variant="outline" className="text-[9px] px-1 py-0">
+                {name && name.length > 15 ? name.substring(0, 13) + '...' : name}
+              </Badge>
+            ))}
+            {uniquePipelines.length > 2 && (
+              <Badge variant="outline" className="text-[9px] px-1 py-0">
+                +{uniquePipelines.length - 2}
+              </Badge>
+            )}
+          </div>
+        </div>
+      )}
       
       {client.pipeline_notes && (
         <p className="text-xs text-muted-foreground mt-2 line-clamp-2 border-t pt-2">
