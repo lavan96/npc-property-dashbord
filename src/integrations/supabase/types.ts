@@ -3030,6 +3030,7 @@ export type Database = {
       client_portal_reports: {
         Row: {
           client_id: string
+          client_visible_notes: string | null
           created_at: string
           file_size_bytes: number | null
           id: string
@@ -3047,6 +3048,7 @@ export type Database = {
         }
         Insert: {
           client_id: string
+          client_visible_notes?: string | null
           created_at?: string
           file_size_bytes?: number | null
           id?: string
@@ -3064,6 +3066,7 @@ export type Database = {
         }
         Update: {
           client_id?: string
+          client_visible_notes?: string | null
           created_at?: string
           file_size_bytes?: number | null
           id?: string

@@ -70,7 +70,7 @@ export default function PortalReports() {
   const filtered = reports.filter((r: any) => {
     const matchesSearch = !search ||
       r.report_title?.toLowerCase().includes(search.toLowerCase()) ||
-      r.notes?.toLowerCase().includes(search.toLowerCase());
+      r.client_visible_notes?.toLowerCase().includes(search.toLowerCase());
     const matchesType = typeFilter === 'all' || r.report_type === typeFilter;
     return matchesSearch && matchesType;
   });
@@ -252,8 +252,8 @@ export default function PortalReports() {
                               </p>
                             </div>
                           </div>
-                          {report.notes && (
-                            <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{report.notes}</p>
+                          {report.client_visible_notes && (
+                            <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{report.client_visible_notes}</p>
                           )}
                           <div className="flex items-center gap-2 mt-3">
                             <Button

@@ -57,6 +57,7 @@ export function SendToClientModal({
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [notes, setNotes] = useState('');
+  const [noteVisibility, setNoteVisibility] = useState<'internal' | 'both'>('internal');
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
 
@@ -144,6 +145,7 @@ export function SendToClientModal({
           storage_path: finalStoragePath,
           source_report_id: reportId,
           notes: notes || null,
+          client_visible_notes: noteVisibility === 'both' && notes ? notes : null,
           published_at: new Date().toISOString(),
         },
       });
@@ -156,9 +158,10 @@ export function SendToClientModal({
       setTimeout(() => {
         setSent(false);
         setSelectedClientId(null);
-        setNotes('');
-        setSearch('');
-        onClose();
+      setNotes('');
+      setNoteVisibility('internal');
+      setSearch('');
+      onClose();
       }, 1500);
     } catch (err: any) {
       toast.error('Failed to send: ' + (err.message || 'Unknown error'));
@@ -172,6 +175,7 @@ export function SendToClientModal({
       setSelectedClientId(null);
       setSearch('');
       setNotes('');
+      setNoteVisibility('internal');
       setSent(false);
       setIncludeCharts(true);
       setChartOptions({ cashFlowTrends: true, yieldChart: true, comparisonChart: true });
@@ -321,11 +325,34 @@ export function SendToClientModal({
             <div className="space-y-2">
               <Label>Notes (optional)</Label>
               <Textarea
-                placeholder="Add a note for internal tracking..."
+                placeholder={noteVisibility === 'both' ? "This note will be visible to the client..." : "Add a note for internal tracking..."}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={2}
               />
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant={noteVisibility === 'internal' ? 'default' : 'outline'}
+                  size="sm"
+                  className="text-xs h-7"
+                  onClick={() => setNoteVisibility('internal')}
+                >
+                  🔒 Internal Only
+                </Button>
+                <Button
+                  type="button"
+                  variant={noteVisibility === 'both' ? 'default' : 'outline'}
+                  size="sm"
+                  className="text-xs h-7"
+                  onClick={() => setNoteVisibility('both')}
+                >
+                  👁 Visible to Client
+                </Button>
+              </div>
+              {noteVisibility === 'both' && notes && (
+                <p className="text-[10px] text-amber-600">This note will be displayed to the client on their portal.</p>
+              )}
             </div>
 
             {/* Actions */}
