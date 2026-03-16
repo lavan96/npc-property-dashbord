@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Users, Filter, RefreshCw, GripVertical, LayoutList, Zap, Flame, BarChart3, TrendingUp, AlertTriangle, Sparkles, Plus, Layers, Repeat, Bell, X, PanelLeftClose, PanelLeft, Menu } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Users, Filter, RefreshCw, GripVertical, LayoutList, Zap, Flame, BarChart3, TrendingUp, AlertTriangle, Sparkles, Plus, Layers, Repeat, Bell, X, PanelLeftClose, PanelLeft, Menu, Mail } from 'lucide-react';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
@@ -38,6 +38,8 @@ import { FloatingActions } from '@/components/calendar/FloatingActions';
 import { KeyboardShortcutsHint } from '@/components/calendar/KeyboardShortcutsHint';
 import { CalendarLoadingSkeleton, StatsLoadingSkeleton, SidebarLoadingSkeleton } from '@/components/calendar/CalendarLoadingSkeleton';
 import { BatchActions } from '@/components/calendar/BatchActions';
+import { OutlookCalendarPanel } from '@/components/calendar/OutlookCalendarPanel';
+import { useOutlookCalendar } from '@/hooks/useOutlookCalendar';
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, startOfWeek, endOfWeek, isSameMonth, addWeeks, subWeeks, getHours, addHours, differenceInMilliseconds, addMinutes, setHours, setMinutes } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toTimezoneISO } from '@/lib/sydneyTime';
@@ -45,7 +47,7 @@ import { formatInSydney } from '@/lib/timezoneUtils';
 import { getBookingTimezone } from '@/lib/bookingTimezone';
 
 // Sidebar tab type
-type SidebarTab = 'events' | 'availability' | 'templates' | 'heatmap' | 'analytics' | 'summary' | 'conflicts' | 'optimize' | 'overlay' | 'patterns' | 'reminders';
+type SidebarTab = 'events' | 'availability' | 'templates' | 'heatmap' | 'analytics' | 'summary' | 'conflicts' | 'optimize' | 'overlay' | 'outlook' | 'patterns' | 'reminders';
 
 // Module-level helper functions for date parsing/formatting
 const safeParseISO = (value: string | undefined | null): Date | null => {
@@ -89,6 +91,7 @@ const SIDEBAR_TABS: { id: SidebarTab; icon: React.ReactNode; label: string; shor
   { id: 'conflicts', icon: <AlertTriangle className="h-3 w-3" />, label: 'Conflicts', shortcut: '7' },
   { id: 'optimize', icon: <Sparkles className="h-3 w-3" />, label: 'Optimize', shortcut: '8' },
   { id: 'overlay', icon: <Layers className="h-3 w-3" />, label: 'Overlay', shortcut: '9' },
+  { id: 'outlook', icon: <Mail className="h-3 w-3" />, label: 'Outlook', shortcut: '' },
   { id: 'patterns', icon: <Repeat className="h-3 w-3" />, label: 'Patterns', shortcut: '' },
   { id: 'reminders', icon: <Bell className="h-3 w-3" />, label: 'Reminders', shortcut: '' },
 ];
@@ -96,6 +99,12 @@ const SIDEBAR_TABS: { id: SidebarTab; icon: React.ReactNode; label: string; shor
 export default function Calendar() {
   const isMobile = useIsMobile();
   const { calendars, events, calendarGroups, contactCache, isLoading, isUpdating, error, fetchCalendarData, fetchCalendarGroups, fetchContact, getCalendarColor, rescheduleEvent, updateEvent, deleteEvent, createAppointment, searchContacts, blockSlot, fetchFreeSlots } = useGHLCalendar();
+  const {
+    outlookEvents, teamAvailability, isLoading: outlookLoading, isCreating: outlookCreating,
+    outlookEnabled, microsoftEmail, fetchOutlookEvents, createOutlookEvent, deleteOutlookEvent,
+    fetchTeamAvailability, getMicrosoftEmail, setMicrosoftEmail,
+  } = useOutlookCalendar();
+  const [outlookVisible, setOutlookVisible] = useState(true);
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('events');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -203,6 +212,7 @@ export default function Calendar() {
   const handleRefresh = useCallback(() => {
     const { start, end } = getVisibleRange();
     fetchCalendarData(start.toISOString(), end.toISOString());
+    fetchOutlookEvents(start.toISOString(), end.toISOString());
   }, [view, currentMonth, currentWeek]);
 
   useEffect(() => {
@@ -372,8 +382,42 @@ export default function Calendar() {
       );
     }
 
+    // Merge Outlook events as GHLEvent-compatible objects when visible
+    if (outlookVisible && outlookEvents.length > 0) {
+      const outlookAsGHL: GHLEvent[] = outlookEvents
+        .filter(oe => oe.startTime && oe.endTime)
+        .map(oe => ({
+          id: oe.id,
+          title: oe.title,
+          startTime: oe.startTime!,
+          endTime: oe.endTime!,
+          calendarId: oe.calendarId,
+          calendarName: oe.calendarName,
+          calendarColor: oe.calendarColor,
+          status: oe.status,
+          appointmentStatus: undefined,
+          contactId: undefined,
+          notes: oe.bodyPreview || undefined,
+          address: oe.location || undefined,
+        }));
+
+      // Apply search filter to Outlook events too
+      let filteredOutlook = outlookAsGHL;
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
+        filteredOutlook = filteredOutlook.filter(
+          (event) =>
+            toSearchable(event.title).includes(query) ||
+            toSearchable(event.notes).includes(query) ||
+            toSearchable(event.address).includes(query)
+        );
+      }
+
+      filtered = [...filtered, ...filteredOutlook];
+    }
+
     return filtered;
-  }, [events, selectedCalendarId, searchQuery]);
+  }, [events, selectedCalendarId, searchQuery, outlookVisible, outlookEvents]);
 
   const selectedDateEvents = useMemo(() => {
     if (!selectedDate) return [];
@@ -459,6 +503,15 @@ export default function Calendar() {
 
   const getEventStyle = (event: GHLEvent) => {
     const status = (event.appointmentStatus || event.status || '').toLowerCase();
+
+    // Outlook events - Microsoft blue styling
+    if (event.calendarId?.startsWith('outlook_')) {
+      return {
+        backgroundColor: 'hsl(207 89% 41% / 0.15)',
+        borderLeft: '3px solid hsl(207 89% 41%)',
+        color: 'hsl(207 89% 41%)',
+      };
+    }
     
     // Cancelled appointments - Red styling with strikethrough effect
     if (status === 'cancelled' || status === 'canceled') {
@@ -762,6 +815,25 @@ export default function Calendar() {
                           onToggleCalendar={handleToggleCalendar}
                           onShowAll={handleShowAllCalendars}
                           onHideAll={handleHideAllCalendars}
+                        />
+                      )}
+                      {sidebarTab === 'outlook' && (
+                        <OutlookCalendarPanel
+                          outlookEvents={outlookEvents}
+                          teamAvailability={teamAvailability}
+                          isLoading={outlookLoading}
+                          isCreating={outlookCreating}
+                          outlookEnabled={outlookEnabled}
+                          microsoftEmail={microsoftEmail}
+                          onRefresh={() => { const { start, end } = getVisibleRange(); fetchOutlookEvents(start.toISOString(), end.toISOString()); }}
+                          onFetchTeam={() => { const { start, end } = getVisibleRange(); fetchTeamAvailability(start.toISOString(), end.toISOString()); }}
+                          onCreateEvent={createOutlookEvent}
+                          onDeleteEvent={deleteOutlookEvent}
+                          onSetMicrosoftEmail={setMicrosoftEmail}
+                          onGetMicrosoftEmail={getMicrosoftEmail}
+                          outlookVisible={outlookVisible}
+                          onToggleOutlookVisible={() => setOutlookVisible(v => !v)}
+                          selectedDate={selectedDate}
                         />
                       )}
                       {sidebarTab === 'patterns' && (
@@ -1355,6 +1427,25 @@ export default function Calendar() {
                   onToggleCalendar={handleToggleCalendar}
                   onShowAll={handleShowAllCalendars}
                   onHideAll={handleHideAllCalendars}
+                />
+              )}
+              {sidebarTab === 'outlook' && (
+                <OutlookCalendarPanel
+                  outlookEvents={outlookEvents}
+                  teamAvailability={teamAvailability}
+                  isLoading={outlookLoading}
+                  isCreating={outlookCreating}
+                  outlookEnabled={outlookEnabled}
+                  microsoftEmail={microsoftEmail}
+                  onRefresh={() => { const { start, end } = getVisibleRange(); fetchOutlookEvents(start.toISOString(), end.toISOString()); }}
+                  onFetchTeam={() => { const { start, end } = getVisibleRange(); fetchTeamAvailability(start.toISOString(), end.toISOString()); }}
+                  onCreateEvent={createOutlookEvent}
+                  onDeleteEvent={deleteOutlookEvent}
+                  onSetMicrosoftEmail={setMicrosoftEmail}
+                  onGetMicrosoftEmail={getMicrosoftEmail}
+                  outlookVisible={outlookVisible}
+                  onToggleOutlookVisible={() => setOutlookVisible(v => !v)}
+                  selectedDate={selectedDate}
                 />
               )}
               {sidebarTab === 'patterns' && (

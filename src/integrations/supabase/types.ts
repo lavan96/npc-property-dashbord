@@ -3855,6 +3855,7 @@ export type Database = {
           email_signature: string | null
           id: string
           is_active: boolean
+          microsoft_email: string | null
           password_hash: string
           personal_mailbox: string | null
           role: string
@@ -3868,6 +3869,7 @@ export type Database = {
           email_signature?: string | null
           id?: string
           is_active?: boolean
+          microsoft_email?: string | null
           password_hash: string
           personal_mailbox?: string | null
           role?: string
@@ -3881,6 +3883,7 @@ export type Database = {
           email_signature?: string | null
           id?: string
           is_active?: boolean
+          microsoft_email?: string | null
           password_hash?: string
           personal_mailbox?: string | null
           role?: string
