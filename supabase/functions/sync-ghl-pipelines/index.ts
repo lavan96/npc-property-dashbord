@@ -317,13 +317,16 @@ serve(async (req) => {
       console.log(`  - ${stage}: ${count}`);
     }
 
-    // Step 4: Group opportunities by contact and select the furthest-down-the-pipeline opportunity
-    // Priority: Higher pipeline position > Higher stage position within the same pipeline
-    const contactOpportunityMap: Record<string, { 
+    // Step 4: Store ALL opportunities in ghl_client_opportunities table
+    // Also track the "best" opportunity per contact for the legacy clients table fields
+    const contactBestOpportunity: Record<string, { 
       opp: GHLOpportunity; 
       pipelinePosition: number; 
       stagePosition: number;
     }> = {};
+
+    // Group all opportunities by contact for bulk processing
+    const contactAllOpportunities: Record<string, GHLOpportunity[]> = {};
 
     for (const opp of allOpportunities) {
       const contactId = opp.contact?.id;
@@ -332,45 +335,100 @@ serve(async (req) => {
         continue;
       }
 
+      // Track all opportunities per contact
+      if (!contactAllOpportunities[contactId]) {
+        contactAllOpportunities[contactId] = [];
+      }
+      contactAllOpportunities[contactId].push(opp);
+
+      // Track best opportunity for legacy client table update
       const stageInfo = stageIdMap[opp.pipelineStageId];
       const pipelinePosition = stageInfo?.pipelinePosition ?? -1;
       const stagePosition = stageInfo?.stagePosition ?? -1;
 
-      const existing = contactOpportunityMap[contactId];
-      
-      // Keep the opportunity that is furthest down in the pipeline
-      // Compare by pipeline position first, then by stage position
+      const existing = contactBestOpportunity[contactId];
       const shouldReplace = !existing || 
         pipelinePosition > existing.pipelinePosition ||
         (pipelinePosition === existing.pipelinePosition && stagePosition > existing.stagePosition);
 
       if (shouldReplace) {
-        contactOpportunityMap[contactId] = { opp, pipelinePosition, stagePosition };
+        contactBestOpportunity[contactId] = { opp, pipelinePosition, stagePosition };
       }
     }
 
-    const uniqueContacts = Object.keys(contactOpportunityMap).length;
-    const duplicatesRemoved = allOpportunities.length - uniqueContacts;
+    const uniqueContacts = Object.keys(contactAllOpportunities).length;
+    const totalOpps = allOpportunities.length;
     console.log(`========================================`);
-    console.log(`DEDUPLICATION RESULTS`);
+    console.log(`OPPORTUNITY MAPPING`);
     console.log(`========================================`);
+    console.log(`Total opportunities: ${totalOpps}`);
     console.log(`Unique contacts with opportunities: ${uniqueContacts}`);
-    console.log(`Duplicate opportunities removed (same contact, earlier stage): ${duplicatesRemoved}`);
     console.log(`========================================`);
 
-    // Step 5: Update clients with the selected opportunity data
+    // Step 5: Upsert ALL opportunities into ghl_client_opportunities table
+    let opportunitiesUpserted = 0;
+    let opportunitiesSkipped = 0;
+
+    for (const [contactId, opps] of Object.entries(contactAllOpportunities)) {
+      // First find the client by ghl_contact_id
+      const { data: clientData, error: clientLookupError } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('ghl_contact_id', contactId)
+        .single();
+
+      if (clientLookupError || !clientData) {
+        opportunitiesSkipped += opps.length;
+        continue;
+      }
+
+      for (const opp of opps) {
+        const stageInfo = stageIdMap[opp.pipelineStageId];
+        
+        const oppRecord: Record<string, any> = {
+          client_id: clientData.id,
+          ghl_opportunity_id: opp.id,
+          ghl_contact_id: contactId,
+          pipeline_id: stageInfo?.pipelineUuid || pipelineIdMap[opp.pipelineId] || null,
+          stage_id: stageInfo?.uuid || null,
+          pipeline_name: stageInfo?.pipelineName || ghlPipelines.find(p => p.id === opp.pipelineId)?.name || null,
+          stage_name: stageInfo?.stageName || opp.status || 'Unknown Stage',
+          opportunity_status: opp.status || 'open',
+          monetary_value: opp.monetaryValue || 0,
+          opportunity_name: opp.name || null,
+          follow_up_date: opp.followUpDate || null,
+          notes: opp.notes || null,
+          custom_fields: opp.customFields ? JSON.stringify(opp.customFields) : null,
+          ghl_created_at: opp.createdAt || null,
+          ghl_updated_at: opp.updatedAt || null,
+          synced_at: new Date().toISOString(),
+        };
+
+        const { error: upsertError } = await supabase
+          .from('ghl_client_opportunities')
+          .upsert(oppRecord, { onConflict: 'client_id,ghl_opportunity_id' });
+
+        if (upsertError) {
+          console.error(`Error upserting opportunity ${opp.id}:`, upsertError);
+        } else {
+          opportunitiesUpserted++;
+        }
+      }
+    }
+
+    console.log(`Opportunities upserted: ${opportunitiesUpserted}, skipped (no client): ${opportunitiesSkipped}`);
+
+    // Step 6: Update clients table with the "best" opportunity (legacy fields)
     let updatedCount = 0;
     let notFoundCount = 0;
     const notFoundContacts: string[] = [];
 
-    for (const [contactId, { opp }] of Object.entries(contactOpportunityMap)) {
-      // Get stage info from our map
+    for (const [contactId, { opp }] of Object.entries(contactBestOpportunity)) {
       const stageInfo = stageIdMap[opp.pipelineStageId];
       const pipelineStatus = stageInfo 
         ? stageInfo.stageName
         : opp.status || 'Unknown Stage';
 
-      // Extract custom fields for borrowing capacity, equity release, etc.
       let borrowingCapacity: number | null = null;
       let proposedRentalIncome: number | null = null;
       let equityRelease: number | null = null;
@@ -388,12 +446,10 @@ serve(async (req) => {
         }
       }
 
-      // If no custom field for borrowing, use monetary value
       if (!borrowingCapacity && opp.monetaryValue) {
         borrowingCapacity = opp.monetaryValue;
       }
 
-      // Build update data with new relational fields
       const updateData: Record<string, any> = {
         pipeline_status: pipelineStatus,
         pipeline_updated_at: new Date().toISOString(),
@@ -401,7 +457,6 @@ serve(async (req) => {
         opportunity_status: opp.status || 'open',
       };
 
-      // Link to pipeline and stage using UUIDs
       if (stageInfo) {
         updateData.current_pipeline_id = stageInfo.pipelineUuid;
         updateData.current_stage_id = stageInfo.uuid;
@@ -409,21 +464,11 @@ serve(async (req) => {
         updateData.current_pipeline_id = pipelineIdMap[opp.pipelineId];
       }
 
-      if (opp.followUpDate) {
-        updateData.follow_up_date = opp.followUpDate;
-      }
-      if (borrowingCapacity) {
-        updateData.borrowing_capacity = borrowingCapacity;
-      }
-      if (proposedRentalIncome) {
-        updateData.proposed_rental_income = proposedRentalIncome;
-      }
-      if (equityRelease) {
-        updateData.equity_release = equityRelease;
-      }
-      if (opp.notes) {
-        updateData.pipeline_notes = opp.notes;
-      }
+      if (opp.followUpDate) updateData.follow_up_date = opp.followUpDate;
+      if (borrowingCapacity) updateData.borrowing_capacity = borrowingCapacity;
+      if (proposedRentalIncome) updateData.proposed_rental_income = proposedRentalIncome;
+      if (equityRelease) updateData.equity_release = equityRelease;
+      if (opp.notes) updateData.pipeline_notes = opp.notes;
 
       const { data: updatedClient, error: updateError } = await supabase
         .from('clients')
@@ -441,11 +486,10 @@ serve(async (req) => {
         }
       } else {
         updatedCount++;
-        // Removed per-client logging to reduce noise - summary is logged at the end
       }
     }
 
-    console.log(`Pipeline sync complete. Updated: ${updatedCount}, Not found: ${notFoundCount}`);
+    console.log(`Pipeline sync complete. Updated: ${updatedCount}, Not found: ${notFoundCount}, Opportunities stored: ${opportunitiesUpserted}`);
 
     // Build response with full pipeline structure
     const pipelinesWithStages = ghlPipelines.map(p => ({
