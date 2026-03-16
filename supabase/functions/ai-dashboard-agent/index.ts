@@ -5387,6 +5387,58 @@ async function executeGetClientPortalStatus(sb: any, args: any) {
   };
 }
 
+async function executeSendPortalInvite(sb: any, args: any) {
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
+
+  const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!.trim();
+  const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!.trim();
+  const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || SUPABASE_SERVICE_ROLE_KEY;
+
+  const body: any = { client_id: cid };
+  if (args.email) body.email = args.email;
+  if (args.resend_invite) body.resend_invite = true;
+
+  console.log(`[send_portal_invite] Sending invite for client ${cid}...`);
+  const resp = await fetch(`${SUPABASE_URL}/functions/v1/client-portal-invite`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      'apikey': SUPABASE_ANON_KEY.trim(),
+    },
+    body: JSON.stringify(body),
+  });
+  const data = await resp.json();
+  if (!resp.ok) return { error: data.error || `HTTP ${resp.status}` };
+  return { success: true, message: data.message, email_sent: data.email_sent, invite_link: data.invite_link, expires_at: data.expires_at };
+}
+
+async function executeRevokePortalAccess(sb: any, args: any) {
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
+
+  const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!.trim();
+  const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!.trim();
+  const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || SUPABASE_SERVICE_ROLE_KEY;
+
+  console.log(`[revoke_portal_access] Revoking access for client ${cid}...`);
+  const resp = await fetch(`${SUPABASE_URL}/functions/v1/client-portal-invite`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      'apikey': SUPABASE_ANON_KEY.trim(),
+    },
+    body: JSON.stringify({ action: 'revoke', client_id: cid }),
+  });
+  const data = await resp.json();
+  if (!resp.ok) return { error: data.error || `HTTP ${resp.status}` };
+  return { success: true, message: 'Portal access revoked successfully.' };
+}
+
 // ─── BATCH 7 EXECUTORS — APPOINTMENTS ───
 
 async function executeGetAppointmentNotifications(sb: any, args: any) {
