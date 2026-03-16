@@ -1751,7 +1751,7 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
         }
         .financial-table td { border: 1px solid ${NPC_COLORS.borderGray}; padding: 12px 14px; font-size: 9.5pt; }
         .financial-table tbody tr:nth-child(odd) { background: ${NPC_COLORS.white}; }
-        .financial-table tbody tr:nth-child(even) { background: ${NPC_COLORS.lightGray}; }
+        .financial-table tbody tr:nth-child(even) { background: #f0f4f8; }
         .financial-table .total-row { 
           background: linear-gradient(90deg, ${NPC_COLORS.goldLight} 0%, ${NPC_COLORS.goldTint} 100%) !important; 
           font-weight: 700; 
