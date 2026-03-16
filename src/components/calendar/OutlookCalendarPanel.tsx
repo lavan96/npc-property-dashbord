@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn } from '@/lib/utils';
 import { OutlookEvent, OutlookTeamMember, CreateOutlookEventPayload } from '@/hooks/useOutlookCalendar';
 import { useTeamUsers } from '@/hooks/useTeamUsers';
+import { OutlookCalendarSettings as OutlookCalendarSettingsComponent } from '@/components/calendar/OutlookCalendarSettings';
 import { format, parseISO } from 'date-fns';
 
 interface OutlookCalendarPanelProps {

@@ -444,6 +444,70 @@ serve(async (req) => {
       return jsonResponse({ success: true, microsoftEmail: email }, corsHeaders);
     }
 
+    if (action === 'getOutlookSettings') {
+      if (!userId || userId === 'service_role') {
+        return jsonResponse({ error: 'User context required' }, corsHeaders, 400);
+      }
+      const { data: user } = await supabase
+        .from('custom_users')
+        .select('outlook_auto_prep_enabled, outlook_prep_minutes, outlook_follow_up_blocking, outlook_follow_up_default_duration')
+        .eq('id', userId)
+        .maybeSingle();
+      return jsonResponse({
+        success: true,
+        settings: {
+          autoPrepEnabled: user?.outlook_auto_prep_enabled || false,
+          prepMinutes: user?.outlook_prep_minutes || 15,
+          followUpBlocking: user?.outlook_follow_up_blocking || false,
+          followUpDefaultDuration: user?.outlook_follow_up_default_duration || 30,
+        },
+      }, corsHeaders);
+    }
+
+    if (action === 'updateOutlookSettings') {
+      if (!userId || userId === 'service_role') {
+        return jsonResponse({ error: 'User context required' }, corsHeaders, 400);
+      }
+      const s = body.settings || {};
+      const { error: updateError } = await supabase
+        .from('custom_users')
+        .update({
+          outlook_auto_prep_enabled: s.autoPrepEnabled ?? false,
+          outlook_prep_minutes: s.prepMinutes ?? 15,
+          outlook_follow_up_blocking: s.followUpBlocking ?? false,
+          outlook_follow_up_default_duration: s.followUpDefaultDuration ?? 30,
+        })
+        .eq('id', userId);
+      if (updateError) throw new Error(updateError.message);
+      return jsonResponse({ success: true }, corsHeaders);
+    }
+
+    // Agent tool: create event for a specific user by email (service-to-service)
+    if (action === 'createEventForUser') {
+      const targetEmail = body.targetUserEmail;
+      if (!targetEmail) {
+        return jsonResponse({ error: 'targetUserEmail is required' }, corsHeaders, 400);
+      }
+      const event = await createEvent(accessToken, targetEmail, body);
+      return jsonResponse({ success: true, event }, corsHeaders);
+    }
+
+    // Agent tool: get team member Outlook settings
+    if (action === 'getTeamOutlookStatus') {
+      const { data: users } = await supabase
+        .from('custom_users')
+        .select('id, username, microsoft_email, outlook_auto_prep_enabled')
+        .eq('is_active', true);
+      const teamStatus = (users || []).map((u: any) => ({
+        userId: u.id,
+        username: u.username,
+        microsoftEmail: u.microsoft_email || null,
+        isConfigured: Boolean(u.microsoft_email),
+        autoPrepEnabled: u.outlook_auto_prep_enabled || false,
+      }));
+      return jsonResponse({ success: true, team: teamStatus }, corsHeaders);
+    }
+
     return jsonResponse({ error: `Unknown action: ${action}` }, corsHeaders, 400);
 
   } catch (err) {
