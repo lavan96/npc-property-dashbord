@@ -1347,7 +1347,7 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
         .footer-item { display: flex; align-items: center; gap: 6px; }
         
         /* Section Headers - Enhanced readability */
-        .section { margin-bottom: 16px; }
+        .section { margin-bottom: 20px; }
         .section-header { 
           background: linear-gradient(135deg, ${NPC_COLORS.darkBlue} 0%, ${NPC_COLORS.navy} 100%); 
           color: ${NPC_COLORS.white}; 
