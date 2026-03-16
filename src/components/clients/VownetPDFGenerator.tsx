@@ -446,12 +446,11 @@ export function VownetPDFGenerator({
       }
 
       // ── Render the disclaimer/contact page LAST (always the final page) ──
-      if (hasDisclaimerPage) {
+      if (isDisclaimerPage && lastFixedPage) {
         ensureWithinBudget();
         await new Promise(resolve => setTimeout(resolve, 0));
 
-        const disclaimerPage = pages[totalHtmlPages - 1] as HTMLElement;
-        const disclaimerCanvas = await html2canvasWithTimeout(disclaimerPage, {
+        const disclaimerCanvas = await html2canvasWithTimeout(lastFixedPage, {
           ...renderOptions,
           backgroundColor: '#141414',
         }, 15000);
