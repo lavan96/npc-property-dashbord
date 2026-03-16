@@ -1742,7 +1742,7 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
         .financial-table th { 
           background: linear-gradient(180deg, ${NPC_COLORS.darkBlue} 0%, ${NPC_COLORS.navy} 100%); 
           color: ${NPC_COLORS.white}; 
-          padding: 12px 14px; 
+          padding: 14px 16px; 
           text-align: left;
           font-weight: 600;
           font-size: 8pt;
