@@ -1352,7 +1352,7 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
           background: linear-gradient(135deg, ${NPC_COLORS.darkBlue} 0%, ${NPC_COLORS.navy} 100%); 
           color: ${NPC_COLORS.white}; 
           padding: 16px 20px; 
-          font-size: 10pt; 
+          font-size: 10.5pt; 
           font-weight: 600;
           display: flex;
           align-items: center;
