@@ -100,6 +100,22 @@ interface TrackedClient {
   first_deal_closed_at?: string | null;
 }
 
+interface ClientOpportunity {
+  id: string;
+  client_id: string;
+  ghl_opportunity_id: string;
+  pipeline_id: string | null;
+  stage_id: string | null;
+  pipeline_name: string | null;
+  stage_name: string | null;
+  opportunity_status: string | null;
+  monetary_value: number | null;
+  opportunity_name: string | null;
+  follow_up_date: string | null;
+  notes: string | null;
+  synced_at: string | null;
+}
+
 interface ClientNote {
   id: string;
   client_id: string;
@@ -195,6 +211,25 @@ export default function ClientTracker() {
     },
   });
 
+  // Fetch ALL opportunities from the new table
+  const { data: opportunities = [] } = useQuery({
+    queryKey: ['ghl-client-opportunities'],
+    queryFn: async () => {
+      const { data, error } = await invokeSecureFunction('get-client-data', {
+        listMode: true,
+        listOptions: {
+          table: 'ghl_client_opportunities',
+          select: 'id, client_id, ghl_opportunity_id, pipeline_id, stage_id, pipeline_name, stage_name, opportunity_status, monetary_value, opportunity_name, follow_up_date, notes, synced_at',
+          orderBy: 'synced_at',
+          orderAsc: false,
+        }
+      });
+      
+      if (error || !data?.success) return [];
+      return (data.records || []) as ClientOpportunity[];
+    },
+  });
+
   // Fetch active clients (marked as favorite) and sort by most recent note activity
   const activeClients = useMemo(() => {
     return clients
@@ -255,6 +290,7 @@ export default function ClientTracker() {
           setLastSyncTime(new Date());
           queryClient.invalidateQueries({ queryKey: ['ghl-pipelines'] });
           queryClient.invalidateQueries({ queryKey: ['ghl-pipeline-stages'] });
+          queryClient.invalidateQueries({ queryKey: ['ghl-client-opportunities'] });
           queryClient.invalidateQueries({ queryKey: ['client-tracker'] });
           queryClient.invalidateQueries({ queryKey: ['clients'] });
           
@@ -294,6 +330,33 @@ export default function ClientTracker() {
       .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
       .slice(0, 10); // Show top 10
   }, [ghlEvents]);
+
+  // Build a map of client name -> next upcoming appointment
+  const clientAppointmentMap = useMemo(() => {
+    const map: Record<string, GHLEvent> = {};
+    const now = new Date();
+    const futureEvents = ghlEvents
+      .filter(event => new Date(event.startTime) >= now)
+      .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+    
+    // Match events to clients by contactId or name in title
+    for (const client of clients) {
+      const clientName = `${client.primary_first_name} ${client.primary_surname}`.toLowerCase();
+      
+      const matchedEvent = futureEvents.find(event => {
+        // Match by GHL contact ID
+        if (client.ghl_contact_id && event.contactId === client.ghl_contact_id) return true;
+        // Fallback: match by name in title
+        const eventTitle = (event.title || '').toLowerCase();
+        return eventTitle.includes(clientName);
+      });
+      
+      if (matchedEvent) {
+        map[client.id] = matchedEvent;
+      }
+    }
+    return map;
+  }, [ghlEvents, clients]);
 
   // Notes are now fetched directly within each ActiveClientCard using infinite scroll
 
@@ -474,7 +537,17 @@ export default function ClientTracker() {
     return allStages.filter(s => s.pipeline_id === selectedPipelineId);
   }, [allStages, selectedPipelineId]);
 
-  // Filter clients
+  // Build a map of client_id -> opportunities for fast lookups
+  const clientOpportunitiesMap = useMemo(() => {
+    const map: Record<string, ClientOpportunity[]> = {};
+    for (const opp of opportunities) {
+      if (!map[opp.client_id]) map[opp.client_id] = [];
+      map[opp.client_id].push(opp);
+    }
+    return map;
+  }, [opportunities]);
+
+  // Filter clients - now considers opportunities for pipeline matching
   const filteredClients = useMemo(() => {
     return clients.filter(client => {
       const matchesSearch = searchQuery === '' || 
@@ -483,37 +556,77 @@ export default function ClientTracker() {
       
       const matchesStatus = statusFilter === 'all' || client.pipeline_status === statusFilter;
       
-      const matchesPipeline = selectedPipelineId === 'all' || 
-        client.current_pipeline_id === selectedPipelineId;
+      // When filtering by pipeline, check opportunities table too
+      let matchesPipeline = selectedPipelineId === 'all';
+      if (!matchesPipeline) {
+        // Check legacy field
+        if (client.current_pipeline_id === selectedPipelineId) {
+          matchesPipeline = true;
+        }
+        // Check opportunities table
+        const clientOpps = clientOpportunitiesMap[client.id] || [];
+        if (clientOpps.some(o => o.pipeline_id === selectedPipelineId)) {
+          matchesPipeline = true;
+        }
+      }
       
       return matchesSearch && matchesStatus && matchesPipeline;
     });
-  }, [clients, searchQuery, statusFilter, selectedPipelineId]);
+  }, [clients, searchQuery, statusFilter, selectedPipelineId, clientOpportunitiesMap]);
 
-  // Calculate stats
+  // Calculate stats - now using opportunities count
   const stats = useMemo(() => ({
     total: clients.length,
     withFollowUp: clients.filter(c => c.follow_up_date).length,
     overdue: clients.filter(c => c.follow_up_date && new Date(c.follow_up_date) < new Date()).length,
     financeStage: clients.filter(c => c.pipeline_status?.includes('FA -') || c.pipeline_status?.includes('Finance')).length,
-  }), [clients]);
+    totalOpportunities: opportunities.length,
+  }), [clients, opportunities]);
 
-  // Group clients by stage for Kanban view
+  // Group clients by stage for Kanban view - using opportunities table
   const groupedByStage = useMemo(() => {
     const grouped: Record<string, TrackedClient[]> = {};
     
     for (const stage of stagesForPipeline) {
-      grouped[stage.id] = filteredClients.filter(c => c.current_stage_id === stage.id);
+      grouped[stage.id] = [];
+    }
+
+    // Track which clients have been placed in at least one stage
+    const placedClientIds = new Set<string>();
+
+    // Use opportunities to place clients in stages
+    for (const client of filteredClients) {
+      const clientOpps = clientOpportunitiesMap[client.id] || [];
+      
+      for (const opp of clientOpps) {
+        if (opp.stage_id && grouped[opp.stage_id]) {
+          // Check if client already in this stage (avoid duplicates)
+          if (!grouped[opp.stage_id].find(c => c.id === client.id)) {
+            grouped[opp.stage_id].push(client);
+          }
+          placedClientIds.add(client.id);
+        }
+      }
+
+      // Fallback: if client has no opportunities but has legacy stage_id
+      if (!placedClientIds.has(client.id) && client.current_stage_id) {
+        const stageExists = stagesForPipeline.find(s => s.id === client.current_stage_id);
+        if (stageExists) {
+          if (!grouped[client.current_stage_id]) grouped[client.current_stage_id] = [];
+          grouped[client.current_stage_id].push(client);
+          placedClientIds.add(client.id);
+        }
+      }
     }
     
-    // Add "Unassigned" group for clients without a stage
-    const unassigned = filteredClients.filter(c => !c.current_stage_id || !stagesForPipeline.find(s => s.id === c.current_stage_id));
+    // Add "Unassigned" group for clients without any stage placement
+    const unassigned = filteredClients.filter(c => !placedClientIds.has(c.id));
     if (unassigned.length > 0) {
       grouped['unassigned'] = unassigned;
     }
     
     return grouped;
-  }, [filteredClients, stagesForPipeline]);
+  }, [filteredClients, stagesForPipeline, clientOpportunitiesMap]);
 
   const formatCurrency = (value: number | null) => {
     if (!value) return '-';
@@ -546,9 +659,10 @@ export default function ClientTracker() {
         setLastSyncTime(new Date());
         queryClient.invalidateQueries({ queryKey: ['ghl-pipelines'] });
         queryClient.invalidateQueries({ queryKey: ['ghl-pipeline-stages'] });
+        queryClient.invalidateQueries({ queryKey: ['ghl-client-opportunities'] });
         queryClient.invalidateQueries({ queryKey: ['client-tracker'] });
         queryClient.invalidateQueries({ queryKey: ['clients'] });
-        toast.success(`Synced ${data.stats?.pipelinesFound || 0} pipelines, ${data.stats?.stagesSynced || 0} stages, ${data.stats?.clientsUpdated || 0} clients`);
+        toast.success(`Synced ${data.stats?.pipelinesFound || 0} pipelines, ${data.stats?.opportunitiesStored || 0} opportunities, ${data.stats?.clientsUpdated || 0} clients`);
       } else {
         throw new Error(data?.error || 'Sync failed');
       }
@@ -1096,6 +1210,8 @@ export default function ClientTracker() {
                                   onDragStart={(e) => handleDragStart(e, client)}
                                   onDragEnd={handleDragEnd}
                                   isDragging={draggedClient?.id === client.id}
+                                  upcomingAppointment={clientAppointmentMap[client.id]}
+                                  opportunities={clientOpportunitiesMap[client.id]}
                                 />
                               ))
                             )}
@@ -1152,6 +1268,8 @@ export default function ClientTracker() {
                                 onDragStart={(e) => handleDragStart(e, client)}
                                 onDragEnd={handleDragEnd}
                                 isDragging={draggedClient?.id === client.id}
+                                upcomingAppointment={clientAppointmentMap[client.id]}
+                                opportunities={clientOpportunitiesMap[client.id]}
                               />
                             ))
                           )}
@@ -1514,6 +1632,8 @@ interface KanbanCardProps {
   onDragStart?: (e: React.DragEvent) => void;
   onDragEnd?: (e: React.DragEvent) => void;
   isDragging?: boolean;
+  upcomingAppointment?: GHLEvent | null;
+  opportunities?: ClientOpportunity[];
 }
 
 function KanbanCard({ 
@@ -1523,9 +1643,13 @@ function KanbanCard({
   isDraggable = false,
   onDragStart,
   onDragEnd,
-  isDragging = false
+  isDragging = false,
+  upcomingAppointment,
+  opportunities = [],
 }: KanbanCardProps) {
   const isOverdue = client.follow_up_date && new Date(client.follow_up_date) < new Date();
+  const otherPipelines = opportunities.filter(o => o.pipeline_name).map(o => o.pipeline_name);
+  const uniquePipelines = [...new Set(otherPipelines)];
   
   return (
     <Card 
@@ -1548,17 +1672,31 @@ function KanbanCard({
             {formatFullName(client.primary_first_name, client.primary_surname)}
           </h4>
         </div>
-        {isOverdue && (
-          <Badge variant="destructive" className="text-[10px] px-1.5 py-0 flex-shrink-0">
-            Overdue
-          </Badge>
-        )}
+        <div className="flex items-center gap-1 flex-shrink-0">
+          {isOverdue && (
+            <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+              Overdue
+            </Badge>
+          )}
+          {client.deal_status === 'closed' && (
+            <Badge variant="default" className="text-[10px] px-1.5 py-0 bg-emerald-600">
+              🏆
+            </Badge>
+          )}
+        </div>
       </div>
       
       {client.primary_email && (
         <p className="text-xs text-muted-foreground mt-1 line-clamp-1 flex items-center gap-1">
           <Mail className="h-3 w-3" />
           {client.primary_email}
+        </p>
+      )}
+      
+      {client.primary_mobile && (
+        <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+          <Phone className="h-3 w-3" />
+          {client.primary_mobile}
         </p>
       )}
       
@@ -1578,6 +1716,34 @@ function KanbanCard({
           </p>
         )}
       </div>
+
+      {/* Upcoming appointment */}
+      {upcomingAppointment && (
+        <div className="mt-2 pt-2 border-t flex items-center gap-1.5 text-xs">
+          <Video className="h-3 w-3 text-primary flex-shrink-0" />
+          <span className="text-muted-foreground truncate">
+            {format(new Date(upcomingAppointment.startTime), 'MMM d, h:mm a')}
+          </span>
+        </div>
+      )}
+
+      {/* Other pipeline memberships */}
+      {uniquePipelines.length > 1 && (
+        <div className="mt-2 pt-2 border-t">
+          <div className="flex flex-wrap gap-1">
+            {uniquePipelines.slice(0, 2).map(name => (
+              <Badge key={name} variant="outline" className="text-[9px] px-1 py-0">
+                {name && name.length > 15 ? name.substring(0, 13) + '...' : name}
+              </Badge>
+            ))}
+            {uniquePipelines.length > 2 && (
+              <Badge variant="outline" className="text-[9px] px-1 py-0">
+                +{uniquePipelines.length - 2}
+              </Badge>
+            )}
+          </div>
+        </div>
+      )}
       
       {client.pipeline_notes && (
         <p className="text-xs text-muted-foreground mt-2 line-clamp-2 border-t pt-2">

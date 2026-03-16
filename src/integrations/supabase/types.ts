@@ -4632,6 +4632,94 @@ export type Database = {
         }
         Relationships: []
       }
+      ghl_client_opportunities: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          custom_fields: Json | null
+          follow_up_date: string | null
+          ghl_contact_id: string
+          ghl_created_at: string | null
+          ghl_opportunity_id: string
+          ghl_updated_at: string | null
+          id: string
+          monetary_value: number | null
+          notes: string | null
+          opportunity_name: string | null
+          opportunity_status: string | null
+          pipeline_id: string | null
+          pipeline_name: string | null
+          stage_id: string | null
+          stage_name: string | null
+          synced_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          custom_fields?: Json | null
+          follow_up_date?: string | null
+          ghl_contact_id: string
+          ghl_created_at?: string | null
+          ghl_opportunity_id: string
+          ghl_updated_at?: string | null
+          id?: string
+          monetary_value?: number | null
+          notes?: string | null
+          opportunity_name?: string | null
+          opportunity_status?: string | null
+          pipeline_id?: string | null
+          pipeline_name?: string | null
+          stage_id?: string | null
+          stage_name?: string | null
+          synced_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          custom_fields?: Json | null
+          follow_up_date?: string | null
+          ghl_contact_id?: string
+          ghl_created_at?: string | null
+          ghl_opportunity_id?: string
+          ghl_updated_at?: string | null
+          id?: string
+          monetary_value?: number | null
+          notes?: string | null
+          opportunity_name?: string | null
+          opportunity_status?: string | null
+          pipeline_id?: string | null
+          pipeline_name?: string | null
+          stage_id?: string | null
+          stage_name?: string | null
+          synced_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ghl_client_opportunities_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ghl_client_opportunities_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "ghl_pipelines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ghl_client_opportunities_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "ghl_pipeline_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ghl_pipeline_stages: {
         Row: {
           color: string | null
