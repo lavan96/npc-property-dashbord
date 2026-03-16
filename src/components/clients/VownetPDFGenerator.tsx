@@ -1253,11 +1253,13 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
   const allPropertyPagesHTML = investmentPropertyPagesHTML + smsfPropertyPagesHTML;
 
   // Calculate page numbers for static pages
-  const page1Number = 1;
+  // New order: Cover(no number) → Portfolio Summary(1) → Personal Details(2) → Properties → Employment → Assets → Disclaimer
   const propertyPagesCount = investmentPropertyPages.length + smsfPropertyPages.length;
-  const employmentPageNumber = 2 + propertyPagesCount;
-  const assetsPageNumber = 3 + propertyPagesCount;
-  const summaryPageNumber = 4 + propertyPagesCount;
+  const summaryPageNumber = 1;
+  const page1Number = 2;
+  // Property pages start at page 3
+  const employmentPageNumber = 3 + propertyPagesCount;
+  const assetsPageNumber = 4 + propertyPagesCount;
 
   return `
     <!DOCTYPE html>
