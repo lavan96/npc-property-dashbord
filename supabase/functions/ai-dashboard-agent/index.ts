@@ -3169,13 +3169,35 @@ function executeCalculateEquityPosition(args: any) {
 
 async function executeCreateClient(sb: any, args: any, userId: string) {
   const { data: u } = await sb.from('custom_users').select('id').eq('id', userId).maybeSingle();
-  const insert: any = { primary_first_name: args.first_name, primary_surname: args.surname, pipeline_status: args.pipeline_status || 'lead' };
+  const insert: any = { primary_first_name: args.first_name, primary_surname: args.surname, pipeline_status: args.pipeline_status || 'lead', ghl_sync_status: 'pending' };
   if (args.email) insert.primary_email = args.email;
   if (args.mobile) insert.primary_mobile = args.mobile;
   if (u) insert.created_by = userId;
   const { data, error } = await sb.from('clients').insert(insert).select().single();
   if (error) return { error: error.message };
-  return { success: true, message: `Client "${args.first_name} ${args.surname}" created.`, client: data };
+
+  // Auto-sync new client to GoHighLevel
+  let ghlStatus = 'pending';
+  try {
+    const syncUrl = `${SUPABASE_URL}/functions/v1/sync-client-to-ghl`;
+    const syncResp = await fetch(syncUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        'apikey': SUPABASE_ANON_KEY || SUPABASE_SERVICE_ROLE_KEY,
+      },
+      body: JSON.stringify({ clientId: data.id }),
+    });
+    const syncResult = await syncResp.json();
+    ghlStatus = syncResult?.success ? 'synced' : 'error';
+    console.log(`[create_client] GHL sync result for ${data.id}:`, syncResult?.success ? 'success' : syncResult?.error);
+  } catch (syncErr) {
+    console.error(`[create_client] GHL sync failed for ${data.id}:`, syncErr);
+    ghlStatus = 'error';
+  }
+
+  return { success: true, message: `Client "${args.first_name} ${args.surname}" created${ghlStatus === 'synced' ? ' and synced to GoHighLevel' : ''}.`, client: data, ghl_synced: ghlStatus === 'synced' };
 }
 
 async function executeDeleteClient(sb: any, args: any) {
