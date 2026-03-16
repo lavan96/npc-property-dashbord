@@ -100,6 +100,22 @@ interface TrackedClient {
   first_deal_closed_at?: string | null;
 }
 
+interface ClientOpportunity {
+  id: string;
+  client_id: string;
+  ghl_opportunity_id: string;
+  pipeline_id: string | null;
+  stage_id: string | null;
+  pipeline_name: string | null;
+  stage_name: string | null;
+  opportunity_status: string | null;
+  monetary_value: number | null;
+  opportunity_name: string | null;
+  follow_up_date: string | null;
+  notes: string | null;
+  synced_at: string | null;
+}
+
 interface ClientNote {
   id: string;
   client_id: string;
