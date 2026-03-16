@@ -1476,8 +1476,46 @@ export function PortfolioAnalysisPDFGenerator({
           }
           yPos = drawSubsectionHeader(page, 'Portfolio Journey', yPos);
           yPos = drawFormattedText(page, narrative.portfolioJourney, MARGIN_LEFT, yPos, CONTENT_WIDTH, 9, 15, SECONDARY_COLOR);
-          yPos -= SECTION_SPACING;
+          yPos -= PARAGRAPH_SPACING;
         }
+      }
+      
+      // ============= PROPERTY PORTFOLIO DETAILS TABLE (between narrative and executive summary) =============
+      {
+        // Check if we need a new page for the table
+        if (needsNewPage(yPos, 120)) {
+          page = addContentPage();
+          yPos = PAGE_HEIGHT - MARGIN_TOP;
+        }
+        
+        yPos = drawSubsectionHeader(page, 'Property Portfolio Details', yPos);
+        
+        const propHeaders = ['#', 'Address', 'Type', 'Value', 'Equity', 'LVR', 'Yield'];
+        const propColumnWidths = [20, 160, 70, 60, 60, 40, 42];
+        
+        const propRows = analysisData.propertyAnalyses.map(prop => [
+          prop.propertyNumber.toString(),
+          prop.address,
+          formatPropertyType(prop.propertyType),
+          formatCurrency(prop.value),
+          formatCurrency(prop.equity),
+          ensurePercentage(prop.lvr),
+          ensurePercentage(prop.grossYield),
+        ]);
+        
+        let tableResult = drawTable(page, propHeaders, propRows, MARGIN_LEFT, yPos, propColumnWidths, 22);
+        yPos = tableResult.lastY;
+        
+        if (tableResult.needsNewPage) {
+          const remainingRows = propRows.slice(Math.floor((PAGE_HEIGHT - MARGIN_TOP - MARGIN_BOTTOM) / 20) - 1);
+          page = addContentPage();
+          yPos = PAGE_HEIGHT - MARGIN_TOP;
+          yPos = drawSubsectionHeader(page, 'Property Portfolio Details (continued)', yPos);
+          tableResult = drawTable(page, propHeaders, remainingRows, MARGIN_LEFT, yPos, propColumnWidths, 20);
+          yPos = tableResult.lastY;
+        }
+        
+        yPos -= SECTION_SPACING;
       }
       
       // Page header
@@ -2030,43 +2068,6 @@ export function PortfolioAnalysisPDFGenerator({
         yPos -= 95;
       }
       
-      // Property Portfolio Details table - rendered within the cashflow section
-      yPos -= PARAGRAPH_SPACING;
-      
-      // Check if we need a new page for the table
-      if (needsNewPage(yPos, 120)) {
-        page = addContentPage();
-        yPos = PAGE_HEIGHT - MARGIN_TOP;
-      }
-      
-      yPos = drawSubsectionHeader(page, 'Property Portfolio Details', yPos);
-      
-      // Build property table
-      const propHeaders = ['#', 'Address', 'Type', 'Value', 'Equity', 'LVR', 'Yield'];
-      const propColumnWidths = [20, 160, 70, 60, 60, 40, 42];
-      
-      const propRows = analysisData.propertyAnalyses.map(prop => [
-        prop.propertyNumber.toString(),
-        prop.address,
-        formatPropertyType(prop.propertyType),
-        formatCurrency(prop.value),
-        formatCurrency(prop.equity),
-        ensurePercentage(prop.lvr),
-        ensurePercentage(prop.grossYield),
-      ]);
-      
-      let tableResult = drawTable(page, propHeaders, propRows, MARGIN_LEFT, yPos, propColumnWidths, 22);
-      yPos = tableResult.lastY;
-      
-      // Handle table overflow to new page
-      if (tableResult.needsNewPage) {
-        const remainingRows = propRows.slice(Math.floor((PAGE_HEIGHT - MARGIN_TOP - MARGIN_BOTTOM) / 20) - 1);
-        page = addContentPage();
-        yPos = PAGE_HEIGHT - MARGIN_TOP;
-        yPos = drawSubsectionHeader(page, 'Property Portfolio Details (continued)', yPos);
-        tableResult = drawTable(page, propHeaders, remainingRows, MARGIN_LEFT, yPos, propColumnWidths, 20);
-        yPos = tableResult.lastY;
-      }
       
       console.log('✓ Property cashflow details page complete');
       
