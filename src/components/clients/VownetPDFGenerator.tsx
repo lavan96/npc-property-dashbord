@@ -1335,10 +1335,10 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
         .cover-date { color: ${NPC_COLORS.goldLight}; font-size: 11pt; letter-spacing: 2px; }
         
         /* Page Header */
-        .page-header { position: absolute; top: 0; left: 0; right: 0; height: 70px; background: ${NPC_COLORS.darkBlue}; display: flex; justify-content: flex-end; align-items: center; padding: 0 40px; }
-        .page-header::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 4px; background: ${NPC_COLORS.gold}; }
+        .page-header { position: absolute; top: 0; left: 0; right: 0; height: 74px; background: linear-gradient(135deg, ${NPC_COLORS.darkBlue} 0%, ${NPC_COLORS.navy} 100%); display: flex; justify-content: flex-end; align-items: center; padding: 0 40px; }
+        .page-header::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, ${NPC_COLORS.gold}, ${NPC_COLORS.goldLight}, ${NPC_COLORS.gold}); }
         .header-title-group { text-align: right; }
-        .header-title { color: ${NPC_COLORS.white}; font-size: 12pt; font-weight: 600; }
+        .header-title { color: ${NPC_COLORS.white}; font-size: 13pt; font-weight: 600; letter-spacing: 0.3px; }
         .header-subtitle { color: ${NPC_COLORS.goldLight}; font-size: 8pt; letter-spacing: 1px; }
         
         /* Page Footer */
