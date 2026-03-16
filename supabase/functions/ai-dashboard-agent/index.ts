@@ -3610,12 +3610,16 @@ async function executeCompareClients(sb: any, args: any) {
 
   const comparisons: any[] = [];
   for (const id of ids) {
+    // Resolve name-based IDs
+    const v = await validateClientExists(sb, id);
+    if (!v.valid) { comparisons.push({ id, error: v.error }); continue; }
+    const cid = v.resolvedId || id;
     const [clientRes, dealsRes, bcRes, remindersRes, activitiesRes] = await Promise.all([
-      sb.from('clients').select('id, primary_first_name, primary_surname, primary_email, pipeline_status, follow_up_date, borrowing_capacity, created_at, updated_at').eq('id', id).single(),
-      sb.from('client_deals').select('id, deal_type, current_stage, risk_status, loan_amount, commission_estimate, settlement_date').eq('client_id', id),
-      sb.from('borrowing_capacity_assessments').select('borrowing_capacity, serviceability_band, monthly_surplus, dti_ratio, created_at').eq('client_id', id).order('created_at', { ascending: false }).limit(1),
-      sb.from('client_reminders').select('id').eq('client_id', id).eq('status', 'pending'),
-      sb.from('client_activities').select('id, created_at').eq('client_id', id).order('created_at', { ascending: false }).limit(1),
+      sb.from('clients').select('id, primary_first_name, primary_surname, primary_email, pipeline_status, follow_up_date, borrowing_capacity, created_at, updated_at').eq('id', cid).single(),
+      sb.from('client_deals').select('id, deal_type, current_stage, risk_status, loan_amount, commission_estimate, settlement_date').eq('client_id', cid),
+      sb.from('borrowing_capacity_assessments').select('borrowing_capacity, serviceability_band, monthly_surplus, dti_ratio, created_at').eq('client_id', cid).order('created_at', { ascending: false }).limit(1),
+      sb.from('client_reminders').select('id').eq('client_id', cid).eq('status', 'pending'),
+      sb.from('client_activities').select('id, created_at').eq('client_id', cid).order('created_at', { ascending: false }).limit(1),
     ]);
 
     const client = clientRes.data;
