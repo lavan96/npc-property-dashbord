@@ -867,7 +867,7 @@ const TOOLS: any[] = [
     type: "function",
     function: {
       name: "create_client",
-      description: "Create a new client record with basic info (name, email, phone). REQUIRES USER CONFIRMATION.",
+      description: "Create a new client record with basic info (name, email, phone). Optionally assign to a GHL pipeline stage to auto-create an opportunity. REQUIRES USER CONFIRMATION.",
       parameters: {
         type: "object",
         properties: {
@@ -876,6 +876,7 @@ const TOOLS: any[] = [
           email: { type: "string", description: "Primary email" },
           mobile: { type: "string", description: "Primary mobile" },
           pipeline_status: { type: "string", description: "Pipeline status (default: lead)" },
+          ghl_pipeline_stage: { type: "string", description: "Name of the GHL pipeline stage to create an opportunity in (e.g. 'Opt-In [Cold Lead]', 'Discovery Call (DC) Booked'). Optional." },
         },
         required: ["first_name", "surname"],
       },
