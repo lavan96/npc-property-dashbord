@@ -1189,9 +1189,9 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
   const totalNetCF = summaryProperties.reduce((sum, p) => sum + (p.net_monthly_cashflow || 0), 0);
 
   // Properly capitalize client names
-  const primaryName = `${properCase(client.primary_first_name)} ${properCase(client.primary_surname)}`;
+  const primaryName = `${smartCapitalize(client.primary_first_name)} ${smartCapitalize(client.primary_surname)}`;
   const secondaryName = client.secondary_first_name 
-    ? `${properCase(client.secondary_first_name)} ${properCase(client.secondary_surname || client.primary_surname)}`
+    ? `${smartCapitalize(client.secondary_first_name)} ${smartCapitalize(client.secondary_surname || client.primary_surname)}`
     : '';
   const clientFullName = secondaryName ? `${primaryName} & ${secondaryName}` : primaryName;
   
