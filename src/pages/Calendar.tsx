@@ -1546,6 +1546,21 @@ export default function Calendar() {
                 });
               }
             }
+
+            // Auto-create Outlook prep block if user has Outlook configured
+            if (microsoftEmail && outlookEnabled) {
+              try {
+                await createPrepBlock({
+                  appointmentTitle: data.title,
+                  appointmentStartTime: data.startTime,
+                  clientName: data.title,
+                  prepMinutes: 15,
+                  notes: data.notes,
+                });
+              } catch (err) {
+                console.log('[Calendar] Prep block creation failed (non-critical):', err);
+              }
+            }
           }
           
           return result.success;
