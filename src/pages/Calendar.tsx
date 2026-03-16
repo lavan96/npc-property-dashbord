@@ -91,6 +91,7 @@ const SIDEBAR_TABS: { id: SidebarTab; icon: React.ReactNode; label: string; shor
   { id: 'conflicts', icon: <AlertTriangle className="h-3 w-3" />, label: 'Conflicts', shortcut: '7' },
   { id: 'optimize', icon: <Sparkles className="h-3 w-3" />, label: 'Optimize', shortcut: '8' },
   { id: 'overlay', icon: <Layers className="h-3 w-3" />, label: 'Overlay', shortcut: '9' },
+  { id: 'outlook', icon: <Mail className="h-3 w-3" />, label: 'Outlook', shortcut: '' },
   { id: 'patterns', icon: <Repeat className="h-3 w-3" />, label: 'Patterns', shortcut: '' },
   { id: 'reminders', icon: <Bell className="h-3 w-3" />, label: 'Reminders', shortcut: '' },
 ];
