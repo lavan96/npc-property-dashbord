@@ -339,17 +339,16 @@ export default function ClientTracker() {
       .filter(event => new Date(event.startTime) >= now)
       .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
     
-    // Match events to clients by contact name or email
+    // Match events to clients by contactId or name in title
     for (const client of clients) {
       const clientName = `${client.primary_first_name} ${client.primary_surname}`.toLowerCase();
-      const clientEmail = client.primary_email?.toLowerCase();
       
       const matchedEvent = futureEvents.find(event => {
+        // Match by GHL contact ID
+        if (client.ghl_contact_id && event.contactId === client.ghl_contact_id) return true;
+        // Fallback: match by name in title
         const eventTitle = (event.title || '').toLowerCase();
-        const eventContact = (event.contactName || '').toLowerCase();
-        return eventTitle.includes(clientName) || 
-               eventContact.includes(clientName) ||
-               (clientEmail && eventTitle.includes(clientEmail));
+        return eventTitle.includes(clientName);
       });
       
       if (matchedEvent) {
