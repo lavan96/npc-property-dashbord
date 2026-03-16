@@ -183,14 +183,8 @@ function wrapInAgentTemplate(bodyHtml: string, signature: string, bannerUrl?: st
           </tr>
           <!-- Signature -->
           ${signatureSection}
-          <!-- Footer -->
-          <tr>
-            <td style="padding: 20px 32px; background-color: #1a1a2e; text-align: center;">
-              <p style="margin: 0; font-size: 12px; color: #9ca3af; font-family: Arial, sans-serif;">
-                Sent via Oryxa • Naidu Property Consulting Services
-              </p>
-            </td>
-          </tr>
+          <!-- Footer spacer -->
+          <tr><td style="height: 8px;"></td></tr>
         </table>
       </td>
     </tr>
