@@ -2827,16 +2827,17 @@ async function executeRescheduleAppointment(args: any) {
 }
 
 async function executeCreateAppointment(sb: any, args: any) {
-  const { calendar_id, title, start_time, end_time, client_id, contact_id, notes } = args;
+  const { calendar_id, title, start_time, end_time, client_id, notes } = args;
   if (!calendar_id || !start_time || !end_time) {
     return { error: 'calendar_id, start_time, and end_time are required.' };
   }
 
-  // Resolve GHL contact ID from client_id if provided
-  let ghlContactId: string | null = contact_id || null;
+  // Always resolve GHL contact ID from client_id — never accept a raw contact_id
+  // This prevents the AI from accidentally passing Supabase UUIDs to GHL
+  let ghlContactId: string | null = null;
   let resolvedClientName: string | null = null;
 
-  if (client_id && !ghlContactId) {
+  if (client_id) {
     const v = await validateClientExists(sb, client_id);
     if (!v.valid) return { error: v.error };
     const cid = v.resolvedId || client_id;
@@ -2844,8 +2845,35 @@ async function executeCreateAppointment(sb: any, args: any) {
     const { data: clientRecord } = await sb.from('clients').select('ghl_contact_id').eq('id', cid).maybeSingle();
     if (clientRecord?.ghl_contact_id) {
       ghlContactId = clientRecord.ghl_contact_id;
+      console.log(`[create_appointment] Resolved client ${cid} → GHL contact ${ghlContactId}`);
     } else {
-      console.log(`[create_appointment] Client ${cid} has no ghl_contact_id — creating appointment without contact link`);
+      console.log(`[create_appointment] Client ${cid} (${resolvedClientName}) has no ghl_contact_id — creating appointment without contact link`);
+    }
+  }
+
+  // Safety: reject any contact_id that looks like a Supabase UUID (not a GHL ID)
+  if (args.contact_id) {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (uuidRegex.test(args.contact_id)) {
+      console.warn(`[create_appointment] Rejected contact_id "${args.contact_id}" — looks like a Supabase UUID, not a GHL contact ID. Use client_id instead.`);
+      // Try to resolve it as a client_id
+      if (!ghlContactId) {
+        const v2 = await validateClientExists(sb, args.contact_id);
+        if (v2.valid) {
+          const cid2 = v2.resolvedId || args.contact_id;
+          resolvedClientName = resolvedClientName || clientName(v2.client);
+          const { data: cr2 } = await sb.from('clients').select('ghl_contact_id').eq('id', cid2).maybeSingle();
+          if (cr2?.ghl_contact_id) {
+            ghlContactId = cr2.ghl_contact_id;
+            console.log(`[create_appointment] Auto-resolved contact_id as client → GHL contact ${ghlContactId}`);
+          }
+        }
+      }
+    } else {
+      // Non-UUID contact_id — likely a real GHL contact ID
+      if (!ghlContactId) {
+        ghlContactId = args.contact_id;
+      }
     }
   }
 
