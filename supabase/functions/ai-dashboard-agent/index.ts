@@ -3179,13 +3179,14 @@ async function executeCreateClient(sb: any, args: any, userId: string) {
   // Auto-sync new client to GoHighLevel
   let ghlStatus = 'pending';
   try {
-    const syncUrl = `${SUPABASE_URL}/functions/v1/sync-client-to-ghl`;
+    const syncUrl = `${SUPABASE_URL.trim()}/functions/v1/sync-client-to-ghl`;
+    console.log(`[create_client] Triggering GHL sync for client ${data.id}...`);
     const syncResp = await fetch(syncUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-        'apikey': SUPABASE_ANON_KEY || SUPABASE_SERVICE_ROLE_KEY,
+        'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY.trim()}`,
+        'apikey': (SUPABASE_ANON_KEY || SUPABASE_SERVICE_ROLE_KEY).trim(),
       },
       body: JSON.stringify({ clientId: data.id }),
     });
