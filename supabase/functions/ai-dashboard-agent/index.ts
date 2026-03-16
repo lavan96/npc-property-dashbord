@@ -2126,7 +2126,23 @@ const TOOLS: any[] = [
     function: {
       name: "get_client_portal_status",
       description: "Check if a specific client has portal access: account status, last login, invite status.",
-      parameters: { type: "object", properties: { client_id: { type: "string", description: "UUID of the client" } }, required: ["client_id"] },
+      parameters: { type: "object", properties: { client_id: { type: "string", description: "UUID or name of the client" } }, required: ["client_id"] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "send_portal_invite",
+      description: "Send a portal invite to a client so they can access the Client Portal. Optionally provide an email override.",
+      parameters: { type: "object", properties: { client_id: { type: "string", description: "UUID or name of the client" }, email: { type: "string", description: "Optional email override (defaults to client's primary email)" }, resend_invite: { type: "boolean", description: "Set true to resend an existing invite" } }, required: ["client_id"] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "revoke_portal_access",
+      description: "Revoke a client's portal access, disabling their account and terminating all sessions.",
+      parameters: { type: "object", properties: { client_id: { type: "string", description: "UUID or name of the client" } }, required: ["client_id"] },
     },
   },
 
