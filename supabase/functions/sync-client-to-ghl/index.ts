@@ -63,7 +63,7 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const body = await req.json();
-    const { action, clientId, clientIds } = body;
+    const { action, clientId, clientIds, pipelineStageGhlId, pipelineGhlId } = body;
     
     // SECURITY: Verify authentication
     const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
@@ -112,7 +112,7 @@ serve(async (req) => {
       });
     }
 
-    const result = await syncSingleClient(supabase, clientId, headers, locationId);
+    const result = await syncSingleClient(supabase, clientId, headers, locationId, pipelineStageGhlId, pipelineGhlId);
 
     return new Response(JSON.stringify(result), {
       status: result.success ? 200 : 500,
@@ -135,7 +135,9 @@ async function syncSingleClient(
   supabase: any, 
   clientId: string, 
   headers: Record<string, string>,
-  locationId: string
+  locationId: string,
+  pipelineStageGhlId?: string,
+  pipelineGhlId?: string
 ) {
   console.log(`Syncing client ${clientId} to GHL`);
 
@@ -249,13 +251,47 @@ async function syncSingleClient(
       console.error('Failed to update client sync status:', updateError);
     }
 
+    // Create opportunity in pipeline if stage was specified
+    let opportunityCreated = false;
+    if (pipelineStageGhlId && pipelineGhlId && ghlContactId) {
+      try {
+        console.log(`Creating GHL opportunity for contact ${ghlContactId} in pipeline ${pipelineGhlId}, stage ${pipelineStageGhlId}`);
+        const oppPayload = {
+          pipelineId: pipelineGhlId,
+          pipelineStageId: pipelineStageGhlId,
+          contactId: ghlContactId,
+          locationId,
+          name: `${client.primary_first_name} ${client.primary_surname}`.trim(),
+          status: 'open',
+        };
+        
+        const oppResponse = await fetch(`${GHL_API_BASE}/opportunities/`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(oppPayload),
+        });
+
+        if (oppResponse.ok) {
+          const oppData = await oppResponse.json();
+          console.log(`GHL opportunity created: ${oppData.opportunity?.id}`);
+          opportunityCreated = true;
+        } else {
+          const errText = await oppResponse.text();
+          console.error('GHL opportunity creation error:', errText);
+        }
+      } catch (oppErr) {
+        console.error('Failed to create GHL opportunity:', oppErr);
+      }
+    }
+
     console.log(`Successfully synced client ${clientId} to GHL contact ${ghlContactId}`);
 
     return {
       success: true,
       clientId,
       ghlContactId,
-      isNewContact
+      isNewContact,
+      opportunityCreated,
     };
 
   } catch (error) {

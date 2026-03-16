@@ -867,7 +867,7 @@ const TOOLS: any[] = [
     type: "function",
     function: {
       name: "create_client",
-      description: "Create a new client record with basic info (name, email, phone). REQUIRES USER CONFIRMATION.",
+      description: "Create a new client record with basic info (name, email, phone). Optionally assign to a GHL pipeline stage to auto-create an opportunity. REQUIRES USER CONFIRMATION.",
       parameters: {
         type: "object",
         properties: {
@@ -876,6 +876,7 @@ const TOOLS: any[] = [
           email: { type: "string", description: "Primary email" },
           mobile: { type: "string", description: "Primary mobile" },
           pipeline_status: { type: "string", description: "Pipeline status (default: lead)" },
+          ghl_pipeline_stage: { type: "string", description: "Name of the GHL pipeline stage to create an opportunity in (e.g. 'Opt-In [Cold Lead]', 'Discovery Call (DC) Booked'). Optional." },
         },
         required: ["first_name", "surname"],
       },
@@ -3176,11 +3177,36 @@ async function executeCreateClient(sb: any, args: any, userId: string) {
   const { data, error } = await sb.from('clients').insert(insert).select().single();
   if (error) return { error: error.message };
 
+  // Resolve GHL pipeline stage if provided
+  let pipelineStageGhlId: string | undefined;
+  let pipelineGhlId: string | undefined;
+  if (args.ghl_pipeline_stage) {
+    const { data: stageMatch } = await sb
+      .from('ghl_pipeline_stages')
+      .select('ghl_id, pipeline_id, ghl_pipelines!inner(ghl_id)')
+      .ilike('name', `%${args.ghl_pipeline_stage}%`)
+      .limit(1)
+      .maybeSingle();
+    if (stageMatch) {
+      pipelineStageGhlId = stageMatch.ghl_id;
+      pipelineGhlId = stageMatch.ghl_pipelines?.ghl_id;
+      console.log(`[create_client] Resolved pipeline stage: ${args.ghl_pipeline_stage} → ${pipelineStageGhlId}`);
+    } else {
+      console.warn(`[create_client] Pipeline stage "${args.ghl_pipeline_stage}" not found, skipping opportunity creation.`);
+    }
+  }
+
   // Auto-sync new client to GoHighLevel
   let ghlStatus = 'pending';
+  let opportunityCreated = false;
   try {
     const syncUrl = `${SUPABASE_URL.trim()}/functions/v1/sync-client-to-ghl`;
     console.log(`[create_client] Triggering GHL sync for client ${data.id}...`);
+    const syncBody: any = { clientId: data.id };
+    if (pipelineStageGhlId && pipelineGhlId) {
+      syncBody.pipelineStageGhlId = pipelineStageGhlId;
+      syncBody.pipelineGhlId = pipelineGhlId;
+    }
     const syncResp = await fetch(syncUrl, {
       method: 'POST',
       headers: {
@@ -3188,17 +3214,19 @@ async function executeCreateClient(sb: any, args: any, userId: string) {
         'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY.trim()}`,
         'apikey': (SUPABASE_ANON_KEY || SUPABASE_SERVICE_ROLE_KEY).trim(),
       },
-      body: JSON.stringify({ clientId: data.id }),
+      body: JSON.stringify(syncBody),
     });
     const syncResult = await syncResp.json();
     ghlStatus = syncResult?.success ? 'synced' : 'error';
-    console.log(`[create_client] GHL sync result for ${data.id}:`, syncResult?.success ? 'success' : syncResult?.error);
+    opportunityCreated = syncResult?.opportunityCreated || false;
+    console.log(`[create_client] GHL sync result for ${data.id}:`, syncResult?.success ? 'success' : syncResult?.error, `opportunity: ${opportunityCreated}`);
   } catch (syncErr) {
     console.error(`[create_client] GHL sync failed for ${data.id}:`, syncErr);
     ghlStatus = 'error';
   }
 
-  return { success: true, message: `Client "${args.first_name} ${args.surname}" created${ghlStatus === 'synced' ? ' and synced to GoHighLevel' : ''}.`, client: data, ghl_synced: ghlStatus === 'synced' };
+  const oppMsg = opportunityCreated ? ' with opportunity in pipeline' : '';
+  return { success: true, message: `Client "${args.first_name} ${args.surname}" created${ghlStatus === 'synced' ? ` and synced to GoHighLevel${oppMsg}` : ''}.`, client: data, ghl_synced: ghlStatus === 'synced', opportunity_created: opportunityCreated };
 }
 
 async function executeDeleteClient(sb: any, args: any) {

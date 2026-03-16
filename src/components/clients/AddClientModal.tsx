@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -16,6 +16,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Loader2, UserPlus } from 'lucide-react';
 
 interface AddClientModalProps {
@@ -26,6 +33,7 @@ interface AddClientModalProps {
 export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
   const queryClient = useQueryClient();
   const [syncToGHL, setSyncToGHL] = useState(true);
+  const [selectedStageId, setSelectedStageId] = useState<string>('');
   const [formData, setFormData] = useState({
     primary_first_name: '',
     primary_surname: '',
@@ -34,6 +42,19 @@ export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
     secondary_first_name: '',
     secondary_surname: '',
     current_address: '',
+  });
+
+  // Fetch GHL pipeline stages for the dropdown
+  const { data: pipelineStages } = useQuery({
+    queryKey: ['ghl-pipeline-stages'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('ghl_pipeline_stages')
+        .select('id, ghl_id, name, position, pipeline_id, ghl_pipelines!inner(name, ghl_id)')
+        .order('position', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
   });
 
   const createClientMutation = useMutation({
@@ -84,9 +105,18 @@ export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
 
       // Sync to GHL if enabled
       if (syncToGHL && newClient) {
-        const { data: syncResult, error: syncError } = await invokeSecureFunction('sync-client-to-ghl', {
-          clientId: newClient.id
-        });
+        const syncPayload: any = { clientId: newClient.id };
+        
+        // If a pipeline stage was selected, include it for opportunity creation
+        if (selectedStageId) {
+          const stage = pipelineStages?.find((s: any) => s.id === selectedStageId);
+          if (stage) {
+            syncPayload.pipelineStageGhlId = stage.ghl_id;
+            syncPayload.pipelineGhlId = (stage as any).ghl_pipelines?.ghl_id;
+          }
+        }
+        
+        const { data: syncResult, error: syncError } = await invokeSecureFunction('sync-client-to-ghl', syncPayload);
 
         if (syncError) {
           console.error('GHL sync error:', syncError);
@@ -131,6 +161,7 @@ export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
       current_address: '',
     });
     setSyncToGHL(true);
+    setSelectedStageId('');
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -254,6 +285,37 @@ export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
               Sync to GoHighLevel after creating
             </Label>
           </div>
+
+          {/* Pipeline Stage (optional, shown when GHL sync enabled) */}
+          {syncToGHL && (
+            <div className="space-y-1.5">
+              <Label htmlFor="pipeline_stage">Pipeline Stage (Optional)</Label>
+              <Select value={selectedStageId} onValueChange={setSelectedStageId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a pipeline stage..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {(() => {
+                    // Group stages by pipeline
+                    const grouped: Record<string, { pipelineName: string; stages: any[] }> = {};
+                    (pipelineStages || []).forEach((s: any) => {
+                      const pName = s.ghl_pipelines?.name || 'Unknown Pipeline';
+                      if (!grouped[pName]) grouped[pName] = { pipelineName: pName, stages: [] };
+                      grouped[pName].stages.push(s);
+                    });
+                    return Object.entries(grouped).map(([pName, group]) => (
+                      <div key={pName}>
+                        <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">{pName}</div>
+                        {group.stages.map((stage: any) => (
+                          <SelectItem key={stage.id} value={stage.id}>{stage.name}</SelectItem>
+                        ))}
+                      </div>
+                    ));
+                  })()}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
