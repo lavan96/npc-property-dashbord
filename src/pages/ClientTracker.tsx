@@ -331,6 +331,34 @@ export default function ClientTracker() {
       .slice(0, 10); // Show top 10
   }, [ghlEvents]);
 
+  // Build a map of client name -> next upcoming appointment
+  const clientAppointmentMap = useMemo(() => {
+    const map: Record<string, GHLEvent> = {};
+    const now = new Date();
+    const futureEvents = ghlEvents
+      .filter(event => new Date(event.startTime) >= now)
+      .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+    
+    // Match events to clients by contact name or email
+    for (const client of clients) {
+      const clientName = `${client.primary_first_name} ${client.primary_surname}`.toLowerCase();
+      const clientEmail = client.primary_email?.toLowerCase();
+      
+      const matchedEvent = futureEvents.find(event => {
+        const eventTitle = (event.title || '').toLowerCase();
+        const eventContact = (event.contactName || '').toLowerCase();
+        return eventTitle.includes(clientName) || 
+               eventContact.includes(clientName) ||
+               (clientEmail && eventTitle.includes(clientEmail));
+      });
+      
+      if (matchedEvent) {
+        map[client.id] = matchedEvent;
+      }
+    }
+    return map;
+  }, [ghlEvents, clients]);
+
   // Notes are now fetched directly within each ActiveClientCard using infinite scroll
 
   // State for drag and drop
