@@ -8,7 +8,7 @@ const MICROSOFT_TENANT_ID = Deno.env.get('MICROSOFT_TENANT_ID');
 
 // ── Microsoft Graph helpers ──────────────────────────────────────────
 
-async function getAccessToken(): Promise<string> {
+async function getAccessToken(): Promise<{ token: string; scopes?: string }> {
   const tokenUrl = `https://login.microsoftonline.com/${MICROSOFT_TENANT_ID}/oauth2/v2.0/token`;
   const params = new URLSearchParams({
     client_id: MICROSOFT_CLIENT_ID!,
@@ -25,10 +25,12 @@ async function getAccessToken(): Promise<string> {
 
   if (!res.ok) {
     const err = await res.text();
+    console.error('[outlook-calendar] Token request failed:', err);
     throw new Error(`Token request failed: ${err}`);
   }
   const data = await res.json();
-  return data.access_token;
+  console.log('[outlook-calendar] Token acquired, expires_in:', data.expires_in);
+  return { token: data.access_token, scopes: data.scope };
 }
 
 function graphUrl(email: string, path: string) {
