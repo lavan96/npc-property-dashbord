@@ -815,6 +815,11 @@ export default function Calendar() {
                           onToggleCalendar={handleToggleCalendar}
                           onShowAll={handleShowAllCalendars}
                           onHideAll={handleHideAllCalendars}
+                          outlookEnabled={outlookEnabled}
+                          outlookVisible={outlookVisible}
+                          onToggleOutlook={() => setOutlookVisible(v => !v)}
+                          outlookEventCount={outlookEvents.length}
+                          microsoftEmail={microsoftEmail}
                         />
                       )}
                       {sidebarTab === 'outlook' && (
