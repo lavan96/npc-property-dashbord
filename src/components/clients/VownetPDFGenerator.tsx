@@ -314,13 +314,16 @@ export function VownetPDFGenerator({
       // Wait for styles to apply inside the iframe
       await new Promise(resolve => setTimeout(resolve, 300));
 
-      const pages = iframeDoc.querySelectorAll('.page');
-      const totalHtmlPages = pages.length;
-      if (totalHtmlPages === 0) {
+      // Select both fixed-height pages and auto-height property pages
+      const fixedPages = iframeDoc.querySelectorAll('.page');
+      const autoPages = iframeDoc.querySelectorAll('.page-auto');
+      const allElements = iframeDoc.querySelectorAll('.page, .page-auto');
+      const totalHtmlElements = allElements.length;
+      if (totalHtmlElements === 0) {
         throw new Error('No PDF pages were generated from template');
       }
 
-      console.log(`[VownetPDF] Starting render: ${totalHtmlPages} pages in isolated iframe`);
+      console.log(`[VownetPDF] Starting render: ${totalHtmlElements} elements (${fixedPages.length} fixed, ${autoPages.length} auto-height) in isolated iframe`);
 
       // Create PDF
       const pdf = new jsPDF({
@@ -329,18 +332,27 @@ export function VownetPDFGenerator({
         format: 'a4',
       });
 
-      // The last HTML page is the disclaimer/contact page — render it AFTER BC pages
-      const contentPages = totalHtmlPages > 1 ? totalHtmlPages - 1 : totalHtmlPages;
-      const hasDisclaimerPage = totalHtmlPages > 1;
+      // The last fixed page is the disclaimer/contact page — render it AFTER BC pages
+      const lastFixedPage = fixedPages[fixedPages.length - 1] as HTMLElement;
+      const isDisclaimerPage = lastFixedPage?.classList.contains('final-page');
+      
+      // Build ordered render list: all elements except the final disclaimer page
+      const renderList: HTMLElement[] = [];
+      allElements.forEach((el) => {
+        if (el === lastFixedPage && isDisclaimerPage) return; // skip disclaimer for now
+        renderList.push(el as HTMLElement);
+      });
 
       // Adaptive render scale
       const navWithMemory = navigator as Navigator & { deviceMemory?: number };
       const deviceMemory = navWithMemory.deviceMemory ?? 4;
-      const renderScale = totalHtmlPages > 8
+      const renderScale = totalHtmlElements > 8
         ? 1
         : deviceMemory <= 4
           ? 1.25
           : 1.6;
+
+      const PAGE_HEIGHT_PX = 1123;
 
       const renderOptions: Parameters<typeof html2canvas>[1] = {
         scale: renderScale,
@@ -348,28 +360,66 @@ export function VownetPDFGenerator({
         allowTaint: true,
         backgroundColor: '#ffffff',
         width: 794,
-        height: 1123,
+        height: PAGE_HEIGHT_PX,
         logging: false,
       };
 
-      // Render all content pages (everything except the final disclaimer page)
-      for (let i = 0; i < contentPages; i++) {
+      let pdfPageIndex = 0;
+
+      // Render all content pages
+      for (let i = 0; i < renderList.length; i++) {
         ensureWithinBudget();
         await new Promise(resolve => setTimeout(resolve, 0));
 
         const pageStart = Date.now();
-        const page = pages[i] as HTMLElement;
-        const canvas = await html2canvasWithTimeout(page, renderOptions, 15000);
-        console.log(`[VownetPDF] Page ${i + 1}/${totalHtmlPages} rendered in ${Date.now() - pageStart}ms`);
+        const page = renderList[i];
+        const isAutoPage = page.classList.contains('page-auto');
 
-        if (i > 0) {
-          pdf.addPage();
+        if (isAutoPage) {
+          // Auto-height page: capture at natural height and tile across PDF pages
+          const naturalHeight = page.scrollHeight;
+          const canvas = await html2canvasWithTimeout(page, {
+            ...renderOptions,
+            height: naturalHeight,
+          }, 20000);
+          
+          const pagesNeeded = Math.ceil(naturalHeight / PAGE_HEIGHT_PX);
+          console.log(`[VownetPDF] Auto page ${i + 1} rendered in ${Date.now() - pageStart}ms (${naturalHeight}px → ${pagesNeeded} PDF pages)`);
+
+          for (let tile = 0; tile < pagesNeeded; tile++) {
+            if (pdfPageIndex > 0) pdf.addPage();
+            
+            // Create a tile canvas for this slice
+            const tileCanvas = document.createElement('canvas');
+            tileCanvas.width = canvas.width;
+            tileCanvas.height = Math.round(PAGE_HEIGHT_PX * renderScale);
+            const ctx = tileCanvas.getContext('2d')!;
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, tileCanvas.width, tileCanvas.height);
+            
+            const srcY = Math.round(tile * PAGE_HEIGHT_PX * renderScale);
+            const srcH = Math.min(Math.round(PAGE_HEIGHT_PX * renderScale), canvas.height - srcY);
+            ctx.drawImage(canvas, 0, srcY, canvas.width, srcH, 0, 0, canvas.width, srcH);
+            
+            pdf.addImage(tileCanvas, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+            tileCanvas.width = 1;
+            tileCanvas.height = 1;
+            pdfPageIndex++;
+          }
+          
+          canvas.width = 1;
+          canvas.height = 1;
+        } else {
+          // Fixed-height page: standard single-page render
+          const canvas = await html2canvasWithTimeout(page, renderOptions, 15000);
+          console.log(`[VownetPDF] Page ${i + 1}/${renderList.length} rendered in ${Date.now() - pageStart}ms`);
+
+          if (pdfPageIndex > 0) pdf.addPage();
+          pdf.addImage(canvas, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+          canvas.width = 1;
+          canvas.height = 1;
+          pdfPageIndex++;
         }
-
-        // Pass canvas directly to jsPDF to avoid large base64 memory spikes
-        pdf.addImage(canvas, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
-        canvas.width = 1;
-        canvas.height = 1;
       }
 
       // ── Append Borrowing Capacity pages BEFORE disclaimer ──
