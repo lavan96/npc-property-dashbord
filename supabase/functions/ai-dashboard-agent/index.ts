@@ -3002,8 +3002,14 @@ async function executeGetClientFiles(sb: any, args: any) {
 
 async function executeGetInvestmentReports(sb: any, args: any) {
   const limit = args.limit || 10;
+  let resolvedClientId = args.client_id;
+  if (args.client_id) {
+    const v = await validateClientExists(sb, args.client_id);
+    if (!v.valid) return { error: v.error };
+    resolvedClientId = v.resolvedId || args.client_id;
+  }
   let query = sb.from('investment_reports').select('id, property_address, status, quality_score, created_at, client_id');
-  if (args.client_id) query = query.eq('client_id', args.client_id);
+  if (resolvedClientId) query = query.eq('client_id', resolvedClientId);
   const { data } = await query.order('created_at', { ascending: false }).limit(limit);
   return { reports: data || [] };
 }
