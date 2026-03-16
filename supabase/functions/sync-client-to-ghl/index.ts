@@ -135,7 +135,9 @@ async function syncSingleClient(
   supabase: any, 
   clientId: string, 
   headers: Record<string, string>,
-  locationId: string
+  locationId: string,
+  pipelineStageGhlId?: string,
+  pipelineGhlId?: string
 ) {
   console.log(`Syncing client ${clientId} to GHL`);
 
