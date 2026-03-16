@@ -383,11 +383,48 @@ export function VownetPDFGenerator({
             height: naturalHeight,
           }, 20000);
           
-          const pagesNeeded = Math.ceil(naturalHeight / PAGE_HEIGHT_PX);
-          console.log(`[VownetPDF] Auto page ${i + 1} rendered in ${Date.now() - pageStart}ms (${naturalHeight}px → ${pagesNeeded} PDF pages)`);
+          // Find safe break points by scanning DOM elements (rows, sections)
+          // so we never slice through the middle of a table row
+          const breakableElements = page.querySelectorAll('tr, .section, .section-header-bar');
+          const elementBottoms: number[] = [];
+          breakableElements.forEach((el: Element) => {
+            const rect = (el as HTMLElement).offsetTop + (el as HTMLElement).offsetHeight;
+            elementBottoms.push(rect);
+          });
+          // Sort and deduplicate
+          const sortedBottoms = [...new Set(elementBottoms)].sort((a, b) => a - b);
+          
+          // Build safe split points: find the last element bottom that fits within each page slice
+          const splitPoints: number[] = [0]; // start of first tile
+          let currentLimit = PAGE_HEIGHT_PX;
+          
+          while (currentLimit < naturalHeight) {
+            // Find the last element bottom that is <= currentLimit (safe break)
+            let safeCut = currentLimit;
+            for (let j = sortedBottoms.length - 1; j >= 0; j--) {
+              if (sortedBottoms[j] <= currentLimit && sortedBottoms[j] > splitPoints[splitPoints.length - 1]) {
+                safeCut = sortedBottoms[j];
+                break;
+              }
+            }
+            // If no safe cut found (single element taller than page), fall back to hard cut
+            if (safeCut <= splitPoints[splitPoints.length - 1]) {
+              safeCut = currentLimit;
+            }
+            splitPoints.push(safeCut);
+            currentLimit = safeCut + PAGE_HEIGHT_PX;
+          }
+          splitPoints.push(naturalHeight); // final end
+          
+          const pagesNeeded = splitPoints.length - 1;
+          console.log(`[VownetPDF] Auto page ${i + 1} rendered in ${Date.now() - pageStart}ms (${naturalHeight}px → ${pagesNeeded} PDF pages, splits: ${splitPoints.join(',')})`);
 
           for (let tile = 0; tile < pagesNeeded; tile++) {
             if (pdfPageIndex > 0) pdf.addPage();
+            
+            const sliceStart = splitPoints[tile];
+            const sliceEnd = splitPoints[tile + 1];
+            const sliceHeight = sliceEnd - sliceStart;
             
             // Create a tile canvas for this slice
             const tileCanvas = document.createElement('canvas');
@@ -397,8 +434,8 @@ export function VownetPDFGenerator({
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(0, 0, tileCanvas.width, tileCanvas.height);
             
-            const srcY = Math.round(tile * PAGE_HEIGHT_PX * renderScale);
-            const srcH = Math.min(Math.round(PAGE_HEIGHT_PX * renderScale), canvas.height - srcY);
+            const srcY = Math.round(sliceStart * renderScale);
+            const srcH = Math.round(sliceHeight * renderScale);
             ctx.drawImage(canvas, 0, srcY, canvas.width, srcH, 0, 0, canvas.width, srcH);
             
             pdf.addImage(tileCanvas, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
