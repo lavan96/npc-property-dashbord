@@ -1932,18 +1932,20 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
                   <tr><td class="label">Date of Birth</td><td class="value">${formatDate(client.primary_dob)}</td></tr>
                 </table>
               </div>
+              ${hasSecondaryContact ? `
               <div class="section">
                 <div class="section-header">Secondary Contact</div>
                 <table class="data-table">
-                  <tr><td class="label">First name</td><td class="value">${client.secondary_first_name || '-'}</td></tr>
-                  <tr><td class="label">Middle name</td><td class="value">${client.secondary_middle_name || '-'}</td></tr>
-                  <tr><td class="label">Surname</td><td class="value">${client.secondary_surname || '-'}</td></tr>
+                  <tr><td class="label">First name</td><td class="value">${smartCapitalize(client.secondary_first_name) || '-'}</td></tr>
+                  <tr><td class="label">Middle name</td><td class="value">${smartCapitalize(client.secondary_middle_name) || '-'}</td></tr>
+                  <tr><td class="label">Surname</td><td class="value">${smartCapitalize(client.secondary_surname) || '-'}</td></tr>
                   <tr><td class="label">Mobile</td><td class="value">${client.secondary_mobile || '-'}</td></tr>
                   <tr><td class="label">Email</td><td class="value">${client.secondary_email || '-'}</td></tr>
                   <tr><td class="label">Gender</td><td class="value">${client.secondary_gender || '-'}</td></tr>
                   <tr><td class="label">Date of Birth</td><td class="value">${formatDate(client.secondary_dob)}</td></tr>
                 </table>
               </div>
+              ` : ''}
             </div>
             <div class="column column-right">
               <div class="section">
