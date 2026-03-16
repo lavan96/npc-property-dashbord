@@ -459,7 +459,7 @@ export function VownetPDFGenerator({
             pdf.text('CONFIDENTIAL', 105, footerY, { align: 'center' });
             pdf.setFontSize(7);
             pdf.setTextColor(74, 85, 104);
-            pdf.text(`Page ${pdfPageIndex} of ${totalPages}`, 200, footerY, { align: 'right' });
+            pdf.text(`Page ${pdfPageIndex}`, 200, footerY, { align: 'right' });
             
             tileCanvas.width = 1;
             tileCanvas.height = 1;
