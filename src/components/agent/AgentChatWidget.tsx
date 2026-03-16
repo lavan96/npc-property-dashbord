@@ -251,7 +251,10 @@ export function AgentChatWidget() {
   const sendMessage = async (overrideMessage?: string) => {
     const msg = (overrideMessage || input).trim();
     if ((!msg && extractedFiles.length === 0) || loading) return;
-    if (!overrideMessage) setInput('');
+    if (!overrideMessage) {
+      setInput('');
+      if (textareaRef.current) textareaRef.current.style.height = 'auto';
+    }
     setRetryMessage(null);
     setLoading(true);
     setPanelView('chat');
