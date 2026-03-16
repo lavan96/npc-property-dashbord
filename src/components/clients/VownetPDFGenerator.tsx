@@ -1268,7 +1268,7 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
       <style>
         /* System font stack — no @import to avoid html2canvas hanging */
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; font-size: 9pt; line-height: 1.4; color: ${NPC_COLORS.black}; background: ${NPC_COLORS.white}; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; font-size: 9.5pt; line-height: 1.5; color: ${NPC_COLORS.black}; background: ${NPC_COLORS.white}; }
         
         /* Page Layout */
         .page { width: 794px; height: 1123px; background: ${NPC_COLORS.white}; position: relative; overflow: hidden; }
