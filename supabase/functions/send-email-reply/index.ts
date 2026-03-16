@@ -318,7 +318,7 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { to, subject, body: emailBody, cc, bcc, originalEmailId, attachments, mailboxSource }: SendEmailRequest = body;
+    const { to, subject, body: emailBody, cc, bcc, originalEmailId, attachments, mailboxSource, source }: SendEmailRequest = body;
     
     // SECURITY: Verify authentication
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -347,7 +347,7 @@ serve(async (req) => {
       throw new Error('Missing required fields: to, subject, body');
     }
 
-    console.log(`[Send Email] Sending email to: ${to}, Subject: ${subject}, Attachments: ${attachments?.length || 0}`);
+    console.log(`[Send Email] Sending email to: ${to}, Subject: ${subject}, Source: ${source || 'user'}, Attachments: ${attachments?.length || 0}`);
 
     // Get access token and signature in parallel
     const [accessToken, signature] = await Promise.all([
@@ -355,51 +355,69 @@ serve(async (req) => {
       getSignatureFromDatabase(supabase)
     ]);
     
-    // Detect if the email body is already HTML
-    const isHtmlBody = emailBody.includes('<html') || emailBody.includes('<p>') || emailBody.includes('<div') || 
-                       emailBody.includes('<br') || emailBody.includes('<table') || emailBody.includes('<span');
-    
-    // Combine body with signature
-    const hasSignature = signature && signature.trim().length > 0;
-    const isHtmlSignature = hasSignature && (signature.includes('<') && signature.includes('>'));
-    
     let finalBody: string;
     let contentType: 'Text' | 'HTML';
-    
-    // Smart formatting based on content type
-    if (isHtmlBody) {
-      // Body is already HTML, preserve it
-      if (hasSignature) {
-        if (isHtmlSignature) {
-          finalBody = `${emailBody}<br><br>${signature}`;
+
+    // ─── Agent-originated emails: use branded HTML template ───
+    if (source === 'agent') {
+      console.log('[Send Email] Agent source detected — applying branded HTML template');
+      
+      // Fetch banner URL from whitelabel settings
+      let bannerUrl: string | undefined;
+      try {
+        const { data: wlData } = await supabase
+          .from('whitelabel_settings')
+          .select('email_signature_banner')
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .single();
+        bannerUrl = wlData?.email_signature_banner || undefined;
+      } catch (_) { /* no banner, that's fine */ }
+
+      const bodyHtml = markdownToHtml(emailBody);
+      finalBody = wrapInAgentTemplate(bodyHtml, signature || '', bannerUrl);
+      contentType = 'HTML';
+    }
+    // ─── User-originated emails: existing logic ───
+    else {
+      // Detect if the email body is already HTML
+      const isHtmlBody = emailBody.includes('<html') || emailBody.includes('<p>') || emailBody.includes('<div') || 
+                         emailBody.includes('<br') || emailBody.includes('<table') || emailBody.includes('<span');
+      
+      // Combine body with signature
+      const hasSignature = signature && signature.trim().length > 0;
+      const isHtmlSignature = hasSignature && (signature.includes('<') && signature.includes('>'));
+      
+      // Smart formatting based on content type
+      if (isHtmlBody) {
+        if (hasSignature) {
+          if (isHtmlSignature) {
+            finalBody = `${emailBody}<br><br>${signature}`;
+          } else {
+            finalBody = `${emailBody}<br><br>${signature.replace(/\n/g, '<br>')}`;
+          }
         } else {
-          // Convert plain text signature to HTML
-          finalBody = `${emailBody}<br><br>${signature.replace(/\n/g, '<br>')}`;
+          finalBody = emailBody;
         }
+        contentType = 'HTML';
+        console.log('[Send Email] Body detected as HTML, preserving formatting');
+      } else if (hasSignature) {
+        if (isHtmlSignature) {
+          const htmlBody = emailBody
+            .split(/\n\n+/)
+            .map((para: string) => `<p style="margin: 0 0 1em 0;">${para.replace(/\n/g, '<br>')}</p>`)
+            .join('');
+          finalBody = `${htmlBody}<br>${signature}`;
+          contentType = 'HTML';
+        } else {
+          finalBody = `${emailBody}\n\n${signature}`;
+          contentType = 'Text';
+        }
+        console.log('[Send Email] Appended database signature to email');
       } else {
         finalBody = emailBody;
-      }
-      contentType = 'HTML';
-      console.log('[Send Email] Body detected as HTML, preserving formatting');
-    } else if (hasSignature) {
-      if (isHtmlSignature) {
-        // Convert plain text body to HTML and append HTML signature
-        // Preserve paragraphs by converting double newlines to paragraph breaks
-        const htmlBody = emailBody
-          .split(/\n\n+/)
-          .map(para => `<p style="margin: 0 0 1em 0;">${para.replace(/\n/g, '<br>')}</p>`)
-          .join('');
-        finalBody = `${htmlBody}<br>${signature}`;
-        contentType = 'HTML';
-      } else {
-        // Both are plain text
-        finalBody = `${emailBody}\n\n${signature}`;
         contentType = 'Text';
       }
-      console.log('[Send Email] Appended database signature to email');
-    } else {
-      finalBody = emailBody;
-      contentType = 'Text';
     }
 
     // Prepare email message
