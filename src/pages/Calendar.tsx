@@ -212,6 +212,7 @@ export default function Calendar() {
   const handleRefresh = useCallback(() => {
     const { start, end } = getVisibleRange();
     fetchCalendarData(start.toISOString(), end.toISOString());
+    fetchOutlookEvents(start.toISOString(), end.toISOString());
   }, [view, currentMonth, currentWeek]);
 
   useEffect(() => {
