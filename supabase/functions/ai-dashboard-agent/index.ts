@@ -5242,6 +5242,71 @@ async function executeGetAgreementTemplates(sb: any) {
   return { templates: data || [] };
 }
 
+async function executeGenerateAgreement(sb: any, args: any) {
+  // Resolve client ID from name or UUID
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
+
+  // Fetch client profile to auto-fill missing fields
+  const { data: client } = await sb.from('clients')
+    .select('primary_first_name, primary_surname, primary_email, primary_mobile, current_address, secondary_first_name, secondary_surname')
+    .eq('id', cid).single();
+
+  if (!client) return { error: 'Client not found' };
+
+  const buyerNames = args.buyer_names || `${client.primary_first_name || ''} ${client.primary_surname || ''}`.trim();
+  const buyerEmail = args.buyer_email || client.primary_email;
+  if (!buyerEmail) return { error: 'No email found for client. Please provide buyer_email.' };
+
+  const payload: any = {
+    action: 'generate',
+    client_id: cid,
+    buyer_names: buyerNames,
+    buyer_address: args.buyer_address || client.current_address || '',
+    buyer_phone: args.buyer_phone || client.primary_mobile || '',
+    buyer_email: buyerEmail,
+    agreement_date: args.agreement_date || new Date().toISOString().split('T')[0],
+    secondary_buyer_name: args.secondary_buyer_name || (client.secondary_first_name && client.secondary_surname ? `${client.secondary_first_name} ${client.secondary_surname}` : undefined),
+    deal_id: args.deal_id,
+    notes: args.notes,
+    initial_commitment_fee: args.initial_commitment_fee || '$1,500.00 + GST',
+    template_id: args.template_id,
+  };
+
+  const resp = await fetch(`${SUPABASE_URL.trim()}/functions/v1/manage-agency-agreements`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY.trim()}`,
+      'apikey': (SUPABASE_ANON_KEY || SUPABASE_SERVICE_ROLE_KEY).trim(),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const result = await resp.json();
+  if (!resp.ok) return { error: result.error || `Failed with status ${resp.status}` };
+  return { success: true, agreement_id: result.agreement_id, status: result.status, message: `Agreement generated for ${buyerNames}. Use send_agreement_docusign to dispatch via DocuSign.` };
+}
+
+async function executeSendAgreementDocusign(args: any) {
+  if (!args.agreement_id) return { error: 'agreement_id is required' };
+
+  const resp = await fetch(`${SUPABASE_URL.trim()}/functions/v1/manage-agency-agreements`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY.trim()}`,
+      'apikey': (SUPABASE_ANON_KEY || SUPABASE_SERVICE_ROLE_KEY).trim(),
+    },
+    body: JSON.stringify({ action: 'send_docusign', agreement_id: args.agreement_id }),
+  });
+
+  const result = await resp.json();
+  if (!resp.ok) return { error: result.error || `Failed with status ${resp.status}` };
+  return { success: true, envelope_id: result.envelope_id, message: 'Agreement sent via DocuSign for e-signature.' };
+}
+
 // ─── BATCH 7 EXECUTORS — MARKETING & LEAD ATTRIBUTION ───
 
 async function executeGetLeadAttributions(sb: any, args: any) {
