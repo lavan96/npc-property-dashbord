@@ -2140,6 +2140,112 @@ const TOOLS: any[] = [
       parameters: { type: "object", properties: { limit: { type: "number", description: "Max results (default 20)" } } },
     },
   },
+
+  // ═══════════════════════════════════════════════════════════
+  // OUTLOOK CALENDAR INTEGRATION
+  // ═══════════════════════════════════════════════════════════
+  {
+    type: "function",
+    function: {
+      name: "get_outlook_events",
+      description: "Get Outlook calendar events for the current user within a date range. Returns internal meetings, prep blocks, and other Outlook events.",
+      parameters: {
+        type: "object",
+        properties: {
+          start_date: { type: "string", description: "Start date (YYYY-MM-DD)" },
+          end_date: { type: "string", description: "End date (YYYY-MM-DD)" },
+        },
+        required: ["start_date", "end_date"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_outlook_event",
+      description: "Create an internal event on the user's Outlook calendar. Use for internal meetings, prep blocks, focus time, etc. Does NOT create GHL appointments. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          subject: { type: "string", description: "Event title" },
+          start_time: { type: "string", description: "Start time in ISO 8601 format" },
+          end_time: { type: "string", description: "End time in ISO 8601 format" },
+          body: { type: "string", description: "Optional event notes/description" },
+          location: { type: "string", description: "Optional location" },
+          attendees: { type: "array", items: { type: "string" }, description: "Optional attendee email addresses" },
+          show_as: { type: "string", enum: ["busy", "tentative", "free", "oof"], description: "Show as status (default: busy)" },
+          categories: { type: "array", items: { type: "string" }, description: "Optional categories (e.g. Internal Meeting, Client Prep)" },
+          reminder_minutes: { type: "number", description: "Reminder before event in minutes" },
+        },
+        required: ["subject", "start_time", "end_time"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_outlook_prep_block",
+      description: "Create a preparation block on the user's Outlook calendar before an appointment. Auto-fills with client context. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          appointment_title: { type: "string", description: "Title of the upcoming appointment" },
+          appointment_start_time: { type: "string", description: "Start time of the appointment (ISO 8601) — prep block will end at this time" },
+          client_name: { type: "string", description: "Client name for the prep block title" },
+          prep_minutes: { type: "number", description: "Duration of prep in minutes (default 15)" },
+          notes: { type: "string", description: "Additional prep notes" },
+        },
+        required: ["appointment_title", "appointment_start_time"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "delete_outlook_event",
+      description: "Delete an event from the user's Outlook calendar. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          event_id: { type: "string", description: "Outlook event ID to delete" },
+        },
+        required: ["event_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_team_outlook_availability",
+      description: "Check team members' Outlook calendar availability for a given date range. Shows who is busy and when.",
+      parameters: {
+        type: "object",
+        properties: {
+          start_date: { type: "string", description: "Start date (YYYY-MM-DD)" },
+          end_date: { type: "string", description: "End date (YYYY-MM-DD)" },
+        },
+        required: ["start_date", "end_date"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_follow_up_block",
+      description: "Create a follow-up time block on the user's Outlook calendar for a client follow-up. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          client_name: { type: "string", description: "Client name" },
+          follow_up_date: { type: "string", description: "Date for follow-up (YYYY-MM-DD)" },
+          duration_minutes: { type: "number", description: "Duration in minutes (default 30)" },
+          start_hour: { type: "number", description: "Start hour in 24h format (default 9)" },
+          notes: { type: "string", description: "Follow-up notes" },
+        },
+        required: ["client_name", "follow_up_date"],
+      },
+    },
+  },
 ];
 
 // ============================================================
@@ -2168,6 +2274,8 @@ const WRITE_TOOLS = [
   'bulk_update_clients', 'bulk_create_reminders', 'bulk_set_follow_up_dates',
   // Batch 5
   'save_memory', 'trigger_investment_report',
+  // Outlook calendar
+  'create_outlook_event', 'create_outlook_prep_block', 'delete_outlook_event', 'create_follow_up_block',
 ];
 
 // ============================================================
@@ -4743,9 +4851,149 @@ async function executeTool(sb: any, name: string, args: any, userId: string): Pr
     case 'get_client_portal_status': return executeGetClientPortalStatus(sb, args);
     // Batch 7 — Appointments
     case 'get_appointment_notifications': return executeGetAppointmentNotifications(sb, args);
+    // Outlook Calendar
+    case 'get_outlook_events': return executeGetOutlookEvents(userId, args);
+    case 'create_outlook_event': return executeCreateOutlookEvent(userId, args);
+    case 'create_outlook_prep_block': return executeCreateOutlookPrepBlock(userId, args);
+    case 'delete_outlook_event': return executeDeleteOutlookEvent(userId, args);
+    case 'get_team_outlook_availability': return executeGetTeamOutlookAvailability(args);
+    case 'create_follow_up_block': return executeCreateOutlookFollowUpBlock(userId, args);
 
     default: return { error: `Unknown tool: ${name}` };
   }
+}
+
+// ─── OUTLOOK CALENDAR EXECUTORS ───
+
+/** Helper to call outlook-calendar edge function */
+async function callOutlookCalendar(payload: Record<string, unknown>, userId?: string) {
+  const body: Record<string, unknown> = { ...payload };
+  // Pass session context for user resolution
+  if (userId && userId !== 'service_role') {
+    body._userId = userId;
+  }
+  const resp = await fetch(`${SUPABASE_URL.trim()}/functions/v1/outlook-calendar`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      'apikey': SUPABASE_ANON_KEY,
+    },
+    body: JSON.stringify(body),
+  });
+  const data = await resp.json();
+  if (!resp.ok || !data.success) {
+    return { error: data.error || `Outlook Calendar error (HTTP ${resp.status})` };
+  }
+  return data;
+}
+
+async function executeGetOutlookEvents(userId: string, args: any) {
+  const startTime = `${args.start_date}T00:00:00.000Z`;
+  const endTime = `${args.end_date}T23:59:59.999Z`;
+  const data = await callOutlookCalendar({ action: 'listEvents', startTime, endTime }, userId);
+  if (data.error) return data;
+  const events = (data.events || []).map((e: any) => ({
+    id: e.id,
+    title: e.title,
+    start: e.startTime,
+    end: e.endTime,
+    location: e.location,
+    showAs: e.showAs,
+    categories: e.categories,
+    attendees: e.attendees?.length || 0,
+  }));
+  return { events, count: events.length };
+}
+
+async function executeCreateOutlookEvent(userId: string, args: any) {
+  const data = await callOutlookCalendar({
+    action: 'createEvent',
+    subject: args.subject,
+    startTime: args.start_time,
+    endTime: args.end_time,
+    body: args.body,
+    location: args.location,
+    attendees: args.attendees,
+    showAs: args.show_as || 'busy',
+    categories: args.categories,
+    reminderMinutes: args.reminder_minutes,
+  }, userId);
+  if (data.error) return data;
+  return { success: true, message: `Outlook event "${args.subject}" created.`, event_id: data.event?.id };
+}
+
+async function executeCreateOutlookPrepBlock(userId: string, args: any) {
+  const prepMinutes = args.prep_minutes || 15;
+  const prepEnd = new Date(args.appointment_start_time);
+  const prepStart = new Date(prepEnd.getTime() - prepMinutes * 60 * 1000);
+  const subject = `📋 Prep: ${args.client_name || args.appointment_title}`;
+  const body = [
+    `Preparation block for: ${args.appointment_title}`,
+    args.client_name ? `Client: ${args.client_name}` : '',
+    args.notes ? `Notes: ${args.notes}` : '',
+    '', '— Auto-generated by Oryxa Agent',
+  ].filter(Boolean).join('\n');
+
+  const data = await callOutlookCalendar({
+    action: 'createEvent',
+    subject,
+    startTime: prepStart.toISOString(),
+    endTime: prepEnd.toISOString(),
+    body,
+    showAs: 'tentative',
+    categories: ['Prep Block'],
+    reminderMinutes: 5,
+  }, userId);
+  if (data.error) return data;
+  return { success: true, message: `Prep block "${subject}" created (${prepMinutes} min before appointment).`, event_id: data.event?.id };
+}
+
+async function executeDeleteOutlookEvent(userId: string, args: any) {
+  const data = await callOutlookCalendar({ action: 'deleteEvent', eventId: args.event_id }, userId);
+  if (data.error) return data;
+  return { success: true, message: 'Outlook event deleted.' };
+}
+
+async function executeGetTeamOutlookAvailability(args: any) {
+  const startTime = `${args.start_date}T00:00:00.000Z`;
+  const endTime = `${args.end_date}T23:59:59.999Z`;
+  const data = await callOutlookCalendar({ action: 'teamAvailability', startTime, endTime });
+  if (data.error) return data;
+  const team = (data.team || []).map((m: any) => ({
+    username: m.username,
+    email: m.email,
+    busySlots: m.busySlots?.length || 0,
+    busyDetails: (m.busySlots || []).slice(0, 5).map((s: any) => `${s.start?.substring(11,16)}-${s.end?.substring(11,16)} ${s.title}`),
+    error: m.error || null,
+  }));
+  return { team, count: team.length };
+}
+
+async function executeCreateOutlookFollowUpBlock(userId: string, args: any) {
+  const duration = args.duration_minutes || 30;
+  const hour = args.start_hour || 9;
+  const startTime = new Date(`${args.follow_up_date}T${String(hour).padStart(2,'0')}:00:00`);
+  const endTime = new Date(startTime.getTime() + duration * 60 * 1000);
+  const subject = `📞 Follow-up: ${args.client_name}`;
+  const body = [
+    `Follow-up block for client: ${args.client_name}`,
+    args.notes ? `Notes: ${args.notes}` : '',
+    '', '— Auto-generated by Oryxa Agent',
+  ].filter(Boolean).join('\n');
+
+  const data = await callOutlookCalendar({
+    action: 'createEvent',
+    subject,
+    startTime: startTime.toISOString(),
+    endTime: endTime.toISOString(),
+    body,
+    showAs: 'tentative',
+    categories: ['Follow-Up'],
+    reminderMinutes: 15,
+  }, userId);
+  if (data.error) return data;
+  return { success: true, message: `Follow-up block for "${args.client_name}" created on ${args.follow_up_date}.`, event_id: data.event?.id };
 }
 
 // ============================================================
