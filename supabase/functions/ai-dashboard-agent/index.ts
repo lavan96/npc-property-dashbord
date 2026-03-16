@@ -4981,6 +4981,8 @@ async function executeTool(sb: any, name: string, args: any, userId: string): Pr
     case 'get_portal_users': return executeGetPortalUsers(sb, args);
     case 'get_portal_overview': return executeGetPortalOverview(sb);
     case 'get_client_portal_status': return executeGetClientPortalStatus(sb, args);
+    case 'send_portal_invite': return executeSendPortalInvite(sb, args);
+    case 'revoke_portal_access': return executeRevokePortalAccess(sb, args);
     // Batch 7 — Appointments
     case 'get_appointment_notifications': return executeGetAppointmentNotifications(sb, args);
     // Outlook Calendar
