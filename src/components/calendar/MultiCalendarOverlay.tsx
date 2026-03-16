@@ -25,6 +25,12 @@ interface MultiCalendarOverlayProps {
   onToggleCalendar: (calendarId: string) => void;
   onShowAll: () => void;
   onHideAll: () => void;
+  /** Outlook integration */
+  outlookEnabled?: boolean;
+  outlookVisible?: boolean;
+  onToggleOutlook?: () => void;
+  outlookEventCount?: number;
+  microsoftEmail?: string | null;
 }
 
 export function MultiCalendarOverlay({
