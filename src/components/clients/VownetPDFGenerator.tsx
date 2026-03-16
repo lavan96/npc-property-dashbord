@@ -441,24 +441,24 @@ export function VownetPDFGenerator({
             pdf.addImage(tileCanvas, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
             
             // Draw footer on each tiled property page
-            const footerY = 290;
-            const lineY = footerY - 3;
+            const footerY = 291;
+            const lineY = footerY - 5;
             pdf.setDrawColor(200, 200, 200);
             pdf.setLineWidth(0.4);
-            pdf.line(10, lineY, 200, lineY);
             pdf.setFillColor(248, 249, 250);
-            pdf.rect(0, lineY, 210, 297 - lineY, 'F');
-            pdf.setDrawColor(200, 200, 200);
+            pdf.rect(0, lineY - 1, 210, 297 - lineY + 1, 'F');
             pdf.line(10, lineY, 200, lineY);
             pdf.setFontSize(7);
             pdf.setTextColor(74, 85, 104);
             pdf.setFont('helvetica', 'normal');
-            pdf.text('\u{1F4DE} (02) 8609 3299     \u2709 admin@npcservices.com.au     \u{1F310} npcservices.com.au', 10, footerY);
+            pdf.text('Ph: (02) 8609 3299    |    admin@npcservices.com.au    |    npcservices.com.au', 10, footerY);
             pdf.setFontSize(6);
             pdf.setTextColor(180, 140, 50);
-            pdf.text('CONFIDENTIAL', 105, footerY, { align: 'center' });
+            pdf.setFont('helvetica', 'bold');
+            pdf.text('CONFIDENTIAL', 105, footerY + 4, { align: 'center' });
             pdf.setFontSize(7);
             pdf.setTextColor(74, 85, 104);
+            pdf.setFont('helvetica', 'normal');
             pdf.text(`Page ${pdfPageIndex}`, 200, footerY, { align: 'right' });
             
             tileCanvas.width = 1;
