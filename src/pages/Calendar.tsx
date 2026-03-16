@@ -101,8 +101,8 @@ export default function Calendar() {
   const { calendars, events, calendarGroups, contactCache, isLoading, isUpdating, error, fetchCalendarData, fetchCalendarGroups, fetchContact, getCalendarColor, rescheduleEvent, updateEvent, deleteEvent, createAppointment, searchContacts, blockSlot, fetchFreeSlots } = useGHLCalendar();
   const {
     outlookEvents, teamAvailability, isLoading: outlookLoading, isCreating: outlookCreating,
-    outlookEnabled, microsoftEmail, fetchOutlookEvents, createOutlookEvent, deleteOutlookEvent,
-    fetchTeamAvailability, getMicrosoftEmail, setMicrosoftEmail,
+    outlookEnabled, microsoftEmail, fetchOutlookEvents, createOutlookEvent, updateOutlookEvent,
+    deleteOutlookEvent, fetchTeamAvailability, getMicrosoftEmail, setMicrosoftEmail, createPrepBlock,
   } = useOutlookCalendar();
   const [outlookVisible, setOutlookVisible] = useState(true);
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('events');
