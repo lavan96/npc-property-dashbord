@@ -439,6 +439,28 @@ export function VownetPDFGenerator({
             ctx.drawImage(canvas, 0, srcY, canvas.width, srcH, 0, 0, canvas.width, srcH);
             
             pdf.addImage(tileCanvas, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+            
+            // Draw footer on each tiled property page
+            const footerY = 290;
+            const lineY = footerY - 3;
+            pdf.setDrawColor(200, 200, 200);
+            pdf.setLineWidth(0.4);
+            pdf.line(10, lineY, 200, lineY);
+            pdf.setFillColor(248, 249, 250);
+            pdf.rect(0, lineY, 210, 297 - lineY, 'F');
+            pdf.setDrawColor(200, 200, 200);
+            pdf.line(10, lineY, 200, lineY);
+            pdf.setFontSize(7);
+            pdf.setTextColor(74, 85, 104);
+            pdf.setFont('helvetica', 'normal');
+            pdf.text('\u{1F4DE} (02) 8609 3299     \u2709 admin@npcservices.com.au     \u{1F310} npcservices.com.au', 10, footerY);
+            pdf.setFontSize(6);
+            pdf.setTextColor(180, 140, 50);
+            pdf.text('CONFIDENTIAL', 105, footerY, { align: 'center' });
+            pdf.setFontSize(7);
+            pdf.setTextColor(74, 85, 104);
+            pdf.text(`Page ${pdfPageIndex}`, 200, footerY, { align: 'right' });
+            
             tileCanvas.width = 1;
             tileCanvas.height = 1;
             pdfPageIndex++;
@@ -1433,6 +1455,7 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
         .page-footer { position: absolute; bottom: 0; left: 0; right: 0; height: 52px; background: ${NPC_COLORS.lightGray}; border-top: 2px solid ${NPC_COLORS.borderGray}; display: flex; justify-content: space-between; align-items: center; padding: 0 40px; font-size: 8pt; color: #4a5568; }
         .footer-contact { display: flex; gap: 24px; }
         .footer-item { display: flex; align-items: center; gap: 6px; }
+        .footer-confidential { font-size: 6pt; color: ${NPC_COLORS.gold}; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; }
         
         /* Section Headers - Enhanced readability */
         .section { margin-bottom: 20px; }
@@ -1991,6 +2014,7 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
             <span class="footer-item">✉ admin@npcservices.com.au</span>
             <span class="footer-item">🌐 npcservices.com.au</span>
           </div>
+          <div class="footer-confidential">CONFIDENTIAL</div>
           <div>Page ${summaryPageNumber} of ${totalPages}</div>
         </div>
       </div>
@@ -2070,6 +2094,7 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
             <span class="footer-item">✉ admin@npcservices.com.au</span>
             <span class="footer-item">🌐 npcservices.com.au</span>
           </div>
+          <div class="footer-confidential">CONFIDENTIAL</div>
           <div>Page ${page1Number} of ${totalPages}</div>
         </div>
       </div>
@@ -2114,6 +2139,7 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
             <span class="footer-item">✉ admin@npcservices.com.au</span>
             <span class="footer-item">🌐 npcservices.com.au</span>
           </div>
+          <div class="footer-confidential">CONFIDENTIAL</div>
           <div>Page ${employmentPageNumber} of ${totalPages}</div>
         </div>
       </div>
@@ -2154,6 +2180,7 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
             <span class="footer-item">✉ admin@npcservices.com.au</span>
             <span class="footer-item">🌐 npcservices.com.au</span>
           </div>
+          <div class="footer-confidential">CONFIDENTIAL</div>
           <div>Page ${assetsPageNumber} of ${totalPages}</div>
         </div>
       </div>

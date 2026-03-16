@@ -228,6 +228,12 @@ function addSectionFooter(doc: jsPDF, pageNum: number) {
   doc.setFont('helvetica', 'normal');
   doc.text('Borrowing Capacity Assessment', MARGIN, FOOTER_Y);
   doc.text(`Page ${pageNum}`, PAGE_W - MARGIN, FOOTER_Y, { align: 'right' });
+  // CONFIDENTIAL label
+  doc.setFontSize(6);
+  setColor(doc, GOLD);
+  doc.setFont('helvetica', 'bold');
+  doc.text('CONFIDENTIAL', PAGE_W / 2, FOOTER_Y, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
   setFill(doc, GOLD);
   doc.rect(MARGIN, FOOTER_Y - 4, CONTENT_W, 0.5, 'F');
 }
