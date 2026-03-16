@@ -70,7 +70,7 @@ export default function PortalReports() {
   const filtered = reports.filter((r: any) => {
     const matchesSearch = !search ||
       r.report_title?.toLowerCase().includes(search.toLowerCase()) ||
-      r.notes?.toLowerCase().includes(search.toLowerCase());
+      r.client_visible_notes?.toLowerCase().includes(search.toLowerCase());
     const matchesType = typeFilter === 'all' || r.report_type === typeFilter;
     return matchesSearch && matchesType;
   });
