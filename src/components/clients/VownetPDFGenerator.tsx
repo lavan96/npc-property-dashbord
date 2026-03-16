@@ -2064,14 +2064,7 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
           <div>Page ${assetsPageNumber} of ${totalPages}</div>
         </div>
       </div>
-            <div class="header-subtitle">CLIENT PORTFOLIO FORM</div>
-          </div>
-        </div>
-        <div class="page-content">
-          <div class="two-columns" style="align-items: flex-start;">
-            <div class="column column-left">
-              <div class="section">
-                <div class="section-header gold">Primary Contact</div>
+      
                 <table class="data-table">
                   <tr><td class="label">First name</td><td class="value">${client.primary_first_name || '-'}</td></tr>
                   <tr><td class="label">Middle name</td><td class="value">${client.primary_middle_name || '-'}</td></tr>
