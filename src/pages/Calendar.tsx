@@ -503,6 +503,15 @@ export default function Calendar() {
 
   const getEventStyle = (event: GHLEvent) => {
     const status = (event.appointmentStatus || event.status || '').toLowerCase();
+
+    // Outlook events - Microsoft blue styling
+    if (event.calendarId?.startsWith('outlook_')) {
+      return {
+        backgroundColor: 'hsl(207 89% 41% / 0.15)',
+        borderLeft: '3px solid hsl(207 89% 41%)',
+        color: 'hsl(207 89% 41%)',
+      };
+    }
     
     // Cancelled appointments - Red styling with strikethrough effect
     if (status === 'cancelled' || status === 'canceled') {
