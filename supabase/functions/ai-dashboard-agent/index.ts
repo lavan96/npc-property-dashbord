@@ -4851,6 +4851,13 @@ async function executeTool(sb: any, name: string, args: any, userId: string): Pr
     case 'get_client_portal_status': return executeGetClientPortalStatus(sb, args);
     // Batch 7 — Appointments
     case 'get_appointment_notifications': return executeGetAppointmentNotifications(sb, args);
+    // Outlook Calendar
+    case 'get_outlook_events': return executeGetOutlookEvents(userId, args);
+    case 'create_outlook_event': return executeCreateOutlookEvent(userId, args);
+    case 'create_outlook_prep_block': return executeCreateOutlookPrepBlock(userId, args);
+    case 'delete_outlook_event': return executeDeleteOutlookEvent(userId, args);
+    case 'get_team_outlook_availability': return executeGetTeamOutlookAvailability(args);
+    case 'create_follow_up_block': return executeCreateOutlookFollowUpBlock(userId, args);
 
     default: return { error: `Unknown tool: ${name}` };
   }
