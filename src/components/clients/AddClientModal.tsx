@@ -161,6 +161,7 @@ export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
       current_address: '',
     });
     setSyncToGHL(true);
+    setSelectedStageId('');
   };
 
   const handleSubmit = (e: React.FormEvent) => {
