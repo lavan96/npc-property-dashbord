@@ -3647,10 +3647,15 @@ async function executeCompareClients(sb: any, args: any) {
 // ─── SMART FOLLOW-UP DRAFTING (Batch 2) ───
 
 async function executeDraftFollowUp(sb: any, args: any, userId: string) {
+  // Validate and resolve client ID (supports name-based resolution)
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
+
   // Gather client context
   const { data: client } = await sb.from('clients')
     .select('id, primary_first_name, primary_surname, primary_email, pipeline_status, follow_up_date')
-    .eq('id', args.client_id).single();
+    .eq('id', cid).single();
   if (!client) return { error: 'Client not found.' };
 
   const clientName = `${client.primary_first_name || ''} ${client.primary_surname || ''}`.trim();
@@ -3658,17 +3663,17 @@ async function executeDraftFollowUp(sb: any, args: any, userId: string) {
   // Get recent deals
   const { data: deals } = await sb.from('client_deals')
     .select('deal_type, current_stage, risk_status, property_address, settlement_date, loan_amount')
-    .eq('client_id', args.client_id).order('created_at', { ascending: false }).limit(3);
+    .eq('client_id', cid).order('created_at', { ascending: false }).limit(3);
 
   // Get recent activities  
   const { data: activities } = await sb.from('client_activities')
     .select('title, activity_type, created_at')
-    .eq('client_id', args.client_id).order('created_at', { ascending: false }).limit(5);
+    .eq('client_id', cid).order('created_at', { ascending: false }).limit(5);
 
   // Get recent emails
   const { data: emails } = await sb.from('email_copilot_emails')
     .select('subject, received_at, sender')
-    .eq('client_id', args.client_id).order('received_at', { ascending: false }).limit(3);
+    .eq('client_id', cid).order('received_at', { ascending: false }).limit(3);
 
   const type = args.follow_up_type || 'general_check_in';
   
