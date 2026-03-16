@@ -1749,7 +1749,7 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
           text-transform: uppercase;
           letter-spacing: 0.3px;
         }
-        .financial-table td { border: 1px solid ${NPC_COLORS.borderGray}; padding: 10px 12px; font-size: 9pt; }
+        .financial-table td { border: 1px solid ${NPC_COLORS.borderGray}; padding: 12px 14px; font-size: 9.5pt; }
         .financial-table tbody tr:nth-child(odd) { background: ${NPC_COLORS.white}; }
         .financial-table tbody tr:nth-child(even) { background: ${NPC_COLORS.lightGray}; }
         .financial-table .total-row { 
