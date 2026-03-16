@@ -1373,12 +1373,12 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
         .subsection-header { 
           background: linear-gradient(90deg, ${NPC_COLORS.goldTint} 0%, #fefcf8 100%); 
           color: ${NPC_COLORS.darkGray}; 
-          padding: 12px 18px; 
-          font-size: 9pt; 
+          padding: 14px 20px; 
+          font-size: 9.5pt; 
           font-weight: 600;
           border-left: 3px solid ${NPC_COLORS.gold};
-          margin-top: 14px;
-          margin-bottom: 10px;
+          margin-top: 16px;
+          margin-bottom: 12px;
         }
         
         /* Property Page Content - for individual property pages */
