@@ -252,8 +252,8 @@ export default function PortalReports() {
                               </p>
                             </div>
                           </div>
-                          {report.notes && (
-                            <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{report.notes}</p>
+                          {report.client_visible_notes && (
+                            <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{report.client_visible_notes}</p>
                           )}
                           <div className="flex items-center gap-2 mt-3">
                             <Button
