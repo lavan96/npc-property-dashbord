@@ -1342,7 +1342,7 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
         .header-subtitle { color: ${NPC_COLORS.goldLight}; font-size: 8pt; letter-spacing: 1px; }
         
         /* Page Footer */
-        .page-footer { position: absolute; bottom: 0; left: 0; right: 0; height: 50px; background: ${NPC_COLORS.lightGray}; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; padding: 0 40px; font-size: 7.5pt; color: #4a5568; }
+        .page-footer { position: absolute; bottom: 0; left: 0; right: 0; height: 52px; background: ${NPC_COLORS.lightGray}; border-top: 2px solid ${NPC_COLORS.borderGray}; display: flex; justify-content: space-between; align-items: center; padding: 0 40px; font-size: 8pt; color: #4a5568; }
         .footer-contact { display: flex; gap: 24px; }
         .footer-item { display: flex; align-items: center; gap: 6px; }
         
