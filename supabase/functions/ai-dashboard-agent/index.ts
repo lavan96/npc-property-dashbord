@@ -2049,6 +2049,44 @@ const TOOLS: any[] = [
       parameters: { type: "object", properties: {} },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "generate_agreement",
+      description: "Generate a Buyer's Agent Agreement for a client. Auto-fills buyer details from the client profile and creates a PDF via Gamma. Optionally specify a template. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          client_id: { type: "string", description: "Client UUID or name to resolve" },
+          template_id: { type: "string", description: "UUID of the Gamma agreement template to use (optional — uses default if omitted)" },
+          buyer_names: { type: "string", description: "Override buyer name(s) if different from client profile" },
+          buyer_address: { type: "string", description: "Buyer's current address" },
+          buyer_phone: { type: "string", description: "Buyer's phone number" },
+          buyer_email: { type: "string", description: "Buyer's email for DocuSign delivery" },
+          agreement_date: { type: "string", description: "Agreement date in YYYY-MM-DD format (defaults to today)" },
+          secondary_buyer_name: { type: "string", description: "Joint applicant / secondary buyer name" },
+          deal_id: { type: "string", description: "UUID of the associated deal (optional)" },
+          initial_commitment_fee: { type: "string", description: "Commitment fee amount e.g. '$1,500.00 + GST'" },
+          notes: { type: "string", description: "Internal notes about this agreement" },
+        },
+        required: ["client_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "send_agreement_docusign",
+      description: "Send a previously generated agreement to the client via DocuSign for e-signature. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          agreement_id: { type: "string", description: "UUID of the agreement to send" },
+        },
+        required: ["agreement_id"],
+      },
+    },
+  },
 
   // ═══════════════════════════════════════════════════════════
   // BATCH 7 — MARKETING ANALYTICS & LEAD ATTRIBUTION
@@ -4970,6 +5008,8 @@ async function executeTool(sb: any, name: string, args: any, userId: string): Pr
     case 'get_agreement_details': return executeGetAgreementDetails(sb, args);
     case 'search_agreements': return executeSearchAgreements(sb, args);
     case 'get_agreement_templates': return executeGetAgreementTemplates(sb);
+    case 'generate_agreement': return executeGenerateAgreement(sb, args);
+    case 'send_agreement_docusign': return executeSendAgreementDocusign(args);
     // Batch 7 — Marketing & Lead Attribution
     case 'get_lead_attributions': return executeGetLeadAttributions(sb, args);
     case 'get_attribution_summary': return executeGetAttributionSummary(sb, args);
@@ -5200,6 +5240,71 @@ async function executeSearchAgreements(sb: any, args: any) {
 async function executeGetAgreementTemplates(sb: any) {
   const { data } = await sb.from('gamma_agreement_templates').select('id, name, description, gamma_template_id, is_active, is_default').order('name');
   return { templates: data || [] };
+}
+
+async function executeGenerateAgreement(sb: any, args: any) {
+  // Resolve client ID from name or UUID
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
+
+  // Fetch client profile to auto-fill missing fields
+  const { data: client } = await sb.from('clients')
+    .select('primary_first_name, primary_surname, primary_email, primary_mobile, current_address, secondary_first_name, secondary_surname')
+    .eq('id', cid).single();
+
+  if (!client) return { error: 'Client not found' };
+
+  const buyerNames = args.buyer_names || `${client.primary_first_name || ''} ${client.primary_surname || ''}`.trim();
+  const buyerEmail = args.buyer_email || client.primary_email;
+  if (!buyerEmail) return { error: 'No email found for client. Please provide buyer_email.' };
+
+  const payload: any = {
+    action: 'generate',
+    client_id: cid,
+    buyer_names: buyerNames,
+    buyer_address: args.buyer_address || client.current_address || '',
+    buyer_phone: args.buyer_phone || client.primary_mobile || '',
+    buyer_email: buyerEmail,
+    agreement_date: args.agreement_date || new Date().toISOString().split('T')[0],
+    secondary_buyer_name: args.secondary_buyer_name || (client.secondary_first_name && client.secondary_surname ? `${client.secondary_first_name} ${client.secondary_surname}` : undefined),
+    deal_id: args.deal_id,
+    notes: args.notes,
+    initial_commitment_fee: args.initial_commitment_fee || '$1,500.00 + GST',
+    template_id: args.template_id,
+  };
+
+  const resp = await fetch(`${SUPABASE_URL.trim()}/functions/v1/manage-agency-agreements`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY.trim()}`,
+      'apikey': (SUPABASE_ANON_KEY || SUPABASE_SERVICE_ROLE_KEY).trim(),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const result = await resp.json();
+  if (!resp.ok) return { error: result.error || `Failed with status ${resp.status}` };
+  return { success: true, agreement_id: result.agreement_id, status: result.status, message: `Agreement generated for ${buyerNames}. Use send_agreement_docusign to dispatch via DocuSign.` };
+}
+
+async function executeSendAgreementDocusign(args: any) {
+  if (!args.agreement_id) return { error: 'agreement_id is required' };
+
+  const resp = await fetch(`${SUPABASE_URL.trim()}/functions/v1/manage-agency-agreements`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY.trim()}`,
+      'apikey': (SUPABASE_ANON_KEY || SUPABASE_SERVICE_ROLE_KEY).trim(),
+    },
+    body: JSON.stringify({ action: 'send_docusign', agreement_id: args.agreement_id }),
+  });
+
+  const result = await resp.json();
+  if (!resp.ok) return { error: result.error || `Failed with status ${resp.status}` };
+  return { success: true, envelope_id: result.envelope_id, message: 'Agreement sent via DocuSign for e-signature.' };
 }
 
 // ─── BATCH 7 EXECUTORS — MARKETING & LEAD ATTRIBUTION ───
