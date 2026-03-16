@@ -1268,6 +1268,8 @@ export default function ClientTracker() {
                                 onDragStart={(e) => handleDragStart(e, client)}
                                 onDragEnd={handleDragEnd}
                                 isDragging={draggedClient?.id === client.id}
+                                upcomingAppointment={clientAppointmentMap[client.id]}
+                                opportunities={clientOpportunitiesMap[client.id]}
                               />
                             ))
                           )}
