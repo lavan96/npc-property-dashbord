@@ -1738,7 +1738,7 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
         .summary-title::before { content: ''; }
         
         /* Financial Table - Better readability */
-        .financial-table { width: 100%; border-collapse: collapse; font-size: 9pt; border: 1px solid ${NPC_COLORS.borderGray}; border-radius: 4px; overflow: hidden; line-height: 1.4; }
+        .financial-table { width: 100%; border-collapse: collapse; font-size: 9.5pt; border: 1px solid ${NPC_COLORS.borderGray}; border-radius: 4px; overflow: hidden; line-height: 1.5; }
         .financial-table th { 
           background: linear-gradient(180deg, ${NPC_COLORS.darkBlue} 0%, ${NPC_COLORS.navy} 100%); 
           color: ${NPC_COLORS.white}; 
