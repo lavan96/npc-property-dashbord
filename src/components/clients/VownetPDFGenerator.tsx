@@ -9,6 +9,7 @@ import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { drawBorrowingCapacitySections, transformAssessmentToSectionData } from '@/utils/borrowingCapacityPdfSections';
 import { fetchLatestBorrowingCapacity } from '@/lib/fetchLatestBorrowingCapacity';
+import { smartCapitalize } from '@/lib/nameUtils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -313,13 +314,16 @@ export function VownetPDFGenerator({
       // Wait for styles to apply inside the iframe
       await new Promise(resolve => setTimeout(resolve, 300));
 
-      const pages = iframeDoc.querySelectorAll('.page');
-      const totalHtmlPages = pages.length;
-      if (totalHtmlPages === 0) {
+      // Select both fixed-height pages and auto-height property pages
+      const fixedPages = iframeDoc.querySelectorAll('.page');
+      const autoPages = iframeDoc.querySelectorAll('.page-auto');
+      const allElements = iframeDoc.querySelectorAll('.page, .page-auto');
+      const totalHtmlElements = allElements.length;
+      if (totalHtmlElements === 0) {
         throw new Error('No PDF pages were generated from template');
       }
 
-      console.log(`[VownetPDF] Starting render: ${totalHtmlPages} pages in isolated iframe`);
+      console.log(`[VownetPDF] Starting render: ${totalHtmlElements} elements (${fixedPages.length} fixed, ${autoPages.length} auto-height) in isolated iframe`);
 
       // Create PDF
       const pdf = new jsPDF({
@@ -328,18 +332,27 @@ export function VownetPDFGenerator({
         format: 'a4',
       });
 
-      // The last HTML page is the disclaimer/contact page — render it AFTER BC pages
-      const contentPages = totalHtmlPages > 1 ? totalHtmlPages - 1 : totalHtmlPages;
-      const hasDisclaimerPage = totalHtmlPages > 1;
+      // The last fixed page is the disclaimer/contact page — render it AFTER BC pages
+      const lastFixedPage = fixedPages[fixedPages.length - 1] as HTMLElement;
+      const isDisclaimerPage = lastFixedPage?.classList.contains('final-page');
+      
+      // Build ordered render list: all elements except the final disclaimer page
+      const renderList: HTMLElement[] = [];
+      allElements.forEach((el) => {
+        if (el === lastFixedPage && isDisclaimerPage) return; // skip disclaimer for now
+        renderList.push(el as HTMLElement);
+      });
 
       // Adaptive render scale
       const navWithMemory = navigator as Navigator & { deviceMemory?: number };
       const deviceMemory = navWithMemory.deviceMemory ?? 4;
-      const renderScale = totalHtmlPages > 8
+      const renderScale = totalHtmlElements > 8
         ? 1
         : deviceMemory <= 4
           ? 1.25
           : 1.6;
+
+      const PAGE_HEIGHT_PX = 1123;
 
       const renderOptions: Parameters<typeof html2canvas>[1] = {
         scale: renderScale,
@@ -347,28 +360,66 @@ export function VownetPDFGenerator({
         allowTaint: true,
         backgroundColor: '#ffffff',
         width: 794,
-        height: 1123,
+        height: PAGE_HEIGHT_PX,
         logging: false,
       };
 
-      // Render all content pages (everything except the final disclaimer page)
-      for (let i = 0; i < contentPages; i++) {
+      let pdfPageIndex = 0;
+
+      // Render all content pages
+      for (let i = 0; i < renderList.length; i++) {
         ensureWithinBudget();
         await new Promise(resolve => setTimeout(resolve, 0));
 
         const pageStart = Date.now();
-        const page = pages[i] as HTMLElement;
-        const canvas = await html2canvasWithTimeout(page, renderOptions, 15000);
-        console.log(`[VownetPDF] Page ${i + 1}/${totalHtmlPages} rendered in ${Date.now() - pageStart}ms`);
+        const page = renderList[i];
+        const isAutoPage = page.classList.contains('page-auto');
 
-        if (i > 0) {
-          pdf.addPage();
+        if (isAutoPage) {
+          // Auto-height page: capture at natural height and tile across PDF pages
+          const naturalHeight = page.scrollHeight;
+          const canvas = await html2canvasWithTimeout(page, {
+            ...renderOptions,
+            height: naturalHeight,
+          }, 20000);
+          
+          const pagesNeeded = Math.ceil(naturalHeight / PAGE_HEIGHT_PX);
+          console.log(`[VownetPDF] Auto page ${i + 1} rendered in ${Date.now() - pageStart}ms (${naturalHeight}px → ${pagesNeeded} PDF pages)`);
+
+          for (let tile = 0; tile < pagesNeeded; tile++) {
+            if (pdfPageIndex > 0) pdf.addPage();
+            
+            // Create a tile canvas for this slice
+            const tileCanvas = document.createElement('canvas');
+            tileCanvas.width = canvas.width;
+            tileCanvas.height = Math.round(PAGE_HEIGHT_PX * renderScale);
+            const ctx = tileCanvas.getContext('2d')!;
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, tileCanvas.width, tileCanvas.height);
+            
+            const srcY = Math.round(tile * PAGE_HEIGHT_PX * renderScale);
+            const srcH = Math.min(Math.round(PAGE_HEIGHT_PX * renderScale), canvas.height - srcY);
+            ctx.drawImage(canvas, 0, srcY, canvas.width, srcH, 0, 0, canvas.width, srcH);
+            
+            pdf.addImage(tileCanvas, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+            tileCanvas.width = 1;
+            tileCanvas.height = 1;
+            pdfPageIndex++;
+          }
+          
+          canvas.width = 1;
+          canvas.height = 1;
+        } else {
+          // Fixed-height page: standard single-page render
+          const canvas = await html2canvasWithTimeout(page, renderOptions, 15000);
+          console.log(`[VownetPDF] Page ${i + 1}/${renderList.length} rendered in ${Date.now() - pageStart}ms`);
+
+          if (pdfPageIndex > 0) pdf.addPage();
+          pdf.addImage(canvas, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+          canvas.width = 1;
+          canvas.height = 1;
+          pdfPageIndex++;
         }
-
-        // Pass canvas directly to jsPDF to avoid large base64 memory spikes
-        pdf.addImage(canvas, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
-        canvas.width = 1;
-        canvas.height = 1;
       }
 
       // ── Append Borrowing Capacity pages BEFORE disclaimer ──
@@ -395,12 +446,11 @@ export function VownetPDFGenerator({
       }
 
       // ── Render the disclaimer/contact page LAST (always the final page) ──
-      if (hasDisclaimerPage) {
+      if (isDisclaimerPage && lastFixedPage) {
         ensureWithinBudget();
         await new Promise(resolve => setTimeout(resolve, 0));
 
-        const disclaimerPage = pages[totalHtmlPages - 1] as HTMLElement;
-        const disclaimerCanvas = await html2canvasWithTimeout(disclaimerPage, {
+        const disclaimerCanvas = await html2canvasWithTimeout(lastFixedPage, {
           ...renderOptions,
           backgroundColor: '#141414',
         }, 15000);
@@ -1188,19 +1238,35 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
   const totalNetCF = summaryProperties.reduce((sum, p) => sum + (p.net_monthly_cashflow || 0), 0);
 
   // Properly capitalize client names
-  const primaryName = `${properCase(client.primary_first_name)} ${properCase(client.primary_surname)}`;
+  const primaryName = `${smartCapitalize(client.primary_first_name)} ${smartCapitalize(client.primary_surname)}`;
   const secondaryName = client.secondary_first_name 
-    ? `${properCase(client.secondary_first_name)} ${properCase(client.secondary_surname || client.primary_surname)}`
+    ? `${smartCapitalize(client.secondary_first_name)} ${smartCapitalize(client.secondary_surname || client.primary_surname)}`
     : '';
   const clientFullName = secondaryName ? `${primaryName} & ${secondaryName}` : primaryName;
   
   // Calculate equity based on filtered properties (respects toggle setting)
   const summaryEquity = totalValue - totalLoans;
 
+  // Check if secondary contact has any data
+  const hasSecondaryContact = !!(
+    client.secondary_first_name || client.secondary_surname || 
+    client.secondary_middle_name || client.secondary_mobile || 
+    client.secondary_email || client.secondary_gender || client.secondary_dob
+  );
+
+  // Check if owner occupied property has any meaningful data
+  const hasOwnerOccupied = !!(
+    ownerOccupied && (
+      ownerOccupied.address || ownerOccupied.value || ownerOccupied.loan_remaining ||
+      ownerOccupied.interest_rate || ownerOccupied.ownership_percentage ||
+      ownerOccupied.monthly_interest_repayment || ownerOccupied.net_monthly_cashflow
+    )
+  );
+
   // Generate individual investment property pages HTML (one per page)
   const investmentPropertyPagesHTML = investmentPropertyPages.map((item, pageIndex) => `
     <!-- INVESTMENT PROPERTY PAGE ${pageIndex + 1} -->
-    <div class="page">
+    <div class="page-auto" data-property-page="true">
       <div class="page-header">
         <div class="header-title-group">
           <div class="header-title">Investment Property ${item.index}</div>
@@ -1212,21 +1278,13 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
           ${generateInvestmentPropertyHTML(item.prop, item.index)}
         </div>
       </div>
-      <div class="page-footer">
-        <div class="footer-contact">
-          <span class="footer-item">📞 (02) 8609 3299</span>
-          <span class="footer-item">✉ admin@npcservices.com.au</span>
-          <span class="footer-item">🌐 npcservices.com.au</span>
-        </div>
-        <div>Page ${pageIndex + 3} of ${totalPages}</div>
-      </div>
     </div>
   `).join('');
   
   // Generate individual SMSF property pages HTML (one per page)
   const smsfPropertyPagesHTML = smsfPropertyPages.map((item, pageIndex) => `
     <!-- SMSF PROPERTY PAGE ${pageIndex + 1} -->
-    <div class="page">
+    <div class="page-auto" data-property-page="true">
       <div class="page-header">
         <div class="header-title-group">
           <div class="header-title">SMSF Property ${item.index}</div>
@@ -1237,14 +1295,6 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
         <div class="property-page-content">
           ${generateSmsfPropertyHTML(item.prop, item.index)}
         </div>
-      </div>
-      <div class="page-footer">
-        <div class="footer-contact">
-          <span class="footer-item">📞 (02) 8609 3299</span>
-          <span class="footer-item">✉ admin@npcservices.com.au</span>
-          <span class="footer-item">🌐 npcservices.com.au</span>
-        </div>
-        <div>Page ${pageIndex + 3 + investmentPropertyPages.length} of ${totalPages}</div>
       </div>
     </div>
   `).join('');
@@ -1272,6 +1322,7 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
         
         /* Page Layout */
         .page { width: 794px; height: 1123px; background: ${NPC_COLORS.white}; position: relative; overflow: hidden; }
+        .page-auto { width: 794px; min-height: 1123px; height: auto; background: ${NPC_COLORS.white}; position: relative; overflow: visible; }
         .page-content { padding: 30px 40px; padding-top: 94px; }
         
         /* Cover Page - Image Based */
@@ -1921,27 +1972,29 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
               <div class="section">
                 <div class="section-header gold">Primary Contact</div>
                 <table class="data-table">
-                  <tr><td class="label">First name</td><td class="value">${client.primary_first_name || '-'}</td></tr>
-                  <tr><td class="label">Middle name</td><td class="value">${client.primary_middle_name || '-'}</td></tr>
-                  <tr><td class="label">Surname</td><td class="value">${client.primary_surname || '-'}</td></tr>
+                  <tr><td class="label">First name</td><td class="value">${smartCapitalize(client.primary_first_name) || '-'}</td></tr>
+                  <tr><td class="label">Middle name</td><td class="value">${smartCapitalize(client.primary_middle_name) || '-'}</td></tr>
+                  <tr><td class="label">Surname</td><td class="value">${smartCapitalize(client.primary_surname) || '-'}</td></tr>
                   <tr><td class="label">Mobile</td><td class="value">${client.primary_mobile || '-'}</td></tr>
                   <tr><td class="label">Email</td><td class="value">${client.primary_email || '-'}</td></tr>
                   <tr><td class="label">Gender</td><td class="value">${client.primary_gender || '-'}</td></tr>
                   <tr><td class="label">Date of Birth</td><td class="value">${formatDate(client.primary_dob)}</td></tr>
                 </table>
               </div>
+              ${hasSecondaryContact ? `
               <div class="section">
                 <div class="section-header">Secondary Contact</div>
                 <table class="data-table">
-                  <tr><td class="label">First name</td><td class="value">${client.secondary_first_name || '-'}</td></tr>
-                  <tr><td class="label">Middle name</td><td class="value">${client.secondary_middle_name || '-'}</td></tr>
-                  <tr><td class="label">Surname</td><td class="value">${client.secondary_surname || '-'}</td></tr>
+                  <tr><td class="label">First name</td><td class="value">${smartCapitalize(client.secondary_first_name) || '-'}</td></tr>
+                  <tr><td class="label">Middle name</td><td class="value">${smartCapitalize(client.secondary_middle_name) || '-'}</td></tr>
+                  <tr><td class="label">Surname</td><td class="value">${smartCapitalize(client.secondary_surname) || '-'}</td></tr>
                   <tr><td class="label">Mobile</td><td class="value">${client.secondary_mobile || '-'}</td></tr>
                   <tr><td class="label">Email</td><td class="value">${client.secondary_email || '-'}</td></tr>
                   <tr><td class="label">Gender</td><td class="value">${client.secondary_gender || '-'}</td></tr>
                   <tr><td class="label">Date of Birth</td><td class="value">${formatDate(client.secondary_dob)}</td></tr>
                 </table>
               </div>
+              ` : ''}
             </div>
             <div class="column column-right">
               <div class="section">
@@ -1955,6 +2008,7 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
                   <tr><td class="label">Number of dependents</td><td class="value">${client.dependents_count ?? 0}</td></tr>
                 </table>
               </div>
+              ${hasOwnerOccupied ? `
               <div class="section">
                 <div class="section-header">Property (Owner Occupied)</div>
                 <table class="data-table">
@@ -1969,6 +2023,7 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
                   <tr><td class="label">Net Monthly Cashflow</td><td class="value currency">${formatCurrency(ownerOccupied?.net_monthly_cashflow)}</td></tr>
                 </table>
               </div>
+              ` : ''}
             </div>
           </div>
         </div>
