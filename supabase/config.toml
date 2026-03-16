@@ -1,5 +1,8 @@
 project_id = "dduzbchuswwbefdunfct"
 
+[functions.outlook-calendar]
+verify_jwt = false
+
 [functions.portal-book-appointment]
 verify_jwt = false
 
