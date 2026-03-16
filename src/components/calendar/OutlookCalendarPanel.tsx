@@ -123,6 +123,23 @@ export function OutlookCalendarPanel({
     }
   };
 
+  const handleTestConnection = useCallback(async () => {
+    setTestingConnection(true);
+    setTestResults(null);
+    try {
+      const { invokeSecureFunction } = await import('@/lib/secureInvoke');
+      const { data } = await invokeSecureFunction('outlook-calendar', {
+        action: 'testPermissions',
+        testEmail: emailInput.trim() || microsoftEmail,
+      });
+      setTestResults(data?.diagnostics || { error: 'No diagnostics returned' });
+    } catch (err: any) {
+      setTestResults({ error: err.message });
+    } finally {
+      setTestingConnection(false);
+    }
+  }, [emailInput, microsoftEmail]);
+
   const resetForm = () => {
     setNewSubject('');
     setNewBody('');
