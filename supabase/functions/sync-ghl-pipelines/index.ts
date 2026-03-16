@@ -508,11 +508,12 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Pipeline sync complete! Synced ${ghlPipelines.length} pipelines and updated ${updatedCount} clients.`,
+        message: `Pipeline sync complete! Synced ${ghlPipelines.length} pipelines, ${opportunitiesUpserted} opportunities stored, ${updatedCount} clients updated.`,
         stats: {
           pipelinesFound: ghlPipelines.length,
           stagesSynced: Object.keys(stageIdMap).length,
           opportunitiesFound: allOpportunities.length,
+          opportunitiesStored: opportunitiesUpserted,
           clientsUpdated: updatedCount,
           contactsNotFound: notFoundCount,
         },
