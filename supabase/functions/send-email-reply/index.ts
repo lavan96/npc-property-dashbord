@@ -43,6 +43,160 @@ interface SendEmailRequest {
   originalEmailId?: string;
   attachments?: EmailAttachment[];
   mailboxSource?: 'admin' | 'personal';
+  source?: 'agent' | 'user'; // 'agent' triggers branded HTML template
+}
+
+// ─── Agent Email HTML Template System ───────────────────────────────────────
+// Converts markdown body to professionally styled HTML when source === 'agent'
+
+function markdownToHtml(md: string): string {
+  let html = md;
+
+  // Convert **bold** to <strong>
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  // Convert *italic* to <em>
+  html = html.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
+
+  // Detect key-value detail blocks: lines matching "Label: Value" with <strong> labels
+  // Collect consecutive detail lines into a card
+  const lines = html.split('\n');
+  const processed: string[] = [];
+  let detailBlock: string[] = [];
+
+  const flushDetailBlock = () => {
+    if (detailBlock.length === 0) return;
+    const rows = detailBlock.map(line => {
+      // Extract label and value from "<strong>Label:</strong> Value"
+      const match = line.match(/^<strong>(.+?):<\/strong>\s*(.+)$/);
+      if (match) {
+        return `<tr>
+          <td style="padding: 8px 12px; font-size: 14px; color: #6b7280; font-family: Arial, sans-serif; white-space: nowrap; vertical-align: top;">${match[1]}</td>
+          <td style="padding: 8px 12px; font-size: 14px; color: #1a1a2e; font-family: Arial, sans-serif; font-weight: 600;">${match[2]}</td>
+        </tr>`;
+      }
+      return `<tr><td colspan="2" style="padding: 8px 12px; font-size: 14px; color: #1a1a2e; font-family: Arial, sans-serif;">${line}</td></tr>`;
+    }).join('');
+
+    processed.push(`<table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f8f9fa; border-left: 4px solid #d4a843; border-radius: 8px; margin: 16px 0;">
+      ${rows}
+    </table>`);
+    detailBlock = [];
+  };
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      flushDetailBlock();
+      processed.push('');
+      continue;
+    }
+
+    // Check if this line is a detail line: "<strong>Something:</strong> value"
+    if (/^<strong>.+?:<\/strong>\s*.+$/.test(trimmed)) {
+      detailBlock.push(trimmed);
+      continue;
+    }
+
+    flushDetailBlock();
+
+    // Convert bullet list items
+    if (/^[-•]\s+/.test(trimmed)) {
+      const content = trimmed.replace(/^[-•]\s+/, '');
+      processed.push(`<li style="padding: 4px 0; font-size: 14px; color: #374151; font-family: Arial, sans-serif;">${content}</li>`);
+      continue;
+    }
+
+    processed.push(trimmed);
+  }
+  flushDetailBlock();
+
+  // Wrap consecutive <li> items in <ul>
+  let result = processed.join('\n');
+  result = result.replace(/((?:<li[^>]*>.*?<\/li>\s*)+)/g, 
+    '<ul style="margin: 12px 0; padding-left: 20px; list-style-type: disc;">$1</ul>');
+
+  // Convert remaining text blocks into paragraphs
+  const finalLines = result.split('\n');
+  const paragraphed: string[] = [];
+  let textBuffer: string[] = [];
+
+  const flushText = () => {
+    if (textBuffer.length === 0) return;
+    const text = textBuffer.join('<br>');
+    paragraphed.push(`<p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.6; color: #374151; font-family: Arial, sans-serif;">${text}</p>`);
+    textBuffer = [];
+  };
+
+  for (const line of finalLines) {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      flushText();
+      continue;
+    }
+    // If it's already an HTML block element, flush and pass through
+    if (trimmed.startsWith('<table') || trimmed.startsWith('<ul') || trimmed.startsWith('<li') || trimmed.startsWith('</')) {
+      flushText();
+      paragraphed.push(trimmed);
+      continue;
+    }
+    textBuffer.push(trimmed);
+  }
+  flushText();
+
+  return paragraphed.join('\n');
+}
+
+function wrapInAgentTemplate(bodyHtml: string, signature: string, bannerUrl?: string): string {
+  const bannerSection = bannerUrl 
+    ? `<tr><td style="padding: 0;">
+        <img src="${bannerUrl}" alt="NPC Services" style="width: 100%; max-width: 600px; height: auto; display: block;" />
+       </td></tr>`
+    : '';
+
+  const signatureSection = signature 
+    ? `<tr><td style="padding: 24px 32px 0 32px; border-top: 1px solid #e5e7eb;">
+        ${signature}
+       </td></tr>`
+    : '';
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Email</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f3f4f6; font-family: Arial, sans-serif; -webkit-font-smoothing: antialiased;">
+  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f3f4f6; padding: 24px 0;">
+    <tr>
+      <td align="center">
+        <table cellpadding="0" cellspacing="0" border="0" width="600" style="max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
+          <!-- Banner -->
+          ${bannerSection}
+          <!-- Accent bar -->
+          <tr><td style="height: 4px; background: linear-gradient(90deg, #d4a843, #1a1a2e);"></td></tr>
+          <!-- Body -->
+          <tr>
+            <td style="padding: 32px;">
+              ${bodyHtml}
+            </td>
+          </tr>
+          <!-- Signature -->
+          ${signatureSection}
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 20px 32px; background-color: #1a1a2e; text-align: center;">
+              <p style="margin: 0; font-size: 12px; color: #9ca3af; font-family: Arial, sans-serif;">
+                Sent via Oryxa • Naidu Property Consulting Services
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
 }
 
 interface WhiteLabelSettings {
