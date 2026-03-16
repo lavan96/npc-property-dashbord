@@ -17,6 +17,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useFinanceContacts, FinanceContact } from '@/hooks/useFinanceContacts';
 import { supabase } from '@/integrations/supabase/client';
 import type { GHLCalendar, GHLContact, GHLTeamMember } from '@/hooks/useGHLCalendar';
+import { TeamOutlookAvailability } from './TeamOutlookAvailability';
 
 export interface BookingRecipient {
   name: string;
