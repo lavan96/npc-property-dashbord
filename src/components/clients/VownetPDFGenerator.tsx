@@ -1218,7 +1218,7 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
           <span class="footer-item">✉ admin@npcservices.com.au</span>
           <span class="footer-item">🌐 npcservices.com.au</span>
         </div>
-        <div>Page ${pageIndex + 2} of ${totalPages}</div>
+        <div>Page ${pageIndex + 3} of ${totalPages}</div>
       </div>
     </div>
   `).join('');
