@@ -33,6 +33,7 @@ interface AddClientModalProps {
 export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
   const queryClient = useQueryClient();
   const [syncToGHL, setSyncToGHL] = useState(true);
+  const [selectedStageId, setSelectedStageId] = useState<string>('');
   const [formData, setFormData] = useState({
     primary_first_name: '',
     primary_surname: '',
@@ -41,6 +42,19 @@ export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
     secondary_first_name: '',
     secondary_surname: '',
     current_address: '',
+  });
+
+  // Fetch GHL pipeline stages for the dropdown
+  const { data: pipelineStages } = useQuery({
+    queryKey: ['ghl-pipeline-stages'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('ghl_pipeline_stages')
+        .select('id, ghl_id, name, position, pipeline_id, ghl_pipelines!inner(name, ghl_id)')
+        .order('position', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
   });
 
   const createClientMutation = useMutation({
