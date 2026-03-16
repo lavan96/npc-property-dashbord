@@ -2274,6 +2274,8 @@ const WRITE_TOOLS = [
   'bulk_update_clients', 'bulk_create_reminders', 'bulk_set_follow_up_dates',
   // Batch 5
   'save_memory', 'trigger_investment_report',
+  // Outlook calendar
+  'create_outlook_event', 'create_outlook_prep_block', 'delete_outlook_event', 'create_follow_up_block',
 ];
 
 // ============================================================
