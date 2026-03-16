@@ -113,6 +113,21 @@ export async function verifyAuth(
   // the JWT is already validated. We just need to extract the user ID.
   if (authHeader?.startsWith('Bearer ')) {
     const jwtToken = authHeader.substring(7);
+    
+    // CRITICAL: Check if the bearer token is the service_role key by direct comparison
+    // This handles non-JWT service role keys (e.g., sb_secret_* format) used in 
+    // service-to-service calls between edge functions
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (serviceRoleKey && jwtToken.trim() === serviceRoleKey.trim()) {
+      console.log('[verifyAuth] Service role key matched by direct comparison - allowing internal service call');
+      return {
+        error: null,
+        userId: 'service_role',
+        username: 'system',
+        authMethod: 'service_role',
+      };
+    }
+    
     try {
       // Decode JWT to get user ID (Supabase has already validated it)
       const parts = jwtToken.split('.');
