@@ -38,6 +38,8 @@ import { FloatingActions } from '@/components/calendar/FloatingActions';
 import { KeyboardShortcutsHint } from '@/components/calendar/KeyboardShortcutsHint';
 import { CalendarLoadingSkeleton, StatsLoadingSkeleton, SidebarLoadingSkeleton } from '@/components/calendar/CalendarLoadingSkeleton';
 import { BatchActions } from '@/components/calendar/BatchActions';
+import { OutlookCalendarPanel } from '@/components/calendar/OutlookCalendarPanel';
+import { useOutlookCalendar } from '@/hooks/useOutlookCalendar';
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, startOfWeek, endOfWeek, isSameMonth, addWeeks, subWeeks, getHours, addHours, differenceInMilliseconds, addMinutes, setHours, setMinutes } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toTimezoneISO } from '@/lib/sydneyTime';
