@@ -58,6 +58,7 @@ serve(async (req) => {
           email,
           status,
           has_completed_onboarding,
+          has_accepted_terms,
           clients:client_id (id, primary_first_name, primary_surname, primary_email)
         )
       `)
