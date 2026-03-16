@@ -1512,8 +1512,8 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
         .data-table .percent { text-align: right; }
         
         /* Alternating Rows */
-        .data-table.alt-rows tr:nth-child(even) td.label { background: #edf2f7; }
-        .data-table.alt-rows tr:nth-child(even) td.value { background: ${NPC_COLORS.lightGray}; }
+        .data-table.alt-rows tr:nth-child(even) td.label { background: #f0f4f8; }
+        .data-table.alt-rows tr:nth-child(even) td.value { background: #f5f7fa; }
         
         /* Compact Tables - still readable */
         .data-table.compact td { padding: 10px 14px; font-size: 8.5pt; }
