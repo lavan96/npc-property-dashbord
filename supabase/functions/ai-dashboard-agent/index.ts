@@ -5208,9 +5208,12 @@ async function executeGetMarketingReports(sb: any, args: any) {
 }
 
 async function executeGetClientLeadSource(sb: any, args: any) {
+  const v = await validateClientExists(sb, args.client_id);
+  if (!v.valid) return { error: v.error };
+  const cid = v.resolvedId || args.client_id;
   const { data } = await sb.from('lead_source_attributions')
     .select('*')
-    .eq('client_id', args.client_id)
+    .eq('client_id', cid)
     .order('attributed_at', { ascending: false })
     .limit(5);
   if (!data || data.length === 0) return { message: 'No lead source attribution found for this client.', attributions: [] };
