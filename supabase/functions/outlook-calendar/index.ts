@@ -361,7 +361,9 @@ serve(async (req) => {
     console.log(`[outlook-calendar] User: ${userId}, action: ${action}`);
 
     // Resolve calling user's Microsoft email
-    const userEmail = body.targetEmail || await resolveMicrosoftEmail(supabase, userId!);
+    // When called via service-role (e.g. from ai-dashboard-agent), use _userId from body
+    const effectiveUserId = (userId === 'service_role' && body._userId) ? body._userId : userId;
+    const userEmail = body.targetEmail || await resolveMicrosoftEmail(supabase, effectiveUserId!);
 
     // Get Microsoft access token
     const { token: accessToken, scopes } = await getAccessToken();
