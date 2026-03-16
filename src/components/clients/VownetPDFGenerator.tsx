@@ -2138,6 +2138,7 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
             <span class="footer-item">✉ admin@npcservices.com.au</span>
             <span class="footer-item">🌐 npcservices.com.au</span>
           </div>
+          <div class="footer-confidential">CONFIDENTIAL</div>
           <div>Page ${employmentPageNumber} of ${totalPages}</div>
         </div>
       </div>
