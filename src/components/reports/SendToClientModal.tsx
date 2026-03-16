@@ -175,6 +175,7 @@ export function SendToClientModal({
       setSelectedClientId(null);
       setSearch('');
       setNotes('');
+      setNoteVisibility('internal');
       setSent(false);
       setIncludeCharts(true);
       setChartOptions({ cashFlowTrends: true, yieldChart: true, comparisonChart: true });
