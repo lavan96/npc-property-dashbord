@@ -178,8 +178,10 @@ async function getFreeBusy(
     availabilityViewInterval: 30,
   };
 
+  // Use /users/{first-email}/calendar/getSchedule instead of /me/ (no /me/ with app-only tokens)
+  const scheduleEmail = emails[0];
   const res = await fetch(
-    'https://graph.microsoft.com/v1.0/me/calendar/getSchedule',
+    `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(scheduleEmail)}/calendar/getSchedule`,
     {
       method: 'POST',
       headers: {
