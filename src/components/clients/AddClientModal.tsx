@@ -286,6 +286,37 @@ export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
             </Label>
           </div>
 
+          {/* Pipeline Stage (optional, shown when GHL sync enabled) */}
+          {syncToGHL && (
+            <div className="space-y-1.5">
+              <Label htmlFor="pipeline_stage">Pipeline Stage (Optional)</Label>
+              <Select value={selectedStageId} onValueChange={setSelectedStageId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a pipeline stage..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {(() => {
+                    // Group stages by pipeline
+                    const grouped: Record<string, { pipelineName: string; stages: any[] }> = {};
+                    (pipelineStages || []).forEach((s: any) => {
+                      const pName = s.ghl_pipelines?.name || 'Unknown Pipeline';
+                      if (!grouped[pName]) grouped[pName] = { pipelineName: pName, stages: [] };
+                      grouped[pName].stages.push(s);
+                    });
+                    return Object.entries(grouped).map(([pName, group]) => (
+                      <div key={pName}>
+                        <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">{pName}</div>
+                        {group.stages.map((stage: any) => (
+                          <SelectItem key={stage.id} value={stage.id}>{stage.name}</SelectItem>
+                        ))}
+                      </div>
+                    ));
+                  })()}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel

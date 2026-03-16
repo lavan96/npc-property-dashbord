@@ -251,13 +251,47 @@ async function syncSingleClient(
       console.error('Failed to update client sync status:', updateError);
     }
 
+    // Create opportunity in pipeline if stage was specified
+    let opportunityCreated = false;
+    if (pipelineStageGhlId && pipelineGhlId && ghlContactId) {
+      try {
+        console.log(`Creating GHL opportunity for contact ${ghlContactId} in pipeline ${pipelineGhlId}, stage ${pipelineStageGhlId}`);
+        const oppPayload = {
+          pipelineId: pipelineGhlId,
+          pipelineStageId: pipelineStageGhlId,
+          contactId: ghlContactId,
+          locationId,
+          name: `${client.primary_first_name} ${client.primary_surname}`.trim(),
+          status: 'open',
+        };
+        
+        const oppResponse = await fetch(`${GHL_API_BASE}/opportunities/`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(oppPayload),
+        });
+
+        if (oppResponse.ok) {
+          const oppData = await oppResponse.json();
+          console.log(`GHL opportunity created: ${oppData.opportunity?.id}`);
+          opportunityCreated = true;
+        } else {
+          const errText = await oppResponse.text();
+          console.error('GHL opportunity creation error:', errText);
+        }
+      } catch (oppErr) {
+        console.error('Failed to create GHL opportunity:', oppErr);
+      }
+    }
+
     console.log(`Successfully synced client ${clientId} to GHL contact ${ghlContactId}`);
 
     return {
       success: true,
       clientId,
       ghlContactId,
-      isNewContact
+      isNewContact,
+      opportunityCreated,
     };
 
   } catch (error) {
