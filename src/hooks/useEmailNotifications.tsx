@@ -1,7 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { useNotifications } from '@/contexts/NotificationsContext';
 
 interface EmailNotificationOptions {
   onNewEmail?: (email: any) => void;
@@ -17,7 +16,6 @@ export function useEmailNotifications({
   soundEnabled = true,
   browserNotificationsEnabled = true
 }: EmailNotificationOptions = {}) {
-  const { addNotification } = useNotifications();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const notificationPermissionRef = useRef<NotificationPermission>('default');
 
@@ -88,7 +86,7 @@ export function useEmailNotifications({
     }
   }, [browserNotificationsEnabled]);
 
-  // Handle new email notification
+  // Handle new email notification (sound, browser notification, toast only — bell handled by useGlobalEmailNotifications)
   const handleNewEmail = useCallback(async (email: any) => {
     // Play sound
     playNotificationSound();
@@ -108,17 +106,9 @@ export function useEmailNotifications({
       duration: 5000
     });
 
-    // Add to bell notification dropdown
-    await addNotification({
-      type: 'email_received',
-      title: `Email from ${senderName}`,
-      message: subject,
-      entityId: email.id
-    });
-
     // Call custom handler
     onNewEmail?.(email);
-  }, [playNotificationSound, showBrowserNotification, onNewEmail, addNotification]);
+  }, [playNotificationSound, showBrowserNotification, onNewEmail]);
 
   // Set up realtime subscription
   useEffect(() => {

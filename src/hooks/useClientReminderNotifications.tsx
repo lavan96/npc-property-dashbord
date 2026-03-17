@@ -23,7 +23,11 @@ export function useClientReminderNotifications() {
       }
 
       try {
-        // Fetch pending reminders that are due today or overdue
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+        // Fetch pending reminders that are due today, overdue, OR coming up tomorrow
         const { data: reminders, error } = await supabase
           .from('client_reminders')
           .select(`
@@ -38,7 +42,7 @@ export function useClientReminderNotifications() {
             )
           `)
           .eq('status', 'pending')
-          .lte('due_date', todayStr)
+          .lte('due_date', tomorrowStr)
           .order('due_date', { ascending: true });
 
         if (error) {
@@ -52,7 +56,6 @@ export function useClientReminderNotifications() {
         }
 
         for (const reminder of reminders) {
-          // Skip if already processed in this session
           if (processedReminderIds.current.has(reminder.id)) {
             continue;
           }
@@ -61,6 +64,8 @@ export function useClientReminderNotifications() {
           dueDate.setHours(0, 0, 0, 0);
           
           const isOverdue = dueDate < today;
+          const isDueToday = dueDate.getTime() === today.getTime();
+          const isUpcoming = dueDate.getTime() === tomorrow.getTime();
           const client = reminder.clients as any;
           const clientName = client 
             ? `${client.primary_first_name} ${client.primary_surname}`
@@ -75,11 +80,18 @@ export function useClientReminderNotifications() {
               message: `Reminder for ${clientName} was due on ${dueDate.toLocaleDateString()}`,
               entityId: reminder.client_id
             });
-          } else {
+          } else if (isDueToday) {
             await addNotification({
               type: 'client_reminder_due',
               title: `Due Today: ${reminder.title}`,
               message: `Reminder for ${clientName} is due today`,
+              entityId: reminder.client_id
+            });
+          } else if (isUpcoming) {
+            await addNotification({
+              type: 'client_reminder_upcoming',
+              title: `Tomorrow: ${reminder.title}`,
+              message: `Reminder for ${clientName} is due tomorrow`,
               entityId: reminder.client_id
             });
           }
