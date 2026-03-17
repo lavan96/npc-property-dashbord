@@ -1086,6 +1086,7 @@ export function BorrowingCapacityModal({
                 lmiEstimate={lmiEstimate}
                 scenarioPresets={scenarioPresets}
                 activeScenarioName={activeScenario?.name}
+                accessibleEquity={activeScenario?.accessibleEquity ?? 0}
               />
             </div>
           </ScrollArea>
