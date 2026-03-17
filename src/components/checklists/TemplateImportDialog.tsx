@@ -31,7 +31,7 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [progressLabel, setProgressLabel] = useState('');
-  const mobileFileInputRef = useRef<HTMLInputElement>(null);
+  
 
   const reset = () => {
     setStep('input');
