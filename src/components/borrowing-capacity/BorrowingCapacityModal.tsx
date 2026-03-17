@@ -190,6 +190,8 @@ export function BorrowingCapacityModal({
   
   // Scenario presets state
   const [scenarioPresets, setScenarioPresets] = useState<ScenarioPreset[]>([]);
+  // Active scenario overlay — when set, overrides calculator inputs (front-end only)
+  const [activeScenario, setActiveScenario] = useState<ScenarioPreset | null>(null);
 
   // Computed buffer rate based on toggle
   const effectiveBufferRate = bufferEnabled ? 3.0 : 0;
