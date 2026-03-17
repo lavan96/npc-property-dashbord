@@ -198,8 +198,9 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
                     if (file) processFile(file);
                     if (mobileFileInputRef.current) mobileFileInputRef.current.value = '';
                   }}
-                  className="hidden"
-                  style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }}
+                  className="sr-only"
+                  tabIndex={-1}
+                  aria-hidden="true"
                 />
                 <div
                   {...getRootProps()}
