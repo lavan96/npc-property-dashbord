@@ -4951,6 +4951,7 @@ async function executeTool(sb: any, name: string, args: any, userId: string): Pr
     case 'get_checklist_items': return executeGetChecklistItems(sb, args);
     case 'toggle_checklist_item': return executeToggleChecklistItem(sb, args, userId);
     case 'create_checklist_instance': return executeCreateChecklistInstance(sb, args, userId);
+    case 'create_checklist_template': return executeCreateChecklistTemplate(sb, args, userId);
     // Analytics
     case 'get_recent_activity': return executeGetRecentActivity(sb, args);
     case 'get_api_usage_stats': return executeGetApiUsageStats(sb, args);
