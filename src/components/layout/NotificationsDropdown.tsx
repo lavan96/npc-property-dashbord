@@ -92,6 +92,17 @@ export function NotificationsDropdown() {
         return <MessageSquare className="h-4 w-4 text-blue-500" />;
       case 'outlook_event_created':
         return <CalendarPlus className="h-4 w-4 text-blue-500" />;
+      // Phase 6 - Extended coverage
+      case 'agreement_generated':
+        return <FileSignature className="h-4 w-4 text-emerald-500" />;
+      case 'new_ghl_contact':
+        return <Contact className="h-4 w-4 text-cyan-500" />;
+      case 'new_marketing_lead':
+        return <Megaphone className="h-4 w-4 text-orange-500" />;
+      case 'portal_report_requested':
+        return <FileText className="h-4 w-4 text-violet-500" />;
+      case 'client_reminder_upcoming':
+        return <ClockAlert className="h-4 w-4 text-blue-400" />;
       default:
         return <Info className="h-4 w-4 text-blue-500" />;
     }
