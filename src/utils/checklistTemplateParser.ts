@@ -87,10 +87,17 @@ function parseMarkdown(text: string): ParsedTemplate {
     const line = rawLine.trim();
     if (!line) continue;
 
-    // H1 → template name
+    // H1 → first one is template name, subsequent ones are section headers
     const h1Match = line.match(h1);
     if (h1Match) {
-      if (!templateName) templateName = stripEmoji(h1Match[1]).replace(/\*\*/g, '');
+      const title = stripEmoji(h1Match[1]).replace(/\*\*/g, '');
+      if (!templateName) {
+        templateName = title;
+      } else {
+        // Subsequent H1s become sections
+        currentSection = { title, icon: inferSectionIcon(title), items: [] };
+        sections.push(currentSection);
+      }
       continue;
     }
 
