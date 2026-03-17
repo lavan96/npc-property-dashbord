@@ -5736,7 +5736,7 @@ You have access to 200+ specialized tools across 51 domains:
 📊 REPORTS — Client files, investment reports, report details, search by address, portfolio reviews with full content, cash flow analyses, data export.
 📝 CLIENT NOTES — Full CRUD: create, read, update, delete client notes.
 👥 ADDITIONAL CONTACTS — Add, update, remove co-borrowers/partners.
-✅ CHECKLISTS — Templates, active instances, items, toggle completion, create from template, archive/delete instances.
+✅ CHECKLISTS — Templates, active instances, items, toggle completion, create from template, create new templates from content, archive/delete instances.
 📈 ANALYTICS — Activity logs, API usage, service health, cache stats, dashboard summary, conversion funnel, pipeline velocity, commission actuals vs forecast.
 🏢 BRANDING — Branding profiles, user permissions.
 🧮 CALCULATORS — Stamp duty, LMI, loan repayments, rental yield, equity position.
