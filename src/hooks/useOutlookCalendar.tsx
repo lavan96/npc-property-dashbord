@@ -111,6 +111,12 @@ export function useOutlookCalendar() {
         description: `"${payload.subject}" added to your Outlook calendar`,
       });
 
+      addNotification({
+        type: 'appointment_created',
+        title: 'Outlook Event Created',
+        message: `"${payload.subject}" added to Outlook calendar`
+      });
+
       return data.event;
     } catch (err: any) {
       console.error('[useOutlookCalendar] createOutlookEvent error:', err);
