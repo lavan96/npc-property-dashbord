@@ -52,7 +52,13 @@ export type NotificationType =
   | 'deal_assigned'
   | 'report_request'
   // Outlook calendar
-  | 'outlook_event_created';
+  | 'outlook_event_created'
+  // Phase 6 additions - Extended coverage
+  | 'agreement_generated'
+  | 'new_ghl_contact'
+  | 'new_marketing_lead'
+  | 'portal_report_requested'
+  | 'client_reminder_upcoming';
 
 export interface Notification {
   id: string;
