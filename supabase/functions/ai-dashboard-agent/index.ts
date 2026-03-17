@@ -713,6 +713,45 @@ const TOOLS: any[] = [
       parameters: { type: "object", properties: { template_id: { type: "string", description: "UUID of the template" } }, required: ["template_id"] },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "create_checklist_template",
+      description: "Create a new checklist template with sections and items from structured or unstructured text content (e.g., bullet points, numbered lists, paragraphs, markdown). Use when the user wants to create a checklist template from pasted content, uploaded document text, or a description. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Name for the new checklist template" },
+          description: { type: "string", description: "Optional description of the template" },
+          icon: { type: "string", description: "Emoji icon for the template (default: 📋)" },
+          sections: {
+            type: "array",
+            description: "Array of sections, each with a title and items array",
+            items: {
+              type: "object",
+              properties: {
+                title: { type: "string", description: "Section title" },
+                icon: { type: "string", description: "Section emoji icon" },
+                items: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      label: { type: "string", description: "Checklist item text" },
+                      is_pre_checked: { type: "boolean", description: "Whether this item starts checked (default: false)" },
+                    },
+                    required: ["label"],
+                  },
+                },
+              },
+              required: ["title", "items"],
+            },
+          },
+        },
+        required: ["name", "sections"],
+      },
+    },
+  },
 
   // ─── ANALYTICS & SYSTEM ───
   {
@@ -2312,7 +2351,7 @@ const WRITE_TOOLS = [
   'update_deal_stage', 'update_deal_risk_status', 'update_deal_field', 'update_build_payment',
   'create_reminder', 'update_reminder', 'delete_reminder', 'set_follow_up_date',
   'link_email_to_client', 'send_email',
-  'toggle_checklist_item', 'create_checklist_instance',
+  'toggle_checklist_item', 'create_checklist_instance', 'create_checklist_template',
   'create_client', 'delete_client',
   'create_client_note', 'update_client_note', 'delete_client_note',
   'create_deal', 'delete_deal',
@@ -2331,6 +2370,8 @@ const WRITE_TOOLS = [
   'save_memory', 'trigger_investment_report',
   // Outlook calendar
   'create_outlook_event', 'create_outlook_prep_block', 'delete_outlook_event', 'create_follow_up_block',
+  // Agreements
+  'generate_agreement', 'send_agreement_docusign',
 ];
 
 // ============================================================
@@ -3145,6 +3186,48 @@ async function executeCreateChecklistInstance(sb: any, args: any, userId: string
   }
   if (items.length) await sb.from('checklist_instance_items').insert(items);
   return { success: true, message: `Checklist "${template.name}" created with ${items.length} items.`, instance_id: instance.id };
+}
+
+async function executeCreateChecklistTemplate(sb: any, args: any, userId: string) {
+  const name = args.name;
+  const description = args.description || null;
+  const icon = args.icon || '📋';
+  const sections = args.sections || [];
+
+  if (!name) return { error: 'Template name is required.' };
+  if (!sections.length) return { error: 'At least one section with items is required.' };
+
+  // Create the template
+  const { data: template, error: tmplErr } = await sb.from('checklist_templates')
+    .insert({ name, description, icon, created_by: userId, is_active: true })
+    .select().single();
+  if (tmplErr) return { error: `Failed to create template: ${tmplErr.message}` };
+
+  let totalItems = 0;
+  for (let sIdx = 0; sIdx < sections.length; sIdx++) {
+    const sec = sections[sIdx];
+    const { data: section, error: secErr } = await sb.from('checklist_template_sections')
+      .insert({ template_id: template.id, title: sec.title, icon: sec.icon || '▶️', display_order: sIdx })
+      .select().single();
+    if (secErr) continue;
+
+    const sectionItems = (sec.items || []).map((item: any, iIdx: number) => ({
+      section_id: section.id,
+      label: typeof item === 'string' ? item : item.label,
+      is_pre_checked: item.is_pre_checked || false,
+      display_order: iIdx,
+    }));
+    if (sectionItems.length) {
+      await sb.from('checklist_template_items').insert(sectionItems);
+      totalItems += sectionItems.length;
+    }
+  }
+
+  return {
+    success: true,
+    message: `Checklist template "${name}" created with ${sections.length} sections and ${totalItems} items.`,
+    template_id: template.id,
+  };
 }
 
 // ─── ANALYTICS ───
@@ -4868,6 +4951,7 @@ async function executeTool(sb: any, name: string, args: any, userId: string): Pr
     case 'get_checklist_items': return executeGetChecklistItems(sb, args);
     case 'toggle_checklist_item': return executeToggleChecklistItem(sb, args, userId);
     case 'create_checklist_instance': return executeCreateChecklistInstance(sb, args, userId);
+    case 'create_checklist_template': return executeCreateChecklistTemplate(sb, args, userId);
     // Analytics
     case 'get_recent_activity': return executeGetRecentActivity(sb, args);
     case 'get_api_usage_stats': return executeGetApiUsageStats(sb, args);
@@ -5652,7 +5736,7 @@ You have access to 200+ specialized tools across 51 domains:
 📊 REPORTS — Client files, investment reports, report details, search by address, portfolio reviews with full content, cash flow analyses, data export.
 📝 CLIENT NOTES — Full CRUD: create, read, update, delete client notes.
 👥 ADDITIONAL CONTACTS — Add, update, remove co-borrowers/partners.
-✅ CHECKLISTS — Templates, active instances, items, toggle completion, create from template, archive/delete instances.
+✅ CHECKLISTS — Templates, active instances, items, toggle completion, create from template, create new templates from content, archive/delete instances.
 📈 ANALYTICS — Activity logs, API usage, service health, cache stats, dashboard summary, conversion funnel, pipeline velocity, commission actuals vs forecast.
 🏢 BRANDING — Branding profiles, user permissions.
 🧮 CALCULATORS — Stamp duty, LMI, loan repayments, rental yield, equity position.
@@ -5735,6 +5819,14 @@ BATCH 4 INTELLIGENCE RULES:
 23. For deal deep-dives, use get_deal_timeline and get_deal_health_score for comprehensive context.
 24. For revenue questions, use get_revenue_forecast for multi-scenario projections.
 25. When presenting engagement or health scores, use emoji indicators: 🟢 (75+), 🟡 (50-74), 🔴 (<50).
+
+AGREEMENT GENERATION RULES (CRITICAL):
+40. When the user asks to generate an agreement, you MUST first call get_agreement_templates to retrieve the available templates. Present the list to the user and ask them to choose which template to use BEFORE calling generate_agreement.
+41. Never call generate_agreement without first confirming the template selection with the user (unless they explicitly say "use the default template").
+
+CHECKLIST TEMPLATE CREATION RULES:
+42. When the user asks to create a checklist template (from pasted text, uploaded documents, or a description), use create_checklist_template — NOT create_playbook. Playbooks are for multi-step agent workflows. Checklist templates are for operational task lists.
+43. When parsing uploaded document content for checklist creation, intelligently break the content into logical sections and items. Each section should have a descriptive title and the items should be actionable tasks.
 
 EMAIL SENDING RULES:
 When the user asks you to send an email, you MUST always:
