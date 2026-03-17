@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { fetchAndGenerateBorrowingCapacityPDF } from './BorrowingCapacityPDFReport';
+import type { ScenarioPreset } from './scenarios/StrategyScenarioModeling';
 import { useState, useMemo } from 'react';
 import type { FullAssessmentResult, ServiceabilityBand, CalculationMode, TaxBreakdown } from '@/utils/borrowingCapacityCalculations';
 import { getTaxBreakdown } from '@/utils/borrowingCapacityCalculations';
