@@ -51,11 +51,12 @@ export function PortalLayout() {
   };
 
   return (
+    <PortalNotificationProvider>
     <div className="min-h-screen bg-muted/30 flex">
       {/* Sidebar - Desktop */}
       <aside className="hidden md:flex w-72 flex-col border-r border-border bg-card shadow-sm">
         {/* Logo Area */}
-        <div className="p-6 pb-4">
+        <div className="p-6 pb-4 flex items-center justify-between">
           {settings.authLogo ? (
             <img src={settings.authLogo} alt={settings.companyName} className="h-10 max-w-[200px] object-contain" />
           ) : (
