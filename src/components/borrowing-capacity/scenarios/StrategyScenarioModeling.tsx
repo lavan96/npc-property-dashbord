@@ -382,7 +382,7 @@ export function StrategyScenarioModeling({
     strategy.additional.expenseReductionPercent !== 0 ||
     strategy.additional.loanTermAdjustment !== 0 ||
     strategy.additional.dtiCapEnabled ||
-    strategy.additional.portfolioSellPropertyId !== null;
+    strategy.additional.portfolioSellPropertyIds.size > 0;
 
   const handleReset = useCallback(() => {
     setStrategy({
