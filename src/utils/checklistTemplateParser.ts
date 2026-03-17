@@ -24,6 +24,8 @@ const SECTION_ICON_MAP: Record<string, string> = {
   strategy: '💼', assessment: '📊', smsf: '🏦', property: '🏠',
   research: '🏠', shortlist: '🏠', operations: '🔹', review: '📊',
   invoic: '✍️', booking: '💼', handling: '🚫', default: '▶️',
+  marketing: '📣', finance: '💰', accounting: '🧾', legal: '⚖️',
+  depreciation: '📉', management: '🏠', 'day to day': '🔹',
 };
 
 function inferSectionIcon(title: string): string {
