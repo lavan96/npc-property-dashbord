@@ -252,24 +252,25 @@ export function StrategyScenarioModeling({
       });
     }
 
-    // 3. Portfolio Sell — remove loan servicing for sold property
-    if (strategy.additional.portfolioSellPropertyId) {
-      const soldProp = properties.find(p => p.id === strategy.additional.portfolioSellPropertyId);
-      if (soldProp) {
-        const loanServicing = soldProp.loan_repayment_amount || soldProp.monthly_interest_repayment || 0;
-        if (loanServicing > 0) {
-          adjustedCommitments -= loanServicing;
-          impacts.push({
-            label: `Sell property (remove loan servicing)`,
-            monthlySaving: loanServicing,
-            type: 'saving',
-          });
+    // 3. Portfolio Sell — remove loan servicing for sold properties (multi-select)
+    let portfolioSellSaving = 0;
+    if (strategy.additional.portfolioSellPropertyIds.size > 0) {
+      strategy.additional.portfolioSellPropertyIds.forEach(propId => {
+        const soldProp = properties.find(p => p.id === propId);
+        if (soldProp) {
+          const loanServicing = soldProp.loan_repayment_amount || soldProp.monthly_interest_repayment || 0;
+          if (loanServicing > 0) {
+            portfolioSellSaving += loanServicing;
+          }
         }
-        // If property had negative cashflow, removing it helps
-        if (soldProp.net_monthly_cashflow && soldProp.net_monthly_cashflow < 0) {
-          const negativeCF = Math.abs(soldProp.net_monthly_cashflow);
-          // The negative cashflow was already counted as a commitment, removing it above covers this
-        }
+      });
+      if (portfolioSellSaving > 0) {
+        adjustedCommitments -= portfolioSellSaving;
+        impacts.push({
+          label: `Sell ${strategy.additional.portfolioSellPropertyIds.size} property(s) (remove loan servicing)`,
+          monthlySaving: portfolioSellSaving,
+          type: 'saving',
+        });
       }
     }
 
