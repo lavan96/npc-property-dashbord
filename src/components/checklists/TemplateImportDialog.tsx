@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,7 +31,7 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [progressLabel, setProgressLabel] = useState('');
-  const mobileFileInputRef = useRef<HTMLInputElement>(null);
+  
 
   const reset = () => {
     setStep('input');
@@ -188,27 +188,26 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
               </TabsList>
 
               <TabsContent value="upload" className="mt-3">
-                {/* Hidden mobile file input as fallback */}
-                <input
-                  ref={mobileFileInputRef}
-                  id="checklist-mobile-file-input"
-                  type="file"
-                  accept=".json,.md,.markdown,.html,.htm,.txt,.pdf,.docx,.xlsx,.xls,application/json,text/markdown,text/html,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) processFile(file);
-                    if (mobileFileInputRef.current) mobileFileInputRef.current.value = '';
-                  }}
-                  className="sr-only"
-                  tabIndex={-1}
-                />
                 <div
                   {...getRootProps()}
-                  className={`border-2 border-dashed rounded-lg p-6 sm:p-8 text-center cursor-pointer transition-colors
+                  className={`relative border-2 border-dashed rounded-lg p-6 sm:p-8 text-center cursor-pointer transition-colors
                     ${isDragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/25 hover:border-primary/50'}
                     ${isProcessing ? 'pointer-events-none opacity-60' : ''}`}
                 >
                   <input {...getInputProps()} />
+                  {!isProcessing && (
+                    <input
+                      type="file"
+                      accept=".json,.md,.markdown,.html,.htm,.txt,.pdf,.docx,.xlsx,.xls,application/json,text/markdown,text/html,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) processFile(file);
+                        e.currentTarget.value = '';
+                      }}
+                      aria-label="Browse checklist template files"
+                      className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0 sm:hidden"
+                    />
+                  )}
                   {isProcessing ? (
                     <div className="space-y-3">
                       <Loader2 className="h-8 w-8 mx-auto animate-spin text-primary" />
@@ -225,16 +224,6 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
                     </>
                   )}
                 </div>
-                {/* Native label for mobile — no JS .click() needed */}
-                {!isProcessing && (
-                  <label
-                    htmlFor="checklist-mobile-file-input"
-                    className="flex items-center justify-center w-full mt-3 sm:hidden h-10 px-4 rounded-md border border-input bg-background text-sm font-medium cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors"
-                  >
-                    <Upload className="h-4 w-4 mr-2" />
-                    Browse Files
-                  </label>
-                )}
               </TabsContent>
 
               <TabsContent value="paste" className="mt-3 space-y-3">
