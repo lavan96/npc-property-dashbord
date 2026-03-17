@@ -153,7 +153,7 @@ export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', 
             <Button
               variant="outline"
               size="sm"
-              onClick={() => fetchAndGenerateBorrowingCapacityPDF(clientId, clientName || 'Client')}
+              onClick={() => fetchAndGenerateBorrowingCapacityPDF(clientId, clientName || 'Client', scenarioPresets)}
             >
               <FileText className="h-4 w-4 mr-1" />
               Export PDF
