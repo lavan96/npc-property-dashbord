@@ -1022,10 +1022,20 @@ export function AgentChatWidget() {
                   )}
                   <div className="p-3">
                     <div className="flex gap-2 items-end">
-                      <input ref={fileInputRef} id="agent-file-input" type="file" multiple accept={ACCEPTED_EXTENSIONS} onChange={handleFileSelect} className="sr-only" tabIndex={-1} />
-                      <label htmlFor="agent-file-input" className={`inline-flex items-center justify-center h-10 w-10 shrink-0 rounded-xl cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors ${loading || attachedFiles.length >= 5 ? 'pointer-events-none opacity-50' : ''}`} title="Attach files">
-                        <Paperclip className="h-4 w-4" />
-                      </label>
+                      <div className={`relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors ${loading || attachedFiles.length >= 5 || extractingFiles ? 'opacity-50' : 'hover:bg-accent hover:text-accent-foreground'}`} title="Attach files">
+                        <input
+                          ref={fileInputRef}
+                          id="agent-file-input"
+                          type="file"
+                          multiple
+                          accept={ACCEPTED_EXTENSIONS}
+                          onChange={handleFileSelect}
+                          disabled={loading || attachedFiles.length >= 5 || extractingFiles}
+                          aria-label="Attach files"
+                          className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed"
+                        />
+                        <Paperclip className="pointer-events-none h-4 w-4" />
+                      </div>
                        <Textarea ref={textareaRef} value={input} onChange={(e) => {
                         setInput(e.target.value);
                         const ta = e.target;
