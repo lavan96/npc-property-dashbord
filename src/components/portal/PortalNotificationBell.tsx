@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Bell, CheckCircle, Info, AlertTriangle, ArrowRight, BellOff } from 'lucide-react';
+import { Bell, CheckCircle, Info, AlertTriangle, ArrowRight, BellOff, CheckCheck, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { usePortalNotificationsData, usePortalUpdateData } from '@/hooks/usePortalData';
+import { usePortalNotifications } from '@/contexts/PortalNotificationContext';
 import { formatDistanceToNow } from 'date-fns';
 
 const typeIcons: Record<string, React.ElementType> = {
@@ -30,25 +30,8 @@ const typeStyles: Record<string, string> = {
 
 export function PortalNotificationBell() {
   const navigate = useNavigate();
-  const { data, isLoading } = usePortalNotificationsData();
-  const updateMutation = usePortalUpdateData();
-
-  const notifications = (data?.notifications || []) as any[];
-  const unreadCount = notifications.filter((n: any) => !n.is_read).length;
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = usePortalNotifications();
   const recentNotifications = notifications.slice(0, 10);
-
-  const markAsRead = async (id: string) => {
-    try {
-      await updateMutation.mutateAsync({
-        operation: 'update',
-        table: 'client_portal_notifications',
-        id,
-        data: { is_read: true, read_at: new Date().toISOString() },
-      });
-    } catch {
-      // Silently fail
-    }
-  };
 
   const handleClick = (notif: any) => {
     if (!notif.is_read) markAsRead(notif.id);
@@ -73,11 +56,24 @@ export function PortalNotificationBell() {
       <DropdownMenuContent align="end" className="w-80 bg-popover">
         <DropdownMenuLabel className="flex items-center justify-between">
           <span>Notifications</span>
-          {unreadCount > 0 && (
-            <Badge variant="secondary" className="text-xs">
-              {unreadCount} new
-            </Badge>
-          )}
+          <div className="flex items-center gap-2">
+            {unreadCount > 0 && (
+              <>
+                <Badge variant="secondary" className="text-xs">
+                  {unreadCount} new
+                </Badge>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+                  onClick={(e) => { e.stopPropagation(); markAllAsRead(); }}
+                >
+                  <CheckCheck className="h-3 w-3 mr-1" />
+                  Read all
+                </Button>
+              </>
+            )}
+          </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
 
@@ -88,7 +84,7 @@ export function PortalNotificationBell() {
           </div>
         ) : (
           <ScrollArea className="h-[320px]">
-            {recentNotifications.map((notif: any) => {
+            {recentNotifications.map((notif) => {
               const TypeIcon = typeIcons[notif.type] || Info;
               const style = typeStyles[notif.type] || typeStyles.info;
 

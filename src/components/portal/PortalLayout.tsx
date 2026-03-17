@@ -212,5 +212,6 @@ export function PortalLayout() {
       {/* Onboarding Tour */}
       <PortalOnboardingTour />
     </div>
+    </PortalNotificationProvider>
   );
 }
