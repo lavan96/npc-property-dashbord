@@ -1343,6 +1343,14 @@ export default function EmailCopilot() {
       if (error) throw error;
 
       toast.success('Email sent successfully!');
+      
+      // Add bell notification for composed email
+      addNotification({
+        type: 'email_reply_sent',
+        title: 'Email Sent',
+        message: `Email sent to ${composeEmail.to} — ${composeEmail.subject || '(No Subject)'}`
+      });
+
       setShowComposeModal(false);
       setComposeEmail({ to: '', subject: '', body: '', cc: '', bcc: '' });
       setComposeAttachments([]);
