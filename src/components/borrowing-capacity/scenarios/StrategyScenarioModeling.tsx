@@ -424,7 +424,7 @@ export function StrategyScenarioModeling({
     // Reset all strategies and show the preset's result as the "base" comparison
     handleReset();
     // Apply the preset's inputs to the main calculator
-    onApplyScenario?.(preset.adjustedInputs);
+    onApplyScenario?.(preset.adjustedInputs, preset.accessibleEquity ?? 0);
   }, [handleReset, onApplyScenario]);
 
   const toggleConsolidation = (id: string) => {
