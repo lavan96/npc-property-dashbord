@@ -146,6 +146,9 @@ export function StrategyScenarioModeling({
   onPresetsChange,
 }: StrategyScenarioModelingProps) {
   const [strategy, setStrategy] = useState<StrategyState>(DEFAULT_STRATEGY);
+  const [presets, setPresets] = useState<ScenarioPreset[]>(externalPresets || []);
+  const [scenarioName, setScenarioName] = useState('');
+  const [showSaveInput, setShowSaveInput] = useState(false);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     consolidation: true,
     refinance: true,
@@ -158,6 +161,24 @@ export function StrategyScenarioModeling({
     stampDuty: false,
     portfolioPlay: false,
   });
+
+  // Auto-save base preset on first render
+  useEffect(() => {
+    if (presets.length === 0) {
+      const basePreset: ScenarioPreset = {
+        id: 'base',
+        name: 'Base (Original)',
+        isBase: true,
+        createdAt: new Date().toISOString(),
+        adjustedInputs: { ...baseInputs },
+        result: baseResult,
+      };
+      const updated = [basePreset];
+      setPresets(updated);
+      onPresetsChange?.(updated);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const toggleSection = (key: string) => {
     setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
