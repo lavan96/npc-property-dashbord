@@ -31,7 +31,7 @@ import { Label } from '@/components/ui/label';
 import { IncomeSection } from './sections/IncomeSection';
 import { ExpensesSection } from './sections/ExpensesSection';
 import { LiabilitiesSection } from './sections/LiabilitiesSection';
-import { ProposedLoanSection } from './sections/ProposedLoanSection';
+import { ProposedLoanSection, type ProposedRentalIncomeData } from './sections/ProposedLoanSection';
 import { ResultsPanel } from './ResultsPanel';
 import { ScenarioModeling } from './ScenarioModeling';
 import { CapacityHistoryChart } from './CapacityHistoryChart';
@@ -163,6 +163,15 @@ export function BorrowingCapacityModal({
   const [isFirstHomeBuyer, setIsFirstHomeBuyer] = useState(false);
   const [lmiEstimate, setLmiEstimate] = useState<LmiEstimate | null>(null);
   
+  // === PROPOSED RENTAL INCOME STATE ===
+  const [proposedRentalIncome, setProposedRentalIncome] = useState<ProposedRentalIncomeData>({
+    weeklyRent: 0,
+    frequency: 'weekly',
+    inputAmount: 0,
+    shadingRate: 0.8,
+    vacancyRate: 0,
+    interestOnlyOffset: 0,
+  });
   // === TWO-WAY SYNC STATE ===
   // Local overrides for income items (keyed by breakdown item id)
   const [incomeOverrides, setIncomeOverrides] = useState<Map<string, number>>(new Map());
@@ -326,8 +335,26 @@ export function BorrowingCapacityModal({
     return { negativePropertyCashFlows: flows, totalNegativeCashFlows: total };
   }, [clientData]);
 
-  const totalGrossIncome = incomeBreakdown.reduce((sum, item) => sum + item.grossAmount, 0);
-  const totalShadedIncome = incomeBreakdown.reduce((sum, item) => sum + item.shadedAmount, 0);
+  const totalGrossIncomeBase = incomeBreakdown.reduce((sum, item) => sum + item.grossAmount, 0);
+  const totalShadedIncomeBase = incomeBreakdown.reduce((sum, item) => sum + item.shadedAmount, 0);
+
+  // Compute proposed rental income net assessable amount
+  const proposedRentalNetAssessable = useMemo(() => {
+    const ri = proposedRentalIncome;
+    if (!ri.inputAmount || ri.inputAmount <= 0) return 0;
+    const freqMultiplier = ri.frequency === 'weekly' ? 52 : ri.frequency === 'monthly' ? 12 : 1;
+    const grossAnnual = ri.inputAmount * freqMultiplier;
+    const afterVacancy = grossAnnual * (1 - ri.vacancyRate / 100);
+    const afterShading = afterVacancy * ri.shadingRate;
+    const ioOffsetAnnual = ri.interestOnlyOffset * 12;
+    return Math.max(0, afterShading - ioOffsetAnnual);
+  }, [proposedRentalIncome]);
+
+  // Include proposed rental income in totals sent to the engine
+  const totalGrossIncome = totalGrossIncomeBase + (proposedRentalIncome.inputAmount > 0
+    ? (proposedRentalIncome.inputAmount * (proposedRentalIncome.frequency === 'weekly' ? 52 : proposedRentalIncome.frequency === 'monthly' ? 12 : 1))
+    : 0);
+  const totalShadedIncome = totalShadedIncomeBase + proposedRentalNetAssessable;
 
   // Process liabilities breakdown with overrides
   const liabilitiesBreakdown: LiabilityBreakdownItem[] = useMemo(() => {
@@ -506,6 +533,10 @@ export function BorrowingCapacityModal({
       }
       if (assumptions.isFirstHomeBuyer != null) {
         setIsFirstHomeBuyer(!!assumptions.isFirstHomeBuyer);
+      }
+      // Restore proposed rental income
+      if (assumptions.proposedRentalIncome) {
+        setProposedRentalIncome(assumptions.proposedRentalIncome);
       }
     }
 
@@ -699,7 +730,7 @@ export function BorrowingCapacityModal({
     if (open && clientData) {
       handleCalculate();
     }
-  }, [open, clientData, effectiveExpenses, interestRate, loanTermYears, calculationMode, dtiCapEnabled, dtiCapLimit, effectiveBufferRate, incomeOverrides, liabilityOverrides, lmiMode, lmiEstimate]);
+  }, [open, clientData, effectiveExpenses, interestRate, loanTermYears, calculationMode, dtiCapEnabled, dtiCapLimit, effectiveBufferRate, incomeOverrides, liabilityOverrides, lmiMode, lmiEstimate, proposedRentalNetAssessable]);
 
   const headerContent = (
     <div className="flex items-center justify-between flex-wrap gap-2">
@@ -747,6 +778,7 @@ export function BorrowingCapacityModal({
                 lmiDepositAmount,
                 isFirstHomeBuyer,
               } : {}),
+              ...(proposedRentalIncome.inputAmount > 0 ? { proposedRentalIncome } : {}),
             });
             toast.success('Assessment saved');
           }}
@@ -817,6 +849,8 @@ export function BorrowingCapacityModal({
         onProposedLoanChange={setProposedLoanAmount}
         onInterestRateChange={setInterestRate}
         onLoanTermChange={setLoanTermYears}
+        proposedRentalIncome={proposedRentalIncome}
+        onProposedRentalIncomeChange={setProposedRentalIncome}
       />
 
       {/* LMI Section */}

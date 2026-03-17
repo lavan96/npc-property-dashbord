@@ -32,6 +32,14 @@ interface BorrowingCapacityOverrides {
   lmiPropertyValue?: number;
   lmiDepositAmount?: number;
   isFirstHomeBuyer?: boolean;
+  // Proposed rental income (next purchase)
+  proposedRentalIncome?: {
+    inputAmount: number;
+    frequency: string;
+    shadingRate: number;
+    vacancyRate: number;
+    interestOnlyOffset: number;
+  };
 }
 
 interface UseBorrowingCapacityOptions {
