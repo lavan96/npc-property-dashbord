@@ -168,7 +168,22 @@ serve(async (req) => {
             metadata: { request_id: result.id, client_id: clientId, request_type: payload.request_type },
           });
         } catch (notifErr) {
-          console.error('Failed to create notification:', notifErr);
+          console.error('Failed to create internal notification:', notifErr);
+        }
+
+        // Create portal notification confirming request submission
+        try {
+          const typeLabel = payload.request_type.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+          await supabase.from('client_portal_notifications').insert({
+            client_id: clientId,
+            title: 'Report Request Submitted',
+            message: `Your ${typeLabel} request has been submitted. Our team will review it shortly.${payload.property_address ? ' Property: ' + payload.property_address : ''}`,
+            type: 'success',
+            category: 'document',
+            action_url: '/client/reports',
+          });
+        } catch (notifErr) {
+          console.error('Failed to create portal notification:', notifErr);
         }
 
         return new Response(

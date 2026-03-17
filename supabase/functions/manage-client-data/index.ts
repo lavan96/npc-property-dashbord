@@ -226,6 +226,25 @@ serve(async (req) => {
             console.warn('Failed to sync employment to income source:', syncError);
           }
         }
+
+        // ── Portal Notification: Report published to client ──
+        if (!error && table === 'client_portal_reports' && clientId && result) {
+          try {
+            const reportTitle = (isArray ? result[0] : result)?.report_title || 'New Report';
+            const clientVisibleNotes = (isArray ? result[0] : result)?.client_visible_notes;
+            await supabase.from('client_portal_notifications').insert({
+              client_id: clientId,
+              title: 'New Report Available',
+              message: `Your advisor has published "${reportTitle}" to your portal.${clientVisibleNotes ? ' Note: ' + clientVisibleNotes : ''}`,
+              type: 'info',
+              category: 'document',
+              action_url: '/client/reports',
+            });
+            console.log(`[manage-client-data] Portal notification created for report publish to client ${clientId}`);
+          } catch (notifErr) {
+            console.warn('[manage-client-data] Failed to create portal notification for report:', notifErr);
+          }
+        }
         break;
       }
 
