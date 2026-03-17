@@ -1118,6 +1118,16 @@ export function BorrowingCapacityModal({
                   loan_repayment_amount: Number(p.loan_repayment_amount) || 0,
                   net_monthly_cashflow: Number(p.net_monthly_cashflow) || 0,
                 }))}
+                savedPresets={scenarioPresets}
+                onPresetsChange={setScenarioPresets}
+                onApplyScenario={(inputs) => {
+                  // Apply scenario inputs to the main calculator
+                  setInterestRate(inputs.interestRate);
+                  setLoanTermYears(inputs.loanTermYears);
+                  // Switch to calculator tab to show the result
+                  setActiveTab('calculator');
+                  toast.success('Scenario applied to calculator');
+                }}
               />
             ) : (
               <div className="text-center text-muted-foreground py-12">
