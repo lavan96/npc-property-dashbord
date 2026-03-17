@@ -730,7 +730,7 @@ export function BorrowingCapacityModal({
     if (open && clientData) {
       handleCalculate();
     }
-  }, [open, clientData, effectiveExpenses, interestRate, loanTermYears, calculationMode, dtiCapEnabled, dtiCapLimit, effectiveBufferRate, incomeOverrides, liabilityOverrides, lmiMode, lmiEstimate]);
+  }, [open, clientData, effectiveExpenses, interestRate, loanTermYears, calculationMode, dtiCapEnabled, dtiCapLimit, effectiveBufferRate, incomeOverrides, liabilityOverrides, lmiMode, lmiEstimate, proposedRentalNetAssessable]);
 
   const headerContent = (
     <div className="flex items-center justify-between flex-wrap gap-2">
