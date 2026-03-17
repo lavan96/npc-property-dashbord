@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { secureStorageUpload } from '@/hooks/useSecureStorage';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
+import { useNotifications } from '@/contexts/NotificationsContext';
 import { PDFDocument, rgb, StandardFonts, PDFPage, PDFFont } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import { fetchGlobalReportSettings, type GlobalReportSettings } from '@/hooks/useGlobalReportSettings';
