@@ -1255,6 +1255,14 @@ export default function EmailCopilot() {
         entityName: selectedEmail.subject,
         metadata: { recipient: replyTo }
       });
+
+      // Add bell notification for email reply
+      addNotification({
+        type: 'email_reply_sent',
+        title: 'Email Reply Sent',
+        message: `Reply sent to ${replyTo} — ${selectedEmail.subject}`,
+        entityId: selectedEmail.id
+      });
       
       // Update email status to 'replied' so it shows badge and remains visible in thread
       await supabase
