@@ -395,6 +395,7 @@ export function PortfolioAnalysisPDFGenerator({
   const [analysisData, setAnalysisData] = useState<PortfolioAnalysisData | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const { addNotification } = useNotifications();
 
   const generateAnalysis = async () => {
     setIsGenerating(true);
