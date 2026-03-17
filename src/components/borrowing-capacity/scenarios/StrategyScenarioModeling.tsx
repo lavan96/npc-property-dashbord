@@ -21,6 +21,9 @@ import {
   ChevronDown,
   Zap,
   CheckCircle2,
+  Save,
+  FolderOpen,
+  Trash2,
 } from 'lucide-react';
 import {
   Collapsible,
