@@ -1109,7 +1109,7 @@ export function BorrowingCapacityModal({
                   id: p.id,
                   address: p.address || '',
                   property_type: p.property_type || '',
-                  current_value: Number(p.current_value) || 0,
+                  current_value: Number(p.value) || Number(p.current_value) || 0,
                   loan_remaining: Number(p.loan_remaining) || 0,
                   monthly_interest_repayment: Number(p.monthly_interest_repayment) || 0,
                   loan_repayment_amount: Number(p.loan_repayment_amount) || 0,
