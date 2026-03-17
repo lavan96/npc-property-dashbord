@@ -868,6 +868,7 @@ Deno.serve(async (req) => {
         lmiPropertyValue: overrides?.lmiPropertyValue || null,
         lmiDepositAmount: overrides?.lmiDepositAmount || null,
         isFirstHomeBuyer: overrides?.isFirstHomeBuyer || false,
+        proposedRentalIncome: overrides?.proposedRentalIncome || null,
       },
       lmiAmount: overrides?.lmiAmount || 0,
       lmiMode: overrides?.lmiMode || 'none',
