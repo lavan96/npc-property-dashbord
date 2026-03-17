@@ -163,6 +163,15 @@ export function BorrowingCapacityModal({
   const [isFirstHomeBuyer, setIsFirstHomeBuyer] = useState(false);
   const [lmiEstimate, setLmiEstimate] = useState<LmiEstimate | null>(null);
   
+  // === PROPOSED RENTAL INCOME STATE ===
+  const [proposedRentalIncome, setProposedRentalIncome] = useState<ProposedRentalIncomeData>({
+    weeklyRent: 0,
+    frequency: 'weekly',
+    inputAmount: 0,
+    shadingRate: 0.8,
+    vacancyRate: 0,
+    interestOnlyOffset: 0,
+  });
   // === TWO-WAY SYNC STATE ===
   // Local overrides for income items (keyed by breakdown item id)
   const [incomeOverrides, setIncomeOverrides] = useState<Map<string, number>>(new Map());
