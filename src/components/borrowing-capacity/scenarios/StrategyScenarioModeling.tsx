@@ -34,6 +34,10 @@ import {
   type BorrowingCapacityResult,
 } from '@/utils/borrowingCapacityCalculations';
 import {
+  estimateLMI,
+  calculateLVR,
+} from '@/utils/lmiCalculations';
+import {
   AdditionalStrategyLevers,
   DEFAULT_ADDITIONAL_STRATEGY,
   type AdditionalStrategyState,
@@ -288,16 +292,37 @@ export function StrategyScenarioModeling({
     const prop = equityReleaseProperties.find(p => p.id === strategy.equityReleasePropertyId);
     if (!prop) return null;
     const maxLoan = prop.current_value * strategy.equityReleaseTargetLVR;
-    const accessibleEquity = Math.max(0, maxLoan - prop.loan_remaining);
+    const grossAccessibleEquity = Math.max(0, maxLoan - prop.loan_remaining);
     const currentLVR = prop.current_value > 0 ? (prop.loan_remaining / prop.current_value) * 100 : 0;
     const currentEquity = prop.current_value - prop.loan_remaining;
+    const targetLVRPercent = strategy.equityReleaseTargetLVR * 100;
+
+    // Calculate LMI if target LVR > 80%
+    let lmiEstimate = null;
+    let lmiAmount = 0;
+    if (targetLVRPercent > 80 && grossAccessibleEquity > 0) {
+      const newLoanAmount = maxLoan; // total loan after equity release
+      lmiEstimate = estimateLMI({
+        propertyValue: prop.current_value,
+        depositAmount: prop.current_value - newLoanAmount,
+        loanAmount: newLoanAmount,
+        isFirstHomeBuyer: false,
+      });
+      lmiAmount = lmiEstimate.lmiAmount;
+    }
+
+    const accessibleEquity = Math.max(0, grossAccessibleEquity - lmiAmount);
+
     return {
       property: prop,
       currentLVR,
       currentEquity,
-      targetLVR: strategy.equityReleaseTargetLVR * 100,
+      targetLVR: targetLVRPercent,
+      grossAccessibleEquity,
       accessibleEquity,
       maxLoan,
+      lmiEstimate,
+      lmiAmount,
     };
   }, [strategy.equityReleaseEnabled, strategy.equityReleasePropertyId, strategy.equityReleaseTargetLVR, equityReleaseProperties]);
 
@@ -654,14 +679,26 @@ export function StrategyScenarioModeling({
                           <span className="text-muted-foreground">Max Loan at {equityRelease.targetLVR}% LVR</span>
                           <span>{formatCurrency(equityRelease.maxLoan)}</span>
                         </div>
+                        {equityRelease.lmiAmount > 0 && (
+                          <>
+                            <div className="flex justify-between text-amber-600">
+                              <span>Gross Accessible Equity</span>
+                              <span>{formatCurrency(equityRelease.grossAccessibleEquity)}</span>
+                            </div>
+                            <div className="flex justify-between text-destructive">
+                              <span>Less: Est. LMI ({equityRelease.lmiEstimate?.estimatedRate.toFixed(2)}%)</span>
+                              <span>-{formatCurrency(equityRelease.lmiAmount)}</span>
+                            </div>
+                          </>
+                        )}
                         <div className="flex justify-between font-semibold text-emerald-600">
-                          <span>Accessible Equity</span>
+                          <span>Net Accessible Equity</span>
                           <span>{formatCurrency(equityRelease.accessibleEquity)}</span>
                         </div>
-                        {strategy.equityReleaseTargetLVR > 0.80 && (
-                          <p className="text-xs text-amber-600 mt-1">
-                            ⚠ LVR above 80% may attract Lenders Mortgage Insurance (LMI)
-                          </p>
+                        {equityRelease.lmiAmount > 0 && (
+                          <div className="p-2 rounded bg-amber-500/10 border border-amber-500/20 text-xs text-amber-700 dark:text-amber-400 mt-1">
+                            ⚠ LVR of {equityRelease.targetLVR}% triggers LMI of {formatCurrency(equityRelease.lmiAmount)}, reducing usable equity by the same amount.
+                          </div>
                         )}
                       </div>
                     </div>
