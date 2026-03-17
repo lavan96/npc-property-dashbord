@@ -174,6 +174,7 @@ export function StrategyScenarioModeling({
         createdAt: new Date().toISOString(),
         adjustedInputs: { ...baseInputs },
         result: baseResult,
+        accessibleEquity: 0,
       };
       const updated = [basePreset];
       setPresets(updated);
