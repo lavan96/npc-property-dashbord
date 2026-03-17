@@ -1084,6 +1084,8 @@ export function BorrowingCapacityModal({
                 loanTermYears={loanTermYears}
                 lmiMode={lmiMode}
                 lmiEstimate={lmiEstimate}
+                scenarioPresets={scenarioPresets}
+                activeScenarioName={activeScenario?.name}
               />
             </div>
           </ScrollArea>
