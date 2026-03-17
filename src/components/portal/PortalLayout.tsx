@@ -137,6 +137,7 @@ export function PortalLayout() {
           <span className="font-bold text-foreground">Client Portal</span>
         </div>
         <div className="flex items-center gap-2">
+          <PortalNotificationBell />
           <Avatar className="h-8 w-8 border border-primary/20">
             <AvatarFallback className="bg-primary/10 text-primary font-semibold text-xs">
               {getInitials(displayName)}
