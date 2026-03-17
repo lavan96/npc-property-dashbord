@@ -713,6 +713,45 @@ const TOOLS: any[] = [
       parameters: { type: "object", properties: { template_id: { type: "string", description: "UUID of the template" } }, required: ["template_id"] },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "create_checklist_template",
+      description: "Create a new checklist template with sections and items from structured or unstructured text content (e.g., bullet points, numbered lists, paragraphs, markdown). Use when the user wants to create a checklist template from pasted content, uploaded document text, or a description. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Name for the new checklist template" },
+          description: { type: "string", description: "Optional description of the template" },
+          icon: { type: "string", description: "Emoji icon for the template (default: 📋)" },
+          sections: {
+            type: "array",
+            description: "Array of sections, each with a title and items array",
+            items: {
+              type: "object",
+              properties: {
+                title: { type: "string", description: "Section title" },
+                icon: { type: "string", description: "Section emoji icon" },
+                items: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      label: { type: "string", description: "Checklist item text" },
+                      is_pre_checked: { type: "boolean", description: "Whether this item starts checked (default: false)" },
+                    },
+                    required: ["label"],
+                  },
+                },
+              },
+              required: ["title", "items"],
+            },
+          },
+        },
+        required: ["name", "sections"],
+      },
+    },
+  },
 
   // ─── ANALYTICS & SYSTEM ───
   {
