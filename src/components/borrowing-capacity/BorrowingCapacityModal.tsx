@@ -534,6 +534,10 @@ export function BorrowingCapacityModal({
       if (assumptions.isFirstHomeBuyer != null) {
         setIsFirstHomeBuyer(!!assumptions.isFirstHomeBuyer);
       }
+      // Restore proposed rental income
+      if (assumptions.proposedRentalIncome) {
+        setProposedRentalIncome(assumptions.proposedRentalIncome);
+      }
     }
 
     // Restore LMI amount from assessment columns
