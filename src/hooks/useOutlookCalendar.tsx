@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useToast } from '@/hooks/use-toast';
+import { useNotifications } from '@/contexts/NotificationsContext';
 
 export interface OutlookEvent {
   id: string;
