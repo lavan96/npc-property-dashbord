@@ -778,6 +778,7 @@ export function BorrowingCapacityModal({
                 lmiDepositAmount,
                 isFirstHomeBuyer,
               } : {}),
+              ...(proposedRentalIncome.inputAmount > 0 ? { proposedRentalIncome } : {}),
             });
             toast.success('Assessment saved');
           }}
