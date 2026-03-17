@@ -327,7 +327,34 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         }
         break;
       case 'report_request':
+      case 'portal_report_requested':
         navigate('/report-requests');
+        break;
+      case 'agreement_generated':
+        if (notification.entityId) {
+          navigate(`/clients?highlight=${notification.entityId}`);
+        }
+        break;
+      case 'new_ghl_contact':
+        if (notification.entityId) {
+          navigate(`/clients?highlight=${notification.entityId}`);
+        } else {
+          navigate('/clients');
+        }
+        break;
+      case 'new_marketing_lead':
+        if (notification.entityId) {
+          navigate(`/clients?highlight=${notification.entityId}`);
+        } else {
+          navigate('/marketing-analytics');
+        }
+        break;
+      case 'client_reminder_upcoming':
+        if (notification.entityId) {
+          navigate(`/clients?highlight=${notification.entityId}`);
+        } else {
+          navigate('/reminders');
+        }
         break;
       default:
         break;
