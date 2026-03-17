@@ -16,7 +16,6 @@ export function useEmailNotifications({
   soundEnabled = true,
   browserNotificationsEnabled = true
 }: EmailNotificationOptions = {}) {
-  const { addNotification } = useNotifications();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const notificationPermissionRef = useRef<NotificationPermission>('default');
 
