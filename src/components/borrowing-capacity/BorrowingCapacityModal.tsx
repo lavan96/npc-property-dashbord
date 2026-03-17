@@ -1163,7 +1163,7 @@ export function BorrowingCapacityModal({
                 }))}
                 savedPresets={scenarioPresets}
                 onPresetsChange={setScenarioPresets}
-                onApplyScenario={(inputs) => {
+                onApplyScenario={(inputs, accessibleEquity) => {
                   // Find matching preset or create an ad-hoc one
                   const matchingPreset = scenarioPresets.find(
                     p => !p.isBase && p.adjustedInputs === inputs
@@ -1175,6 +1175,7 @@ export function BorrowingCapacityModal({
                     createdAt: new Date().toISOString(),
                     adjustedInputs: { ...inputs },
                     result: result!,
+                    accessibleEquity: accessibleEquity ?? 0,
                   };
                   setActiveScenario(scenarioPreset);
                   // Apply the scenario values to calculator state
