@@ -108,7 +108,7 @@ interface StrategyScenarioModelingProps {
   baseResult: BorrowingCapacityResult;
   liabilities: LiabilityItem[];
   properties: PropertyItem[];
-  onApplyScenario?: (inputs: BorrowingCapacityInput) => void;
+  onApplyScenario?: (inputs: BorrowingCapacityInput, accessibleEquity?: number) => void;
   savedPresets?: ScenarioPreset[];
   onPresetsChange?: (presets: ScenarioPreset[]) => void;
 }
