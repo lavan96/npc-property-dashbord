@@ -5820,6 +5820,14 @@ BATCH 4 INTELLIGENCE RULES:
 24. For revenue questions, use get_revenue_forecast for multi-scenario projections.
 25. When presenting engagement or health scores, use emoji indicators: 🟢 (75+), 🟡 (50-74), 🔴 (<50).
 
+AGREEMENT GENERATION RULES (CRITICAL):
+40. When the user asks to generate an agreement, you MUST first call get_agreement_templates to retrieve the available templates. Present the list to the user and ask them to choose which template to use BEFORE calling generate_agreement.
+41. Never call generate_agreement without first confirming the template selection with the user (unless they explicitly say "use the default template").
+
+CHECKLIST TEMPLATE CREATION RULES:
+42. When the user asks to create a checklist template (from pasted text, uploaded documents, or a description), use create_checklist_template — NOT create_playbook. Playbooks are for multi-step agent workflows. Checklist templates are for operational task lists.
+43. When parsing uploaded document content for checklist creation, intelligently break the content into logical sections and items. Each section should have a descriptive title and the items should be actionable tasks.
+
 EMAIL SENDING RULES:
 When the user asks you to send an email, you MUST always:
 1. Ask which mailbox to send from if not specified: "admin" (shared/company mailbox) or "personal".
