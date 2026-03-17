@@ -55,8 +55,7 @@ serve(async (req) => {
     }
 
     if (!dueTasks || dueTasks.length === 0) {
-      console.log('[agent-task-runner] No tasks due');
-      return new Response(JSON.stringify({ success: true, processed: 0 }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      console.log('[agent-task-runner] No scheduled tasks due');
     }
 
     console.log(`[agent-task-runner] ${dueTasks.length} task(s) due`);
