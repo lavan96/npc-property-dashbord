@@ -99,6 +99,8 @@ export interface ScenarioPreset {
   createdAt: string;
   adjustedInputs: BorrowingCapacityInput;
   result: BorrowingCapacityResult;
+  /** Accessible equity from equity release lever (informational capital, not serviceability) */
+  accessibleEquity?: number;
 }
 
 interface StrategyScenarioModelingProps {
@@ -106,7 +108,7 @@ interface StrategyScenarioModelingProps {
   baseResult: BorrowingCapacityResult;
   liabilities: LiabilityItem[];
   properties: PropertyItem[];
-  onApplyScenario?: (inputs: BorrowingCapacityInput) => void;
+  onApplyScenario?: (inputs: BorrowingCapacityInput, accessibleEquity?: number) => void;
   savedPresets?: ScenarioPreset[];
   onPresetsChange?: (presets: ScenarioPreset[]) => void;
 }
@@ -172,6 +174,7 @@ export function StrategyScenarioModeling({
         createdAt: new Date().toISOString(),
         adjustedInputs: { ...baseInputs },
         result: baseResult,
+        accessibleEquity: 0,
       };
       const updated = [basePreset];
       setPresets(updated);
@@ -402,6 +405,7 @@ export function StrategyScenarioModeling({
       createdAt: new Date().toISOString(),
       adjustedInputs: { ...scenarioInputs },
       result: scenarioResult,
+      accessibleEquity: equityRelease?.accessibleEquity ?? 0,
     };
     const updated = [...presets, newPreset];
     setPresets(updated);
@@ -420,7 +424,7 @@ export function StrategyScenarioModeling({
     // Reset all strategies and show the preset's result as the "base" comparison
     handleReset();
     // Apply the preset's inputs to the main calculator
-    onApplyScenario?.(preset.adjustedInputs);
+    onApplyScenario?.(preset.adjustedInputs, preset.accessibleEquity ?? 0);
   }, [handleReset, onApplyScenario]);
 
   const toggleConsolidation = (id: string) => {
@@ -1090,7 +1094,7 @@ export function StrategyScenarioModeling({
                     <Button
                       size="sm"
                       className="flex-1"
-                      onClick={() => onApplyScenario(scenarioInputs)}
+                      onClick={() => onApplyScenario(scenarioInputs, equityRelease?.accessibleEquity ?? 0)}
                     >
                       <Zap className="h-3.5 w-3.5 mr-1.5" />
                       Apply to Calculator
