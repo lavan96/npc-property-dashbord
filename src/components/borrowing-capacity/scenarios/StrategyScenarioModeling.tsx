@@ -34,6 +34,10 @@ import {
   type BorrowingCapacityResult,
 } from '@/utils/borrowingCapacityCalculations';
 import {
+  estimateLMI,
+  calculateLVR,
+} from '@/utils/lmiCalculations';
+import {
   AdditionalStrategyLevers,
   DEFAULT_ADDITIONAL_STRATEGY,
   type AdditionalStrategyState,
