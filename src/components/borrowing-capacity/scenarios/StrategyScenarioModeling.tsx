@@ -389,9 +389,39 @@ export function StrategyScenarioModeling({
       ...DEFAULT_STRATEGY,
       consolidatedLiabilities: new Set(),
       refinancedToIO: new Set(),
-      additional: { ...DEFAULT_ADDITIONAL_STRATEGY },
+      additional: { ...DEFAULT_ADDITIONAL_STRATEGY, portfolioSellPropertyIds: new Set() },
     });
   }, []);
+
+  const handleSavePreset = useCallback(() => {
+    const name = scenarioName.trim() || `Scenario ${presets.length}`;
+    const newPreset: ScenarioPreset = {
+      id: `preset-${Date.now()}`,
+      name,
+      isBase: false,
+      createdAt: new Date().toISOString(),
+      adjustedInputs: { ...scenarioInputs },
+      result: scenarioResult,
+    };
+    const updated = [...presets, newPreset];
+    setPresets(updated);
+    onPresetsChange?.(updated);
+    setScenarioName('');
+    setShowSaveInput(false);
+  }, [scenarioName, scenarioInputs, scenarioResult, presets, onPresetsChange]);
+
+  const handleDeletePreset = useCallback((id: string) => {
+    const updated = presets.filter(p => p.id !== id);
+    setPresets(updated);
+    onPresetsChange?.(updated);
+  }, [presets, onPresetsChange]);
+
+  const handleLoadPreset = useCallback((preset: ScenarioPreset) => {
+    // Reset all strategies and show the preset's result as the "base" comparison
+    handleReset();
+    // Apply the preset's inputs to the main calculator
+    onApplyScenario?.(preset.adjustedInputs);
+  }, [handleReset, onApplyScenario]);
 
   const toggleConsolidation = (id: string) => {
     setStrategy(prev => {
