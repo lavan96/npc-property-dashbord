@@ -108,10 +108,48 @@ serve(async (req) => {
     }
 
     // Validate operation
-    if (!['update', 'insert'].includes(operation)) {
+    if (!['update', 'insert', 'bulk_mark_read'].includes(operation)) {
       return new Response(
         JSON.stringify({ error: `Operation '${operation}' is not allowed for portal users`, success: false }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Bulk mark notifications as read
+    if (operation === 'bulk_mark_read') {
+      if (table !== 'client_portal_notifications') {
+        return new Response(
+          JSON.stringify({ error: 'bulk_mark_read only allowed for notifications', success: false }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const notificationIds: string[] = payload?.notification_ids || [];
+      if (notificationIds.length === 0) {
+        return new Response(
+          JSON.stringify({ success: true, data: { updated: 0 } }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data: result, error } = await supabase
+        .from('client_portal_notifications')
+        .update({ is_read: true, read_at: new Date().toISOString() })
+        .eq('client_id', clientId)
+        .in('id', notificationIds)
+        .eq('is_read', false)
+        .select('id');
+
+      if (error) {
+        return new Response(
+          JSON.stringify({ error: error.message, success: false }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, data: { updated: result?.length || 0 } }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
