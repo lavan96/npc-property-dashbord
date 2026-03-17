@@ -1,4 +1,4 @@
-import { Bell, Check, CheckCheck, Trash2, FileText, AlertCircle, Info, Phone, CalendarPlus, CalendarClock, CalendarX, Clock, AlarmClock, PhoneMissed, Mail, Send, FileCheck, FileClock, FileX, RefreshCw, Archive, ArchiveRestore, Loader2, UserPlus, UserCheck, Wallet, FileSpreadsheet, Download, Share2, ShieldCheck, UserCog, Wrench, DatabaseZap, MessageSquare } from 'lucide-react';
+import { Bell, Check, CheckCheck, Trash2, FileText, AlertCircle, Info, Phone, CalendarPlus, CalendarClock, CalendarX, Clock, AlarmClock, PhoneMissed, Mail, Send, FileCheck, FileClock, FileX, RefreshCw, Archive, ArchiveRestore, Loader2, UserPlus, UserCheck, Wallet, FileSpreadsheet, Download, Share2, ShieldCheck, UserCog, Wrench, DatabaseZap, MessageSquare, FileSignature, Contact, Megaphone, ClockAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
