@@ -90,11 +90,25 @@ const DEFAULT_STRATEGY: StrategyState = {
   additional: { ...DEFAULT_ADDITIONAL_STRATEGY },
 };
 
+// ── Scenario Preset Types ──────────────────────────────
+
+export interface ScenarioPreset {
+  id: string;
+  name: string;
+  isBase: boolean; // true = auto-saved base, cannot be deleted
+  createdAt: string;
+  adjustedInputs: BorrowingCapacityInput;
+  result: BorrowingCapacityResult;
+}
+
 interface StrategyScenarioModelingProps {
   baseInputs: BorrowingCapacityInput;
   baseResult: BorrowingCapacityResult;
   liabilities: LiabilityItem[];
   properties: PropertyItem[];
+  onApplyScenario?: (inputs: BorrowingCapacityInput) => void;
+  savedPresets?: ScenarioPreset[];
+  onPresetsChange?: (presets: ScenarioPreset[]) => void;
 }
 
 // ── Helpers ────────────────────────────────────────────
