@@ -57,19 +57,22 @@ export function PortalLayout() {
       <aside className="hidden md:flex w-72 flex-col border-r border-border bg-card shadow-sm">
         {/* Logo Area */}
         <div className="p-6 pb-4 flex items-center justify-between">
-          {settings.authLogo ? (
-            <img src={settings.authLogo} alt={settings.companyName} className="h-10 max-w-[200px] object-contain" />
-          ) : (
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-primary/10">
-                <Building2 className="h-6 w-6 text-primary" />
+          <div>
+            {settings.authLogo ? (
+              <img src={settings.authLogo} alt={settings.companyName} className="h-10 max-w-[200px] object-contain" />
+            ) : (
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-primary/10">
+                  <Building2 className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <span className="font-bold text-lg text-foreground tracking-tight">Client Portal</span>
+                  <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">Secure Access</p>
+                </div>
               </div>
-              <div>
-                <span className="font-bold text-lg text-foreground tracking-tight">Client Portal</span>
-                <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">Secure Access</p>
-              </div>
-            </div>
-          )}
+            )}
+          </div>
+          <PortalNotificationBell />
         </div>
         <Separator />
 
