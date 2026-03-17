@@ -188,9 +188,22 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
               </TabsList>
 
               <TabsContent value="upload" className="mt-3">
+                {/* Hidden mobile file input as fallback */}
+                <input
+                  ref={mobileFileInputRef}
+                  type="file"
+                  accept=".json,.md,.markdown,.html,.htm,.txt,.pdf,.docx,.xlsx,.xls,application/json,text/markdown,text/html,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) processFile(file);
+                    if (mobileFileInputRef.current) mobileFileInputRef.current.value = '';
+                  }}
+                  className="hidden"
+                  style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }}
+                />
                 <div
                   {...getRootProps()}
-                  className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
+                  className={`border-2 border-dashed rounded-lg p-6 sm:p-8 text-center cursor-pointer transition-colors
                     ${isDragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/25 hover:border-primary/50'}
                     ${isProcessing ? 'pointer-events-none opacity-60' : ''}`}
                 >
@@ -204,13 +217,24 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
                   ) : (
                     <>
                       <Upload className="h-8 w-8 mx-auto text-muted-foreground/50 mb-3" />
-                      <p className="text-sm font-medium">Drop a file here or click to browse</p>
+                      <p className="text-sm font-medium">Drop a file here or tap to browse</p>
                       <p className="text-xs text-muted-foreground mt-1">
                         .md, .json, .html, .pdf, .docx, .xlsx, .txt
                       </p>
                     </>
                   )}
                 </div>
+                {/* Explicit browse button for mobile reliability */}
+                {!isProcessing && (
+                  <Button
+                    variant="outline"
+                    className="w-full mt-3 sm:hidden"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); mobileFileInputRef.current?.click(); }}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Browse Files
+                  </Button>
+                )}
               </TabsContent>
 
               <TabsContent value="paste" className="mt-3 space-y-3">
