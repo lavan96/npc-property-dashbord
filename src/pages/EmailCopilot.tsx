@@ -201,6 +201,7 @@ function formatEmailBody(body: string): string {
 export default function EmailCopilot() {
   const isMobile = useIsMobile();
   const { hasModuleAccess, loading: permissionsLoading } = usePermissions();
+  const { addNotification } = useNotifications();
   const [emails, setEmails] = useState<Email[]>([]);
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
   const [showMobileDetail, setShowMobileDetail] = useState(false);
