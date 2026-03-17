@@ -191,6 +191,7 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
                 {/* Hidden mobile file input as fallback */}
                 <input
                   ref={mobileFileInputRef}
+                  id="checklist-mobile-file-input"
                   type="file"
                   accept=".json,.md,.markdown,.html,.htm,.txt,.pdf,.docx,.xlsx,.xls,application/json,text/markdown,text/html,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
                   onChange={(e) => {
@@ -200,7 +201,6 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
                   }}
                   className="sr-only"
                   tabIndex={-1}
-                  aria-hidden="true"
                 />
                 <div
                   {...getRootProps()}
@@ -225,16 +225,15 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
                     </>
                   )}
                 </div>
-                {/* Explicit browse button for mobile reliability */}
+                {/* Native label for mobile — no JS .click() needed */}
                 {!isProcessing && (
-                  <Button
-                    variant="outline"
-                    className="w-full mt-3 sm:hidden"
-                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); mobileFileInputRef.current?.click(); }}
+                  <label
+                    htmlFor="checklist-mobile-file-input"
+                    className="flex items-center justify-center w-full mt-3 sm:hidden h-10 px-4 rounded-md border border-input bg-background text-sm font-medium cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors"
                   >
                     <Upload className="h-4 w-4 mr-2" />
                     Browse Files
-                  </Button>
+                  </label>
                 )}
               </TabsContent>
 
