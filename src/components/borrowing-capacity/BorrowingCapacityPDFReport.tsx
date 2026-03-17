@@ -185,6 +185,7 @@ export interface BorrowingCapacityExportData {
   properties?: any[];
   client?: any;
   returnBlob?: boolean;
+  scenarioPresets?: any[];
 }
 
 export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExportData): Promise<{ blob: Blob; fileName: string } | undefined> {
