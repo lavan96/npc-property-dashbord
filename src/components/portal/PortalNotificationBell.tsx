@@ -1,6 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell } from 'lucide-react';
+import { Bell, CheckCircle, Info, AlertTriangle, ArrowRight, BellOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -12,21 +11,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { usePortalAuth } from '@/hooks/usePortalAuth';
-import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { usePortalNotificationsData, usePortalUpdateData } from '@/hooks/usePortalData';
 import { formatDistanceToNow } from 'date-fns';
-import { CheckCircle, Info, AlertTriangle, ArrowRight, Building2, FileText, MessageSquare, BellOff } from 'lucide-react';
-
-interface PortalNotification {
-  id: string;
-  title: string;
-  message: string | null;
-  type: string;
-  category: string;
-  is_read: boolean;
-  action_url: string | null;
-  created_at: string;
-}
 
 const typeIcons: Record<string, React.ElementType> = {
   info: Info,
@@ -43,60 +29,31 @@ const typeStyles: Record<string, string> = {
 };
 
 export function PortalNotificationBell() {
-  const { sessionToken } = usePortalAuth();
   const navigate = useNavigate();
-  const [notifications, setNotifications] = useState<PortalNotification[]>([]);
-  const [loading, setLoading] = useState(false);
+  const { data, isLoading } = usePortalNotificationsData();
+  const updateMutation = usePortalUpdateData();
 
-  const fetchNotifications = useCallback(async () => {
-    if (!sessionToken) return;
-    setLoading(true);
-    try {
-      const result = await invokeSecureFunction('get-portal-client-data', {
-        include: { notifications: true },
-        portal_session_token: sessionToken,
-      });
-      if (result?.data?.notifications) {
-        setNotifications(result.data.notifications);
-      }
-    } catch (err) {
-      console.error('[PortalNotificationBell] Failed to fetch:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [sessionToken]);
-
-  useEffect(() => {
-    fetchNotifications();
-    // Poll every 60 seconds for new notifications
-    const interval = setInterval(fetchNotifications, 60 * 1000);
-    return () => clearInterval(interval);
-  }, [fetchNotifications]);
-
-  const unreadCount = notifications.filter(n => !n.is_read).length;
+  const notifications = (data?.notifications || []) as any[];
+  const unreadCount = notifications.filter((n: any) => !n.is_read).length;
+  const recentNotifications = notifications.slice(0, 10);
 
   const markAsRead = async (id: string) => {
-    if (!sessionToken) return;
     try {
-      await invokeSecureFunction('manage-portal-client-data', {
+      await updateMutation.mutateAsync({
         operation: 'update',
         table: 'client_portal_notifications',
         id,
         data: { is_read: true, read_at: new Date().toISOString() },
-        portal_session_token: sessionToken,
       });
-      setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
     } catch {
       // Silently fail
     }
   };
 
-  const handleClick = (notif: PortalNotification) => {
+  const handleClick = (notif: any) => {
     if (!notif.is_read) markAsRead(notif.id);
     if (notif.action_url) navigate(notif.action_url);
   };
-
-  const recentNotifications = notifications.slice(0, 10);
 
   return (
     <DropdownMenu>
@@ -131,7 +88,7 @@ export function PortalNotificationBell() {
           </div>
         ) : (
           <ScrollArea className="h-[320px]">
-            {recentNotifications.map((notif) => {
+            {recentNotifications.map((notif: any) => {
               const TypeIcon = typeIcons[notif.type] || Info;
               const style = typeStyles[notif.type] || typeStyles.info;
 
