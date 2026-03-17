@@ -7,7 +7,6 @@ import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
 import {
   FlaskConical,
   TrendingUp,
@@ -18,7 +17,6 @@ import {
   ArrowRightLeft,
   Building2,
   Percent,
-  DollarSign,
   ChevronDown,
   Zap,
   CheckCircle2,
@@ -35,6 +33,11 @@ import {
   type BorrowingCapacityInput,
   type BorrowingCapacityResult,
 } from '@/utils/borrowingCapacityCalculations';
+import {
+  AdditionalStrategyLevers,
+  DEFAULT_ADDITIONAL_STRATEGY,
+  type AdditionalStrategyState,
+} from './AdditionalStrategyLevers';
 
 // ── Types ──────────────────────────────────────────────
 
@@ -60,19 +63,13 @@ export interface PropertyItem {
 }
 
 interface StrategyState {
-  // Debt Consolidation: set of liability IDs to eliminate
   consolidatedLiabilities: Set<string>;
-  // Refinance P&I → IO: set of property IDs to switch
   refinancedToIO: Set<string>;
-  // Equity Release
   equityReleaseEnabled: boolean;
   equityReleasePropertyId: string | null;
-  equityReleaseTargetLVR: number; // 0.80 or 0.90
-  // Global Rate Adjustment
-  rateAdjustment: number; // percentage points delta
-  // Proposed Purchase (already exists in main calc, this is for scenario layering)
-  proposedPurchaseValue: number;
-  proposedPurchaseRent: number; // weekly
+  equityReleaseTargetLVR: number;
+  rateAdjustment: number;
+  additional: AdditionalStrategyState;
 }
 
 const DEFAULT_STRATEGY: StrategyState = {
@@ -82,8 +79,7 @@ const DEFAULT_STRATEGY: StrategyState = {
   equityReleasePropertyId: null,
   equityReleaseTargetLVR: 0.80,
   rateAdjustment: 0,
-  proposedPurchaseValue: 0,
-  proposedPurchaseRent: 0,
+  additional: { ...DEFAULT_ADDITIONAL_STRATEGY },
 };
 
 interface StrategyScenarioModelingProps {
@@ -130,22 +126,26 @@ export function StrategyScenarioModeling({
     refinance: true,
     equity: false,
     rates: false,
+    incomeGrowth: false,
+    expenseReduction: false,
+    loanTerm: false,
+    dtiCap: false,
+    stampDuty: false,
+    portfolioPlay: false,
   });
 
   const toggleSection = (key: string) => {
     setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  // Filter consolidatable liabilities (non-property debts)
   const consolidatableDebts = useMemo(() =>
-    liabilities.filter(l => 
-      !l.id.startsWith('prop-') && 
-      l.type !== 'home_loan' && 
+    liabilities.filter(l =>
+      !l.id.startsWith('prop-') &&
+      l.type !== 'home_loan' &&
       l.type !== 'investment_loan' &&
       l.type !== 'rent_expense'
     ), [liabilities]);
 
-  // Filter investment properties that have loans (candidates for IO refinance)
   const investmentProperties = useMemo(() =>
     properties.filter(p =>
       p.property_type !== 'rental' &&
@@ -153,29 +153,28 @@ export function StrategyScenarioModeling({
       p.loan_remaining > 0
     ), [properties]);
 
-  // Properties eligible for equity release (have equity)
+  // Fixed: show all non-rental properties with current_value > 0 for equity release
   const equityReleaseProperties = useMemo(() =>
     properties.filter(p => {
       if (p.property_type === 'rental') return false;
-      const equity = p.current_value - p.loan_remaining;
-      return equity > 0 && p.current_value > 0;
+      return p.current_value > 0;
     }), [properties]);
 
   // ── Compute scenario result ──
 
   const { scenarioResult, impactBreakdown } = useMemo(() => {
     let adjustedCommitments = baseInputs.monthlyCommitments;
-    let adjustedIncome = baseInputs.shadedAnnualIncome;
     let adjustedGrossIncome = baseInputs.grossAnnualIncome;
-    const impacts: { label: string; monthlySaving: number; type: 'saving' | 'cost' }[] = [];
+    let adjustedShadedIncome = baseInputs.shadedAnnualIncome;
+    let adjustedExpenses = baseInputs.monthlyLivingExpenses;
+    let adjustedLoanTerm = baseInputs.loanTermYears;
+    const impacts: { label: string; monthlySaving: number; type: 'saving' | 'cost' | 'info' }[] = [];
 
-    // 1. Debt Consolidation — remove monthly servicing for consolidated debts
+    // 1. Debt Consolidation
     let consolidationSaving = 0;
     strategy.consolidatedLiabilities.forEach(id => {
       const liability = consolidatableDebts.find(l => l.id === id);
-      if (liability) {
-        consolidationSaving += liability.monthlyServicing;
-      }
+      if (liability) consolidationSaving += liability.monthlyServicing;
     });
     if (consolidationSaving > 0) {
       adjustedCommitments -= consolidationSaving;
@@ -186,18 +185,16 @@ export function StrategyScenarioModeling({
       });
     }
 
-    // 2. Refinance P&I → IO — reduce repayments to interest-only
+    // 2. Refinance P&I → IO
     let refinanceSaving = 0;
     strategy.refinancedToIO.forEach(propId => {
       const prop = investmentProperties.find(p => p.id === propId);
       if (prop) {
-        const currentRepayment = prop.monthly_interest_repayment || 
+        const currentRepayment = prop.monthly_interest_repayment ||
           calculatePIRepayment(prop.loan_remaining, baseInputs.interestRate, baseInputs.loanTermYears);
         const ioRepayment = calculateIORepayment(prop.loan_remaining, baseInputs.interestRate);
-        const saving = currentRepayment - ioRepayment;
-        if (saving > 0) {
-          refinanceSaving += saving;
-        }
+        const saving = Math.max(0, currentRepayment - ioRepayment);
+        if (saving > 0) refinanceSaving += saving;
       }
     });
     if (refinanceSaving > 0) {
@@ -209,27 +206,81 @@ export function StrategyScenarioModeling({
       });
     }
 
-    // 3. Interest Rate Adjustment
-    // This is handled by modifying the rate in the input
-    const adjustedRate = baseInputs.interestRate + strategy.rateAdjustment;
+    // 3. Portfolio Sell — remove loan servicing for sold property
+    if (strategy.additional.portfolioSellPropertyId) {
+      const soldProp = properties.find(p => p.id === strategy.additional.portfolioSellPropertyId);
+      if (soldProp) {
+        const loanServicing = soldProp.loan_repayment_amount || soldProp.monthly_interest_repayment || 0;
+        if (loanServicing > 0) {
+          adjustedCommitments -= loanServicing;
+          impacts.push({
+            label: `Sell property (remove loan servicing)`,
+            monthlySaving: loanServicing,
+            type: 'saving',
+          });
+        }
+        // If property had negative cashflow, removing it helps
+        if (soldProp.net_monthly_cashflow && soldProp.net_monthly_cashflow < 0) {
+          const negativeCF = Math.abs(soldProp.net_monthly_cashflow);
+          // The negative cashflow was already counted as a commitment, removing it above covers this
+        }
+      }
+    }
 
-    // 4. Equity Release — doesn't directly change BC but shows accessible funds
-    // (equity release is informational in the impact summary)
+    // 4. Income Growth
+    if (strategy.additional.incomeGrowthPercent !== 0) {
+      const growthFactor = 1 + strategy.additional.incomeGrowthPercent / 100;
+      const incomeDelta = adjustedGrossIncome * (growthFactor - 1);
+      adjustedGrossIncome *= growthFactor;
+      adjustedShadedIncome *= growthFactor;
+      impacts.push({
+        label: `Income ${strategy.additional.incomeGrowthPercent > 0 ? 'growth' : 'reduction'} (${strategy.additional.incomeGrowthPercent > 0 ? '+' : ''}${strategy.additional.incomeGrowthPercent}%)`,
+        monthlySaving: Math.abs(incomeDelta / 12),
+        type: strategy.additional.incomeGrowthPercent > 0 ? 'saving' : 'cost',
+      });
+    }
+
+    // 5. Expense Reduction
+    if (strategy.additional.expenseReductionPercent > 0) {
+      const expenseSaving = adjustedExpenses * (strategy.additional.expenseReductionPercent / 100);
+      adjustedExpenses -= expenseSaving;
+      impacts.push({
+        label: `Reduce expenses by ${strategy.additional.expenseReductionPercent}%`,
+        monthlySaving: expenseSaving,
+        type: 'saving',
+      });
+    }
+
+    // 6. Loan Term Adjustment
+    if (strategy.additional.loanTermAdjustment !== 0) {
+      adjustedLoanTerm = Math.max(5, baseInputs.loanTermYears + strategy.additional.loanTermAdjustment);
+      impacts.push({
+        label: `Loan term ${strategy.additional.loanTermAdjustment > 0 ? 'extended' : 'shortened'} to ${adjustedLoanTerm}yr`,
+        monthlySaving: 0,
+        type: 'info',
+      });
+    }
+
+    // 7. Rate Adjustment
+    const adjustedRate = Math.max(0.5, baseInputs.interestRate + strategy.rateAdjustment);
 
     // Ensure commitments don't go negative
     adjustedCommitments = Math.max(0, adjustedCommitments);
+    adjustedExpenses = Math.max(0, adjustedExpenses);
 
     const scenarioInputs: BorrowingCapacityInput = {
       ...baseInputs,
       grossAnnualIncome: adjustedGrossIncome,
-      shadedAnnualIncome: adjustedIncome,
+      shadedAnnualIncome: adjustedShadedIncome,
+      monthlyLivingExpenses: adjustedExpenses,
       monthlyCommitments: adjustedCommitments,
       interestRate: adjustedRate,
+      loanTermYears: adjustedLoanTerm,
     };
 
     const result = calculateBorrowingCapacity(scenarioInputs);
     return { scenarioResult: result, impactBreakdown: impacts };
-  }, [strategy, baseInputs, consolidatableDebts, investmentProperties]);
+  }, [strategy, baseInputs, consolidatableDebts, investmentProperties, properties]);
 
   // Equity release calculation
   const equityRelease = useMemo(() => {
@@ -239,9 +290,11 @@ export function StrategyScenarioModeling({
     const maxLoan = prop.current_value * strategy.equityReleaseTargetLVR;
     const accessibleEquity = Math.max(0, maxLoan - prop.loan_remaining);
     const currentLVR = prop.current_value > 0 ? (prop.loan_remaining / prop.current_value) * 100 : 0;
+    const currentEquity = prop.current_value - prop.loan_remaining;
     return {
       property: prop,
       currentLVR,
+      currentEquity,
       targetLVR: strategy.equityReleaseTargetLVR * 100,
       accessibleEquity,
       maxLoan,
@@ -250,14 +303,26 @@ export function StrategyScenarioModeling({
 
   const capacityChange = scenarioResult.borrowingCapacity - baseResult.borrowingCapacity;
   const surplusChange = scenarioResult.monthlySurplus - baseResult.monthlySurplus;
-  const totalMonthlySaving = impactBreakdown.reduce((sum, i) => sum + (i.type === 'saving' ? i.monthlySaving : -i.monthlySaving), 0);
+  const totalMonthlySaving = impactBreakdown.reduce((sum, i) =>
+    sum + (i.type === 'saving' ? i.monthlySaving : i.type === 'cost' ? -i.monthlySaving : 0), 0);
+
   const hasAnyStrategy = strategy.consolidatedLiabilities.size > 0 ||
     strategy.refinancedToIO.size > 0 ||
     strategy.equityReleaseEnabled ||
-    strategy.rateAdjustment !== 0;
+    strategy.rateAdjustment !== 0 ||
+    strategy.additional.incomeGrowthPercent !== 0 ||
+    strategy.additional.expenseReductionPercent !== 0 ||
+    strategy.additional.loanTermAdjustment !== 0 ||
+    strategy.additional.dtiCapEnabled ||
+    strategy.additional.portfolioSellPropertyId !== null;
 
   const handleReset = useCallback(() => {
-    setStrategy(DEFAULT_STRATEGY);
+    setStrategy({
+      ...DEFAULT_STRATEGY,
+      consolidatedLiabilities: new Set(),
+      refinancedToIO: new Set(),
+      additional: { ...DEFAULT_ADDITIONAL_STRATEGY },
+    });
   }, []);
 
   const toggleConsolidation = (id: string) => {
@@ -275,6 +340,13 @@ export function StrategyScenarioModeling({
       return { ...prev, refinancedToIO: next };
     });
   };
+
+  const handleAdditionalChange = useCallback((updates: Partial<AdditionalStrategyState>) => {
+    setStrategy(prev => ({
+      ...prev,
+      additional: { ...prev.additional, ...updates },
+    }));
+  }, []);
 
   const baseBand = getServiceabilityBandColor(baseResult.serviceabilityBand);
   const scenarioBand = getServiceabilityBandColor(scenarioResult.serviceabilityBand);
@@ -355,7 +427,7 @@ export function StrategyScenarioModeling({
                   ))}
                 </div>
               )}
-              {strategy.consolidatedLiabilities.size > 0 && (
+              {consolidatableDebts.length > 1 && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -397,7 +469,7 @@ export function StrategyScenarioModeling({
           <CollapsibleContent>
             <CardContent className="pt-0 space-y-3">
               <p className="text-xs text-muted-foreground">
-                Switch investment loans from Principal & Interest to Interest Only to reduce monthly repayments and free up cash flow.
+                Switch investment loans from Principal & Interest to Interest Only to free up cash flow.
               </p>
               {investmentProperties.length === 0 ? (
                 <p className="text-xs text-muted-foreground italic py-2">No investment property loans found.</p>
@@ -488,27 +560,52 @@ export function StrategyScenarioModeling({
                 />
               </div>
 
-              {strategy.equityReleaseEnabled && (
-                <>
-                  <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground">Select Property</Label>
-                    <Select
-                      value={strategy.equityReleasePropertyId || ''}
-                      onValueChange={(v) => setStrategy(prev => ({ ...prev, equityReleasePropertyId: v }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choose property..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {equityReleaseProperties.map(prop => (
-                          <SelectItem key={prop.id} value={prop.id}>
-                            {prop.address?.slice(0, 40) || 'Property'} (Value: {formatCurrency(prop.current_value)})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+              {/* Property equity overview */}
+              {strategy.equityReleaseEnabled && equityReleaseProperties.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Portfolio Equity Overview</Label>
+                  <div className="space-y-1.5">
+                    {equityReleaseProperties.map(prop => {
+                      const equity = prop.current_value - prop.loan_remaining;
+                      const lvr = prop.current_value > 0 ? (prop.loan_remaining / prop.current_value) * 100 : 0;
+                      const isSelected = strategy.equityReleasePropertyId === prop.id;
+                      return (
+                        <div
+                          key={prop.id}
+                          className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                            isSelected ? 'bg-primary/10 border-primary/30' : 'hover:bg-muted/50'
+                          }`}
+                          onClick={() => setStrategy(prev => ({ ...prev, equityReleasePropertyId: prop.id }))}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium">{prop.address?.slice(0, 35) || 'Property'}</p>
+                              <p className="text-xs text-muted-foreground">
+                                Value: {formatCurrency(prop.current_value)} · Loan: {formatCurrency(prop.loan_remaining)} · LVR: {lvr.toFixed(0)}%
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className={`text-sm font-semibold ${equity >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
+                                {formatCurrency(equity)}
+                              </p>
+                              <p className="text-xs text-muted-foreground">equity</p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
+                </div>
+              )}
 
+              {strategy.equityReleaseEnabled && equityReleaseProperties.length === 0 && (
+                <p className="text-xs text-muted-foreground italic py-2">
+                  No properties with recorded values found in the client's portfolio.
+                </p>
+              )}
+
+              {strategy.equityReleaseEnabled && strategy.equityReleasePropertyId && (
+                <>
                   <div className="space-y-2">
                     <Label className="text-xs text-muted-foreground">Target LVR</Label>
                     <div className="flex gap-2">
@@ -543,6 +640,12 @@ export function StrategyScenarioModeling({
                           <span>{formatCurrency(equityRelease.property.loan_remaining)}</span>
                         </div>
                         <div className="flex justify-between">
+                          <span className="text-muted-foreground">Current Equity</span>
+                          <span className={`font-medium ${equityRelease.currentEquity >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
+                            {formatCurrency(equityRelease.currentEquity)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
                           <span className="text-muted-foreground">Current LVR</span>
                           <span>{equityRelease.currentLVR.toFixed(1)}%</span>
                         </div>
@@ -556,7 +659,7 @@ export function StrategyScenarioModeling({
                           <span>{formatCurrency(equityRelease.accessibleEquity)}</span>
                         </div>
                         {strategy.equityReleaseTargetLVR > 0.80 && (
-                          <p className="text-xs text-warning mt-1">
+                          <p className="text-xs text-amber-600 mt-1">
                             ⚠ LVR above 80% may attract Lenders Mortgage Insurance (LMI)
                           </p>
                         )}
@@ -618,7 +721,6 @@ export function StrategyScenarioModeling({
                   <span>+3%</span>
                 </div>
               </div>
-              {/* Quick buttons */}
               <div className="flex gap-2">
                 {[-1, -0.5, 0, 0.5, 1, 2].map(delta => (
                   <button
@@ -638,6 +740,22 @@ export function StrategyScenarioModeling({
           </CollapsibleContent>
         </Collapsible>
       </Card>
+
+      {/* ═══ LEVERS 5-10: Additional Strategy Levers ═══ */}
+      <AdditionalStrategyLevers
+        strategy={strategy.additional}
+        onStrategyChange={handleAdditionalChange}
+        openSections={openSections}
+        onToggleSection={toggleSection}
+        baseLoanTermYears={baseInputs.loanTermYears}
+        properties={properties.map(p => ({
+          id: p.id,
+          address: p.address,
+          current_value: p.current_value,
+          loan_remaining: p.loan_remaining,
+        }))}
+        baseGrossIncome={baseInputs.grossAnnualIncome}
+      />
 
       {/* ═══ Quick Scenario Presets ═══ */}
       <div className="space-y-2">
@@ -676,10 +794,30 @@ export function StrategyScenarioModeling({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setStrategy(prev => ({ ...prev, rateAdjustment: -1 }))}
+            onClick={() => setStrategy(prev => ({
+              ...prev,
+              additional: { ...prev.additional, incomeGrowthPercent: 10 },
+            }))}
           >
-            <TrendingDown className="h-3.5 w-3.5 mr-1.5" />
-            Rates -1%
+            <TrendingUp className="h-3.5 w-3.5 mr-1.5" />
+            10% Raise
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const allDebts = new Set(consolidatableDebts.map(d => d.id));
+              const allIO = new Set(investmentProperties.map(p => p.id));
+              setStrategy(prev => ({
+                ...prev,
+                consolidatedLiabilities: allDebts,
+                refinancedToIO: allIO,
+                additional: { ...prev.additional, expenseReductionPercent: 15 },
+              }));
+            }}
+          >
+            <Zap className="h-3.5 w-3.5 mr-1.5" />
+            Maximum Strategy
           </Button>
         </div>
       </div>
@@ -699,33 +837,39 @@ export function StrategyScenarioModeling({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Strategy impacts */}
           {impactBreakdown.length > 0 && (
             <div className="space-y-2">
               {impactBreakdown.map((impact, i) => (
                 <div key={i} className="flex items-center justify-between text-sm">
                   <span className="flex items-center gap-2">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                    <CheckCircle2 className={`h-3.5 w-3.5 ${
+                      impact.type === 'saving' ? 'text-emerald-600' :
+                      impact.type === 'cost' ? 'text-destructive' :
+                      'text-muted-foreground'
+                    }`} />
                     {impact.label}
                   </span>
-                  <span className="font-medium text-emerald-600">
-                    +{formatCurrency(impact.monthlySaving)}/mo
-                  </span>
+                  {impact.type !== 'info' && (
+                    <span className={`font-medium ${impact.type === 'saving' ? 'text-emerald-600' : 'text-destructive'}`}>
+                      {impact.type === 'saving' ? '+' : '-'}{formatCurrency(impact.monthlySaving)}/mo
+                    </span>
+                  )}
                 </div>
               ))}
-              {totalMonthlySaving > 0 && (
+              {totalMonthlySaving !== 0 && (
                 <>
                   <Separator />
                   <div className="flex items-center justify-between text-sm font-semibold">
-                    <span>Total Monthly Cash Flow Freed</span>
-                    <span className="text-emerald-600">+{formatCurrency(totalMonthlySaving)}/mo</span>
+                    <span>Total Monthly Cash Flow Impact</span>
+                    <span className={totalMonthlySaving >= 0 ? 'text-emerald-600' : 'text-destructive'}>
+                      {totalMonthlySaving >= 0 ? '+' : ''}{formatCurrency(totalMonthlySaving)}/mo
+                    </span>
                   </div>
                 </>
               )}
             </div>
           )}
 
-          {/* Equity Release line */}
           {equityRelease && (
             <div className="flex items-center justify-between text-sm p-2 rounded bg-muted/50">
               <span className="flex items-center gap-2">
@@ -759,7 +903,7 @@ export function StrategyScenarioModeling({
                   <>{capacityChange > 0 ? '+' : ''}{formatCapacity(capacityChange)}</>
                 ) : 'No Change'}
               </p>
-              {capacityChange !== 0 && (
+              {capacityChange !== 0 && baseResult.borrowingCapacity > 0 && (
                 <p className="text-xs text-muted-foreground">
                   ({((capacityChange / baseResult.borrowingCapacity) * 100).toFixed(1)}%)
                 </p>
