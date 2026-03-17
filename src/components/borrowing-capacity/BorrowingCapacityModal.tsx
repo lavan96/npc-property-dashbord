@@ -848,6 +848,8 @@ export function BorrowingCapacityModal({
         onProposedLoanChange={setProposedLoanAmount}
         onInterestRateChange={setInterestRate}
         onLoanTermChange={setLoanTermYears}
+        proposedRentalIncome={proposedRentalIncome}
+        onProposedRentalIncomeChange={setProposedRentalIncome}
       />
 
       {/* LMI Section */}
