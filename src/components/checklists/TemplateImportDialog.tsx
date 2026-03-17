@@ -147,7 +147,7 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto w-[calc(100vw-2rem)] sm:w-auto">
         <DialogHeader>
           <DialogTitle>
             {step === 'input' && 'Import Checklist Template'}
