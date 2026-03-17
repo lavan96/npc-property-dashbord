@@ -34,7 +34,7 @@ import { LiabilitiesSection } from './sections/LiabilitiesSection';
 import { ProposedLoanSection, type ProposedRentalIncomeData } from './sections/ProposedLoanSection';
 import { ResultsPanel } from './ResultsPanel';
 import { StrategyScenarioModeling } from './scenarios/StrategyScenarioModeling';
-import type { LiabilityItem as ScenarioLiabilityItem, PropertyItem as ScenarioPropertyItem } from './scenarios/StrategyScenarioModeling';
+import type { LiabilityItem as ScenarioLiabilityItem, PropertyItem as ScenarioPropertyItem, ScenarioPreset } from './scenarios/StrategyScenarioModeling';
 import { CapacityHistoryChart } from './CapacityHistoryChart';
 import { BankRateSelector } from './BankRateSelector';
 import { BankRateComparisonModal } from './BankRateComparisonModal';
