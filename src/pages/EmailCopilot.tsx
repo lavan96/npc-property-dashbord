@@ -5,6 +5,7 @@ import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { useEmailNotifications } from '@/hooks/useEmailNotifications';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useNotifications } from '@/contexts/NotificationsContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import RichTextBody from '@/components/email/RichTextBody';
 import { EmailClientAssignment } from '@/components/email/EmailClientAssignment';
