@@ -697,6 +697,12 @@ export function BorrowingCapacityModal({
     }
   }, [pendingChanges, clientId, queryClient, refetchClientData]);
 
+  // When an active scenario is set, overlay its adjusted inputs
+  const effectiveGrossIncomeForCalc = activeScenario ? activeScenario.adjustedInputs.grossAnnualIncome : totalGrossIncome;
+  const effectiveShadedIncomeForCalc = activeScenario ? activeScenario.adjustedInputs.shadedAnnualIncome : totalShadedIncome;
+  const effectiveExpensesForCalc = activeScenario ? activeScenario.adjustedInputs.monthlyLivingExpenses : effectiveExpenses;
+  const effectiveCommitmentsForCalc = activeScenario ? activeScenario.adjustedInputs.monthlyCommitments : totalMonthlyCommitments;
+
   // Calculate borrowing capacity
   const handleCalculate = useCallback(async () => {
     setIsLocalCalculating(true);
@@ -710,10 +716,10 @@ export function BorrowingCapacityModal({
       } : {};
 
       const calcResult = await quickCalculate({
-        grossAnnualIncome: totalGrossIncome,
-        shadedAnnualIncome: totalShadedIncome,
-        livingExpenses: effectiveExpenses,
-        existingCommitments: totalMonthlyCommitments,
+        grossAnnualIncome: effectiveGrossIncomeForCalc,
+        shadedAnnualIncome: effectiveShadedIncomeForCalc,
+        livingExpenses: effectiveExpensesForCalc,
+        existingCommitments: effectiveCommitmentsForCalc,
         interestRate,
         bufferRate: effectiveBufferRate,
         loanTermYears,
@@ -729,14 +735,14 @@ export function BorrowingCapacityModal({
     } finally {
       setIsLocalCalculating(false);
     }
-  }, [quickCalculate, totalGrossIncome, totalShadedIncome, totalMonthlyCommitments, effectiveExpenses, interestRate, loanTermYears, proposedLoanAmount, calculationMode, dtiCapEnabled, dtiCapLimit, effectiveBufferRate, lmiMode, lmiEstimate, lmiPropertyValue, lmiDepositAmount, isFirstHomeBuyer]);
+  }, [quickCalculate, effectiveGrossIncomeForCalc, effectiveShadedIncomeForCalc, effectiveCommitmentsForCalc, effectiveExpensesForCalc, interestRate, loanTermYears, proposedLoanAmount, calculationMode, dtiCapEnabled, dtiCapLimit, effectiveBufferRate, lmiMode, lmiEstimate, lmiPropertyValue, lmiDepositAmount, isFirstHomeBuyer]);
 
   // Auto-calculate on mount and when key inputs change
   useEffect(() => {
     if (open && clientData) {
       handleCalculate();
     }
-  }, [open, clientData, effectiveExpenses, interestRate, loanTermYears, calculationMode, dtiCapEnabled, dtiCapLimit, effectiveBufferRate, incomeOverrides, liabilityOverrides, lmiMode, lmiEstimate, proposedRentalNetAssessable]);
+  }, [open, clientData, effectiveExpensesForCalc, interestRate, loanTermYears, calculationMode, dtiCapEnabled, dtiCapLimit, effectiveBufferRate, incomeOverrides, liabilityOverrides, lmiMode, lmiEstimate, proposedRentalNetAssessable, activeScenario]);
 
   const headerContent = (
     <div className="flex items-center justify-between flex-wrap gap-2">
