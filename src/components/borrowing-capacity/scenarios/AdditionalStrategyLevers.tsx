@@ -29,7 +29,7 @@ export interface AdditionalStrategyState {
   dtiCapEnabled: boolean;
   dtiCapValue: number;
   stampDutyPurchasePrice: number;
-  portfolioSellPropertyId: string | null;
+  portfolioSellPropertyIds: Set<string>;
   portfolioSellReinvest: boolean;
 }
 
@@ -40,7 +40,7 @@ export const DEFAULT_ADDITIONAL_STRATEGY: AdditionalStrategyState = {
   dtiCapEnabled: false,
   dtiCapValue: 6,
   stampDutyPurchasePrice: 0,
-  portfolioSellPropertyId: null,
+  portfolioSellPropertyIds: new Set(),
   portfolioSellReinvest: false,
 };
 
@@ -104,12 +104,10 @@ export function AdditionalStrategyLevers({
   const legalFees = strategy.stampDutyPurchasePrice > 0 ? 2500 : 0;
   const totalPurchaseCosts = stampDuty + transferFee + legalFees;
 
-  const sellProperty = strategy.portfolioSellPropertyId
-    ? properties.find(p => p.id === strategy.portfolioSellPropertyId)
-    : null;
-  const sellEquityFreed = sellProperty
-    ? Math.max(0, sellProperty.current_value - sellProperty.loan_remaining)
-    : 0;
+  const sellProperties = properties.filter(p => strategy.portfolioSellPropertyIds.has(p.id));
+  const totalSellEquityFreed = sellProperties.reduce((sum, p) => 
+    sum + Math.max(0, p.current_value - p.loan_remaining), 0);
+  const totalSellValue = sellProperties.reduce((sum, p) => sum + p.current_value, 0);
 
   return (
     <>
@@ -471,9 +469,9 @@ export function AdditionalStrategyLevers({
                   Portfolio Restructure (Sell to Buy)
                 </CardTitle>
                 <div className="flex items-center gap-2">
-                  {sellProperty && (
+                  {sellProperties.length > 0 && (
                     <Badge variant="secondary" className="text-xs">
-                      {formatCurrency(sellEquityFreed)} freed
+                      {sellProperties.length} selected · {formatCurrency(totalSellEquityFreed)} freed
                     </Badge>
                   )}
                   <ChevronDown className={`h-4 w-4 transition-transform ${openSections.portfolioPlay ? 'rotate-180' : ''}`} />
@@ -484,7 +482,7 @@ export function AdditionalStrategyLevers({
           <CollapsibleContent>
             <CardContent className="pt-0 space-y-4">
               <p className="text-xs text-muted-foreground">
-                Model selling one property to fund the purchase of another. Removes loan servicing and frees equity.
+                Model selling properties to fund a new purchase. Select multiple properties to see combined impact.
               </p>
               {properties.filter(p => p.current_value > 0).length === 0 ? (
                 <p className="text-xs text-muted-foreground italic py-2">No properties available.</p>
@@ -492,24 +490,27 @@ export function AdditionalStrategyLevers({
                 <div className="space-y-2">
                   {properties.filter(p => p.current_value > 0).map(prop => {
                     const equity = prop.current_value - prop.loan_remaining;
-                    const isSelected = strategy.portfolioSellPropertyId === prop.id;
+                    const isSelected = strategy.portfolioSellPropertyIds.has(prop.id);
                     return (
                       <div
                         key={prop.id}
                         className={`p-3 rounded-lg border cursor-pointer transition-colors ${
                           isSelected ? 'bg-primary/10 border-primary/30' : 'hover:bg-muted/50'
                         }`}
-                        onClick={() => onStrategyChange({
-                          portfolioSellPropertyId: isSelected ? null : prop.id,
-                        })}
+                        onClick={() => {
+                          const next = new Set(strategy.portfolioSellPropertyIds);
+                          if (next.has(prop.id)) next.delete(prop.id); else next.add(prop.id);
+                          onStrategyChange({ portfolioSellPropertyIds: next });
+                        }}
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <Switch
                               checked={isSelected}
-                              onCheckedChange={() => onStrategyChange({
-                                portfolioSellPropertyId: isSelected ? null : prop.id,
-                              })}
+                              onCheckedChange={(e) => {
+                                // Prevent double-toggle from parent onClick
+                              }}
+                              onClick={(e) => e.stopPropagation()}
                             />
                             <div>
                               <p className="text-sm font-medium">{prop.address?.slice(0, 35) || 'Property'}</p>
@@ -530,28 +531,38 @@ export function AdditionalStrategyLevers({
                   })}
                 </div>
               )}
-              {sellProperty && (
+              {sellProperties.length > 0 && (
                 <div className="p-4 rounded-lg border bg-card space-y-2">
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    Sale Impact Summary
+                    Combined Sale Impact Summary
                   </p>
                   <div className="space-y-1.5 text-sm">
+                    {sellProperties.map(sp => {
+                      const eq = sp.current_value - sp.loan_remaining;
+                      return (
+                        <div key={sp.id} className="flex justify-between text-xs">
+                          <span className="text-muted-foreground truncate max-w-[60%]">{sp.address || 'Property'}</span>
+                          <span className="text-emerald-600">{formatCurrency(eq)} equity</span>
+                        </div>
+                      );
+                    })}
+                    <Separator />
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Sale Price (est.)</span>
-                      <span>{formatCurrency(sellProperty.current_value)}</span>
+                      <span className="text-muted-foreground">Total Sale Price (est.)</span>
+                      <span>{formatCurrency(totalSellValue)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Loan Discharged</span>
-                      <span className="text-emerald-600">-{formatCurrency(sellProperty.loan_remaining)}</span>
+                      <span className="text-muted-foreground">Total Loans Discharged</span>
+                      <span className="text-emerald-600">-{formatCurrency(sellProperties.reduce((s, p) => s + p.loan_remaining, 0))}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Agent Fees (est. 2%)</span>
-                      <span>-{formatCurrency(sellProperty.current_value * 0.02)}</span>
+                      <span>-{formatCurrency(totalSellValue * 0.02)}</span>
                     </div>
                     <Separator />
                     <div className="flex justify-between font-semibold text-emerald-600">
                       <span>Net Proceeds (est.)</span>
-                      <span>{formatCurrency(Math.max(0, sellEquityFreed - sellProperty.current_value * 0.02))}</span>
+                      <span>{formatCurrency(Math.max(0, totalSellEquityFreed - totalSellValue * 0.02))}</span>
                     </div>
                   </div>
                 </div>

@@ -34,7 +34,7 @@ import { LiabilitiesSection } from './sections/LiabilitiesSection';
 import { ProposedLoanSection, type ProposedRentalIncomeData } from './sections/ProposedLoanSection';
 import { ResultsPanel } from './ResultsPanel';
 import { StrategyScenarioModeling } from './scenarios/StrategyScenarioModeling';
-import type { LiabilityItem as ScenarioLiabilityItem, PropertyItem as ScenarioPropertyItem } from './scenarios/StrategyScenarioModeling';
+import type { LiabilityItem as ScenarioLiabilityItem, PropertyItem as ScenarioPropertyItem, ScenarioPreset } from './scenarios/StrategyScenarioModeling';
 import { CapacityHistoryChart } from './CapacityHistoryChart';
 import { BankRateSelector } from './BankRateSelector';
 import { BankRateComparisonModal } from './BankRateComparisonModal';
@@ -188,6 +188,9 @@ export function BorrowingCapacityModal({
     expenses: { items: new Map() },
   });
   
+  // Scenario presets state
+  const [scenarioPresets, setScenarioPresets] = useState<ScenarioPreset[]>([]);
+
   // Computed buffer rate based on toggle
   const effectiveBufferRate = bufferEnabled ? 3.0 : 0;
 
@@ -1115,6 +1118,16 @@ export function BorrowingCapacityModal({
                   loan_repayment_amount: Number(p.loan_repayment_amount) || 0,
                   net_monthly_cashflow: Number(p.net_monthly_cashflow) || 0,
                 }))}
+                savedPresets={scenarioPresets}
+                onPresetsChange={setScenarioPresets}
+                onApplyScenario={(inputs) => {
+                  // Apply scenario inputs to the main calculator
+                  setInterestRate(inputs.interestRate);
+                  setLoanTermYears(inputs.loanTermYears);
+                  // Switch to calculator tab to show the result
+                  setActiveTab('calculator');
+                  toast.success('Scenario applied to calculator');
+                }}
               />
             ) : (
               <div className="text-center text-muted-foreground py-12">

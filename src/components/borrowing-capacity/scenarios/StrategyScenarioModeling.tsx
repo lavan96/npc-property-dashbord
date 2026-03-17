@@ -1,8 +1,9 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -20,6 +21,9 @@ import {
   ChevronDown,
   Zap,
   CheckCircle2,
+  Save,
+  FolderOpen,
+  Trash2,
 } from 'lucide-react';
 import {
   Collapsible,
@@ -86,11 +90,25 @@ const DEFAULT_STRATEGY: StrategyState = {
   additional: { ...DEFAULT_ADDITIONAL_STRATEGY },
 };
 
+// ── Scenario Preset Types ──────────────────────────────
+
+export interface ScenarioPreset {
+  id: string;
+  name: string;
+  isBase: boolean; // true = auto-saved base, cannot be deleted
+  createdAt: string;
+  adjustedInputs: BorrowingCapacityInput;
+  result: BorrowingCapacityResult;
+}
+
 interface StrategyScenarioModelingProps {
   baseInputs: BorrowingCapacityInput;
   baseResult: BorrowingCapacityResult;
   liabilities: LiabilityItem[];
   properties: PropertyItem[];
+  onApplyScenario?: (inputs: BorrowingCapacityInput) => void;
+  savedPresets?: ScenarioPreset[];
+  onPresetsChange?: (presets: ScenarioPreset[]) => void;
 }
 
 // ── Helpers ────────────────────────────────────────────
@@ -123,8 +141,14 @@ export function StrategyScenarioModeling({
   baseResult,
   liabilities,
   properties,
+  onApplyScenario,
+  savedPresets: externalPresets,
+  onPresetsChange,
 }: StrategyScenarioModelingProps) {
   const [strategy, setStrategy] = useState<StrategyState>(DEFAULT_STRATEGY);
+  const [presets, setPresets] = useState<ScenarioPreset[]>(externalPresets || []);
+  const [scenarioName, setScenarioName] = useState('');
+  const [showSaveInput, setShowSaveInput] = useState(false);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     consolidation: true,
     refinance: true,
@@ -137,6 +161,24 @@ export function StrategyScenarioModeling({
     stampDuty: false,
     portfolioPlay: false,
   });
+
+  // Auto-save base preset on first render
+  useEffect(() => {
+    if (presets.length === 0) {
+      const basePreset: ScenarioPreset = {
+        id: 'base',
+        name: 'Base (Original)',
+        isBase: true,
+        createdAt: new Date().toISOString(),
+        adjustedInputs: { ...baseInputs },
+        result: baseResult,
+      };
+      const updated = [basePreset];
+      setPresets(updated);
+      onPresetsChange?.(updated);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const toggleSection = (key: string) => {
     setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
@@ -166,7 +208,7 @@ export function StrategyScenarioModeling({
 
   // ── Compute scenario result ──
 
-  const { scenarioResult, impactBreakdown } = useMemo(() => {
+  const { scenarioResult, scenarioInputs, impactBreakdown } = useMemo(() => {
     let adjustedCommitments = baseInputs.monthlyCommitments;
     let adjustedGrossIncome = baseInputs.grossAnnualIncome;
     let adjustedShadedIncome = baseInputs.shadedAnnualIncome;
@@ -210,24 +252,25 @@ export function StrategyScenarioModeling({
       });
     }
 
-    // 3. Portfolio Sell — remove loan servicing for sold property
-    if (strategy.additional.portfolioSellPropertyId) {
-      const soldProp = properties.find(p => p.id === strategy.additional.portfolioSellPropertyId);
-      if (soldProp) {
-        const loanServicing = soldProp.loan_repayment_amount || soldProp.monthly_interest_repayment || 0;
-        if (loanServicing > 0) {
-          adjustedCommitments -= loanServicing;
-          impacts.push({
-            label: `Sell property (remove loan servicing)`,
-            monthlySaving: loanServicing,
-            type: 'saving',
-          });
+    // 3. Portfolio Sell — remove loan servicing for sold properties (multi-select)
+    let portfolioSellSaving = 0;
+    if (strategy.additional.portfolioSellPropertyIds.size > 0) {
+      strategy.additional.portfolioSellPropertyIds.forEach(propId => {
+        const soldProp = properties.find(p => p.id === propId);
+        if (soldProp) {
+          const loanServicing = soldProp.loan_repayment_amount || soldProp.monthly_interest_repayment || 0;
+          if (loanServicing > 0) {
+            portfolioSellSaving += loanServicing;
+          }
         }
-        // If property had negative cashflow, removing it helps
-        if (soldProp.net_monthly_cashflow && soldProp.net_monthly_cashflow < 0) {
-          const negativeCF = Math.abs(soldProp.net_monthly_cashflow);
-          // The negative cashflow was already counted as a commitment, removing it above covers this
-        }
+      });
+      if (portfolioSellSaving > 0) {
+        adjustedCommitments -= portfolioSellSaving;
+        impacts.push({
+          label: `Sell ${strategy.additional.portfolioSellPropertyIds.size} property(s) (remove loan servicing)`,
+          monthlySaving: portfolioSellSaving,
+          type: 'saving',
+        });
       }
     }
 
@@ -283,7 +326,7 @@ export function StrategyScenarioModeling({
     };
 
     const result = calculateBorrowingCapacity(scenarioInputs);
-    return { scenarioResult: result, impactBreakdown: impacts };
+    return { scenarioResult: result, scenarioInputs, impactBreakdown: impacts };
   }, [strategy, baseInputs, consolidatableDebts, investmentProperties, properties]);
 
   // Equity release calculation
@@ -339,16 +382,46 @@ export function StrategyScenarioModeling({
     strategy.additional.expenseReductionPercent !== 0 ||
     strategy.additional.loanTermAdjustment !== 0 ||
     strategy.additional.dtiCapEnabled ||
-    strategy.additional.portfolioSellPropertyId !== null;
+    strategy.additional.portfolioSellPropertyIds.size > 0;
 
   const handleReset = useCallback(() => {
     setStrategy({
       ...DEFAULT_STRATEGY,
       consolidatedLiabilities: new Set(),
       refinancedToIO: new Set(),
-      additional: { ...DEFAULT_ADDITIONAL_STRATEGY },
+      additional: { ...DEFAULT_ADDITIONAL_STRATEGY, portfolioSellPropertyIds: new Set() },
     });
   }, []);
+
+  const handleSavePreset = useCallback(() => {
+    const name = scenarioName.trim() || `Scenario ${presets.length}`;
+    const newPreset: ScenarioPreset = {
+      id: `preset-${Date.now()}`,
+      name,
+      isBase: false,
+      createdAt: new Date().toISOString(),
+      adjustedInputs: { ...scenarioInputs },
+      result: scenarioResult,
+    };
+    const updated = [...presets, newPreset];
+    setPresets(updated);
+    onPresetsChange?.(updated);
+    setScenarioName('');
+    setShowSaveInput(false);
+  }, [scenarioName, scenarioInputs, scenarioResult, presets, onPresetsChange]);
+
+  const handleDeletePreset = useCallback((id: string) => {
+    const updated = presets.filter(p => p.id !== id);
+    setPresets(updated);
+    onPresetsChange?.(updated);
+  }, [presets, onPresetsChange]);
+
+  const handleLoadPreset = useCallback((preset: ScenarioPreset) => {
+    // Reset all strategies and show the preset's result as the "base" comparison
+    handleReset();
+    // Apply the preset's inputs to the main calculator
+    onApplyScenario?.(preset.adjustedInputs);
+  }, [handleReset, onApplyScenario]);
 
   const toggleConsolidation = (id: string) => {
     setStrategy(prev => {
@@ -433,7 +506,8 @@ export function StrategyScenarioModeling({
                       <div className="flex items-center gap-3">
                         <Switch
                           checked={strategy.consolidatedLiabilities.has(debt.id)}
-                          onCheckedChange={() => toggleConsolidation(debt.id)}
+                          onCheckedChange={() => {}}
+                          onClick={(e) => e.stopPropagation()}
                         />
                         <div>
                           <p className="text-sm font-medium">{debt.label}</p>
@@ -518,7 +592,8 @@ export function StrategyScenarioModeling({
                         <div className="flex items-center gap-3">
                           <Switch
                             checked={isSelected}
-                            onCheckedChange={() => toggleRefinance(prop.id)}
+                            onCheckedChange={() => {}}
+                            onClick={(e) => e.stopPropagation()}
                           />
                           <div>
                             <p className="text-sm font-medium">{prop.address?.slice(0, 35) || 'Investment Property'}</p>
@@ -978,8 +1053,105 @@ export function StrategyScenarioModeling({
               Toggle strategies above to see their compound impact on borrowing capacity.
             </p>
           )}
+
+          {/* Save & Apply Actions */}
+          {hasAnyStrategy && (
+            <div className="space-y-2 pt-2">
+              <Separator />
+              {showSaveInput ? (
+                <div className="flex gap-2">
+                  <Input
+                    value={scenarioName}
+                    onChange={(e) => setScenarioName(e.target.value)}
+                    placeholder="Scenario name..."
+                    className="h-9 text-sm"
+                    onKeyDown={(e) => e.key === 'Enter' && handleSavePreset()}
+                  />
+                  <Button size="sm" onClick={handleSavePreset}>
+                    <Save className="h-3.5 w-3.5 mr-1" />
+                    Save
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setShowSaveInput(false)}>
+                    Cancel
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => setShowSaveInput(true)}
+                  >
+                    <Save className="h-3.5 w-3.5 mr-1.5" />
+                    Save Scenario
+                  </Button>
+                  {onApplyScenario && (
+                    <Button
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => onApplyScenario(scenarioInputs)}
+                    >
+                      <Zap className="h-3.5 w-3.5 mr-1.5" />
+                      Apply to Calculator
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {/* ═══ SAVED PRESETS ═══ */}
+      {presets.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <FolderOpen className="h-4 w-4 text-primary" />
+              Saved Scenarios ({presets.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {presets.map(preset => (
+              <div
+                key={preset.id}
+                className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
+              >
+                <div>
+                  <p className="text-sm font-medium">{preset.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Capacity: {formatCapacity(preset.result.borrowingCapacity)}
+                    {!preset.isBase && ` · Saved ${new Date(preset.createdAt).toLocaleDateString()}`}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {onApplyScenario && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs h-7"
+                      onClick={() => handleLoadPreset(preset)}
+                    >
+                      Load
+                    </Button>
+                  )}
+                  {!preset.isBase && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs h-7 text-destructive hover:text-destructive"
+                      onClick={() => handleDeletePreset(preset.id)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
