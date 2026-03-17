@@ -1022,10 +1022,10 @@ export function AgentChatWidget() {
                   )}
                   <div className="p-3">
                     <div className="flex gap-2 items-end">
-                      <input ref={fileInputRef} type="file" multiple accept={ACCEPTED_EXTENSIONS} onChange={handleFileSelect} className="sr-only" tabIndex={-1} aria-hidden="true" />
-                      <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 rounded-xl" onClick={(e) => { e.preventDefault(); e.stopPropagation(); fileInputRef.current?.click(); }} disabled={loading || attachedFiles.length >= 5} title="Attach files">
+                      <input ref={fileInputRef} id="agent-file-input" type="file" multiple accept={ACCEPTED_EXTENSIONS} onChange={handleFileSelect} className="sr-only" tabIndex={-1} />
+                      <label htmlFor="agent-file-input" className={`inline-flex items-center justify-center h-10 w-10 shrink-0 rounded-xl cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors ${loading || attachedFiles.length >= 5 ? 'pointer-events-none opacity-50' : ''}`} title="Attach files">
                         <Paperclip className="h-4 w-4" />
-                      </Button>
+                      </label>
                        <Textarea ref={textareaRef} value={input} onChange={(e) => {
                         setInput(e.target.value);
                         const ta = e.target;
