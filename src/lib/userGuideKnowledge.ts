@@ -888,6 +888,21 @@ export const userGuideKnowledge: GuideSection[] = [
         ],
       },
       {
+        title: 'Outlook Calendar Integration',
+        description: 'Sync and manage Microsoft Outlook calendars for your team directly within the dashboard.',
+        features: [
+          'Link Microsoft email per user to sync Outlook events',
+          'View Outlook events alongside GHL appointments in a unified calendar',
+          'Create, update, and delete Outlook events from the dashboard',
+          'Team availability overlay — see who is free or busy at a glance',
+          'Conflict detection highlights scheduling clashes with proposed times',
+          'Auto Prep Blocks — automatically create 15-min prep events before GHL appointments',
+          'Follow-Up Blocking — schedule tentative 9 AM reminders on follow-up dates',
+          'Test Connection & Permissions diagnostic panel for troubleshooting',
+          'Outlook settings housed in the Calendar page sidebar under the Outlook tab',
+        ],
+      },
+      {
         title: 'Keyboard Navigation',
         description: 'Navigate the calendar efficiently with keyboard shortcuts.',
         shortcuts: [
