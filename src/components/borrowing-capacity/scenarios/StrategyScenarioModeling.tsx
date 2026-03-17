@@ -208,7 +208,7 @@ export function StrategyScenarioModeling({
 
   // ── Compute scenario result ──
 
-  const { scenarioResult, impactBreakdown } = useMemo(() => {
+  const { scenarioResult, scenarioInputs, impactBreakdown } = useMemo(() => {
     let adjustedCommitments = baseInputs.monthlyCommitments;
     let adjustedGrossIncome = baseInputs.grossAnnualIncome;
     let adjustedShadedIncome = baseInputs.shadedAnnualIncome;
