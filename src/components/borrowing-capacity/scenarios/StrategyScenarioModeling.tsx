@@ -141,6 +141,9 @@ export function StrategyScenarioModeling({
   baseResult,
   liabilities,
   properties,
+  onApplyScenario,
+  savedPresets: externalPresets,
+  onPresetsChange,
 }: StrategyScenarioModelingProps) {
   const [strategy, setStrategy] = useState<StrategyState>(DEFAULT_STRATEGY);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
