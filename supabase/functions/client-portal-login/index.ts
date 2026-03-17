@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
 import { verifyPassword } from "../_shared/password.ts"
 import { createCorsHeaders, createSessionCookie } from "../_shared/auth.ts"
+import { sendPortalNotificationEmail } from "../_shared/portal-notification-email.ts"
 
 function smartCapitalizeStr(name: string): string {
   if (!name) return '';
@@ -123,13 +124,29 @@ serve(async (req) => {
       try {
         const clientData = portalUser.clients as any;
         const firstName = clientData?.primary_first_name || 'there';
+        const welcomeTitle = 'Welcome to Your Client Portal!';
+        const welcomeMessage = `Hi ${smartCapitalizeStr(firstName)}, welcome to your secure client portal. Here you can track your deals, view reports, manage your properties, and book appointments with your advisor.`;
+        
         await supabase.from('client_portal_notifications').insert({
           client_id: portalUser.client_id,
-          title: 'Welcome to Your Client Portal!',
-          message: `Hi ${smartCapitalizeStr(firstName)}, welcome to your secure client portal. Here you can track your deals, view reports, manage your properties, and book appointments with your advisor.`,
+          title: welcomeTitle,
+          message: welcomeMessage,
           type: 'info',
           category: 'general',
           action_url: '/client',
+        });
+
+        // Send welcome email
+        const { data: wl } = await supabase.from('whitelabel_settings').select('company_name').limit(1).maybeSingle();
+        await sendPortalNotificationEmail({
+          to: portalUser.email,
+          clientFirstName: smartCapitalizeStr(firstName),
+          title: welcomeTitle,
+          message: welcomeMessage,
+          type: 'info',
+          category: 'account',
+          actionUrl: '/client',
+          companyName: wl?.company_name || 'NPC Services',
         });
       } catch (notifErr) {
         console.warn('[client-portal-login] Failed to create welcome notification:', notifErr);
