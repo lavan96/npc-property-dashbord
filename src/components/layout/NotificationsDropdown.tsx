@@ -102,7 +102,7 @@ export function NotificationsDropdown() {
       case 'portal_report_requested':
         return <FileText className="h-4 w-4 text-violet-500" />;
       case 'client_reminder_upcoming':
-        return <ClockAlert className="h-4 w-4 text-blue-400" />;
+        return <Timer className="h-4 w-4 text-blue-400" />;
       default:
         return <Info className="h-4 w-4 text-blue-500" />;
     }
