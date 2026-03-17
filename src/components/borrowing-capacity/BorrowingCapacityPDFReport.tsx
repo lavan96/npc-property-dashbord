@@ -815,6 +815,127 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
   addFooter(doc, pageNum.value);
 
   // ════════════════════════════════════════════════════════════════════════════
+  // SCENARIO COMPARISON PAGE (if presets exist with non-base scenarios)
+  // ════════════════════════════════════════════════════════════════════════════
+  const scenarios = (data.scenarioPresets || []).filter((p: any) => !p.isBase);
+  const basePreset = (data.scenarioPresets || []).find((p: any) => p.isBase);
+  
+  if (scenarios.length > 0) {
+    doc.addPage();
+    pageNum.value++;
+    let sy = 30;
+
+    sy = drawSectionHeader(doc, 'Scenario Comparison Analysis', sy);
+
+    // Introductory text
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'normal');
+    setColor(doc, BODY_TEXT);
+    doc.text(
+      'The following scenarios model how changes to income, expenses, debts, and interest rates would impact borrowing capacity.',
+      MARGIN, sy
+    );
+    sy += 10;
+
+    // Base case row
+    const baseCapacity = basePreset?.result?.borrowingCapacity ?? a.borrowing_capacity ?? 0;
+    const baseSurplus = basePreset?.result?.monthlySurplus ?? a.monthly_surplus ?? 0;
+    const baseBandLabel = bandLabel(basePreset?.result?.serviceabilityBand ?? a.serviceability_band ?? 'amber');
+
+    // Table header
+    const colX = { name: MARGIN, capacity: MARGIN + 60, surplus: MARGIN + 108, band: MARGIN + 145, change: PAGE_W - MARGIN };
+    
+    sy = drawTableRow(doc, sy, [
+      { text: 'Scenario', x: colX.name, bold: true, color: NAVY },
+      { text: 'Capacity', x: colX.capacity, bold: true, color: NAVY },
+      { text: 'Monthly Surplus', x: colX.surplus, bold: true, color: NAVY },
+      { text: 'Band', x: colX.band, bold: true, color: NAVY },
+      { text: 'Change', x: colX.change, align: 'right', bold: true, color: NAVY },
+    ], LIGHT_GRAY);
+
+    // Base case row (always present)
+    sy = drawTableRow(doc, sy, [
+      { text: 'Base Case (Original)', x: colX.name, bold: true, color: NAVY },
+      { text: fmt(baseCapacity), x: colX.capacity, bold: true, color: NAVY },
+      { text: fmt(baseSurplus), x: colX.surplus, color: baseSurplus >= 0 ? GREEN : RED },
+      { text: baseBandLabel, x: colX.band, bold: true, color: bandColor(basePreset?.result?.serviceabilityBand ?? a.serviceability_band ?? 'amber') },
+      { text: '—', x: colX.change, align: 'right', color: GRAY },
+    ]);
+
+    // Scenario rows
+    for (let si = 0; si < scenarios.length; si++) {
+      const sc = scenarios[si];
+      const scCapacity = sc.result?.borrowingCapacity ?? 0;
+      const scSurplus = sc.result?.monthlySurplus ?? 0;
+      const scBand = sc.result?.serviceabilityBand ?? 'amber';
+      const capacityDelta = scCapacity - baseCapacity;
+      const changeText = capacityDelta === 0 ? 'No change' : `${capacityDelta > 0 ? '+' : ''}${fmt(capacityDelta)}`;
+      const changeColor = capacityDelta > 0 ? GREEN : capacityDelta < 0 ? RED : GRAY;
+      const rowBg = si % 2 === 0 ? ALT_ROW : undefined;
+
+      sy = checkPageBreak(doc, sy, 12, pageNum);
+      sy = drawTableRow(doc, sy, [
+        { text: sc.name || `Scenario ${si + 1}`, x: colX.name, color: BODY_TEXT, maxWidth: 55 },
+        { text: fmt(scCapacity), x: colX.capacity, bold: true, color: NAVY },
+        { text: fmt(scSurplus), x: colX.surplus, color: scSurplus >= 0 ? GREEN : RED },
+        { text: bandLabel(scBand), x: colX.band, bold: true, color: bandColor(scBand) },
+        { text: changeText, x: colX.change, align: 'right', bold: true, color: changeColor },
+      ], rowBg);
+
+      // Show key input changes for this scenario
+      if (basePreset?.adjustedInputs && sc.adjustedInputs) {
+        const bi = basePreset.adjustedInputs;
+        const si2 = sc.adjustedInputs;
+        const diffs: string[] = [];
+        
+        if (si2.grossAnnualIncome !== bi.grossAnnualIncome) {
+          const pct = ((si2.grossAnnualIncome - bi.grossAnnualIncome) / bi.grossAnnualIncome * 100).toFixed(0);
+          diffs.push(`Income ${Number(pct) >= 0 ? '+' : ''}${pct}%`);
+        }
+        if (si2.monthlyLivingExpenses !== bi.monthlyLivingExpenses) {
+          const pct = ((si2.monthlyLivingExpenses - bi.monthlyLivingExpenses) / bi.monthlyLivingExpenses * 100).toFixed(0);
+          diffs.push(`Expenses ${Number(pct) >= 0 ? '+' : ''}${pct}%`);
+        }
+        if (si2.monthlyCommitments !== bi.monthlyCommitments) {
+          const delta = si2.monthlyCommitments - bi.monthlyCommitments;
+          diffs.push(`Commitments ${delta >= 0 ? '+' : ''}${fmt(delta)}/mo`);
+        }
+        if (si2.interestRate !== bi.interestRate) {
+          const delta = si2.interestRate - bi.interestRate;
+          diffs.push(`Rate ${delta >= 0 ? '+' : ''}${delta.toFixed(2)}%`);
+        }
+        if (si2.loanTermYears !== bi.loanTermYears) {
+          const delta = si2.loanTermYears - bi.loanTermYears;
+          diffs.push(`Term ${delta >= 0 ? '+' : ''}${delta}yr`);
+        }
+
+        if (diffs.length > 0) {
+          doc.setFontSize(7);
+          doc.setFont('helvetica', 'italic');
+          setColor(doc, GRAY);
+          doc.text(`Adjustments: ${diffs.join(' · ')}`, MARGIN + 4, sy - 2);
+          sy += 5;
+        }
+      }
+    }
+
+    // Summary note
+    sy += 8;
+    sy = checkPageBreak(doc, sy, 20, pageNum);
+    setFill(doc, GOLD_LIGHT);
+    doc.rect(MARGIN, sy - 4, CONTENT_W, 16, 'F');
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'italic');
+    setColor(doc, { r: 120, g: 90, b: 30 });
+    doc.text(
+      'Note: Scenario figures are estimates based on modelled adjustments. Actual lending outcomes may vary based on lender policies and credit assessment.',
+      MARGIN + 4, sy + 2, { maxWidth: CONTENT_W - 8 }
+    );
+
+    addFooter(doc, pageNum.value);
+  }
+
+  // ════════════════════════════════════════════════════════════════════════════
   // DISCLAIMER & CONTACT PAGE
   // ════════════════════════════════════════════════════════════════════════════
   try {
