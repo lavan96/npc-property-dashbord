@@ -1053,8 +1053,105 @@ export function StrategyScenarioModeling({
               Toggle strategies above to see their compound impact on borrowing capacity.
             </p>
           )}
+
+          {/* Save & Apply Actions */}
+          {hasAnyStrategy && (
+            <div className="space-y-2 pt-2">
+              <Separator />
+              {showSaveInput ? (
+                <div className="flex gap-2">
+                  <Input
+                    value={scenarioName}
+                    onChange={(e) => setScenarioName(e.target.value)}
+                    placeholder="Scenario name..."
+                    className="h-9 text-sm"
+                    onKeyDown={(e) => e.key === 'Enter' && handleSavePreset()}
+                  />
+                  <Button size="sm" onClick={handleSavePreset}>
+                    <Save className="h-3.5 w-3.5 mr-1" />
+                    Save
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setShowSaveInput(false)}>
+                    Cancel
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => setShowSaveInput(true)}
+                  >
+                    <Save className="h-3.5 w-3.5 mr-1.5" />
+                    Save Scenario
+                  </Button>
+                  {onApplyScenario && (
+                    <Button
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => onApplyScenario(scenarioInputs)}
+                    >
+                      <Zap className="h-3.5 w-3.5 mr-1.5" />
+                      Apply to Calculator
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {/* ═══ SAVED PRESETS ═══ */}
+      {presets.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <FolderOpen className="h-4 w-4 text-primary" />
+              Saved Scenarios ({presets.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {presets.map(preset => (
+              <div
+                key={preset.id}
+                className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
+              >
+                <div>
+                  <p className="text-sm font-medium">{preset.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Capacity: {formatCapacity(preset.result.borrowingCapacity)}
+                    {!preset.isBase && ` · Saved ${new Date(preset.createdAt).toLocaleDateString()}`}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {onApplyScenario && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs h-7"
+                      onClick={() => handleLoadPreset(preset)}
+                    >
+                      Load
+                    </Button>
+                  )}
+                  {!preset.isBase && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs h-7 text-destructive hover:text-destructive"
+                      onClick={() => handleDeletePreset(preset.id)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
