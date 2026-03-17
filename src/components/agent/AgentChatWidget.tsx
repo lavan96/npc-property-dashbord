@@ -1022,8 +1022,8 @@ export function AgentChatWidget() {
                   )}
                   <div className="p-3">
                     <div className="flex gap-2 items-end">
-                      <input ref={fileInputRef} type="file" multiple accept={ACCEPTED_EXTENSIONS} onChange={handleFileSelect} className="hidden" />
-                      <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 rounded-xl" onClick={() => fileInputRef.current?.click()} disabled={loading || attachedFiles.length >= 5} title="Attach files">
+                      <input ref={fileInputRef} type="file" multiple accept={ACCEPTED_EXTENSIONS} onChange={handleFileSelect} className="hidden" style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }} />
+                      <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 rounded-xl" onClick={(e) => { e.preventDefault(); e.stopPropagation(); fileInputRef.current?.click(); }} disabled={loading || attachedFiles.length >= 5} title="Attach files">
                         <Paperclip className="h-4 w-4" />
                       </Button>
                        <Textarea ref={textareaRef} value={input} onChange={(e) => {
