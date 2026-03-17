@@ -284,6 +284,48 @@ serve(async (req) => {
             console.warn('Failed to sync employment to income source:', syncError);
           }
         }
+
+        // ── Portal Notification: Report request status updated ──
+        if (!error && table === 'client_portal_report_requests' && result) {
+          try {
+            const status = (data as Record<string, any>).status;
+            const reqClientId = result.client_id;
+            if (status && reqClientId && ['completed', 'in_progress', 'declined'].includes(status)) {
+              const typeLabel = (result.request_type || '').replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+              const statusMessages: Record<string, { title: string; message: string; type: string }> = {
+                completed: {
+                  title: 'Report Request Completed',
+                  message: `Your ${typeLabel} request has been completed. Check your Reports page for the new document.`,
+                  type: 'success',
+                },
+                in_progress: {
+                  title: 'Report Request In Progress',
+                  message: `Your ${typeLabel} request is now being worked on by our team.`,
+                  type: 'info',
+                },
+                declined: {
+                  title: 'Report Request Update',
+                  message: `Your ${typeLabel} request has been reviewed. Please contact your advisor for more details.`,
+                  type: 'warning',
+                },
+              };
+              const msg = statusMessages[status];
+              if (msg) {
+                await supabase.from('client_portal_notifications').insert({
+                  client_id: reqClientId,
+                  title: msg.title,
+                  message: msg.message,
+                  type: msg.type,
+                  category: 'document',
+                  action_url: '/client/reports',
+                });
+                console.log(`[manage-client-data] Portal notification created for report request status: ${status}`);
+              }
+            }
+          } catch (notifErr) {
+            console.warn('[manage-client-data] Failed to create portal notification for report request:', notifErr);
+          }
+        }
         break;
       }
 
