@@ -47,7 +47,7 @@ interface ResultsPanelProps {
   activeScenarioName?: string | null;
 }
 
-export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', dtiCapEnabled, dtiCapLimit, clientId, clientName, proposedLoanAmount, interestRate, bufferRate, loanTermYears, lmiMode = 'none', lmiEstimate }: ResultsPanelProps) {
+export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', dtiCapEnabled, dtiCapLimit, clientId, clientName, proposedLoanAmount, interestRate, bufferRate, loanTermYears, lmiMode = 'none', lmiEstimate, scenarioPresets, activeScenarioName }: ResultsPanelProps) {
   const [showRecommendations, setShowRecommendations] = useState(true);
   const [showAssumptions, setShowAssumptions] = useState(false);
   const [showTaxBreakdown, setShowTaxBreakdown] = useState(false);
