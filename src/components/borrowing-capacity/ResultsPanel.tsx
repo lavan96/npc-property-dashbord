@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { fetchAndGenerateBorrowingCapacityPDF } from './BorrowingCapacityPDFReport';
+import type { ScenarioPreset } from './scenarios/StrategyScenarioModeling';
 import { useState, useMemo } from 'react';
 import type { FullAssessmentResult, ServiceabilityBand, CalculationMode, TaxBreakdown } from '@/utils/borrowingCapacityCalculations';
 import { getTaxBreakdown } from '@/utils/borrowingCapacityCalculations';
@@ -42,9 +43,11 @@ interface ResultsPanelProps {
   loanTermYears?: number;
   lmiMode?: LmiMode;
   lmiEstimate?: LmiEstimate | null;
+  scenarioPresets?: ScenarioPreset[];
+  activeScenarioName?: string | null;
 }
 
-export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', dtiCapEnabled, dtiCapLimit, clientId, clientName, proposedLoanAmount, interestRate, bufferRate, loanTermYears, lmiMode = 'none', lmiEstimate }: ResultsPanelProps) {
+export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', dtiCapEnabled, dtiCapLimit, clientId, clientName, proposedLoanAmount, interestRate, bufferRate, loanTermYears, lmiMode = 'none', lmiEstimate, scenarioPresets, activeScenarioName }: ResultsPanelProps) {
   const [showRecommendations, setShowRecommendations] = useState(true);
   const [showAssumptions, setShowAssumptions] = useState(false);
   const [showTaxBreakdown, setShowTaxBreakdown] = useState(false);
@@ -150,7 +153,7 @@ export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', 
             <Button
               variant="outline"
               size="sm"
-              onClick={() => fetchAndGenerateBorrowingCapacityPDF(clientId, clientName || 'Client')}
+              onClick={() => fetchAndGenerateBorrowingCapacityPDF(clientId, clientName || 'Client', scenarioPresets)}
             >
               <FileText className="h-4 w-4 mr-1" />
               Export PDF

@@ -507,8 +507,10 @@ export function AdditionalStrategyLevers({
                           <div className="flex items-center gap-3">
                             <Switch
                               checked={isSelected}
-                              onCheckedChange={(e) => {
-                                // Prevent double-toggle from parent onClick
+                              onCheckedChange={(checked) => {
+                                const next = new Set(strategy.portfolioSellPropertyIds);
+                                if (checked) next.add(prop.id); else next.delete(prop.id);
+                                onStrategyChange({ portfolioSellPropertyIds: next });
                               }}
                               onClick={(e) => e.stopPropagation()}
                             />

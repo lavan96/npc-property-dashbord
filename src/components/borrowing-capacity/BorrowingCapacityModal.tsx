@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Calculator, Loader2, RefreshCw, FlaskConical, Clock, Save, Building2, Shield, ShieldAlert, Upload, ShieldCheck } from 'lucide-react';
+import { Calculator, Loader2, RefreshCw, FlaskConical, Clock, Save, Building2, Shield, ShieldAlert, Upload, ShieldCheck, RotateCcw } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useBorrowingCapacity } from '@/hooks/useBorrowingCapacity';
@@ -190,6 +190,8 @@ export function BorrowingCapacityModal({
   
   // Scenario presets state
   const [scenarioPresets, setScenarioPresets] = useState<ScenarioPreset[]>([]);
+  // Active scenario overlay — when set, overrides calculator inputs (front-end only)
+  const [activeScenario, setActiveScenario] = useState<ScenarioPreset | null>(null);
 
   // Computed buffer rate based on toggle
   const effectiveBufferRate = bufferEnabled ? 3.0 : 0;
@@ -695,6 +697,12 @@ export function BorrowingCapacityModal({
     }
   }, [pendingChanges, clientId, queryClient, refetchClientData]);
 
+  // When an active scenario is set, overlay its adjusted inputs
+  const effectiveGrossIncomeForCalc = activeScenario ? activeScenario.adjustedInputs.grossAnnualIncome : totalGrossIncome;
+  const effectiveShadedIncomeForCalc = activeScenario ? activeScenario.adjustedInputs.shadedAnnualIncome : totalShadedIncome;
+  const effectiveExpensesForCalc = activeScenario ? activeScenario.adjustedInputs.monthlyLivingExpenses : effectiveExpenses;
+  const effectiveCommitmentsForCalc = activeScenario ? activeScenario.adjustedInputs.monthlyCommitments : totalMonthlyCommitments;
+
   // Calculate borrowing capacity
   const handleCalculate = useCallback(async () => {
     setIsLocalCalculating(true);
@@ -708,10 +716,10 @@ export function BorrowingCapacityModal({
       } : {};
 
       const calcResult = await quickCalculate({
-        grossAnnualIncome: totalGrossIncome,
-        shadedAnnualIncome: totalShadedIncome,
-        livingExpenses: effectiveExpenses,
-        existingCommitments: totalMonthlyCommitments,
+        grossAnnualIncome: effectiveGrossIncomeForCalc,
+        shadedAnnualIncome: effectiveShadedIncomeForCalc,
+        livingExpenses: effectiveExpensesForCalc,
+        existingCommitments: effectiveCommitmentsForCalc,
         interestRate,
         bufferRate: effectiveBufferRate,
         loanTermYears,
@@ -727,14 +735,14 @@ export function BorrowingCapacityModal({
     } finally {
       setIsLocalCalculating(false);
     }
-  }, [quickCalculate, totalGrossIncome, totalShadedIncome, totalMonthlyCommitments, effectiveExpenses, interestRate, loanTermYears, proposedLoanAmount, calculationMode, dtiCapEnabled, dtiCapLimit, effectiveBufferRate, lmiMode, lmiEstimate, lmiPropertyValue, lmiDepositAmount, isFirstHomeBuyer]);
+  }, [quickCalculate, effectiveGrossIncomeForCalc, effectiveShadedIncomeForCalc, effectiveCommitmentsForCalc, effectiveExpensesForCalc, interestRate, loanTermYears, proposedLoanAmount, calculationMode, dtiCapEnabled, dtiCapLimit, effectiveBufferRate, lmiMode, lmiEstimate, lmiPropertyValue, lmiDepositAmount, isFirstHomeBuyer]);
 
   // Auto-calculate on mount and when key inputs change
   useEffect(() => {
     if (open && clientData) {
       handleCalculate();
     }
-  }, [open, clientData, effectiveExpenses, interestRate, loanTermYears, calculationMode, dtiCapEnabled, dtiCapLimit, effectiveBufferRate, incomeOverrides, liabilityOverrides, lmiMode, lmiEstimate, proposedRentalNetAssessable]);
+  }, [open, clientData, effectiveExpensesForCalc, interestRate, loanTermYears, calculationMode, dtiCapEnabled, dtiCapLimit, effectiveBufferRate, incomeOverrides, liabilityOverrides, lmiMode, lmiEstimate, proposedRentalNetAssessable, activeScenario]);
 
   const headerContent = (
     <div className="flex items-center justify-between flex-wrap gap-2">
@@ -807,6 +815,34 @@ export function BorrowingCapacityModal({
       </div>
     </div>
   );
+
+  // Active scenario banner
+  const scenarioBanner = activeScenario ? (
+    <div className="mx-4 sm:mx-6 mt-2 p-2.5 rounded-lg bg-primary/10 border border-primary/30 flex items-center justify-between text-xs">
+      <span className="text-primary font-medium flex items-center gap-1.5">
+        <FlaskConical className="h-3.5 w-3.5" />
+        Scenario Active: <strong>{activeScenario.name}</strong>
+      </span>
+      <Button
+        variant="outline"
+        size="sm"
+        className="h-6 text-xs px-2"
+        onClick={() => {
+          setActiveScenario(null);
+          // Revert to base preset values if available
+          const basePreset = scenarioPresets.find(p => p.isBase);
+          if (basePreset) {
+            setInterestRate(basePreset.adjustedInputs.interestRate);
+            setLoanTermYears(basePreset.adjustedInputs.loanTermYears);
+          }
+          toast.info('Reverted to base case');
+        }}
+      >
+        <RotateCcw className="h-3 w-3 mr-1" />
+        Revert to Base
+      </Button>
+    </div>
+  ) : null;
 
   // Unsaved changes banner
   const unsavedBanner = hasUnsavedChanges ? (
@@ -1026,6 +1062,7 @@ export function BorrowingCapacityModal({
         </TabsList>
       </div>
 
+      {scenarioBanner}
       {unsavedBanner}
 
       <TabsContent value="calculator" className="flex-1 overflow-hidden m-0">
@@ -1047,6 +1084,8 @@ export function BorrowingCapacityModal({
                 loanTermYears={loanTermYears}
                 lmiMode={lmiMode}
                 lmiEstimate={lmiEstimate}
+                scenarioPresets={scenarioPresets}
+                activeScenarioName={activeScenario?.name}
               />
             </div>
           </ScrollArea>
@@ -1076,6 +1115,8 @@ export function BorrowingCapacityModal({
                     loanTermYears={loanTermYears}
                     lmiMode={lmiMode}
                     lmiEstimate={lmiEstimate}
+                    scenarioPresets={scenarioPresets}
+                    activeScenarioName={activeScenario?.name}
                   />
                 </div>
               </ScrollArea>
@@ -1121,12 +1162,25 @@ export function BorrowingCapacityModal({
                 savedPresets={scenarioPresets}
                 onPresetsChange={setScenarioPresets}
                 onApplyScenario={(inputs) => {
-                  // Apply scenario inputs to the main calculator
+                  // Find matching preset or create an ad-hoc one
+                  const matchingPreset = scenarioPresets.find(
+                    p => !p.isBase && p.adjustedInputs === inputs
+                  );
+                  const scenarioPreset: ScenarioPreset = matchingPreset || {
+                    id: `applied-${Date.now()}`,
+                    name: 'Applied Scenario',
+                    isBase: false,
+                    createdAt: new Date().toISOString(),
+                    adjustedInputs: { ...inputs },
+                    result: result!,
+                  };
+                  setActiveScenario(scenarioPreset);
+                  // Apply the scenario values to calculator state
                   setInterestRate(inputs.interestRate);
                   setLoanTermYears(inputs.loanTermYears);
                   // Switch to calculator tab to show the result
                   setActiveTab('calculator');
-                  toast.success('Scenario applied to calculator');
+                  toast.success(`Scenario "${scenarioPreset.name}" applied to calculator`);
                 }}
               />
             ) : (
