@@ -54,6 +54,7 @@ export function useOutlookCalendar() {
   const [microsoftEmail, setMicrosoftEmailState] = useState<string | null>(null);
   const [outlookEnabled, setOutlookEnabled] = useState(false);
   const { toast } = useToast();
+  const { addNotification } = useNotifications();
 
   const fetchOutlookEvents = useCallback(async (startTime: string, endTime: string) => {
     setIsLoading(true);
