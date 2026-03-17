@@ -3,9 +3,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 /**
  * Agent Scheduled Task Runner
- * Triggered by pg_cron every 5 minutes. Checks for enabled scheduled tasks
- * whose next_run_at has passed, executes them via the ai-dashboard-agent,
- * and updates their run metadata.
+ * Triggered by pg_cron every 5 minutes. Checks for:
+ * 1. Enabled scheduled tasks whose next_run_at has passed
+ * 2. Checklist templates with cron_enabled that are due for instance generation
  */
 
 const corsHeaders = {
@@ -30,7 +30,6 @@ serve(async (req) => {
     const isServiceCall = authHeader.includes(serviceRoleKey) || body.source === 'scheduled';
 
     if (!isServiceCall) {
-      // Also allow anon key calls (from pg_cron via net.http_post)
       const apiKey = req.headers.get('apikey') || '';
       if (!apiKey && !authHeader) {
         return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
@@ -40,7 +39,10 @@ serve(async (req) => {
     const now = new Date().toISOString();
     console.log(`[agent-task-runner] Starting run at ${now}`);
 
-    // Fetch enabled tasks that are due to run
+    let processed = 0;
+    let failed = 0;
+
+    // ─── 1. Process scheduled tasks from agent_scheduled_tasks ───
     const { data: dueTasks, error: fetchErr } = await sb
       .from('agent_scheduled_tasks')
       .select('*')
@@ -51,95 +53,151 @@ serve(async (req) => {
 
     if (fetchErr) {
       console.error('[agent-task-runner] Fetch error:', fetchErr.message);
-      return new Response(JSON.stringify({ error: fetchErr.message }), { status: 500, headers: corsHeaders });
     }
 
-    if (!dueTasks || dueTasks.length === 0) {
-      console.log('[agent-task-runner] No scheduled tasks due');
-    }
+    if (dueTasks && dueTasks.length > 0) {
+      console.log(`[agent-task-runner] ${dueTasks.length} scheduled task(s) due`);
 
-    console.log(`[agent-task-runner] ${dueTasks.length} task(s) due`);
+      for (const task of dueTasks) {
+        try {
+          console.log(`[agent-task-runner] Executing task: ${task.name} (${task.id})`);
+          let result: any = null;
 
-    let processed = 0;
-    let failed = 0;
-
-    for (const task of dueTasks) {
-      try {
-        console.log(`[agent-task-runner] Executing task: ${task.name} (${task.id})`);
-
-        let result: any = null;
-
-        if (task.task_type === 'playbook' && task.playbook_id) {
-          // Execute playbook by invoking the agent
-          const response = await fetch(`${supabaseUrl}/functions/v1/ai-dashboard-agent`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${serviceRoleKey}`,
-              'apikey': anonKey,
-            },
-            body: JSON.stringify({
+          if (task.task_type === 'playbook' && task.playbook_id) {
+            result = await callAgent(supabaseUrl, serviceRoleKey, anonKey, {
               action: 'execute-tool',
               tool_name: 'run_playbook',
               tool_args: { playbook_id: task.playbook_id },
               user_id: task.user_id,
               source: 'scheduled_task',
-            }),
-          });
-          result = await response.json().catch(() => ({ error: 'Failed to parse response' }));
-        } else if (task.task_type === 'single_tool' && task.tool_name) {
-          // Execute single tool
-          const response = await fetch(`${supabaseUrl}/functions/v1/ai-dashboard-agent`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${serviceRoleKey}`,
-              'apikey': anonKey,
-            },
-            body: JSON.stringify({
+            });
+          } else if (task.task_type === 'single_tool' && task.tool_name) {
+            result = await callAgent(supabaseUrl, serviceRoleKey, anonKey, {
               action: 'execute-tool',
               tool_name: task.tool_name,
               tool_args: task.tool_arguments || {},
               user_id: task.user_id,
               source: 'scheduled_task',
-            }),
-          });
-          result = await response.json().catch(() => ({ error: 'Failed to parse response' }));
-        } else {
-          result = { error: `Invalid task configuration: type=${task.task_type}` };
-        }
+            });
+          } else {
+            result = { error: `Invalid task configuration: type=${task.task_type}` };
+          }
 
-        const nextRun = calculateNextRun(task.schedule_cron);
-        const runStatus = result?.error ? 'error' : 'success';
+          const nextRun = calculateNextRun(task.schedule_cron);
+          const runStatus = result?.error ? 'error' : 'success';
 
-        await sb.from('agent_scheduled_tasks').update({
-          last_run_at: now,
-          last_run_status: runStatus,
-          last_run_result: result,
-          next_run_at: nextRun,
-          run_count: (task.run_count || 0) + 1,
-          updated_at: now,
-        }).eq('id', task.id);
+          await sb.from('agent_scheduled_tasks').update({
+            last_run_at: now,
+            last_run_status: runStatus,
+            last_run_result: result,
+            next_run_at: nextRun,
+            run_count: (task.run_count || 0) + 1,
+            updated_at: now,
+          }).eq('id', task.id);
 
-        if (runStatus === 'success') {
-          processed++;
-          console.log(`[agent-task-runner] Task "${task.name}" completed successfully`);
-        } else {
+          if (runStatus === 'success') { processed++; } else { failed++; }
+          console.log(`[agent-task-runner] Task "${task.name}" ${runStatus}`);
+        } catch (err: any) {
           failed++;
-          console.error(`[agent-task-runner] Task "${task.name}" failed:`, result?.error);
+          console.error(`[agent-task-runner] Task "${task.name}" threw:`, err.message);
+          const nextRun = calculateNextRun(task.schedule_cron);
+          await sb.from('agent_scheduled_tasks').update({
+            last_run_at: now,
+            last_run_status: 'error',
+            last_run_result: { error: err.message },
+            next_run_at: nextRun,
+            updated_at: now,
+          }).eq('id', task.id);
         }
-      } catch (err: any) {
-        failed++;
-        console.error(`[agent-task-runner] Task "${task.name}" threw:`, err.message);
+      }
+    } else {
+      console.log('[agent-task-runner] No scheduled tasks due');
+    }
 
-        const nextRun = calculateNextRun(task.schedule_cron);
-        await sb.from('agent_scheduled_tasks').update({
-          last_run_at: now,
-          last_run_status: 'error',
-          last_run_result: { error: err.message },
-          next_run_at: nextRun,
-          updated_at: now,
-        }).eq('id', task.id);
+    // ─── 2. Process checklist templates with cron_enabled ───
+    const { data: cronTemplates, error: cronErr } = await sb
+      .from('checklist_templates')
+      .select('*')
+      .eq('cron_enabled', true)
+      .eq('is_active', true);
+
+    if (cronErr) {
+      console.error('[agent-task-runner] Checklist cron fetch error:', cronErr.message);
+    }
+
+    if (cronTemplates && cronTemplates.length > 0) {
+      console.log(`[agent-task-runner] ${cronTemplates.length} cron-enabled checklist template(s) found`);
+
+      for (const tmpl of cronTemplates) {
+        try {
+          // Determine if this template is due for generation
+          const isDue = isChecklistCronDue(tmpl.cron_expression, tmpl.last_generated_at);
+          if (!isDue) {
+            console.log(`[agent-task-runner] Template "${tmpl.name}" not yet due, skipping`);
+            continue;
+          }
+
+          console.log(`[agent-task-runner] Generating checklist from template: ${tmpl.name} (${tmpl.id})`);
+
+          // Fetch template sections and items
+          const { data: sections } = await sb
+            .from('checklist_template_sections')
+            .select('*, checklist_template_items(*)')
+            .eq('template_id', tmpl.id)
+            .order('display_order', { ascending: true });
+
+          // Create instance
+          const { data: instance, error: instErr } = await sb.from('checklist_instances').insert({
+            template_id: tmpl.id,
+            name: tmpl.name,
+            description: tmpl.description,
+            icon: tmpl.icon,
+            generated_by: 'cron',
+            status: 'in_progress',
+            progress_percent: 0,
+          }).select().single();
+
+          if (instErr || !instance) {
+            console.error(`[agent-task-runner] Failed to create instance for "${tmpl.name}":`, instErr?.message);
+            failed++;
+            continue;
+          }
+
+          // Create instance items from template sections/items
+          const instanceItems: any[] = [];
+          for (const sec of (sections || [])) {
+            for (const item of (sec.checklist_template_items || []).sort((a: any, b: any) => a.display_order - b.display_order)) {
+              instanceItems.push({
+                instance_id: instance.id,
+                section_title: sec.title,
+                section_icon: sec.icon,
+                section_order: sec.display_order,
+                label: item.label,
+                display_order: item.display_order,
+                is_checked: item.is_pre_checked || false,
+              });
+            }
+          }
+
+          if (instanceItems.length > 0) {
+            const { error: itemsErr } = await sb.from('checklist_instance_items').insert(instanceItems);
+            if (itemsErr) {
+              console.error(`[agent-task-runner] Failed to create items for "${tmpl.name}":`, itemsErr.message);
+            }
+          }
+
+          // Update template's last_generated_at
+          await sb.from('checklist_templates').update({
+            last_generated_at: now,
+            updated_at: now,
+          }).eq('id', tmpl.id);
+
+          processed++;
+          console.log(`[agent-task-runner] Checklist "${tmpl.name}" generated successfully (${instanceItems.length} items)`);
+        } catch (err: any) {
+          failed++;
+          console.error(`[agent-task-runner] Checklist template "${tmpl.name}" threw:`, err.message);
+        }
       }
     }
 
@@ -157,23 +215,71 @@ serve(async (req) => {
   }
 });
 
-/**
- * Calculate next run time from a cron expression.
- * Simple parser for common patterns; falls back to +1 hour.
- */
+// ─── Helper: call ai-dashboard-agent ───
+async function callAgent(supabaseUrl: string, serviceRoleKey: string, anonKey: string, body: any): Promise<any> {
+  const response = await fetch(`${supabaseUrl}/functions/v1/ai-dashboard-agent`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${serviceRoleKey}`,
+      'apikey': anonKey,
+    },
+    body: JSON.stringify(body),
+  });
+  return await response.json().catch(() => ({ error: 'Failed to parse response' }));
+}
+
+// ─── Check if a checklist cron template is due ───
+function isChecklistCronDue(cronExpression: string | null, lastGeneratedAt: string | null): boolean {
+  if (!cronExpression) return false;
+  
+  const now = new Date();
+  
+  // If never generated, it's due
+  if (!lastGeneratedAt) return true;
+  
+  const lastGen = new Date(lastGeneratedAt);
+  const parts = cronExpression.trim().split(/\s+/);
+  if (parts.length !== 5) return false;
+  
+  const [minute, hour, , , dayOfWeek] = parts;
+
+  // Check day-of-week constraint
+  if (dayOfWeek !== '*') {
+    const allowedDays = parseCronField(dayOfWeek, 0, 6);
+    if (!allowedDays.includes(now.getUTCDay())) return false;
+  }
+
+  // Check if the scheduled time has passed today (UTC)
+  const targetHour = hour !== '*' ? parseInt(hour) : 0;
+  const targetMinute = minute !== '*' ? parseInt(minute) : 0;
+  
+  const scheduledToday = new Date(now);
+  scheduledToday.setUTCHours(targetHour, targetMinute, 0, 0);
+  
+  // Must be past the scheduled time
+  if (now < scheduledToday) return false;
+  
+  // Must not have been generated today already
+  const lastGenDate = lastGen.toISOString().slice(0, 10);
+  const todayDate = now.toISOString().slice(0, 10);
+  if (lastGenDate === todayDate) return false;
+  
+  return true;
+}
+
+// ─── Calculate next run time from cron ───
 function calculateNextRun(cron: string): string {
   const now = new Date();
   const parts = cron.trim().split(/\s+/);
 
   if (parts.length !== 5) {
-    // Invalid cron, default to 1 hour from now
     return new Date(now.getTime() + 60 * 60 * 1000).toISOString();
   }
 
-  const [minute, hour, dayOfMonth, month, dayOfWeek] = parts;
+  const [minute, hour, , , dayOfWeek] = parts;
 
-  // Handle simple interval patterns
-  // */N minutes
+  // Handle interval patterns: */N minutes
   if (minute.startsWith('*/') && hour === '*') {
     const interval = parseInt(minute.slice(2)) || 60;
     return new Date(now.getTime() + interval * 60 * 1000).toISOString();
@@ -193,12 +299,10 @@ function calculateNextRun(cron: string): string {
     const next = new Date(now);
     next.setHours(targetHour, targetMinute, 0, 0);
 
-    // If today's time has passed, move to next eligible day
     if (next <= now) {
       next.setDate(next.getDate() + 1);
     }
 
-    // Handle day-of-week constraints (0=Sunday, 1-5=Mon-Fri, 6=Saturday)
     if (dayOfWeek !== '*') {
       const allowedDays = parseCronField(dayOfWeek, 0, 6);
       let safety = 0;
@@ -211,11 +315,8 @@ function calculateNextRun(cron: string): string {
     return next.toISOString();
   }
 
-  // Fallback: 1 hour
   return new Date(now.getTime() + 60 * 60 * 1000).toISOString();
 }
-
-// Parse a cron field into an array of values
 
 function parseCronField(field: string, min: number, max: number): number[] {
   if (field === '*') return Array.from({ length: max - min + 1 }, (_, i) => min + i);
