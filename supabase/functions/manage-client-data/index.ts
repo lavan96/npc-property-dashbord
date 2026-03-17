@@ -232,15 +232,34 @@ serve(async (req) => {
           try {
             const reportTitle = (isArray ? result[0] : result)?.report_title || 'New Report';
             const clientVisibleNotes = (isArray ? result[0] : result)?.client_visible_notes;
+            const notifTitle = 'New Report Available';
+            const notifMessage = `Your advisor has published "${reportTitle}" to your portal.${clientVisibleNotes ? ' Note: ' + clientVisibleNotes : ''}`;
+            
             await supabase.from('client_portal_notifications').insert({
               client_id: clientId,
-              title: 'New Report Available',
-              message: `Your advisor has published "${reportTitle}" to your portal.${clientVisibleNotes ? ' Note: ' + clientVisibleNotes : ''}`,
+              title: notifTitle,
+              message: notifMessage,
               type: 'info',
               category: 'document',
               action_url: '/client/reports',
             });
             console.log(`[manage-client-data] Portal notification created for report publish to client ${clientId}`);
+
+            // Send email notification
+            const { resolveClientEmailInfo, sendPortalNotificationEmail } = await import('../_shared/portal-notification-email.ts');
+            const emailInfo = await resolveClientEmailInfo(supabase, clientId);
+            if (emailInfo) {
+              await sendPortalNotificationEmail({
+                to: emailInfo.email,
+                clientFirstName: emailInfo.firstName,
+                title: notifTitle,
+                message: notifMessage,
+                type: 'info',
+                category: 'document',
+                actionUrl: '/client/reports',
+                companyName: emailInfo.companyName,
+              });
+            }
           } catch (notifErr) {
             console.warn('[manage-client-data] Failed to create portal notification for report:', notifErr);
           }
