@@ -969,6 +969,310 @@ export const userGuideKnowledge: GuideSection[] = [
       },
     ],
   },
+  {
+    id: 'deal-pipeline',
+    title: 'Deal Pipeline',
+    description: 'Track property deals from inquiry to settlement',
+    items: [
+      {
+        title: 'Pipeline Overview',
+        description: 'The Deal Pipeline provides a Kanban-style board to track every property deal through its lifecycle stages.',
+        features: [
+          'Kanban board with drag-and-drop stage progression',
+          'Deal stages: Lead, Qualified, Proposal, Negotiation, Under Contract, Settlement, Completed',
+          'Deal value and commission tracking',
+          'Client and property linking',
+          'Assigned team member per deal',
+          'Build progress payment tracking for construction deals',
+        ],
+        steps: [
+          'Navigate to "Deal Pipeline" in the sidebar',
+          'Click "Add Deal" to create a new deal',
+          'Link the deal to a client and property',
+          'Drag deals between stages as they progress',
+          'Track commissions and builder invoices within each deal',
+        ],
+      },
+      {
+        title: 'Build Progress Payments',
+        description: 'Track construction stage payments and builder invoices for build deals.',
+        features: [
+          'Stage-by-stage payment tracking (Slab, Frame, Lock-up, etc.)',
+          'Builder invoice receipt and submission tracking',
+          'Funds released and paid-to-builder status',
+          'Commission trigger identification per stage',
+          'Lender submission tracking',
+        ],
+      },
+    ],
+  },
+  {
+    id: 'agreements',
+    title: 'Agency Agreements',
+    description: 'Generate, send, and manage buyer agency agreements',
+    items: [
+      {
+        title: 'Agreement Generation',
+        description: 'Create professional agency agreements from templates linked to your clients and deals.',
+        features: [
+          'Template-based agreement generation',
+          'Auto-populated buyer details from client records',
+          'Custom commitment fee and terms',
+          'Secondary buyer support',
+          'PDF generation and storage',
+        ],
+        steps: [
+          'Navigate to "Agreements" in the sidebar',
+          'Click "New Agreement" to start',
+          'Select a client and optionally link a deal',
+          'Fill in buyer details, fees, and notes',
+          'Generate and review the PDF',
+          'Send via DocuSign for electronic signature',
+        ],
+      },
+      {
+        title: 'DocuSign Integration',
+        description: 'Send agreements for electronic signature via DocuSign.',
+        features: [
+          'One-click DocuSign envelope creation',
+          'Real-time signing status tracking',
+          'Automatic status sync (Sent, Delivered, Signed, Voided)',
+          'Signed PDF retrieval and storage',
+        ],
+      },
+    ],
+  },
+  {
+    id: 'checklists',
+    title: 'Checklists',
+    description: 'Manage process checklists from templates',
+    items: [
+      {
+        title: 'Checklist Templates',
+        description: 'Create reusable checklist templates for standardized processes like onboarding, settlement, or compliance.',
+        features: [
+          'Multi-section checklist templates',
+          'Custom item ordering and section grouping',
+          'Icon assignment per section',
+          'Template activation/deactivation',
+          'Cron-based auto-generation scheduling',
+        ],
+      },
+      {
+        title: 'Checklist Instances',
+        description: 'Generate and work through checklist instances from templates.',
+        features: [
+          'Progress percentage tracking',
+          'Checked-by user and timestamp logging',
+          'Status tracking (In Progress, Completed)',
+          'AI-powered checklist generation',
+        ],
+        steps: [
+          'Navigate to "Checklists" in the sidebar',
+          'Select a template or create a new instance',
+          'Work through items by checking them off',
+          'Track overall progress in the dashboard',
+        ],
+      },
+    ],
+  },
+  {
+    id: 'marketing-analytics',
+    title: 'Marketing Analytics',
+    description: 'Track marketing campaigns, leads, and conversion metrics',
+    items: [
+      {
+        title: 'Campaign Tracking',
+        description: 'Monitor the performance of your marketing campaigns across channels.',
+        features: [
+          'UTM parameter tracking for leads',
+          'Meta/Facebook ad attribution',
+          'Lead source identification',
+          'Campaign-level conversion rates',
+          'Cost-per-lead analysis',
+        ],
+      },
+      {
+        title: 'Lead Management',
+        description: 'View and manage incoming leads from marketing campaigns.',
+        features: [
+          'Real-time lead notifications',
+          'Lead-to-client conversion tracking',
+          'Source attribution (Google, Meta, Organic, Referral)',
+          'Lead scoring and prioritization',
+        ],
+      },
+    ],
+  },
+  {
+    id: 'reminders',
+    title: 'Reminders Hub',
+    description: 'Centralized view of all reminders and follow-ups',
+    items: [
+      {
+        title: 'Reminders Dashboard',
+        description: 'A centralized hub showing all upcoming, overdue, and completed reminders across all clients.',
+        features: [
+          'Today, upcoming, and overdue reminder filters',
+          'Priority-based sorting (Urgent, High, Normal, Low)',
+          'Client-linked reminders with quick navigation',
+          'Snooze and complete actions',
+          'Bell notification integration for upcoming reminders',
+        ],
+        tips: [
+          'Check the Reminders Hub daily to stay on top of follow-ups',
+          'Set high-priority reminders for time-sensitive items',
+          'Upcoming reminders trigger bell notifications the day before',
+        ],
+      },
+    ],
+  },
+  {
+    id: 'report-requests',
+    title: 'Report Requests',
+    description: 'Manage report requests from the client portal',
+    items: [
+      {
+        title: 'Incoming Requests',
+        description: 'View and process report requests submitted by clients through the client portal.',
+        features: [
+          'Real-time notifications when a client submits a request',
+          'Request status tracking (Pending, In Progress, Completed, Declined)',
+          'Property address and client details',
+          'Notes and comments per request',
+          'Direct report generation from requests',
+        ],
+        steps: [
+          'Navigate to "Report Requests" in the sidebar',
+          'Review pending requests from clients',
+          'Accept a request and generate the report',
+          'Update the status as you work on it',
+          'Client receives automatic email notification on completion',
+        ],
+      },
+    ],
+  },
+  {
+    id: 'client-portal',
+    title: 'Client Portal',
+    description: 'Self-service portal for your clients',
+    items: [
+      {
+        title: 'Portal Overview',
+        description: 'The Client Portal allows your clients to log in, view their reports, request new reports, and book appointments.',
+        features: [
+          'Secure client login with magic links or passwords',
+          'Personalized dashboard per client',
+          'Report viewing and download',
+          'New report request submission',
+          'Appointment booking',
+          'In-app notification feed',
+        ],
+      },
+      {
+        title: 'Portal Configuration',
+        description: 'Configure branding and settings for the client-facing portal.',
+        features: [
+          'Custom branding and logos',
+          'Enable/disable portal features',
+          'Booking calendar configuration',
+          'Welcome message customization',
+          'Auto-email notifications for portal events',
+        ],
+        steps: [
+          'Navigate to "Portal Config" in the sidebar',
+          'Configure branding, colors, and logos',
+          'Enable the features you want clients to access',
+          'Test the portal by logging in as a client',
+        ],
+      },
+    ],
+  },
+  {
+    id: 'ai-agent',
+    title: 'AI Agent',
+    description: 'Conversational AI assistant with tool-calling capabilities',
+    items: [
+      {
+        title: 'Agent Overview',
+        description: 'The AI Agent is an advanced conversational assistant that can perform actions on your behalf such as looking up clients, creating reminders, and running analyses.',
+        features: [
+          'Natural language commands for dashboard actions',
+          'Tool-calling: search clients, create reminders, query data',
+          'Conversation history with pinning and sharing',
+          'Playbooks for multi-step automated workflows',
+          'Scheduled tasks for recurring agent actions',
+          'Action audit log with rollback capability',
+        ],
+      },
+      {
+        title: 'Playbooks & Scheduling',
+        description: 'Automate multi-step workflows and schedule recurring AI agent tasks.',
+        features: [
+          'Create reusable playbooks with ordered steps',
+          'Schedule tasks with cron expressions',
+          'Run history and status tracking',
+          'Enable/disable individual scheduled tasks',
+        ],
+      },
+    ],
+  },
+  {
+    id: 'notifications',
+    title: 'Notifications',
+    description: 'Real-time alerts and notification management',
+    items: [
+      {
+        title: 'Notification Center',
+        description: 'The bell icon in the top navigation provides real-time alerts for important events across the platform.',
+        features: [
+          'Real-time push notifications for reports, emails, calls, and bookings',
+          'Notification types: report completed, new email, call completed, appointment created, new lead, agreement generated, portal report request, upcoming reminder',
+          'Click-to-navigate to the relevant page',
+          'Mark as read / mark all as read',
+          'Notification persistence across sessions',
+        ],
+      },
+      {
+        title: 'Notification Sources',
+        description: 'Events that trigger internal dashboard notifications.',
+        features: [
+          'Investment report generation completed or failed',
+          'Incoming emails (admin and personal mailboxes)',
+          'VAPI call completions with outcome details',
+          'Appointment bookings from GHL, Outlook, or dashboard',
+          'New GHL contacts synced',
+          'Marketing leads with campaign attribution',
+          'Client portal report requests',
+          'Agency agreement generation',
+          'Client reminders due today or upcoming',
+        ],
+      },
+    ],
+  },
+  {
+    id: 'api-usage',
+    title: 'API Usage & Costs',
+    description: 'Monitor AI token usage and API costs',
+    items: [
+      {
+        title: 'Usage Dashboard',
+        description: 'Track API consumption across all AI-powered features to manage costs.',
+        features: [
+          'Token usage breakdown by service (OpenAI, Gemini, etc.)',
+          'Cost estimation in USD',
+          'Usage trends over time',
+          'Per-user consumption tracking',
+          'Model-level breakdown',
+        ],
+        tips: [
+          'Monitor usage regularly to stay within budget',
+          'Review which features consume the most tokens',
+          'Use efficient analysis modes to reduce costs',
+        ],
+      },
+    ],
+  },
 ];
 
 /**
