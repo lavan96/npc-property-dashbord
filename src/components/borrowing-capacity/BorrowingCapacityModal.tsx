@@ -33,7 +33,8 @@ import { ExpensesSection } from './sections/ExpensesSection';
 import { LiabilitiesSection } from './sections/LiabilitiesSection';
 import { ProposedLoanSection, type ProposedRentalIncomeData } from './sections/ProposedLoanSection';
 import { ResultsPanel } from './ResultsPanel';
-import { ScenarioModeling } from './ScenarioModeling';
+import { StrategyScenarioModeling } from './scenarios/StrategyScenarioModeling';
+import type { LiabilityItem as ScenarioLiabilityItem, PropertyItem as ScenarioPropertyItem } from './scenarios/StrategyScenarioModeling';
 import { CapacityHistoryChart } from './CapacityHistoryChart';
 import { BankRateSelector } from './BankRateSelector';
 import { BankRateComparisonModal } from './BankRateComparisonModal';
@@ -1084,7 +1085,7 @@ export function BorrowingCapacityModal({
         <ScrollArea className={isMobile ? "h-[calc(100vh-180px)]" : "h-[calc(90vh-140px)]"}>
           <div className="p-4 sm:p-6">
             {result ? (
-              <ScenarioModeling
+              <StrategyScenarioModeling
                 baseInputs={{
                   grossAnnualIncome: totalGrossIncome,
                   shadedAnnualIncome: totalShadedIncome,
@@ -1095,6 +1096,25 @@ export function BorrowingCapacityModal({
                   loanTermYears,
                 }}
                 baseResult={result}
+                liabilities={liabilitiesBreakdown.map(l => ({
+                  id: l.id,
+                  type: l.type,
+                  label: l.label,
+                  balance: l.balance,
+                  limit: l.limit,
+                  monthlyServicing: l.monthlyServicing,
+                  calculationNote: l.calculationNote,
+                }))}
+                properties={(clientData?.properties || []).map((p: any) => ({
+                  id: p.id,
+                  address: p.address || '',
+                  property_type: p.property_type || '',
+                  current_value: Number(p.current_value) || 0,
+                  loan_remaining: Number(p.loan_remaining) || 0,
+                  monthly_interest_repayment: Number(p.monthly_interest_repayment) || 0,
+                  loan_repayment_amount: Number(p.loan_repayment_amount) || 0,
+                  net_monthly_cashflow: Number(p.net_monthly_cashflow) || 0,
+                }))}
               />
             ) : (
               <div className="text-center text-muted-foreground py-12">
