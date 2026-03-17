@@ -281,6 +281,21 @@ serve(async (req) => {
         }
       }
 
+      // ── Create portal notification for the client ──
+      try {
+        await supabase.from('client_portal_notifications').insert({
+          client_id: clientId,
+          title: 'Appointment Confirmed',
+          message: `Your appointment on ${formattedDate} at ${formattedTime} (AEST) has been confirmed.`,
+          type: 'success',
+          category: 'deal',
+          action_url: '/client/appointments',
+        });
+        console.log('[portal-book-appointment] Portal notification created for client');
+      } catch (notifErr) {
+        console.warn('[portal-book-appointment] Failed to create portal notification:', notifErr);
+      }
+
       return new Response(JSON.stringify({ success: true, appointment: ghlData }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });

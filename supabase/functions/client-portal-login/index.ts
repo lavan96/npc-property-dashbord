@@ -109,6 +109,7 @@ serve(async (req) => {
     }
 
     // Update last login
+    const previousLoginAt = portalUser.last_login_at;
     await supabase
       .from('client_portal_users')
       .update({ last_login_at: new Date().toISOString() })
@@ -116,6 +117,24 @@ serve(async (req) => {
 
     // Cleanup expired sessions
     await supabase.rpc('cleanup_expired_portal_sessions')
+
+    // Create welcome notification on first login
+    if (!previousLoginAt) {
+      try {
+        const clientData = portalUser.clients as any;
+        const firstName = clientData?.primary_first_name || 'there';
+        await supabase.from('client_portal_notifications').insert({
+          client_id: portalUser.client_id,
+          title: 'Welcome to Your Client Portal!',
+          message: `Hi ${smartCapitalizeStr(firstName)}, welcome to your secure client portal. Here you can track your deals, view reports, manage your properties, and book appointments with your advisor.`,
+          type: 'info',
+          category: 'general',
+          action_url: '/client',
+        });
+      } catch (notifErr) {
+        console.warn('[client-portal-login] Failed to create welcome notification:', notifErr);
+      }
+    }
 
     const clientData = portalUser.clients as any;
     const sessionCookie = createSessionCookie(sessionToken, expiresAt)
