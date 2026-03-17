@@ -562,7 +562,8 @@ export function StrategyScenarioModeling({
                         <div className="flex items-center gap-3">
                           <Switch
                             checked={isSelected}
-                            onCheckedChange={() => toggleRefinance(prop.id)}
+                            onCheckedChange={() => {}}
+                            onClick={(e) => e.stopPropagation()}
                           />
                           <div>
                             <p className="text-sm font-medium">{prop.address?.slice(0, 35) || 'Investment Property'}</p>
