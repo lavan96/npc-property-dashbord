@@ -29,7 +29,7 @@ export interface AdditionalStrategyState {
   dtiCapEnabled: boolean;
   dtiCapValue: number;
   stampDutyPurchasePrice: number;
-  portfolioSellPropertyId: string | null;
+  portfolioSellPropertyIds: Set<string>;
   portfolioSellReinvest: boolean;
 }
 
@@ -40,7 +40,7 @@ export const DEFAULT_ADDITIONAL_STRATEGY: AdditionalStrategyState = {
   dtiCapEnabled: false,
   dtiCapValue: 6,
   stampDutyPurchasePrice: 0,
-  portfolioSellPropertyId: null,
+  portfolioSellPropertyIds: new Set(),
   portfolioSellReinvest: false,
 };
 
