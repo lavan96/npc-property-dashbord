@@ -188,6 +188,9 @@ export function BorrowingCapacityModal({
     expenses: { items: new Map() },
   });
   
+  // Scenario presets state
+  const [scenarioPresets, setScenarioPresets] = useState<ScenarioPreset[]>([]);
+
   // Computed buffer rate based on toggle
   const effectiveBufferRate = bufferEnabled ? 3.0 : 0;
 
