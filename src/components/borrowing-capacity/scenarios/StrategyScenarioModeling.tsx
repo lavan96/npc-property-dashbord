@@ -506,7 +506,7 @@ export function StrategyScenarioModeling({
                       <div className="flex items-center gap-3">
                         <Switch
                           checked={strategy.consolidatedLiabilities.has(debt.id)}
-                          onCheckedChange={() => {}}
+                          onCheckedChange={() => toggleConsolidation(debt.id)}
                           onClick={(e) => e.stopPropagation()}
                         />
                         <div>
