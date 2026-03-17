@@ -104,12 +104,10 @@ export function AdditionalStrategyLevers({
   const legalFees = strategy.stampDutyPurchasePrice > 0 ? 2500 : 0;
   const totalPurchaseCosts = stampDuty + transferFee + legalFees;
 
-  const sellProperty = strategy.portfolioSellPropertyId
-    ? properties.find(p => p.id === strategy.portfolioSellPropertyId)
-    : null;
-  const sellEquityFreed = sellProperty
-    ? Math.max(0, sellProperty.current_value - sellProperty.loan_remaining)
-    : 0;
+  const sellProperties = properties.filter(p => strategy.portfolioSellPropertyIds.has(p.id));
+  const totalSellEquityFreed = sellProperties.reduce((sum, p) => 
+    sum + Math.max(0, p.current_value - p.loan_remaining), 0);
+  const totalSellValue = sellProperties.reduce((sum, p) => sum + p.current_value, 0);
 
   return (
     <>
