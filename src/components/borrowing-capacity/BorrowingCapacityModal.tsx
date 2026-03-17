@@ -1062,6 +1062,7 @@ export function BorrowingCapacityModal({
         </TabsList>
       </div>
 
+      {scenarioBanner}
       {unsavedBanner}
 
       <TabsContent value="calculator" className="flex-1 overflow-hidden m-0">
