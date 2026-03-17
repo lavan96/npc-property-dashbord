@@ -292,16 +292,37 @@ export function StrategyScenarioModeling({
     const prop = equityReleaseProperties.find(p => p.id === strategy.equityReleasePropertyId);
     if (!prop) return null;
     const maxLoan = prop.current_value * strategy.equityReleaseTargetLVR;
-    const accessibleEquity = Math.max(0, maxLoan - prop.loan_remaining);
+    const grossAccessibleEquity = Math.max(0, maxLoan - prop.loan_remaining);
     const currentLVR = prop.current_value > 0 ? (prop.loan_remaining / prop.current_value) * 100 : 0;
     const currentEquity = prop.current_value - prop.loan_remaining;
+    const targetLVRPercent = strategy.equityReleaseTargetLVR * 100;
+
+    // Calculate LMI if target LVR > 80%
+    let lmiEstimate = null;
+    let lmiAmount = 0;
+    if (targetLVRPercent > 80 && grossAccessibleEquity > 0) {
+      const newLoanAmount = maxLoan; // total loan after equity release
+      lmiEstimate = estimateLMI({
+        propertyValue: prop.current_value,
+        depositAmount: prop.current_value - newLoanAmount,
+        loanAmount: newLoanAmount,
+        isFirstHomeBuyer: false,
+      });
+      lmiAmount = lmiEstimate.lmiAmount;
+    }
+
+    const accessibleEquity = Math.max(0, grossAccessibleEquity - lmiAmount);
+
     return {
       property: prop,
       currentLVR,
       currentEquity,
-      targetLVR: strategy.equityReleaseTargetLVR * 100,
+      targetLVR: targetLVRPercent,
+      grossAccessibleEquity,
       accessibleEquity,
       maxLoan,
+      lmiEstimate,
+      lmiAmount,
     };
   }, [strategy.equityReleaseEnabled, strategy.equityReleasePropertyId, strategy.equityReleaseTargetLVR, equityReleaseProperties]);
 
