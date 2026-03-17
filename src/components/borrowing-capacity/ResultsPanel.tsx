@@ -259,6 +259,30 @@ export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', 
           </div>
         </div>
 
+        {/* Total Purchasing Power — shown when equity release contributes capital */}
+        {accessibleEquity > 0 && (
+          <div className="p-4 rounded-lg border-2 border-primary/30 bg-primary/5">
+            <p className="text-sm font-medium text-muted-foreground mb-1">TOTAL PURCHASING POWER</p>
+            <div className="text-3xl font-bold text-primary">
+              {formatCurrency(result.borrowingCapacity + accessibleEquity)}
+            </div>
+            <div className="grid grid-cols-2 gap-3 mt-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Borrowing Capacity:</span>
+                <span className="font-medium">{formatCurrency(result.borrowingCapacity)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Accessible Equity:</span>
+                <span className="font-medium text-primary">{formatCurrency(accessibleEquity)}</span>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+              <Info className="h-3 w-3" />
+              Equity release provides additional capital — it does not affect serviceability.
+            </p>
+          </div>
+        )}
+
         {/* Quick Stats Grid */}
         <div className="grid grid-cols-3 gap-3">
           <div className="p-3 rounded-lg bg-secondary/50 text-center">
