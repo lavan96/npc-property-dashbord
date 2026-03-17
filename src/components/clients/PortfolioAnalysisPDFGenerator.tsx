@@ -3136,6 +3136,14 @@ export function PortfolioAnalysisPDFGenerator({
         entityName: clientName,
         metadata: { client_id: clientId, persisted: reportPersisted, include_owner_occupied: includeOwnerOccupied }
       });
+      
+      addNotification({
+        type: 'report_generation_completed',
+        title: 'Portfolio Report Ready',
+        message: `Portfolio Performance Analysis for ${clientName} is ready`,
+        entityId: clientId
+      });
+      
       onComplete?.();
       
     } catch (error: any) {
