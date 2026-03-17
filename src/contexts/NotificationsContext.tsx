@@ -50,7 +50,9 @@ export type NotificationType =
   // Phase 5 - Assignment notifications
   | 'reminder_assigned'
   | 'deal_assigned'
-  | 'report_request';
+  | 'report_request'
+  // Outlook calendar
+  | 'outlook_event_created';
 
 export interface Notification {
   id: string;

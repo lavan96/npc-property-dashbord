@@ -90,6 +90,8 @@ export function NotificationsDropdown() {
         return <DatabaseZap className="h-4 w-4 text-green-500" />;
       case 'report_comment_added':
         return <MessageSquare className="h-4 w-4 text-blue-500" />;
+      case 'outlook_event_created':
+        return <CalendarPlus className="h-4 w-4 text-blue-500" />;
       default:
         return <Info className="h-4 w-4 text-blue-500" />;
     }

@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useToast } from '@/hooks/use-toast';
+import { useNotifications } from '@/contexts/NotificationsContext';
 
 export interface OutlookEvent {
   id: string;
@@ -53,6 +54,7 @@ export function useOutlookCalendar() {
   const [microsoftEmail, setMicrosoftEmailState] = useState<string | null>(null);
   const [outlookEnabled, setOutlookEnabled] = useState(false);
   const { toast } = useToast();
+  const { addNotification } = useNotifications();
 
   const fetchOutlookEvents = useCallback(async (startTime: string, endTime: string) => {
     setIsLoading(true);
@@ -107,6 +109,12 @@ export function useOutlookCalendar() {
       toast({
         title: 'Outlook event created',
         description: `"${payload.subject}" added to your Outlook calendar`,
+      });
+
+      addNotification({
+        type: 'appointment_created',
+        title: 'Outlook Event Created',
+        message: `"${payload.subject}" added to Outlook calendar`
       });
 
       return data.event;

@@ -524,6 +524,104 @@ serve(async (req) => {
       });
     }
 
+    // ── Appointment events ──
+    const isAppointmentEvent = eventType.includes('appointment')
+      || eventType.includes('calendar')
+      || body.appointmentStatus
+      || body.calendarId;
+
+    if (isAppointmentEvent) {
+      console.log(`[ghl-webhook] Detected appointment event: ${eventType}`);
+      const contactId = body.contactId || body.contact_id || body.contact?.id;
+      const appointmentTitle = body.title || body.name || 'Appointment';
+      const appointmentStatus = body.appointmentStatus || body.status || '';
+      const startTime = body.startTime || body.start_time || body.selectedSlot || '';
+      const calendarName = body.calendarName || body.calendar_name || '';
+
+      // Determine notification type
+      let notificationType = 'appointment_created';
+      let notificationTitle = 'New GHL Appointment';
+      let notificationMessage = `"${appointmentTitle}" has been scheduled`;
+
+      if (eventType.includes('delete') || eventType.includes('cancel') || appointmentStatus === 'cancelled') {
+        notificationType = 'appointment_cancelled';
+        notificationTitle = 'Appointment Cancelled';
+        notificationMessage = `"${appointmentTitle}" has been cancelled`;
+      } else if (eventType.includes('update') || eventType.includes('reschedule')) {
+        notificationType = 'appointment_rescheduled';
+        notificationTitle = 'Appointment Updated';
+        notificationMessage = `"${appointmentTitle}" has been updated`;
+      }
+
+      if (startTime) {
+        try {
+          const dateStr = new Date(startTime).toLocaleString('en-AU', { 
+            timeZone: 'Australia/Sydney', 
+            dateStyle: 'medium', 
+            timeStyle: 'short' 
+          });
+          notificationMessage += ` — ${dateStr}`;
+        } catch (_) { /* ignore date parsing errors */ }
+      }
+
+      if (calendarName) {
+        notificationMessage += ` (${calendarName})`;
+      }
+
+      // Insert notification into the notifications table
+      const { error: notifError } = await supabase
+        .from('notifications')
+        .insert({
+          type: notificationType,
+          title: notificationTitle,
+          message: notificationMessage,
+          entity_id: body.id || null,
+          read: false
+        });
+
+      if (notifError) {
+        console.error('[ghl-webhook] Failed to insert appointment notification:', notifError);
+      } else {
+        console.log('[ghl-webhook] Appointment notification inserted');
+      }
+
+      // Also try to resolve client and log activity
+      if (contactId) {
+        const { data: client } = await supabase
+          .from('clients')
+          .select('id, primary_first_name, primary_surname')
+          .eq('ghl_contact_id', contactId)
+          .maybeSingle();
+
+        if (client) {
+          notificationMessage = `"${appointmentTitle}" for ${client.primary_first_name} ${client.primary_surname}`;
+          if (startTime) {
+            try {
+              const dateStr = new Date(startTime).toLocaleString('en-AU', { 
+                timeZone: 'Australia/Sydney', 
+                dateStyle: 'medium', 
+                timeStyle: 'short' 
+              });
+              notificationMessage += ` — ${dateStr}`;
+            } catch (_) {}
+          }
+
+          // Update the notification with client context
+          await supabase
+            .from('notifications')
+            .update({ message: notificationMessage, entity_id: client.id })
+            .eq('entity_id', body.id || '')
+            .order('created_at', { ascending: false })
+            .limit(1);
+        }
+      }
+
+      return new Response(JSON.stringify({ success: true, event: 'appointment', type: notificationType }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // ── Opportunity events ──
     const isOpportunityEvent = eventType.includes('opportunity')
       || body.pipelineStageId

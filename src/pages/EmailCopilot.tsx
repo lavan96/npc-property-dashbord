@@ -5,6 +5,7 @@ import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { useEmailNotifications } from '@/hooks/useEmailNotifications';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useNotifications } from '@/contexts/NotificationsContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import RichTextBody from '@/components/email/RichTextBody';
 import { EmailClientAssignment } from '@/components/email/EmailClientAssignment';
@@ -200,6 +201,7 @@ function formatEmailBody(body: string): string {
 export default function EmailCopilot() {
   const isMobile = useIsMobile();
   const { hasModuleAccess, loading: permissionsLoading } = usePermissions();
+  const { addNotification } = useNotifications();
   const [emails, setEmails] = useState<Email[]>([]);
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
   const [showMobileDetail, setShowMobileDetail] = useState(false);
@@ -1253,6 +1255,14 @@ export default function EmailCopilot() {
         entityName: selectedEmail.subject,
         metadata: { recipient: replyTo }
       });
+
+      // Add bell notification for email reply
+      addNotification({
+        type: 'email_reply_sent',
+        title: 'Email Reply Sent',
+        message: `Reply sent to ${replyTo} — ${selectedEmail.subject}`,
+        entityId: selectedEmail.id
+      });
       
       // Update email status to 'replied' so it shows badge and remains visible in thread
       await supabase
@@ -1333,6 +1343,14 @@ export default function EmailCopilot() {
       if (error) throw error;
 
       toast.success('Email sent successfully!');
+      
+      // Add bell notification for composed email
+      addNotification({
+        type: 'email_reply_sent',
+        title: 'Email Sent',
+        message: `Email sent to ${composeEmail.to} — ${composeEmail.subject || '(No Subject)'}`
+      });
+
       setShowComposeModal(false);
       setComposeEmail({ to: '', subject: '', body: '', cc: '', bcc: '' });
       setComposeAttachments([]);

@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { secureStorageUpload } from '@/hooks/useSecureStorage';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
+import { useNotifications } from '@/contexts/NotificationsContext';
 import { PDFDocument, rgb, StandardFonts, PDFPage, PDFFont } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import { fetchGlobalReportSettings, type GlobalReportSettings } from '@/hooks/useGlobalReportSettings';
@@ -394,6 +395,7 @@ export function PortfolioAnalysisPDFGenerator({
   const [analysisData, setAnalysisData] = useState<PortfolioAnalysisData | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const { addNotification } = useNotifications();
 
   const generateAnalysis = async () => {
     setIsGenerating(true);
@@ -3134,6 +3136,14 @@ export function PortfolioAnalysisPDFGenerator({
         entityName: clientName,
         metadata: { client_id: clientId, persisted: reportPersisted, include_owner_occupied: includeOwnerOccupied }
       });
+      
+      addNotification({
+        type: 'report_generation_completed',
+        title: 'Portfolio Report Ready',
+        message: `Portfolio Performance Analysis for ${clientName} is ready`,
+        entityId: clientId
+      });
+      
       onComplete?.();
       
     } catch (error: any) {
