@@ -326,7 +326,7 @@ export function StrategyScenarioModeling({
     };
 
     const result = calculateBorrowingCapacity(scenarioInputs);
-    return { scenarioResult: result, impactBreakdown: impacts };
+    return { scenarioResult: result, scenarioInputs, impactBreakdown: impacts };
   }, [strategy, baseInputs, consolidatableDebts, investmentProperties, properties]);
 
   // Equity release calculation
