@@ -816,6 +816,34 @@ export function BorrowingCapacityModal({
     </div>
   );
 
+  // Active scenario banner
+  const scenarioBanner = activeScenario ? (
+    <div className="mx-4 sm:mx-6 mt-2 p-2.5 rounded-lg bg-primary/10 border border-primary/30 flex items-center justify-between text-xs">
+      <span className="text-primary font-medium flex items-center gap-1.5">
+        <FlaskConical className="h-3.5 w-3.5" />
+        Scenario Active: <strong>{activeScenario.name}</strong>
+      </span>
+      <Button
+        variant="outline"
+        size="sm"
+        className="h-6 text-xs px-2"
+        onClick={() => {
+          setActiveScenario(null);
+          // Revert to base preset values if available
+          const basePreset = scenarioPresets.find(p => p.isBase);
+          if (basePreset) {
+            setInterestRate(basePreset.adjustedInputs.interestRate);
+            setLoanTermYears(basePreset.adjustedInputs.loanTermYears);
+          }
+          toast.info('Reverted to base case');
+        }}
+      >
+        <RotateCcw className="h-3 w-3 mr-1" />
+        Revert to Base
+      </Button>
+    </div>
+  ) : null;
+
   // Unsaved changes banner
   const unsavedBanner = hasUnsavedChanges ? (
     <div className="mx-4 sm:mx-6 mt-2 p-2 rounded-lg bg-warning/10 border border-warning/30 flex items-center justify-between text-xs">
