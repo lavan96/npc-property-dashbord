@@ -14,6 +14,7 @@ import {
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { PortalOnboardingTour } from './PortalOnboardingTour';
+import { PortalNotificationBell } from './PortalNotificationBell';
 
 const portalNavItems = [
   { to: '/client', icon: HomeIcon, label: 'Dashboard', end: true, tourId: 'dashboard' },
