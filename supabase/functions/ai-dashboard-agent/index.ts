@@ -3188,6 +3188,48 @@ async function executeCreateChecklistInstance(sb: any, args: any, userId: string
   return { success: true, message: `Checklist "${template.name}" created with ${items.length} items.`, instance_id: instance.id };
 }
 
+async function executeCreateChecklistTemplate(sb: any, args: any, userId: string) {
+  const name = args.name;
+  const description = args.description || null;
+  const icon = args.icon || '📋';
+  const sections = args.sections || [];
+
+  if (!name) return { error: 'Template name is required.' };
+  if (!sections.length) return { error: 'At least one section with items is required.' };
+
+  // Create the template
+  const { data: template, error: tmplErr } = await sb.from('checklist_templates')
+    .insert({ name, description, icon, created_by: userId, is_active: true })
+    .select().single();
+  if (tmplErr) return { error: `Failed to create template: ${tmplErr.message}` };
+
+  let totalItems = 0;
+  for (let sIdx = 0; sIdx < sections.length; sIdx++) {
+    const sec = sections[sIdx];
+    const { data: section, error: secErr } = await sb.from('checklist_template_sections')
+      .insert({ template_id: template.id, title: sec.title, icon: sec.icon || '▶️', display_order: sIdx })
+      .select().single();
+    if (secErr) continue;
+
+    const sectionItems = (sec.items || []).map((item: any, iIdx: number) => ({
+      section_id: section.id,
+      label: typeof item === 'string' ? item : item.label,
+      is_pre_checked: item.is_pre_checked || false,
+      display_order: iIdx,
+    }));
+    if (sectionItems.length) {
+      await sb.from('checklist_template_items').insert(sectionItems);
+      totalItems += sectionItems.length;
+    }
+  }
+
+  return {
+    success: true,
+    message: `Checklist template "${name}" created with ${sections.length} sections and ${totalItems} items.`,
+    template_id: template.id,
+  };
+}
+
 // ─── ANALYTICS ───
 
 async function executeGetRecentActivity(sb: any, args: any) {
