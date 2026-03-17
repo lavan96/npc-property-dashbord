@@ -1123,12 +1123,25 @@ export function BorrowingCapacityModal({
                 savedPresets={scenarioPresets}
                 onPresetsChange={setScenarioPresets}
                 onApplyScenario={(inputs) => {
-                  // Apply scenario inputs to the main calculator
+                  // Find matching preset or create an ad-hoc one
+                  const matchingPreset = scenarioPresets.find(
+                    p => !p.isBase && p.adjustedInputs === inputs
+                  );
+                  const scenarioPreset: ScenarioPreset = matchingPreset || {
+                    id: `applied-${Date.now()}`,
+                    name: 'Applied Scenario',
+                    isBase: false,
+                    createdAt: new Date().toISOString(),
+                    adjustedInputs: { ...inputs },
+                    result: result!,
+                  };
+                  setActiveScenario(scenarioPreset);
+                  // Apply the scenario values to calculator state
                   setInterestRate(inputs.interestRate);
                   setLoanTermYears(inputs.loanTermYears);
                   // Switch to calculator tab to show the result
                   setActiveTab('calculator');
-                  toast.success('Scenario applied to calculator');
+                  toast.success(`Scenario "${scenarioPreset.name}" applied to calculator`);
                 }}
               />
             ) : (
