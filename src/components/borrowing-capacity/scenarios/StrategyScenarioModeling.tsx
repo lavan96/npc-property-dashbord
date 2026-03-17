@@ -99,6 +99,8 @@ export interface ScenarioPreset {
   createdAt: string;
   adjustedInputs: BorrowingCapacityInput;
   result: BorrowingCapacityResult;
+  /** Accessible equity from equity release lever (informational capital, not serviceability) */
+  accessibleEquity?: number;
 }
 
 interface StrategyScenarioModelingProps {
