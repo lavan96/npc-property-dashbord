@@ -2351,7 +2351,7 @@ const WRITE_TOOLS = [
   'update_deal_stage', 'update_deal_risk_status', 'update_deal_field', 'update_build_payment',
   'create_reminder', 'update_reminder', 'delete_reminder', 'set_follow_up_date',
   'link_email_to_client', 'send_email',
-  'toggle_checklist_item', 'create_checklist_instance',
+  'toggle_checklist_item', 'create_checklist_instance', 'create_checklist_template',
   'create_client', 'delete_client',
   'create_client_note', 'update_client_note', 'delete_client_note',
   'create_deal', 'delete_deal',
@@ -2370,6 +2370,8 @@ const WRITE_TOOLS = [
   'save_memory', 'trigger_investment_report',
   // Outlook calendar
   'create_outlook_event', 'create_outlook_prep_block', 'delete_outlook_event', 'create_follow_up_block',
+  // Agreements
+  'generate_agreement', 'send_agreement_docusign',
 ];
 
 // ============================================================
