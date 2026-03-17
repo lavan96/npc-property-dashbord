@@ -212,14 +212,33 @@ serve(async (req) => {
         // Create portal notification confirming request submission
         try {
           const typeLabel = payload.request_type.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+          const notifTitle = 'Report Request Submitted';
+          const notifMessage = `Your ${typeLabel} request has been submitted. Our team will review it shortly.${payload.property_address ? ' Property: ' + payload.property_address : ''}`;
+          
           await supabase.from('client_portal_notifications').insert({
             client_id: clientId,
-            title: 'Report Request Submitted',
-            message: `Your ${typeLabel} request has been submitted. Our team will review it shortly.${payload.property_address ? ' Property: ' + payload.property_address : ''}`,
+            title: notifTitle,
+            message: notifMessage,
             type: 'success',
             category: 'document',
             action_url: '/client/reports',
           });
+
+          // Send email notification
+          const { resolveClientEmailInfo, sendPortalNotificationEmail } = await import('../_shared/portal-notification-email.ts');
+          const emailInfo = await resolveClientEmailInfo(supabase, clientId);
+          if (emailInfo) {
+            await sendPortalNotificationEmail({
+              to: emailInfo.email,
+              clientFirstName: emailInfo.firstName,
+              title: notifTitle,
+              message: notifMessage,
+              type: 'success',
+              category: 'document',
+              actionUrl: '/client/reports',
+              companyName: emailInfo.companyName,
+            });
+          }
         } catch (notifErr) {
           console.error('Failed to create portal notification:', notifErr);
         }

@@ -339,6 +339,22 @@ serve(async (req) => {
                   action_url: '/client/reports',
                 });
                 console.log(`[manage-client-data] Portal notification created for report request status: ${status}`);
+
+                // Send email notification
+                const { resolveClientEmailInfo, sendPortalNotificationEmail } = await import('../_shared/portal-notification-email.ts');
+                const emailInfo = await resolveClientEmailInfo(supabase, reqClientId);
+                if (emailInfo) {
+                  await sendPortalNotificationEmail({
+                    to: emailInfo.email,
+                    clientFirstName: emailInfo.firstName,
+                    title: msg.title,
+                    message: msg.message,
+                    type: msg.type,
+                    category: 'document',
+                    actionUrl: '/client/reports',
+                    companyName: emailInfo.companyName,
+                  });
+                }
               }
             }
           } catch (notifErr) {

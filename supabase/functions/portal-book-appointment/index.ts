@@ -282,16 +282,34 @@ serve(async (req) => {
       }
 
       // ── Create portal notification for the client ──
+      const apptNotifTitle = 'Appointment Confirmed';
+      const apptNotifMessage = `Your appointment on ${formattedDate} at ${formattedTime} (AEST) has been confirmed.`;
       try {
         await supabase.from('client_portal_notifications').insert({
           client_id: clientId,
-          title: 'Appointment Confirmed',
-          message: `Your appointment on ${formattedDate} at ${formattedTime} (AEST) has been confirmed.`,
+          title: apptNotifTitle,
+          message: apptNotifMessage,
           type: 'success',
           category: 'deal',
           action_url: '/client/appointments',
         });
         console.log('[portal-book-appointment] Portal notification created for client');
+
+        // Send email notification
+        const { resolveClientEmailInfo, sendPortalNotificationEmail } = await import('../_shared/portal-notification-email.ts');
+        const emailInfo = await resolveClientEmailInfo(supabase, clientId);
+        if (emailInfo) {
+          await sendPortalNotificationEmail({
+            to: emailInfo.email,
+            clientFirstName: emailInfo.firstName,
+            title: apptNotifTitle,
+            message: apptNotifMessage,
+            type: 'success',
+            category: 'appointment',
+            actionUrl: '/client/appointments',
+            companyName: emailInfo.companyName,
+          });
+        }
       } catch (notifErr) {
         console.warn('[portal-book-appointment] Failed to create portal notification:', notifErr);
       }
