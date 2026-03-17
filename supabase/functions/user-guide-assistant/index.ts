@@ -43,6 +43,16 @@ SECTION LINKING FORMAT:
 - Use [[section:calendar|Calendar]] to link to Calendar
 - Use [[section:monitoring|Monitoring]] to link to Monitoring & Logs
 - Use [[section:admin|Administration]] to link to Admin features
+- Use [[section:deal-pipeline|Deal Pipeline]] to link to Deal Pipeline
+- Use [[section:agreements|Agency Agreements]] to link to Agreements
+- Use [[section:checklists|Checklists]] to link to Checklists
+- Use [[section:marketing-analytics|Marketing Analytics]] to link to Marketing Analytics
+- Use [[section:reminders|Reminders Hub]] to link to Reminders
+- Use [[section:report-requests|Report Requests]] to link to Report Requests
+- Use [[section:client-portal|Client Portal]] to link to Client Portal
+- Use [[section:ai-agent|AI Agent]] to link to AI Agent
+- Use [[section:notifications|Notifications]] to link to Notifications
+- Use [[section:api-usage|API Usage]] to link to API Usage & Costs
 
 Always include relevant section links when discussing features so users can easily navigate to that part of the guide.`;
 
