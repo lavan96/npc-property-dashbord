@@ -45,6 +45,8 @@ interface ResultsPanelProps {
   lmiEstimate?: LmiEstimate | null;
   scenarioPresets?: ScenarioPreset[];
   activeScenarioName?: string | null;
+  /** Accessible equity from equity release lever (informational capital) */
+  accessibleEquity?: number;
 }
 
 export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', dtiCapEnabled, dtiCapLimit, clientId, clientName, proposedLoanAmount, interestRate, bufferRate, loanTermYears, lmiMode = 'none', lmiEstimate, scenarioPresets, activeScenarioName }: ResultsPanelProps) {
