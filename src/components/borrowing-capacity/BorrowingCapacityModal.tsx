@@ -31,7 +31,7 @@ import { Label } from '@/components/ui/label';
 import { IncomeSection } from './sections/IncomeSection';
 import { ExpensesSection } from './sections/ExpensesSection';
 import { LiabilitiesSection } from './sections/LiabilitiesSection';
-import { ProposedLoanSection } from './sections/ProposedLoanSection';
+import { ProposedLoanSection, type ProposedRentalIncomeData } from './sections/ProposedLoanSection';
 import { ResultsPanel } from './ResultsPanel';
 import { ScenarioModeling } from './ScenarioModeling';
 import { CapacityHistoryChart } from './CapacityHistoryChart';
