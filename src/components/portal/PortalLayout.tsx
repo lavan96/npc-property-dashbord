@@ -15,6 +15,7 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { PortalOnboardingTour } from './PortalOnboardingTour';
 import { PortalNotificationBell } from './PortalNotificationBell';
+import { PortalNotificationProvider } from '@/contexts/PortalNotificationContext';
 
 const portalNavItems = [
   { to: '/client', icon: HomeIcon, label: 'Dashboard', end: true, tourId: 'dashboard' },
@@ -50,24 +51,28 @@ export function PortalLayout() {
   };
 
   return (
+    <PortalNotificationProvider>
     <div className="min-h-screen bg-muted/30 flex">
       {/* Sidebar - Desktop */}
       <aside className="hidden md:flex w-72 flex-col border-r border-border bg-card shadow-sm">
         {/* Logo Area */}
-        <div className="p-6 pb-4">
-          {settings.authLogo ? (
-            <img src={settings.authLogo} alt={settings.companyName} className="h-10 max-w-[200px] object-contain" />
-          ) : (
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-primary/10">
-                <Building2 className="h-6 w-6 text-primary" />
+        <div className="p-6 pb-4 flex items-center justify-between">
+          <div>
+            {settings.authLogo ? (
+              <img src={settings.authLogo} alt={settings.companyName} className="h-10 max-w-[200px] object-contain" />
+            ) : (
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-primary/10">
+                  <Building2 className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <span className="font-bold text-lg text-foreground tracking-tight">Client Portal</span>
+                  <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">Secure Access</p>
+                </div>
               </div>
-              <div>
-                <span className="font-bold text-lg text-foreground tracking-tight">Client Portal</span>
-                <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">Secure Access</p>
-              </div>
-            </div>
-          )}
+            )}
+          </div>
+          <PortalNotificationBell />
         </div>
         <Separator />
 
@@ -207,5 +212,6 @@ export function PortalLayout() {
       {/* Onboarding Tour */}
       <PortalOnboardingTour />
     </div>
+    </PortalNotificationProvider>
   );
 }
