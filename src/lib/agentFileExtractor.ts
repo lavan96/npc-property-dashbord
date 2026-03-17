@@ -75,8 +75,8 @@ export const SUPPORTED_MIME_TYPES = [
   ...DOCX_MIME_TYPES,
 ];
 
-/** File extensions for the file input accept attribute */
-export const ACCEPTED_EXTENSIONS = '.pdf,.docx,.xlsx,.xls,.csv,.tsv,.txt,.md,.json,.xml,.yaml,.yml,.html,.png,.jpg,.jpeg,.webp,.gif';
+/** File extensions + MIME types for the file input accept attribute (MIME types needed for iOS Safari) */
+export const ACCEPTED_EXTENSIONS = '.pdf,.docx,.xlsx,.xls,.csv,.tsv,.txt,.md,.json,.xml,.yaml,.yml,.html,.png,.jpg,.jpeg,.webp,.gif,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,text/plain,text/markdown,text/html,application/json,text/xml,image/png,image/jpeg,image/webp,image/gif';
 
 /** Max extracted text length to send to the agent (chars) */
 const MAX_EXTRACTED_TEXT = 80_000;
