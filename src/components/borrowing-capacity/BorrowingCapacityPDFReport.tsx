@@ -854,7 +854,7 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
 }
 
 // ─── Data fetching & orchestration ───────────────────────────────────────────
-export async function fetchAndGenerateBorrowingCapacityPDF(clientId: string, clientName: string) {
+export async function fetchAndGenerateBorrowingCapacityPDF(clientId: string, clientName: string, scenarioPresets?: any[]) {
   toast.loading('Generating Borrowing Capacity Snapshot...', { id: 'bc-pdf' });
 
   try {
@@ -875,6 +875,7 @@ export async function fetchAndGenerateBorrowingCapacityPDF(clientId: string, cli
       expenses,
       properties,
       client,
+      scenarioPresets,
     });
 
     toast.success('PDF downloaded successfully!', { id: 'bc-pdf' });
