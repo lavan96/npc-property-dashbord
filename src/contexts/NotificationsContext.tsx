@@ -58,7 +58,8 @@ export type NotificationType =
   | 'new_ghl_contact'
   | 'new_marketing_lead'
   | 'portal_report_requested'
-  | 'client_reminder_upcoming';
+  | 'client_reminder_upcoming'
+  | 'conversation_shared';
 
 export interface Notification {
   id: string;
