@@ -47,14 +47,33 @@ export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
     current_address: '',
   });
 
-  // Fetch GHL pipeline stages for the dropdown
-  const { data: pipelineStages } = useQuery({
-    queryKey: ['ghl-pipeline-stages'],
+  // Fetch GHL pipelines
+  const { data: pipelines } = useQuery({
+    queryKey: ['ghl-pipelines'],
     queryFn: async () => {
       const { data, error } = await supabase
+        .from('ghl_pipelines')
+        .select('id, ghl_id, name')
+        .order('name', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Fetch GHL pipeline stages for the selected pipeline
+  const { data: pipelineStages } = useQuery({
+    queryKey: ['ghl-pipeline-stages', selectedPipelineId],
+    queryFn: async () => {
+      let query = supabase
         .from('ghl_pipeline_stages')
         .select('id, ghl_id, name, position, pipeline_id, ghl_pipelines!inner(name, ghl_id)')
         .order('position', { ascending: true });
+      
+      if (selectedPipelineId) {
+        query = query.eq('pipeline_id', selectedPipelineId);
+      }
+      
+      const { data, error } = await query;
       if (error) throw error;
       return data || [];
     },
