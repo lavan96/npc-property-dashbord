@@ -428,18 +428,18 @@ export function AgentChatWidget() {
 
   // Share conversation
   const handleShareConversation = async () => {
-    if (!shareTarget.trim() || !activeConversation) return;
+    if (shareTargets.length === 0 || !activeConversation) return;
     try {
-      await invokeSecureFunction('ai-dashboard-agent', { action: 'share-conversation', target_user_name: shareTarget.trim(), conversation_id: activeConversation, handoff_note: shareNote.trim() || undefined, permission: sharePermission });
-      toast.success(`Shared with ${shareTarget} (${sharePermission})`);
+      await invokeSecureFunction('ai-dashboard-agent', { action: 'share-conversation', target_user_names: shareTargets, conversation_id: activeConversation, handoff_note: shareNote.trim() || undefined, permission: sharePermission });
+      toast.success(`Shared with ${shareTargets.length} team member${shareTargets.length > 1 ? 's' : ''} (${sharePermission})`);
       logActivityDirect({
         actionType: 'report_shared',
         entityType: 'qa_conversation',
         entityId: activeConversation,
         entityName: conversations.find(c => c.id === activeConversation)?.title,
-        metadata: { shared_with: shareTarget, permission: sharePermission, source: 'agent_chat' }
+        metadata: { shared_with: shareTargets, permission: sharePermission, source: 'agent_chat' }
       });
-      setShareTarget('');
+      setShareTargets([]);
       setShareNote('');
       setSharePermission('view');
       setPanelView('chat');
