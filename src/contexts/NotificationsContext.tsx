@@ -58,7 +58,8 @@ export type NotificationType =
   | 'new_ghl_contact'
   | 'new_marketing_lead'
   | 'portal_report_requested'
-  | 'client_reminder_upcoming';
+  | 'client_reminder_upcoming'
+  | 'conversation_shared';
 
 export interface Notification {
   id: string;
@@ -355,6 +356,9 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         } else {
           navigate('/reminders');
         }
+        break;
+      case 'conversation_shared':
+        // No direct navigation — user can open the Aurixa agent widget
         break;
       default:
         break;

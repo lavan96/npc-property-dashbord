@@ -3600,11 +3600,16 @@ async function executeShareConversation(sb: any, args: any, userId: string) {
   if (!target?.length) return { error: `User "${args.target_user_name}" not found.` };
   const targetId = target[0].id;
   if (targetId === userId) return { error: 'Cannot share with yourself.' };
-  // Get most recent conversation for this user
-  const { data: convs } = await sb.from('agent_conversations').select('id, title').eq('user_id', userId).order('updated_at', { ascending: false }).limit(1);
-  const convId = args.conversation_id || convs?.[0]?.id;
-  const convTitle = convs?.[0]?.title || 'Untitled conversation';
+  // Resolve the conversation to share
+  let convId = args.conversation_id;
+  if (!convId) {
+    const { data: convs } = await sb.from('agent_conversations').select('id').eq('user_id', userId).order('updated_at', { ascending: false }).limit(1);
+    convId = convs?.[0]?.id;
+  }
   if (!convId) return { error: 'No conversation to share.' };
+  // Fetch the actual conversation title
+  const { data: convData } = await sb.from('agent_conversations').select('title').eq('id', convId).limit(1);
+  const convTitle = convData?.[0]?.title || 'Untitled conversation';
   const { error } = await sb.from('agent_conversation_shares').insert({ conversation_id: convId, shared_by: userId, shared_with: targetId, permission: args.permission || 'view', handoff_note: args.handoff_note || null });
   if (error) return { error: error.message };
   // Log handoff
@@ -3612,13 +3617,14 @@ async function executeShareConversation(sb: any, args: any, userId: string) {
   // Get sharer's name for notification
   const { data: sharerData } = await sb.from('custom_users').select('username').eq('id', userId).limit(1);
   const sharerName = sharerData?.[0]?.username || 'A team member';
-  // Create in-app notification for the recipient
+  // Create in-app notification targeted to the recipient
   const noteText = args.handoff_note ? ` — "${args.handoff_note}"` : '';
   await sb.from('notifications').insert({
     type: 'conversation_shared',
     title: 'Conversation Shared With You',
     message: `${sharerName} shared "${convTitle}" with you${noteText}`,
     entity_id: convId,
+    target_user_id: targetId,
     read: false,
   });
   return { success: true, message: `Conversation shared with ${target[0].username}.` };
