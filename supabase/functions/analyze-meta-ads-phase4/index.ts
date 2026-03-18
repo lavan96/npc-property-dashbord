@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -315,10 +316,20 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
-    const authResult = await verifyAuth(req);
-    if (!authResult.authenticated) return createUnauthorizedResponse(corsHeaders);
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
 
-    const body: Phase4Request = await req.json();
+    const body: Phase4Request & { session_token?: string } = await req.json();
+
+    const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
+    if (authError) {
+      console.log('[analyze-meta-ads-phase4] Auth failed:', authError);
+      return createUnauthorizedResponse(corsHeaders);
+    }
+    console.log('[analyze-meta-ads-phase4] Authenticated user', userId);
+
     const { action } = body;
 
     const PERPLEXITY_API_KEY = Deno.env.get('PERPLEXITY_API_KEY');
