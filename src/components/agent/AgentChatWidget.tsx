@@ -62,7 +62,7 @@ export function AgentChatWidget() {
   const [settingsTab, setSettingsTab] = useState<SettingsTab>('playbooks');
   const [settingsData, setSettingsData] = useState<any>(null);
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
-  const [shareTarget, setShareTarget] = useState('');
+  const [shareTargets, setShareTargets] = useState<string[]>([]);
   const [shareNote, setShareNote] = useState('');
   const [sharePermission, setSharePermission] = useState<'view' | 'collaborate'>('view');
   const [userMap, setUserMap] = useState<Record<string, string>>({});
