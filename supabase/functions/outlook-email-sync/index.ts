@@ -537,6 +537,21 @@ serve(async (req) => {
             }
           }
 
+        // Create bell notification for new inbox emails
+        if (folder === 'inbox' && insertedEmail) {
+          const senderName = (email.from?.emailAddress?.name || email.from?.emailAddress?.address || 'Unknown').split('<')[0].trim();
+          const subject = email.subject || 'No subject';
+          await supabase
+            .from('notifications')
+            .insert({
+              type: 'email_received',
+              title: `Email from ${senderName}`,
+              message: subject,
+              entity_id: insertedEmail.id,
+              read: false
+            });
+        }
+
         insertedCount++;
       }
       

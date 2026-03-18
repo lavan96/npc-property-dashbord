@@ -353,6 +353,18 @@ serve(async (req) => {
 
       console.log('[Outlook Webhook] Successfully inserted email:', email.subject);
 
+      // Create bell notification for the new email
+      const senderName = (email.from?.emailAddress?.name || email.from?.emailAddress?.address || 'Unknown').split('<')[0].trim();
+      await supabase
+        .from('notifications')
+        .insert({
+          type: 'email_received',
+          title: `Email from ${senderName}`,
+          message: email.subject || 'No subject',
+          entity_id: insertedEmail.id,
+          read: false
+        });
+
       // Fetch and upload attachments if email has any
       if (email.hasAttachments && insertedEmail) {
         console.log(`[Outlook Webhook] Email has attachments, fetching...`);
