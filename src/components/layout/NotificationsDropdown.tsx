@@ -103,6 +103,8 @@ export function NotificationsDropdown() {
         return <FileText className="h-4 w-4 text-violet-500" />;
       case 'client_reminder_upcoming':
         return <Timer className="h-4 w-4 text-blue-400" />;
+      case 'conversation_shared':
+        return <Users className="h-4 w-4 text-purple-500" />;
       default:
         return <Info className="h-4 w-4 text-blue-500" />;
     }

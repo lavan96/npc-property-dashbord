@@ -357,6 +357,9 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
           navigate('/reminders');
         }
         break;
+      case 'conversation_shared':
+        // No direct navigation — user can open the Aurixa agent widget
+        break;
       default:
         break;
     }
