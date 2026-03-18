@@ -183,6 +183,7 @@ export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
       current_address: '',
     });
     setSyncToGHL(true);
+    setSelectedPipelineId('');
     setSelectedStageId('');
   };
 
