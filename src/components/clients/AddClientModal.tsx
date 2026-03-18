@@ -35,6 +35,7 @@ interface AddClientModalProps {
 export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
   const queryClient = useQueryClient();
   const [syncToGHL, setSyncToGHL] = useState(true);
+  const [selectedPipelineId, setSelectedPipelineId] = useState<string>('');
   const [selectedStageId, setSelectedStageId] = useState<string>('');
   const [formData, setFormData] = useState({
     primary_first_name: '',
