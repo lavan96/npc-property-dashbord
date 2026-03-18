@@ -19,7 +19,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
@@ -33,6 +35,7 @@ interface AddClientModalProps {
 export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
   const queryClient = useQueryClient();
   const [syncToGHL, setSyncToGHL] = useState(true);
+  const [selectedPipelineId, setSelectedPipelineId] = useState<string>('');
   const [selectedStageId, setSelectedStageId] = useState<string>('');
   const [formData, setFormData] = useState({
     primary_first_name: '',
@@ -44,14 +47,33 @@ export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
     current_address: '',
   });
 
-  // Fetch GHL pipeline stages for the dropdown
-  const { data: pipelineStages } = useQuery({
-    queryKey: ['ghl-pipeline-stages'],
+  // Fetch GHL pipelines
+  const { data: pipelines } = useQuery({
+    queryKey: ['ghl-pipelines'],
     queryFn: async () => {
       const { data, error } = await supabase
+        .from('ghl_pipelines')
+        .select('id, ghl_id, name')
+        .order('name', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Fetch GHL pipeline stages for the selected pipeline
+  const { data: pipelineStages } = useQuery({
+    queryKey: ['ghl-pipeline-stages', selectedPipelineId],
+    queryFn: async () => {
+      let query = supabase
         .from('ghl_pipeline_stages')
         .select('id, ghl_id, name, position, pipeline_id, ghl_pipelines!inner(name, ghl_id)')
         .order('position', { ascending: true });
+      
+      if (selectedPipelineId) {
+        query = query.eq('pipeline_id', selectedPipelineId);
+      }
+      
+      const { data, error } = await query;
       if (error) throw error;
       return data || [];
     },
@@ -161,6 +183,7 @@ export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
       current_address: '',
     });
     setSyncToGHL(true);
+    setSelectedPipelineId('');
     setSelectedStageId('');
   };
 
@@ -288,32 +311,39 @@ export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
 
           {/* Pipeline Stage (optional, shown when GHL sync enabled) */}
           {syncToGHL && (
-            <div className="space-y-1.5">
-              <Label htmlFor="pipeline_stage">Pipeline Stage (Optional)</Label>
-              <Select value={selectedStageId} onValueChange={setSelectedStageId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a pipeline stage..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {(() => {
-                    // Group stages by pipeline
-                    const grouped: Record<string, { pipelineName: string; stages: any[] }> = {};
-                    (pipelineStages || []).forEach((s: any) => {
-                      const pName = s.ghl_pipelines?.name || 'Unknown Pipeline';
-                      if (!grouped[pName]) grouped[pName] = { pipelineName: pName, stages: [] };
-                      grouped[pName].stages.push(s);
-                    });
-                    return Object.entries(grouped).map(([pName, group]) => (
-                      <div key={pName}>
-                        <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">{pName}</div>
-                        {group.stages.map((stage: any) => (
-                          <SelectItem key={stage.id} value={stage.id}>{stage.name}</SelectItem>
-                        ))}
-                      </div>
-                    ));
-                  })()}
-                </SelectContent>
-              </Select>
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="pipeline">Pipeline (Optional)</Label>
+                <Select value={selectedPipelineId} onValueChange={(val) => {
+                  setSelectedPipelineId(val);
+                  setSelectedStageId('');
+                }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a pipeline..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(pipelines || []).map((p: any) => (
+                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {selectedPipelineId && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="pipeline_stage">Pipeline Stage (Optional)</Label>
+                  <Select value={selectedStageId} onValueChange={setSelectedStageId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a stage..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(pipelineStages || []).map((stage: any) => (
+                        <SelectItem key={stage.id} value={stage.id}>{stage.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
           )}
 
