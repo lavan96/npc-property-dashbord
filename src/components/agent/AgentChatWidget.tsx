@@ -737,19 +737,22 @@ export function AgentChatWidget() {
               <div>
                 <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Share with</label>
                 <div className="space-y-1.5">
-                  {teamMembers.length > 0 ? teamMembers.map((member) => (
-                    <button key={member.id} onClick={() => setShareTarget(member.username)}
+                  {teamMembers.length > 0 ? teamMembers.map((member) => {
+                    const isSelected = shareTargets.includes(member.username);
+                    return (
+                    <button key={member.id} onClick={() => setShareTargets(prev => isSelected ? prev.filter(t => t !== member.username) : [...prev, member.username])}
                       className={cn("w-full flex items-center gap-2 px-3 py-2 rounded-lg border text-left text-xs transition-colors",
-                        shareTarget === member.username ? 'border-primary bg-primary/5' : 'border-border/30 hover:border-primary/20'
+                        isSelected ? 'border-primary bg-primary/5' : 'border-border/30 hover:border-primary/20'
                       )}>
                       <Users className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="font-medium truncate">{member.username}</p>
                         <p className="text-[10px] text-muted-foreground truncate">{member.email} • {member.role}</p>
                       </div>
-                      {shareTarget === member.username && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
+                      {isSelected && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
                     </button>
-                  )) : (
+                    );
+                  }) : (
                     <div className="text-center py-4 text-muted-foreground">
                       <Loader2 className="h-4 w-4 animate-spin mx-auto mb-1" />
                       <p className="text-[10px]">Loading team...</p>
