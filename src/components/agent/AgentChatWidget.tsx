@@ -777,8 +777,8 @@ export function AgentChatWidget() {
                 <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Handoff note (optional)</label>
                 <Input value={shareNote} onChange={(e) => setShareNote(e.target.value)} placeholder="Context for the recipient..." className="h-8 text-xs" />
               </div>
-              <Button size="sm" className="w-full h-8 text-xs" disabled={!shareTarget.trim()} onClick={handleShareConversation}>
-                <Share2 className="h-3 w-3 mr-1.5" /> Share with {shareTarget || '...'}
+              <Button size="sm" className="w-full h-8 text-xs" disabled={shareTargets.length === 0} onClick={handleShareConversation}>
+                <Share2 className="h-3 w-3 mr-1.5" /> Share with {shareTargets.length > 0 ? `${shareTargets.length} member${shareTargets.length > 1 ? 's' : ''}` : '...'}
               </Button>
             </div>
           </div>
