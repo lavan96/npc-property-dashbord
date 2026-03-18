@@ -27,7 +27,7 @@ export function FloatingActions({
   return (
     <TooltipProvider delayDuration={100}>
       <div className={cn(
-        'fixed bottom-36 right-4 flex flex-col gap-2 z-40 sm:bottom-28 sm:right-6',
+        'fixed bottom-44 right-4 flex flex-col gap-2 z-40 sm:bottom-28 sm:right-6',
         className
       )}>
         {/* Scroll to top */}
