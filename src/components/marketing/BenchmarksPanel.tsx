@@ -152,7 +152,9 @@ export function BenchmarksPanel({ benchmarks, perplexityResearch, citations, aiA
               <Brain className="h-4 w-4 text-primary" />
               <span className="text-xs font-semibold text-primary uppercase tracking-wider">AI Competitive Analysis</span>
             </div>
-            <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{aiAnalysis}</p>
+            <div className="text-sm text-foreground/80 leading-relaxed prose prose-sm dark:prose-invert max-w-none prose-headings:text-foreground prose-headings:font-semibold prose-headings:mt-4 prose-headings:mb-2 prose-p:my-1.5 prose-li:my-0.5 prose-strong:text-foreground prose-a:text-primary">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{aiAnalysis}</ReactMarkdown>
+            </div>
           </div>
         )}
 
