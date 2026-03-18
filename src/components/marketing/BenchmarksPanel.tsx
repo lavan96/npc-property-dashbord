@@ -174,7 +174,9 @@ export function BenchmarksPanel({ benchmarks, perplexityResearch, citations, aiA
               {citations.length > 0 && <span className="text-[10px]">({citations.length} sources)</span>}
             </summary>
             <div className="mt-3 rounded-lg border border-border/50 bg-muted/20 p-4">
-              <p className="text-xs text-foreground/70 leading-relaxed whitespace-pre-wrap">{perplexityResearch}</p>
+              <div className="text-xs text-foreground/70 leading-relaxed prose prose-xs dark:prose-invert max-w-none prose-headings:text-foreground prose-headings:font-semibold prose-headings:mt-3 prose-headings:mb-1.5 prose-p:my-1 prose-li:my-0.5 prose-strong:text-foreground prose-a:text-primary prose-headings:text-sm">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{perplexityResearch}</ReactMarkdown>
+              </div>
               {citations.length > 0 && (
                 <div className="mt-3 pt-3 border-t border-border/50">
                   <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Sources</p>
