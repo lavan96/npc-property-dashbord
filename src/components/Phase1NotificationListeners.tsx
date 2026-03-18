@@ -1,48 +1,32 @@
-import { useClientReminderNotifications } from '@/hooks/useClientReminderNotifications';
 import { useCallAlertNotifications } from '@/hooks/useCallAlertNotifications';
-import { useDealDateNotifications } from '@/hooks/useDealDateNotifications';
-import { useReportNotifications } from '@/hooks/useReportNotifications';
 import { useAppointmentNotifications } from '@/hooks/useAppointmentNotifications';
-import { usePortalReportRequestNotifications } from '@/hooks/usePortalReportRequestNotifications';
-import { useAgreementNotifications } from '@/hooks/useAgreementNotifications';
-import { useGHLContactNotifications } from '@/hooks/useGHLContactNotifications';
-import { useMarketingLeadNotifications } from '@/hooks/useMarketingLeadNotifications';
-// useGlobalEmailNotifications removed — email notifications are now created server-side
-// in outlook-email-sync and outlook-email-webhook edge functions
 
 /**
- * Component that initializes all notification listeners
- * This component doesn't render anything, it just sets up the hooks
+ * Component that initializes notification listeners that work client-side.
+ * 
+ * Most notifications are now created SERVER-SIDE via database triggers on:
+ * - investment_reports (report completed/failed)
+ * - client_portal_report_requests (new portal request)
+ * - agency_agreements (agreement generated)
+ * - clients (new GHL contact synced)
+ * - lead_source_attributions (new marketing lead)
+ * - vapi_call_logs (missed calls)
+ * - client_reminders (due/overdue reminders)
+ * - email_copilot_emails (handled by outlook-email-sync/webhook edge functions)
+ * 
+ * The NotificationsContext realtime subscription on the `notifications` table
+ * picks up all server-side inserts automatically.
+ * 
+ * Only hooks that listen to tables with open RLS SELECT policies remain here:
+ * - call_alert_history (public SELECT = true)
+ * - activity_logs (public SELECT = true)
  */
 export function Phase1NotificationListeners() {
-  // Client reminder notifications (due today / overdue / upcoming tomorrow)
-  useClientReminderNotifications();
-  
-  // Call alert triggered + missed calls
+  // Call alert triggered (call_alert_history has open public SELECT)
   useCallAlertNotifications();
   
-  // Deal critical date warnings (finance expiry, settlement, build dates)
-  useDealDateNotifications();
-  
-  // Report completion / failure (realtime on investment_reports)
-  useReportNotifications();
-  
-  // Appointment events from activity logs (external GHL, Outlook, etc.)
+  // Appointment events from activity logs (activity_logs has open public SELECT)
   useAppointmentNotifications();
-
-  // Portal report requests from clients
-  usePortalReportRequestNotifications();
-
-  // Agency agreement generation
-  useAgreementNotifications();
-
-  // New GHL contacts synced
-  useGHLContactNotifications();
-
-  // Marketing leads (UTM/Meta attributed)
-  useMarketingLeadNotifications();
-
-  // Email notifications are now handled server-side (outlook-email-sync & webhook)
   
   return null;
 }
