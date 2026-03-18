@@ -6488,8 +6488,18 @@ serve(async (req) => {
         return new Response(JSON.stringify({ success: true, ...result }), { headers: { ...cors, 'Content-Type': 'application/json' } });
       }
       case 'share-conversation': {
-        const result = await executeShareConversation(sb, { target_user_name: body.target_user_name, permission: body.permission || 'view', handoff_note: body.handoff_note, handoff_type: body.handoff_type || 'collaborate' }, userId!);
-        return new Response(JSON.stringify({ success: true, ...result }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+        // Support sharing with multiple users via target_user_names array
+        const targetNames: string[] = body.target_user_names || (body.target_user_name ? [body.target_user_name] : []);
+        if (targetNames.length === 0) {
+          return new Response(JSON.stringify({ success: false, error: 'No target users specified' }), { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } });
+        }
+        const results: any[] = [];
+        for (const name of targetNames) {
+          const result = await executeShareConversation(sb, { target_user_name: name, conversation_id: body.conversation_id, permission: body.permission || 'view', handoff_note: body.handoff_note, handoff_type: body.handoff_type || 'collaborate' }, userId!);
+          results.push({ user: name, ...result });
+        }
+        const allSuccess = results.every(r => r.success);
+        return new Response(JSON.stringify({ success: allSuccess, results }), { headers: { ...cors, 'Content-Type': 'application/json' } });
       }
       case 'index-file-upload': {
         const { conversation_id, filename, mime_type, file_size, storage_path, extracted_text, file_category } = body;

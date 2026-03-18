@@ -62,7 +62,7 @@ export function AgentChatWidget() {
   const [settingsTab, setSettingsTab] = useState<SettingsTab>('playbooks');
   const [settingsData, setSettingsData] = useState<any>(null);
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
-  const [shareTarget, setShareTarget] = useState('');
+  const [shareTargets, setShareTargets] = useState<string[]>([]);
   const [shareNote, setShareNote] = useState('');
   const [sharePermission, setSharePermission] = useState<'view' | 'collaborate'>('view');
   const [userMap, setUserMap] = useState<Record<string, string>>({});
@@ -428,18 +428,18 @@ export function AgentChatWidget() {
 
   // Share conversation
   const handleShareConversation = async () => {
-    if (!shareTarget.trim() || !activeConversation) return;
+    if (shareTargets.length === 0 || !activeConversation) return;
     try {
-      await invokeSecureFunction('ai-dashboard-agent', { action: 'share-conversation', target_user_name: shareTarget.trim(), conversation_id: activeConversation, handoff_note: shareNote.trim() || undefined, permission: sharePermission });
-      toast.success(`Shared with ${shareTarget} (${sharePermission})`);
+      await invokeSecureFunction('ai-dashboard-agent', { action: 'share-conversation', target_user_names: shareTargets, conversation_id: activeConversation, handoff_note: shareNote.trim() || undefined, permission: sharePermission });
+      toast.success(`Shared with ${shareTargets.length} team member${shareTargets.length > 1 ? 's' : ''} (${sharePermission})`);
       logActivityDirect({
         actionType: 'report_shared',
         entityType: 'qa_conversation',
         entityId: activeConversation,
         entityName: conversations.find(c => c.id === activeConversation)?.title,
-        metadata: { shared_with: shareTarget, permission: sharePermission, source: 'agent_chat' }
+        metadata: { shared_with: shareTargets, permission: sharePermission, source: 'agent_chat' }
       });
-      setShareTarget('');
+      setShareTargets([]);
       setShareNote('');
       setSharePermission('view');
       setPanelView('chat');
@@ -737,19 +737,22 @@ export function AgentChatWidget() {
               <div>
                 <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Share with</label>
                 <div className="space-y-1.5">
-                  {teamMembers.length > 0 ? teamMembers.map((member) => (
-                    <button key={member.id} onClick={() => setShareTarget(member.username)}
+                  {teamMembers.length > 0 ? teamMembers.map((member) => {
+                    const isSelected = shareTargets.includes(member.username);
+                    return (
+                    <button key={member.id} onClick={() => setShareTargets(prev => isSelected ? prev.filter(t => t !== member.username) : [...prev, member.username])}
                       className={cn("w-full flex items-center gap-2 px-3 py-2 rounded-lg border text-left text-xs transition-colors",
-                        shareTarget === member.username ? 'border-primary bg-primary/5' : 'border-border/30 hover:border-primary/20'
+                        isSelected ? 'border-primary bg-primary/5' : 'border-border/30 hover:border-primary/20'
                       )}>
                       <Users className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="font-medium truncate">{member.username}</p>
                         <p className="text-[10px] text-muted-foreground truncate">{member.email} • {member.role}</p>
                       </div>
-                      {shareTarget === member.username && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
+                      {isSelected && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
                     </button>
-                  )) : (
+                    );
+                  }) : (
                     <div className="text-center py-4 text-muted-foreground">
                       <Loader2 className="h-4 w-4 animate-spin mx-auto mb-1" />
                       <p className="text-[10px]">Loading team...</p>
@@ -774,8 +777,8 @@ export function AgentChatWidget() {
                 <label className="text-[11px] font-medium text-muted-foreground mb-1 block">Handoff note (optional)</label>
                 <Input value={shareNote} onChange={(e) => setShareNote(e.target.value)} placeholder="Context for the recipient..." className="h-8 text-xs" />
               </div>
-              <Button size="sm" className="w-full h-8 text-xs" disabled={!shareTarget.trim()} onClick={handleShareConversation}>
-                <Share2 className="h-3 w-3 mr-1.5" /> Share with {shareTarget || '...'}
+              <Button size="sm" className="w-full h-8 text-xs" disabled={shareTargets.length === 0} onClick={handleShareConversation}>
+                <Share2 className="h-3 w-3 mr-1.5" /> Share with {shareTargets.length > 0 ? `${shareTargets.length} member${shareTargets.length > 1 ? 's' : ''}` : '...'}
               </Button>
             </div>
           </div>
