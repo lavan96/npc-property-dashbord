@@ -7,7 +7,8 @@ import { usePortalReportRequestNotifications } from '@/hooks/usePortalReportRequ
 import { useAgreementNotifications } from '@/hooks/useAgreementNotifications';
 import { useGHLContactNotifications } from '@/hooks/useGHLContactNotifications';
 import { useMarketingLeadNotifications } from '@/hooks/useMarketingLeadNotifications';
-import { useGlobalEmailNotifications } from '@/hooks/useGlobalEmailNotifications';
+// useGlobalEmailNotifications removed — email notifications are now created server-side
+// in outlook-email-sync and outlook-email-webhook edge functions
 
 /**
  * Component that initializes all notification listeners
