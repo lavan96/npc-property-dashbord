@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,9 +19,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
@@ -30,6 +28,21 @@ import { Loader2, UserPlus } from 'lucide-react';
 interface AddClientModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+}
+
+interface GHLPipeline {
+  id: string;
+  ghl_id: string;
+  name: string;
+  position?: number | null;
+}
+
+interface GHLPipelineStage {
+  id: string;
+  ghl_id: string;
+  name: string;
+  position?: number | null;
+  pipeline_id: string;
 }
 
 export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
@@ -47,37 +60,51 @@ export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
     current_address: '',
   });
 
-  // Fetch GHL pipelines
-  const { data: pipelines } = useQuery({
+  const {
+    data: pipelines = [],
+    isLoading: pipelinesLoading,
+  } = useQuery({
     queryKey: ['ghl-pipelines'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('ghl_pipelines')
-        .select('id, ghl_id, name')
-        .order('name', { ascending: true });
-      if (error) throw error;
-      return data || [];
+      const { data, error } = await invokeSecureFunction('manage-automation-settings', {
+        operation: 'getPipelines',
+      });
+
+      if (error || !data?.success) {
+        throw new Error(data?.error || error?.message || 'Failed to load pipelines');
+      }
+
+      return (data.pipelines || []) as GHLPipeline[];
     },
+    enabled: open && syncToGHL,
   });
 
-  // Fetch GHL pipeline stages for the selected pipeline
-  const { data: pipelineStages } = useQuery({
-    queryKey: ['ghl-pipeline-stages', selectedPipelineId],
+  const {
+    data: allPipelineStages = [],
+    isLoading: stagesLoading,
+  } = useQuery({
+    queryKey: ['ghl-pipeline-stages'],
     queryFn: async () => {
-      let query = supabase
-        .from('ghl_pipeline_stages')
-        .select('id, ghl_id, name, position, pipeline_id, ghl_pipelines!inner(name, ghl_id)')
-        .order('position', { ascending: true });
-      
-      if (selectedPipelineId) {
-        query = query.eq('pipeline_id', selectedPipelineId);
+      const { data, error } = await invokeSecureFunction('manage-automation-settings', {
+        operation: 'getStages',
+      });
+
+      if (error || !data?.success) {
+        throw new Error(data?.error || error?.message || 'Failed to load pipeline stages');
       }
-      
-      const { data, error } = await query;
-      if (error) throw error;
-      return data || [];
+
+      return (data.stages || []) as GHLPipelineStage[];
     },
+    enabled: open && syncToGHL,
   });
+
+  const pipelineStages = useMemo(() => {
+    if (!selectedPipelineId) return [];
+
+    return allPipelineStages
+      .filter((stage) => stage.pipeline_id === selectedPipelineId)
+      .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+  }, [allPipelineStages, selectedPipelineId]);
 
   const createClientMutation = useMutation({
     mutationFn: async () => {
@@ -131,10 +158,15 @@ export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
         
         // If a pipeline stage was selected, include it for opportunity creation
         if (selectedStageId) {
-          const stage = pipelineStages?.find((s: any) => s.id === selectedStageId);
+          const stage = pipelineStages.find((s) => s.id === selectedStageId);
+          const pipeline = pipelines.find((p) => p.id === stage?.pipeline_id);
+
           if (stage) {
             syncPayload.pipelineStageGhlId = stage.ghl_id;
-            syncPayload.pipelineGhlId = (stage as any).ghl_pipelines?.ghl_id;
+          }
+
+          if (pipeline?.ghl_id) {
+            syncPayload.pipelineGhlId = pipeline.ghl_id;
           }
         }
         
@@ -309,41 +341,74 @@ export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
             </Label>
           </div>
 
-          {/* Pipeline Stage (optional, shown when GHL sync enabled) */}
+          {/* Pipeline + Stage (shown when GHL sync enabled) */}
           {syncToGHL && (
             <div className="space-y-3">
               <div className="space-y-1.5">
                 <Label htmlFor="pipeline">Pipeline (Optional)</Label>
-                <Select value={selectedPipelineId} onValueChange={(val) => {
-                  setSelectedPipelineId(val);
-                  setSelectedStageId('');
-                }}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a pipeline..." />
+                <Select
+                  value={selectedPipelineId}
+                  onValueChange={(value) => {
+                    setSelectedPipelineId(value);
+                    setSelectedStageId('');
+                  }}
+                  disabled={pipelinesLoading || pipelines.length === 0}
+                >
+                  <SelectTrigger id="pipeline">
+                    <SelectValue
+                      placeholder={
+                        pipelinesLoading
+                          ? 'Loading pipelines...'
+                          : pipelines.length === 0
+                            ? 'No pipelines available'
+                            : 'Select a pipeline...'
+                      }
+                    />
                   </SelectTrigger>
                   <SelectContent>
-                    {(pipelines || []).map((p: any) => (
-                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                    {pipelines.map((pipeline) => (
+                      <SelectItem key={pipeline.id} value={pipeline.id}>
+                        {pipeline.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {!pipelinesLoading && pipelines.length === 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    No active GoHighLevel pipelines were returned for this account.
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="pipeline_stage">Pipeline Stage (Optional)</Label>
+                <Select
+                  value={selectedStageId}
+                  onValueChange={setSelectedStageId}
+                  disabled={!selectedPipelineId || stagesLoading || pipelineStages.length === 0}
+                >
+                  <SelectTrigger id="pipeline_stage">
+                    <SelectValue
+                      placeholder={
+                        !selectedPipelineId
+                          ? 'Select a pipeline first...'
+                          : stagesLoading
+                            ? 'Loading stages...'
+                            : pipelineStages.length === 0
+                              ? 'No stages available'
+                              : 'Select a stage...'
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {pipelineStages.map((stage) => (
+                      <SelectItem key={stage.id} value={stage.id}>
+                        {stage.name}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-
-              {selectedPipelineId && (
-                <div className="space-y-1.5">
-                  <Label htmlFor="pipeline_stage">Pipeline Stage (Optional)</Label>
-                  <Select value={selectedStageId} onValueChange={setSelectedStageId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a stage..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(pipelineStages || []).map((stage: any) => (
-                        <SelectItem key={stage.id} value={stage.id}>{stage.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
             </div>
           )}
 
