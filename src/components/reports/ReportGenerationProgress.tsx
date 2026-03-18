@@ -370,7 +370,7 @@ function ReportGenerationProgressInner() {
     <div className={cn(
       "fixed z-50 transition-all duration-300",
       isMobile 
-        ? "bottom-[9rem] right-4" 
+        ? "bottom-44 right-4" 
         : "bottom-24 right-6",
       isMinimized ? "w-12 h-12" : isMobile ? "w-72" : "w-80"
     )}>
