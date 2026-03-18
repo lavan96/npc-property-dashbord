@@ -1,6 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 
 interface EmailNotificationOptions {
   onNewEmail?: (email: any) => void;
@@ -78,7 +77,6 @@ export function useEmailNotifications({
           notification.close();
         };
 
-        // Auto close after 5 seconds
         setTimeout(() => notification.close(), 5000);
       } catch (err) {
         console.log('Could not show notification:', err);
@@ -86,7 +84,8 @@ export function useEmailNotifications({
     }
   }, [browserNotificationsEnabled]);
 
-  // Handle new email notification (sound, browser notification, toast only — bell handled by useGlobalEmailNotifications)
+  // Handle new email notification (sound + browser notification only — no toast)
+  // Bell notifications are handled server-side, toasts are batched by useGlobalEmailNotifications
   const handleNewEmail = useCallback(async (email: any) => {
     // Play sound
     playNotificationSound();
@@ -99,12 +98,6 @@ export function useEmailNotifications({
       `New email from ${senderName}`,
       subject
     );
-
-    // Show toast
-    toast.info(`New email from ${senderName}`, {
-      description: subject,
-      duration: 5000
-    });
 
     // Call custom handler
     onNewEmail?.(email);
