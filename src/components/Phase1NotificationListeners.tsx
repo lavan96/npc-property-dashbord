@@ -42,8 +42,7 @@ export function Phase1NotificationListeners() {
   // Marketing leads (UTM/Meta attributed)
   useMarketingLeadNotifications();
 
-  // Global email notifications (all pages, not just EmailCopilot)
-  useGlobalEmailNotifications();
+  // Email notifications are now handled server-side (outlook-email-sync & webhook)
   
   return null;
 }
