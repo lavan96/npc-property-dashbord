@@ -223,6 +223,9 @@ verify_jwt = true
 [functions.outlook-email-sync]
 verify_jwt = true
 
+[functions.email-sync-cron]
+verify_jwt = false
+
 [functions.outlook-email-webhook]
 verify_jwt = false
 
