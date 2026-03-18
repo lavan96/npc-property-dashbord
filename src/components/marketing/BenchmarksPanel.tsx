@@ -1,4 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Loader2, Globe, Brain, AlertTriangle, ExternalLink, TrendingUp, TrendingDown, Minus, Award, Target } from 'lucide-react';
@@ -150,7 +152,9 @@ export function BenchmarksPanel({ benchmarks, perplexityResearch, citations, aiA
               <Brain className="h-4 w-4 text-primary" />
               <span className="text-xs font-semibold text-primary uppercase tracking-wider">AI Competitive Analysis</span>
             </div>
-            <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{aiAnalysis}</p>
+            <div className="text-sm text-foreground/80 leading-relaxed prose prose-sm dark:prose-invert max-w-none prose-headings:text-foreground prose-headings:font-semibold prose-headings:mt-4 prose-headings:mb-2 prose-p:my-1.5 prose-li:my-0.5 prose-strong:text-foreground prose-a:text-primary">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{aiAnalysis}</ReactMarkdown>
+            </div>
           </div>
         )}
 
@@ -170,7 +174,9 @@ export function BenchmarksPanel({ benchmarks, perplexityResearch, citations, aiA
               {citations.length > 0 && <span className="text-[10px]">({citations.length} sources)</span>}
             </summary>
             <div className="mt-3 rounded-lg border border-border/50 bg-muted/20 p-4">
-              <p className="text-xs text-foreground/70 leading-relaxed whitespace-pre-wrap">{perplexityResearch}</p>
+              <div className="text-xs text-foreground/70 leading-relaxed prose prose-xs dark:prose-invert max-w-none prose-headings:text-foreground prose-headings:font-semibold prose-headings:mt-3 prose-headings:mb-1.5 prose-p:my-1 prose-li:my-0.5 prose-strong:text-foreground prose-a:text-primary prose-headings:text-sm">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{perplexityResearch}</ReactMarkdown>
+              </div>
               {citations.length > 0 && (
                 <div className="mt-3 pt-3 border-t border-border/50">
                   <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Sources</p>
