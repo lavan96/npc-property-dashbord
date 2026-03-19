@@ -5961,6 +5961,8 @@ export type Database = {
           id: string
           model_provider: string | null
           role: string
+          sent_by: string | null
+          sent_by_username: string | null
         }
         Insert: {
           attachments?: Json | null
@@ -5971,6 +5973,8 @@ export type Database = {
           id?: string
           model_provider?: string | null
           role: string
+          sent_by?: string | null
+          sent_by_username?: string | null
         }
         Update: {
           attachments?: Json | null
@@ -5981,6 +5985,8 @@ export type Database = {
           id?: string
           model_provider?: string | null
           role?: string
+          sent_by?: string | null
+          sent_by_username?: string | null
         }
         Relationships: [
           {
@@ -5988,6 +5994,13 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "report_qa_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_qa_messages_sent_by_fkey"
+            columns: ["sent_by"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
             referencedColumns: ["id"]
           },
         ]

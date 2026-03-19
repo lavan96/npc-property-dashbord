@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
+import { useAuth } from '@/hooks/useAuth';
 import { MessageReportEditor } from '@/components/report-qa/MessageReportEditor';
 import { convertPdfToImages } from '@/utils/pdfToImages';
 import { extractPdfTextClientSide } from '@/lib/pdfClientExtractor';
@@ -114,6 +115,8 @@ interface ChatMessage {
   attachments?: PDFAttachment[]; // For PDF attachments
   modelProvider?: ModelProvider | null; // Which AI model generated this message
   citations?: string[]; // Perplexity citations
+  sent_by?: string | null;
+  sent_by_username?: string | null;
 }
 
 interface UploadedReport {
@@ -138,6 +141,7 @@ interface SavedConversation {
 }
 
 export default function ReportQA() {
+  const { user } = useAuth();
   const { toast } = useToast();
   const [uploadedReports, setUploadedReports] = useState<UploadedReport[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -639,6 +643,8 @@ export default function ReportQA() {
           role: m.role,
           content: m.content,
           timestamp: new Date(m.created_at),
+          sent_by: m.sent_by || null,
+          sent_by_username: m.sent_by_username || null,
         }))
       );
       setShowHistory(false);
@@ -681,6 +687,8 @@ export default function ReportQA() {
         role: m.role,
         content: m.content,
         timestamp: new Date(m.created_at),
+        sent_by: m.sent_by || null,
+        sent_by_username: m.sent_by_username || null,
       }));
 
       // Prepend older messages, deduplicating by id
@@ -754,6 +762,8 @@ export default function ReportQA() {
       content: messageContent,
       timestamp: new Date(),
       audioUrl: audioUrl || undefined,
+      sent_by: user?.id || null,
+      sent_by_username: user?.username || null,
     };
 
     if (!retryContent) {
@@ -889,7 +899,7 @@ export default function ReportQA() {
           operation: 'create',
           table: 'report_qa_messages',
           data: [
-            { conversation_id: activeConversationId, role: 'user', content: messageContent },
+            { conversation_id: activeConversationId, role: 'user', content: messageContent, sent_by: user?.id || null, sent_by_username: user?.username || null },
             { conversation_id: activeConversationId, role: 'assistant', content: fullContent, model_provider: selectedModel },
           ]
         }).then(() => {
@@ -2006,6 +2016,11 @@ export default function ReportQA() {
                             aria-label={`${message.role === 'user' ? 'You' : 'Assistant'} said`}
                           >
                             <div className="flex items-center gap-2 mb-1">
+                              {message.role === 'user' && message.sent_by_username && (
+                                <span className="text-xs font-medium opacity-80">
+                                  {message.sent_by_username}
+                                </span>
+                              )}
                               <span className="text-xs opacity-60">
                                 {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               </span>
