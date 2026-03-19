@@ -36,6 +36,7 @@ export const IncomeSourceForm = React.memo(function IncomeSourceForm({
   onCancel,
   isPending,
   hideEmploymentCategory = false,
+  hideShading = false,
 }: IncomeSourceFormProps) {
   const [form, setForm] = useState<IncomeSource>(() => {
     const defaultCategory = hideEmploymentCategory ? 'passive' : 'employment';
