@@ -61,6 +61,9 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
   const [newNote, setNewNote] = useState('');
   const [noteType, setNoteType] = useState<NoteType>('general');
   const [isAdding, setIsAdding] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState('');
+  const [editNoteType, setEditNoteType] = useState<NoteType>('general');
   const queryClient = useQueryClient();
   const scrollRef = useRef<HTMLDivElement>(null);
 
