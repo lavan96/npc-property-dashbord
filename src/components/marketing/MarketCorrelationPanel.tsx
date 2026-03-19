@@ -1,9 +1,10 @@
+import { useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Activity, Brain, AlertTriangle, ExternalLink, Globe, ArrowUp, ArrowDown, Minus, Calendar } from 'lucide-react';
-import { EnhancedResearchRenderer } from './EnhancedResearchRenderer';
+import { EnhancedResearchRenderer, createMarkdownComponents } from './EnhancedResearchRenderer';
 
 interface MarketEvent {
   date: string;
@@ -48,6 +49,8 @@ function isUpcoming(dateStr: string) {
 }
 
 export function MarketCorrelationPanel({ marketEvents, perplexityResearch, citations, aiAnalysis, aiError, loading }: MarketCorrelationPanelProps) {
+  const markdownComponents = useMemo(() => createMarkdownComponents(), []);
+
   if (loading) {
     return (
       <Card>
@@ -94,8 +97,8 @@ export function MarketCorrelationPanel({ marketEvents, perplexityResearch, citat
               <Brain className="h-4 w-4 text-primary" />
               <span className="text-xs font-semibold text-primary uppercase tracking-wider">AI Market Correlation</span>
             </div>
-            <div className="text-sm text-foreground/80 leading-relaxed prose prose-sm dark:prose-invert max-w-none prose-headings:text-foreground prose-headings:font-semibold prose-h2:text-base prose-h2:mt-5 prose-h2:mb-2.5 prose-h3:text-[15px] prose-h3:mt-4 prose-h3:mb-2 prose-h4:text-sm prose-h4:mt-3 prose-h4:mb-1.5 prose-p:my-2.5 prose-p:leading-relaxed prose-li:my-1 prose-ul:my-2.5 prose-ol:my-2.5 prose-strong:text-foreground prose-a:text-primary prose-hr:my-4 prose-blockquote:border-primary/30 prose-blockquote:text-muted-foreground">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{aiAnalysis}</ReactMarkdown>
+            <div className="prose-override">
+              <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{aiAnalysis}</ReactMarkdown>
             </div>
           </div>
         )}

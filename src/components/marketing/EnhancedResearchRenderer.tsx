@@ -84,7 +84,7 @@ function isAdImpactCallout(text: string): boolean {
 /**
  * Custom markdown components for enhanced rendering.
  */
-function createMarkdownComponents(citations: string[]): Components {
+export function createMarkdownComponents(citations: string[] = []): Components {
   return {
     // Enhanced tables
     table: ({ children, ...props }) => (
