@@ -60,7 +60,7 @@ export const IncomeSourceCard = React.memo(function IncomeSourceCard({
                     From Employment
                   </Badge>
                 )}
-                {source.custom_shading_rate !== null && (
+                {!hideShading && source.custom_shading_rate !== null && (
                   <Badge variant="outline" className="text-[10px] h-5">Custom {(shading * 100).toFixed(0)}%</Badge>
                 )}
               </div>
