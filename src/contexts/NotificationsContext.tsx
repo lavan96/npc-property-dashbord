@@ -358,7 +358,10 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         }
         break;
       case 'conversation_shared':
-        // No direct navigation — user can open the Aurixa agent widget
+        // Open the Oryxa agent widget and navigate to the shared conversation
+        window.dispatchEvent(new CustomEvent('open-agent-conversation', { 
+          detail: { conversationId: notification.entityId } 
+        }));
         break;
       default:
         break;
