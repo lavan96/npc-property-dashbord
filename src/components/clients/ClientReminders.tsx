@@ -29,7 +29,8 @@ import {
   Loader2,
   X,
   Pin,
-  UserCircle
+  UserCircle,
+  Pencil
 } from 'lucide-react';
 import { format, formatDistanceToNow, isPast, isToday } from 'date-fns';
 import { toast } from 'sonner';
