@@ -470,3 +470,6 @@ request_timeout = 120
 [functions.backfill-notes-to-ghl]
 verify_jwt = false
 request_timeout = 300
+
+[functions.google-places-autocomplete]
+verify_jwt = false
