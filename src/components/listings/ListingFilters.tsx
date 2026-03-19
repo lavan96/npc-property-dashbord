@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { SearchableSelect } from '@/components/shared/SearchableSelect';
 import { Filter, X, Search, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -203,20 +204,13 @@ export function ListingFilters({ filters, setFilters, uniqueValues }: ListingFil
                     </div>
                   )}
                 </div>
-                <Select
+                <SearchableSelect
                   value={localFilters.suburb}
                   onValueChange={(value) => setLocalFilters({ ...localFilters, suburb: value, includeNearbySuburbs: false })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="All suburbs" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All suburbs</SelectItem>
-                    {uniqueValues.suburbs.filter(s => s?.trim()).map((suburb) => (
-                      <SelectItem key={suburb} value={suburb}>{suburb}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  options={uniqueValues.suburbs.filter(s => s?.trim())}
+                  placeholder="All suburbs"
+                  allLabel="All suburbs"
+                />
                 {localFilters.includeNearbySuburbs && localFilters.suburb && localFilters.suburb !== 'all' && (
                   <p className="text-xs text-muted-foreground">
                     Will also show listings from surrounding suburbs (±15 postcodes)
@@ -227,20 +221,13 @@ export function ListingFilters({ filters, setFilters, uniqueValues }: ListingFil
               {/* Postcode */}
               <div className="space-y-2">
                 <Label className="font-medium">Postcode</Label>
-                <Select
+                <SearchableSelect
                   value={localFilters.zipCode}
                   onValueChange={(value) => setLocalFilters({ ...localFilters, zipCode: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="All postcodes" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All postcodes</SelectItem>
-                    {uniqueValues.zipCodes.filter(z => z?.trim()).map((zip) => (
-                      <SelectItem key={zip} value={zip}>{zip}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  options={uniqueValues.zipCodes.filter(z => z?.trim())}
+                  placeholder="All postcodes"
+                  allLabel="All postcodes"
+                />
               </div>
             </div>
 
