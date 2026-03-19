@@ -213,20 +213,14 @@ export function MobileFilterSheet({ filters, setFilters, uniqueValues }: MobileF
                     </div>
                   )}
                 </div>
-                <Select
+                <SearchableSelect
                   value={localFilters.suburb}
                   onValueChange={(value) => setLocalFilters({ ...localFilters, suburb: value, includeNearbySuburbs: false })}
-                >
-                  <SelectTrigger className="h-11">
-                    <SelectValue placeholder="All suburbs" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All suburbs</SelectItem>
-                    {uniqueValues.suburbs.filter(s => s?.trim()).map((suburb) => (
-                      <SelectItem key={suburb} value={suburb}>{suburb}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  options={uniqueValues.suburbs.filter(s => s?.trim())}
+                  placeholder="All suburbs"
+                  allLabel="All suburbs"
+                  triggerClassName="h-11"
+                />
                 {localFilters.includeNearbySuburbs && localFilters.suburb && localFilters.suburb !== 'all' && (
                   <p className="text-xs text-muted-foreground">
                     Will also show listings from surrounding suburbs

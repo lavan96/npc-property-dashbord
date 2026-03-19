@@ -221,20 +221,13 @@ export function ListingFilters({ filters, setFilters, uniqueValues }: ListingFil
               {/* Postcode */}
               <div className="space-y-2">
                 <Label className="font-medium">Postcode</Label>
-                <Select
+                <SearchableSelect
                   value={localFilters.zipCode}
                   onValueChange={(value) => setLocalFilters({ ...localFilters, zipCode: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="All postcodes" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All postcodes</SelectItem>
-                    {uniqueValues.zipCodes.filter(z => z?.trim()).map((zip) => (
-                      <SelectItem key={zip} value={zip}>{zip}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  options={uniqueValues.zipCodes.filter(z => z?.trim())}
+                  placeholder="All postcodes"
+                  allLabel="All postcodes"
+                />
               </div>
             </div>
 
