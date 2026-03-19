@@ -517,7 +517,95 @@ export function ClientReminders({ clientId, followUpDate }: ClientRemindersProps
               {pendingReminders.map((reminder) => {
                 const Icon = getReminderIcon(reminder.reminder_type);
                 const dueStatus = getDueStatus(reminder.due_date);
+                const isEditing = editingId === reminder.id;
                 
+                if (isEditing) {
+                  return (
+                    <Card key={reminder.id} className="ring-1 ring-primary">
+                      <CardContent className="py-3 space-y-3">
+                        <Input
+                          value={editTitle}
+                          onChange={(e) => setEditTitle(e.target.value)}
+                          placeholder="Reminder title..."
+                        />
+                        <Textarea
+                          value={editDescription}
+                          onChange={(e) => setEditDescription(e.target.value)}
+                          placeholder="Description (optional)..."
+                          rows={2}
+                        />
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <label className="text-xs text-muted-foreground">Due Date</label>
+                            <Input
+                              type="datetime-local"
+                              value={editDueDate}
+                              onChange={(e) => setEditDueDate(e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-xs text-muted-foreground">Type</label>
+                            <Select value={editReminderType} onValueChange={setEditReminderType}>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {reminderTypes.map((type) => (
+                                  <SelectItem key={type.value} value={type.value}>
+                                    <span className="flex items-center gap-2">
+                                      <type.icon className="h-3 w-3" />
+                                      {type.label}
+                                    </span>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <label className="text-xs text-muted-foreground">Priority</label>
+                            <Select value={editPriority} onValueChange={(v) => setEditPriority(v as any)}>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="low">Low</SelectItem>
+                                <SelectItem value="medium">Medium</SelectItem>
+                                <SelectItem value="high">High</SelectItem>
+                                <SelectItem value="urgent">Urgent</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-xs text-muted-foreground">Assign To</label>
+                            <TeamUserSelect
+                              value={editAssignedTo}
+                              onValueChange={setEditAssignedTo}
+                              placeholder="Assign to..."
+                            />
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => editReminderMutation.mutate(reminder.id)}
+                            disabled={!editTitle.trim() || !editDueDate || editReminderMutation.isPending}
+                          >
+                            {editReminderMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                            ) : null}
+                            Save
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>
+                            Cancel
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                }
+
                 return (
                   <Card key={reminder.id} className="group">
                     <CardContent className="py-3 flex items-start gap-3">
@@ -555,6 +643,14 @@ export function ClientReminders({ clientId, followUpDate }: ClientRemindersProps
                         </div>
                       </div>
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-7 w-7"
+                          onClick={() => startEditing(reminder)}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
                         <Button 
                           variant="ghost" 
                           size="icon" 
