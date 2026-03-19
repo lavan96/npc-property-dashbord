@@ -395,7 +395,7 @@ export function AgentChatWidget() {
       ? filesToSend.map(f => `📎 ${f.filename}`).join('\n') + '\n\n'
       : '';
     const displayContent = fileIndicators + msg;
-    const tempUserMsg: Message = { id: `temp-${Date.now()}`, role: 'user', content: displayContent, created_at: new Date().toISOString() };
+    const tempUserMsg: Message = { id: `temp-${Date.now()}`, role: 'user', content: displayContent, created_at: new Date().toISOString(), sent_by: user?.id, sent_by_username: user?.username || user?.email || 'You' };
     setMessages(prev => [...prev, tempUserMsg]);
 
     // Build agent message with file context
