@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -5,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Loader2, Globe, Brain, AlertTriangle, ExternalLink, TrendingUp, TrendingDown, Minus, Award, Target } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip as RechartsTooltip, Cell, Legend } from 'recharts';
-import { EnhancedResearchRenderer } from './EnhancedResearchRenderer';
+import { EnhancedResearchRenderer, createMarkdownComponents } from './EnhancedResearchRenderer';
 
 interface BenchmarkData {
   metric: string;

@@ -1,9 +1,10 @@
+import { useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Activity, Brain, AlertTriangle, ExternalLink, Globe, ArrowUp, ArrowDown, Minus, Calendar } from 'lucide-react';
-import { EnhancedResearchRenderer } from './EnhancedResearchRenderer';
+import { EnhancedResearchRenderer, createMarkdownComponents } from './EnhancedResearchRenderer';
 
 interface MarketEvent {
   date: string;
