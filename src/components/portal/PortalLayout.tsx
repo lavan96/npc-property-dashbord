@@ -11,7 +11,7 @@ import {
   FileText, LogOut, Menu, X, Shield, Bell, TrendingUp,
   MessageSquare, BarChart3, CalendarDays
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { PortalOnboardingTour } from './PortalOnboardingTour';
 import { PortalNotificationBell } from './PortalNotificationBell';
