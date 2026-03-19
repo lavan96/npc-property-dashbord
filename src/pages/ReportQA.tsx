@@ -895,7 +895,7 @@ export default function ReportQA() {
           operation: 'create',
           table: 'report_qa_messages',
           data: [
-            { conversation_id: activeConversationId, role: 'user', content: messageContent },
+            { conversation_id: activeConversationId, role: 'user', content: messageContent, sent_by: user?.id || null, sent_by_username: user?.username || null },
             { conversation_id: activeConversationId, role: 'assistant', content: fullContent, model_provider: selectedModel },
           ]
         }).then(() => {
