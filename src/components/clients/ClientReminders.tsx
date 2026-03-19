@@ -315,6 +315,46 @@ export function ClientReminders({ clientId, followUpDate }: ClientRemindersProps
     }
   });
 
+  const editReminderMutation = useMutation({
+    mutationFn: async (reminderId: string) => {
+      const { data, error } = await invokeSecureFunction('manage-client-data', {
+        operation: 'update',
+        table: 'client_reminders',
+        clientId,
+        recordId: reminderId,
+        data: {
+          title: editTitle,
+          description: editDescription,
+          due_date: new Date(editDueDate).toISOString(),
+          priority: editPriority,
+          reminder_type: editReminderType,
+          assigned_to: editAssignedTo !== 'unassigned' ? editAssignedTo : null,
+        },
+      });
+      if (error) throw new Error(error.message);
+      if (!data?.success) throw new Error(data?.error || 'Failed to update reminder');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['client-reminders', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['all-reminders'] });
+      setEditingId(null);
+      toast.success('Reminder updated');
+    },
+    onError: (error: any) => {
+      toast.error('Failed to update reminder: ' + error.message);
+    },
+  });
+
+  const startEditing = (reminder: any) => {
+    setEditingId(reminder.id);
+    setEditTitle(reminder.title);
+    setEditDescription(reminder.description || '');
+    setEditDueDate(format(new Date(reminder.due_date), "yyyy-MM-dd'T'HH:mm"));
+    setEditPriority(reminder.priority);
+    setEditReminderType(reminder.reminder_type);
+    setEditAssignedTo(reminder.assigned_to || 'unassigned');
+  };
+
   const resetForm = () => {
     setTitle('');
     setDescription('');
