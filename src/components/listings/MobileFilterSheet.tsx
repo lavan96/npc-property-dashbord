@@ -184,20 +184,14 @@ export function MobileFilterSheet({ filters, setFilters, uniqueValues }: MobileF
                 
                 <div className="space-y-2">
                   <Label className="text-sm">Postcode</Label>
-                  <Select
+                  <SearchableSelect
                     value={localFilters.zipCode}
                     onValueChange={(value) => setLocalFilters({ ...localFilters, zipCode: value })}
-                  >
-                    <SelectTrigger className="h-11">
-                      <SelectValue placeholder="All" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All postcodes</SelectItem>
-                      {uniqueValues.zipCodes.filter(z => z?.trim()).map((zip) => (
-                        <SelectItem key={zip} value={zip}>{zip}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    options={uniqueValues.zipCodes.filter(z => z?.trim())}
+                    placeholder="All postcodes"
+                    allLabel="All postcodes"
+                    triggerClassName="h-11"
+                  />
                 </div>
               </div>
 
