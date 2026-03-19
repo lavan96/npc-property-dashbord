@@ -137,6 +137,8 @@ export function usePortalFinancesData() {
     employment: true,
     income: true,
     expenses: true,
+    assets: true,
+    liabilities: true,
   });
 }
 

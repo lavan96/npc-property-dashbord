@@ -247,6 +247,26 @@ serve(async (req) => {
       result.expenses = expenses || [];
     }
 
+    // Fetch assets
+    if (include.assets) {
+      const { data: assets } = await supabase
+        .from('client_assets')
+        .select('*')
+        .eq('client_id', clientId)
+        .order('created_at', { ascending: false });
+      result.assets = assets || [];
+    }
+
+    // Fetch liabilities
+    if (include.liabilities) {
+      const { data: liabilities } = await supabase
+        .from('client_liabilities')
+        .select('*')
+        .eq('client_id', clientId)
+        .order('created_at', { ascending: false });
+      result.liabilities = liabilities || [];
+    }
+
     // Fetch deals with stages and build progress payments
     if (include.deals) {
       const { data: deals } = await supabase

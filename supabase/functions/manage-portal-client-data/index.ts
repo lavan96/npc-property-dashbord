@@ -430,6 +430,133 @@ serve(async (req) => {
         );
       }
 
+      // --- Client Expenses ---
+      if (table === 'client_expenses') {
+        const expenseData: Record<string, any> = {
+          client_id: clientId,
+          expense_category: payload.expense_category || 'other',
+          expense_name: payload.expense_name || null,
+          monthly_amount: payload.monthly_amount ? Number(payload.monthly_amount) : 0,
+          frequency: payload.frequency || 'monthly',
+          notes: payload.notes || null,
+          is_essential: payload.is_essential ?? true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+
+        const { data: result, error } = await supabase
+          .from('client_expenses')
+          .insert(expenseData)
+          .select()
+          .single();
+
+        if (error) {
+          return new Response(
+            JSON.stringify({ error: error.message, success: false }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        try {
+          await supabase.from('notifications').insert({
+            type: 'client_data_updated',
+            title: 'Client Added Expense',
+            message: `A client has added an expense: ${payload.expense_name || payload.expense_category}`,
+            metadata: { expense_id: result.id, client_id: clientId },
+          });
+        } catch (e) { console.error('Notification error:', e); }
+
+        return new Response(
+          JSON.stringify({ success: true, data: result }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // --- Client Assets ---
+      if (table === 'client_assets') {
+        const assetData: Record<string, any> = {
+          client_id: clientId,
+          asset_type: payload.asset_type || 'other',
+          description: payload.description || null,
+          value: payload.value ? Number(payload.value) : 0,
+          institution_name: payload.institution_name || null,
+          vehicle_type: payload.vehicle_type || null,
+          make_model: payload.make_model || null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+
+        const { data: result, error } = await supabase
+          .from('client_assets')
+          .insert(assetData)
+          .select()
+          .single();
+
+        if (error) {
+          return new Response(
+            JSON.stringify({ error: error.message, success: false }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        try {
+          await supabase.from('notifications').insert({
+            type: 'client_data_updated',
+            title: 'Client Added Asset',
+            message: `A client has added an asset: ${payload.description || payload.asset_type}`,
+            metadata: { asset_id: result.id, client_id: clientId },
+          });
+        } catch (e) { console.error('Notification error:', e); }
+
+        return new Response(
+          JSON.stringify({ success: true, data: result }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // --- Client Liabilities ---
+      if (table === 'client_liabilities') {
+        const liabilityData: Record<string, any> = {
+          client_id: clientId,
+          liability_type: payload.liability_type || 'other',
+          provider_name: payload.provider_name || null,
+          current_balance: payload.current_balance ? Number(payload.current_balance) : 0,
+          credit_limit: payload.credit_limit ? Number(payload.credit_limit) : null,
+          interest_rate: payload.interest_rate ? Number(payload.interest_rate) : null,
+          monthly_repayment: payload.monthly_repayment ? Number(payload.monthly_repayment) : null,
+          repayment_type: payload.repayment_type || null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+
+        const { data: result, error } = await supabase
+          .from('client_liabilities')
+          .insert(liabilityData)
+          .select()
+          .single();
+
+        if (error) {
+          return new Response(
+            JSON.stringify({ error: error.message, success: false }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        try {
+          await supabase.from('notifications').insert({
+            type: 'client_data_updated',
+            title: 'Client Added Liability',
+            message: `A client has added a liability: ${payload.provider_name || payload.liability_type}`,
+            metadata: { liability_id: result.id, client_id: clientId },
+          });
+        } catch (e) { console.error('Notification error:', e); }
+
+        return new Response(
+          JSON.stringify({ success: true, data: result }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       // --- Report Requests ---
       if (table === 'client_portal_report_requests') {
         const validTypes = ['portfolio_review', 'borrowing_capacity', 'investment_property'];
