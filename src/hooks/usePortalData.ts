@@ -36,6 +36,8 @@ export interface PortalDataInclude {
   employment?: boolean;
   income?: boolean;
   expenses?: boolean;
+  assets?: boolean;
+  liabilities?: boolean;
   deals?: boolean;
   emails?: boolean;
   files?: boolean;
