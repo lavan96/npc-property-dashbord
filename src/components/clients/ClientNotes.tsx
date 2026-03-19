@@ -149,6 +149,37 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
     }
   });
 
+  const editNoteMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await invokeSecureFunction('manage-client-data', {
+        operation: 'update',
+        table: 'client_notes',
+        clientId,
+        recordId: editingId!,
+        data: {
+          content: editContent.trim(),
+          note_type: editNoteType,
+        },
+      });
+      if (error) throw new Error(error.message);
+      if (!data?.success) throw new Error(data?.error || 'Failed to update note');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['client-notes', clientId] });
+      setEditingId(null);
+      toast.success('Note updated');
+    },
+    onError: (error: any) => {
+      toast.error('Failed to update note: ' + error.message);
+    },
+  });
+
+  const startEditingNote = (note: any) => {
+    setEditingId(note.id);
+    setEditContent(note.content);
+    setEditNoteType(note.note_type);
+  };
+
   const getNoteIcon = (type: string) => {
     const noteType = noteTypes.find(t => t.value === type);
     const Icon = noteType?.icon || MessageSquare;
