@@ -93,7 +93,7 @@ export function MarketCorrelationPanel({ marketEvents, perplexityResearch, citat
               <Brain className="h-4 w-4 text-primary" />
               <span className="text-xs font-semibold text-primary uppercase tracking-wider">AI Market Correlation</span>
             </div>
-            <div className="text-sm text-foreground/80 leading-relaxed prose prose-sm dark:prose-invert max-w-none prose-headings:text-foreground prose-headings:font-semibold prose-headings:mt-4 prose-headings:mb-2 prose-p:my-1.5 prose-li:my-0.5 prose-strong:text-foreground prose-a:text-primary">
+            <div className="text-sm text-foreground/80 leading-relaxed prose prose-sm dark:prose-invert max-w-none prose-headings:text-foreground prose-headings:font-semibold prose-h2:text-base prose-h2:mt-5 prose-h2:mb-2.5 prose-h3:text-[15px] prose-h3:mt-4 prose-h3:mb-2 prose-h4:text-sm prose-h4:mt-3 prose-h4:mb-1.5 prose-p:my-2.5 prose-p:leading-relaxed prose-li:my-1 prose-ul:my-2.5 prose-ol:my-2.5 prose-strong:text-foreground prose-a:text-primary prose-hr:my-4 prose-blockquote:border-primary/30 prose-blockquote:text-muted-foreground">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{aiAnalysis}</ReactMarkdown>
             </div>
           </div>
@@ -194,7 +194,7 @@ export function MarketCorrelationPanel({ marketEvents, perplexityResearch, citat
               {citations.length > 0 && <span className="text-[10px]">({citations.length} sources)</span>}
             </summary>
             <div className="mt-3 rounded-lg border border-border/50 bg-muted/20 p-4">
-              <div className="text-xs text-foreground/70 leading-relaxed prose prose-xs dark:prose-invert max-w-none prose-headings:text-foreground prose-headings:font-semibold prose-headings:mt-3 prose-headings:mb-1.5 prose-p:my-1 prose-li:my-0.5 prose-strong:text-foreground prose-a:text-primary prose-headings:text-sm">
+              <div className="text-xs text-foreground/70 leading-relaxed prose prose-xs dark:prose-invert max-w-none prose-headings:text-foreground prose-headings:font-semibold prose-h2:text-sm prose-h2:mt-4 prose-h2:mb-2 prose-h3:text-[13px] prose-h3:mt-3 prose-h3:mb-1.5 prose-h4:text-xs prose-h4:mt-2.5 prose-h4:mb-1 prose-p:my-2 prose-p:leading-relaxed prose-li:my-0.5 prose-ul:my-2 prose-ol:my-2 prose-strong:text-foreground prose-a:text-primary prose-hr:my-3">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{perplexityResearch}</ReactMarkdown>
               </div>
               {citations.length > 0 && (
