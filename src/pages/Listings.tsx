@@ -364,6 +364,8 @@ export default function Listings() {
       carsMin: '',
       carsMax: '',
       agencyName: 'all',
+      keywordSearch: '',
+      includeNearbySuburbs: false,
     });
   };
 
