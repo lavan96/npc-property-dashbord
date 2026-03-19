@@ -1,104 +1,72 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useNotifications } from '@/contexts/NotificationsContext';
+import { toast } from 'sonner';
 
+/**
+ * Global realtime listener for call log changes (vapi_call_logs).
+ * 
+ * Bell notifications are created SERVER-SIDE by the `notify_call_completed`
+ * PostgreSQL trigger which inserts into the `notifications` table.
+ * The NotificationsContext realtime subscription on the `notifications` table
+ * picks them up automatically for the bell icon.
+ * 
+ * This hook only handles batched toast notifications for UX feedback
+ * when calls complete while the app is open.
+ * 
+ * Note: We listen to the `notifications` table (filtered by type) rather than
+ * `vapi_call_logs` directly, because RLS on vapi_call_logs blocks realtime
+ * for the custom session-token auth system (auth.uid() is null).
+ */
 export function useCallNotifications() {
-  const { addNotification } = useNotifications();
-  const processedCallIds = useRef<Set<string>>(new Set());
+  const batchRef = useRef<any[]>([]);
+  const batchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const flushBatch = useCallback(() => {
+    const batch = batchRef.current;
+    batchRef.current = [];
+    batchTimerRef.current = null;
+
+    if (batch.length === 0) return;
+
+    if (batch.length === 1) {
+      const n = batch[0];
+      toast.info(n.title, {
+        description: n.message,
+        duration: 4000
+      });
+    } else {
+      toast.info(`${batch.length} new calls completed`, {
+        description: 'Check Call Logs for details',
+        duration: 5000
+      });
+    }
+  }, []);
 
   useEffect(() => {
-    console.log('[CallNotifications] Setting up realtime subscription for vapi_call_logs');
-    
+    console.log('[CallNotifications] Setting up realtime subscription on notifications table');
+
     const channel = supabase
-      .channel('call-notifications')
+      .channel('call-notifications-via-bell')
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'vapi_call_logs'
+          table: 'notifications',
+          filter: 'type=eq.call_completed'
         },
-        async (payload) => {
-          console.log('[CallNotifications] INSERT received:', payload);
-          const call = payload.new as any;
-          
-          // Skip if already processed or call is still in progress
-          if (processedCallIds.current.has(call.id)) {
-            console.log('[CallNotifications] Call already processed:', call.id);
-            return;
+        (payload) => {
+          const notification = payload.new as any;
+          console.log('[CallNotifications] New call notification:', notification.id);
+
+          // Add to batch
+          batchRef.current.push(notification);
+
+          // Reset debounce timer — flush after 3 seconds of no new calls
+          if (batchTimerRef.current) {
+            clearTimeout(batchTimerRef.current);
           }
-          
-          // Use correct column name: call_status (not status)
-          if (call.call_status === 'in-progress' || call.call_status === 'ringing' || call.call_status === 'queued') {
-            console.log('[CallNotifications] Call still in progress, skipping:', call.call_status);
-            return;
-          }
-          
-          processedCallIds.current.add(call.id);
-          
-          const customerName = call.customer_name || call.phone_number || 'Unknown caller';
-          const agentName = call.agent_name || 'Voice Agent';
-          const duration = call.duration_seconds 
-            ? `${Math.floor(call.duration_seconds / 60)}:${(call.duration_seconds % 60).toString().padStart(2, '0')}`
-            : 'N/A';
-          
-          const direction = call.call_direction === 'inbound' ? 'Incoming' : 'Outgoing';
-          const intent = call.call_intent ? ` - ${call.call_intent}` : '';
-          
-          console.log('[CallNotifications] Adding notification for call:', call.id);
-          await addNotification({
-            type: 'call_completed',
-            title: `${direction} Call Ended${intent}`,
-            message: `${customerName} with ${agentName} (${duration})`
-          });
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'vapi_call_logs'
-        },
-        async (payload) => {
-          console.log('[CallNotifications] UPDATE received:', payload);
-          const call = payload.new as any;
-          const oldCall = payload.old as any;
-          
-          // Only notify when call transitions to ended status
-          if (processedCallIds.current.has(call.id)) {
-            console.log('[CallNotifications] Call already processed:', call.id);
-            return;
-          }
-          
-          // Use correct column name: call_status (not status)
-          if (call.call_status !== 'ended') {
-            console.log('[CallNotifications] Call not ended yet:', call.call_status);
-            return;
-          }
-          
-          if (oldCall.call_status === 'ended') {
-            console.log('[CallNotifications] Call was already ended');
-            return;
-          }
-          
-          processedCallIds.current.add(call.id);
-          
-          const customerName = call.customer_name || call.phone_number || 'Unknown caller';
-          const agentName = call.agent_name || 'Voice Agent';
-          const duration = call.duration_seconds 
-            ? `${Math.floor(call.duration_seconds / 60)}:${(call.duration_seconds % 60).toString().padStart(2, '0')}`
-            : 'N/A';
-          
-          const direction = call.call_direction === 'inbound' ? 'Incoming' : 'Outgoing';
-          const intent = call.call_intent ? ` - ${call.call_intent}` : '';
-          
-          console.log('[CallNotifications] Adding notification for updated call:', call.id);
-          await addNotification({
-            type: 'call_completed',
-            title: `${direction} Call Ended${intent}`,
-            message: `${customerName} with ${agentName} (${duration})`
-          });
+          batchTimerRef.current = setTimeout(flushBatch, 3000);
         }
       )
       .subscribe((status) => {
@@ -106,8 +74,10 @@ export function useCallNotifications() {
       });
 
     return () => {
-      console.log('[CallNotifications] Cleaning up subscription');
       supabase.removeChannel(channel);
+      if (batchTimerRef.current) {
+        clearTimeout(batchTimerRef.current);
+      }
     };
-  }, [addNotification]);
+  }, [flushBatch]);
 }
