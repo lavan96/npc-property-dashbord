@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { SearchableSelect } from '@/components/shared/SearchableSelect';
 import { Filter, X, Search, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
