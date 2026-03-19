@@ -14,6 +14,7 @@ import { MobileFilterSheet } from '@/components/listings/MobileFilterSheet';
 import { PropertyCard } from '@/components/listings/PropertyCard';
 import { propertyDataService } from '@/services/propertyDataService';
 import { PropertyListing } from '@/lib/airtable';
+import { getNearbySuburbs } from '@/lib/postcodeProximity';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Table,
@@ -83,6 +84,8 @@ export default function Listings() {
       carsMin: '',
       carsMax: '',
       agencyName: 'all',
+      keywordSearch: '',
+      includeNearbySuburbs: false,
     };
   });
   const [selectedListing, setSelectedListing] = useState<PropertyListing | null>(null);
@@ -184,6 +187,14 @@ export default function Listings() {
     return { propertyTypes, suburbs, states, zipCodes, sourceHosts, agencies };
   }, [listings]);
 
+  // Compute nearby suburbs when the filter is active
+  const nearbySuburbsList = useMemo(() => {
+    if (filters.includeNearbySuburbs && filters.suburb && filters.suburb !== 'all') {
+      return getNearbySuburbs(filters.suburb, listings);
+    }
+    return null;
+  }, [filters.includeNearbySuburbs, filters.suburb, listings]);
+
   // Memoize filtered listings for performance
   const filteredListings = useMemo(() => {
     return listings.filter(listing => {
@@ -202,14 +213,39 @@ export default function Listings() {
         }
       }
 
+      // Keyword search across summary, rawExtract, keyEntities, description
+      if (filters.keywordSearch) {
+        const keywords = filters.keywordSearch.toLowerCase().split(/[,\s]+/).filter(Boolean);
+        const contentText = [
+          listing.summary,
+          listing.rawExtract,
+          listing.keyEntities,
+          listing.description,
+          listing.address,
+        ].filter(Boolean).join(' ').toLowerCase();
+        
+        // All keywords must match (AND logic)
+        if (!keywords.every(kw => contentText.includes(kw))) {
+          return false;
+        }
+      }
+
       // Property type filter
       if (filters.propertyType && filters.propertyType !== 'all' && listing.propertyType !== filters.propertyType) {
         return false;
       }
 
-      // Suburb filter
-      if (filters.suburb && filters.suburb !== 'all' && listing.suburb !== filters.suburb) {
-        return false;
+      // Suburb filter (with nearby suburbs support)
+      if (filters.suburb && filters.suburb !== 'all') {
+        if (filters.includeNearbySuburbs && nearbySuburbsList) {
+          if (!listing.suburb || !nearbySuburbsList.includes(listing.suburb)) {
+            return false;
+          }
+        } else {
+          if (listing.suburb !== filters.suburb) {
+            return false;
+          }
+        }
       }
 
       // State filter
@@ -285,7 +321,7 @@ export default function Listings() {
 
       return true;
     });
-  }, [listings, searchQuery, filters]);
+  }, [listings, searchQuery, filters, nearbySuburbsList]);
 
   const openDetailsModal = (listing: PropertyListing) => {
     setSelectedListing(listing);
@@ -328,6 +364,8 @@ export default function Listings() {
       carsMin: '',
       carsMax: '',
       agencyName: 'all',
+      keywordSearch: '',
+      includeNearbySuburbs: false,
     });
   };
 

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Filter, X } from 'lucide-react';
+import { Filter, X, Search, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { getFullStateName } from '@/lib/states';
 
 interface FilterState {
@@ -26,6 +27,8 @@ interface FilterState {
   carsMin: string;
   carsMax: string;
   agencyName: string;
+  keywordSearch: string;
+  includeNearbySuburbs: boolean;
 }
 
 interface ListingFiltersProps {
@@ -70,6 +73,8 @@ export function ListingFilters({ filters, setFilters, uniqueValues }: ListingFil
       carsMin: '',
       carsMax: '',
       agencyName: 'all',
+      keywordSearch: '',
+      includeNearbySuburbs: false,
     });
   };
 
@@ -106,6 +111,22 @@ export function ListingFilters({ filters, setFilters, uniqueValues }: ListingFil
             )}
           </div>
 
+          {/* Keyword Search */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-1.5">
+              <Search className="h-3.5 w-3.5" />
+              Keyword Search
+            </Label>
+            <Input
+              placeholder="e.g. study, pool, granny flat..."
+              value={filters.keywordSearch}
+              onChange={(e) => setFilters({ ...filters, keywordSearch: e.target.value })}
+            />
+            <p className="text-xs text-muted-foreground">
+              Searches listing descriptions, summaries &amp; extracted features
+            </p>
+          </div>
+
           {/* Property Type */}
           <div className="space-y-2">
             <Label>Property Type</Label>
@@ -127,12 +148,28 @@ export function ListingFilters({ filters, setFilters, uniqueValues }: ListingFil
             </Select>
           </div>
 
-          {/* Suburb */}
+          {/* Suburb with Nearby toggle */}
           <div className="space-y-2">
-            <Label>Suburb</Label>
+            <div className="flex items-center justify-between">
+              <Label>Suburb</Label>
+              {filters.suburb && filters.suburb !== 'all' && (
+                <div className="flex items-center gap-1.5">
+                  <MapPin className="h-3 w-3 text-muted-foreground" />
+                  <Label htmlFor="nearby-toggle" className="text-xs text-muted-foreground cursor-pointer">
+                    Include nearby
+                  </Label>
+                  <Switch
+                    id="nearby-toggle"
+                    checked={filters.includeNearbySuburbs}
+                    onCheckedChange={(checked) => setFilters({ ...filters, includeNearbySuburbs: checked })}
+                    className="scale-75"
+                  />
+                </div>
+              )}
+            </div>
             <Select
               value={filters.suburb}
-              onValueChange={(value) => setFilters({ ...filters, suburb: value })}
+              onValueChange={(value) => setFilters({ ...filters, suburb: value, includeNearbySuburbs: false })}
             >
               <SelectTrigger>
                 <SelectValue placeholder="All suburbs" />
@@ -146,6 +183,11 @@ export function ListingFilters({ filters, setFilters, uniqueValues }: ListingFil
                 ))}
               </SelectContent>
             </Select>
+            {filters.includeNearbySuburbs && filters.suburb && filters.suburb !== 'all' && (
+              <p className="text-xs text-muted-foreground">
+                Showing listings from {filters.suburb} and surrounding suburbs (±15 postcodes)
+              </p>
+            )}
           </div>
 
           {/* State */}
