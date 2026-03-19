@@ -48,6 +48,8 @@ function isUpcoming(dateStr: string) {
 }
 
 export function MarketCorrelationPanel({ marketEvents, perplexityResearch, citations, aiAnalysis, aiError, loading }: MarketCorrelationPanelProps) {
+  const markdownComponents = useMemo(() => createMarkdownComponents(), []);
+
   if (loading) {
     return (
       <Card>

@@ -53,6 +53,8 @@ function PercentileBar({ percentile }: { percentile: number }) {
 }
 
 export function BenchmarksPanel({ benchmarks, perplexityResearch, citations, aiAnalysis, aiError, rawBenchmarks, loading }: BenchmarksPanelProps) {
+  const markdownComponents = useMemo(() => createMarkdownComponents(), []);
+
   if (loading) {
     return (
       <Card>
