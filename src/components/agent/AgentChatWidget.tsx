@@ -99,6 +99,8 @@ export function AgentChatWidget() {
         const own = (data.conversations || []).map((c: any) => ({ ...c, shared: false }));
         const shared = (data.shared_conversations || []).map((c: any) => ({ ...c, shared: true }));
         setConversations([...own, ...shared]);
+        const byMe = (data.shared_by_me_conversations || []).map((c: any) => ({ ...c, shared_by_me: true }));
+        setSharedByMeConversations(byMe);
       }
     } catch (err) {
       console.error('Failed to load conversations:', err);
