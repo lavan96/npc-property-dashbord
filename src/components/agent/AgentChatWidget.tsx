@@ -132,11 +132,13 @@ export function AgentChatWidget() {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       setIsOpen(true);
-      setShowSidebar(false);
       if (detail?.conversationId) {
         setActiveConversation(detail.conversationId);
+        setShowSidebar(false);
       }
-      // Refresh conversations list to ensure shared ones are loaded
+      if (detail?.tab) {
+        setSidebarTab(detail.tab);
+      }
       loadConversations();
     };
     window.addEventListener('open-agent-conversation', handler);
