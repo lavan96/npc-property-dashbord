@@ -119,6 +119,22 @@ export function AgentChatWidget() {
     }
   }, [isOpen, user, loadConversations, loadNotifications]);
 
+  // Listen for external requests to open a specific conversation (e.g. from notification bell)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      setIsOpen(true);
+      setShowSidebar(false);
+      if (detail?.conversationId) {
+        setActiveConversation(detail.conversationId);
+      }
+      // Refresh conversations list to ensure shared ones are loaded
+      loadConversations();
+    };
+    window.addEventListener('open-agent-conversation', handler);
+    return () => window.removeEventListener('open-agent-conversation', handler);
+  }, [loadConversations]);
+
   // Poll notifications every 2 min
   useEffect(() => {
     if (!isOpen || !user) return;
