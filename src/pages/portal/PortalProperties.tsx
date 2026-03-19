@@ -1,13 +1,16 @@
+import { useState } from 'react';
 import { usePortalPropertiesData } from '@/hooks/usePortalData';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import {
   Building2, DollarSign, TrendingUp, TrendingDown, Loader2,
-  MapPin, Calendar, Percent, Home
+  MapPin, Calendar, Percent, Home, Plus
 } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { format } from 'date-fns';
+import { PortalAddPropertyForm } from '@/components/portal/PortalAddPropertyForm';
 
 function fmt(val?: number | null): string {
   if (val == null) return '—';

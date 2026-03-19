@@ -153,13 +153,67 @@ serve(async (req) => {
       );
     }
 
-    // Insert operation (messages and report requests)
+    // Insert operation (messages, report requests, and properties)
     if (operation === 'insert') {
-      const insertableTables = ['client_portal_messages', 'client_portal_report_requests'];
+      const insertableTables = ['client_portal_messages', 'client_portal_report_requests', 'client_properties'];
       if (!insertableTables.includes(table)) {
         return new Response(
           JSON.stringify({ error: `Insert not allowed for table '${table}'`, success: false }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Client property insert
+      if (table === 'client_properties') {
+        if (!payload?.address) {
+          return new Response(
+            JSON.stringify({ error: 'Property address is required', success: false }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const propertyData = {
+          client_id: clientId,
+          address: payload.address,
+          property_type: payload.property_type || 'investment',
+          purchase_price: payload.purchase_price ? Number(payload.purchase_price) : null,
+          loan_remaining: payload.loan_remaining ? Number(payload.loan_remaining) : null,
+          weekly_rental_income: payload.weekly_rental_income ? Number(payload.weekly_rental_income) : null,
+          monthly_rental_income: payload.weekly_rental_income ? Number(payload.weekly_rental_income) * 52 / 12 : null,
+          sourced_by: 'client',
+          sourced_notes: 'Submitted via client portal',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+
+        const { data: result, error } = await supabase
+          .from('client_properties')
+          .insert(propertyData)
+          .select()
+          .single();
+
+        if (error) {
+          return new Response(
+            JSON.stringify({ error: error.message, success: false }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Create internal notification
+        try {
+          await supabase.from('notifications').insert({
+            type: 'client_property_added',
+            title: 'Client Added Property',
+            message: `A client has added a property to their portfolio: ${payload.address}`,
+            metadata: { property_id: result.id, client_id: clientId },
+          });
+        } catch (notifErr) {
+          console.error('Failed to create notification:', notifErr);
+        }
+
+        return new Response(
+          JSON.stringify({ success: true, data: result }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
