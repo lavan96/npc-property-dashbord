@@ -379,7 +379,7 @@ export function ListingFilters({ filters, setFilters, uniqueValues }: ListingFil
     </Popover>
   );
 }
-export function ListingFilters({ filters, setFilters, uniqueValues }: ListingFiltersProps) {
+
   const [isOpen, setIsOpen] = useState(false);
 
   const hasActiveFilters = Object.entries(filters).some(([key, value]) => {
