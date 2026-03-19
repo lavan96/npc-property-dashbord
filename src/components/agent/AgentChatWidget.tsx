@@ -863,7 +863,7 @@ export function AgentChatWidget() {
               {loadingConvos ? (
                 <div className="flex items-center justify-center p-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
               ) : (() => {
-                const renderConvo = (conv: Conversation, variant: 'own' | 'shared_with_me' | 'shared_by_me') => (
+                const renderConvo = (conv: Conversation, variant: SidebarTab) => (
                   <div key={conv.id} className="group">
                     {editingConvoId === conv.id ? (
                       <div className="px-2 py-1.5">
