@@ -1513,13 +1513,24 @@ export function InvestmentReportGenerator() {
                       {queryType === 'suburb' && 'Suburb Name'}
                       {queryType === 'state' && 'State'}
                     </Label>
-                    <Input
-                      id="query"
-                      value={query}
-                      onChange={(e) => setQuery(e.target.value)}
-                      placeholder={getQueryTypePlaceholder()}
-                      disabled={isGenerating}
-                    />
+                    {queryType === 'address' && preGenData.buildType === 'existing_property' ? (
+                      <AddressAutocomplete
+                        id="query"
+                        value={query}
+                        onChange={setQuery}
+                        placeholder={getQueryTypePlaceholder()}
+                        disabled={isGenerating}
+                        showIcon={false}
+                      />
+                    ) : (
+                      <Input
+                        id="query"
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        placeholder={getQueryTypePlaceholder()}
+                        disabled={isGenerating}
+                      />
+                    )}
                     {/* Query type description hints */}
                     {queryType === 'zipcode' && (
                       <p className="text-xs text-muted-foreground">
