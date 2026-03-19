@@ -360,7 +360,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       case 'conversation_shared':
         // Open the Oryxa agent widget and navigate to the shared conversation
         window.dispatchEvent(new CustomEvent('open-agent-conversation', { 
-          detail: { conversationId: notification.entityId } 
+          detail: { conversationId: notification.entityId, tab: 'shared_with_me' } 
         }));
         break;
       default:

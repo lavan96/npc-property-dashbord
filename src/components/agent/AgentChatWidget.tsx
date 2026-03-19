@@ -23,9 +23,13 @@ interface Conversation {
   updated_at: string;
   shared?: boolean;
   shared_by?: string;
+  shared_by_me?: boolean;
+  shared_with_username?: string;
   permission?: string;
   handoff_note?: string;
 }
+
+type SidebarTab = 'mine' | 'shared_with_me' | 'shared_by_me';
 
 interface Message {
   id: string;
@@ -52,6 +56,8 @@ export function AgentChatWidget() {
   const [loading, setLoading] = useState(false);
   const [loadingConvos, setLoadingConvos] = useState(false);
   const [showSidebar, setShowSidebar] = useState(true);
+  const [sidebarTab, setSidebarTab] = useState<SidebarTab>('mine');
+  const [sharedByMeConversations, setSharedByMeConversations] = useState<Conversation[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [editingConvoId, setEditingConvoId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
@@ -93,6 +99,8 @@ export function AgentChatWidget() {
         const own = (data.conversations || []).map((c: any) => ({ ...c, shared: false }));
         const shared = (data.shared_conversations || []).map((c: any) => ({ ...c, shared: true }));
         setConversations([...own, ...shared]);
+        const byMe = (data.shared_by_me_conversations || []).map((c: any) => ({ ...c, shared_by_me: true }));
+        setSharedByMeConversations(byMe);
       }
     } catch (err) {
       console.error('Failed to load conversations:', err);
@@ -124,11 +132,13 @@ export function AgentChatWidget() {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       setIsOpen(true);
-      setShowSidebar(false);
       if (detail?.conversationId) {
         setActiveConversation(detail.conversationId);
+        setShowSidebar(false);
       }
-      // Refresh conversations list to ensure shared ones are loaded
+      if (detail?.tab) {
+        setSidebarTab(detail.tab);
+      }
       loadConversations();
     };
     window.addEventListener('open-agent-conversation', handler);
@@ -176,6 +186,14 @@ export function AgentChatWidget() {
   const filteredConversations = conversations.filter(c =>
     c.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const filteredSharedByMe = sharedByMeConversations.filter(c =>
+    c.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Derive counts for tab badges
+  const ownConvos = filteredConversations.filter(c => !c.shared);
+  const sharedWithMeConvos = filteredConversations.filter(c => c.shared);
 
   const createConversation = async () => {
     try {
@@ -803,25 +821,51 @@ export function AgentChatWidget() {
         {/* ═══ CONVERSATION SIDEBAR ═══ */}
         {panelView === 'chat' && showSidebar && (
           <div className="w-full flex flex-col bg-muted/20">
+            {/* Search */}
             <div className="px-3 py-2 border-b">
               <div className="relative">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search conversations..." className="h-8 pl-8 text-xs" />
               </div>
             </div>
+
+            {/* Tabs */}
+            <div className="flex border-b px-1 pt-1 gap-0.5">
+              {([
+                { key: 'mine' as SidebarTab, label: 'Mine', count: ownConvos.length, icon: MessageSquare },
+                { key: 'shared_with_me' as SidebarTab, label: 'Shared', count: sharedWithMeConvos.length, icon: Users },
+                { key: 'shared_by_me' as SidebarTab, label: 'Sent', count: filteredSharedByMe.length, icon: Share2 },
+              ]).map(tab => (
+                <button
+                  key={tab.key}
+                  onClick={() => setSidebarTab(tab.key)}
+                  className={cn(
+                    "flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-[10px] font-medium rounded-t-md transition-colors border-b-2",
+                    sidebarTab === tab.key
+                      ? "border-primary text-primary bg-background"
+                      : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  )}
+                >
+                  <tab.icon className="h-3 w-3" />
+                  <span>{tab.label}</span>
+                  {tab.count > 0 && (
+                    <span className={cn(
+                      "ml-0.5 text-[9px] px-1.5 py-0 rounded-full",
+                      sidebarTab === tab.key ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+                    )}>
+                      {tab.count}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {/* Conversation list */}
             <ScrollArea className="flex-1">
               {loadingConvos ? (
                 <div className="flex items-center justify-center p-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
-              ) : filteredConversations.length === 0 ? (
-                <div className="p-6 text-center">
-                  <Diamond className="h-8 w-8 text-muted-foreground/30 mx-auto mb-3" />
-                  <p className="text-sm text-muted-foreground mb-3">{searchQuery ? 'No matching conversations' : 'No conversations yet'}</p>
-                  {!searchQuery && <Button size="sm" onClick={createConversation} variant="outline"><Plus className="h-4 w-4 mr-1" /> New Chat</Button>}
-                </div>
               ) : (() => {
-                const ownConvos = filteredConversations.filter(c => !c.shared);
-                const sharedConvos = filteredConversations.filter(c => c.shared);
-                const renderConvo = (conv: Conversation) => (
+                const renderConvo = (conv: Conversation, variant: SidebarTab) => (
                   <div key={conv.id} className="group">
                     {editingConvoId === conv.id ? (
                       <div className="px-2 py-1.5">
@@ -832,13 +876,13 @@ export function AgentChatWidget() {
                       </div>
                     ) : (
                       <button onClick={() => { setActiveConversation(conv.id); setShowSidebar(false); }}
-                        className={cn("w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-accent/50 transition-colors flex items-center justify-between gap-1",
+                        className={cn("w-full text-left px-3 py-2.5 rounded-lg text-sm hover:bg-accent/50 transition-colors flex items-center justify-between gap-1",
                           activeConversation === conv.id && "bg-accent"
                         )}>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1.5">
                             <span className="truncate block text-xs font-medium">{conv.title}</span>
-                            {conv.shared && conv.permission && (
+                            {(variant === 'shared_with_me' || variant === 'shared_by_me') && conv.permission && (
                               <span className={cn("shrink-0 text-[9px] px-1.5 py-0.5 rounded-full border",
                                 conv.permission === 'collaborate'
                                   ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
@@ -848,11 +892,18 @@ export function AgentChatWidget() {
                               </span>
                             )}
                           </div>
-                          <span className="text-[10px] text-muted-foreground">
-                            {conv.shared ? `From ${conv.shared_by} • ` : ''}{new Date(conv.updated_at).toLocaleDateString()}
+                          <span className="text-[10px] text-muted-foreground mt-0.5 block">
+                            {variant === 'shared_with_me' && conv.shared_by ? `From ${conv.shared_by} • ` : ''}
+                            {variant === 'shared_by_me' && conv.shared_with_username ? `To ${conv.shared_with_username} • ` : ''}
+                            {new Date(conv.updated_at).toLocaleDateString()}
                           </span>
+                          {conv.handoff_note && (
+                            <span className="text-[10px] text-muted-foreground/60 italic block mt-0.5 truncate">
+                              "{conv.handoff_note}"
+                            </span>
+                          )}
                         </div>
-                        {!conv.shared && (
+                        {variant === 'mine' && (
                           <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                             <button onClick={(e) => { e.stopPropagation(); setEditingConvoId(conv.id); setEditTitle(conv.title); }} className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground" title="Rename"><Pencil className="h-3 w-3" /></button>
                             <button onClick={(e) => deleteConversation(conv.id, e)} className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive" title="Delete"><Trash2 className="h-3 w-3" /></button>
@@ -862,31 +913,34 @@ export function AgentChatWidget() {
                     )}
                   </div>
                 );
-                return (
-                  <div className="p-1.5 space-y-1">
-                    {/* My Conversations */}
-                    {ownConvos.length > 0 && (
-                      <div>
-                        <p className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">My Conversations</p>
-                        <div className="space-y-0.5">{ownConvos.map(renderConvo)}</div>
-                      </div>
-                    )}
-                    {/* Shared with me */}
-                    {sharedConvos.length > 0 && (
-                      <div className={ownConvos.length > 0 ? 'pt-2 border-t border-border/30' : ''}>
-                        <p className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-                          <Users className="h-3 w-3" /> Shared with me
-                        </p>
-                        <div className="space-y-0.5">{sharedConvos.map(renderConvo)}</div>
-                      </div>
-                    )}
-                    {ownConvos.length === 0 && sharedConvos.length === 0 && (
-                      <div className="p-6 text-center">
-                        <Diamond className="h-8 w-8 text-muted-foreground/30 mx-auto mb-3" />
-                        <p className="text-sm text-muted-foreground mb-3">No conversations yet</p>
+
+                // Determine which list to show
+                const activeList = sidebarTab === 'mine' ? ownConvos
+                  : sidebarTab === 'shared_with_me' ? sharedWithMeConvos
+                  : filteredSharedByMe;
+
+                const emptyMessages: Record<SidebarTab, { icon: React.ElementType; text: string }> = {
+                  mine: { icon: MessageSquare, text: 'No conversations yet' },
+                  shared_with_me: { icon: Users, text: 'No conversations shared with you yet' },
+                  shared_by_me: { icon: Share2, text: 'You haven\'t shared any conversations yet' },
+                };
+
+                if (activeList.length === 0) {
+                  const empty = emptyMessages[sidebarTab];
+                  return (
+                    <div className="p-6 text-center">
+                      <empty.icon className="h-8 w-8 text-muted-foreground/30 mx-auto mb-3" />
+                      <p className="text-sm text-muted-foreground mb-3">{searchQuery ? 'No matching conversations' : empty.text}</p>
+                      {sidebarTab === 'mine' && !searchQuery && (
                         <Button size="sm" onClick={createConversation} variant="outline"><Plus className="h-4 w-4 mr-1" /> New Chat</Button>
-                      </div>
-                    )}
+                      )}
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="p-1.5 space-y-0.5">
+                    {activeList.map(c => renderConvo(c, sidebarTab))}
                   </div>
                 );
               })()}
