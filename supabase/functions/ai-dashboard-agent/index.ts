@@ -6047,7 +6047,23 @@ async function handleListConversations(sb: any, userId: string, cors: Record<str
     handoff_note: s.handoff_note,
   }));
 
-  return new Response(JSON.stringify({ success: true, conversations: own || [], shared_conversations: sharedConvos }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+  // Fetch conversations shared BY this user to others
+  const { data: sharedByMe } = await sb.from('agent_conversation_shares')
+    .select('conversation_id, permission, handoff_note, agent_conversations(id, title, created_at, updated_at), custom_users!agent_conversation_shares_shared_with_fkey(username)')
+    .eq('shared_by', userId)
+    .eq('is_active', true)
+    .order('created_at', { ascending: false })
+    .limit(20);
+
+  const sharedByMeConvos = (sharedByMe || []).map((s: any) => ({
+    ...s.agent_conversations,
+    shared_by_me: true,
+    shared_with_username: s.custom_users?.username || 'Unknown',
+    permission: s.permission,
+    handoff_note: s.handoff_note,
+  }));
+
+  return new Response(JSON.stringify({ success: true, conversations: own || [], shared_conversations: sharedConvos, shared_by_me_conversations: sharedByMeConvos }), { headers: { ...cors, 'Content-Type': 'application/json' } });
 }
 
 async function handleCreateConversation(sb: any, userId: string, title: string, cors: Record<string, string>) {
