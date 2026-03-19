@@ -17,6 +17,7 @@ interface IncomeSourceCardProps {
   onEdit: () => void;
   onDelete: () => void;
   isLinkedToEmployment?: boolean;
+  hideShading?: boolean;
 }
 
 const categoryIcons: Record<string, React.ElementType> = {
