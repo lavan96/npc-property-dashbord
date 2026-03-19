@@ -102,6 +102,7 @@ export function PortalIncomeForm({ existingIncome, onRefresh }: PortalIncomeForm
               onEdit={() => {}}
               onDelete={() => {}}
               isLinkedToEmployment
+              hideShading
             />
           ))}
         </div>
