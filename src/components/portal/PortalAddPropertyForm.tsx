@@ -158,7 +158,7 @@ export function PortalAddPropertyForm({ onSubmitted, onCancel }: Props) {
       </CardHeader>
       <CardContent className="space-y-5">
         {/* Address with Google Places Autocomplete */}
-        <div className="relative">
+        <div className="relative" ref={wrapperRef}>
           <Label className="text-sm font-medium">Property Address *</Label>
           <div className="relative mt-1.5">
             <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -174,7 +174,7 @@ export function PortalAddPropertyForm({ onSubmitted, onCancel }: Props) {
             )}
           </div>
           {showPredictions && predictions.length > 0 && (
-            <div className="absolute z-50 w-full max-w-[calc(100%-3rem)] mt-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden">
+            <div className="absolute z-50 left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden">
               {predictions.map((p) => (
                 <button
                   key={p.placeId}
@@ -190,7 +190,7 @@ export function PortalAddPropertyForm({ onSubmitted, onCancel }: Props) {
               ))}
             </div>
           )}
-          <p className="text-[10px] text-muted-foreground">
+          <p className="text-[10px] text-muted-foreground mt-1">
             Powered by Google — select a suggestion for the most accurate address
           </p>
         </div>
