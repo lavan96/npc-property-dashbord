@@ -141,6 +141,7 @@ interface SavedConversation {
 }
 
 export default function ReportQA() {
+  const { user } = useAuth();
   const { toast } = useToast();
   const [uploadedReports, setUploadedReports] = useState<UploadedReport[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
