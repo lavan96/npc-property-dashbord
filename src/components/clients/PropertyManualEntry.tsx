@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { AddressAutocomplete } from '@/components/shared/AddressAutocomplete';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { supabase } from '@/integrations/supabase/client';
