@@ -1050,17 +1050,25 @@ export function AgentChatWidget() {
                   </div>
                 </div>
               )}
-              {messages.map((msg) => {
-                const activeConvData = conversations.find(c => c.id === activeConversation);
-                const isSharedConvo = activeConvData?.shared;
-                const showAttribution = msg.role === 'user' && msg.sent_by_username && isSharedConvo;
+              {(() => {
+                const senderColorMap = new Map<string, number>();
+                return messages.map((msg) => {
+                const showAttribution = msg.role === 'user' && msg.sent_by_username && isCollaborativeConvo;
+                const isOtherUser = msg.role === 'user' && msg.sent_by && msg.sent_by !== user?.id;
+                const senderColor = msg.sent_by ? getSenderColor(msg.sent_by, senderColorMap) : '';
                 return (
-                <div key={msg.id} className={cn("flex flex-col", msg.role === 'user' ? "items-end" : "items-start")}>
+                <div key={msg.id} className={cn("flex flex-col", msg.role === 'user' ? (isOtherUser ? "items-start" : "items-end") : "items-start")}>
                   {showAttribution && (
-                    <span className="text-[10px] text-muted-foreground mb-0.5 px-1">{msg.sent_by_username}</span>
+                    <span className={cn("text-[10px] font-medium mb-0.5 px-1", senderColor)}>
+                      {msg.sent_by_username}{isOtherUser ? '' : ' (You)'}
+                    </span>
                   )}
                   <div className={cn("max-w-[88%] rounded-2xl px-3.5 py-2.5 text-sm",
-                    msg.role === 'user' ? "bg-primary text-primary-foreground rounded-br-md" : "bg-muted/60 border border-border/30 rounded-bl-md"
+                    msg.role === 'user'
+                      ? isOtherUser
+                        ? "bg-accent/60 border border-border/30 text-foreground rounded-bl-md"
+                        : "bg-primary text-primary-foreground rounded-br-md"
+                      : "bg-muted/60 border border-border/30 rounded-bl-md"
                   )}>
                     {msg.role === 'assistant' ? (
                       <AgentMessageRenderer content={msg.content} />
