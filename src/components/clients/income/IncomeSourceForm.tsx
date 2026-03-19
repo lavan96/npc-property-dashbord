@@ -273,10 +273,12 @@ export const IncomeSourceForm = React.memo(function IncomeSourceForm({
             <span className="font-medium">Total Annual Income</span>
             <span className="text-lg font-bold text-success">{formatCurrency(totalAnnual)}</span>
           </div>
-          <div className="flex justify-between items-center mt-1">
-            <span className="text-xs text-muted-foreground">Shaded Amount ({(effectiveShading * 100).toFixed(0)}%)</span>
-            <span className="text-sm font-medium text-muted-foreground">{formatCurrency(totalAnnual * effectiveShading)}</span>
-          </div>
+          {!hideShading && (
+            <div className="flex justify-between items-center mt-1">
+              <span className="text-xs text-muted-foreground">Shaded Amount ({(effectiveShading * 100).toFixed(0)}%)</span>
+              <span className="text-sm font-medium text-muted-foreground">{formatCurrency(totalAnnual * effectiveShading)}</span>
+            </div>
+          )}
         </CardContent>
       </Card>
 

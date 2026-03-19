@@ -69,9 +69,11 @@ export const IncomeSourceCard = React.memo(function IncomeSourceCard({
                 <div>
                   <p className="text-sm font-semibold">{formatCurrency(totalAnnual)}<span className="text-xs font-normal text-muted-foreground">/yr</span></p>
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  Shaded: {formatCurrency(totalAnnual * shading)}
-                </div>
+                {!hideShading && (
+                  <div className="text-xs text-muted-foreground">
+                    Shaded: {formatCurrency(totalAnnual * shading)}
+                  </div>
+                )}
               </div>
             </div>
           </div>
