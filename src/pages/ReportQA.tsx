@@ -685,6 +685,8 @@ export default function ReportQA() {
         role: m.role,
         content: m.content,
         timestamp: new Date(m.created_at),
+        sent_by: m.sent_by || null,
+        sent_by_username: m.sent_by_username || null,
       }));
 
       // Prepend older messages, deduplicating by id
