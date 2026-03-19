@@ -84,6 +84,8 @@ export default function Listings() {
       carsMin: '',
       carsMax: '',
       agencyName: 'all',
+      keywordSearch: '',
+      includeNearbySuburbs: false,
     };
   });
   const [selectedListing, setSelectedListing] = useState<PropertyListing | null>(null);
