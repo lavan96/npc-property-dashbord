@@ -56,6 +56,8 @@ export function AgentChatWidget() {
   const [loading, setLoading] = useState(false);
   const [loadingConvos, setLoadingConvos] = useState(false);
   const [showSidebar, setShowSidebar] = useState(true);
+  const [sidebarTab, setSidebarTab] = useState<SidebarTab>('mine');
+  const [sharedByMeConversations, setSharedByMeConversations] = useState<Conversation[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [editingConvoId, setEditingConvoId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
