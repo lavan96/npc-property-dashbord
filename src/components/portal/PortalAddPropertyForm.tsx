@@ -158,9 +158,9 @@ export function PortalAddPropertyForm({ onSubmitted, onCancel }: Props) {
       </CardHeader>
       <CardContent className="space-y-5">
         {/* Address with Google Places Autocomplete */}
-        <div className="space-y-1.5" ref={wrapperRef}>
+        <div className="relative">
           <Label className="text-sm font-medium">Property Address *</Label>
-          <div className="relative">
+          <div className="relative mt-1.5">
             <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Start typing an address..."
