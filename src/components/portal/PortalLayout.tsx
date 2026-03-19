@@ -58,6 +58,15 @@ export function PortalLayout() {
     const ogDesc = document.querySelector('meta[property="og:description"]');
     if (ogDesc) ogDesc.setAttribute('content', 'Secure client portal for Naidoo Property Consulting Services');
 
+    const ogImage = document.querySelector('meta[property="og:image"]');
+    if (ogImage) ogImage.setAttribute('content', '/images/npc-signature-logo.png');
+
+    const twitterTitle = document.querySelector('meta[name="twitter:title"]');
+    if (twitterTitle) twitterTitle.setAttribute('content', 'NPC Services - Client Portal');
+
+    const twitterImage = document.querySelector('meta[name="twitter:image"]');
+    if (twitterImage) twitterImage.setAttribute('content', '/images/npc-signature-logo.png');
+
     return () => {
       // Restore default title when leaving portal
       if (settings.companyName) {
