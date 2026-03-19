@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
+import { useAuth } from '@/hooks/useAuth';
 import { MessageReportEditor } from '@/components/report-qa/MessageReportEditor';
 import { convertPdfToImages } from '@/utils/pdfToImages';
 import { extractPdfTextClientSide } from '@/lib/pdfClientExtractor';
