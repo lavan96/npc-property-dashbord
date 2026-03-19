@@ -287,30 +287,82 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
               }
             }}
           >
-            {notes.map((note: any) => (
-              <div key={note.id} className="p-3 border rounded-lg space-y-2 group">
-                <div className="flex items-center justify-between">
-                  <Badge variant="outline" className={getNoteColor(note.note_type)}>
-                    {getNoteIcon(note.note_type)}
-                    <span className="ml-1.5 capitalize">{note.note_type}</span>
-                  </Badge>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">
-                      {format(new Date(note.created_at), 'MMM d, yyyy h:mm a')}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
-                      onClick={() => deleteNoteMutation.mutate(note.id)}
-                    >
-                      ×
-                    </Button>
+            {notes.map((note: any) => {
+              const isEditing = editingId === note.id;
+
+              if (isEditing) {
+                return (
+                  <div key={note.id} className="p-3 border rounded-lg space-y-2 ring-1 ring-primary">
+                    <Select value={editNoteType} onValueChange={(v: NoteType) => setEditNoteType(v)}>
+                      <SelectTrigger className="w-32 h-8">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {noteTypes.map(type => (
+                          <SelectItem key={type.value} value={type.value}>
+                            <div className="flex items-center gap-2">
+                              <type.icon className="h-3.5 w-3.5" />
+                              {type.label}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Textarea
+                      value={editContent}
+                      onChange={(e) => setEditContent(e.target.value)}
+                      className="min-h-[60px]"
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => editNoteMutation.mutate()}
+                        disabled={!editContent.trim() || editNoteMutation.isPending}
+                      >
+                        {editNoteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                        Save
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>
+                        Cancel
+                      </Button>
+                    </div>
                   </div>
+                );
+              }
+
+              return (
+                <div key={note.id} className="p-3 border rounded-lg space-y-2 group">
+                  <div className="flex items-center justify-between">
+                    <Badge variant="outline" className={getNoteColor(note.note_type)}>
+                      {getNoteIcon(note.note_type)}
+                      <span className="ml-1.5 capitalize">{note.note_type}</span>
+                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">
+                        {format(new Date(note.created_at), 'MMM d, yyyy h:mm a')}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => startEditingNote(note)}
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
+                        onClick={() => deleteNoteMutation.mutate(note.id)}
+                      >
+                        ×
+                      </Button>
+                    </div>
+                  </div>
+                  <p className="text-sm whitespace-pre-wrap">{note.content}</p>
                 </div>
-                <p className="text-sm whitespace-pre-wrap">{note.content}</p>
-              </div>
-            ))}
+              );
+            })}
             {isFetchingNextPage && (
               <div className="flex justify-center py-4">
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
