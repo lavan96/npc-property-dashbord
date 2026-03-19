@@ -114,6 +114,8 @@ interface ChatMessage {
   attachments?: PDFAttachment[]; // For PDF attachments
   modelProvider?: ModelProvider | null; // Which AI model generated this message
   citations?: string[]; // Perplexity citations
+  sent_by?: string | null;
+  sent_by_username?: string | null;
 }
 
 interface UploadedReport {
