@@ -28,8 +28,9 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
 }
 
 export default function PortalProperties() {
-  const { data, isLoading, error } = usePortalPropertiesData();
+  const { data, isLoading, error, refetch } = usePortalPropertiesData();
   const properties = data?.properties || [];
+  const [showAddForm, setShowAddForm] = useState(false);
 
   if (isLoading) {
     return (
@@ -41,10 +42,25 @@ export default function PortalProperties() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Properties</h1>
-        <p className="text-muted-foreground mt-1">Your investment property portfolio</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Properties</h1>
+          <p className="text-muted-foreground mt-1">Your investment property portfolio</p>
+        </div>
+        {!showAddForm && (
+          <Button onClick={() => setShowAddForm(true)} size="sm">
+            <Plus className="h-4 w-4 mr-1.5" />
+            Add Property
+          </Button>
+        )}
       </div>
+
+      {showAddForm && (
+        <PortalAddPropertyForm
+          onSubmitted={() => { setShowAddForm(false); refetch(); }}
+          onCancel={() => setShowAddForm(false)}
+        />
+      )}
 
       {/* Summary Stats */}
       {properties.length > 0 && (
