@@ -120,6 +120,7 @@ export function PortalIncomeForm({ existingIncome, onRefresh }: PortalIncomeForm
               source={source}
               onEdit={() => setEditingSource(source)}
               onDelete={() => source.id && handleDelete(source.id)}
+              hideShading
             />
           ))}
         </div>
