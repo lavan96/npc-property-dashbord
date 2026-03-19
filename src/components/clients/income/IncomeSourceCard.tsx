@@ -33,6 +33,7 @@ export const IncomeSourceCard = React.memo(function IncomeSourceCard({
   onEdit,
   onDelete,
   isLinkedToEmployment = false,
+  hideShading = false,
 }: IncomeSourceCardProps) {
   const totalAnnual = getSourceTotalAnnual(source);
   const shading = getEffectiveShading(source);
