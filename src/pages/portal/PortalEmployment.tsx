@@ -1,9 +1,12 @@
 import { usePortalFinancesData } from '@/hooks/usePortalData';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Briefcase, TrendingUp, CreditCard, Loader2 } from 'lucide-react';
+import { Briefcase, TrendingUp, CreditCard, Loader2, PiggyBank, Receipt } from 'lucide-react';
 import { PortalEmploymentForm } from '@/components/portal/PortalEmploymentForm';
 import { PortalIncomeForm } from '@/components/portal/PortalIncomeForm';
+import { PortalExpenseForm } from '@/components/portal/PortalExpenseForm';
+import { PortalAssetForm } from '@/components/portal/PortalAssetForm';
+import { PortalLiabilityForm } from '@/components/portal/PortalLiabilityForm';
 
 function fmt(val?: number | null): string {
   if (val == null) return '—';
@@ -17,6 +20,8 @@ export default function PortalEmployment() {
   const employment = data?.employment || [];
   const income = data?.income || [];
   const expenses = data?.expenses || [];
+  const assets = data?.assets || [];
+  const liabilities = data?.liabilities || [];
 
   if (isLoading) {
     return (
@@ -34,12 +39,14 @@ export default function PortalEmployment() {
 
   const totalMonthlyIncome = income.reduce((sum: number, i: any) => sum + (i.gross_annual_amount || 0) / 12, 0);
   const totalMonthlyExpenses = expenses.reduce((sum: number, e: any) => sum + (e.monthly_amount || 0), 0);
+  const totalAssets = assets.reduce((sum: number, a: any) => sum + (a.value || 0), 0);
+  const totalLiabilities = liabilities.reduce((sum: number, l: any) => sum + (l.current_balance || 0), 0);
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Employment & Finances</h1>
-        <p className="text-muted-foreground mt-1">Manage your employment, income, and expense details</p>
+        <p className="text-muted-foreground mt-1">Manage your employment, income, expenses, assets, and liabilities</p>
       </div>
 
       {/* Summary Cards */}
@@ -58,93 +65,63 @@ export default function PortalEmployment() {
         </Card>
         <Card>
           <CardContent className="pt-5 pb-4">
-            <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Net Cash Flow</p>
-            <p className={`text-xl font-bold ${(client?.net_monthly_cash_flow ?? 0) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive'}`}>
-              {fmt(client?.net_monthly_cash_flow)}
-            </p>
+            <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Total Assets</p>
+            <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{fmt(totalAssets)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-5 pb-4">
-            <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Total Debt</p>
-            <p className="text-xl font-bold text-foreground">{fmt(client?.total_debt)}</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Total Liabilities</p>
+            <p className="text-xl font-bold text-destructive">{fmt(totalLiabilities)}</p>
           </CardContent>
         </Card>
       </div>
 
       <Tabs defaultValue="employment" className="space-y-4">
-        <TabsList className="w-full flex">
-          <TabsTrigger value="employment" className="flex-1 gap-2">
+        <TabsList className="w-full flex flex-wrap">
+          <TabsTrigger value="employment" className="flex-1 gap-1.5 text-xs sm:text-sm">
             <Briefcase className="h-4 w-4" />
-            Employment
+            <span className="hidden sm:inline">Employment</span>
+            <span className="sm:hidden">Jobs</span>
           </TabsTrigger>
-          <TabsTrigger value="income" className="flex-1 gap-2">
+          <TabsTrigger value="income" className="flex-1 gap-1.5 text-xs sm:text-sm">
             <TrendingUp className="h-4 w-4" />
             Income
           </TabsTrigger>
-          <TabsTrigger value="expenses" className="flex-1 gap-2">
+          <TabsTrigger value="expenses" className="flex-1 gap-1.5 text-xs sm:text-sm">
+            <Receipt className="h-4 w-4" />
+            <span className="hidden sm:inline">Expenses</span>
+            <span className="sm:hidden">Exp.</span>
+          </TabsTrigger>
+          <TabsTrigger value="assets" className="flex-1 gap-1.5 text-xs sm:text-sm">
+            <PiggyBank className="h-4 w-4" />
+            Assets
+          </TabsTrigger>
+          <TabsTrigger value="liabilities" className="flex-1 gap-1.5 text-xs sm:text-sm">
             <CreditCard className="h-4 w-4" />
-            Expenses
+            <span className="hidden sm:inline">Liabilities</span>
+            <span className="sm:hidden">Debt</span>
           </TabsTrigger>
         </TabsList>
 
-        {/* Employment Tab — Full CRUD */}
         <TabsContent value="employment" className="space-y-4">
-          <PortalEmploymentForm
-            existingEmployment={employment}
-            onRefresh={refetch}
-          />
+          <PortalEmploymentForm existingEmployment={employment} onRefresh={refetch} />
         </TabsContent>
 
-        {/* Income Tab — Full CRUD */}
         <TabsContent value="income" className="space-y-4">
-          <PortalIncomeForm
-            existingIncome={income}
-            onRefresh={refetch}
-          />
+          <PortalIncomeForm existingIncome={income} onRefresh={refetch} />
         </TabsContent>
 
-        {/* Expenses Tab — Read-only for now */}
         <TabsContent value="expenses" className="space-y-4">
-          {expenses.length === 0 ? (
-            <Card>
-              <CardContent className="py-8 text-center text-muted-foreground">
-                <CreditCard className="h-10 w-10 mx-auto mb-3 text-muted-foreground/30" />
-                <p>No expenses on file.</p>
-              </CardContent>
-            </Card>
-          ) : (
-            (() => {
-              const expensesByCategory = expenses.reduce((acc: Record<string, any[]>, item: any) => {
-                const cat = item.expense_category || 'Other';
-                if (!acc[cat]) acc[cat] = [];
-                acc[cat].push(item);
-                return acc;
-              }, {});
+          <PortalExpenseForm existingExpenses={expenses} onRefresh={refetch} />
+        </TabsContent>
 
-              return Object.entries(expensesByCategory).map(([category, items]) => (
-                <Card key={category}>
-                  <CardContent className="pt-5">
-                    <div className="flex items-center justify-between mb-3">
-                      <p className="text-base font-semibold capitalize">{category.replace(/_/g, ' ')}</p>
-                      <span className="text-sm font-semibold text-destructive">
-                        {fmt((items as any[]).reduce((s: number, e: any) => s + (e.monthly_amount || 0), 0))}/mo
-                      </span>
-                    </div>
-                    {(items as any[]).map((exp: any) => (
-                      <div key={exp.id} className="flex justify-between py-2.5 border-b border-border/50 last:border-0">
-                        <div>
-                          <p className="text-sm text-foreground">{exp.expense_name || exp.expense_category}</p>
-                          {exp.frequency && <p className="text-xs text-muted-foreground capitalize">{exp.frequency}</p>}
-                        </div>
-                        <p className="text-sm font-medium text-foreground">{fmt(exp.monthly_amount)}<span className="text-xs text-muted-foreground font-normal">/mo</span></p>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-              ));
-            })()
-          )}
+        <TabsContent value="assets" className="space-y-4">
+          <PortalAssetForm existingAssets={assets} onRefresh={refetch} />
+        </TabsContent>
+
+        <TabsContent value="liabilities" className="space-y-4">
+          <PortalLiabilityForm existingLiabilities={liabilities} onRefresh={refetch} />
         </TabsContent>
       </Tabs>
     </div>

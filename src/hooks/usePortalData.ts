@@ -36,6 +36,8 @@ export interface PortalDataInclude {
   employment?: boolean;
   income?: boolean;
   expenses?: boolean;
+  assets?: boolean;
+  liabilities?: boolean;
   deals?: boolean;
   emails?: boolean;
   files?: boolean;
@@ -135,6 +137,8 @@ export function usePortalFinancesData() {
     employment: true,
     income: true,
     expenses: true,
+    assets: true,
+    liabilities: true,
   });
 }
 
