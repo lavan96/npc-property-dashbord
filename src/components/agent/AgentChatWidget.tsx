@@ -185,6 +185,14 @@ export function AgentChatWidget() {
     c.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const filteredSharedByMe = sharedByMeConversations.filter(c =>
+    c.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Derive counts for tab badges
+  const ownConvos = filteredConversations.filter(c => !c.shared);
+  const sharedWithMeConvos = filteredConversations.filter(c => c.shared);
+
   const createConversation = async () => {
     try {
       const { data } = await invokeSecureFunction('ai-dashboard-agent', { action: 'create-conversation' });
