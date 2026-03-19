@@ -2016,6 +2016,11 @@ export default function ReportQA() {
                             aria-label={`${message.role === 'user' ? 'You' : 'Assistant'} said`}
                           >
                             <div className="flex items-center gap-2 mb-1">
+                              {message.role === 'user' && message.sent_by_username && (
+                                <span className="text-xs font-medium opacity-80">
+                                  {message.sent_by_username}
+                                </span>
+                              )}
                               <span className="text-xs opacity-60">
                                 {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               </span>
