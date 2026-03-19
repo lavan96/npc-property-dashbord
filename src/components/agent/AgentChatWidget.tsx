@@ -10,11 +10,31 @@ import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { secureStorageUpload } from '@/hooks/useSecureStorage';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { AgentMessageRenderer } from '@/components/agent/AgentMessageRenderer';
 import { extractFileContent, formatFilesForAgent, ACCEPTED_EXTENSIONS, type ExtractedFile } from '@/lib/agentFileExtractor';
+
+// Consistent color palette for sender attribution in collaborative conversations
+const SENDER_COLORS = [
+  'text-blue-600 dark:text-blue-400',
+  'text-emerald-600 dark:text-emerald-400',
+  'text-orange-600 dark:text-orange-400',
+  'text-purple-600 dark:text-purple-400',
+  'text-rose-600 dark:text-rose-400',
+  'text-cyan-600 dark:text-cyan-400',
+  'text-amber-600 dark:text-amber-400',
+  'text-indigo-600 dark:text-indigo-400',
+];
+
+function getSenderColor(senderId: string, senderMap: Map<string, number>): string {
+  if (!senderMap.has(senderId)) {
+    senderMap.set(senderId, senderMap.size);
+  }
+  return SENDER_COLORS[senderMap.get(senderId)! % SENDER_COLORS.length];
+}
 
 interface Conversation {
   id: string;
@@ -152,6 +172,18 @@ export function AgentChatWidget() {
     return () => clearInterval(interval);
   }, [isOpen, user, loadNotifications]);
 
+  // Determine if current conversation is collaborative
+  const isCollaborativeConvo = useMemo(() => {
+    if (!activeConversation) return false;
+    const conv = conversations.find(c => c.id === activeConversation);
+    if (conv?.shared && conv?.permission === 'collaborate') return true;
+    // Check if I shared it with collaborators
+    const sharedOut = sharedByMeConversations.find(c => c.id === activeConversation);
+    if (sharedOut?.permission === 'collaborate') return true;
+    // Also check if any share exists for this convo
+    return sharedByMeConversations.some(c => c.id === activeConversation) || (conv?.shared === true);
+  }, [activeConversation, conversations, sharedByMeConversations]);
+
   // Load messages for active conversation
   useEffect(() => {
     if (!activeConversation) return;
@@ -167,6 +199,40 @@ export function AgentChatWidget() {
       }
     })();
   }, [activeConversation]);
+
+  // Realtime subscription for collaborative conversations — live message sync
+  useEffect(() => {
+    if (!activeConversation || !isCollaborativeConvo) return;
+    
+    const channel = supabase
+      .channel(`agent-messages-${activeConversation}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'agent_messages',
+        filter: `conversation_id=eq.${activeConversation}`,
+      }, async (payload) => {
+        // When a new message arrives, check if it's from another user
+        const newMsg = payload.new as any;
+        if (newMsg.sent_by === user?.id && newMsg.role === 'user') return; // Skip own messages (already shown)
+        
+        // Refresh messages to get full data with username joins
+        try {
+          const { data } = await invokeSecureFunction('ai-dashboard-agent', {
+            action: 'get-messages',
+            conversation_id: activeConversation,
+          });
+          if (data?.messages) setMessages(data.messages);
+        } catch (err) {
+          console.error('Realtime message refresh failed:', err);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [activeConversation, isCollaborativeConvo, user?.id]);
 
   // Auto-scroll
   useEffect(() => {
@@ -329,7 +395,7 @@ export function AgentChatWidget() {
       ? filesToSend.map(f => `📎 ${f.filename}`).join('\n') + '\n\n'
       : '';
     const displayContent = fileIndicators + msg;
-    const tempUserMsg: Message = { id: `temp-${Date.now()}`, role: 'user', content: displayContent, created_at: new Date().toISOString() };
+    const tempUserMsg: Message = { id: `temp-${Date.now()}`, role: 'user', content: displayContent, created_at: new Date().toISOString(), sent_by: user?.id, sent_by_username: user?.username || 'You' };
     setMessages(prev => [...prev, tempUserMsg]);
 
     // Build agent message with file context
@@ -984,17 +1050,25 @@ export function AgentChatWidget() {
                   </div>
                 </div>
               )}
-              {messages.map((msg) => {
-                const activeConvData = conversations.find(c => c.id === activeConversation);
-                const isSharedConvo = activeConvData?.shared;
-                const showAttribution = msg.role === 'user' && msg.sent_by_username && isSharedConvo;
+              {(() => {
+                const senderColorMap = new Map<string, number>();
+                return messages.map((msg) => {
+                const showAttribution = msg.role === 'user' && msg.sent_by_username && isCollaborativeConvo;
+                const isOtherUser = msg.role === 'user' && msg.sent_by && msg.sent_by !== user?.id;
+                const senderColor = msg.sent_by ? getSenderColor(msg.sent_by, senderColorMap) : '';
                 return (
-                <div key={msg.id} className={cn("flex flex-col", msg.role === 'user' ? "items-end" : "items-start")}>
+                <div key={msg.id} className={cn("flex flex-col", msg.role === 'user' ? (isOtherUser ? "items-start" : "items-end") : "items-start")}>
                   {showAttribution && (
-                    <span className="text-[10px] text-muted-foreground mb-0.5 px-1">{msg.sent_by_username}</span>
+                    <span className={cn("text-[10px] font-medium mb-0.5 px-1", senderColor)}>
+                      {msg.sent_by_username}{isOtherUser ? '' : ' (You)'}
+                    </span>
                   )}
                   <div className={cn("max-w-[88%] rounded-2xl px-3.5 py-2.5 text-sm",
-                    msg.role === 'user' ? "bg-primary text-primary-foreground rounded-br-md" : "bg-muted/60 border border-border/30 rounded-bl-md"
+                    msg.role === 'user'
+                      ? isOtherUser
+                        ? "bg-accent/60 border border-border/30 text-foreground rounded-bl-md"
+                        : "bg-primary text-primary-foreground rounded-br-md"
+                      : "bg-muted/60 border border-border/30 rounded-bl-md"
                   )}>
                     {msg.role === 'assistant' ? (
                       <AgentMessageRenderer content={msg.content} />
@@ -1047,7 +1121,8 @@ export function AgentChatWidget() {
                   </div>
                 </div>
                 );
-              })}
+              });
+              })()}
               {loading && (
                 <div className="flex justify-start">
                   <div className="bg-muted/60 border border-border/30 rounded-2xl rounded-bl-md px-4 py-3">
