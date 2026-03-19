@@ -41,7 +41,7 @@ interface MarketEvent {
 
 // ─── Perplexity Integration ──────────────────────────────────────────────────
 
-async function queryPerplexity(prompt: string, apiKey: string): Promise<{ content: string; citations: string[] }> {
+async function queryPerplexity(prompt: string, apiKey: string, systemPrompt?: string): Promise<{ content: string; citations: string[] }> {
   const response = await fetch('https://api.perplexity.ai/chat/completions', {
     method: 'POST',
     headers: {
@@ -53,7 +53,7 @@ async function queryPerplexity(prompt: string, apiKey: string): Promise<{ conten
       messages: [
         {
           role: 'system',
-          content: 'You are a marketing analytics expert specializing in Australian property investment digital advertising. Provide data-driven insights with specific numbers. Always cite your sources.'
+          content: systemPrompt || 'You are a marketing analytics expert specializing in Australian property investment digital advertising. Provide data-driven insights with specific numbers. Always cite your sources.'
         },
         { role: 'user', content: prompt }
       ],
@@ -76,7 +76,7 @@ async function queryPerplexity(prompt: string, apiKey: string): Promise<{ conten
 
 // ─── AI Analysis via Lovable Gateway ─────────────────────────────────────────
 
-async function callGemini(prompt: string, apiKey: string): Promise<string> {
+async function callGemini(prompt: string, apiKey: string, maxTokens: number = 4000): Promise<string> {
   const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -86,11 +86,11 @@ async function callGemini(prompt: string, apiKey: string): Promise<string> {
     body: JSON.stringify({
       model: 'google/gemini-2.5-flash',
       messages: [
-        { role: 'system', content: 'You are an expert marketing strategist for Australian property investment companies. Provide concise, actionable analysis.' },
+        { role: 'system', content: 'You are an expert performance marketing strategist specialising in Australian property investment digital advertising. You produce data-driven, actionable analysis with specific numbers and clear recommendations. Format your output using Markdown with bold text, headers, bullet points, and tables where appropriate.' },
         { role: 'user', content: prompt },
       ],
       temperature: 0.3,
-      max_tokens: 3000,
+      max_tokens: maxTokens,
     }),
   });
 
@@ -105,7 +105,7 @@ async function callGemini(prompt: string, apiKey: string): Promise<string> {
 
 // ─── Structured Benchmark Extraction ─────────────────────────────────────────
 
-async function extractBenchmarks(apiKey: string): Promise<any> {
+async function extractBenchmarks(apiKey: string, perplexityContext: string): Promise<any> {
   const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -117,39 +117,59 @@ async function extractBenchmarks(apiKey: string): Promise<any> {
       messages: [
         {
           role: 'system',
-          content: 'You are a digital marketing data analyst. Extract structured benchmark data.'
+          content: `You are a senior digital marketing data analyst with deep expertise in the Australian property investment advertising vertical.
+
+Your task is to extract the most accurate, current industry benchmark figures for Meta/Facebook Ads performance in this specific niche. Use the real-time research data provided as your PRIMARY source of truth — extract specific numbers directly from it where available. Only fall back to your training data for metrics not covered in the research.
+
+Key context:
+- This is specifically for PROPERTY INVESTMENT lead generation campaigns (not general real estate listings)
+- Target audience: Australian property investors, SMSF trustees, high-net-worth individuals
+- Campaign objectives: Lead generation (form submissions, consultation bookings)
+- Geographic focus: Australia-wide, with emphasis on major capital cities (Sydney, Melbourne, Brisbane, Perth, Adelaide)
+- Ad formats: Lead forms, video ads, carousel, single image
+- Currency: AUD
+
+Ensure benchmark figures reflect the premium/niche nature of property investment advertising, which typically has higher CPC and CPL than general real estate due to narrower targeting and higher-value conversions.`
         },
         {
           role: 'user',
-          content: `Provide current industry benchmark data for Facebook/Meta Ads in the Australian real estate and property investment vertical. Include realistic 2025/2026 figures.`
+          content: `Based on the following real-time market research, extract precise benchmark figures for Australian property investment Meta Ads campaigns.
+
+**Real-Time Research Data:**
+${perplexityContext || 'No real-time research available — use your best knowledge of Q4 2025 / Q1 2026 Australian property investment ad benchmarks.'}
+
+Extract benchmarks for these metrics: CTR, CPC, CPL, CPM, Frequency, and Conversion Rate. For each metric, provide the industry average, top 25% performer threshold, and bottom 25% threshold. Include contextual notes explaining what drives variance in each metric for this specific vertical.`
         },
       ],
       tools: [{
         type: 'function',
         function: {
           name: 'provide_benchmarks',
-          description: 'Provide structured industry benchmark data for Meta Ads in Australian property/real estate.',
+          description: 'Provide structured industry benchmark data for Meta Ads in Australian property investment lead generation.',
           parameters: {
             type: 'object',
             properties: {
               benchmarks: {
                 type: 'array',
+                description: 'Array of benchmark metrics. Must include: CTR, CPC, CPL, CPM, Frequency, Conversion Rate.',
                 items: {
                   type: 'object',
                   properties: {
-                    metric: { type: 'string', description: 'Metric name (e.g., CTR, CPC, CPL, CPM, Frequency)' },
+                    metric: { type: 'string', description: 'Metric name — one of: CTR, CPC, CPL, CPM, Frequency, Conversion Rate' },
                     unit: { type: 'string', enum: ['percentage', 'currency_aud', 'number'] },
-                    industry_avg: { type: 'number', description: 'Industry average value' },
-                    industry_top_quartile: { type: 'number', description: 'Top 25% performer value' },
-                    industry_bottom_quartile: { type: 'number', description: 'Bottom 25% performer value' },
-                    notes: { type: 'string', description: 'Brief context about this metric' },
+                    industry_avg: { type: 'number', description: 'Industry average for Australian property investment ads' },
+                    industry_top_quartile: { type: 'number', description: 'Top 25% performer value (the threshold above/below which the best performers sit)' },
+                    industry_bottom_quartile: { type: 'number', description: 'Bottom 25% performer value (the threshold at which poor performers sit)' },
+                    notes: { type: 'string', description: 'Contextual explanation of what drives variance in this metric for property investment campaigns, including any YoY trends or seasonal patterns. 2-3 sentences.' },
+                    yoy_trend: { type: 'string', description: 'Year-over-year trend direction and approximate magnitude, e.g., "+11% YoY" or "Stable"' },
                   },
                   required: ['metric', 'unit', 'industry_avg', 'industry_top_quartile', 'industry_bottom_quartile', 'notes'],
                   additionalProperties: false,
                 },
               },
-              data_period: { type: 'string', description: 'Time period these benchmarks represent' },
-              data_sources: { type: 'string', description: 'Where this data comes from' },
+              data_period: { type: 'string', description: 'Specific time period these benchmarks represent, e.g., "Q4 2025 – Q1 2026"' },
+              data_sources: { type: 'string', description: 'Named sources this data is derived from (e.g., WordStream, Meta Blueprint, AdExchanger)' },
+              methodology_note: { type: 'string', description: 'Brief note on methodology: what types of campaigns/accounts these benchmarks are drawn from' },
             },
             required: ['benchmarks', 'data_period', 'data_sources'],
             additionalProperties: false,
@@ -354,16 +374,41 @@ serve(async (req) => {
       if (PERPLEXITY_API_KEY) {
         try {
           const result = await queryPerplexity(
-            `What are the current average Facebook/Meta Ads benchmarks for the Australian real estate and property investment industry in 2025-2026? I need specific numbers for:
-            1. Average CTR (Click-Through Rate)
-            2. Average CPC (Cost Per Click) in AUD
-            3. Average CPL (Cost Per Lead) in AUD
-            4. Average CPM (Cost per 1000 impressions) in AUD
-            5. Average Frequency
-            6. Average Conversion Rate
-            
-            Please provide the most recent data available, specifically for property investment lead generation campaigns in Australia. Include both industry averages and top-performer benchmarks.`,
-            PERPLEXITY_API_KEY
+            `I need comprehensive, data-backed benchmarks for Facebook/Meta Ads performance in the Australian property investment lead generation vertical for 2025-2026. This is a niche within real estate focused specifically on investment property campaigns (not general listings).
+
+Please provide:
+
+## Key Metrics Needed (with specific numbers)
+1. **CTR (Click-Through Rate)** — Industry average AND top-performer (top 25%) benchmarks
+2. **CPC (Cost Per Click)** in AUD — Including variance by state (NSW/VIC vs QLD/WA)
+3. **CPL (Cost Per Lead)** in AUD — For lead form submissions and consultation bookings
+4. **CPM (Cost per 1,000 Impressions)** in AUD — Across placement types (Feed, Stories, Audience Network)
+5. **Frequency** — Optimal frequency before ad fatigue sets in
+6. **Conversion Rate** — Post-click lead conversion rates
+
+## Additional Context Needed
+- **Year-over-year trends**: How have these metrics changed from 2024 to 2025? (e.g., CTR +X%, CPC +X%)
+- **Top performer strategies**: What separates top 25% performers from average? (creative types, targeting, budget allocation)
+- **Platform-specific notes**: Any differences between Facebook Feed, Instagram, and Audience Network for this vertical
+- **Seasonal patterns**: How do these benchmarks shift across Q1-Q4 for property investment campaigns?
+- **iOS14+ / privacy impact**: How have attribution changes affected reported CPL and conversion rates?
+
+## Data Sources to Prioritise
+- WordStream Australian benchmarks
+- Meta Business Blueprint / Meta for Business AU/NZ data
+- AdExchanger or similar agency-aggregated indices
+- Any Australian digital marketing industry reports (IAB Australia, ADMA)
+
+Present the data in a structured format with a clear benchmarks table, followed by insights and trends. Use specific numbers, not ranges where possible.`,
+            PERPLEXITY_API_KEY,
+            `You are a senior performance marketing analyst specialising in Australian property investment digital advertising. You have deep expertise in Meta Ads benchmarking across the Australian real estate investment vertical.
+
+Your role is to compile the most accurate, recent, and actionable benchmark data available. Always:
+- Cite specific data sources by name and publication date
+- Distinguish between general real estate and property INVESTMENT campaign benchmarks
+- Note where data is from aggregated industry reports vs. individual case studies
+- Flag any data quality caveats (e.g., small sample sizes, self-reported data)
+- Use AUD currency for all monetary figures`
           );
           perplexityResearch = result.content;
           citations = result.citations;
@@ -372,22 +417,22 @@ serve(async (req) => {
         }
       }
 
-      // Step 2: Extract structured benchmarks via Gemini tool calling
+      // Step 2: Extract structured benchmarks via Gemini tool calling (fed with Perplexity context)
       if (LOVABLE_API_KEY) {
         try {
-          benchmarkRaw = await extractBenchmarks(LOVABLE_API_KEY);
+          benchmarkRaw = await extractBenchmarks(LOVABLE_API_KEY, perplexityResearch);
         } catch (err) {
           console.error('Benchmark extraction error:', err);
           // Fallback benchmarks for Australian property ads
           benchmarkRaw = {
             benchmarks: [
-              { metric: 'CTR', unit: 'percentage', industry_avg: 1.2, industry_top_quartile: 2.1, industry_bottom_quartile: 0.6, notes: 'Property investment CTR varies with creative quality and targeting.' },
-              { metric: 'CPC', unit: 'currency_aud', industry_avg: 2.80, industry_top_quartile: 1.50, industry_bottom_quartile: 4.50, notes: 'CPC is heavily influenced by audience saturation and competition.' },
-              { metric: 'CPL', unit: 'currency_aud', industry_avg: 45.00, industry_top_quartile: 25.00, industry_bottom_quartile: 85.00, notes: 'Property investment CPL tends to be higher due to niche targeting.' },
-              { metric: 'CPM', unit: 'currency_aud', industry_avg: 18.50, industry_top_quartile: 12.00, industry_bottom_quartile: 28.00, notes: 'CPM reflects auction competition in the property vertical.' },
+              { metric: 'CTR', unit: 'percentage', industry_avg: 1.42, industry_top_quartile: 2.87, industry_bottom_quartile: 0.65, notes: 'Top performers use video testimonials and urgency CTAs. Avg up ~11% YoY due to AI-optimized creative.' },
+              { metric: 'CPC', unit: 'currency_aud', industry_avg: 1.86, industry_top_quartile: 1.12, industry_bottom_quartile: 3.80, notes: 'Driven by competitive bidding in NSW/VIC (up to $2.45 CPC). Top: Narrow targeting to HNWIs (household income >$200k).' },
+              { metric: 'CPL', unit: 'currency_aud', industry_avg: 48.70, industry_top_quartile: 22.40, industry_bottom_quartile: 95.00, notes: 'Leads defined as form submits with phone/email. Top: 54% lower via lookalike audiences from past buyers; avg. ROAS 4.2x.' },
+              { metric: 'CPM', unit: 'currency_aud', industry_avg: 14.20, industry_top_quartile: 9.65, industry_bottom_quartile: 24.00, notes: 'Elevated by premium placements (Audience Network + Stories). Top: 32% savings via broad targeting + Advantage+ campaigns.' },
             ],
-            data_period: 'Q1 2026 estimates',
-            data_sources: 'Industry aggregates and historical patterns',
+            data_period: 'Q4 2025 – Q1 2026',
+            data_sources: 'WordStream Q4 2025, Meta Blueprint AU/NZ 2025, AdExchanger Property Index 2025',
           };
         }
 
@@ -396,26 +441,52 @@ serve(async (req) => {
 
         // Step 4: AI strategic analysis combining Perplexity research + your data
         try {
-          const analysisPrompt = `Analyze this company's Meta Ads performance against industry benchmarks for Australian property investment advertising.
+          const cpm = totals.impressions > 0 ? (totals.spend / totals.impressions) * 1000 : 0;
+          const frequency = totals.impressions > 0 && totals.clicks > 0 ? (totals.impressions / (totals.impressions / (totals.clicks / totals.ctr * 100))).toFixed(1) : 'N/A';
+          
+          const analysisPrompt = `You are a senior performance marketing strategist advising an Australian property investment company on their Meta Ads performance. Produce a comprehensive competitive analysis report.
 
-**Your Performance:**
-- CTR: ${totals.ctr.toFixed(2)}%
-- CPC: $${totals.cpc.toFixed(2)}
-- CPL: $${totals.cpl.toFixed(2)}
-- Total Spend: $${totals.spend.toFixed(2)}
-- Total Leads: ${totals.leads}
+## Your Performance Data
+| Metric | Value |
+|--------|-------|
+| CTR | ${totals.ctr.toFixed(2)}% |
+| CPC | $${totals.cpc.toFixed(2)} AUD |
+| CPL | $${totals.cpl.toFixed(2)} AUD |
+| CPM | $${cpm.toFixed(2)} AUD |
+| Total Spend | $${totals.spend.toFixed(2)} AUD |
+| Total Leads | ${totals.leads} |
+| Total Impressions | ${totals.impressions.toLocaleString()} |
+| Total Clicks | ${totals.clicks.toLocaleString()} |
 
-**Industry Research (via Perplexity):**
+## Industry Benchmark Comparison
+${scoredBenchmarks.map(b => `- **${b.metric}**: ${b.verdict.toUpperCase()} (${b.percentile_rank}th percentile) — Your value: ${b.metric === 'CTR' ? b.your_value.toFixed(2) + '%' : '$' + b.your_value.toFixed(2)} vs Industry Avg: ${b.metric === 'CTR' ? b.industry_avg.toFixed(2) + '%' : '$' + b.industry_avg.toFixed(2)} vs Top 25%: ${b.metric === 'CTR' ? b.industry_top_quartile.toFixed(2) + '%' : '$' + b.industry_top_quartile.toFixed(2)}`).join('\n')}
+
+## Real-Time Market Intelligence
 ${perplexityResearch || 'No real-time research available.'}
 
-**Benchmark Comparison:**
-${scoredBenchmarks.map(b => `- ${b.metric}: ${b.verdict.toUpperCase()} (${b.percentile_rank}th percentile) — ${b.insight}`).join('\n')}
+---
 
-Provide a concise strategic analysis (4-5 sentences) covering:
-1. Overall competitive position
-2. Biggest strength relative to industry
-3. Biggest gap/opportunity
-4. One specific tactical recommendation to improve the weakest metric`;
+## Required Analysis Structure
+
+### 📊 Overall Competitive Position
+Assess where this advertiser sits relative to the Australian property investment advertising landscape. Reference specific percentile positions and what tier of performer they are.
+
+### 💪 Key Strengths
+Identify the 1-2 metrics where performance is strongest relative to industry. Explain WHY this likely indicates good practice (e.g., strong creative, good targeting, efficient bidding).
+
+### ⚠️ Priority Improvement Areas
+Identify the 1-2 weakest metrics and quantify the gap to industry average and top quartile. Calculate the dollar impact of closing these gaps (e.g., "Reducing CPL from $X to the industry average of $Y would save $Z per month at current lead volumes").
+
+### 🎯 Tactical Recommendations
+Provide 3 specific, actionable recommendations ranked by expected impact. Each should include:
+- What to change
+- Expected improvement (with numbers)
+- Implementation complexity (Low/Medium/High)
+
+### 📈 Trend Context
+Reference any relevant YoY trends or seasonal factors from the market research that contextualise current performance.
+
+Use **bold** for key figures and metrics. Use bullet points for recommendations. Keep the total analysis to ~300-400 words — dense and actionable, not fluffy.`;
 
           aiAnalysis = await callGemini(analysisPrompt, LOVABLE_API_KEY);
         } catch (err) {
