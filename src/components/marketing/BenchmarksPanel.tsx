@@ -168,37 +168,11 @@ export function BenchmarksPanel({ benchmarks, perplexityResearch, citations, aiA
 
         {/* Perplexity Research + Citations */}
         {perplexityResearch && (
-          <details className="group">
-            <summary className="cursor-pointer text-xs font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5">
-              <Globe className="h-3.5 w-3.5" />
-              View Real-Time Market Research
-              {citations.length > 0 && <span className="text-[10px]">({citations.length} sources)</span>}
-            </summary>
-            <div className="mt-3 rounded-lg border border-border/50 bg-muted/20 p-4">
-              <div className="text-xs text-foreground/70 leading-relaxed prose prose-xs dark:prose-invert max-w-none prose-headings:text-foreground prose-headings:font-semibold prose-h2:text-sm prose-h2:mt-4 prose-h2:mb-2 prose-h3:text-[13px] prose-h3:mt-3 prose-h3:mb-1.5 prose-h4:text-xs prose-h4:mt-2.5 prose-h4:mb-1 prose-p:my-2 prose-p:leading-relaxed prose-li:my-0.5 prose-ul:my-2 prose-ol:my-2 prose-strong:text-foreground prose-a:text-primary prose-hr:my-3">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{perplexityResearch}</ReactMarkdown>
-              </div>
-              {citations.length > 0 && (
-                <div className="mt-3 pt-3 border-t border-border/50">
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Sources</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {citations.map((url, i) => (
-                      <a
-                        key={i}
-                        href={url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-[10px] text-primary hover:text-primary/80 bg-primary/5 rounded px-1.5 py-0.5"
-                      >
-                        <ExternalLink className="h-2.5 w-2.5" />
-                        Source {i + 1}
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </details>
+          <EnhancedResearchRenderer
+            content={perplexityResearch}
+            citations={citations}
+            title="View Real-Time Market Research"
+          />
         )}
       </CardContent>
     </Card>
