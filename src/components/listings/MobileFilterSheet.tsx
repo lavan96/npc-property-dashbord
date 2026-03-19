@@ -11,6 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { getFullStateName } from '@/lib/states';
 import { useState } from 'react';
+import { SearchableSelect } from '@/components/shared/SearchableSelect';
 
 interface FilterState {
   propertyType: string;
