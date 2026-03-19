@@ -76,7 +76,7 @@ async function queryPerplexity(prompt: string, apiKey: string, systemPrompt?: st
 
 // ─── AI Analysis via Lovable Gateway ─────────────────────────────────────────
 
-async function callGemini(prompt: string, apiKey: string): Promise<string> {
+async function callGemini(prompt: string, apiKey: string, maxTokens: number = 4000): Promise<string> {
   const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -86,11 +86,11 @@ async function callGemini(prompt: string, apiKey: string): Promise<string> {
     body: JSON.stringify({
       model: 'google/gemini-2.5-flash',
       messages: [
-        { role: 'system', content: 'You are an expert marketing strategist for Australian property investment companies. Provide concise, actionable analysis.' },
+        { role: 'system', content: 'You are an expert performance marketing strategist specialising in Australian property investment digital advertising. You produce data-driven, actionable analysis with specific numbers and clear recommendations. Format your output using Markdown with bold text, headers, bullet points, and tables where appropriate.' },
         { role: 'user', content: prompt },
       ],
       temperature: 0.3,
-      max_tokens: 3000,
+      max_tokens: maxTokens,
     }),
   });
 
