@@ -26,6 +26,7 @@ interface IncomeSourceFormProps {
   onCancel: () => void;
   isPending: boolean;
   hideEmploymentCategory?: boolean;
+  hideShading?: boolean;
 }
 
 export const IncomeSourceForm = React.memo(function IncomeSourceForm({
