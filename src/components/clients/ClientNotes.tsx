@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { MessageSquare, Phone, Mail, Calendar, CheckSquare, Plus, Loader2 } from 'lucide-react';
+import { MessageSquare, Phone, Mail, Calendar, CheckSquare, Plus, Loader2, Pencil } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { ScrollArea } from '@/components/ui/scroll-area';
