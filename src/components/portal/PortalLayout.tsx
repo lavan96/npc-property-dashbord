@@ -65,7 +65,7 @@ export function PortalLayout() {
     if (twitterTitle) twitterTitle.setAttribute('content', 'NPC Services - Client Portal');
 
     const twitterImage = document.querySelector('meta[name="twitter:image"]');
-    if (twitterImage) twitterImage.setAttribute('content', '/images/npc-signature-logo.png');
+    if (twitterImage) twitterImage.setAttribute('content', '/images/npc-og-logo.jpg');
 
     return () => {
       // Restore default title when leaving portal
