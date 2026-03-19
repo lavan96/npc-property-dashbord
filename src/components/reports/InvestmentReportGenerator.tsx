@@ -22,6 +22,7 @@ import { PreGenerationOverrides, PreGenerationData } from './PreGenerationOverri
 import { formatNumberWithCommas, removeCommas } from '@/hooks/useFormattedNumber';
 import { BuildTypeSelector } from './shared/BuildTypeSelector';
 import { BuildType } from '@/types/overrideFields';
+import { AddressAutocomplete } from '@/components/shared/AddressAutocomplete';
 
 interface RecentReport {
   id: string;
@@ -1513,13 +1514,24 @@ export function InvestmentReportGenerator() {
                       {queryType === 'suburb' && 'Suburb Name'}
                       {queryType === 'state' && 'State'}
                     </Label>
-                    <Input
-                      id="query"
-                      value={query}
-                      onChange={(e) => setQuery(e.target.value)}
-                      placeholder={getQueryTypePlaceholder()}
-                      disabled={isGenerating}
-                    />
+                    {queryType === 'address' && preGenData.buildType === 'existing_property' ? (
+                      <AddressAutocomplete
+                        id="query"
+                        value={query}
+                        onChange={setQuery}
+                        placeholder={getQueryTypePlaceholder()}
+                        disabled={isGenerating}
+                        showIcon={false}
+                      />
+                    ) : (
+                      <Input
+                        id="query"
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        placeholder={getQueryTypePlaceholder()}
+                        disabled={isGenerating}
+                      />
+                    )}
                     {/* Query type description hints */}
                     {queryType === 'zipcode' && (
                       <p className="text-xs text-muted-foreground">
