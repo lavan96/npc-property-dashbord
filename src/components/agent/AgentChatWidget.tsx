@@ -10,11 +10,31 @@ import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { secureStorageUpload } from '@/hooks/useSecureStorage';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { AgentMessageRenderer } from '@/components/agent/AgentMessageRenderer';
 import { extractFileContent, formatFilesForAgent, ACCEPTED_EXTENSIONS, type ExtractedFile } from '@/lib/agentFileExtractor';
+
+// Consistent color palette for sender attribution in collaborative conversations
+const SENDER_COLORS = [
+  'text-blue-600 dark:text-blue-400',
+  'text-emerald-600 dark:text-emerald-400',
+  'text-orange-600 dark:text-orange-400',
+  'text-purple-600 dark:text-purple-400',
+  'text-rose-600 dark:text-rose-400',
+  'text-cyan-600 dark:text-cyan-400',
+  'text-amber-600 dark:text-amber-400',
+  'text-indigo-600 dark:text-indigo-400',
+];
+
+function getSenderColor(senderId: string, senderMap: Map<string, number>): string {
+  if (!senderMap.has(senderId)) {
+    senderMap.set(senderId, senderMap.size);
+  }
+  return SENDER_COLORS[senderMap.get(senderId)! % SENDER_COLORS.length];
+}
 
 interface Conversation {
   id: string;
