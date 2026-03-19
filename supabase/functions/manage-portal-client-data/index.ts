@@ -7,10 +7,10 @@ import { createCorsHeaders } from "../_shared/auth.ts"
  * Allows portal users to update their own client data.
  * All operations are scoped to the authenticated portal user's client_id.
  * 
- * Allowed tables and operations are strictly whitelisted.
+ * Supported operations: insert, update, delete, bulk_mark_read
+ * Allowed tables are strictly whitelisted.
  */
 
-// Only these tables can be modified by portal users
 const ALLOWED_TABLES = [
   'clients',
   'client_properties',
@@ -20,6 +20,22 @@ const ALLOWED_TABLES = [
   'client_portal_messages',
   'client_portal_notifications',
   'client_portal_report_requests',
+] as const;
+
+// Tables that support insert from the portal
+const INSERTABLE_TABLES = [
+  'client_portal_messages',
+  'client_portal_report_requests',
+  'client_properties',
+  'client_employment',
+  'client_income_sources',
+] as const;
+
+// Tables that support delete from the portal
+const DELETABLE_TABLES = [
+  'client_properties',
+  'client_employment',
+  'client_income_sources',
 ] as const;
 
 // Fields that portal users are NOT allowed to modify on the clients table
@@ -108,14 +124,14 @@ serve(async (req) => {
     }
 
     // Validate operation
-    if (!['update', 'insert', 'bulk_mark_read'].includes(operation)) {
+    if (!['update', 'insert', 'delete', 'bulk_mark_read'].includes(operation)) {
       return new Response(
         JSON.stringify({ error: `Operation '${operation}' is not allowed for portal users`, success: false }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Bulk mark notifications as read
+    // ========== BULK MARK READ ==========
     if (operation === 'bulk_mark_read') {
       if (table !== 'client_portal_notifications') {
         return new Response(
@@ -153,17 +169,74 @@ serve(async (req) => {
       );
     }
 
-    // Insert operation (messages, report requests, and properties)
+    // ========== DELETE ==========
+    if (operation === 'delete') {
+      if (!(DELETABLE_TABLES as readonly string[]).includes(table)) {
+        return new Response(
+          JSON.stringify({ error: `Delete not allowed for table '${table}'`, success: false }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (!id) {
+        return new Response(
+          JSON.stringify({ error: 'ID required for delete', success: false }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Verify ownership
+      const { data: existing } = await supabase
+        .from(table)
+        .select('client_id')
+        .eq('id', id)
+        .single();
+
+      if (!existing || existing.client_id !== clientId) {
+        return new Response(
+          JSON.stringify({ error: 'Record not found or access denied', success: false }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { error } = await supabase.from(table).delete().eq('id', id);
+
+      if (error) {
+        return new Response(
+          JSON.stringify({ error: error.message, success: false }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Create notification for internal team
+      try {
+        const tableLabel = table.replace('client_', '').replace(/_/g, ' ');
+        await supabase.from('notifications').insert({
+          type: 'client_data_updated',
+          title: 'Client Deleted Record',
+          message: `A client has deleted a ${tableLabel} record via the portal.`,
+          metadata: { table, record_id: id, client_id: clientId },
+        });
+      } catch (e) {
+        console.error('Failed to create notification:', e);
+      }
+
+      return new Response(
+        JSON.stringify({ success: true }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ========== INSERT ==========
     if (operation === 'insert') {
-      const insertableTables = ['client_portal_messages', 'client_portal_report_requests', 'client_properties'];
-      if (!insertableTables.includes(table)) {
+      if (!(INSERTABLE_TABLES as readonly string[]).includes(table)) {
         return new Response(
           JSON.stringify({ error: `Insert not allowed for table '${table}'`, success: false }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      // Client property insert
+      // --- Client Properties ---
       if (table === 'client_properties') {
         if (!payload?.address) {
           return new Response(
@@ -172,14 +245,33 @@ serve(async (req) => {
           );
         }
 
-        const propertyData = {
+        const isRental = payload.property_type === 'rental';
+        const weeklyRent = payload.weekly_rental_income ? Number(payload.weekly_rental_income) : null;
+        const monthlyRent = weeklyRent ? weeklyRent * 52 / 12 : null;
+
+        const propertyData: Record<string, any> = {
           client_id: clientId,
           address: payload.address,
           property_type: payload.property_type || 'investment',
           purchase_price: payload.purchase_price ? Number(payload.purchase_price) : null,
-          loan_remaining: payload.loan_remaining ? Number(payload.loan_remaining) : null,
-          weekly_rental_income: payload.weekly_rental_income ? Number(payload.weekly_rental_income) : null,
-          monthly_rental_income: payload.weekly_rental_income ? Number(payload.weekly_rental_income) * 52 / 12 : null,
+          value: payload.value ? Number(payload.value) : null,
+          loan_remaining: isRental ? 0 : (payload.loan_remaining ? Number(payload.loan_remaining) : null),
+          interest_rate: isRental ? 0 : (payload.interest_rate ? Number(payload.interest_rate) : null),
+          ownership_percentage: isRental ? 0 : (payload.ownership_percentage ? Number(payload.ownership_percentage) : null),
+          monthly_interest_repayment: isRental ? 0 : (payload.monthly_interest_repayment ? Number(payload.monthly_interest_repayment) : null),
+          weekly_rental_income: weeklyRent,
+          monthly_rental_income: monthlyRent,
+          monthly_body_corporate: payload.monthly_body_corporate ? Number(payload.monthly_body_corporate) : null,
+          monthly_council_rates: payload.monthly_council_rates ? Number(payload.monthly_council_rates) : null,
+          monthly_water_rates: payload.monthly_water_rates ? Number(payload.monthly_water_rates) : null,
+          monthly_repairs_maintenance: payload.monthly_repairs_maintenance ? Number(payload.monthly_repairs_maintenance) : null,
+          monthly_property_management: payload.monthly_property_management ? Number(payload.monthly_property_management) : null,
+          monthly_landlord_insurance: payload.monthly_landlord_insurance ? Number(payload.monthly_landlord_insurance) : null,
+          monthly_building_insurance: payload.monthly_building_insurance ? Number(payload.monthly_building_insurance) : null,
+          total_monthly_expenditure: payload.total_monthly_expenditure ? Number(payload.total_monthly_expenditure) : null,
+          net_monthly_cashflow: payload.net_monthly_cashflow != null ? Number(payload.net_monthly_cashflow) : null,
+          loan_repayment_amount: payload.loan_repayment_amount ? Number(payload.loan_repayment_amount) : null,
+          loan_repayment_frequency: payload.loan_repayment_frequency || null,
           sourced_by: 'client',
           sourced_notes: 'Submitted via client portal',
           created_at: new Date().toISOString(),
@@ -199,7 +291,6 @@ serve(async (req) => {
           );
         }
 
-        // Create internal notification
         try {
           await supabase.from('notifications').insert({
             type: 'client_property_added',
@@ -217,8 +308,122 @@ serve(async (req) => {
         );
       }
 
+      // --- Client Employment ---
+      if (table === 'client_employment') {
+        if (!payload?.employer_name) {
+          return new Response(
+            JSON.stringify({ error: 'Employer name is required', success: false }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const employmentData: Record<string, any> = {
+          client_id: clientId,
+          contact_type: payload.contact_type || 'primary',
+          is_current: payload.is_current ?? true,
+          employment_type: payload.employment_type || 'permanent',
+          occupation_role: payload.occupation_role || null,
+          employer_name: payload.employer_name,
+          start_date: payload.start_date || null,
+          salary_amount: payload.salary_amount ? Number(payload.salary_amount) : null,
+          salary_frequency: payload.salary_frequency || 'annual',
+          gross_annual_salary: payload.gross_annual_salary ? Number(payload.gross_annual_salary) : null,
+          bonus: payload.bonus ? Number(payload.bonus) : null,
+          commission: payload.commission ? Number(payload.commission) : null,
+          overtime_essential: payload.overtime_essential ? Number(payload.overtime_essential) : null,
+          overtime_non_essential: payload.overtime_non_essential ? Number(payload.overtime_non_essential) : null,
+          allowance: payload.allowance ? Number(payload.allowance) : null,
+          other_taxable_income: payload.other_taxable_income ? Number(payload.other_taxable_income) : null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+
+        const { data: result, error } = await supabase
+          .from('client_employment')
+          .insert(employmentData)
+          .select()
+          .single();
+
+        if (error) {
+          return new Response(
+            JSON.stringify({ error: error.message, success: false }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        try {
+          await supabase.from('notifications').insert({
+            type: 'client_data_updated',
+            title: 'Client Added Employment',
+            message: `A client has added employment details: ${payload.employer_name}`,
+            metadata: { employment_id: result.id, client_id: clientId },
+          });
+        } catch (notifErr) {
+          console.error('Failed to create notification:', notifErr);
+        }
+
+        return new Response(
+          JSON.stringify({ success: true, data: result }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // --- Client Income Sources ---
+      if (table === 'client_income_sources') {
+        const incomeData: Record<string, any> = {
+          client_id: clientId,
+          contact_type: payload.contact_type || 'primary',
+          source_category: payload.source_category || 'other',
+          source_type: payload.source_type || 'other',
+          source_name: payload.source_name || '',
+          gross_annual_amount: payload.gross_annual_amount ? Number(payload.gross_annual_amount) : 0,
+          input_frequency: payload.input_frequency || 'annual',
+          input_amount: payload.input_amount ? Number(payload.input_amount) : 0,
+          bonus: payload.bonus ? Number(payload.bonus) : 0,
+          commission: payload.commission ? Number(payload.commission) : 0,
+          overtime_essential: payload.overtime_essential ? Number(payload.overtime_essential) : 0,
+          overtime_non_essential: payload.overtime_non_essential ? Number(payload.overtime_non_essential) : 0,
+          allowance: payload.allowance ? Number(payload.allowance) : 0,
+          other_taxable_income: payload.other_taxable_income ? Number(payload.other_taxable_income) : 0,
+          default_shading_rate: payload.default_shading_rate ?? 0.8,
+          custom_shading_rate: payload.custom_shading_rate ?? null,
+          is_active: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+
+        const { data: result, error } = await supabase
+          .from('client_income_sources')
+          .insert(incomeData)
+          .select()
+          .single();
+
+        if (error) {
+          return new Response(
+            JSON.stringify({ error: error.message, success: false }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        try {
+          await supabase.from('notifications').insert({
+            type: 'client_data_updated',
+            title: 'Client Added Income Source',
+            message: `A client has added an income source: ${payload.source_name || payload.source_type}`,
+            metadata: { income_source_id: result.id, client_id: clientId },
+          });
+        } catch (notifErr) {
+          console.error('Failed to create notification:', notifErr);
+        }
+
+        return new Response(
+          JSON.stringify({ success: true, data: result }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // --- Report Requests ---
       if (table === 'client_portal_report_requests') {
-        // Validate request_type
         const validTypes = ['portfolio_review', 'borrowing_capacity', 'investment_property'];
         if (!payload?.request_type || !validTypes.includes(payload.request_type)) {
           return new Response(
@@ -251,7 +456,6 @@ serve(async (req) => {
           );
         }
 
-        // Create a notification for the internal team
         try {
           await supabase.from('notifications').insert({
             type: 'report_request',
@@ -263,7 +467,6 @@ serve(async (req) => {
           console.error('Failed to create internal notification:', notifErr);
         }
 
-        // Create portal notification confirming request submission
         try {
           const typeLabel = payload.request_type.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
           const notifTitle = 'Report Request Submitted';
@@ -278,7 +481,6 @@ serve(async (req) => {
             action_url: '/client/reports',
           });
 
-          // Send email notification
           const { resolveClientEmailInfo, sendPortalNotificationEmail } = await import('../_shared/portal-notification-email.ts');
           const emailInfo = await resolveClientEmailInfo(supabase, clientId);
           if (emailInfo) {
@@ -303,7 +505,7 @@ serve(async (req) => {
         );
       }
 
-      // Messages insert (existing logic)
+      // --- Messages ---
       const insertData = {
         ...payload,
         client_id: clientId,
@@ -331,6 +533,7 @@ serve(async (req) => {
       );
     }
 
+    // ========== UPDATE ==========
     if (operation === 'update') {
       if (!id && table !== 'clients') {
         return new Response(
@@ -342,7 +545,6 @@ serve(async (req) => {
       let sanitizedPayload = { ...payload };
 
       if (table === 'clients') {
-        // Update client record directly — sanitize protected fields
         sanitizedPayload = sanitizeClientData(sanitizedPayload);
         sanitizedPayload.updated_at = new Date().toISOString();
 
@@ -379,7 +581,6 @@ serve(async (req) => {
           );
         }
 
-        // Remove client_id and id from payload to prevent tampering
         delete sanitizedPayload.client_id;
         delete sanitizedPayload.id;
         sanitizedPayload.updated_at = new Date().toISOString();

@@ -1,16 +1,27 @@
 import { useState } from 'react';
-import { usePortalPropertiesData } from '@/hooks/usePortalData';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { usePortalPropertiesData, usePortalUpdateData } from '@/hooks/usePortalData';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import {
-  Building2, DollarSign, TrendingUp, TrendingDown, Loader2,
-  MapPin, Calendar, Percent, Home, Plus
+  Building2, Loader2, Home, Plus, Edit, Trash2, Calendar,
 } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { format } from 'date-fns';
-import { PortalAddPropertyForm } from '@/components/portal/PortalAddPropertyForm';
+import { PortalPropertyForm } from '@/components/portal/PortalPropertyForm';
+import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 function fmt(val?: number | null): string {
   if (val == null) return '—';
@@ -28,14 +39,43 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
 }
 
 export default function PortalProperties() {
-  const { data, isLoading, error, refetch } = usePortalPropertiesData();
+  const { data, isLoading, refetch } = usePortalPropertiesData();
+  const mutation = usePortalUpdateData();
   const properties = data?.properties || [];
-  const [showAddForm, setShowAddForm] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [editingProperty, setEditingProperty] = useState<any>(null);
+
+  const handleDelete = async (id: string) => {
+    try {
+      await mutation.mutateAsync({ operation: 'delete', table: 'client_properties', id });
+      toast.success('Property deleted');
+      refetch();
+    } catch (err: any) {
+      toast.error('Failed to delete: ' + (err.message || 'Unknown error'));
+    }
+  };
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Show form for add or edit
+  if (showForm || editingProperty) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">{editingProperty ? 'Edit Property' : 'Add Property'}</h1>
+          <p className="text-muted-foreground mt-1">Enter all property details below</p>
+        </div>
+        <PortalPropertyForm
+          existingProperty={editingProperty}
+          onComplete={() => { setShowForm(false); setEditingProperty(null); refetch(); }}
+          onCancel={() => { setShowForm(false); setEditingProperty(null); }}
+        />
       </div>
     );
   }
@@ -47,20 +87,11 @@ export default function PortalProperties() {
           <h1 className="text-2xl font-bold text-foreground">Properties</h1>
           <p className="text-muted-foreground mt-1">Your investment property portfolio</p>
         </div>
-        {!showAddForm && (
-          <Button onClick={() => setShowAddForm(true)} size="sm">
-            <Plus className="h-4 w-4 mr-1.5" />
-            Add Property
-          </Button>
-        )}
+        <Button onClick={() => setShowForm(true)} size="sm">
+          <Plus className="h-4 w-4 mr-1.5" />
+          Add Property
+        </Button>
       </div>
-
-      {showAddForm && (
-        <PortalAddPropertyForm
-          onSubmitted={() => { setShowAddForm(false); refetch(); }}
-          onCancel={() => setShowAddForm(false)}
-        />
-      )}
 
       {/* Summary Stats */}
       {properties.length > 0 && (
@@ -104,11 +135,15 @@ export default function PortalProperties() {
           <CardContent className="py-12 text-center">
             <Home className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
             <p className="text-muted-foreground">No properties in your portfolio yet.</p>
+            <Button onClick={() => setShowForm(true)} size="sm" className="mt-4">
+              <Plus className="h-4 w-4 mr-1.5" />
+              Add Your First Property
+            </Button>
           </CardContent>
         </Card>
       ) : (
         <Accordion type="multiple" className="space-y-3">
-          {properties.map((prop: any, idx: number) => (
+          {properties.map((prop: any) => (
             <AccordionItem key={prop.id} value={prop.id} className="border rounded-lg bg-card">
               <AccordionTrigger className="px-5 py-4 hover:no-underline">
                 <div className="flex items-center gap-4 text-left w-full pr-4">
@@ -121,12 +156,7 @@ export default function PortalProperties() {
                       <Badge variant="secondary" className="capitalize text-xs">
                         {prop.property_type?.replace(/_/g, ' ') || 'Property'}
                       </Badge>
-                      {prop.value && <span className="text-xs text-muted-foreground">{fmt(prop.value)}</span>}
-                      {prop.sourced_by && (
-                        <Badge variant="outline" className="text-xs">
-                          {prop.sourced_by === 'npc' ? 'NPC Sourced' : 'Client Sourced'}
-                        </Badge>
-                      )}
+                      {prop.value > 0 && <span className="text-xs text-muted-foreground">{fmt(prop.value)}</span>}
                     </div>
                   </div>
                   {prop.net_monthly_cashflow != null && (
@@ -171,15 +201,38 @@ export default function PortalProperties() {
                           Purchased {format(new Date(prop.purchase_date), 'dd MMM yyyy')}
                         </span>
                       )}
-                      {prop.deal_closed_at && (
-                        <span className="flex items-center gap-1.5">
-                          <Calendar className="h-3.5 w-3.5" />
-                          Deal closed {format(new Date(prop.deal_closed_at), 'dd MMM yyyy')}
-                        </span>
-                      )}
                     </div>
                   </div>
                 )}
+                {/* Edit / Delete actions */}
+                <div className="flex gap-2 mt-4 pt-3 border-t border-border/50">
+                  <Button variant="outline" size="sm" onClick={() => setEditingProperty(prop)}>
+                    <Edit className="h-3.5 w-3.5 mr-1.5" />
+                    Edit
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="text-destructive border-destructive/30 hover:bg-destructive/10">
+                        <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                        Delete
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Property</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to delete this property? This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleDelete(prop.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               </AccordionContent>
             </AccordionItem>
           ))}

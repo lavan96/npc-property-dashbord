@@ -1,30 +1,17 @@
 import { usePortalFinancesData } from '@/hooks/usePortalData';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
+import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Briefcase, DollarSign, TrendingUp, TrendingDown, Loader2,
-  Building2, CircleDollarSign, CreditCard
-} from 'lucide-react';
+import { Briefcase, TrendingUp, CreditCard, Loader2 } from 'lucide-react';
+import { PortalEmploymentForm } from '@/components/portal/PortalEmploymentForm';
+import { PortalIncomeForm } from '@/components/portal/PortalIncomeForm';
 
 function fmt(val?: number | null): string {
   if (val == null) return '—';
   return new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(val);
 }
 
-function InfoRow({ label, value, highlight }: { label: string; value: React.ReactNode; highlight?: boolean }) {
-  if (!value || value === '—') return null;
-  return (
-    <div className="flex justify-between py-2.5 border-b border-border/50 last:border-0">
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <span className={`text-sm font-medium text-right ${highlight ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground'}`}>{value}</span>
-    </div>
-  );
-}
-
 export default function PortalEmployment() {
-  const { data, isLoading, error } = usePortalFinancesData();
+  const { data, isLoading, error, refetch } = usePortalFinancesData();
 
   const client = data?.client;
   const employment = data?.employment || [];
@@ -45,22 +32,6 @@ export default function PortalEmployment() {
     );
   }
 
-  // Group income by source_category
-  const incomeByCategory = income.reduce((acc: Record<string, any[]>, item: any) => {
-    const cat = item.source_category || 'Other';
-    if (!acc[cat]) acc[cat] = [];
-    acc[cat].push(item);
-    return acc;
-  }, {});
-
-  // Group expenses by category
-  const expensesByCategory = expenses.reduce((acc: Record<string, any[]>, item: any) => {
-    const cat = item.expense_category || 'Other';
-    if (!acc[cat]) acc[cat] = [];
-    acc[cat].push(item);
-    return acc;
-  }, {});
-
   const totalMonthlyIncome = income.reduce((sum: number, i: any) => sum + (i.gross_annual_amount || 0) / 12, 0);
   const totalMonthlyExpenses = expenses.reduce((sum: number, e: any) => sum + (e.monthly_amount || 0), 0);
 
@@ -68,7 +39,7 @@ export default function PortalEmployment() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Employment & Finances</h1>
-        <p className="text-muted-foreground mt-1">Your employment, income, and expense details</p>
+        <p className="text-muted-foreground mt-1">Manage your employment, income, and expense details</p>
       </div>
 
       {/* Summary Cards */}
@@ -117,88 +88,23 @@ export default function PortalEmployment() {
           </TabsTrigger>
         </TabsList>
 
-        {/* Employment Tab */}
+        {/* Employment Tab — Full CRUD */}
         <TabsContent value="employment" className="space-y-4">
-          {employment.length === 0 ? (
-            <Card>
-              <CardContent className="py-8 text-center text-muted-foreground">
-                <Briefcase className="h-10 w-10 mx-auto mb-3 text-muted-foreground/30" />
-                <p>No employment records on file.</p>
-              </CardContent>
-            </Card>
-          ) : (
-            employment.map((emp: any) => (
-              <Card key={emp.id}>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-primary/10">
-                        <Building2 className="h-4 w-4 text-primary" />
-                      </div>
-                      <div>
-                        <CardTitle className="text-base">{emp.employer_name || 'Employment'}</CardTitle>
-                        {emp.occupation_role && <CardDescription>{emp.occupation_role}</CardDescription>}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className="capitalize">{emp.contact_type || 'Primary'}</Badge>
-                      {emp.is_current && <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">Current</Badge>}
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <InfoRow label="Employment Type" value={emp.employment_type} />
-                  <InfoRow label="Gross Annual Salary" value={fmt(emp.gross_annual_salary)} highlight />
-                  <InfoRow label="Salary Amount" value={emp.salary_amount ? `${fmt(emp.salary_amount)} ${emp.salary_frequency || ''}` : '—'} />
-                  <InfoRow label="Bonus" value={fmt(emp.bonus)} />
-                  <InfoRow label="Commission" value={fmt(emp.commission)} />
-                  <InfoRow label="Overtime (Essential)" value={fmt(emp.overtime_essential)} />
-                  <InfoRow label="Overtime (Non-Essential)" value={fmt(emp.overtime_non_essential)} />
-                  <InfoRow label="Allowance" value={fmt(emp.allowance)} />
-                  <InfoRow label="Start Date" value={emp.start_date ? new Date(emp.start_date).toLocaleDateString('en-AU') : '—'} />
-                </CardContent>
-              </Card>
-            ))
-          )}
+          <PortalEmploymentForm
+            existingEmployment={employment}
+            onRefresh={refetch}
+          />
         </TabsContent>
 
-        {/* Income Tab */}
+        {/* Income Tab — Full CRUD */}
         <TabsContent value="income" className="space-y-4">
-          {income.length === 0 ? (
-            <Card>
-              <CardContent className="py-8 text-center text-muted-foreground">
-                <CircleDollarSign className="h-10 w-10 mx-auto mb-3 text-muted-foreground/30" />
-                <p>No income sources on file.</p>
-              </CardContent>
-            </Card>
-          ) : (
-            Object.entries(incomeByCategory).map(([category, items]) => (
-              <Card key={category}>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base capitalize">{category.replace(/_/g, ' ')}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {(items as any[]).map((inc: any) => (
-                    <div key={inc.id} className="py-3 border-b border-border/50 last:border-0">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="text-sm font-medium text-foreground">{inc.source_name || inc.source_type}</p>
-                          <p className="text-xs text-muted-foreground capitalize mt-0.5">{inc.contact_type} • {inc.source_type?.replace(/_/g, ' ')}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">{fmt(inc.gross_annual_amount)}<span className="text-xs text-muted-foreground font-normal">/yr</span></p>
-                          <p className="text-xs text-muted-foreground">{fmt(inc.gross_annual_amount / 12)}/mo</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            ))
-          )}
+          <PortalIncomeForm
+            existingIncome={income}
+            onRefresh={refetch}
+          />
         </TabsContent>
 
-        {/* Expenses Tab */}
+        {/* Expenses Tab — Read-only for now */}
         <TabsContent value="expenses" className="space-y-4">
           {expenses.length === 0 ? (
             <Card>
@@ -208,29 +114,36 @@ export default function PortalEmployment() {
               </CardContent>
             </Card>
           ) : (
-            Object.entries(expensesByCategory).map(([category, items]) => (
-              <Card key={category}>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base capitalize">{category.replace(/_/g, ' ')}</CardTitle>
-                    <span className="text-sm font-semibold text-destructive">
-                      {fmt((items as any[]).reduce((s: number, e: any) => s + (e.monthly_amount || 0), 0))}/mo
-                    </span>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {(items as any[]).map((exp: any) => (
-                    <div key={exp.id} className="flex justify-between py-2.5 border-b border-border/50 last:border-0">
-                      <div>
-                        <p className="text-sm text-foreground">{exp.expense_name || exp.expense_category}</p>
-                        {exp.frequency && <p className="text-xs text-muted-foreground capitalize">{exp.frequency}</p>}
-                      </div>
-                      <p className="text-sm font-medium text-foreground">{fmt(exp.monthly_amount)}<span className="text-xs text-muted-foreground font-normal">/mo</span></p>
+            (() => {
+              const expensesByCategory = expenses.reduce((acc: Record<string, any[]>, item: any) => {
+                const cat = item.expense_category || 'Other';
+                if (!acc[cat]) acc[cat] = [];
+                acc[cat].push(item);
+                return acc;
+              }, {});
+
+              return Object.entries(expensesByCategory).map(([category, items]) => (
+                <Card key={category}>
+                  <CardContent className="pt-5">
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-base font-semibold capitalize">{category.replace(/_/g, ' ')}</p>
+                      <span className="text-sm font-semibold text-destructive">
+                        {fmt((items as any[]).reduce((s: number, e: any) => s + (e.monthly_amount || 0), 0))}/mo
+                      </span>
                     </div>
-                  ))}
-                </CardContent>
-              </Card>
-            ))
+                    {(items as any[]).map((exp: any) => (
+                      <div key={exp.id} className="flex justify-between py-2.5 border-b border-border/50 last:border-0">
+                        <div>
+                          <p className="text-sm text-foreground">{exp.expense_name || exp.expense_category}</p>
+                          {exp.frequency && <p className="text-xs text-muted-foreground capitalize">{exp.frequency}</p>}
+                        </div>
+                        <p className="text-sm font-medium text-foreground">{fmt(exp.monthly_amount)}<span className="text-xs text-muted-foreground font-normal">/mo</span></p>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              ));
+            })()
           )}
         </TabsContent>
       </Tabs>
