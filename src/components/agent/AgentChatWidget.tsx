@@ -1121,7 +1121,8 @@ export function AgentChatWidget() {
                   </div>
                 </div>
                 );
-              })}
+              });
+              })()}
               {loading && (
                 <div className="flex justify-start">
                   <div className="bg-muted/60 border border-border/30 rounded-2xl rounded-bl-md px-4 py-3">
