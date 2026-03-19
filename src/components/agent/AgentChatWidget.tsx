@@ -172,6 +172,18 @@ export function AgentChatWidget() {
     return () => clearInterval(interval);
   }, [isOpen, user, loadNotifications]);
 
+  // Determine if current conversation is collaborative
+  const isCollaborativeConvo = useMemo(() => {
+    if (!activeConversation) return false;
+    const conv = conversations.find(c => c.id === activeConversation);
+    if (conv?.shared && conv?.permission === 'collaborate') return true;
+    // Check if I shared it with collaborators
+    const sharedOut = sharedByMeConversations.find(c => c.id === activeConversation);
+    if (sharedOut?.permission === 'collaborate') return true;
+    // Also check if any share exists for this convo
+    return sharedByMeConversations.some(c => c.id === activeConversation) || (conv?.shared === true);
+  }, [activeConversation, conversations, sharedByMeConversations]);
+
   // Load messages for active conversation
   useEffect(() => {
     if (!activeConversation) return;
@@ -187,6 +199,40 @@ export function AgentChatWidget() {
       }
     })();
   }, [activeConversation]);
+
+  // Realtime subscription for collaborative conversations — live message sync
+  useEffect(() => {
+    if (!activeConversation || !isCollaborativeConvo) return;
+    
+    const channel = supabase
+      .channel(`agent-messages-${activeConversation}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'agent_messages',
+        filter: `conversation_id=eq.${activeConversation}`,
+      }, async (payload) => {
+        // When a new message arrives, check if it's from another user
+        const newMsg = payload.new as any;
+        if (newMsg.sent_by === user?.id && newMsg.role === 'user') return; // Skip own messages (already shown)
+        
+        // Refresh messages to get full data with username joins
+        try {
+          const { data } = await invokeSecureFunction('ai-dashboard-agent', {
+            action: 'get-messages',
+            conversation_id: activeConversation,
+          });
+          if (data?.messages) setMessages(data.messages);
+        } catch (err) {
+          console.error('Realtime message refresh failed:', err);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [activeConversation, isCollaborativeConvo, user?.id]);
 
   // Auto-scroll
   useEffect(() => {
