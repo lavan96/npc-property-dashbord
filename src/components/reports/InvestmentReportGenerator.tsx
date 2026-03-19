@@ -22,6 +22,7 @@ import { PreGenerationOverrides, PreGenerationData } from './PreGenerationOverri
 import { formatNumberWithCommas, removeCommas } from '@/hooks/useFormattedNumber';
 import { BuildTypeSelector } from './shared/BuildTypeSelector';
 import { BuildType } from '@/types/overrideFields';
+import { AddressAutocomplete } from '@/components/shared/AddressAutocomplete';
 
 interface RecentReport {
   id: string;

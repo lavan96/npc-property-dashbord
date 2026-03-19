@@ -533,10 +533,10 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
 
                   <div className="space-y-2">
                     <Label htmlFor="address">Address *</Label>
-                    <Input
+                    <AddressAutocomplete
                       id="address"
                       value={formData.address}
-                      onChange={(e) => updateField('address', e.target.value)}
+                      onChange={(value) => updateField('address', value)}
                       placeholder="123 Main Street, Sydney NSW 2000"
                     />
                   </div>
