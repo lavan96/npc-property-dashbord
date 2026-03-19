@@ -105,7 +105,7 @@ async function callGemini(prompt: string, apiKey: string): Promise<string> {
 
 // ─── Structured Benchmark Extraction ─────────────────────────────────────────
 
-async function extractBenchmarks(apiKey: string): Promise<any> {
+async function extractBenchmarks(apiKey: string, perplexityContext: string): Promise<any> {
   const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -117,39 +117,59 @@ async function extractBenchmarks(apiKey: string): Promise<any> {
       messages: [
         {
           role: 'system',
-          content: 'You are a digital marketing data analyst. Extract structured benchmark data.'
+          content: `You are a senior digital marketing data analyst with deep expertise in the Australian property investment advertising vertical.
+
+Your task is to extract the most accurate, current industry benchmark figures for Meta/Facebook Ads performance in this specific niche. Use the real-time research data provided as your PRIMARY source of truth — extract specific numbers directly from it where available. Only fall back to your training data for metrics not covered in the research.
+
+Key context:
+- This is specifically for PROPERTY INVESTMENT lead generation campaigns (not general real estate listings)
+- Target audience: Australian property investors, SMSF trustees, high-net-worth individuals
+- Campaign objectives: Lead generation (form submissions, consultation bookings)
+- Geographic focus: Australia-wide, with emphasis on major capital cities (Sydney, Melbourne, Brisbane, Perth, Adelaide)
+- Ad formats: Lead forms, video ads, carousel, single image
+- Currency: AUD
+
+Ensure benchmark figures reflect the premium/niche nature of property investment advertising, which typically has higher CPC and CPL than general real estate due to narrower targeting and higher-value conversions.`
         },
         {
           role: 'user',
-          content: `Provide current industry benchmark data for Facebook/Meta Ads in the Australian real estate and property investment vertical. Include realistic 2025/2026 figures.`
+          content: `Based on the following real-time market research, extract precise benchmark figures for Australian property investment Meta Ads campaigns.
+
+**Real-Time Research Data:**
+${perplexityContext || 'No real-time research available — use your best knowledge of Q4 2025 / Q1 2026 Australian property investment ad benchmarks.'}
+
+Extract benchmarks for these metrics: CTR, CPC, CPL, CPM, Frequency, and Conversion Rate. For each metric, provide the industry average, top 25% performer threshold, and bottom 25% threshold. Include contextual notes explaining what drives variance in each metric for this specific vertical.`
         },
       ],
       tools: [{
         type: 'function',
         function: {
           name: 'provide_benchmarks',
-          description: 'Provide structured industry benchmark data for Meta Ads in Australian property/real estate.',
+          description: 'Provide structured industry benchmark data for Meta Ads in Australian property investment lead generation.',
           parameters: {
             type: 'object',
             properties: {
               benchmarks: {
                 type: 'array',
+                description: 'Array of benchmark metrics. Must include: CTR, CPC, CPL, CPM, Frequency, Conversion Rate.',
                 items: {
                   type: 'object',
                   properties: {
-                    metric: { type: 'string', description: 'Metric name (e.g., CTR, CPC, CPL, CPM, Frequency)' },
+                    metric: { type: 'string', description: 'Metric name — one of: CTR, CPC, CPL, CPM, Frequency, Conversion Rate' },
                     unit: { type: 'string', enum: ['percentage', 'currency_aud', 'number'] },
-                    industry_avg: { type: 'number', description: 'Industry average value' },
-                    industry_top_quartile: { type: 'number', description: 'Top 25% performer value' },
-                    industry_bottom_quartile: { type: 'number', description: 'Bottom 25% performer value' },
-                    notes: { type: 'string', description: 'Brief context about this metric' },
+                    industry_avg: { type: 'number', description: 'Industry average for Australian property investment ads' },
+                    industry_top_quartile: { type: 'number', description: 'Top 25% performer value (the threshold above/below which the best performers sit)' },
+                    industry_bottom_quartile: { type: 'number', description: 'Bottom 25% performer value (the threshold at which poor performers sit)' },
+                    notes: { type: 'string', description: 'Contextual explanation of what drives variance in this metric for property investment campaigns, including any YoY trends or seasonal patterns. 2-3 sentences.' },
+                    yoy_trend: { type: 'string', description: 'Year-over-year trend direction and approximate magnitude, e.g., "+11% YoY" or "Stable"' },
                   },
                   required: ['metric', 'unit', 'industry_avg', 'industry_top_quartile', 'industry_bottom_quartile', 'notes'],
                   additionalProperties: false,
                 },
               },
-              data_period: { type: 'string', description: 'Time period these benchmarks represent' },
-              data_sources: { type: 'string', description: 'Where this data comes from' },
+              data_period: { type: 'string', description: 'Specific time period these benchmarks represent, e.g., "Q4 2025 – Q1 2026"' },
+              data_sources: { type: 'string', description: 'Named sources this data is derived from (e.g., WordStream, Meta Blueprint, AdExchanger)' },
+              methodology_note: { type: 'string', description: 'Brief note on methodology: what types of campaigns/accounts these benchmarks are drawn from' },
             },
             required: ['benchmarks', 'data_period', 'data_sources'],
             additionalProperties: false,
