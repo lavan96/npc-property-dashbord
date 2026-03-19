@@ -68,6 +68,7 @@ export function PortalIncomeForm({ existingIncome, onRefresh }: PortalIncomeForm
         onCancel={() => { setEditingSource(null); setIsAdding(false); }}
         isPending={mutation.isPending}
         hideEmploymentCategory
+        hideShading
       />
     );
   }
