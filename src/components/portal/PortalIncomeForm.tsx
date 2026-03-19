@@ -68,6 +68,7 @@ export function PortalIncomeForm({ existingIncome, onRefresh }: PortalIncomeForm
         onCancel={() => { setEditingSource(null); setIsAdding(false); }}
         isPending={mutation.isPending}
         hideEmploymentCategory
+        hideShading
       />
     );
   }
@@ -101,6 +102,7 @@ export function PortalIncomeForm({ existingIncome, onRefresh }: PortalIncomeForm
               onEdit={() => {}}
               onDelete={() => {}}
               isLinkedToEmployment
+              hideShading
             />
           ))}
         </div>
@@ -118,6 +120,7 @@ export function PortalIncomeForm({ existingIncome, onRefresh }: PortalIncomeForm
               source={source}
               onEdit={() => setEditingSource(source)}
               onDelete={() => source.id && handleDelete(source.id)}
+              hideShading
             />
           ))}
         </div>

@@ -26,6 +26,7 @@ interface IncomeSourceFormProps {
   onCancel: () => void;
   isPending: boolean;
   hideEmploymentCategory?: boolean;
+  hideShading?: boolean;
 }
 
 export const IncomeSourceForm = React.memo(function IncomeSourceForm({
@@ -35,6 +36,7 @@ export const IncomeSourceForm = React.memo(function IncomeSourceForm({
   onCancel,
   isPending,
   hideEmploymentCategory = false,
+  hideShading = false,
 }: IncomeSourceFormProps) {
   const [form, setForm] = useState<IncomeSource>(() => {
     const defaultCategory = hideEmploymentCategory ? 'passive' : 'employment';
@@ -220,47 +222,49 @@ export const IncomeSourceForm = React.memo(function IncomeSourceForm({
         </Card>
       )}
 
-      {/* Shading Rate */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <Percent className="h-4 w-4" />
-            Borrowing Capacity Shading
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">
-              Default: {(form.default_shading_rate * 100).toFixed(0)}%
-            </span>
-            <Badge variant="outline" className="text-xs">
-              {form.custom_shading_rate !== null ? 'Custom' : 'Default'}
-            </Badge>
-          </div>
-          <Slider
-            value={[effectiveShading * 100]}
-            onValueChange={([v]) => updateField('custom_shading_rate', v / 100)}
-            min={0}
-            max={100}
-            step={5}
-          />
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>0%</span>
-            <span className="font-medium">{(effectiveShading * 100).toFixed(0)}%</span>
-            <span>100%</span>
-          </div>
-          {form.custom_shading_rate !== null && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-xs h-7"
-              onClick={() => updateField('custom_shading_rate', null)}
-            >
-              Reset to default
-            </Button>
-          )}
-        </CardContent>
-      </Card>
+      {/* Shading Rate - hidden for portal users */}
+      {!hideShading && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Percent className="h-4 w-4" />
+              Borrowing Capacity Shading
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">
+                Default: {(form.default_shading_rate * 100).toFixed(0)}%
+              </span>
+              <Badge variant="outline" className="text-xs">
+                {form.custom_shading_rate !== null ? 'Custom' : 'Default'}
+              </Badge>
+            </div>
+            <Slider
+              value={[effectiveShading * 100]}
+              onValueChange={([v]) => updateField('custom_shading_rate', v / 100)}
+              min={0}
+              max={100}
+              step={5}
+            />
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>0%</span>
+              <span className="font-medium">{(effectiveShading * 100).toFixed(0)}%</span>
+              <span>100%</span>
+            </div>
+            {form.custom_shading_rate !== null && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs h-7"
+                onClick={() => updateField('custom_shading_rate', null)}
+              >
+                Reset to default
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Summary */}
       <Card className="bg-muted/50 border-0">
@@ -269,10 +273,12 @@ export const IncomeSourceForm = React.memo(function IncomeSourceForm({
             <span className="font-medium">Total Annual Income</span>
             <span className="text-lg font-bold text-success">{formatCurrency(totalAnnual)}</span>
           </div>
-          <div className="flex justify-between items-center mt-1">
-            <span className="text-xs text-muted-foreground">Shaded Amount ({(effectiveShading * 100).toFixed(0)}%)</span>
-            <span className="text-sm font-medium text-muted-foreground">{formatCurrency(totalAnnual * effectiveShading)}</span>
-          </div>
+          {!hideShading && (
+            <div className="flex justify-between items-center mt-1">
+              <span className="text-xs text-muted-foreground">Shaded Amount ({(effectiveShading * 100).toFixed(0)}%)</span>
+              <span className="text-sm font-medium text-muted-foreground">{formatCurrency(totalAnnual * effectiveShading)}</span>
+            </div>
+          )}
         </CardContent>
       </Card>
 

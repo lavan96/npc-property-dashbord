@@ -17,6 +17,7 @@ interface IncomeSourceCardProps {
   onEdit: () => void;
   onDelete: () => void;
   isLinkedToEmployment?: boolean;
+  hideShading?: boolean;
 }
 
 const categoryIcons: Record<string, React.ElementType> = {
@@ -32,6 +33,7 @@ export const IncomeSourceCard = React.memo(function IncomeSourceCard({
   onEdit,
   onDelete,
   isLinkedToEmployment = false,
+  hideShading = false,
 }: IncomeSourceCardProps) {
   const totalAnnual = getSourceTotalAnnual(source);
   const shading = getEffectiveShading(source);
@@ -58,7 +60,7 @@ export const IncomeSourceCard = React.memo(function IncomeSourceCard({
                     From Employment
                   </Badge>
                 )}
-                {source.custom_shading_rate !== null && (
+                {!hideShading && source.custom_shading_rate !== null && (
                   <Badge variant="outline" className="text-[10px] h-5">Custom {(shading * 100).toFixed(0)}%</Badge>
                 )}
               </div>
@@ -67,9 +69,11 @@ export const IncomeSourceCard = React.memo(function IncomeSourceCard({
                 <div>
                   <p className="text-sm font-semibold">{formatCurrency(totalAnnual)}<span className="text-xs font-normal text-muted-foreground">/yr</span></p>
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  Shaded: {formatCurrency(totalAnnual * shading)}
-                </div>
+                {!hideShading && (
+                  <div className="text-xs text-muted-foreground">
+                    Shaded: {formatCurrency(totalAnnual * shading)}
+                  </div>
+                )}
               </div>
             </div>
           </div>
