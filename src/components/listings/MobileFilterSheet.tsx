@@ -1,10 +1,11 @@
-import { Filter, X } from 'lucide-react';
+import { Filter, X, Search, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
@@ -28,6 +29,8 @@ interface FilterState {
   carsMin: string;
   carsMax: string;
   agencyName: string;
+  keywordSearch: string;
+  includeNearbySuburbs: boolean;
 }
 
 interface MobileFilterSheetProps {
@@ -85,6 +88,8 @@ export function MobileFilterSheet({ filters, setFilters, uniqueValues }: MobileF
       carsMin: '',
       carsMax: '',
       agencyName: 'all',
+      keywordSearch: '',
+      includeNearbySuburbs: false,
     };
     setLocalFilters(clearedFilters);
   };
@@ -115,6 +120,25 @@ export function MobileFilterSheet({ filters, setFilters, uniqueValues }: MobileF
 
         <ScrollArea className="h-[calc(85vh-140px)] pr-4">
           <div className="space-y-6">
+            {/* Keyword Search */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium flex items-center gap-1.5">
+                <Search className="h-3.5 w-3.5" />
+                Keyword Search
+              </Label>
+              <Input
+                placeholder="e.g. study, pool, granny flat..."
+                value={localFilters.keywordSearch}
+                onChange={(e) => setLocalFilters({ ...localFilters, keywordSearch: e.target.value })}
+                className="h-11"
+              />
+              <p className="text-xs text-muted-foreground">
+                Searches descriptions, summaries &amp; features
+              </p>
+            </div>
+
+            <Separator />
+
             {/* Property Type */}
             <div className="space-y-2">
               <Label className="text-sm font-medium">Property Type</Label>
@@ -177,10 +201,26 @@ export function MobileFilterSheet({ filters, setFilters, uniqueValues }: MobileF
               </div>
 
               <div className="space-y-2">
-                <Label className="text-sm">Suburb</Label>
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm">Suburb</Label>
+                  {localFilters.suburb && localFilters.suburb !== 'all' && (
+                    <div className="flex items-center gap-1.5">
+                      <MapPin className="h-3 w-3 text-muted-foreground" />
+                      <Label htmlFor="nearby-toggle-mobile" className="text-xs text-muted-foreground cursor-pointer">
+                        Include nearby
+                      </Label>
+                      <Switch
+                        id="nearby-toggle-mobile"
+                        checked={localFilters.includeNearbySuburbs}
+                        onCheckedChange={(checked) => setLocalFilters({ ...localFilters, includeNearbySuburbs: checked })}
+                        className="scale-75"
+                      />
+                    </div>
+                  )}
+                </div>
                 <Select
                   value={localFilters.suburb}
-                  onValueChange={(value) => setLocalFilters({ ...localFilters, suburb: value })}
+                  onValueChange={(value) => setLocalFilters({ ...localFilters, suburb: value, includeNearbySuburbs: false })}
                 >
                   <SelectTrigger className="h-11">
                     <SelectValue placeholder="All suburbs" />
@@ -192,6 +232,11 @@ export function MobileFilterSheet({ filters, setFilters, uniqueValues }: MobileF
                     ))}
                   </SelectContent>
                 </Select>
+                {localFilters.includeNearbySuburbs && localFilters.suburb && localFilters.suburb !== 'all' && (
+                  <p className="text-xs text-muted-foreground">
+                    Will also show listings from surrounding suburbs
+                  </p>
+                )}
               </div>
             </div>
 
