@@ -762,6 +762,8 @@ export default function ReportQA() {
       content: messageContent,
       timestamp: new Date(),
       audioUrl: audioUrl || undefined,
+      sent_by: user?.id || null,
+      sent_by_username: user?.username || null,
     };
 
     if (!retryContent) {
