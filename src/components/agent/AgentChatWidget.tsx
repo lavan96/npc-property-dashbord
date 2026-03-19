@@ -23,9 +23,13 @@ interface Conversation {
   updated_at: string;
   shared?: boolean;
   shared_by?: string;
+  shared_by_me?: boolean;
+  shared_with_username?: string;
   permission?: string;
   handoff_note?: string;
 }
+
+type SidebarTab = 'mine' | 'shared_with_me' | 'shared_by_me';
 
 interface Message {
   id: string;
