@@ -901,7 +901,7 @@ export function AgentChatWidget() {
                             </span>
                           )}
                         </div>
-                        {variant === 'own' && (
+                        {variant === 'mine' && (
                           <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                             <button onClick={(e) => { e.stopPropagation(); setEditingConvoId(conv.id); setEditTitle(conv.title); }} className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground" title="Rename"><Pencil className="h-3 w-3" /></button>
                             <button onClick={(e) => deleteConversation(conv.id, e)} className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive" title="Delete"><Trash2 className="h-3 w-3" /></button>
