@@ -5,9 +5,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { getFullStateName } from '@/lib/states';
 
 interface FilterState {
@@ -46,17 +55,30 @@ interface ListingFiltersProps {
 
 export function ListingFilters({ filters, setFilters, uniqueValues }: ListingFiltersProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [localFilters, setLocalFilters] = useState(filters);
 
-  const hasActiveFilters = Object.entries(filters).some(([key, value]) => {
+  const activeFilterCount = Object.entries(filters).filter(([key, value]) => {
     if (typeof value === 'boolean') return value;
-    if (key === 'propertyType' || key === 'suburb' || key === 'state' || key === 'zipCode' || key === 'sourceHost' || key === 'agencyName') {
+    if (['propertyType', 'suburb', 'state', 'zipCode', 'sourceHost', 'agencyName'].includes(key)) {
       return value !== '' && value !== 'all';
     }
     return value !== '';
-  });
+  }).length;
 
-  const clearAllFilters = () => {
-    setFilters({
+  const handleOpen = (open: boolean) => {
+    if (open) {
+      setLocalFilters(filters);
+    }
+    setIsOpen(open);
+  };
+
+  const handleApply = () => {
+    setFilters(localFilters);
+    setIsOpen(false);
+  };
+
+  const handleClear = () => {
+    setLocalFilters({
       propertyType: 'all',
       suburb: 'all',
       state: 'all',
@@ -78,17 +100,9 @@ export function ListingFilters({ filters, setFilters, uniqueValues }: ListingFil
     });
   };
 
-  const activeFilterCount = Object.entries(filters).filter(([key, value]) => {
-    if (typeof value === 'boolean') return value;
-    if (key === 'propertyType' || key === 'suburb' || key === 'state' || key === 'zipCode' || key === 'sourceHost' || key === 'agencyName') {
-      return value !== '' && value !== 'all';
-    }
-    return value !== '';
-  }).length;
-
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild>
+    <Dialog open={isOpen} onOpenChange={handleOpen}>
+      <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="relative">
           <Filter className="h-4 w-4 mr-2" />
           Filters
@@ -98,284 +112,293 @@ export function ListingFilters({ filters, setFilters, uniqueValues }: ListingFil
             </Badge>
           )}
         </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-96 max-h-[80vh] overflow-y-auto" align="start">
-        <div className="space-y-4">
+      </DialogTrigger>
+      <DialogContent className="max-w-2xl h-[80vh] flex flex-col gap-0 p-0">
+        <DialogHeader className="px-6 pt-6 pb-4">
           <div className="flex items-center justify-between">
-            <h4 className="font-medium">Filters</h4>
-            {hasActiveFilters && (
-              <Button variant="ghost" size="sm" onClick={clearAllFilters}>
-                <X className="h-4 w-4 mr-1" />
-                Clear all
-              </Button>
-            )}
+            <DialogTitle>Filter Listings</DialogTitle>
+            <Button variant="ghost" size="sm" onClick={handleClear} className="mr-8">
+              <X className="h-4 w-4 mr-1" />
+              Clear all
+            </Button>
           </div>
+        </DialogHeader>
 
-          {/* Keyword Search */}
-          <div className="space-y-2">
-            <Label className="flex items-center gap-1.5">
-              <Search className="h-3.5 w-3.5" />
-              Keyword Search
-            </Label>
-            <Input
-              placeholder="e.g. study, pool, granny flat..."
-              value={filters.keywordSearch}
-              onChange={(e) => setFilters({ ...filters, keywordSearch: e.target.value })}
-            />
-            <p className="text-xs text-muted-foreground">
-              Searches listing descriptions, summaries &amp; extracted features
-            </p>
-          </div>
-
-          {/* Property Type */}
-          <div className="space-y-2">
-            <Label>Property Type</Label>
-            <Select
-              value={filters.propertyType}
-              onValueChange={(value) => setFilters({ ...filters, propertyType: value })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="All types" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All types</SelectItem>
-                {uniqueValues.propertyTypes.filter(type => type && type.trim() !== '').map((type) => (
-                  <SelectItem key={type} value={type}>
-                    {type}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Suburb with Nearby toggle */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label>Suburb</Label>
-              {filters.suburb && filters.suburb !== 'all' && (
-                <div className="flex items-center gap-1.5">
-                  <MapPin className="h-3 w-3 text-muted-foreground" />
-                  <Label htmlFor="nearby-toggle" className="text-xs text-muted-foreground cursor-pointer">
-                    Include nearby
-                  </Label>
-                  <Switch
-                    id="nearby-toggle"
-                    checked={filters.includeNearbySuburbs}
-                    onCheckedChange={(checked) => setFilters({ ...filters, includeNearbySuburbs: checked })}
-                    className="scale-75"
-                  />
-                </div>
-              )}
-            </div>
-            <Select
-              value={filters.suburb}
-              onValueChange={(value) => setFilters({ ...filters, suburb: value, includeNearbySuburbs: false })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="All suburbs" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All suburbs</SelectItem>
-                {uniqueValues.suburbs.filter(suburb => suburb && suburb.trim() !== '').map((suburb) => (
-                  <SelectItem key={suburb} value={suburb}>
-                    {suburb}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {filters.includeNearbySuburbs && filters.suburb && filters.suburb !== 'all' && (
+        <ScrollArea className="flex-1 min-h-0 px-6">
+          <div className="space-y-6 pb-6">
+            {/* Keyword Search - full width */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5 font-medium">
+                <Search className="h-3.5 w-3.5" />
+                Keyword Search
+              </Label>
+              <Input
+                placeholder="e.g. study, pool, granny flat..."
+                value={localFilters.keywordSearch}
+                onChange={(e) => setLocalFilters({ ...localFilters, keywordSearch: e.target.value })}
+              />
               <p className="text-xs text-muted-foreground">
-                Showing listings from {filters.suburb} and surrounding suburbs (±15 postcodes)
+                Searches listing descriptions, summaries &amp; extracted features. Separate multiple keywords with spaces.
               </p>
-            )}
-          </div>
+            </div>
 
-          {/* State */}
-          <div className="space-y-2">
-            <Label>State</Label>
-            <Select
-              value={filters.state}
-              onValueChange={(value) => setFilters({ ...filters, state: value })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="All states" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All states</SelectItem>
-                {uniqueValues.states.filter(state => state && state.trim() !== '').map((state) => (
-                  <SelectItem key={state} value={state}>
-                    {getFullStateName(state)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+            <Separator />
 
-          {/* Zip Code */}
-          <div className="space-y-2">
-            <Label>Zip Code</Label>
-            <Select
-              value={filters.zipCode}
-              onValueChange={(value) => setFilters({ ...filters, zipCode: value })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="All zip codes" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All zip codes</SelectItem>
-                {uniqueValues.zipCodes.filter(zip => zip && zip.trim() !== '').map((zip) => (
-                  <SelectItem key={zip} value={zip}>
-                    {zip}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+            {/* Two-column grid for dropdowns */}
+            <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+              {/* Property Type */}
+              <div className="space-y-2">
+                <Label className="font-medium">Property Type</Label>
+                <Select
+                  value={localFilters.propertyType}
+                  onValueChange={(value) => setLocalFilters({ ...localFilters, propertyType: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="All types" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All types</SelectItem>
+                    {uniqueValues.propertyTypes.filter(t => t?.trim()).map((type) => (
+                      <SelectItem key={type} value={type}>{type}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-          {/* Price Range */}
-          <div className="space-y-2">
-            <Label>Price Range</Label>
-            <div className="flex gap-2">
-              <Input
-                placeholder="Min price"
-                type="number"
-                value={filters.priceMin}
-                onChange={(e) => setFilters({ ...filters, priceMin: e.target.value })}
-              />
-              <Input
-                placeholder="Max price"
-                type="number"
-                value={filters.priceMax}
-                onChange={(e) => setFilters({ ...filters, priceMax: e.target.value })}
-              />
+              {/* State */}
+              <div className="space-y-2">
+                <Label className="font-medium">State</Label>
+                <Select
+                  value={localFilters.state}
+                  onValueChange={(value) => setLocalFilters({ ...localFilters, state: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="All states" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All states</SelectItem>
+                    {uniqueValues.states.filter(s => s?.trim()).map((state) => (
+                      <SelectItem key={state} value={state}>{getFullStateName(state)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Suburb */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="font-medium">Suburb</Label>
+                  {localFilters.suburb && localFilters.suburb !== 'all' && (
+                    <div className="flex items-center gap-1.5">
+                      <MapPin className="h-3 w-3 text-muted-foreground" />
+                      <Label htmlFor="nearby-toggle-modal" className="text-xs text-muted-foreground cursor-pointer">
+                        Include nearby
+                      </Label>
+                      <Switch
+                        id="nearby-toggle-modal"
+                        checked={localFilters.includeNearbySuburbs}
+                        onCheckedChange={(checked) => setLocalFilters({ ...localFilters, includeNearbySuburbs: checked })}
+                        className="scale-75"
+                      />
+                    </div>
+                  )}
+                </div>
+                <Select
+                  value={localFilters.suburb}
+                  onValueChange={(value) => setLocalFilters({ ...localFilters, suburb: value, includeNearbySuburbs: false })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="All suburbs" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All suburbs</SelectItem>
+                    {uniqueValues.suburbs.filter(s => s?.trim()).map((suburb) => (
+                      <SelectItem key={suburb} value={suburb}>{suburb}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {localFilters.includeNearbySuburbs && localFilters.suburb && localFilters.suburb !== 'all' && (
+                  <p className="text-xs text-muted-foreground">
+                    Will also show listings from surrounding suburbs (±15 postcodes)
+                  </p>
+                )}
+              </div>
+
+              {/* Postcode */}
+              <div className="space-y-2">
+                <Label className="font-medium">Postcode</Label>
+                <Select
+                  value={localFilters.zipCode}
+                  onValueChange={(value) => setLocalFilters({ ...localFilters, zipCode: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="All postcodes" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All postcodes</SelectItem>
+                    {uniqueValues.zipCodes.filter(z => z?.trim()).map((zip) => (
+                      <SelectItem key={zip} value={zip}>{zip}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Price & Features */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Price &amp; Features</h4>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                {/* Price Range */}
+                <div className="space-y-2">
+                  <Label>Price Range</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Min"
+                      type="number"
+                      value={localFilters.priceMin}
+                      onChange={(e) => setLocalFilters({ ...localFilters, priceMin: e.target.value })}
+                    />
+                    <Input
+                      placeholder="Max"
+                      type="number"
+                      value={localFilters.priceMax}
+                      onChange={(e) => setLocalFilters({ ...localFilters, priceMax: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                {/* Bedrooms */}
+                <div className="space-y-2">
+                  <Label>Bedrooms</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Min"
+                      type="number"
+                      value={localFilters.bedsMin}
+                      onChange={(e) => setLocalFilters({ ...localFilters, bedsMin: e.target.value })}
+                    />
+                    <Input
+                      placeholder="Max"
+                      type="number"
+                      value={localFilters.bedsMax}
+                      onChange={(e) => setLocalFilters({ ...localFilters, bedsMax: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                {/* Bathrooms */}
+                <div className="space-y-2">
+                  <Label>Bathrooms</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Min"
+                      type="number"
+                      value={localFilters.bathsMin}
+                      onChange={(e) => setLocalFilters({ ...localFilters, bathsMin: e.target.value })}
+                    />
+                    <Input
+                      placeholder="Max"
+                      type="number"
+                      value={localFilters.bathsMax}
+                      onChange={(e) => setLocalFilters({ ...localFilters, bathsMax: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                {/* Car Spaces */}
+                <div className="space-y-2">
+                  <Label>Car Spaces</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Min"
+                      type="number"
+                      value={localFilters.carsMin}
+                      onChange={(e) => setLocalFilters({ ...localFilters, carsMin: e.target.value })}
+                    />
+                    <Input
+                      placeholder="Max"
+                      type="number"
+                      value={localFilters.carsMax}
+                      onChange={(e) => setLocalFilters({ ...localFilters, carsMax: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Agency & Source */}
+            <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+              <div className="space-y-2">
+                <Label className="font-medium">Agency</Label>
+                <Select
+                  value={localFilters.agencyName}
+                  onValueChange={(value) => setLocalFilters({ ...localFilters, agencyName: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="All agencies" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All agencies</SelectItem>
+                    {uniqueValues.agencies.filter(a => a?.trim()).map((agency) => (
+                      <SelectItem key={agency} value={agency}>{agency}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="font-medium">Source</Label>
+                <Select
+                  value={localFilters.sourceHost}
+                  onValueChange={(value) => setLocalFilters({ ...localFilters, sourceHost: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="All sources" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All sources</SelectItem>
+                    {uniqueValues.sourceHosts.filter(s => s?.trim()).map((source) => (
+                      <SelectItem key={source} value={source}>{source}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Quick Filters */}
+            <div className="space-y-3">
+              <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Quick Filters</h4>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 p-3 rounded-lg border border-border bg-muted/30 flex-1 cursor-pointer">
+                  <Checkbox
+                    checked={localFilters.hasInspection}
+                    onCheckedChange={(checked) => setLocalFilters({ ...localFilters, hasInspection: !!checked })}
+                  />
+                  <span className="text-sm font-medium">Has inspection scheduled</span>
+                </label>
+                <label className="flex items-center gap-2 p-3 rounded-lg border border-border bg-muted/30 flex-1 cursor-pointer">
+                  <Checkbox
+                    checked={localFilters.lowConfidence}
+                    onCheckedChange={(checked) => setLocalFilters({ ...localFilters, lowConfidence: !!checked })}
+                  />
+                  <span className="text-sm font-medium">Low confidence only</span>
+                </label>
+              </div>
             </div>
           </div>
+        </ScrollArea>
 
-          {/* Bedrooms */}
-          <div className="space-y-2">
-            <Label>Bedrooms</Label>
-            <div className="flex gap-2">
-              <Input
-                placeholder="Min beds"
-                type="number"
-                value={filters.bedsMin}
-                onChange={(e) => setFilters({ ...filters, bedsMin: e.target.value })}
-              />
-              <Input
-                placeholder="Max beds"
-                type="number"
-                value={filters.bedsMax}
-                onChange={(e) => setFilters({ ...filters, bedsMax: e.target.value })}
-              />
-            </div>
-          </div>
-
-          {/* Bathrooms */}
-          <div className="space-y-2">
-            <Label>Bathrooms</Label>
-            <div className="flex gap-2">
-              <Input
-                placeholder="Min baths"
-                type="number"
-                value={filters.bathsMin}
-                onChange={(e) => setFilters({ ...filters, bathsMin: e.target.value })}
-              />
-              <Input
-                placeholder="Max baths"
-                type="number"
-                value={filters.bathsMax}
-                onChange={(e) => setFilters({ ...filters, bathsMax: e.target.value })}
-              />
-            </div>
-          </div>
-
-          {/* Car Spaces */}
-          <div className="space-y-2">
-            <Label>Car Spaces</Label>
-            <div className="flex gap-2">
-              <Input
-                placeholder="Min cars"
-                type="number"
-                value={filters.carsMin}
-                onChange={(e) => setFilters({ ...filters, carsMin: e.target.value })}
-              />
-              <Input
-                placeholder="Max cars"
-                type="number"
-                value={filters.carsMax}
-                onChange={(e) => setFilters({ ...filters, carsMax: e.target.value })}
-              />
-            </div>
-          </div>
-
-          {/* Agency */}
-          <div className="space-y-2">
-            <Label>Agency</Label>
-            <Select
-              value={filters.agencyName}
-              onValueChange={(value) => setFilters({ ...filters, agencyName: value })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="All agencies" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All agencies</SelectItem>
-                {uniqueValues.agencies.filter(agency => agency && agency.trim() !== '').map((agency) => (
-                  <SelectItem key={agency} value={agency}>
-                    {agency}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Source */}
-          <div className="space-y-2">
-            <Label>Source</Label>
-            <Select
-              value={filters.sourceHost}
-              onValueChange={(value) => setFilters({ ...filters, sourceHost: value })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="All sources" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All sources</SelectItem>
-                {uniqueValues.sourceHosts.filter(source => source && source.trim() !== '').map((source) => (
-                  <SelectItem key={source} value={source}>
-                    {source}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Boolean filters */}
-          <div className="space-y-3">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="hasInspection"
-                checked={filters.hasInspection}
-                onCheckedChange={(checked) => 
-                  setFilters({ ...filters, hasInspection: !!checked })
-                }
-              />
-              <Label htmlFor="hasInspection">Has inspection scheduled</Label>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="lowConfidence"
-                checked={filters.lowConfidence}
-                onCheckedChange={(checked) => 
-                  setFilters({ ...filters, lowConfidence: !!checked })
-                }
-              />
-              <Label htmlFor="lowConfidence">Low confidence only</Label>
-            </div>
-          </div>
-        </div>
-      </PopoverContent>
-    </Popover>
+        <DialogFooter className="px-6 py-4 border-t border-border">
+          <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+          <Button onClick={handleApply}>Apply Filters</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
