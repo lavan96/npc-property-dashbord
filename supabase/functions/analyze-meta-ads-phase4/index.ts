@@ -41,7 +41,7 @@ interface MarketEvent {
 
 // ─── Perplexity Integration ──────────────────────────────────────────────────
 
-async function queryPerplexity(prompt: string, apiKey: string): Promise<{ content: string; citations: string[] }> {
+async function queryPerplexity(prompt: string, apiKey: string, systemPrompt?: string): Promise<{ content: string; citations: string[] }> {
   const response = await fetch('https://api.perplexity.ai/chat/completions', {
     method: 'POST',
     headers: {
@@ -53,7 +53,7 @@ async function queryPerplexity(prompt: string, apiKey: string): Promise<{ conten
       messages: [
         {
           role: 'system',
-          content: 'You are a marketing analytics expert specializing in Australian property investment digital advertising. Provide data-driven insights with specific numbers. Always cite your sources.'
+          content: systemPrompt || 'You are a marketing analytics expert specializing in Australian property investment digital advertising. Provide data-driven insights with specific numbers. Always cite your sources.'
         },
         { role: 'user', content: prompt }
       ],
