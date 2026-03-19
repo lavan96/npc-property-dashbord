@@ -45,6 +45,27 @@ export function PortalLayout() {
 
   const displayName = smartCapitalize(user?.name);
 
+  // Set portal-specific document title and meta tags
+  useEffect(() => {
+    document.title = 'NPC Services - Client Portal';
+    
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) metaDesc.setAttribute('content', 'Secure client portal for Naidoo Property Consulting Services - access your property investments, documents, and deal progress.');
+    
+    const ogTitle = document.querySelector('meta[property="og:title"]');
+    if (ogTitle) ogTitle.setAttribute('content', 'NPC Services - Client Portal');
+    
+    const ogDesc = document.querySelector('meta[property="og:description"]');
+    if (ogDesc) ogDesc.setAttribute('content', 'Secure client portal for Naidoo Property Consulting Services');
+
+    return () => {
+      // Restore default title when leaving portal
+      if (settings.companyName) {
+        document.title = `${settings.companyName} Dashboard`;
+      }
+    };
+  }, [settings.companyName]);
+
   const handleSignOut = async () => {
     await signOut();
     navigate('/client/login', { replace: true });
