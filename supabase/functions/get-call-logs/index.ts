@@ -169,8 +169,9 @@ serve(async (req) => {
     }
 
     // Apply ordering and pagination
+    // Use created_at as secondary sort to prevent NULL started_at rows floating to top
     query = query
-      .order(orderBy, { ascending })
+      .order(orderBy, { ascending, nullsFirst: false })
       .range(offset, offset + limit - 1);
 
     const { data, error } = await query;
