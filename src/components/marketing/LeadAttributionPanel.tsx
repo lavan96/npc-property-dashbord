@@ -167,6 +167,41 @@ export function LeadAttributionPanel() {
   const csvCount = attributions.filter(a => a.source_type === 'csv_import').length;
   const incompleteCount = attributions.filter(a => !a.meta_campaign_name && !a.utm_campaign).length;
 
+  // Time-series lead trend (last 30 days)
+  const leadTrend = (() => {
+    const dayMap = new Map<string, number>();
+    const now = new Date();
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      dayMap.set(d.toISOString().slice(0, 10), 0);
+    }
+    for (const attr of attributions) {
+      const day = attr.attributed_at?.slice(0, 10);
+      if (day && dayMap.has(day)) {
+        dayMap.set(day, (dayMap.get(day) || 0) + 1);
+      }
+    }
+    return Array.from(dayMap.entries()).map(([date, count]) => ({ date, count }));
+  })();
+  const maxLeadsInDay = Math.max(1, ...leadTrend.map(d => d.count));
+
+  // Device breakdown
+  const deviceMap = new Map<string, number>();
+  for (const attr of attributions) {
+    const device = attr.device_type || 'Unknown';
+    deviceMap.set(device, (deviceMap.get(device) || 0) + 1);
+  }
+  const deviceList = Array.from(deviceMap.entries()).sort((a, b) => b[1] - a[1]);
+
+  // Geo breakdown
+  const geoMap = new Map<string, number>();
+  for (const attr of attributions) {
+    const geo = attr.geo_location || 'Unknown';
+    geoMap.set(geo, (geoMap.get(geo) || 0) + 1);
+  }
+  const geoList = Array.from(geoMap.entries()).sort((a, b) => b[1] - a[1]).slice(0, 8);
+
   const handleBackfill = async () => {
     setIsBackfilling(true);
     setBackfillProgress('Starting backfill...');
