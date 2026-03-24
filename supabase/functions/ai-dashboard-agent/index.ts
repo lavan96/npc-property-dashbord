@@ -5365,6 +5365,22 @@ async function executeTool(sb: any, name: string, args: any, userId: string): Pr
     case 'delete_outlook_event': return executeDeleteOutlookEvent(userId, args);
     case 'get_team_outlook_availability': return executeGetTeamOutlookAvailability(args);
     case 'create_follow_up_block': return executeCreateOutlookFollowUpBlock(userId, args);
+    // Game Plan
+    case 'get_game_plans': return executeGetGamePlans(sb, args);
+    case 'get_game_plan_details': return executeGetGamePlanDetails(sb, args);
+    case 'create_game_plan': return executeCreateGamePlan(sb, args);
+    case 'update_game_plan': return executeUpdateGamePlan(sb, args);
+    case 'delete_game_plan': return executeDeleteGamePlan(sb, args);
+    case 'add_game_plan_phase': return executeAddGamePlanPhase(sb, args);
+    case 'update_game_plan_phase': return executeUpdateGamePlanPhase(sb, args);
+    case 'delete_game_plan_phase': return executeDeleteGamePlanPhase(sb, args);
+    case 'add_game_plan_milestone': return executeAddGamePlanMilestone(sb, args);
+    case 'update_game_plan_milestone': return executeUpdateGamePlanMilestone(sb, args);
+    case 'add_game_plan_kpi': return executeAddGamePlanKPI(sb, args);
+    case 'update_game_plan_kpi': return executeUpdateGamePlanKPI(sb, args);
+    case 'add_game_plan_note': return executeAddGamePlanNote(sb, args);
+    case 'add_game_plan_action': return executeAddGamePlanAction(sb, args);
+    case 'toggle_game_plan_action': return executeToggleGamePlanAction(sb, args);
 
     default: return { error: `Unknown tool: ${name}` };
   }
