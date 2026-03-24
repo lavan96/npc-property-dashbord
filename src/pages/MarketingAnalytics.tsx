@@ -4,9 +4,10 @@ import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Loader2, DollarSign, Eye, MousePointerClick, Target, RefreshCw, BarChart3, TrendingUp, Users, Megaphone, GitCompareArrows } from 'lucide-react';
+import { Loader2, DollarSign, Eye, MousePointerClick, Target, RefreshCw, BarChart3, TrendingUp, Users, Megaphone, GitCompareArrows, Bot } from 'lucide-react';
+import { ManyChatPanel } from '@/components/marketing/ManyChatPanel';
 import { toast } from 'sonner';
 import { AnomalyAlertsPanel } from '@/components/marketing/AnomalyAlertsPanel';
 import { CampaignHealthPanel } from '@/components/marketing/CampaignHealthPanel';
@@ -67,6 +68,7 @@ interface DrillDownBreadcrumb {
 }
 
 export default function MarketingAnalytics() {
+  const [activeChannel, setActiveChannel] = useState('meta');
   const [datePreset, setDatePreset] = useState('last_30d');
   const [customRange, setCustomRange] = useState<{ since: string; until: string } | null>(null);
   const [level, setLevel] = useState<'account' | 'campaign' | 'adset' | 'ad'>('campaign');
@@ -416,18 +418,36 @@ export default function MarketingAnalytics() {
 
   return (
     <div className="space-y-6">
+      {/* Channel Tabs */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+            <Megaphone className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Marketing Analytics</h1>
+            <p className="text-muted-foreground text-sm">AI-powered marketing performance insights</p>
+          </div>
+        </div>
+      </div>
+
+      <Tabs value={activeChannel} onValueChange={setActiveChannel}>
+        <TabsList>
+          <TabsTrigger value="meta" className="gap-1.5">
+            <Target className="h-4 w-4" />
+            Meta Ads
+          </TabsTrigger>
+          <TabsTrigger value="manychat" className="gap-1.5">
+            <Bot className="h-4 w-4" />
+            ManyChat
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="meta">
+          <div className="space-y-6 mt-4">
       {/* Header */}
       <div className="flex flex-col gap-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Megaphone className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-foreground">Marketing Analytics</h1>
-              <p className="text-muted-foreground text-sm">AI-powered Meta Ads performance insights</p>
-            </div>
-          </div>
+        <div className="flex items-end justify-end">
           <Button variant="outline" size="sm" onClick={handleRefresh} disabled={adsFetching}>
             <RefreshCw className={`h-4 w-4 mr-1.5 ${adsFetching ? 'animate-spin' : ''}`} />
             Refresh
@@ -647,6 +667,15 @@ export default function MarketingAnalytics() {
         aiError={marketData?.aiError}
         loading={marketLoading}
       />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="manychat">
+          <div className="mt-4">
+            <ManyChatPanel />
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
