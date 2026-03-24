@@ -126,9 +126,9 @@ export function DashboardLayout() {
         />
         
         <main className="flex-1 p-4 pb-20 overflow-auto">
-          <ErrorBoundary fallback={<MainContentErrorFallback />}>
+          <MainContentErrorBoundary>
             <Outlet />
-          </ErrorBoundary>
+          </MainContentErrorBoundary>
         </main>
 
         <MobileNav />
