@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Loader2, DollarSign, Eye, MousePointerClick, Target, RefreshCw, BarChart3, TrendingUp, Users, Megaphone, GitCompareArrows, Bot } from 'lucide-react';
+import { Loader2, DollarSign, Eye, MousePointerClick, Target, RefreshCw, BarChart3, TrendingUp, Users, Megaphone, GitCompareArrows, Bot, Layers, Download } from 'lucide-react';
 import { ManyChatPanel } from '@/components/marketing/ManyChatPanel';
 import { toast } from 'sonner';
 import { AnomalyAlertsPanel } from '@/components/marketing/AnomalyAlertsPanel';
@@ -431,11 +431,60 @@ export default function MarketingAnalytics() {
         </div>
       </div>
 
+      {/* Cross-Channel Summary (visible before selecting a tab) */}
+      {!isLoading && insights.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <Card className="bg-gradient-to-br from-primary/5 to-transparent">
+            <CardContent className="pt-4 pb-3 px-4">
+              <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                <Layers className="h-3.5 w-3.5" />
+                <span className="text-[10px] font-medium uppercase tracking-wider">Active Channels</span>
+              </div>
+              <p className="text-xl font-bold text-foreground">2</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Meta Ads + ManyChat</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4 pb-3 px-4">
+              <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                <DollarSign className="h-3.5 w-3.5" />
+                <span className="text-[10px] font-medium uppercase tracking-wider">Ad Spend</span>
+              </div>
+              <p className="text-xl font-bold text-foreground">{formatCurrency(totals.spend)}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">{dateLabel}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4 pb-3 px-4">
+              <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                <Target className="h-3.5 w-3.5" />
+                <span className="text-[10px] font-medium uppercase tracking-wider">Total Leads</span>
+              </div>
+              <p className="text-xl font-bold text-primary">{formatNumber(totals.leads)}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">From Meta Ads</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4 pb-3 px-4">
+              <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                <TrendingUp className="h-3.5 w-3.5" />
+                <span className="text-[10px] font-medium uppercase tracking-wider">Cost / Lead</span>
+              </div>
+              <p className="text-xl font-bold text-foreground">{totals.cpl > 0 ? formatCurrency(totals.cpl) : '—'}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Meta Ads avg</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       <Tabs value={activeChannel} onValueChange={setActiveChannel}>
         <TabsList>
           <TabsTrigger value="meta" className="gap-1.5">
             <Target className="h-4 w-4" />
             Meta Ads
+            {!isLoading && insights.length > 0 && (
+              <Badge variant="secondary" className="ml-1 text-[9px] px-1.5 py-0 h-4">{insights.length}</Badge>
+            )}
           </TabsTrigger>
           <TabsTrigger value="manychat" className="gap-1.5">
             <Bot className="h-4 w-4" />
