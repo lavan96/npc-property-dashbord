@@ -68,6 +68,7 @@ interface DrillDownBreadcrumb {
 }
 
 export default function MarketingAnalytics() {
+  const [activeChannel, setActiveChannel] = useState('meta');
   const [datePreset, setDatePreset] = useState('last_30d');
   const [customRange, setCustomRange] = useState<{ since: string; until: string } | null>(null);
   const [level, setLevel] = useState<'account' | 'campaign' | 'adset' | 'ad'>('campaign');
