@@ -417,6 +417,93 @@ export function LeadAttributionPanel() {
                 </div>
               </div>
 
+              {/* Lead Trend (30-day sparkline) */}
+              <div>
+                <p className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                  Lead Trend (Last 30 Days)
+                </p>
+                <div className="flex items-end gap-[2px] h-12">
+                  {leadTrend.map(({ date, count }) => (
+                    <TooltipProvider key={date}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div
+                            className="flex-1 bg-primary/60 hover:bg-primary rounded-t-sm transition-all cursor-default min-w-[3px]"
+                            style={{ height: `${Math.max((count / maxLeadsInDay) * 100, count > 0 ? 8 : 2)}%` }}
+                          />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="text-xs">{new Date(date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}: {count} lead{count !== 1 ? 's' : ''}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  ))}
+                </div>
+                <div className="flex justify-between text-[9px] text-muted-foreground mt-1">
+                  <span>{new Date(leadTrend[0]?.date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}</span>
+                  <span>Today</span>
+                </div>
+              </div>
+
+              {/* Device & Geo Breakdown */}
+              {(deviceList.length > 1 || geoList.length > 1) && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Device Breakdown */}
+                  {deviceList.length > 1 && (
+                    <div>
+                      <p className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
+                        <Monitor className="h-3.5 w-3.5 text-muted-foreground" />
+                        Device Breakdown
+                      </p>
+                      <div className="space-y-1.5">
+                        {deviceList.map(([device, count]) => {
+                          const pct = totalLeads > 0 ? (count / totalLeads) * 100 : 0;
+                          return (
+                            <div key={device} className="flex items-center gap-2">
+                              <div className="w-16 text-[10px] text-muted-foreground truncate capitalize flex items-center gap-1">
+                                {device.toLowerCase().includes('mobile') ? <Smartphone className="h-3 w-3 shrink-0" /> :
+                                 device.toLowerCase().includes('tablet') ? <TabletSmartphone className="h-3 w-3 shrink-0" /> :
+                                 <Monitor className="h-3 w-3 shrink-0" />}
+                                {device}
+                              </div>
+                              <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                                <div className="h-full bg-primary/50 rounded-full" style={{ width: `${pct}%` }} />
+                              </div>
+                              <span className="text-[10px] font-medium w-8 text-right">{count}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Geo Breakdown */}
+                  {geoList.length > 1 && (
+                    <div>
+                      <p className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
+                        <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                        Top Locations
+                      </p>
+                      <div className="space-y-1.5">
+                        {geoList.map(([geo, count]) => {
+                          const pct = totalLeads > 0 ? (count / totalLeads) * 100 : 0;
+                          return (
+                            <div key={geo} className="flex items-center gap-2">
+                              <span className="w-20 text-[10px] text-muted-foreground truncate">{geo}</span>
+                              <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                                <div className="h-full bg-accent rounded-full" style={{ width: `${pct}%` }} />
+                              </div>
+                              <span className="text-[10px] font-medium w-8 text-right">{count}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Hierarchical Campaign → Ad Set → Ad Breakdown */}
               <div>
                 <p className="text-xs font-semibold text-foreground mb-2">Campaign Funnel Breakdown</p>
