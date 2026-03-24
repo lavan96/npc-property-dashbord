@@ -2609,6 +2609,12 @@ const WRITE_TOOLS = [
   'create_outlook_event', 'create_outlook_prep_block', 'delete_outlook_event', 'create_follow_up_block',
   // Agreements
   'generate_agreement', 'send_agreement_docusign',
+  // Game Plan
+  'create_game_plan', 'update_game_plan', 'delete_game_plan',
+  'add_game_plan_phase', 'update_game_plan_phase', 'delete_game_plan_phase',
+  'add_game_plan_milestone', 'update_game_plan_milestone',
+  'add_game_plan_kpi', 'update_game_plan_kpi',
+  'add_game_plan_note', 'add_game_plan_action', 'toggle_game_plan_action',
 ];
 
 // ============================================================
