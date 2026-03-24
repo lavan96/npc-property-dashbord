@@ -152,9 +152,9 @@ export function DashboardLayout() {
           />
           
           <main className="flex-1 p-6 overflow-auto">
-            <ErrorBoundary fallback={<MainContentErrorFallback />}>
+            <MainContentErrorBoundary>
               <Outlet />
-            </ErrorBoundary>
+            </MainContentErrorBoundary>
           </main>
         </div>
       </div>
