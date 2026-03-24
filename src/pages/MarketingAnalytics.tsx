@@ -667,6 +667,15 @@ export default function MarketingAnalytics() {
         aiError={marketData?.aiError}
         loading={marketLoading}
       />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="manychat">
+          <div className="mt-4">
+            <ManyChatPanel />
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
