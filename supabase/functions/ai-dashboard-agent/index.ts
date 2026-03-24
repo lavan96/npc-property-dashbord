@@ -753,6 +753,243 @@ const TOOLS: any[] = [
     },
   },
 
+  // ─── GAME PLAN ───
+  {
+    type: "function",
+    function: {
+      name: "get_game_plans",
+      description: "List all internal game plans (strategic playbooks). Returns name, status, date range, and phase count.",
+      parameters: { type: "object", properties: { status: { type: "string", description: "Filter by status: planning, active, completed, archived" } } },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_game_plan_details",
+      description: "Get a game plan with all phases, milestones, KPIs, notes, and action items.",
+      parameters: { type: "object", properties: { plan_id: { type: "string", description: "UUID of the game plan" } }, required: ["plan_id"] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_game_plan",
+      description: "Create a new internal game plan / strategic playbook. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Plan name" },
+          description: { type: "string", description: "Plan description" },
+          icon: { type: "string", description: "Emoji icon (default: 🗺️)" },
+          status: { type: "string", enum: ["planning", "active"], description: "Initial status" },
+          start_date: { type: "string", description: "Start date (YYYY-MM-DD)" },
+          end_date: { type: "string", description: "End date (YYYY-MM-DD)" },
+        },
+        required: ["name"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_game_plan",
+      description: "Update a game plan's name, description, status, or dates. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          plan_id: { type: "string", description: "UUID of the game plan" },
+          name: { type: "string" },
+          description: { type: "string" },
+          status: { type: "string", enum: ["planning", "active", "completed", "archived"] },
+          start_date: { type: "string" },
+          end_date: { type: "string" },
+        },
+        required: ["plan_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "delete_game_plan",
+      description: "Delete a game plan and all its phases/milestones/KPIs/notes/actions. REQUIRES USER CONFIRMATION.",
+      parameters: { type: "object", properties: { plan_id: { type: "string", description: "UUID of the game plan" } }, required: ["plan_id"] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "add_game_plan_phase",
+      description: "Add a phase to a game plan. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          plan_id: { type: "string", description: "UUID of the game plan" },
+          name: { type: "string", description: "Phase name" },
+          description: { type: "string" },
+          status: { type: "string", enum: ["upcoming", "in_progress", "completed"] },
+          start_date: { type: "string" },
+          end_date: { type: "string" },
+          color: { type: "string", description: "Hex color for timeline bar" },
+        },
+        required: ["plan_id", "name"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_game_plan_phase",
+      description: "Update a phase's name, status, dates, or color. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          phase_id: { type: "string" },
+          name: { type: "string" },
+          description: { type: "string" },
+          status: { type: "string", enum: ["upcoming", "in_progress", "completed"] },
+          start_date: { type: "string" },
+          end_date: { type: "string" },
+          color: { type: "string" },
+        },
+        required: ["phase_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "delete_game_plan_phase",
+      description: "Delete a phase and all its child items. REQUIRES USER CONFIRMATION.",
+      parameters: { type: "object", properties: { phase_id: { type: "string" } }, required: ["phase_id"] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "add_game_plan_milestone",
+      description: "Add a milestone to a game plan phase. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          phase_id: { type: "string" },
+          title: { type: "string" },
+          description: { type: "string" },
+          due_date: { type: "string" },
+          owner: { type: "string" },
+          priority: { type: "string", enum: ["low", "medium", "high", "critical"] },
+        },
+        required: ["phase_id", "title"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_game_plan_milestone",
+      description: "Update a milestone (title, status, owner, due date, priority). REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          milestone_id: { type: "string" },
+          title: { type: "string" },
+          description: { type: "string" },
+          status: { type: "string", enum: ["pending", "in_progress", "completed", "blocked"] },
+          due_date: { type: "string" },
+          owner: { type: "string" },
+          priority: { type: "string", enum: ["low", "medium", "high", "critical"] },
+        },
+        required: ["milestone_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "add_game_plan_kpi",
+      description: "Add a KPI target to a game plan phase. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          phase_id: { type: "string" },
+          metric_name: { type: "string" },
+          target_value: { type: "number" },
+          current_value: { type: "number" },
+          unit: { type: "string", description: "e.g. %, $, count" },
+          format: { type: "string", enum: ["number", "currency", "percentage"] },
+        },
+        required: ["phase_id", "metric_name", "target_value"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_game_plan_kpi",
+      description: "Update a KPI's current value, target, or details. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          kpi_id: { type: "string" },
+          metric_name: { type: "string" },
+          target_value: { type: "number" },
+          current_value: { type: "number" },
+          unit: { type: "string" },
+          format: { type: "string", enum: ["number", "currency", "percentage"] },
+        },
+        required: ["kpi_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "add_game_plan_note",
+      description: "Add a strategy note to a game plan phase. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          phase_id: { type: "string" },
+          content: { type: "string" },
+          note_type: { type: "string", enum: ["decision", "risk", "idea", "general"], description: "Category of note" },
+          is_pinned: { type: "boolean" },
+        },
+        required: ["phase_id", "content"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "add_game_plan_action",
+      description: "Add an action item to a game plan phase. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          phase_id: { type: "string" },
+          title: { type: "string" },
+          assignee: { type: "string" },
+        },
+        required: ["phase_id", "title"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "toggle_game_plan_action",
+      description: "Toggle an action item's completion status. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          action_id: { type: "string" },
+          is_completed: { type: "boolean" },
+        },
+        required: ["action_id", "is_completed"],
+      },
+    },
+  },
+
   // ─── ANALYTICS & SYSTEM ───
   {
     type: "function",
@@ -2372,6 +2609,12 @@ const WRITE_TOOLS = [
   'create_outlook_event', 'create_outlook_prep_block', 'delete_outlook_event', 'create_follow_up_block',
   // Agreements
   'generate_agreement', 'send_agreement_docusign',
+  // Game Plan
+  'create_game_plan', 'update_game_plan', 'delete_game_plan',
+  'add_game_plan_phase', 'update_game_plan_phase', 'delete_game_plan_phase',
+  'add_game_plan_milestone', 'update_game_plan_milestone',
+  'add_game_plan_kpi', 'update_game_plan_kpi',
+  'add_game_plan_note', 'add_game_plan_action', 'toggle_game_plan_action',
 ];
 
 // ============================================================
@@ -5122,6 +5365,22 @@ async function executeTool(sb: any, name: string, args: any, userId: string): Pr
     case 'delete_outlook_event': return executeDeleteOutlookEvent(userId, args);
     case 'get_team_outlook_availability': return executeGetTeamOutlookAvailability(args);
     case 'create_follow_up_block': return executeCreateOutlookFollowUpBlock(userId, args);
+    // Game Plan
+    case 'get_game_plans': return executeGetGamePlans(sb, args);
+    case 'get_game_plan_details': return executeGetGamePlanDetails(sb, args);
+    case 'create_game_plan': return executeCreateGamePlan(sb, args);
+    case 'update_game_plan': return executeUpdateGamePlan(sb, args);
+    case 'delete_game_plan': return executeDeleteGamePlan(sb, args);
+    case 'add_game_plan_phase': return executeAddGamePlanPhase(sb, args);
+    case 'update_game_plan_phase': return executeUpdateGamePlanPhase(sb, args);
+    case 'delete_game_plan_phase': return executeDeleteGamePlanPhase(sb, args);
+    case 'add_game_plan_milestone': return executeAddGamePlanMilestone(sb, args);
+    case 'update_game_plan_milestone': return executeUpdateGamePlanMilestone(sb, args);
+    case 'add_game_plan_kpi': return executeAddGamePlanKPI(sb, args);
+    case 'update_game_plan_kpi': return executeUpdateGamePlanKPI(sb, args);
+    case 'add_game_plan_note': return executeAddGamePlanNote(sb, args);
+    case 'add_game_plan_action': return executeAddGamePlanAction(sb, args);
+    case 'toggle_game_plan_action': return executeToggleGamePlanAction(sb, args);
 
     default: return { error: `Unknown tool: ${name}` };
   }
@@ -5726,6 +5985,173 @@ async function executeGetTeamMembers(sb: any, userId: string) {
   return { team_members: data || [] };
 }
 
+// ─── GAME PLAN EXECUTORS ───
+
+async function executeGetGamePlans(sb: any, args: any) {
+  let q = sb.from('game_plans').select('*').order('created_at', { ascending: false });
+  if (args.status) q = q.eq('status', args.status);
+  const { data, error } = await q.limit(50);
+  if (error) return { error: error.message };
+  return { game_plans: data || [], count: (data || []).length };
+}
+
+async function executeGetGamePlanDetails(sb: any, args: any) {
+  const { plan_id } = args;
+  const [planRes, phasesRes] = await Promise.all([
+    sb.from('game_plans').select('*').eq('id', plan_id).single(),
+    sb.from('game_plan_phases').select('*').eq('plan_id', plan_id).order('display_order'),
+  ]);
+  if (planRes.error) return { error: planRes.error.message };
+  const phases = phasesRes.data || [];
+  const phaseIds = phases.map((p: any) => p.id);
+  if (phaseIds.length === 0) return { plan: planRes.data, phases: [] };
+  const [milestones, kpis, notes, actions] = await Promise.all([
+    sb.from('game_plan_milestones').select('*').in('phase_id', phaseIds).order('display_order'),
+    sb.from('game_plan_kpis').select('*').in('phase_id', phaseIds).order('display_order'),
+    sb.from('game_plan_notes').select('*').in('phase_id', phaseIds).order('is_pinned', { ascending: false }).order('created_at', { ascending: false }),
+    sb.from('game_plan_actions').select('*').in('phase_id', phaseIds).order('display_order'),
+  ]);
+  const enriched = phases.map((phase: any) => ({
+    ...phase,
+    milestones: (milestones.data || []).filter((m: any) => m.phase_id === phase.id),
+    kpis: (kpis.data || []).filter((k: any) => k.phase_id === phase.id),
+    notes: (notes.data || []).filter((n: any) => n.phase_id === phase.id),
+    actions: (actions.data || []).filter((a: any) => a.phase_id === phase.id),
+  }));
+  return { plan: planRes.data, phases: enriched };
+}
+
+async function executeCreateGamePlan(sb: any, args: any) {
+  const { data, error } = await sb.from('game_plans').insert({
+    name: args.name,
+    description: args.description || null,
+    icon: args.icon || '🗺️',
+    status: args.status || 'planning',
+    start_date: args.start_date || null,
+    end_date: args.end_date || null,
+  }).select().single();
+  if (error) return { error: error.message };
+  return { success: true, message: `Game plan "${args.name}" created.`, plan: data };
+}
+
+async function executeUpdateGamePlan(sb: any, args: any) {
+  const { plan_id, ...updates } = args;
+  const { data, error } = await sb.from('game_plans').update(updates).eq('id', plan_id).select().single();
+  if (error) return { error: error.message };
+  return { success: true, message: `Game plan updated.`, plan: data };
+}
+
+async function executeDeleteGamePlan(sb: any, args: any) {
+  const { error } = await sb.from('game_plans').delete().eq('id', args.plan_id);
+  if (error) return { error: error.message };
+  return { success: true, message: `Game plan deleted (cascaded to all phases/items).` };
+}
+
+async function executeAddGamePlanPhase(sb: any, args: any) {
+  const { count } = await sb.from('game_plan_phases').select('id', { count: 'exact', head: true }).eq('plan_id', args.plan_id);
+  const { data, error } = await sb.from('game_plan_phases').insert({
+    plan_id: args.plan_id,
+    name: args.name,
+    description: args.description || null,
+    status: args.status || 'upcoming',
+    start_date: args.start_date || null,
+    end_date: args.end_date || null,
+    color: args.color || '#6366f1',
+    display_order: (count || 0) + 1,
+  }).select().single();
+  if (error) return { error: error.message };
+  return { success: true, message: `Phase "${args.name}" added.`, phase: data };
+}
+
+async function executeUpdateGamePlanPhase(sb: any, args: any) {
+  const { phase_id, ...updates } = args;
+  const { data, error } = await sb.from('game_plan_phases').update(updates).eq('id', phase_id).select().single();
+  if (error) return { error: error.message };
+  return { success: true, message: `Phase updated.`, phase: data };
+}
+
+async function executeDeleteGamePlanPhase(sb: any, args: any) {
+  const { error } = await sb.from('game_plan_phases').delete().eq('id', args.phase_id);
+  if (error) return { error: error.message };
+  return { success: true, message: `Phase deleted (cascaded to all child items).` };
+}
+
+async function executeAddGamePlanMilestone(sb: any, args: any) {
+  const { count } = await sb.from('game_plan_milestones').select('id', { count: 'exact', head: true }).eq('phase_id', args.phase_id);
+  const { data, error } = await sb.from('game_plan_milestones').insert({
+    phase_id: args.phase_id,
+    title: args.title,
+    description: args.description || null,
+    due_date: args.due_date || null,
+    owner: args.owner || null,
+    priority: args.priority || 'medium',
+    display_order: (count || 0) + 1,
+  }).select().single();
+  if (error) return { error: error.message };
+  return { success: true, message: `Milestone "${args.title}" added.`, milestone: data };
+}
+
+async function executeUpdateGamePlanMilestone(sb: any, args: any) {
+  const { milestone_id, ...updates } = args;
+  const { data, error } = await sb.from('game_plan_milestones').update(updates).eq('id', milestone_id).select().single();
+  if (error) return { error: error.message };
+  return { success: true, message: `Milestone updated.`, milestone: data };
+}
+
+async function executeAddGamePlanKPI(sb: any, args: any) {
+  const { count } = await sb.from('game_plan_kpis').select('id', { count: 'exact', head: true }).eq('phase_id', args.phase_id);
+  const { data, error } = await sb.from('game_plan_kpis').insert({
+    phase_id: args.phase_id,
+    metric_name: args.metric_name,
+    target_value: args.target_value,
+    current_value: args.current_value || 0,
+    unit: args.unit || '',
+    format: args.format || 'number',
+    display_order: (count || 0) + 1,
+  }).select().single();
+  if (error) return { error: error.message };
+  return { success: true, message: `KPI "${args.metric_name}" added (target: ${args.target_value}).`, kpi: data };
+}
+
+async function executeUpdateGamePlanKPI(sb: any, args: any) {
+  const { kpi_id, ...updates } = args;
+  const { data, error } = await sb.from('game_plan_kpis').update(updates).eq('id', kpi_id).select().single();
+  if (error) return { error: error.message };
+  return { success: true, message: `KPI updated.`, kpi: data };
+}
+
+async function executeAddGamePlanNote(sb: any, args: any) {
+  const { data, error } = await sb.from('game_plan_notes').insert({
+    phase_id: args.phase_id,
+    content: args.content,
+    note_type: args.note_type || 'general',
+    is_pinned: args.is_pinned || false,
+  }).select().single();
+  if (error) return { error: error.message };
+  return { success: true, message: `Note added.`, note: data };
+}
+
+async function executeAddGamePlanAction(sb: any, args: any) {
+  const { count } = await sb.from('game_plan_actions').select('id', { count: 'exact', head: true }).eq('phase_id', args.phase_id);
+  const { data, error } = await sb.from('game_plan_actions').insert({
+    phase_id: args.phase_id,
+    title: args.title,
+    assignee: args.assignee || null,
+    display_order: (count || 0) + 1,
+  }).select().single();
+  if (error) return { error: error.message };
+  return { success: true, message: `Action item "${args.title}" added.`, action: data };
+}
+
+async function executeToggleGamePlanAction(sb: any, args: any) {
+  const { data, error } = await sb.from('game_plan_actions').update({
+    is_completed: args.is_completed,
+    completed_at: args.is_completed ? new Date().toISOString() : null,
+  }).eq('id', args.action_id).select().single();
+  if (error) return { error: error.message };
+  return { success: true, message: `Action item ${args.is_completed ? 'completed' : 'reopened'}.`, action: data };
+}
+
 // ============================================================
 
 const SYSTEM_PROMPT = `You are Aurixa, the AI operating assistant for the NPC Property Dashboard — a property investment and mortgage brokerage management platform used by Naidu Property Consulting Services.
@@ -5788,6 +6214,7 @@ You have access to 200+ specialized tools across 51 domains:
 📣 MARKETING ANALYTICS — Lead source attributions (UTM/Meta Ads), attribution summaries, campaign performance with conversion rates, full marketing funnel (impressions → leads → deals → ROI), saved marketing reports, per-client lead source lookup.
 🌐 CLIENT PORTAL — Portal user list with status, portal overview (adoption rate, active sessions, login activity), per-client portal access check.
 🔔 APPOINTMENT NOTIFICATIONS — Secondary recipient notification history for appointments.
+🗺️ GAME PLAN — Full CRUD for internal strategic game plans: create/update/delete plans, add/update/delete phases with timeline, milestones with owners & priorities, KPI targets with current vs target tracking, strategy notes (decision/risk/idea), and action items with completion toggling.
 
 CRITICAL RULES:
 1. When the user asks about a client, ALWAYS use search_clients first to find their ID, then use that EXACT ID (copy-paste the UUID) for ALL subsequent tool calls. NEVER invent, guess, or modify a client UUID — always use the exact value returned by search_clients.
@@ -5833,6 +6260,11 @@ AGREEMENT GENERATION RULES (CRITICAL):
 CHECKLIST TEMPLATE CREATION RULES:
 42. When the user asks to create a checklist template (from pasted text, uploaded documents, or a description), use create_checklist_template — NOT create_playbook. Playbooks are for multi-step agent workflows. Checklist templates are for operational task lists.
 43. When parsing uploaded document content for checklist creation, intelligently break the content into logical sections and items. Each section should have a descriptive title and the items should be actionable tasks.
+
+GAME PLAN RULES:
+44. Game plans are internal strategic playbooks for the team — NOT client-facing. Use game plan tools when users ask about strategy, roadmaps, OKRs, game plans, quarterly goals, or initiative tracking.
+45. When creating a game plan, always ask if they want to add phases, milestones, and KPIs in the same flow. Offer to structure the content hierarchically.
+46. When updating KPI current_value, present the progress percentage (current/target × 100) in your response.
 
 EMAIL SENDING RULES:
 When the user asks you to send an email, you MUST always:
