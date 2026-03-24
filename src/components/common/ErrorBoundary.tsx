@@ -26,13 +26,21 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
 
   render() {
     if (this.state.hasError) {
+      if (this.props.fallback) return this.props.fallback;
       return (
-        this.props.fallback ?? (
-          <div className="rounded-md border border-border bg-muted/40 p-4 text-sm">
-            <div className="font-medium text-foreground">Something went wrong.</div>
-            <div className="mt-1 text-muted-foreground">This section failed to render.</div>
-          </div>
-        )
+        <div className="rounded-md border border-border bg-muted/40 p-4 text-sm">
+          <div className="font-medium text-foreground">Something went wrong.</div>
+          <div className="mt-1 text-muted-foreground">This section failed to render.</div>
+          {this.state.error && (
+            <details className="mt-2">
+              <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">Show error details</summary>
+              <pre className="mt-1 text-xs text-destructive whitespace-pre-wrap break-all bg-muted p-2 rounded max-h-40 overflow-auto">
+                {this.state.error.message}
+                {this.state.error.stack && `\n\n${this.state.error.stack}`}
+              </pre>
+            </details>
+          )}
+        </div>
       );
     }
 
