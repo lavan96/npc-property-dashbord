@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,11 +6,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Loader2, Users, MessageSquare, Tag, Workflow, RefreshCw,
   Bot, MousePointerClick, Search, User, Clock, Globe,
   Shield, Database, ChevronDown, ChevronUp, ExternalLink, Hash,
-  Zap, Settings2, Info
+  Zap, Settings2, Info, Activity, BarChart3, Filter, CheckCircle2, XCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -41,6 +42,8 @@ function toObject<T extends Record<string, any> = Record<string, any>>(value: un
 
 export function ManyChatPanel() {
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchMode, setSearchMode] = useState<'name' | 'custom_field'>('name');
+  const [selectedFieldId, setSelectedFieldId] = useState<string>('');
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<any[] | null>(null);
   const [selectedSubscriber, setSelectedSubscriber] = useState<any | null>(null);
@@ -73,6 +76,33 @@ export function ManyChatPanel() {
   const customFields = toArray(data?.customFields, ['customFields', 'custom_fields']);
   const botFields = toArray(data?.botFields, ['botFields', 'bot_fields']);
 
+  // Flow status breakdown
+  const flowStats = useMemo(() => {
+    const active = flows.filter(f => f.status === 'active').length;
+    const inactive = flows.filter(f => f.status !== 'active').length;
+    return { active, inactive, total: flows.length };
+  }, [flows]);
+
+  // Widget type breakdown
+  const widgetTypeMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const w of widgets) {
+      const type = (w.type || 'unknown').replace(/_/g, ' ');
+      map.set(type, (map.get(type) || 0) + 1);
+    }
+    return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
+  }, [widgets]);
+
+  // Custom field type breakdown
+  const fieldTypeMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const f of customFields) {
+      const type = f.type || 'text';
+      map.set(type, (map.get(type) || 0) + 1);
+    }
+    return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
+  }, [customFields]);
+
   const handleRefresh = () => {
     refetch();
     toast.success('Refreshing ManyChat data...');
@@ -83,30 +113,53 @@ export function ManyChatPanel() {
   };
 
   const handleSearch = useCallback(async () => {
-    if (!searchQuery.trim() || searchQuery.trim().length < 2) {
-      toast.error('Enter at least 2 characters to search');
-      return;
-    }
-    setIsSearching(true);
-    setSelectedSubscriber(null);
-    try {
-      const { data, error } = await invokeSecureFunction('manychat-proxy', {
-        action: 'find_subscriber',
-        name: searchQuery.trim(),
-      });
-      if (error) throw new Error(error.message);
-      const normalizedSubscribers = toArray(data?.subscribers, ['subscribers']);
-      setSearchResults(normalizedSubscribers);
-      if (!normalizedSubscribers.length) {
-        toast.info('No subscribers found');
+    if (searchMode === 'name') {
+      if (!searchQuery.trim() || searchQuery.trim().length < 2) {
+        toast.error('Enter at least 2 characters to search');
+        return;
       }
-    } catch (err: any) {
-      toast.error(err.message || 'Search failed');
-      setSearchResults([]);
-    } finally {
-      setIsSearching(false);
+      setIsSearching(true);
+      setSelectedSubscriber(null);
+      try {
+        const { data, error } = await invokeSecureFunction('manychat-proxy', {
+          action: 'find_subscriber',
+          name: searchQuery.trim(),
+        });
+        if (error) throw new Error(error.message);
+        const normalizedSubscribers = toArray(data?.subscribers, ['subscribers']);
+        setSearchResults(normalizedSubscribers);
+        if (!normalizedSubscribers.length) toast.info('No subscribers found');
+      } catch (err: any) {
+        toast.error(err.message || 'Search failed');
+        setSearchResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    } else {
+      if (!selectedFieldId || !searchQuery.trim()) {
+        toast.error('Select a custom field and enter a value');
+        return;
+      }
+      setIsSearching(true);
+      setSelectedSubscriber(null);
+      try {
+        const { data, error } = await invokeSecureFunction('manychat-proxy', {
+          action: 'find_by_custom_field',
+          field_id: selectedFieldId,
+          field_value: searchQuery.trim(),
+        });
+        if (error) throw new Error(error.message);
+        const normalizedSubscribers = toArray(data?.subscribers, ['subscribers']);
+        setSearchResults(normalizedSubscribers);
+        if (!normalizedSubscribers.length) toast.info('No subscribers found');
+      } catch (err: any) {
+        toast.error(err.message || 'Search failed');
+        setSearchResults([]);
+      } finally {
+        setIsSearching(false);
+      }
     }
-  }, [searchQuery]);
+  }, [searchQuery, searchMode, selectedFieldId]);
 
   const handleViewSubscriber = useCallback(async (subscriberId: string) => {
     setLoadingSubscriber(true);
@@ -169,6 +222,7 @@ export function ManyChatPanel() {
         </Button>
       </div>
 
+      {/* Page Info Card */}
       <Card className="overflow-hidden">
         <div className="bg-gradient-to-r from-primary/5 to-primary/[0.02] p-5">
           {isLoading ? (
@@ -208,13 +262,19 @@ export function ManyChatPanel() {
                       {pageInfo.category}
                     </span>
                   )}
+                  {pageInfo.subscribers !== undefined && (
+                    <span className="flex items-center gap-1">
+                      <Users className="h-3.5 w-3.5" />
+                      {Number(pageInfo.subscribers).toLocaleString()} subscribers
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
           ) : null}
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-border border-t">
+        <div className="grid grid-cols-2 sm:grid-cols-5 divide-x divide-border border-t">
           <QuickStat
             icon={<MousePointerClick className="h-4 w-4" />}
             label="Growth Tools"
@@ -235,25 +295,154 @@ export function ManyChatPanel() {
           />
           <QuickStat
             icon={<Workflow className="h-4 w-4" />}
-            label="Flows"
-            value={isLoading ? '—' : String(flows.length)}
+            label="Active Flows"
+            value={isLoading ? '—' : String(flowStats.active)}
+            loading={isLoading}
+            accent={flowStats.active > 0}
+          />
+          <QuickStat
+            icon={<Bot className="h-4 w-4" />}
+            label="Bot Fields"
+            value={isLoading ? '—' : String(botFields.length)}
             loading={isLoading}
           />
         </div>
       </Card>
 
+      {/* Automation Health Overview */}
+      {!isLoading && (flows.length > 0 || widgets.length > 0) && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Flow Status Card */}
+          {flows.length > 0 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-primary" />
+                  Flow Health
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pb-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="flex-1 h-3 rounded-full bg-muted overflow-hidden flex gap-0.5">
+                    {flowStats.active > 0 && (
+                      <div
+                        className="h-full bg-emerald-500 rounded-l-full transition-all"
+                        style={{ width: `${(flowStats.active / flowStats.total) * 100}%` }}
+                      />
+                    )}
+                    {flowStats.inactive > 0 && (
+                      <div
+                        className="h-full bg-muted-foreground/30 rounded-r-full transition-all"
+                        style={{ width: `${(flowStats.inactive / flowStats.total) * 100}%` }}
+                      />
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-1.5">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                    <span className="text-muted-foreground">Active</span>
+                    <span className="font-semibold text-foreground">{flowStats.active}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <XCircle className="h-3.5 w-3.5 text-muted-foreground/60" />
+                    <span className="text-muted-foreground">Inactive</span>
+                    <span className="font-semibold text-foreground">{flowStats.inactive}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-muted-foreground">Total</span>
+                    <span className="font-semibold text-foreground">{flowStats.total}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Widget Type Breakdown */}
+          {widgets.length > 0 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4 text-primary" />
+                  Growth Tool Types
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pb-4">
+                <div className="space-y-2">
+                  {widgetTypeMap.slice(0, 5).map(([type, count]) => (
+                    <div key={type} className="flex items-center gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs text-muted-foreground capitalize truncate">{type}</span>
+                          <span className="text-xs font-semibold text-foreground">{count}</span>
+                        </div>
+                        <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                          <div
+                            className="h-full bg-primary/60 rounded-full transition-all"
+                            style={{ width: `${(count / widgets.length) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {/* Subscriber Search */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Search className="h-4 w-4" />
-            Subscriber Search
-          </CardTitle>
-          <CardDescription>Search ManyChat subscribers by name</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Search className="h-4 w-4" />
+                Subscriber Search
+              </CardTitle>
+              <CardDescription>Search subscribers by name or custom field value</CardDescription>
+            </div>
+            <div className="flex items-center gap-1">
+              <Button
+                variant={searchMode === 'name' ? 'default' : 'outline'}
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => { setSearchMode('name'); setSearchResults(null); }}
+              >
+                <User className="h-3 w-3 mr-1" />
+                Name
+              </Button>
+              <Button
+                variant={searchMode === 'custom_field' ? 'default' : 'outline'}
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => { setSearchMode('custom_field'); setSearchResults(null); }}
+              >
+                <Filter className="h-3 w-3 mr-1" />
+                Field
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
+          {searchMode === 'custom_field' && (
+            <Select value={selectedFieldId} onValueChange={setSelectedFieldId}>
+              <SelectTrigger className="h-9">
+                <SelectValue placeholder="Select a custom field..." />
+              </SelectTrigger>
+              <SelectContent>
+                {customFields.map((field: any) => (
+                  <SelectItem key={field.id} value={String(field.id)}>
+                    {field.name} ({field.type || 'text'})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <div className="flex gap-2">
             <Input
-              placeholder="Search by name..."
+              placeholder={searchMode === 'name' ? 'Search by name...' : 'Enter field value...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
@@ -319,6 +508,7 @@ export function ManyChatPanel() {
         </CardContent>
       </Card>
 
+      {/* Collapsible Sections */}
       <CollapsibleSection
         title="Growth Tools"
         description="Subscriber acquisition triggers & widgets"
@@ -387,23 +577,33 @@ export function ManyChatPanel() {
         loading={isLoading}
       >
         {customFields.length === 0 ? (
-          <EmptyState message="No custom fields defined yet. Custom fields will appear here once you create them in ManyChat." />
+          <EmptyState message="No custom fields defined yet." />
         ) : (
-          <div className="space-y-1.5">
-            {customFields.map((field: any, i: number) => (
-              <div key={field.id || i} className="flex items-center justify-between p-2.5 rounded-md bg-muted/40">
-                <div className="flex items-center gap-2 min-w-0">
-                  <Settings2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  <span className="text-sm text-foreground truncate">{field.name}</span>
+          <>
+            {/* Field type summary */}
+            <div className="flex flex-wrap gap-2 mb-3">
+              {fieldTypeMap.map(([type, count]) => (
+                <Badge key={type} variant="outline" className="text-[10px] capitalize">
+                  {type}: {count}
+                </Badge>
+              ))}
+            </div>
+            <div className="space-y-1.5">
+              {customFields.map((field: any, i: number) => (
+                <div key={field.id || i} className="flex items-center justify-between p-2.5 rounded-md bg-muted/40">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Settings2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <span className="text-sm text-foreground truncate">{field.name}</span>
+                  </div>
+                  <div className="flex items-center gap-2 ml-2 shrink-0">
+                    {field.type && (
+                      <Badge variant="outline" className="text-xs capitalize">{field.type}</Badge>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 ml-2 shrink-0">
-                  {field.type && (
-                    <Badge variant="outline" className="text-xs capitalize">{field.type}</Badge>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          </>
         )}
       </CollapsibleSection>
 
@@ -488,11 +688,12 @@ export function ManyChatPanel() {
   );
 }
 
-function QuickStat({ icon, label, value, loading }: {
+function QuickStat({ icon, label, value, loading, accent }: {
   icon: React.ReactNode;
   label: string;
   value: string;
   loading: boolean;
+  accent?: boolean;
 }) {
   return (
     <div className="px-4 py-3 text-center">
@@ -503,7 +704,7 @@ function QuickStat({ icon, label, value, loading }: {
       {loading ? (
         <div className="h-6 w-8 bg-muted animate-pulse rounded mx-auto" />
       ) : (
-        <p className="text-lg font-bold text-foreground">{value}</p>
+        <p className={`text-lg font-bold ${accent ? 'text-primary' : 'text-foreground'}`}>{value}</p>
       )}
     </div>
   );
@@ -592,20 +793,17 @@ function SubscriberDetail({ subscriber, onClose }: { subscriber: any; onClose: (
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-          {subscriber.gender && (
-            <InfoRow label="Gender" value={subscriber.gender} />
-          )}
-          {subscriber.language && (
-            <InfoRow label="Language" value={subscriber.language} />
-          )}
-          {subscriber.timezone && (
-            <InfoRow label="Timezone" value={subscriber.timezone} />
-          )}
+          {subscriber.gender && <InfoRow label="Gender" value={subscriber.gender} />}
+          {subscriber.language && <InfoRow label="Language" value={subscriber.language} />}
+          {subscriber.timezone && <InfoRow label="Timezone" value={subscriber.timezone} />}
           {subscriber.subscribed && (
             <InfoRow label="Subscribed" value={new Date(subscriber.subscribed).toLocaleDateString('en-AU')} />
           )}
           {subscriber.last_interaction && (
             <InfoRow label="Last Interaction" value={new Date(subscriber.last_interaction).toLocaleDateString('en-AU')} />
+          )}
+          {subscriber.last_seen && (
+            <InfoRow label="Last Seen" value={new Date(subscriber.last_seen).toLocaleDateString('en-AU')} />
           )}
           {subscriber.live_chat_url && (
             <div className="col-span-full">
