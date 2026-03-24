@@ -22,6 +22,7 @@ import {
   Megaphone, Target, Users, DollarSign, TrendingUp, ChevronDown, ChevronUp,
   RefreshCw, Globe, Loader2, DatabaseBackup, Sparkles, ExternalLink,
   MousePointerClick, Layers, Image as ImageIcon, MapPin, Monitor, Link2,
+  Smartphone, TabletSmartphone, Calendar,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
