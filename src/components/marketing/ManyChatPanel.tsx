@@ -23,6 +23,22 @@ interface ManyChatOverview {
   botFields: any[];
 }
 
+function toArray<T = any>(value: unknown, nestedKeys: string[] = []): T[] {
+  if (Array.isArray(value)) return value as T[];
+  if (value && typeof value === 'object') {
+    for (const key of nestedKeys) {
+      const nestedValue = (value as Record<string, unknown>)[key];
+      if (Array.isArray(nestedValue)) return nestedValue as T[];
+    }
+  }
+  return [];
+}
+
+function toObject<T extends Record<string, any> = Record<string, any>>(value: unknown): T | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  return value as T;
+}
+
 export function ManyChatPanel() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
@@ -50,12 +66,12 @@ export function ManyChatPanel() {
     retry: 1,
   });
 
-  const pageInfo = data?.pageInfo;
-  const tags = data?.tags || [];
-  const flows = data?.flows || [];
-  const widgets = data?.widgets || [];
-  const customFields = data?.customFields || [];
-  const botFields = data?.botFields || [];
+  const pageInfo = toObject(data?.pageInfo);
+  const tags = toArray(data?.tags, ['tags']);
+  const flows = toArray(data?.flows, ['flows']);
+  const widgets = toArray(data?.widgets, ['widgets', 'growth_tools']);
+  const customFields = toArray(data?.customFields, ['customFields', 'custom_fields']);
+  const botFields = toArray(data?.botFields, ['botFields', 'bot_fields']);
 
   const handleRefresh = () => {
     refetch();
@@ -79,8 +95,9 @@ export function ManyChatPanel() {
         name: searchQuery.trim(),
       });
       if (error) throw new Error(error.message);
-      setSearchResults(data?.subscribers || []);
-      if (!data?.subscribers?.length) {
+      const normalizedSubscribers = toArray(data?.subscribers, ['subscribers']);
+      setSearchResults(normalizedSubscribers);
+      if (!normalizedSubscribers.length) {
         toast.info('No subscribers found');
       }
     } catch (err: any) {
@@ -99,7 +116,7 @@ export function ManyChatPanel() {
         subscriberId,
       });
       if (error) throw new Error(error.message);
-      setSelectedSubscriber(data?.subscriber || null);
+      setSelectedSubscriber(toObject(data?.subscriber));
     } catch (err: any) {
       toast.error(err.message || 'Failed to load subscriber');
     } finally {
@@ -136,7 +153,6 @@ export function ManyChatPanel() {
 
   return (
     <div className="space-y-6">
-      {/* Header with Refresh */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -153,7 +169,6 @@ export function ManyChatPanel() {
         </Button>
       </div>
 
-      {/* Connected Account Card */}
       <Card className="overflow-hidden">
         <div className="bg-gradient-to-r from-primary/5 to-primary/[0.02] p-5">
           {isLoading ? (
@@ -198,8 +213,7 @@ export function ManyChatPanel() {
             </div>
           ) : null}
         </div>
-        
-        {/* Quick Stats Row */}
+
         <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-border border-t">
           <QuickStat
             icon={<MousePointerClick className="h-4 w-4" />}
@@ -228,7 +242,6 @@ export function ManyChatPanel() {
         </div>
       </Card>
 
-      {/* Subscriber Search */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
@@ -252,7 +265,6 @@ export function ManyChatPanel() {
             </Button>
           </div>
 
-          {/* Search Results */}
           {searchResults !== null && (
             <div className="space-y-2">
               <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
@@ -295,7 +307,6 @@ export function ManyChatPanel() {
             </div>
           )}
 
-          {/* Selected Subscriber Detail */}
           {loadingSubscriber && (
             <div className="flex items-center justify-center py-6">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -308,7 +319,6 @@ export function ManyChatPanel() {
         </CardContent>
       </Card>
 
-      {/* Growth Tools */}
       <CollapsibleSection
         title="Growth Tools"
         description="Subscriber acquisition triggers & widgets"
@@ -344,7 +354,6 @@ export function ManyChatPanel() {
         )}
       </CollapsibleSection>
 
-      {/* Tags */}
       <CollapsibleSection
         title="Tags"
         description="Subscriber segmentation labels"
@@ -368,7 +377,6 @@ export function ManyChatPanel() {
         )}
       </CollapsibleSection>
 
-      {/* Custom Fields */}
       <CollapsibleSection
         title="Custom Fields"
         description="Subscriber data fields for personalization"
@@ -399,7 +407,6 @@ export function ManyChatPanel() {
         )}
       </CollapsibleSection>
 
-      {/* Bot Fields */}
       <CollapsibleSection
         title="Bot Fields"
         description="Global bot-level variables"
@@ -433,7 +440,6 @@ export function ManyChatPanel() {
         )}
       </CollapsibleSection>
 
-      {/* Flows */}
       <CollapsibleSection
         title="Flows"
         description="Automation sequences and conversation flows"
@@ -464,7 +470,6 @@ export function ManyChatPanel() {
         )}
       </CollapsibleSection>
 
-      {/* Info Footer */}
       <Card className="border-dashed">
         <CardContent className="py-3 px-4">
           <div className="flex items-start gap-2">
@@ -482,8 +487,6 @@ export function ManyChatPanel() {
     </div>
   );
 }
-
-/* ─── Sub-components ─── */
 
 function QuickStat({ icon, label, value, loading }: {
   icon: React.ReactNode;
@@ -559,6 +562,10 @@ function EmptyState({ message }: { message: string }) {
 }
 
 function SubscriberDetail({ subscriber, onClose }: { subscriber: any; onClose: () => void }) {
+  const subscriberTags = toArray(subscriber?.tags, ['tags']);
+  const subscriberCustomFields = toArray(subscriber?.custom_fields, ['custom_fields', 'customFields']);
+  const visibleCustomFields = subscriberCustomFields.filter((field: any) => field.value !== null && field.value !== '');
+
   return (
     <Card className="border-primary/20 bg-primary/[0.02]">
       <CardHeader className="pb-3">
@@ -614,12 +621,11 @@ function SubscriberDetail({ subscriber, onClose }: { subscriber: any; onClose: (
           )}
         </div>
 
-        {/* Tags */}
-        {subscriber.tags && subscriber.tags.length > 0 && (
+        {subscriberTags.length > 0 && (
           <div className="mt-4">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Tags</p>
             <div className="flex flex-wrap gap-1.5">
-              {subscriber.tags.map((tag: any) => (
+              {subscriberTags.map((tag: any) => (
                 <Badge key={tag.id} variant="secondary" className="text-xs">
                   {tag.name}
                 </Badge>
@@ -628,19 +634,16 @@ function SubscriberDetail({ subscriber, onClose }: { subscriber: any; onClose: (
           </div>
         )}
 
-        {/* Custom Fields */}
-        {subscriber.custom_fields && subscriber.custom_fields.length > 0 && (
+        {visibleCustomFields.length > 0 && (
           <div className="mt-4">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Custom Fields</p>
             <div className="space-y-1.5">
-              {subscriber.custom_fields
-                .filter((f: any) => f.value !== null && f.value !== '')
-                .map((field: any) => (
-                  <div key={field.id} className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">{field.name}</span>
-                    <span className="text-foreground font-medium">{String(field.value)}</span>
-                  </div>
-                ))}
+              {visibleCustomFields.map((field: any) => (
+                <div key={field.id} className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">{field.name}</span>
+                  <span className="text-foreground font-medium">{String(field.value)}</span>
+                </div>
+              ))}
             </div>
           </div>
         )}

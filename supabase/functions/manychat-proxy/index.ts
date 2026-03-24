@@ -4,6 +4,22 @@ import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_s
 
 const MANYCHAT_API_BASE = 'https://api.manychat.com/fb';
 
+function normalizeList(value: unknown, nestedKeys: string[] = []): any[] {
+  if (Array.isArray(value)) return value;
+  if (value && typeof value === 'object') {
+    for (const key of nestedKeys) {
+      const nestedValue = (value as Record<string, unknown>)[key];
+      if (Array.isArray(nestedValue)) return nestedValue;
+    }
+  }
+  return [];
+}
+
+function normalizeObject(value: unknown): Record<string, any> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  return value as Record<string, any>;
+}
+
 serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = createCorsHeaders(origin);
@@ -46,7 +62,7 @@ serve(async (req) => {
         const resp = await fetch(`${MANYCHAT_API_BASE}/page/getInfo`, { headers });
         if (!resp.ok) throw new Error(`ManyChat API error [${resp.status}]: ${await resp.text()}`);
         const data = await resp.json();
-        result = { success: true, pageInfo: data.data };
+        result = { success: true, pageInfo: normalizeObject(data.data) };
         break;
       }
 
@@ -54,7 +70,7 @@ serve(async (req) => {
         const resp = await fetch(`${MANYCHAT_API_BASE}/page/getTags`, { headers });
         if (!resp.ok) throw new Error(`ManyChat API error [${resp.status}]: ${await resp.text()}`);
         const data = await resp.json();
-        result = { success: true, tags: data.data || [] };
+        result = { success: true, tags: normalizeList(data.data, ['tags']) };
         break;
       }
 
@@ -62,7 +78,7 @@ serve(async (req) => {
         const resp = await fetch(`${MANYCHAT_API_BASE}/page/getCustomFields`, { headers });
         if (!resp.ok) throw new Error(`ManyChat API error [${resp.status}]: ${await resp.text()}`);
         const data = await resp.json();
-        result = { success: true, customFields: data.data || [] };
+        result = { success: true, customFields: normalizeList(data.data, ['custom_fields', 'customFields']) };
         break;
       }
 
@@ -70,7 +86,7 @@ serve(async (req) => {
         const resp = await fetch(`${MANYCHAT_API_BASE}/page/getGrowthTools`, { headers });
         if (!resp.ok) throw new Error(`ManyChat API error [${resp.status}]: ${await resp.text()}`);
         const data = await resp.json();
-        result = { success: true, widgets: data.data || [] };
+        result = { success: true, widgets: normalizeList(data.data, ['widgets', 'growth_tools']) };
         break;
       }
 
@@ -78,20 +94,23 @@ serve(async (req) => {
         const resp = await fetch(`${MANYCHAT_API_BASE}/page/getBotFields`, { headers });
         if (!resp.ok) throw new Error(`ManyChat API error [${resp.status}]: ${await resp.text()}`);
         const data = await resp.json();
-        result = { success: true, botFields: data.data || [] };
+        result = { success: true, botFields: normalizeList(data.data, ['bot_fields', 'botFields']) };
         break;
       }
 
       case 'get_flows': {
         const resp = await fetch(`${MANYCHAT_API_BASE}/page/getFlows`, { headers });
-        // Flows may 404 on Instagram accounts
         if (resp.status === 404) {
           result = { success: true, flows: [], note: 'Flows endpoint not available for this account type' };
           break;
         }
         if (!resp.ok) throw new Error(`ManyChat API error [${resp.status}]: ${await resp.text()}`);
         const data = await resp.json();
-        result = { success: true, flows: data.data || [] };
+        result = {
+          success: true,
+          flows: normalizeList(data.data, ['flows']),
+          folders: normalizeList(data.data, ['folders']),
+        };
         break;
       }
 
@@ -110,7 +129,7 @@ serve(async (req) => {
         });
         if (!resp.ok) throw new Error(`ManyChat API error [${resp.status}]: ${await resp.text()}`);
         const data = await resp.json();
-        result = { success: true, subscribers: data.data || [] };
+        result = { success: true, subscribers: normalizeList(data.data, ['subscribers']) };
         break;
       }
 
@@ -125,7 +144,7 @@ serve(async (req) => {
         const resp = await fetch(`${MANYCHAT_API_BASE}/subscriber/getInfo?subscriber_id=${subscriberId}`, { headers });
         if (!resp.ok) throw new Error(`ManyChat API error [${resp.status}]: ${await resp.text()}`);
         const data = await resp.json();
-        result = { success: true, subscriber: data.data };
+        result = { success: true, subscriber: normalizeObject(data.data) };
         break;
       }
 
@@ -144,12 +163,11 @@ serve(async (req) => {
         });
         if (!resp.ok) throw new Error(`ManyChat API error [${resp.status}]: ${await resp.text()}`);
         const data = await resp.json();
-        result = { success: true, subscribers: data.data || [] };
+        result = { success: true, subscribers: normalizeList(data.data, ['subscribers']) };
         break;
       }
 
       case 'get_overview': {
-        // Fetch all available data in parallel
         const [pageResp, tagsResp, widgetsResp, fieldsResp, botFieldsResp, flowsResp] = await Promise.all([
           fetch(`${MANYCHAT_API_BASE}/page/getInfo`, { headers }),
           fetch(`${MANYCHAT_API_BASE}/page/getTags`, { headers }),
@@ -170,12 +188,12 @@ serve(async (req) => {
 
         result = {
           success: true,
-          pageInfo: pageData.data,
-          tags: tagsData.data || [],
-          widgets: widgetsData.data || [],
-          customFields: fieldsData.data || [],
-          botFields: botFieldsData.data || [],
-          flows: flowsData.data || [],
+          pageInfo: normalizeObject(pageData.data),
+          tags: normalizeList(tagsData.data, ['tags']),
+          widgets: normalizeList(widgetsData.data, ['widgets', 'growth_tools']),
+          customFields: normalizeList(fieldsData.data, ['custom_fields', 'customFields']),
+          botFields: normalizeList(botFieldsData.data, ['bot_fields', 'botFields']),
+          flows: normalizeList(flowsData.data, ['flows']),
         };
         break;
       }
