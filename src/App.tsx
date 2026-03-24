@@ -60,6 +60,7 @@ import DealPipeline from "./pages/DealPipeline";
 import RemindersHub from "./pages/RemindersHub";
 import Checklists from "./pages/Checklists";
 import Agreements from "./pages/Agreements";
+import GamePlan from "./pages/GamePlan";
 import NotFound from "./pages/NotFound";
 import { PortalAuthProvider } from "@/hooks/usePortalAuth";
 import { PortalProtectedRoute } from "@/components/portal/PortalProtectedRoute";
