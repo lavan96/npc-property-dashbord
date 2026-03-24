@@ -5985,6 +5985,173 @@ async function executeGetTeamMembers(sb: any, userId: string) {
   return { team_members: data || [] };
 }
 
+// ─── GAME PLAN EXECUTORS ───
+
+async function executeGetGamePlans(sb: any, args: any) {
+  let q = sb.from('game_plans').select('*').order('created_at', { ascending: false });
+  if (args.status) q = q.eq('status', args.status);
+  const { data, error } = await q.limit(50);
+  if (error) return { error: error.message };
+  return { game_plans: data || [], count: (data || []).length };
+}
+
+async function executeGetGamePlanDetails(sb: any, args: any) {
+  const { plan_id } = args;
+  const [planRes, phasesRes] = await Promise.all([
+    sb.from('game_plans').select('*').eq('id', plan_id).single(),
+    sb.from('game_plan_phases').select('*').eq('plan_id', plan_id).order('display_order'),
+  ]);
+  if (planRes.error) return { error: planRes.error.message };
+  const phases = phasesRes.data || [];
+  const phaseIds = phases.map((p: any) => p.id);
+  if (phaseIds.length === 0) return { plan: planRes.data, phases: [] };
+  const [milestones, kpis, notes, actions] = await Promise.all([
+    sb.from('game_plan_milestones').select('*').in('phase_id', phaseIds).order('display_order'),
+    sb.from('game_plan_kpis').select('*').in('phase_id', phaseIds).order('display_order'),
+    sb.from('game_plan_notes').select('*').in('phase_id', phaseIds).order('is_pinned', { ascending: false }).order('created_at', { ascending: false }),
+    sb.from('game_plan_actions').select('*').in('phase_id', phaseIds).order('display_order'),
+  ]);
+  const enriched = phases.map((phase: any) => ({
+    ...phase,
+    milestones: (milestones.data || []).filter((m: any) => m.phase_id === phase.id),
+    kpis: (kpis.data || []).filter((k: any) => k.phase_id === phase.id),
+    notes: (notes.data || []).filter((n: any) => n.phase_id === phase.id),
+    actions: (actions.data || []).filter((a: any) => a.phase_id === phase.id),
+  }));
+  return { plan: planRes.data, phases: enriched };
+}
+
+async function executeCreateGamePlan(sb: any, args: any) {
+  const { data, error } = await sb.from('game_plans').insert({
+    name: args.name,
+    description: args.description || null,
+    icon: args.icon || '🗺️',
+    status: args.status || 'planning',
+    start_date: args.start_date || null,
+    end_date: args.end_date || null,
+  }).select().single();
+  if (error) return { error: error.message };
+  return { success: true, message: `Game plan "${args.name}" created.`, plan: data };
+}
+
+async function executeUpdateGamePlan(sb: any, args: any) {
+  const { plan_id, ...updates } = args;
+  const { data, error } = await sb.from('game_plans').update(updates).eq('id', plan_id).select().single();
+  if (error) return { error: error.message };
+  return { success: true, message: `Game plan updated.`, plan: data };
+}
+
+async function executeDeleteGamePlan(sb: any, args: any) {
+  const { error } = await sb.from('game_plans').delete().eq('id', args.plan_id);
+  if (error) return { error: error.message };
+  return { success: true, message: `Game plan deleted (cascaded to all phases/items).` };
+}
+
+async function executeAddGamePlanPhase(sb: any, args: any) {
+  const { count } = await sb.from('game_plan_phases').select('id', { count: 'exact', head: true }).eq('plan_id', args.plan_id);
+  const { data, error } = await sb.from('game_plan_phases').insert({
+    plan_id: args.plan_id,
+    name: args.name,
+    description: args.description || null,
+    status: args.status || 'upcoming',
+    start_date: args.start_date || null,
+    end_date: args.end_date || null,
+    color: args.color || '#6366f1',
+    display_order: (count || 0) + 1,
+  }).select().single();
+  if (error) return { error: error.message };
+  return { success: true, message: `Phase "${args.name}" added.`, phase: data };
+}
+
+async function executeUpdateGamePlanPhase(sb: any, args: any) {
+  const { phase_id, ...updates } = args;
+  const { data, error } = await sb.from('game_plan_phases').update(updates).eq('id', phase_id).select().single();
+  if (error) return { error: error.message };
+  return { success: true, message: `Phase updated.`, phase: data };
+}
+
+async function executeDeleteGamePlanPhase(sb: any, args: any) {
+  const { error } = await sb.from('game_plan_phases').delete().eq('id', args.phase_id);
+  if (error) return { error: error.message };
+  return { success: true, message: `Phase deleted (cascaded to all child items).` };
+}
+
+async function executeAddGamePlanMilestone(sb: any, args: any) {
+  const { count } = await sb.from('game_plan_milestones').select('id', { count: 'exact', head: true }).eq('phase_id', args.phase_id);
+  const { data, error } = await sb.from('game_plan_milestones').insert({
+    phase_id: args.phase_id,
+    title: args.title,
+    description: args.description || null,
+    due_date: args.due_date || null,
+    owner: args.owner || null,
+    priority: args.priority || 'medium',
+    display_order: (count || 0) + 1,
+  }).select().single();
+  if (error) return { error: error.message };
+  return { success: true, message: `Milestone "${args.title}" added.`, milestone: data };
+}
+
+async function executeUpdateGamePlanMilestone(sb: any, args: any) {
+  const { milestone_id, ...updates } = args;
+  const { data, error } = await sb.from('game_plan_milestones').update(updates).eq('id', milestone_id).select().single();
+  if (error) return { error: error.message };
+  return { success: true, message: `Milestone updated.`, milestone: data };
+}
+
+async function executeAddGamePlanKPI(sb: any, args: any) {
+  const { count } = await sb.from('game_plan_kpis').select('id', { count: 'exact', head: true }).eq('phase_id', args.phase_id);
+  const { data, error } = await sb.from('game_plan_kpis').insert({
+    phase_id: args.phase_id,
+    metric_name: args.metric_name,
+    target_value: args.target_value,
+    current_value: args.current_value || 0,
+    unit: args.unit || '',
+    format: args.format || 'number',
+    display_order: (count || 0) + 1,
+  }).select().single();
+  if (error) return { error: error.message };
+  return { success: true, message: `KPI "${args.metric_name}" added (target: ${args.target_value}).`, kpi: data };
+}
+
+async function executeUpdateGamePlanKPI(sb: any, args: any) {
+  const { kpi_id, ...updates } = args;
+  const { data, error } = await sb.from('game_plan_kpis').update(updates).eq('id', kpi_id).select().single();
+  if (error) return { error: error.message };
+  return { success: true, message: `KPI updated.`, kpi: data };
+}
+
+async function executeAddGamePlanNote(sb: any, args: any) {
+  const { data, error } = await sb.from('game_plan_notes').insert({
+    phase_id: args.phase_id,
+    content: args.content,
+    note_type: args.note_type || 'general',
+    is_pinned: args.is_pinned || false,
+  }).select().single();
+  if (error) return { error: error.message };
+  return { success: true, message: `Note added.`, note: data };
+}
+
+async function executeAddGamePlanAction(sb: any, args: any) {
+  const { count } = await sb.from('game_plan_actions').select('id', { count: 'exact', head: true }).eq('phase_id', args.phase_id);
+  const { data, error } = await sb.from('game_plan_actions').insert({
+    phase_id: args.phase_id,
+    title: args.title,
+    assignee: args.assignee || null,
+    display_order: (count || 0) + 1,
+  }).select().single();
+  if (error) return { error: error.message };
+  return { success: true, message: `Action item "${args.title}" added.`, action: data };
+}
+
+async function executeToggleGamePlanAction(sb: any, args: any) {
+  const { data, error } = await sb.from('game_plan_actions').update({
+    is_completed: args.is_completed,
+    completed_at: args.is_completed ? new Date().toISOString() : null,
+  }).eq('id', args.action_id).select().single();
+  if (error) return { error: error.message };
+  return { success: true, message: `Action item ${args.is_completed ? 'completed' : 'reopened'}.`, action: data };
+}
+
 // ============================================================
 
 const SYSTEM_PROMPT = `You are Aurixa, the AI operating assistant for the NPC Property Dashboard — a property investment and mortgage brokerage management platform used by Naidu Property Consulting Services.
