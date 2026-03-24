@@ -753,6 +753,243 @@ const TOOLS: any[] = [
     },
   },
 
+  // ─── GAME PLAN ───
+  {
+    type: "function",
+    function: {
+      name: "get_game_plans",
+      description: "List all internal game plans (strategic playbooks). Returns name, status, date range, and phase count.",
+      parameters: { type: "object", properties: { status: { type: "string", description: "Filter by status: planning, active, completed, archived" } } },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_game_plan_details",
+      description: "Get a game plan with all phases, milestones, KPIs, notes, and action items.",
+      parameters: { type: "object", properties: { plan_id: { type: "string", description: "UUID of the game plan" } }, required: ["plan_id"] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_game_plan",
+      description: "Create a new internal game plan / strategic playbook. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Plan name" },
+          description: { type: "string", description: "Plan description" },
+          icon: { type: "string", description: "Emoji icon (default: 🗺️)" },
+          status: { type: "string", enum: ["planning", "active"], description: "Initial status" },
+          start_date: { type: "string", description: "Start date (YYYY-MM-DD)" },
+          end_date: { type: "string", description: "End date (YYYY-MM-DD)" },
+        },
+        required: ["name"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_game_plan",
+      description: "Update a game plan's name, description, status, or dates. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          plan_id: { type: "string", description: "UUID of the game plan" },
+          name: { type: "string" },
+          description: { type: "string" },
+          status: { type: "string", enum: ["planning", "active", "completed", "archived"] },
+          start_date: { type: "string" },
+          end_date: { type: "string" },
+        },
+        required: ["plan_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "delete_game_plan",
+      description: "Delete a game plan and all its phases/milestones/KPIs/notes/actions. REQUIRES USER CONFIRMATION.",
+      parameters: { type: "object", properties: { plan_id: { type: "string", description: "UUID of the game plan" } }, required: ["plan_id"] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "add_game_plan_phase",
+      description: "Add a phase to a game plan. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          plan_id: { type: "string", description: "UUID of the game plan" },
+          name: { type: "string", description: "Phase name" },
+          description: { type: "string" },
+          status: { type: "string", enum: ["upcoming", "in_progress", "completed"] },
+          start_date: { type: "string" },
+          end_date: { type: "string" },
+          color: { type: "string", description: "Hex color for timeline bar" },
+        },
+        required: ["plan_id", "name"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_game_plan_phase",
+      description: "Update a phase's name, status, dates, or color. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          phase_id: { type: "string" },
+          name: { type: "string" },
+          description: { type: "string" },
+          status: { type: "string", enum: ["upcoming", "in_progress", "completed"] },
+          start_date: { type: "string" },
+          end_date: { type: "string" },
+          color: { type: "string" },
+        },
+        required: ["phase_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "delete_game_plan_phase",
+      description: "Delete a phase and all its child items. REQUIRES USER CONFIRMATION.",
+      parameters: { type: "object", properties: { phase_id: { type: "string" } }, required: ["phase_id"] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "add_game_plan_milestone",
+      description: "Add a milestone to a game plan phase. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          phase_id: { type: "string" },
+          title: { type: "string" },
+          description: { type: "string" },
+          due_date: { type: "string" },
+          owner: { type: "string" },
+          priority: { type: "string", enum: ["low", "medium", "high", "critical"] },
+        },
+        required: ["phase_id", "title"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_game_plan_milestone",
+      description: "Update a milestone (title, status, owner, due date, priority). REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          milestone_id: { type: "string" },
+          title: { type: "string" },
+          description: { type: "string" },
+          status: { type: "string", enum: ["pending", "in_progress", "completed", "blocked"] },
+          due_date: { type: "string" },
+          owner: { type: "string" },
+          priority: { type: "string", enum: ["low", "medium", "high", "critical"] },
+        },
+        required: ["milestone_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "add_game_plan_kpi",
+      description: "Add a KPI target to a game plan phase. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          phase_id: { type: "string" },
+          metric_name: { type: "string" },
+          target_value: { type: "number" },
+          current_value: { type: "number" },
+          unit: { type: "string", description: "e.g. %, $, count" },
+          format: { type: "string", enum: ["number", "currency", "percentage"] },
+        },
+        required: ["phase_id", "metric_name", "target_value"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_game_plan_kpi",
+      description: "Update a KPI's current value, target, or details. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          kpi_id: { type: "string" },
+          metric_name: { type: "string" },
+          target_value: { type: "number" },
+          current_value: { type: "number" },
+          unit: { type: "string" },
+          format: { type: "string", enum: ["number", "currency", "percentage"] },
+        },
+        required: ["kpi_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "add_game_plan_note",
+      description: "Add a strategy note to a game plan phase. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          phase_id: { type: "string" },
+          content: { type: "string" },
+          note_type: { type: "string", enum: ["decision", "risk", "idea", "general"], description: "Category of note" },
+          is_pinned: { type: "boolean" },
+        },
+        required: ["phase_id", "content"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "add_game_plan_action",
+      description: "Add an action item to a game plan phase. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          phase_id: { type: "string" },
+          title: { type: "string" },
+          assignee: { type: "string" },
+        },
+        required: ["phase_id", "title"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "toggle_game_plan_action",
+      description: "Toggle an action item's completion status. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          action_id: { type: "string" },
+          is_completed: { type: "boolean" },
+        },
+        required: ["action_id", "is_completed"],
+      },
+    },
+  },
+
   // ─── ANALYTICS & SYSTEM ───
   {
     type: "function",
