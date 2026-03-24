@@ -32,6 +32,7 @@ import {
   FileSignature,
   Globe,
   Send,
+  Map,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -66,6 +67,7 @@ const navigationItems = [
   { title: 'Reminders', url: '/reminders', icon: Bell, moduleKey: 'reminders' },
   { title: 'Checklists', url: '/checklists', icon: ClipboardList, moduleKey: 'checklists' },
   { title: 'Agreements', url: '/agreements', icon: FileSignature, moduleKey: 'agreements' },
+  { title: 'Game Plan', url: '/game-plan', icon: Map, moduleKey: 'game_plan' },
   { title: 'Marketing', url: '/marketing-analytics', icon: TrendingUp, moduleKey: 'marketing_analytics' },
   { title: 'Charts', url: '/charts', icon: BarChart3, moduleKey: 'charts' },
   { title: 'User Guide', url: '/user-guide', icon: BookOpen, moduleKey: 'user_guide' },

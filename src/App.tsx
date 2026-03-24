@@ -60,6 +60,7 @@ import DealPipeline from "./pages/DealPipeline";
 import RemindersHub from "./pages/RemindersHub";
 import Checklists from "./pages/Checklists";
 import Agreements from "./pages/Agreements";
+import GamePlan from "./pages/GamePlan";
 import NotFound from "./pages/NotFound";
 import { PortalAuthProvider } from "@/hooks/usePortalAuth";
 import { PortalProtectedRoute } from "@/components/portal/PortalProtectedRoute";
@@ -224,6 +225,7 @@ const App = () => (
                            <Route path="reminders" element={<RemindersHub />} />
                            <Route path="checklists" element={<Checklists />} />
                            <Route path="agreements" element={<Agreements />} />
+                           <Route path="game-plan" element={<GamePlan />} />
                            <Route path="portal-config" element={<PortalConfig />} />
                            <Route path="marketing-analytics" element={<MarketingAnalytics />} />
                         </Route>

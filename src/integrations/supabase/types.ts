@@ -4542,6 +4542,296 @@ export type Database = {
           },
         ]
       }
+      game_plan_actions: {
+        Row: {
+          assigned_to: string | null
+          completed_at: string | null
+          created_at: string
+          display_order: number
+          due_date: string | null
+          id: string
+          is_done: boolean
+          label: string
+          milestone_id: string | null
+          phase_id: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          created_at?: string
+          display_order?: number
+          due_date?: string | null
+          id?: string
+          is_done?: boolean
+          label: string
+          milestone_id?: string | null
+          phase_id: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          created_at?: string
+          display_order?: number
+          due_date?: string | null
+          id?: string
+          is_done?: boolean
+          label?: string
+          milestone_id?: string | null
+          phase_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_plan_actions_milestone_id_fkey"
+            columns: ["milestone_id"]
+            isOneToOne: false
+            referencedRelation: "game_plan_milestones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_plan_actions_phase_id_fkey"
+            columns: ["phase_id"]
+            isOneToOne: false
+            referencedRelation: "game_plan_phases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      game_plan_kpis: {
+        Row: {
+          created_at: string
+          current_value: number
+          display_order: number
+          icon: string | null
+          id: string
+          metric_name: string
+          phase_id: string
+          target_value: number
+          unit: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_value?: number
+          display_order?: number
+          icon?: string | null
+          id?: string
+          metric_name: string
+          phase_id: string
+          target_value?: number
+          unit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_value?: number
+          display_order?: number
+          icon?: string | null
+          id?: string
+          metric_name?: string
+          phase_id?: string
+          target_value?: number
+          unit?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_plan_kpis_phase_id_fkey"
+            columns: ["phase_id"]
+            isOneToOne: false
+            referencedRelation: "game_plan_phases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      game_plan_milestones: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          description: string | null
+          display_order: number
+          due_date: string | null
+          id: string
+          owner: string | null
+          phase_id: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          due_date?: string | null
+          id?: string
+          owner?: string | null
+          phase_id: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          due_date?: string | null
+          id?: string
+          owner?: string | null
+          phase_id?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_plan_milestones_phase_id_fkey"
+            columns: ["phase_id"]
+            isOneToOne: false
+            referencedRelation: "game_plan_phases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      game_plan_notes: {
+        Row: {
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_pinned: boolean
+          note_type: string
+          phase_id: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_pinned?: boolean
+          note_type?: string
+          phase_id: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_pinned?: boolean
+          note_type?: string
+          phase_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_plan_notes_phase_id_fkey"
+            columns: ["phase_id"]
+            isOneToOne: false
+            referencedRelation: "game_plan_phases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      game_plan_phases: {
+        Row: {
+          color: string | null
+          created_at: string
+          description: string | null
+          display_order: number
+          end_date: string | null
+          icon: string | null
+          id: string
+          name: string
+          plan_id: string
+          start_date: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          end_date?: string | null
+          icon?: string | null
+          id?: string
+          name: string
+          plan_id: string
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          end_date?: string | null
+          icon?: string | null
+          id?: string
+          name?: string
+          plan_id?: string
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_plan_phases_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "game_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      game_plans: {
+        Row: {
+          color: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          end_date: string | null
+          icon: string | null
+          id: string
+          name: string
+          start_date: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          end_date?: string | null
+          icon?: string | null
+          id?: string
+          name: string
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          end_date?: string | null
+          icon?: string | null
+          id?: string
+          name?: string
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       gamma_agreement_templates: {
         Row: {
           created_at: string | null
