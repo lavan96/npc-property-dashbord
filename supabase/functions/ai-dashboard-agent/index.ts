@@ -6214,6 +6214,7 @@ You have access to 200+ specialized tools across 51 domains:
 📣 MARKETING ANALYTICS — Lead source attributions (UTM/Meta Ads), attribution summaries, campaign performance with conversion rates, full marketing funnel (impressions → leads → deals → ROI), saved marketing reports, per-client lead source lookup.
 🌐 CLIENT PORTAL — Portal user list with status, portal overview (adoption rate, active sessions, login activity), per-client portal access check.
 🔔 APPOINTMENT NOTIFICATIONS — Secondary recipient notification history for appointments.
+🗺️ GAME PLAN — Full CRUD for internal strategic game plans: create/update/delete plans, add/update/delete phases with timeline, milestones with owners & priorities, KPI targets with current vs target tracking, strategy notes (decision/risk/idea), and action items with completion toggling.
 
 CRITICAL RULES:
 1. When the user asks about a client, ALWAYS use search_clients first to find their ID, then use that EXACT ID (copy-paste the UUID) for ALL subsequent tool calls. NEVER invent, guess, or modify a client UUID — always use the exact value returned by search_clients.
