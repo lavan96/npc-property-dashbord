@@ -225,6 +225,7 @@ const App = () => (
                            <Route path="reminders" element={<RemindersHub />} />
                            <Route path="checklists" element={<Checklists />} />
                            <Route path="agreements" element={<Agreements />} />
+                           <Route path="game-plan" element={<GamePlan />} />
                            <Route path="portal-config" element={<PortalConfig />} />
                            <Route path="marketing-analytics" element={<MarketingAnalytics />} />
                         </Route>

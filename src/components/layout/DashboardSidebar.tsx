@@ -32,6 +32,7 @@ import {
   FileSignature,
   Globe,
   Send,
+  Map,
 } from 'lucide-react';
 import {
   Sidebar,
