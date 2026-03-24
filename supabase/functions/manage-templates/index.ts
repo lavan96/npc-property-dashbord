@@ -55,6 +55,12 @@ const DEFAULT_SELECTS: Record<TableName, string> = {
   checklist_template_items: '*',
   checklist_instances: '*',
   checklist_instance_items: '*',
+  game_plans: '*',
+  game_plan_phases: '*',
+  game_plan_milestones: '*',
+  game_plan_kpis: '*',
+  game_plan_notes: '*',
+  game_plan_actions: '*',
 };
 
 serve(async (req) => {
