@@ -1,10 +1,17 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, Users, MessageSquare, Tag, Workflow, RefreshCw, ExternalLink, Bot, MousePointerClick } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Separator } from '@/components/ui/separator';
+import {
+  Loader2, Users, MessageSquare, Tag, Workflow, RefreshCw,
+  Bot, MousePointerClick, Search, User, Clock, Globe,
+  Shield, Database, ChevronDown, ChevronUp, ExternalLink, Hash,
+  Zap, Settings2, Info
+} from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ManyChatOverview {
@@ -12,9 +19,24 @@ interface ManyChatOverview {
   tags: any[];
   flows: any[];
   widgets: any[];
+  customFields: any[];
+  botFields: any[];
 }
 
 export function ManyChatPanel() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<any[] | null>(null);
+  const [selectedSubscriber, setSelectedSubscriber] = useState<any | null>(null);
+  const [loadingSubscriber, setLoadingSubscriber] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    widgets: true,
+    tags: false,
+    fields: false,
+    botFields: false,
+    flows: false,
+  });
+
   const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ['manychat-overview'],
     queryFn: async () => {
@@ -32,11 +54,58 @@ export function ManyChatPanel() {
   const tags = data?.tags || [];
   const flows = data?.flows || [];
   const widgets = data?.widgets || [];
+  const customFields = data?.customFields || [];
+  const botFields = data?.botFields || [];
 
   const handleRefresh = () => {
     refetch();
     toast.success('Refreshing ManyChat data...');
   };
+
+  const toggleSection = (section: string) => {
+    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
+
+  const handleSearch = useCallback(async () => {
+    if (!searchQuery.trim() || searchQuery.trim().length < 2) {
+      toast.error('Enter at least 2 characters to search');
+      return;
+    }
+    setIsSearching(true);
+    setSelectedSubscriber(null);
+    try {
+      const { data, error } = await invokeSecureFunction('manychat-proxy', {
+        action: 'find_subscriber',
+        name: searchQuery.trim(),
+      });
+      if (error) throw new Error(error.message);
+      setSearchResults(data?.subscribers || []);
+      if (!data?.subscribers?.length) {
+        toast.info('No subscribers found');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Search failed');
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  }, [searchQuery]);
+
+  const handleViewSubscriber = useCallback(async (subscriberId: string) => {
+    setLoadingSubscriber(true);
+    try {
+      const { data, error } = await invokeSecureFunction('manychat-proxy', {
+        action: 'get_subscriber',
+        subscriberId,
+      });
+      if (error) throw new Error(error.message);
+      setSelectedSubscriber(data?.subscriber || null);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to load subscriber');
+    } finally {
+      setLoadingSubscriber(false);
+    }
+  }, []);
 
   if (error) {
     const errMsg = (error as Error).message;
@@ -45,13 +114,13 @@ export function ManyChatPanel() {
     return (
       <Card className="border-dashed">
         <CardContent className="py-12 text-center">
-          <Bot className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+          <Bot className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
           <h3 className="text-lg font-semibold text-foreground mb-1">
             {isNotConfigured ? 'ManyChat Not Connected' : 'Connection Error'}
           </h3>
           <p className="text-sm text-muted-foreground max-w-md mx-auto mb-4">
             {isNotConfigured
-              ? 'Add your ManyChat API key in Integrations to enable this dashboard.'
+              ? 'Add your ManyChat API key in the Integrations page to enable this dashboard.'
               : errMsg}
           </p>
           {!isNotConfigured && (
@@ -67,15 +136,15 @@ export function ManyChatPanel() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header with Refresh */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-            <Bot className="h-5 w-5 text-blue-500" />
+          <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+            <Bot className="h-5 w-5 text-primary" />
           </div>
           <div>
             <h2 className="text-xl font-bold tracking-tight text-foreground">ManyChat</h2>
-            <p className="text-muted-foreground text-sm">Chat automation performance & metrics</p>
+            <p className="text-muted-foreground text-sm">Chat automation & subscriber management</p>
           </div>
         </div>
         <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isFetching}>
@@ -84,203 +153,507 @@ export function ManyChatPanel() {
         </Button>
       </div>
 
-      {/* Page Info / KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <KPICard
-          icon={<Users className="h-4 w-4" />}
-          label="Subscribers"
-          value={isLoading ? '...' : formatNum(pageInfo?.subscribers || 0)}
-          loading={isLoading}
-        />
-        <KPICard
-          icon={<Workflow className="h-4 w-4" />}
-          label="Flows"
-          value={isLoading ? '...' : String(flows.length)}
-          loading={isLoading}
-        />
-        <KPICard
-          icon={<Tag className="h-4 w-4" />}
-          label="Tags"
-          value={isLoading ? '...' : String(tags.length)}
-          loading={isLoading}
-        />
-        <KPICard
-          icon={<MousePointerClick className="h-4 w-4" />}
-          label="Growth Tools"
-          value={isLoading ? '...' : String(widgets.length)}
-          loading={isLoading}
-        />
-      </div>
-
-      {/* Page Details */}
-      {pageInfo && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Connected Page</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-4">
-              {pageInfo.avatar && (
-                <img src={pageInfo.avatar} alt={pageInfo.name} className="h-12 w-12 rounded-full" />
-              )}
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-foreground truncate">{pageInfo.name || 'Facebook Page'}</p>
-                <p className="text-sm text-muted-foreground">
-                  {formatNum(pageInfo.subscribers || 0)} subscribers
-                </p>
-              </div>
-              <Badge variant={pageInfo.is_pro ? 'default' : 'secondary'}>
-                {pageInfo.is_pro ? 'Pro' : 'Free'}
-              </Badge>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Flows & Tags side by side */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Flows */}
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Workflow className="h-4 w-4" />
-                  Flows
-                </CardTitle>
-                <CardDescription>Active automation flows</CardDescription>
-              </div>
-              <Badge variant="outline">{flows.length}</Badge>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-              </div>
-            ) : flows.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">No flows found</p>
-            ) : (
-              <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                {flows.map((flow: any, i: number) => (
-                  <div key={flow.ns_id || i} className="flex items-center justify-between p-2.5 rounded-md bg-muted/50 hover:bg-muted transition-colors">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{flow.name || `Flow ${i + 1}`}</p>
-                      {flow.folder_name && (
-                        <p className="text-xs text-muted-foreground">{flow.folder_name}</p>
-                      )}
-                    </div>
-                    <Badge variant={flow.status === 'active' ? 'default' : 'secondary'} className="text-xs ml-2 shrink-0">
-                      {flow.status || 'unknown'}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Tags */}
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Tag className="h-4 w-4" />
-                  Tags
-                </CardTitle>
-                <CardDescription>Subscriber segmentation tags</CardDescription>
-              </div>
-              <Badge variant="outline">{tags.length}</Badge>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-              </div>
-            ) : tags.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">No tags found</p>
-            ) : (
-              <div className="flex flex-wrap gap-2 max-h-[300px] overflow-y-auto">
-                {tags.map((tag: any, i: number) => (
-                  <Badge key={tag.id || i} variant="outline" className="text-xs">
-                    {tag.name || `Tag ${i + 1}`}
-                  </Badge>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Growth Tools / Widgets */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-base flex items-center gap-2">
-                <MousePointerClick className="h-4 w-4" />
-                Growth Tools
-              </CardTitle>
-              <CardDescription>Opt-in widgets and subscriber acquisition tools</CardDescription>
-            </div>
-            <Badge variant="outline">{widgets.length}</Badge>
-          </div>
-        </CardHeader>
-        <CardContent>
+      {/* Connected Account Card */}
+      <Card className="overflow-hidden">
+        <div className="bg-gradient-to-r from-primary/5 to-primary/[0.02] p-5">
           {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            <div className="flex items-center gap-4">
+              <div className="h-14 w-14 rounded-full bg-muted animate-pulse" />
+              <div className="space-y-2 flex-1">
+                <div className="h-5 w-48 bg-muted animate-pulse rounded" />
+                <div className="h-4 w-32 bg-muted animate-pulse rounded" />
+              </div>
             </div>
-          ) : widgets.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">No growth tools configured</p>
-          ) : (
-            <div className="space-y-2 max-h-[300px] overflow-y-auto">
-              {widgets.map((widget: any, i: number) => (
-                <div key={widget.id || i} className="flex items-center justify-between p-2.5 rounded-md bg-muted/50 hover:bg-muted transition-colors">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{widget.name || `Widget ${i + 1}`}</p>
-                    {widget.type && (
-                      <p className="text-xs text-muted-foreground capitalize">{widget.type.replace(/_/g, ' ')}</p>
-                    )}
-                  </div>
-                  <Badge variant={widget.status === 'active' ? 'default' : 'secondary'} className="text-xs ml-2 shrink-0">
-                    {widget.status || 'unknown'}
+          ) : pageInfo ? (
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                {pageInfo.avatar_link ? (
+                  <img src={pageInfo.avatar_link} alt={pageInfo.name} className="h-14 w-14 rounded-full" />
+                ) : (
+                  <Bot className="h-7 w-7 text-primary" />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="font-semibold text-foreground text-lg truncate">{pageInfo.name || 'ManyChat Account'}</h3>
+                  <Badge variant={pageInfo.is_pro ? 'default' : 'secondary'} className="shrink-0">
+                    {pageInfo.is_pro ? '⭐ Pro' : 'Free'}
                   </Badge>
                 </div>
-              ))}
+                <div className="flex items-center gap-4 mt-1.5 text-sm text-muted-foreground flex-wrap">
+                  {pageInfo.timezone && (
+                    <span className="flex items-center gap-1">
+                      <Globe className="h-3.5 w-3.5" />
+                      {pageInfo.timezone}
+                    </span>
+                  )}
+                  {pageInfo.category && (
+                    <span className="flex items-center gap-1">
+                      <Tag className="h-3.5 w-3.5" />
+                      {pageInfo.category}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </div>
+        
+        {/* Quick Stats Row */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-border border-t">
+          <QuickStat
+            icon={<MousePointerClick className="h-4 w-4" />}
+            label="Growth Tools"
+            value={isLoading ? '—' : String(widgets.length)}
+            loading={isLoading}
+          />
+          <QuickStat
+            icon={<Tag className="h-4 w-4" />}
+            label="Tags"
+            value={isLoading ? '—' : String(tags.length)}
+            loading={isLoading}
+          />
+          <QuickStat
+            icon={<Database className="h-4 w-4" />}
+            label="Custom Fields"
+            value={isLoading ? '—' : String(customFields.length)}
+            loading={isLoading}
+          />
+          <QuickStat
+            icon={<Workflow className="h-4 w-4" />}
+            label="Flows"
+            value={isLoading ? '—' : String(flows.length)}
+            loading={isLoading}
+          />
+        </div>
+      </Card>
+
+      {/* Subscriber Search */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Search className="h-4 w-4" />
+            Subscriber Search
+          </CardTitle>
+          <CardDescription>Search ManyChat subscribers by name</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex gap-2">
+            <Input
+              placeholder="Search by name..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+              className="flex-1"
+            />
+            <Button onClick={handleSearch} disabled={isSearching} size="sm">
+              {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+              <span className="ml-1.5 hidden sm:inline">Search</span>
+            </Button>
+          </div>
+
+          {/* Search Results */}
+          {searchResults !== null && (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                {searchResults.length} result{searchResults.length !== 1 ? 's' : ''} found
+              </p>
+              {searchResults.length === 0 ? (
+                <div className="text-center py-6 text-muted-foreground text-sm">
+                  No subscribers match "{searchQuery}"
+                </div>
+              ) : (
+                <div className="space-y-1.5 max-h-[250px] overflow-y-auto">
+                  {searchResults.map((sub: any) => (
+                    <div
+                      key={sub.id}
+                      className="flex items-center justify-between p-3 rounded-lg bg-muted/40 hover:bg-muted/70 transition-colors cursor-pointer"
+                      onClick={() => handleViewSubscriber(sub.id)}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                          {sub.profile_pic ? (
+                            <img src={sub.profile_pic} alt={sub.name} className="h-9 w-9 rounded-full" />
+                          ) : (
+                            <User className="h-4 w-4 text-primary" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">
+                            {sub.first_name} {sub.last_name}
+                          </p>
+                          {sub.gender && (
+                            <p className="text-xs text-muted-foreground">{sub.gender}</p>
+                          )}
+                        </div>
+                      </div>
+                      <Badge variant="outline" className="text-xs shrink-0 ml-2">View</Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
+
+          {/* Selected Subscriber Detail */}
+          {loadingSubscriber && (
+            <div className="flex items-center justify-center py-6">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              <span className="ml-2 text-sm text-muted-foreground">Loading subscriber details...</span>
+            </div>
+          )}
+          {selectedSubscriber && !loadingSubscriber && (
+            <SubscriberDetail subscriber={selectedSubscriber} onClose={() => setSelectedSubscriber(null)} />
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Growth Tools */}
+      <CollapsibleSection
+        title="Growth Tools"
+        description="Subscriber acquisition triggers & widgets"
+        icon={<MousePointerClick className="h-4 w-4" />}
+        count={widgets.length}
+        expanded={expandedSections.widgets}
+        onToggle={() => toggleSection('widgets')}
+        loading={isLoading}
+      >
+        {widgets.length === 0 ? (
+          <EmptyState message="No growth tools configured yet" />
+        ) : (
+          <div className="space-y-2">
+            {widgets.map((widget: any, i: number) => (
+              <div key={widget.id || i} className="flex items-center justify-between p-3 rounded-lg bg-muted/40 hover:bg-muted/60 transition-colors">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className="h-8 w-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+                    <Zap className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{widget.name || `Widget ${i + 1}`}</p>
+                    <p className="text-xs text-muted-foreground capitalize">{(widget.type || 'unknown').replace(/_/g, ' ')}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 ml-2 shrink-0">
+                  <Badge variant="outline" className="text-xs">
+                    ID: {widget.id}
+                  </Badge>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CollapsibleSection>
+
+      {/* Tags */}
+      <CollapsibleSection
+        title="Tags"
+        description="Subscriber segmentation labels"
+        icon={<Tag className="h-4 w-4" />}
+        count={tags.length}
+        expanded={expandedSections.tags}
+        onToggle={() => toggleSection('tags')}
+        loading={isLoading}
+      >
+        {tags.length === 0 ? (
+          <EmptyState message="No tags created yet. Tags will appear here once you create them in ManyChat." />
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {tags.map((tag: any, i: number) => (
+              <Badge key={tag.id || i} variant="secondary" className="text-xs px-3 py-1.5">
+                <Hash className="h-3 w-3 mr-1" />
+                {tag.name || `Tag ${i + 1}`}
+              </Badge>
+            ))}
+          </div>
+        )}
+      </CollapsibleSection>
+
+      {/* Custom Fields */}
+      <CollapsibleSection
+        title="Custom Fields"
+        description="Subscriber data fields for personalization"
+        icon={<Database className="h-4 w-4" />}
+        count={customFields.length}
+        expanded={expandedSections.fields}
+        onToggle={() => toggleSection('fields')}
+        loading={isLoading}
+      >
+        {customFields.length === 0 ? (
+          <EmptyState message="No custom fields defined yet. Custom fields will appear here once you create them in ManyChat." />
+        ) : (
+          <div className="space-y-1.5">
+            {customFields.map((field: any, i: number) => (
+              <div key={field.id || i} className="flex items-center justify-between p-2.5 rounded-md bg-muted/40">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Settings2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <span className="text-sm text-foreground truncate">{field.name}</span>
+                </div>
+                <div className="flex items-center gap-2 ml-2 shrink-0">
+                  {field.type && (
+                    <Badge variant="outline" className="text-xs capitalize">{field.type}</Badge>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CollapsibleSection>
+
+      {/* Bot Fields */}
+      <CollapsibleSection
+        title="Bot Fields"
+        description="Global bot-level variables"
+        icon={<Bot className="h-4 w-4" />}
+        count={botFields.length}
+        expanded={expandedSections.botFields}
+        onToggle={() => toggleSection('botFields')}
+        loading={isLoading}
+      >
+        {botFields.length === 0 ? (
+          <EmptyState message="No bot fields defined yet." />
+        ) : (
+          <div className="space-y-1.5">
+            {botFields.map((field: any, i: number) => (
+              <div key={field.id || i} className="flex items-center justify-between p-2.5 rounded-md bg-muted/40">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Settings2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <span className="text-sm text-foreground truncate">{field.name}</span>
+                </div>
+                <div className="flex items-center gap-2 ml-2 shrink-0">
+                  {field.type && (
+                    <Badge variant="outline" className="text-xs capitalize">{field.type}</Badge>
+                  )}
+                  {field.value !== undefined && field.value !== null && (
+                    <span className="text-xs text-muted-foreground font-mono">{String(field.value)}</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CollapsibleSection>
+
+      {/* Flows */}
+      <CollapsibleSection
+        title="Flows"
+        description="Automation sequences and conversation flows"
+        icon={<Workflow className="h-4 w-4" />}
+        count={flows.length}
+        expanded={expandedSections.flows}
+        onToggle={() => toggleSection('flows')}
+        loading={isLoading}
+      >
+        {flows.length === 0 ? (
+          <EmptyState message="No flows available via API. Instagram accounts may have limited flow visibility through the API." />
+        ) : (
+          <div className="space-y-2">
+            {flows.map((flow: any, i: number) => (
+              <div key={flow.ns_id || i} className="flex items-center justify-between p-3 rounded-lg bg-muted/40">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{flow.name || `Flow ${i + 1}`}</p>
+                  {flow.folder_name && (
+                    <p className="text-xs text-muted-foreground">{flow.folder_name}</p>
+                  )}
+                </div>
+                <Badge variant={flow.status === 'active' ? 'default' : 'secondary'} className="text-xs ml-2 shrink-0">
+                  {flow.status || 'unknown'}
+                </Badge>
+              </div>
+            ))}
+          </div>
+        )}
+      </CollapsibleSection>
+
+      {/* Info Footer */}
+      <Card className="border-dashed">
+        <CardContent className="py-3 px-4">
+          <div className="flex items-start gap-2">
+            <Info className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+            <p className="text-xs text-muted-foreground">
+              Data is fetched live from the ManyChat API. Some features (e.g., flow analytics, subscriber counts) may have limited availability depending on your account type and connected channel (Instagram vs. Messenger). 
+              Manage your automations directly in{' '}
+              <a href="https://manychat.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-0.5">
+                ManyChat <ExternalLink className="h-3 w-3" />
+              </a>
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>
   );
 }
 
-function KPICard({ icon, label, value, loading }: {
+/* ─── Sub-components ─── */
+
+function QuickStat({ icon, label, value, loading }: {
   icon: React.ReactNode;
   label: string;
   value: string;
   loading: boolean;
 }) {
   return (
+    <div className="px-4 py-3 text-center">
+      <div className="flex items-center justify-center gap-1.5 text-muted-foreground mb-1">
+        {icon}
+        <span className="text-[10px] font-medium uppercase tracking-wider">{label}</span>
+      </div>
+      {loading ? (
+        <div className="h-6 w-8 bg-muted animate-pulse rounded mx-auto" />
+      ) : (
+        <p className="text-lg font-bold text-foreground">{value}</p>
+      )}
+    </div>
+  );
+}
+
+function CollapsibleSection({ title, description, icon, count, expanded, onToggle, loading, children }: {
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  count: number;
+  expanded: boolean;
+  onToggle: () => void;
+  loading: boolean;
+  children: React.ReactNode;
+}) {
+  return (
     <Card>
-      <CardContent className="pt-4 pb-3 px-4">
-        <div className="flex items-center gap-2 text-muted-foreground mb-1.5">
-          {icon}
-          <span className="text-[11px] font-medium uppercase tracking-wider">{label}</span>
+      <div
+        className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-muted/30 transition-colors"
+        onClick={onToggle}
+      >
+        <div className="flex items-center gap-3">
+          <div className="text-muted-foreground">{icon}</div>
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+            <p className="text-xs text-muted-foreground">{description}</p>
+          </div>
         </div>
-        {loading ? (
-          <div className="h-7 w-20 bg-muted animate-pulse rounded mt-0.5" />
-        ) : (
-          <p className="text-xl font-bold tracking-tight text-foreground">{value}</p>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-xs">{loading ? '...' : count}</Badge>
+          {expanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+        </div>
+      </div>
+      {expanded && (
+        <CardContent className="pt-0 pb-4">
+          <Separator className="mb-4" />
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            children
+          )}
+        </CardContent>
+      )}
+    </Card>
+  );
+}
+
+function EmptyState({ message }: { message: string }) {
+  return (
+    <div className="text-center py-6">
+      <p className="text-sm text-muted-foreground">{message}</p>
+    </div>
+  );
+}
+
+function SubscriberDetail({ subscriber, onClose }: { subscriber: any; onClose: () => void }) {
+  return (
+    <Card className="border-primary/20 bg-primary/[0.02]">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+              {subscriber.profile_pic ? (
+                <img src={subscriber.profile_pic} alt="Profile" className="h-10 w-10 rounded-full" />
+              ) : (
+                <User className="h-5 w-5 text-primary" />
+              )}
+            </div>
+            <div>
+              <CardTitle className="text-base">
+                {subscriber.first_name} {subscriber.last_name}
+              </CardTitle>
+              {subscriber.name && (
+                <CardDescription>{subscriber.name}</CardDescription>
+              )}
+            </div>
+          </div>
+          <Button variant="ghost" size="sm" onClick={onClose}>✕</Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+          {subscriber.gender && (
+            <InfoRow label="Gender" value={subscriber.gender} />
+          )}
+          {subscriber.language && (
+            <InfoRow label="Language" value={subscriber.language} />
+          )}
+          {subscriber.timezone && (
+            <InfoRow label="Timezone" value={subscriber.timezone} />
+          )}
+          {subscriber.subscribed && (
+            <InfoRow label="Subscribed" value={new Date(subscriber.subscribed).toLocaleDateString('en-AU')} />
+          )}
+          {subscriber.last_interaction && (
+            <InfoRow label="Last Interaction" value={new Date(subscriber.last_interaction).toLocaleDateString('en-AU')} />
+          )}
+          {subscriber.live_chat_url && (
+            <div className="col-span-full">
+              <a
+                href={subscriber.live_chat_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary text-sm hover:underline inline-flex items-center gap-1"
+              >
+                Open in ManyChat <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            </div>
+          )}
+        </div>
+
+        {/* Tags */}
+        {subscriber.tags && subscriber.tags.length > 0 && (
+          <div className="mt-4">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Tags</p>
+            <div className="flex flex-wrap gap-1.5">
+              {subscriber.tags.map((tag: any) => (
+                <Badge key={tag.id} variant="secondary" className="text-xs">
+                  {tag.name}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Custom Fields */}
+        {subscriber.custom_fields && subscriber.custom_fields.length > 0 && (
+          <div className="mt-4">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Custom Fields</p>
+            <div className="space-y-1.5">
+              {subscriber.custom_fields
+                .filter((f: any) => f.value !== null && f.value !== '')
+                .map((field: any) => (
+                  <div key={field.id} className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">{field.name}</span>
+                    <span className="text-foreground font-medium">{String(field.value)}</span>
+                  </div>
+                ))}
+            </div>
+          </div>
         )}
       </CardContent>
     </Card>
   );
 }
 
-function formatNum(n: number): string {
-  return n.toLocaleString('en-AU');
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="text-foreground font-medium">{value}</span>
+    </div>
+  );
 }
