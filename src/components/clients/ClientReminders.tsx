@@ -464,10 +464,10 @@ export function ClientReminders({ clientId, followUpDate }: ClientRemindersProps
             </div>
             <div className="space-y-1">
               <label className="text-xs text-muted-foreground">Assign To</label>
-              <TeamUserSelect
+              <MultiTeamUserSelect
                 value={assignedTo}
                 onValueChange={setAssignedTo}
-                placeholder="Assign to team member..."
+                placeholder="Assign to team members..."
               />
             </div>
             <div className="flex gap-2">
