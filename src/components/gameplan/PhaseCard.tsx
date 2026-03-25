@@ -268,3 +268,100 @@ function Section({ title, icon, count, children }: { title: string; icon: React.
     </div>
   );
 }
+
+function NoteCard({ note, mutations, noteTypeColors }: { note: GamePlanNote; mutations: any; noteTypeColors: Record<string, string> }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(note.content);
+
+  const handleSave = () => {
+    if (editContent.trim()) {
+      mutations.notes.update.mutate({ id: note.id, content: editContent.trim() });
+    }
+    setIsEditing(false);
+  };
+
+  return (
+    <div className={cn('rounded-lg border p-2.5 text-sm group relative', noteTypeColors[note.note_type] || 'border-border')}>
+      {note.is_pinned && <Pin className="absolute top-2 right-2 h-3 w-3 text-primary" />}
+      <div className="flex items-center gap-1.5 mb-1">
+        <Badge variant="outline" className="text-[9px] uppercase">{note.note_type}</Badge>
+      </div>
+      {isEditing ? (
+        <div className="space-y-2">
+          <RichTextEditor value={editContent} onChange={setEditContent} rows={3} />
+          <div className="flex gap-1.5">
+            <Button size="sm" className="h-7 text-xs" onClick={handleSave}>Save</Button>
+            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setIsEditing(false); setEditContent(note.content); }}>Cancel</Button>
+          </div>
+        </div>
+      ) : (
+        <div className="text-foreground cursor-pointer" onDoubleClick={() => setIsEditing(true)}>
+          <InlineMarkdown content={note.content} />
+        </div>
+      )}
+      <div className="flex items-center justify-between mt-2">
+        <span className="text-[10px] text-muted-foreground">{new Date(note.created_at).toLocaleDateString()}</span>
+        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsEditing(true)} title="Edit note">
+            <StickyNote className="h-3 w-3 text-muted-foreground" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => mutations.notes.update.mutate({ id: note.id, is_pinned: !note.is_pinned })}>
+            <Pin className={cn('h-3 w-3', note.is_pinned ? 'text-primary' : 'text-muted-foreground')} />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => mutations.notes.remove.mutate(note.id)}>
+            <Trash2 className="h-3 w-3 text-muted-foreground" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Renders basic inline markdown: **bold**, _italic_, `code`, [links](url) */
+function InlineMarkdown({ content }: { content: string }) {
+  const lines = content.split('\n');
+  return (
+    <div className="space-y-0.5 text-sm">
+      {lines.map((line, i) => {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('## ')) return <p key={i} className="font-semibold text-foreground">{renderInline(trimmed.slice(3))}</p>;
+        if (trimmed.startsWith('> ')) return <p key={i} className="border-l-2 border-primary/40 pl-2 italic text-muted-foreground">{renderInline(trimmed.slice(2))}</p>;
+        if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) return <p key={i} className="flex gap-1.5"><span className="text-primary">•</span>{renderInline(trimmed.slice(2))}</p>;
+        if (/^\d+\.\s/.test(trimmed)) { const m = trimmed.match(/^(\d+)\.\s(.*)$/); return m ? <p key={i} className="flex gap-1.5"><span className="text-primary font-medium">{m[1]}.</span>{renderInline(m[2])}</p> : <p key={i}>{trimmed}</p>; }
+        if (trimmed === '') return <div key={i} className="h-1" />;
+        return <p key={i}>{renderInline(trimmed)}</p>;
+      })}
+    </div>
+  );
+}
+
+function renderInline(text: string): React.ReactNode {
+  // Simple regex-based inline formatting
+  const parts: React.ReactNode[] = [];
+  let remaining = text;
+  let k = 0;
+
+  while (remaining.length > 0) {
+    const bold = remaining.match(/\*\*(.+?)\*\*/);
+    const italic = remaining.match(/_(.+?)_/);
+    const code = remaining.match(/`(.+?)`/);
+    const link = remaining.match(/\[(.+?)\]\((.+?)\)/);
+
+    const candidates = [
+      bold ? { t: 'b', m: bold, i: bold.index! } : null,
+      italic ? { t: 'i', m: italic, i: italic.index! } : null,
+      code ? { t: 'c', m: code, i: code.index! } : null,
+      link ? { t: 'l', m: link, i: link.index! } : null,
+    ].filter(Boolean).sort((a, b) => a!.i - b!.i);
+
+    if (!candidates.length) { parts.push(remaining); break; }
+    const f = candidates[0]!;
+    if (f.i > 0) parts.push(remaining.substring(0, f.i));
+    if (f.t === 'b') parts.push(<strong key={k++}>{f.m![1]}</strong>);
+    else if (f.t === 'i') parts.push(<em key={k++}>{f.m![1]}</em>);
+    else if (f.t === 'c') parts.push(<code key={k++} className="px-1 py-0.5 rounded bg-muted text-[0.85em] font-mono">{f.m![1]}</code>);
+    else if (f.t === 'l') parts.push(<a key={k++} href={f.m![2]} className="text-primary underline" target="_blank" rel="noopener noreferrer">{f.m![1]}</a>);
+    remaining = remaining.substring(f.i + f.m![0].length);
+  }
+  return <>{parts}</>;
+}
