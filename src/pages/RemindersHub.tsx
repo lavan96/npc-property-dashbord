@@ -76,6 +76,7 @@ export default function RemindersHub() {
   const { data: reminders = [], isLoading } = useAllReminders();
   const navigate = useNavigate();
 
+  const [reminderTab, setReminderTab] = useState<ReminderTab>('client');
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all');
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>('all');
