@@ -214,40 +214,45 @@ export function ClientReminders({ clientId, followUpDate }: ClientRemindersProps
 
   const addReminderMutation = useMutation({
     mutationFn: async () => {
-      const assignedUserId = assignedTo !== 'unassigned' ? assignedTo : null;
+      const assignedUserIds = assignedTo.length > 0 ? assignedTo : null;
       const { data, error } = await invokeSecureFunction('manage-client-data', {
         operation: 'create',
         table: 'client_reminders',
         clientId,
         data: {
+          client_id: clientId,
           title,
           description,
           due_date: new Date(dueDate).toISOString(),
           priority,
           reminder_type: reminderType,
-          assigned_to: assignedUserId,
+          assigned_to: assignedUserIds,
+          reminder_scope: 'client',
         },
       });
 
       if (error) throw new Error(error.message);
       if (!data?.success) throw new Error(data?.error || 'Failed to create reminder');
-      return assignedUserId;
+      return assignedUserIds;
     },
-    onSuccess: (assignedUserId) => {
+    onSuccess: (assignedUserIds) => {
       queryClient.invalidateQueries({ queryKey: ['client-reminders', clientId] });
       queryClient.invalidateQueries({ queryKey: ['all-reminders'] });
       toast.success('Reminder created');
 
-      // Send notification to assigned user (if not self)
-      if (assignedUserId && assignedUserId !== user?.id) {
-        const assignedUser = teamUsers.find(u => u.id === assignedUserId);
-        addNotification({
-          type: 'reminder_assigned',
-          title: `Reminder Assigned: ${title}`,
-          message: `You have been assigned a ${priority} priority reminder: "${title}"`,
-          entityId: clientId,
-          targetUserId: assignedUserId,
-        });
+      // Send notification to assigned users (if not self)
+      if (assignedUserIds) {
+        for (const userId of assignedUserIds) {
+          if (userId !== user?.id) {
+            addNotification({
+              type: 'reminder_assigned',
+              title: `Reminder Assigned: ${title}`,
+              message: `You have been assigned a ${priority} priority reminder: "${title}"`,
+              entityId: clientId,
+              targetUserId: userId,
+            });
+          }
+        }
       }
 
       resetForm();
