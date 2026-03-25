@@ -636,12 +636,14 @@ export function ClientReminders({ clientId, followUpDate }: ClientRemindersProps
                               {format(new Date(reminder.due_date), 'MMM d, yyyy h:mm a')} · {dueStatus.label}
                             </span>
                           </div>
-                          {reminder.assigned_to && (() => {
-                            const assignee = teamUsers.find(u => u.id === reminder.assigned_to);
-                            return assignee ? (
+                          {reminder.assigned_to && Array.isArray(reminder.assigned_to) && reminder.assigned_to.length > 0 && (() => {
+                            const names = reminder.assigned_to
+                              .map((id: string) => teamUsers.find(u => u.id === id)?.username)
+                              .filter(Boolean);
+                            return names.length > 0 ? (
                               <div className="flex items-center gap-1">
                                 <UserCircle className="h-3 w-3 text-muted-foreground" />
-                                <span className="text-xs text-muted-foreground">{assignee.username}</span>
+                                <span className="text-xs text-muted-foreground">{names.join(', ')}</span>
                               </div>
                             ) : null;
                           })()}
