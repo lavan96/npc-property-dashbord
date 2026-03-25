@@ -59,7 +59,11 @@ export type NotificationType =
   | 'new_marketing_lead'
   | 'portal_report_requested'
   | 'client_reminder_upcoming'
-  | 'conversation_shared';
+  | 'conversation_shared'
+  // Game Plan
+  | 'game_plan_created'
+  | 'game_plan_updated'
+  | 'game_plan_milestone_completed';
 
 export interface Notification {
   id: string;
