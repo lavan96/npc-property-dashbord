@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 
 export interface TeamUser {
   id: string;
@@ -9,22 +9,27 @@ export interface TeamUser {
 }
 
 /**
- * Fetches all active team members from custom_users.
+ * Fetches all active team members from custom_users via the secure edge function.
  * Used for assigning reminders and deals to specific users.
  */
 export function useTeamUsers() {
   return useQuery({
     queryKey: ['team-users'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('custom_users')
-        .select('id, username, email, is_active')
-        .eq('is_active', true)
-        .order('username');
+      const { data, error } = await invokeSecureFunction('manage-templates', {
+        operation: 'list',
+        table: 'custom_users',
+        listOptions: {
+          select: 'id, username, email, is_active',
+          filters: { is_active: true },
+          orderBy: 'username',
+          orderAsc: true,
+        },
+      });
 
       if (error) throw error;
       return (data || []) as TeamUser[];
     },
-    staleTime: 5 * 60 * 1000, // 5 min cache
+    staleTime: 5 * 60 * 1000,
   });
 }

@@ -61,6 +61,7 @@ const DEFAULT_SELECTS: Record<TableName, string> = {
   game_plan_kpis: '*',
   game_plan_notes: '*',
   game_plan_actions: '*',
+  custom_users: 'id, username, email, is_active',
 };
 
 serve(async (req) => {
