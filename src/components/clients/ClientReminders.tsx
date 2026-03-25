@@ -358,7 +358,7 @@ export function ClientReminders({ clientId, followUpDate }: ClientRemindersProps
     setEditDueDate(format(new Date(reminder.due_date), "yyyy-MM-dd'T'HH:mm"));
     setEditPriority(reminder.priority);
     setEditReminderType(reminder.reminder_type);
-    setEditAssignedTo(reminder.assigned_to || 'unassigned');
+    setEditAssignedTo(Array.isArray(reminder.assigned_to) ? reminder.assigned_to : reminder.assigned_to ? [reminder.assigned_to] : []);
   };
 
   const resetForm = () => {
