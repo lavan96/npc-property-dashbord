@@ -185,7 +185,7 @@ export function ClientReminders({ clientId, followUpDate }: ClientRemindersProps
   const [dueDate, setDueDate] = useState('');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high' | 'urgent'>('medium');
   const [reminderType, setReminderType] = useState('follow_up');
-  const [assignedTo, setAssignedTo] = useState('unassigned');
+  const [assignedTo, setAssignedTo] = useState<string[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
