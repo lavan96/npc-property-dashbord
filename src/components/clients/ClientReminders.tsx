@@ -584,7 +584,7 @@ export function ClientReminders({ clientId, followUpDate }: ClientRemindersProps
                           </div>
                           <div className="space-y-1">
                             <label className="text-xs text-muted-foreground">Assign To</label>
-                            <TeamUserSelect
+                            <MultiTeamUserSelect
                               value={editAssignedTo}
                               onValueChange={setEditAssignedTo}
                               placeholder="Assign to..."
