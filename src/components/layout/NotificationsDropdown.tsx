@@ -1,4 +1,4 @@
-import { Bell, Check, CheckCheck, Trash2, FileText, AlertCircle, Info, Phone, CalendarPlus, CalendarClock, CalendarX, Clock, AlarmClock, PhoneMissed, Mail, Send, FileCheck, FileClock, FileX, RefreshCw, Archive, ArchiveRestore, Loader2, UserPlus, UserCheck, Wallet, FileSpreadsheet, Download, Share2, ShieldCheck, UserCog, Wrench, DatabaseZap, MessageSquare, FileSignature, Contact, Megaphone, Timer, Users } from 'lucide-react';
+import { Bell, Check, CheckCheck, Trash2, FileText, AlertCircle, Info, Phone, CalendarPlus, CalendarClock, CalendarX, Clock, AlarmClock, PhoneMissed, Mail, Send, FileCheck, FileClock, FileX, RefreshCw, Archive, ArchiveRestore, Loader2, UserPlus, UserCheck, Wallet, FileSpreadsheet, Download, Share2, ShieldCheck, UserCog, Wrench, DatabaseZap, MessageSquare, FileSignature, Contact, Megaphone, Timer, Users, Map, Flag, Target } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -105,6 +105,13 @@ export function NotificationsDropdown() {
         return <Timer className="h-4 w-4 text-blue-400" />;
       case 'conversation_shared':
         return <Users className="h-4 w-4 text-purple-500" />;
+      // Game Plan
+      case 'game_plan_created':
+        return <Map className="h-4 w-4 text-indigo-500" />;
+      case 'game_plan_updated':
+        return <Flag className="h-4 w-4 text-amber-500" />;
+      case 'game_plan_milestone_completed':
+        return <Target className="h-4 w-4 text-emerald-500" />;
       default:
         return <Info className="h-4 w-4 text-blue-500" />;
     }

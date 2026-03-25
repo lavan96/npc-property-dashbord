@@ -59,7 +59,11 @@ export type NotificationType =
   | 'new_marketing_lead'
   | 'portal_report_requested'
   | 'client_reminder_upcoming'
-  | 'conversation_shared';
+  | 'conversation_shared'
+  // Game Plan
+  | 'game_plan_created'
+  | 'game_plan_updated'
+  | 'game_plan_milestone_completed';
 
 export interface Notification {
   id: string;
@@ -362,6 +366,11 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         window.dispatchEvent(new CustomEvent('open-agent-conversation', { 
           detail: { conversationId: notification.entityId, tab: 'shared_with_me' } 
         }));
+        break;
+      case 'game_plan_created':
+      case 'game_plan_updated':
+      case 'game_plan_milestone_completed':
+        navigate('/game-plan');
         break;
       default:
         break;
