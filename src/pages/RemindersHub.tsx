@@ -29,7 +29,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select,
@@ -39,8 +39,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useAllReminders, type UnifiedReminder } from '@/hooks/useAllReminders';
+import { TeamRemindersSection } from '@/components/reminders/TeamRemindersSection';
 import { toast } from 'sonner';
 
+type ReminderTab = 'client' | 'team';
 type TimeFilter = 'all' | 'overdue' | 'today' | 'week' | 'month' | 'later';
 type SourceFilter = 'all' | 'client_reminder' | 'follow_up' | 'deal_milestone';
 type PriorityFilter = 'all' | 'high' | 'medium' | 'low';
