@@ -192,7 +192,7 @@ export function ClientReminders({ clientId, followUpDate }: ClientRemindersProps
   const [editDueDate, setEditDueDate] = useState('');
   const [editPriority, setEditPriority] = useState<'low' | 'medium' | 'high' | 'urgent'>('medium');
   const [editReminderType, setEditReminderType] = useState('follow_up');
-  const [editAssignedTo, setEditAssignedTo] = useState('unassigned');
+  const [editAssignedTo, setEditAssignedTo] = useState<string[]>([]);
   const queryClient = useQueryClient();
   const { data: teamUsers = [] } = useTeamUsers();
   const { addNotification } = useNotifications();
