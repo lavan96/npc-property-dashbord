@@ -272,144 +272,164 @@ export default function RemindersHub() {
         </Card>
       </div>
 
-      {/* Time Tabs + Filters Row */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <Tabs value={timeFilter} onValueChange={(v) => setTimeFilter(v as TimeFilter)} className="flex-1">
-          <TabsList className="w-full inline-flex overflow-x-auto scrollbar-hide">
-            <TabsTrigger value="all" className="text-xs sm:text-sm">All</TabsTrigger>
-            <TabsTrigger value="overdue" className="text-xs sm:text-sm">
-              Overdue {stats.overdue > 0 && <Badge variant="destructive" className="ml-1 text-[9px] px-1 h-4">{stats.overdue}</Badge>}
-            </TabsTrigger>
-            <TabsTrigger value="today" className="text-xs sm:text-sm">Today</TabsTrigger>
-            <TabsTrigger value="week" className="text-xs sm:text-sm">This Week</TabsTrigger>
-            <TabsTrigger value="month" className="text-xs sm:text-sm">This Month</TabsTrigger>
-            <TabsTrigger value="later" className="text-xs sm:text-sm">Later</TabsTrigger>
-          </TabsList>
-        </Tabs>
+      {/* Main Tabs: Client vs Team */}
+      <Tabs value={reminderTab} onValueChange={(v) => setReminderTab(v as ReminderTab)}>
+        <TabsList>
+          <TabsTrigger value="client" className="text-xs sm:text-sm gap-1.5">
+            <Bell className="h-3.5 w-3.5" />
+            Client Reminders
+          </TabsTrigger>
+          <TabsTrigger value="team" className="text-xs sm:text-sm gap-1.5">
+            <Users className="h-3.5 w-3.5" />
+            Team Reminders
+          </TabsTrigger>
+        </TabsList>
 
-        <div className="flex gap-2 shrink-0">
-          <Select value={sourceFilter} onValueChange={(v) => setSourceFilter(v as SourceFilter)}>
-            <SelectTrigger className="w-[140px] sm:w-[160px] h-9 text-xs">
-              <Filter className="h-3 w-3 mr-1" />
-              <SelectValue placeholder="Source" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Sources</SelectItem>
-              <SelectItem value="client_reminder">Client Reminders</SelectItem>
-              <SelectItem value="follow_up">Follow-Ups</SelectItem>
-              <SelectItem value="deal_milestone">Deal Milestones</SelectItem>
-            </SelectContent>
-          </Select>
+        <TabsContent value="client">
+          {/* Time Tabs + Filters Row */}
+          <div className="flex flex-col sm:flex-row gap-3 mb-4">
+            <Tabs value={timeFilter} onValueChange={(v) => setTimeFilter(v as TimeFilter)} className="flex-1">
+              <TabsList className="w-full inline-flex overflow-x-auto scrollbar-hide">
+                <TabsTrigger value="all" className="text-xs sm:text-sm">All</TabsTrigger>
+                <TabsTrigger value="overdue" className="text-xs sm:text-sm">
+                  Overdue {stats.overdue > 0 && <Badge variant="destructive" className="ml-1 text-[9px] px-1 h-4">{stats.overdue}</Badge>}
+                </TabsTrigger>
+                <TabsTrigger value="today" className="text-xs sm:text-sm">Today</TabsTrigger>
+                <TabsTrigger value="week" className="text-xs sm:text-sm">This Week</TabsTrigger>
+                <TabsTrigger value="month" className="text-xs sm:text-sm">This Month</TabsTrigger>
+                <TabsTrigger value="later" className="text-xs sm:text-sm">Later</TabsTrigger>
+              </TabsList>
+            </Tabs>
 
-          <Select value={priorityFilter} onValueChange={(v) => setPriorityFilter(v as PriorityFilter)}>
-            <SelectTrigger className="w-[110px] sm:w-[130px] h-9 text-xs">
-              <SelectValue placeholder="Priority" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Priorities</SelectItem>
-              <SelectItem value="high">High</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="low">Low</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+            <div className="flex gap-2 shrink-0">
+              <Select value={sourceFilter} onValueChange={(v) => setSourceFilter(v as SourceFilter)}>
+                <SelectTrigger className="w-[140px] sm:w-[160px] h-9 text-xs">
+                  <Filter className="h-3 w-3 mr-1" />
+                  <SelectValue placeholder="Source" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Sources</SelectItem>
+                  <SelectItem value="client_reminder">Client Reminders</SelectItem>
+                  <SelectItem value="follow_up">Follow-Ups</SelectItem>
+                  <SelectItem value="deal_milestone">Deal Milestones</SelectItem>
+                </SelectContent>
+              </Select>
 
-      {/* Timeline Groups */}
-      {filtered.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-10 text-center">
-            <CheckCircle2 className="h-10 w-10 text-muted-foreground mb-3" />
-            <p className="text-sm text-muted-foreground">No reminders match your filters</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-4">
-          {groupOrder.filter(g => grouped[g]).map(groupLabel => (
-            <div key={groupLabel}>
-              <div className="flex items-center gap-2 mb-2">
-                <h3 className="text-sm font-semibold">{groupLabel}</h3>
-                <Badge variant="outline" className="text-[10px]">{grouped[groupLabel].length}</Badge>
-              </div>
-
-              <div className="space-y-1.5">
-                {grouped[groupLabel].map(reminder => {
-                  const isOverdue = isPast(new Date(reminder.due_date)) && !isToday(new Date(reminder.due_date));
-                  const daysUntil = differenceInDays(new Date(reminder.due_date), now);
-                  const priorityCfg = PRIORITY_CONFIG[reminder.priority];
-
-                  return (
-                    <Card
-                      key={reminder.id}
-                      className={cn(
-                        'cursor-pointer transition-all hover:shadow-sm',
-                        isOverdue && 'border-destructive/30 bg-destructive/5',
-                        isToday(new Date(reminder.due_date)) && !isOverdue && 'border-amber-500/20 bg-amber-500/5',
-                      )}
-                      onClick={() => handleReminderClick(reminder)}
-                    >
-                      <CardContent className="p-2.5 sm:p-3 flex items-center gap-2.5">
-                        {/* Source Icon */}
-                        <div className={cn(
-                          'h-8 w-8 rounded-full flex items-center justify-center shrink-0',
-                          isOverdue ? 'bg-destructive/10 text-destructive' : 'bg-muted',
-                          !isOverdue && SOURCE_COLORS[reminder.source]
-                        )}>
-                          {TYPE_ICONS[reminder.reminder_type] || SOURCE_ICONS[reminder.source]}
-                        </div>
-
-                        {/* Content */}
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-xs sm:text-sm font-semibold truncate">{reminder.title}</span>
-                            <Badge className={cn('text-[8px] px-1 py-0 h-3.5 border shrink-0', priorityCfg.color)}>
-                              {priorityCfg.label}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                            <span className="text-[10px] text-muted-foreground">{reminder.client_name}</span>
-                            <span className="text-[10px] text-muted-foreground">·</span>
-                            <span className="text-[10px] text-muted-foreground">{reminder.source_label}</span>
-                            {reminder.description && (
-                              <>
-                                <span className="text-[10px] text-muted-foreground">·</span>
-                                <span className="text-[10px] text-muted-foreground truncate max-w-[200px]">{reminder.description}</span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Date & Action */}
-                        <div className="flex items-center gap-2 shrink-0">
-                          <div className="text-right">
-                            <p className={cn(
-                              'text-[10px] sm:text-xs font-medium',
-                              isOverdue ? 'text-destructive' : isToday(new Date(reminder.due_date)) ? 'text-amber-600' : 'text-muted-foreground'
-                            )}>
-                              {isOverdue
-                                ? `${Math.abs(daysUntil)}d overdue`
-                                : isToday(new Date(reminder.due_date))
-                                  ? 'Today'
-                                  : isTomorrow(new Date(reminder.due_date))
-                                    ? 'Tomorrow'
-                                    : format(new Date(reminder.due_date), 'dd MMM')
-                              }
-                            </p>
-                            <p className="text-[9px] text-muted-foreground">
-                              {format(new Date(reminder.due_date), 'EEE')}
-                            </p>
-                          </div>
-                          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
+              <Select value={priorityFilter} onValueChange={(v) => setPriorityFilter(v as PriorityFilter)}>
+                <SelectTrigger className="w-[110px] sm:w-[130px] h-9 text-xs">
+                  <SelectValue placeholder="Priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Priorities</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="low">Low</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          ))}
-        </div>
-      )}
+          </div>
+
+          {/* Timeline Groups */}
+          {filtered.length === 0 ? (
+            <Card className="border-dashed">
+              <CardContent className="flex flex-col items-center justify-center py-10 text-center">
+                <CheckCircle2 className="h-10 w-10 text-muted-foreground mb-3" />
+                <p className="text-sm text-muted-foreground">No reminders match your filters</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {groupOrder.filter(g => grouped[g]).map(groupLabel => (
+                <div key={groupLabel}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <h3 className="text-sm font-semibold">{groupLabel}</h3>
+                    <Badge variant="outline" className="text-[10px]">{grouped[groupLabel].length}</Badge>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    {grouped[groupLabel].map(reminder => {
+                      const isOverdue = isPast(new Date(reminder.due_date)) && !isToday(new Date(reminder.due_date));
+                      const daysUntil = differenceInDays(new Date(reminder.due_date), now);
+                      const priorityCfg = PRIORITY_CONFIG[reminder.priority];
+
+                      return (
+                        <Card
+                          key={reminder.id}
+                          className={cn(
+                            'cursor-pointer transition-all hover:shadow-sm',
+                            isOverdue && 'border-destructive/30 bg-destructive/5',
+                            isToday(new Date(reminder.due_date)) && !isOverdue && 'border-amber-500/20 bg-amber-500/5',
+                          )}
+                          onClick={() => handleReminderClick(reminder)}
+                        >
+                          <CardContent className="p-2.5 sm:p-3 flex items-center gap-2.5">
+                            {/* Source Icon */}
+                            <div className={cn(
+                              'h-8 w-8 rounded-full flex items-center justify-center shrink-0',
+                              isOverdue ? 'bg-destructive/10 text-destructive' : 'bg-muted',
+                              !isOverdue && SOURCE_COLORS[reminder.source]
+                            )}>
+                              {TYPE_ICONS[reminder.reminder_type] || SOURCE_ICONS[reminder.source]}
+                            </div>
+
+                            {/* Content */}
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-xs sm:text-sm font-semibold truncate">{reminder.title}</span>
+                                <Badge className={cn('text-[8px] px-1 py-0 h-3.5 border shrink-0', priorityCfg.color)}>
+                                  {priorityCfg.label}
+                                </Badge>
+                              </div>
+                              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                <span className="text-[10px] text-muted-foreground">{reminder.client_name}</span>
+                                <span className="text-[10px] text-muted-foreground">·</span>
+                                <span className="text-[10px] text-muted-foreground">{reminder.source_label}</span>
+                                {reminder.description && (
+                                  <>
+                                    <span className="text-[10px] text-muted-foreground">·</span>
+                                    <span className="text-[10px] text-muted-foreground truncate max-w-[200px]">{reminder.description}</span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Date & Action */}
+                            <div className="flex items-center gap-2 shrink-0">
+                              <div className="text-right">
+                                <p className={cn(
+                                  'text-[10px] sm:text-xs font-medium',
+                                  isOverdue ? 'text-destructive' : isToday(new Date(reminder.due_date)) ? 'text-amber-600' : 'text-muted-foreground'
+                                )}>
+                                  {isOverdue
+                                    ? `${Math.abs(daysUntil)}d overdue`
+                                    : isToday(new Date(reminder.due_date))
+                                      ? 'Today'
+                                      : isTomorrow(new Date(reminder.due_date))
+                                        ? 'Tomorrow'
+                                        : format(new Date(reminder.due_date), 'dd MMM')
+                                  }
+                                </p>
+                                <p className="text-[9px] text-muted-foreground">
+                                  {format(new Date(reminder.due_date), 'EEE')}
+                                </p>
+                              </div>
+                              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="team">
+          <TeamRemindersSection />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
