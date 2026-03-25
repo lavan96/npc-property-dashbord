@@ -250,7 +250,7 @@ export function PhaseCard({ phase, milestones, kpis, notes, actions, mutations, 
                       <Button key={t} variant={newNoteType === t ? 'default' : 'outline'} size="sm" className="h-7 text-xs capitalize" onClick={() => setNewNoteType(t)}>{t}</Button>
                     ))}
                   </div>
-                  <Textarea value={newNote} onChange={e => setNewNote(e.target.value)} placeholder="Write your note..." rows={3} />
+                  <RichTextEditor value={newNote} onChange={setNewNote} placeholder="Write your note with **bold**, _italic_, bullet lists..." rows={4} />
                   <Button size="sm" onClick={addNote}>Add Note</Button>
                 </div>
               ) : (
