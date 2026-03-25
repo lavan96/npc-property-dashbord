@@ -206,6 +206,18 @@ export function OutlookCalendarPanel({
     );
   };
 
+  const filteredTeamSuggestions = useMemo(() => {
+    const query = attendeeInput.trim().toLowerCase();
+    if (!query) return [];
+
+    return teamUsers.filter((user) => {
+      const email = user.email?.toLowerCase();
+      if (!email || newAttendees.includes(email)) return false;
+
+      return user.username.toLowerCase().includes(query) || email.includes(query);
+    });
+  }, [attendeeInput, newAttendees, teamUsers]);
+
   const dayEvents = useMemo(() => {
     if (!selectedDate) return outlookEvents;
     return outlookEvents.filter(e => {
