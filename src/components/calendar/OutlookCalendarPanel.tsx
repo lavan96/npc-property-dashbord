@@ -372,8 +372,8 @@ export function OutlookCalendarPanel({
                 <Label className="text-xs flex items-center gap-1">
                   <Users className="h-3 w-3" /> Attendees
                 </Label>
-                <div className="flex gap-1 flex-wrap">
-                  {teamUsers.slice(0, 6).map(u => {
+                <div className="flex gap-1 flex-wrap items-center">
+                  {teamUsers.map(u => {
                     const userEmail = u.email;
                     if (!userEmail) return null;
                     const isAdded = newAttendees.includes(userEmail.toLowerCase());
@@ -397,6 +397,30 @@ export function OutlookCalendarPanel({
                       </button>
                     );
                   })}
+                  {teamUsers.filter(u => u.email).length > 1 && (() => {
+                    const allEmails = teamUsers.filter(u => u.email).map(u => u.email!.toLowerCase());
+                    const allAdded = allEmails.every(e => newAttendees.includes(e));
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (allAdded) {
+                            setNewAttendees(prev => prev.filter(e => !allEmails.includes(e)));
+                          } else {
+                            setNewAttendees(prev => [...new Set([...prev, ...allEmails])]);
+                          }
+                        }}
+                        className={cn(
+                          'text-[10px] px-2 py-1 rounded-full border transition-colors font-medium',
+                          allAdded
+                            ? 'bg-primary/20 border-primary/40 text-primary'
+                            : 'bg-accent/50 border-primary/20 hover:bg-accent text-primary'
+                        )}
+                      >
+                        {allAdded ? 'Remove All' : 'Invite All'}
+                      </button>
+                    );
+                  })()}
                 </div>
                 {/* Manual email add */}
                 <div className="flex gap-1">
