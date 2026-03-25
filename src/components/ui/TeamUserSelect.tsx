@@ -41,7 +41,10 @@ export function TeamUserSelect({
         )}
         {users.map((user) => (
           <SelectItem key={user.id} value={user.id}>
-            {user.username}
+            <div className="flex flex-col">
+              <span>{user.username}</span>
+              {user.email && <span className="text-xs text-muted-foreground">{user.email}</span>}
+            </div>
           </SelectItem>
         ))}
       </SelectContent>

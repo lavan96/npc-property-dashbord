@@ -447,30 +447,52 @@ export function OutlookCalendarPanel({
                   })()}
                 </div>
                 {/* Manual email add */}
-                <div className="flex gap-1">
-                  <Input
-                    value={attendeeInput}
-                    onChange={(e) => setAttendeeInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddAttendee())}
-                    placeholder="Add email..."
-                    className="h-7 text-xs"
-                  />
-                  <Button type="button" size="sm" variant="ghost" className="h-7 px-2" onClick={handleAddAttendee}>
-                    <Plus className="h-3 w-3" />
-                  </Button>
-                </div>
-                {newAttendees.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {newAttendees.map(email => (
-                      <Badge key={email} variant="secondary" className="text-[10px] gap-1">
-                        {email}
-                        <button onClick={() => setNewAttendees(prev => prev.filter(e => e !== email))}>
-                          <X className="h-2.5 w-2.5" />
-                        </button>
-                      </Badge>
-                    ))}
+                <div className="space-y-1.5">
+                  <div className="flex gap-1">
+                    <Input
+                      value={attendeeInput}
+                      onChange={(e) => setAttendeeInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddAttendee())}
+                      placeholder="Type team name or email..."
+                      className="h-7 text-xs"
+                    />
+                    <Button type="button" size="sm" variant="ghost" className="h-7 px-2" onClick={handleAddAttendee}>
+                      <Plus className="h-3 w-3" />
+                    </Button>
                   </div>
-                )}
+
+                  {filteredTeamSuggestions.length > 0 && (
+                    <div className="rounded-md border bg-popover p-1">
+                      {filteredTeamSuggestions.slice(0, 6).map((user) => (
+                        <button
+                          key={user.id}
+                          type="button"
+                          onClick={() => {
+                            if (user.email) handleAddTeamMember(user.email);
+                            setAttendeeInput('');
+                          }}
+                          className="flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-left text-xs transition-colors hover:bg-accent"
+                        >
+                          <span className="font-medium">{user.username}</span>
+                          <span className="text-muted-foreground">{user.email}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {newAttendees.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {newAttendees.map(email => (
+                        <Badge key={email} variant="secondary" className="text-[10px] gap-1">
+                          {email}
+                          <button onClick={() => setNewAttendees(prev => prev.filter(e => e !== email))}>
+                            <X className="h-2.5 w-2.5" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Advanced toggle */}
