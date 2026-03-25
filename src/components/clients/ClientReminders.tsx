@@ -334,7 +334,7 @@ export function ClientReminders({ clientId, followUpDate }: ClientRemindersProps
           due_date: new Date(editDueDate).toISOString(),
           priority: editPriority,
           reminder_type: editReminderType,
-          assigned_to: editAssignedTo !== 'unassigned' ? editAssignedTo : null,
+          assigned_to: editAssignedTo.length > 0 ? editAssignedTo : null,
         },
       });
       if (error) throw new Error(error.message);
