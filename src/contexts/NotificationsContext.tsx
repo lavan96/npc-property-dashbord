@@ -367,6 +367,11 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
           detail: { conversationId: notification.entityId, tab: 'shared_with_me' } 
         }));
         break;
+      case 'game_plan_created':
+      case 'game_plan_updated':
+      case 'game_plan_milestone_completed':
+        navigate('/game-plan');
+        break;
       default:
         break;
     }
