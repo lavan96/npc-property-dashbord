@@ -37,7 +37,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { VoiceToTextButton } from '@/components/ui/VoiceToTextButton';
-import { TeamUserSelect } from '@/components/ui/TeamUserSelect';
+import { MultiTeamUserSelect } from '@/components/ui/MultiTeamUserSelect';
 import { useTeamUsers } from '@/hooks/useTeamUsers';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { useAuth } from '@/hooks/useAuth';
@@ -185,14 +185,14 @@ export function ClientReminders({ clientId, followUpDate }: ClientRemindersProps
   const [dueDate, setDueDate] = useState('');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high' | 'urgent'>('medium');
   const [reminderType, setReminderType] = useState('follow_up');
-  const [assignedTo, setAssignedTo] = useState('unassigned');
+  const [assignedTo, setAssignedTo] = useState<string[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editDueDate, setEditDueDate] = useState('');
   const [editPriority, setEditPriority] = useState<'low' | 'medium' | 'high' | 'urgent'>('medium');
   const [editReminderType, setEditReminderType] = useState('follow_up');
-  const [editAssignedTo, setEditAssignedTo] = useState('unassigned');
+  const [editAssignedTo, setEditAssignedTo] = useState<string[]>([]);
   const queryClient = useQueryClient();
   const { data: teamUsers = [] } = useTeamUsers();
   const { addNotification } = useNotifications();
@@ -214,40 +214,45 @@ export function ClientReminders({ clientId, followUpDate }: ClientRemindersProps
 
   const addReminderMutation = useMutation({
     mutationFn: async () => {
-      const assignedUserId = assignedTo !== 'unassigned' ? assignedTo : null;
+      const assignedUserIds = assignedTo.length > 0 ? assignedTo : null;
       const { data, error } = await invokeSecureFunction('manage-client-data', {
         operation: 'create',
         table: 'client_reminders',
         clientId,
         data: {
+          client_id: clientId,
           title,
           description,
           due_date: new Date(dueDate).toISOString(),
           priority,
           reminder_type: reminderType,
-          assigned_to: assignedUserId,
+          assigned_to: assignedUserIds,
+          reminder_scope: 'client',
         },
       });
 
       if (error) throw new Error(error.message);
       if (!data?.success) throw new Error(data?.error || 'Failed to create reminder');
-      return assignedUserId;
+      return assignedUserIds;
     },
-    onSuccess: (assignedUserId) => {
+    onSuccess: (assignedUserIds) => {
       queryClient.invalidateQueries({ queryKey: ['client-reminders', clientId] });
       queryClient.invalidateQueries({ queryKey: ['all-reminders'] });
       toast.success('Reminder created');
 
-      // Send notification to assigned user (if not self)
-      if (assignedUserId && assignedUserId !== user?.id) {
-        const assignedUser = teamUsers.find(u => u.id === assignedUserId);
-        addNotification({
-          type: 'reminder_assigned',
-          title: `Reminder Assigned: ${title}`,
-          message: `You have been assigned a ${priority} priority reminder: "${title}"`,
-          entityId: clientId,
-          targetUserId: assignedUserId,
-        });
+      // Send notification to assigned users (if not self)
+      if (assignedUserIds) {
+        for (const userId of assignedUserIds) {
+          if (userId !== user?.id) {
+            addNotification({
+              type: 'reminder_assigned',
+              title: `Reminder Assigned: ${title}`,
+              message: `You have been assigned a ${priority} priority reminder: "${title}"`,
+              entityId: clientId,
+              targetUserId: userId,
+            });
+          }
+        }
       }
 
       resetForm();
@@ -329,7 +334,7 @@ export function ClientReminders({ clientId, followUpDate }: ClientRemindersProps
           due_date: new Date(editDueDate).toISOString(),
           priority: editPriority,
           reminder_type: editReminderType,
-          assigned_to: editAssignedTo !== 'unassigned' ? editAssignedTo : null,
+          assigned_to: editAssignedTo.length > 0 ? editAssignedTo : null,
         },
       });
       if (error) throw new Error(error.message);
@@ -353,7 +358,7 @@ export function ClientReminders({ clientId, followUpDate }: ClientRemindersProps
     setEditDueDate(format(new Date(reminder.due_date), "yyyy-MM-dd'T'HH:mm"));
     setEditPriority(reminder.priority);
     setEditReminderType(reminder.reminder_type);
-    setEditAssignedTo(reminder.assigned_to || 'unassigned');
+    setEditAssignedTo(Array.isArray(reminder.assigned_to) ? reminder.assigned_to : reminder.assigned_to ? [reminder.assigned_to] : []);
   };
 
   const resetForm = () => {
@@ -362,7 +367,7 @@ export function ClientReminders({ clientId, followUpDate }: ClientRemindersProps
     setDueDate('');
     setPriority('medium');
     setReminderType('follow_up');
-    setAssignedTo('unassigned');
+    setAssignedTo([]);
     setShowAdd(false);
   };
 
@@ -459,10 +464,10 @@ export function ClientReminders({ clientId, followUpDate }: ClientRemindersProps
             </div>
             <div className="space-y-1">
               <label className="text-xs text-muted-foreground">Assign To</label>
-              <TeamUserSelect
+              <MultiTeamUserSelect
                 value={assignedTo}
                 onValueChange={setAssignedTo}
-                placeholder="Assign to team member..."
+                placeholder="Assign to team members..."
               />
             </div>
             <div className="flex gap-2">
@@ -579,7 +584,7 @@ export function ClientReminders({ clientId, followUpDate }: ClientRemindersProps
                           </div>
                           <div className="space-y-1">
                             <label className="text-xs text-muted-foreground">Assign To</label>
-                            <TeamUserSelect
+                            <MultiTeamUserSelect
                               value={editAssignedTo}
                               onValueChange={setEditAssignedTo}
                               placeholder="Assign to..."
@@ -631,12 +636,14 @@ export function ClientReminders({ clientId, followUpDate }: ClientRemindersProps
                               {format(new Date(reminder.due_date), 'MMM d, yyyy h:mm a')} · {dueStatus.label}
                             </span>
                           </div>
-                          {reminder.assigned_to && (() => {
-                            const assignee = teamUsers.find(u => u.id === reminder.assigned_to);
-                            return assignee ? (
+                          {reminder.assigned_to && Array.isArray(reminder.assigned_to) && reminder.assigned_to.length > 0 && (() => {
+                            const names = reminder.assigned_to
+                              .map((id: string) => teamUsers.find(u => u.id === id)?.username)
+                              .filter(Boolean);
+                            return names.length > 0 ? (
                               <div className="flex items-center gap-1">
                                 <UserCircle className="h-3 w-3 text-muted-foreground" />
-                                <span className="text-xs text-muted-foreground">{assignee.username}</span>
+                                <span className="text-xs text-muted-foreground">{names.join(', ')}</span>
                               </div>
                             ) : null;
                           })()}

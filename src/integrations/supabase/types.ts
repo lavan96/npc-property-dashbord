@@ -3313,8 +3313,8 @@ export type Database = {
       }
       client_reminders: {
         Row: {
-          assigned_to: string | null
-          client_id: string
+          assigned_to: string[] | null
+          client_id: string | null
           completed_at: string | null
           created_at: string
           created_by: string | null
@@ -3322,14 +3322,15 @@ export type Database = {
           due_date: string
           id: string
           priority: string
+          reminder_scope: string
           reminder_type: string
           status: string
           title: string
           updated_at: string
         }
         Insert: {
-          assigned_to?: string | null
-          client_id: string
+          assigned_to?: string[] | null
+          client_id?: string | null
           completed_at?: string | null
           created_at?: string
           created_by?: string | null
@@ -3337,14 +3338,15 @@ export type Database = {
           due_date: string
           id?: string
           priority?: string
+          reminder_scope?: string
           reminder_type?: string
           status?: string
           title: string
           updated_at?: string
         }
         Update: {
-          assigned_to?: string | null
-          client_id?: string
+          assigned_to?: string[] | null
+          client_id?: string | null
           completed_at?: string | null
           created_at?: string
           created_by?: string | null
@@ -3352,19 +3354,13 @@ export type Database = {
           due_date?: string
           id?: string
           priority?: string
+          reminder_scope?: string
           reminder_type?: string
           status?: string
           title?: string
           updated_at?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "client_reminders_assigned_to_fkey"
-            columns: ["assigned_to"]
-            isOneToOne: false
-            referencedRelation: "custom_users"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "client_reminders_client_id_fkey"
             columns: ["client_id"]
