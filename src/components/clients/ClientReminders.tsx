@@ -37,7 +37,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { VoiceToTextButton } from '@/components/ui/VoiceToTextButton';
-import { TeamUserSelect } from '@/components/ui/TeamUserSelect';
+import { MultiTeamUserSelect } from '@/components/ui/MultiTeamUserSelect';
 import { useTeamUsers } from '@/hooks/useTeamUsers';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { useAuth } from '@/hooks/useAuth';
