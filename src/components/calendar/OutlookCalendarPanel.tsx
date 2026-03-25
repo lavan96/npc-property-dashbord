@@ -176,10 +176,22 @@ export function OutlookCalendarPanel({
   };
 
   const handleAddAttendee = () => {
-    const email = attendeeInput.trim().toLowerCase();
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
-    if (newAttendees.includes(email)) return;
-    setNewAttendees(prev => [...prev, email]);
+    const normalizedInput = attendeeInput.trim().toLowerCase();
+    if (!normalizedInput) return;
+
+    const matchedTeamUser = teamUsers.find((user) => {
+      const email = user.email?.toLowerCase();
+      return Boolean(email) && (
+        user.username.toLowerCase() === normalizedInput ||
+        email === normalizedInput
+      );
+    });
+
+    const emailToAdd = matchedTeamUser?.email?.toLowerCase() ?? normalizedInput;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailToAdd)) return;
+    if (newAttendees.includes(emailToAdd)) return;
+
+    setNewAttendees(prev => [...prev, emailToAdd]);
     setAttendeeInput('');
   };
 
