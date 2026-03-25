@@ -222,26 +222,7 @@ export function PhaseCard({ phase, milestones, kpis, notes, actions, mutations, 
             {/* ── Notes ── */}
             <Section title="Strategy Notes" icon={<StickyNote className="h-3.5 w-3.5" />} count={notes.length}>
               {notes.sort((a, b) => (b.is_pinned ? 1 : 0) - (a.is_pinned ? 1 : 0)).map(n => (
-                <div key={n.id} className={cn('rounded-lg border p-2.5 text-sm group relative', noteTypeColors[n.note_type] || 'border-border')}>
-                  {n.is_pinned && <Pin className="absolute top-2 right-2 h-3 w-3 text-primary" />}
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <Badge variant="outline" className="text-[9px] uppercase">
-                      {n.note_type}
-                    </Badge>
-                  </div>
-                  <p className="text-foreground whitespace-pre-wrap">{n.content}</p>
-                  <div className="flex items-center justify-between mt-2">
-                    <span className="text-[10px] text-muted-foreground">{new Date(n.created_at).toLocaleDateString()}</span>
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => mutations.notes.update.mutate({ id: n.id, is_pinned: !n.is_pinned })}>
-                        <Pin className={cn('h-3 w-3', n.is_pinned ? 'text-primary' : 'text-muted-foreground')} />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => mutations.notes.remove.mutate(n.id)}>
-                        <Trash2 className="h-3 w-3 text-muted-foreground" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
+                <NoteCard key={n.id} note={n} mutations={mutations} noteTypeColors={noteTypeColors} />
               ))}
               {showAddSection === 'note' ? (
                 <div className="space-y-2">
