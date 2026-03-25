@@ -28,7 +28,9 @@ export function useTeamUsers() {
       });
 
       if (error) throw error;
-      return (data || []) as TeamUser[];
+      // Edge function returns { success, records, count }
+      const records = data?.records || data || [];
+      return (Array.isArray(records) ? records : []) as TeamUser[];
     },
     staleTime: 5 * 60 * 1000,
   });
