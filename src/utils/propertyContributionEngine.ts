@@ -15,33 +15,17 @@
  * yet change the final borrowing capacity number.
  */
 
+import { 
+  DEFAULT_PROPERTY_POLICY as POLICY_ENGINE_DEFAULT,
+  type PropertyPolicy,
+} from './policyEngine';
+
 // ============================================
-// TYPES
+// TYPES — PropertyContributionPolicy is now an alias for PolicyEngine's PropertyPolicy
 // ============================================
 
-export interface PropertyContributionPolicy {
-  /** Shading rate for existing rental income (default: 0.80 = 80%) */
-  rentalShadingRate: number;
-  /** Shading rate for proposed rental income (default: 0.70 = 70%) */
-  proposedRentalShadingRate: number;
-  /** Vacancy rate deduction (default: 0.0 — not yet applied in legacy) */
-  vacancyRate: number;
-  /** Assessment rate for stress-testing existing loans (default: 0.095 = 9.5%) */
-  loanAssessmentRate: number;
-  /** Loan term in months for P&I calculation (default: 360 = 30 years) */
-  loanTermMonths: number;
-  /** Rental expense ratio — banks assume this % of rent covers property expenses (default: 0.20) */
-  rentalExpenseRatio: number;
-}
-
-export const DEFAULT_PROPERTY_POLICY: PropertyContributionPolicy = {
-  rentalShadingRate: 0.80,
-  proposedRentalShadingRate: 0.70,
-  vacancyRate: 0.0,
-  loanAssessmentRate: 0.095,
-  loanTermMonths: 360,
-  rentalExpenseRatio: 0.20,
-};
+export type PropertyContributionPolicy = PropertyPolicy;
+export const DEFAULT_PROPERTY_POLICY: PropertyContributionPolicy = POLICY_ENGINE_DEFAULT;
 
 export interface PropertyContributionResult {
   /** Property identifier */

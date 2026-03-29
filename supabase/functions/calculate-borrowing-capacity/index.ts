@@ -7,80 +7,176 @@ const corsHeaders = {
 };
 
 // ============================================
-// INCOME SHADING RULES (APRA-Aligned)
+// POLICY ENGINE — Single source of truth for all constants
 // ============================================
-const INCOME_SHADING_RULES: Record<string, { rate: number; label: string }> = {
-  base_salary: { rate: 1.00, label: "Base Salary (PAYG)" },
-  gross_salary: { rate: 1.00, label: "Gross Salary" },
-  second_job: { rate: 0.80, label: "Second Job" },
-  casual: { rate: 0.60, label: "Casual Income" },
-  bonus: { rate: 0.80, label: "Bonus (avg 2yr)" },
-  commission: { rate: 0.80, label: "Commission" },
-  overtime_essential: { rate: 1.00, label: "Essential Overtime" },
-  overtime_non_essential: { rate: 0.50, label: "Non-Essential Overtime" },
-  allowance: { rate: 0.80, label: "Allowances" },
-  rental_existing: { rate: 0.80, label: "Rental Income (Existing)" },
-  rental_proposed: { rate: 0.70, label: "Rental Income (Proposed)" },
-  investment_income: { rate: 0.80, label: "Investment Income" },
-  government_payments: { rate: 1.00, label: "Government Payments" },
-  self_employed: { rate: 0.80, label: "Self-Employed (2yr avg)" },
-  other_taxable: { rate: 0.80, label: "Other Taxable" },
+
+interface IncomeShadingRule { rate: number; label: string; }
+interface HemConfig {
+  baseBenchmarks: Record<'single' | 'couple', Record<number, number>>;
+  incomeScaling: { maxIncome: number; multiplier: number }[];
+}
+interface BandThresholds { greenSurplusMin: number; greenDtiMax: number; amberDtiMax: number; }
+interface ConservativeModeConfig { minimumSurplusFloor: number; residualIncomeFloor: number; surplusBufferMultiplier: number; dtiHardCap: number; }
+interface LoanDefaults { interestRate: number; bufferRate: number; loanTermYears: number; stressTestIncrement: number; dtiCap: number; }
+interface PropertyPolicy { rentalShadingRate: number; proposedRentalShadingRate: number; vacancyRate: number; loanAssessmentRate: number; loanTermMonths: number; rentalExpenseRatio: number; }
+interface LiabilityRules { creditCardLimitRate: number; bnplLimitRate: number; }
+interface TaxConfig { taxYear: string; brackets: { min: number; max: number; rate: number; base: number }[]; medicareLevyRate: number; }
+interface HecsConfig { thresholds: { min: number; max: number; rate: number }[]; }
+
+interface PolicyConfig {
+  name: string;
+  incomeShadingRules: Record<string, IncomeShadingRule>;
+  hem: HemConfig;
+  bandThresholds: BandThresholds;
+  conservativeMode: ConservativeModeConfig;
+  loanDefaults: LoanDefaults;
+  propertyPolicy: PropertyPolicy;
+  liabilityRules: LiabilityRules;
+  tax: TaxConfig;
+  hecs: HecsConfig;
+}
+
+const DEFAULT_POLICY: PolicyConfig = {
+  name: 'Default APRA',
+  incomeShadingRules: {
+    base_salary: { rate: 1.00, label: "Base Salary (PAYG)" },
+    gross_salary: { rate: 1.00, label: "Gross Salary" },
+    second_job: { rate: 0.80, label: "Second Job" },
+    casual: { rate: 0.60, label: "Casual Income" },
+    bonus: { rate: 0.80, label: "Bonus (avg 2yr)" },
+    commission: { rate: 0.80, label: "Commission" },
+    overtime_essential: { rate: 1.00, label: "Essential Overtime" },
+    overtime_non_essential: { rate: 0.50, label: "Non-Essential Overtime" },
+    allowance: { rate: 0.80, label: "Allowances" },
+    rental_existing: { rate: 0.80, label: "Rental Income (Existing)" },
+    rental_proposed: { rate: 0.70, label: "Rental Income (Proposed)" },
+    investment_income: { rate: 0.80, label: "Investment Income" },
+    government_payments: { rate: 1.00, label: "Government Payments" },
+    self_employed: { rate: 0.80, label: "Self-Employed (2yr avg)" },
+    other_taxable: { rate: 0.80, label: "Other Taxable" },
+  },
+  hem: {
+    baseBenchmarks: {
+      single: { 0: 2100, 1: 2650, 2: 3050, 3: 3450 },
+      couple: { 0: 2950, 1: 3400, 2: 3850, 3: 4300 },
+    },
+    incomeScaling: [
+      { maxIncome: 80000, multiplier: 1.00 },
+      { maxIncome: 120000, multiplier: 1.20 },
+      { maxIncome: 180000, multiplier: 1.40 },
+      { maxIncome: 250000, multiplier: 1.60 },
+      { maxIncome: Infinity, multiplier: 1.80 },
+    ],
+  },
+  bandThresholds: { greenSurplusMin: 500, greenDtiMax: 6, amberDtiMax: 8 },
+  conservativeMode: { minimumSurplusFloor: 1000, residualIncomeFloor: 1500, surplusBufferMultiplier: 0.85, dtiHardCap: 6 },
+  loanDefaults: { interestRate: 6.50, bufferRate: 3.00, loanTermYears: 30, stressTestIncrement: 1.0, dtiCap: 6.0 },
+  propertyPolicy: { rentalShadingRate: 0.80, proposedRentalShadingRate: 0.70, vacancyRate: 0.0, loanAssessmentRate: 0.095, loanTermMonths: 360, rentalExpenseRatio: 0.20 },
+  liabilityRules: { creditCardLimitRate: 0.03, bnplLimitRate: 0.05 },
+  tax: {
+    taxYear: '2025-26',
+    brackets: [
+      { min: 0, max: 18200, rate: 0, base: 0 },
+      { min: 18201, max: 45000, rate: 0.16, base: 0 },
+      { min: 45001, max: 135000, rate: 0.30, base: 4288 },
+      { min: 135001, max: 190000, rate: 0.37, base: 31288 },
+      { min: 190001, max: Infinity, rate: 0.45, base: 51638 },
+    ],
+    medicareLevyRate: 0.02,
+  },
+  hecs: {
+    thresholds: [
+      { min: 0, max: 54434, rate: 0.00 },
+      { min: 54435, max: 62850, rate: 0.01 },
+      { min: 62851, max: 66620, rate: 0.02 },
+      { min: 66621, max: 70618, rate: 0.025 },
+      { min: 70619, max: 74855, rate: 0.03 },
+      { min: 74856, max: 79346, rate: 0.035 },
+      { min: 79347, max: 84107, rate: 0.04 },
+      { min: 84108, max: 89154, rate: 0.045 },
+      { min: 89155, max: 94503, rate: 0.05 },
+      { min: 94504, max: 100174, rate: 0.055 },
+      { min: 100175, max: 106185, rate: 0.06 },
+      { min: 106186, max: 112556, rate: 0.065 },
+      { min: 112557, max: 119309, rate: 0.07 },
+      { min: 119310, max: 126467, rate: 0.075 },
+      { min: 126468, max: 134056, rate: 0.08 },
+      { min: 134057, max: 142100, rate: 0.085 },
+      { min: 142101, max: 150626, rate: 0.09 },
+      { min: 150627, max: 159663, rate: 0.095 },
+      { min: 159664, max: Infinity, rate: 0.10 },
+    ],
+  },
 };
 
-// ============================================
-// HEM BENCHMARK TABLE (Monthly - AUD) - 2024 Industry Standard
-// BASE values - these get scaled by income level
-// ============================================
-const HEM_BENCHMARKS_BASE: Record<string, Record<number, number>> = {
-  single: {
-    0: 2100,  // Base for < $80k income
-    1: 2650,
-    2: 3050,
-    3: 3450,
+// Lender profiles
+const LENDER_PROFILES: Record<string, Partial<PolicyConfig>> = {
+  default: { name: 'Default APRA' },
+  conservative: {
+    name: 'Conservative',
+    loanDefaults: { ...DEFAULT_POLICY.loanDefaults, bufferRate: 3.50 },
+    bandThresholds: { greenSurplusMin: 750, greenDtiMax: 5, amberDtiMax: 7 },
   },
-  couple: {
-    0: 2950,  // Base for < $80k income
-    1: 3400,
-    2: 3850,
-    3: 4300,
+  cba: {
+    name: 'Commonwealth Bank',
+    incomeShadingRules: { ...DEFAULT_POLICY.incomeShadingRules, casual: { rate: 0.50, label: "Casual Income (CBA)" }, bonus: { rate: 0.70, label: "Bonus (CBA)" } },
+  },
+  westpac: {
+    name: 'Westpac',
+    incomeShadingRules: { ...DEFAULT_POLICY.incomeShadingRules, overtime_non_essential: { rate: 0.40, label: "Non-Essential OT (Westpac)" } },
+  },
+  anz: {
+    name: 'ANZ',
+    liabilityRules: { creditCardLimitRate: 0.038, bnplLimitRate: 0.05 },
+  },
+  nab: {
+    name: 'NAB',
+    incomeShadingRules: { ...DEFAULT_POLICY.incomeShadingRules, commission: { rate: 0.70, label: "Commission (NAB)" } },
+  },
+  macquarie: {
+    name: 'Macquarie Bank',
+    loanDefaults: { ...DEFAULT_POLICY.loanDefaults, bufferRate: 2.50 },
+    bandThresholds: { greenSurplusMin: 400, greenDtiMax: 7, amberDtiMax: 9 },
   },
 };
 
-// Income-based HEM scaling factors
-// Higher income = higher expected living expenses
-const HEM_INCOME_SCALING: { maxIncome: number; multiplier: number }[] = [
-  { maxIncome: 80000, multiplier: 1.00 },   // Base HEM
-  { maxIncome: 120000, multiplier: 1.20 },  // 20% uplift for $80-120k
-  { maxIncome: 180000, multiplier: 1.40 },  // 40% uplift for $120-180k
-  { maxIncome: 250000, multiplier: 1.60 },  // 60% uplift for $180-250k
-  { maxIncome: Infinity, multiplier: 1.80 }, // 80% uplift for $250k+
-];
+function buildPolicy(overrides: Partial<PolicyConfig> = {}): PolicyConfig {
+  return {
+    name: overrides.name ?? DEFAULT_POLICY.name,
+    incomeShadingRules: { ...DEFAULT_POLICY.incomeShadingRules, ...overrides.incomeShadingRules },
+    hem: overrides.hem ?? DEFAULT_POLICY.hem,
+    bandThresholds: { ...DEFAULT_POLICY.bandThresholds, ...overrides.bandThresholds },
+    conservativeMode: { ...DEFAULT_POLICY.conservativeMode, ...overrides.conservativeMode },
+    loanDefaults: { ...DEFAULT_POLICY.loanDefaults, ...overrides.loanDefaults },
+    propertyPolicy: { ...DEFAULT_POLICY.propertyPolicy, ...overrides.propertyPolicy },
+    liabilityRules: { ...DEFAULT_POLICY.liabilityRules, ...overrides.liabilityRules },
+    tax: overrides.tax ?? DEFAULT_POLICY.tax,
+    hecs: overrides.hecs ?? DEFAULT_POLICY.hecs,
+  };
+}
 
-// Rental income expense ratio - banks assume ~20-25% of rent goes to expenses
-const RENTAL_EXPENSE_RATIO = 0.20;
+function resolvePolicy(lenderName?: string | null): PolicyConfig {
+  if (!lenderName) return DEFAULT_POLICY;
+  const key = lenderName.toLowerCase().replace(/\s+/g, '');
+  for (const [id, profile] of Object.entries(LENDER_PROFILES)) {
+    if (key === id || key.includes(id) || id.includes(key)) {
+      return buildPolicy(profile);
+    }
+  }
+  return DEFAULT_POLICY;
+}
+
+// Backward-compatible aliases
+const INCOME_SHADING_RULES = DEFAULT_POLICY.incomeShadingRules;
+const RENTAL_EXPENSE_RATIO = DEFAULT_POLICY.propertyPolicy.rentalExpenseRatio;
 
 // ============================================
 // PROPERTY CONTRIBUTION ENGINE (Phase 1)
 // Unified per-property assessment model
 // ============================================
 
-interface PropertyContributionPolicy {
-  rentalShadingRate: number;
-  proposedRentalShadingRate: number;
-  vacancyRate: number;
-  loanAssessmentRate: number;
-  loanTermMonths: number;
-  rentalExpenseRatio: number;
-}
-
-const DEFAULT_PROPERTY_POLICY: PropertyContributionPolicy = {
-  rentalShadingRate: 0.80,
-  proposedRentalShadingRate: 0.70,
-  vacancyRate: 0.0,
-  loanAssessmentRate: 0.095,
-  loanTermMonths: 360,
-  rentalExpenseRatio: 0.20,
-};
+// PropertyContributionPolicy now uses PolicyConfig.propertyPolicy
+type PropertyContributionPolicy = PropertyPolicy;
 
 interface PropertyContributionResult {
   propertyId: string;
@@ -206,18 +302,9 @@ function assessAllPropertyContributions(
   };
 }
 
-// ============================================
-// 2025-26 AUSTRALIAN TAX BRACKETS
-// ============================================
-const TAX_BRACKETS_2025_26 = [
-  { min: 0, max: 18200, rate: 0, base: 0 },
-  { min: 18201, max: 45000, rate: 0.16, base: 0 },
-  { min: 45001, max: 135000, rate: 0.30, base: 4288 },
-  { min: 135001, max: 190000, rate: 0.37, base: 31288 },
-  { min: 190001, max: Infinity, rate: 0.45, base: 51638 },
-];
-
-const MEDICARE_LEVY_RATE = 0.02;
+// Tax functions now use policy config (backward-compatible wrappers)
+const TAX_BRACKETS_2025_26 = DEFAULT_POLICY.tax.brackets;
+const MEDICARE_LEVY_RATE = DEFAULT_POLICY.tax.medicareLevyRate;
 
 function calculateIncomeTax(taxableIncome: number, includeMedicareLevy: boolean = true): number {
   if (taxableIncome <= 0) return 0;
@@ -291,30 +378,8 @@ function getTaxBreakdown(grossAnnualIncome: number) {
   };
 }
 
-// ============================================
-// HECS/HELP REPAYMENT THRESHOLDS (2024-25)
-// ============================================
-const HECS_THRESHOLDS = [
-  { min: 0, max: 54434, rate: 0.00 },
-  { min: 54435, max: 62850, rate: 0.01 },
-  { min: 62851, max: 66620, rate: 0.02 },
-  { min: 66621, max: 70618, rate: 0.025 },
-  { min: 70619, max: 74855, rate: 0.03 },
-  { min: 74856, max: 79346, rate: 0.035 },
-  { min: 79347, max: 84107, rate: 0.04 },
-  { min: 84108, max: 89154, rate: 0.045 },
-  { min: 89155, max: 94503, rate: 0.05 },
-  { min: 94504, max: 100174, rate: 0.055 },
-  { min: 100175, max: 106185, rate: 0.06 },
-  { min: 106186, max: 112556, rate: 0.065 },
-  { min: 112557, max: 119309, rate: 0.07 },
-  { min: 119310, max: 126467, rate: 0.075 },
-  { min: 126468, max: 134056, rate: 0.08 },
-  { min: 134057, max: 142100, rate: 0.085 },
-  { min: 142101, max: 150626, rate: 0.09 },
-  { min: 150627, max: 159663, rate: 0.095 },
-  { min: 159664, max: Infinity, rate: 0.10 },
-];
+// HECS thresholds now sourced from policy
+const HECS_THRESHOLDS = DEFAULT_POLICY.hecs.thresholds;
 
 interface IncomeBreakdownItem {
   component: string;
@@ -350,17 +415,16 @@ function getHecsRepayment(annualIncome: number): number {
   return (annualIncome * 0.10) / 12;
 }
 
-function getHemBenchmark(maritalStatus: string | null, dependentsCount: number | null, grossAnnualIncome: number = 0): number {
+function getHemBenchmark(maritalStatus: string | null, dependentsCount: number | null, grossAnnualIncome: number = 0, hemConfig: HemConfig = DEFAULT_POLICY.hem): number {
   const status = maritalStatus?.toLowerCase() || 'single';
   const isCouple = ['married', 'de facto', 'couple', 'partnered'].includes(status);
   const dependents = Math.min(dependentsCount || 0, 3);
   
   const category = isCouple ? 'couple' : 'single';
-  const baseHem = HEM_BENCHMARKS_BASE[category][dependents] || HEM_BENCHMARKS_BASE[category][0];
+  const baseHem = hemConfig.baseBenchmarks[category][dependents] || hemConfig.baseBenchmarks[category][0];
   
-  // Apply income-based scaling
   let multiplier = 1.0;
-  for (const tier of HEM_INCOME_SCALING) {
+  for (const tier of hemConfig.incomeScaling) {
     if (grossAnnualIncome <= tier.maxIncome) {
       multiplier = tier.multiplier;
       break;
@@ -516,7 +580,7 @@ function calculateNegativePropertyCashFlows(properties: any[]): {
   return { totalMonthly, breakdown };
 }
 
-function calculateLiabilityBreakdown(liabilities: any[], properties: any[], annualIncome: number): {
+function calculateLiabilityBreakdown(liabilities: any[], properties: any[], annualIncome: number, policy: PolicyConfig = DEFAULT_POLICY): {
   totalMonthly: number;
   breakdown: LiabilityBreakdownItem[];
 } {
@@ -529,9 +593,9 @@ function calculateLiabilityBreakdown(liabilities: any[], properties: any[], annu
     let monthlyServicing = 0;
 
     if (type.includes('credit') || type.includes('card')) {
-      // Credit card: 3% of credit limit
+      // Credit card: % of credit limit from policy
       const limit = liability.credit_limit || liability.current_balance || 0;
-      monthlyServicing = limit * 0.03;
+      monthlyServicing = limit * policy.liabilityRules.creditCardLimitRate;
       breakdown.push({
         type: 'Credit Card',
         balance: liability.current_balance || 0,
@@ -547,9 +611,9 @@ function calculateLiabilityBreakdown(liabilities: any[], properties: any[], annu
         monthlyServicing,
       });
     } else if (type.includes('afterpay') || type.includes('bnpl') || type.includes('buy now')) {
-      // BNPL: 5% of limit or actual monthly
+      // BNPL: % of limit from policy or actual monthly
       const limit = liability.credit_limit || liability.current_balance || 0;
-      monthlyServicing = Math.max(limit * 0.05, liability.monthly_repayment || 0);
+      monthlyServicing = Math.max(limit * policy.liabilityRules.bnplLimitRate, liability.monthly_repayment || 0);
       breakdown.push({
         type: 'Buy Now Pay Later',
         balance: liability.current_balance || 0,
@@ -571,8 +635,8 @@ function calculateLiabilityBreakdown(liabilities: any[], properties: any[], annu
 
   // Add existing property loans - stress-tested at P&I repayments
   // Banks assess existing loans at P&I even if currently interest-only
-  const assessmentRateForLoans = 0.095; // 9.5% assessment rate (approx 6.5% + 3% buffer)
-  const loanTermMonths = 30 * 12; // 30 year term for calculation
+  const assessmentRateForLoans = policy.propertyPolicy.loanAssessmentRate;
+  const loanTermMonths = policy.propertyPolicy.loanTermMonths;
   
   for (const property of properties) {
     const propertyType = property.property_type?.toLowerCase() || '';
@@ -615,15 +679,9 @@ function calculateLiabilityBreakdown(liabilities: any[], properties: any[], annu
   return { totalMonthly, breakdown };
 }
 
-// Conservative mode adjustments (matches client-side logic)
-const CONSERVATIVE_MODE_ADJUSTMENTS = {
-  minimumSurplusFloor: 1000,
-  residualIncomeFloor: 1500,
-  surplusBufferMultiplier: 0.85,
-  dtiHardCap: 6,
-};
-
-const DEFAULT_DTI_CAP = 6.0;
+// Conservative mode + DTI cap now sourced from policy
+const CONSERVATIVE_MODE_ADJUSTMENTS = DEFAULT_POLICY.conservativeMode;
+const DEFAULT_DTI_CAP = DEFAULT_POLICY.loanDefaults.dtiCap;
 
 function calculateBorrowingCapacity(params: {
   grossAnnualIncome: number;
@@ -637,10 +695,15 @@ function calculateBorrowingCapacity(params: {
   calculationMode?: 'bank' | 'conservative';
   dtiCapEnabled?: boolean;
   dtiCapLimit?: number;
+  policy?: PolicyConfig;
 }): CalculationResult & { afterTaxAnnualIncome: number; monthlyAfterTaxIncome: number } {
+  const activePolicy = params.policy || DEFAULT_POLICY;
   const { grossAnnualIncome, shadedAnnualIncome, monthlyLivingExpenses, monthlyCommitments, 
           interestRate, bufferRate, loanTermYears,
-          calculationMode = 'bank', dtiCapEnabled = false, dtiCapLimit = DEFAULT_DTI_CAP } = params;
+          calculationMode = 'bank', dtiCapEnabled = false, dtiCapLimit = activePolicy.loanDefaults.dtiCap } = params;
+  
+  const isConservative = calculationMode === 'conservative';
+  const conservativeConfig = activePolicy.conservativeMode;
   
   const isConservative = calculationMode === 'conservative';
   
@@ -658,15 +721,15 @@ function calculateBorrowingCapacity(params: {
   
   // Conservative mode adjustments (mirrors client-side logic exactly)
   if (isConservative) {
-    monthlySurplus = monthlySurplus * CONSERVATIVE_MODE_ADJUSTMENTS.surplusBufferMultiplier;
+    monthlySurplus = monthlySurplus * conservativeConfig.surplusBufferMultiplier;
     
-    if (monthlySurplus < CONSERVATIVE_MODE_ADJUSTMENTS.minimumSurplusFloor) {
+    if (monthlySurplus < conservativeConfig.minimumSurplusFloor) {
       monthlySurplus = Math.max(0, monthlySurplus);
     }
     
     const residualIncome = monthlyIncome - monthlyCommitments;
-    if (residualIncome < CONSERVATIVE_MODE_ADJUSTMENTS.residualIncomeFloor) {
-      monthlySurplus = Math.max(0, monthlySurplus - (CONSERVATIVE_MODE_ADJUSTMENTS.residualIncomeFloor - residualIncome));
+    if (residualIncome < conservativeConfig.residualIncomeFloor) {
+      monthlySurplus = Math.max(0, monthlySurplus - (conservativeConfig.residualIncomeFloor - residualIncome));
     }
   }
   
@@ -687,7 +750,7 @@ function calculateBorrowingCapacity(params: {
   let dtiRatio = params.grossAnnualIncome > 0 ? Math.round((totalDebtWithNewLoan / params.grossAnnualIncome) * 100) / 100 : 0;
   
   // Apply DTI cap if enabled or in conservative mode
-  const effectiveDtiCap = isConservative ? CONSERVATIVE_MODE_ADJUSTMENTS.dtiHardCap : dtiCapLimit;
+  const effectiveDtiCap = isConservative ? conservativeConfig.dtiHardCap : dtiCapLimit;
   const shouldApplyDtiCap = dtiCapEnabled || isConservative;
   
   if (shouldApplyDtiCap && dtiRatio > effectiveDtiCap && grossAnnualIncome > 0) {
@@ -700,8 +763,8 @@ function calculateBorrowingCapacity(params: {
     }
   }
   
-  // Stress test at +1% above assessment
-  const stressRate = ((assessmentRate + 1) / 100) / 12;
+  // Stress test at policy-configured increment above assessment rate
+  const stressRate = ((assessmentRate + activePolicy.loanDefaults.stressTestIncrement) / 100) / 12;
   let stressTestedCapacity = 0;
   if (stressRate > 0 && maxNewRepayment > 0) {
     const stressFactor = (1 - Math.pow(1 + stressRate, -periods)) / stressRate;
@@ -712,11 +775,12 @@ function calculateBorrowingCapacity(params: {
     }
   }
   
-  // Determine band
+  // Determine band using policy thresholds
+  const bandThresholds = activePolicy.bandThresholds;
   let serviceabilityBand: 'green' | 'amber' | 'red';
-  if (monthlySurplus > 500 && dtiRatio < 6) {
+  if (monthlySurplus > bandThresholds.greenSurplusMin && dtiRatio < bandThresholds.greenDtiMax) {
     serviceabilityBand = 'green';
-  } else if (monthlySurplus > 0 && dtiRatio < 8) {
+  } else if (monthlySurplus > 0 && dtiRatio < bandThresholds.amberDtiMax) {
     serviceabilityBand = 'amber';
   } else {
     serviceabilityBand = 'red';
@@ -764,8 +828,8 @@ function calculateBorrowingCapacity(params: {
   if (borrowingCapacity < 100000 && shadedAnnualIncome > 50000) {
     warnings.push("Borrowing capacity constrained by existing commitments");
   }
-  if (isConservative && monthlySurplus < CONSERVATIVE_MODE_ADJUSTMENTS.minimumSurplusFloor) {
-    warnings.push(`Surplus below conservative minimum floor of $${CONSERVATIVE_MODE_ADJUSTMENTS.minimumSurplusFloor}/mo`);
+  if (isConservative && monthlySurplus < conservativeConfig.minimumSurplusFloor) {
+    warnings.push(`Surplus below conservative minimum floor of $${conservativeConfig.minimumSurplusFloor}/mo`);
   }
   
   return {
@@ -813,6 +877,10 @@ Deno.serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // ── PHASE 3: Resolve active policy from lender name ──
+    const activePolicy = resolvePolicy(overrides?.selectedLenderName);
+    console.log(`[calculate-borrowing-capacity] Active policy: ${activePolicy.name}`);
 
     console.log(`[calculate-borrowing-capacity] Processing client: ${clientId}`);
 
@@ -864,7 +932,7 @@ Deno.serve(async (req) => {
         : shadedTotal;
 
     // Calculate living expenses (HEM or override) - use income-scaled HEM
-    const hemBenchmark = getHemBenchmark(client.marital_status, client.dependents_count, effectiveGrossIncome);
+    const hemBenchmark = getHemBenchmark(client.marital_status, client.dependents_count, effectiveGrossIncome, activePolicy.hem);
     
     // CRITICAL: Use the HIGHER of HEM benchmark OR declared expenses from database
     // This is the "hybrid" approach that banks use - they take the greater value
@@ -896,7 +964,7 @@ Deno.serve(async (req) => {
 
     // ── PROPERTY CONTRIBUTION ENGINE (Phase 1) ──
     // Run unified assessment alongside legacy for parity validation
-    const propertyContributions = assessAllPropertyContributions(properties);
+    const propertyContributions = assessAllPropertyContributions(properties, activePolicy.propertyPolicy);
     
     // Parity validation: compare engine outputs against legacy functions
     // Legacy income from properties = income added by calculateIncomeBreakdown from positive cashflows
@@ -921,7 +989,7 @@ Deno.serve(async (req) => {
 
     // Calculate liability servicing
     const { totalMonthly: liabilityServicing, breakdown: liabilityBreakdown } = 
-      calculateLiabilityBreakdown(liabilities, properties, effectiveGrossIncome);
+      calculateLiabilityBreakdown(liabilities, properties, effectiveGrossIncome, activePolicy);
     
     // Calculate total outstanding debt balances for DTI (industry standard)
     let totalDebtBalances = liabilityBreakdown.reduce((sum, item) => sum + (item.balance || 0), 0);
@@ -939,9 +1007,9 @@ Deno.serve(async (req) => {
     // When LMI is added to the loan, it must be serviced at the assessment rate
     let lmiMonthlyServicing = 0;
     if (lmiMode === 'debt_capitalised' && lmiAmount > 0) {
-      const lmiAssessmentRate = ((overrides?.interestRate ?? 6.50) + (overrides?.bufferRate ?? 3.00)) / 100;
+      const lmiAssessmentRate = ((overrides?.interestRate ?? activePolicy.loanDefaults.interestRate) + (overrides?.bufferRate ?? activePolicy.loanDefaults.bufferRate)) / 100;
       const lmiMonthlyRate = lmiAssessmentRate / 12;
-      const lmiPeriods = (overrides?.loanTermYears ?? 30) * 12;
+      const lmiPeriods = (overrides?.loanTermYears ?? activePolicy.loanDefaults.loanTermYears) * 12;
       lmiMonthlyServicing = lmiAmount * (lmiMonthlyRate * Math.pow(1 + lmiMonthlyRate, lmiPeriods)) 
                             / (Math.pow(1 + lmiMonthlyRate, lmiPeriods) - 1);
       console.log(`[calculate-borrowing-capacity] LMI monthly servicing: $${lmiMonthlyServicing.toFixed(2)}/mo at ${(lmiAssessmentRate * 100).toFixed(2)}%`);
@@ -953,17 +1021,17 @@ Deno.serve(async (req) => {
         ? liabilityServicing + overrides.additionalLiabilities + lmiMonthlyServicing
         : liabilityServicing + lmiMonthlyServicing;
 
-    // Set calculation parameters
-    const interestRate = overrides?.interestRate ?? 6.50;
-    const bufferRate = overrides?.bufferRate ?? 3.00;
-    const loanTermYears = overrides?.loanTermYears ?? 30;
+    // Set calculation parameters (use policy defaults if no overrides)
+    const interestRate = overrides?.interestRate ?? activePolicy.loanDefaults.interestRate;
+    const bufferRate = overrides?.bufferRate ?? activePolicy.loanDefaults.bufferRate;
+    const loanTermYears = overrides?.loanTermYears ?? activePolicy.loanDefaults.loanTermYears;
 
     // Perform calculation - uses after-tax income internally
     // NOTE: Uses totalLivingExpenses which includes negative property cash flows
     const result = calculateBorrowingCapacity({
       grossAnnualIncome: effectiveGrossIncome,
       shadedAnnualIncome: effectiveShadedIncome,
-      monthlyLivingExpenses: totalLivingExpenses, // Includes negative property cash flows
+      monthlyLivingExpenses: totalLivingExpenses,
       monthlyCommitments: effectiveCommitments,
       interestRate,
       bufferRate,
@@ -971,7 +1039,8 @@ Deno.serve(async (req) => {
       totalDebtBalances,
       calculationMode: overrides?.calculationMode || 'bank',
       dtiCapEnabled: overrides?.dtiCapEnabled || false,
-      dtiCapLimit: overrides?.dtiCapLimit || DEFAULT_DTI_CAP,
+      dtiCapLimit: overrides?.dtiCapLimit || activePolicy.loanDefaults.dtiCap,
+      policy: activePolicy,
     });
 
     console.log(`[calculate-borrowing-capacity] Result: Capacity $${result.borrowingCapacity}, Band: ${result.serviceabilityBand}`);
@@ -989,17 +1058,20 @@ Deno.serve(async (req) => {
     const effectiveDtiCapLimit = overrides?.dtiCapLimit || DEFAULT_DTI_CAP;
     
     const assumptionItems = [
+      { key: "Policy Profile", value: activePolicy.name },
       { key: "Serviceability Basis", value: "After-Tax Income" },
       { key: "Buffer Rate", value: `${bufferRate}%` },
       { key: "Assessment Rate", value: `${result.assessmentRate}%` },
       { key: "Loan Term", value: `${loanTermYears} years` },
       { key: "HEM Benchmark", value: `$${hemBenchmark.toLocaleString()}/mo (income-scaled)` },
       { key: "Repayment Type", value: "Principal & Interest" },
-      { key: "Rental Expense Ratio", value: `${RENTAL_EXPENSE_RATIO * 100}%` },
-      { key: "Existing Loan Assessment", value: "P&I at 9.5%" },
-      { key: "Tax Year", value: "2025-26 (incl. 2% Medicare Levy)" },
+      { key: "Rental Expense Ratio", value: `${activePolicy.propertyPolicy.rentalExpenseRatio * 100}%` },
+      { key: "Existing Loan Assessment", value: `P&I at ${(activePolicy.propertyPolicy.loanAssessmentRate * 100).toFixed(1)}%` },
+      { key: "Tax Year", value: `${activePolicy.tax.taxYear} (incl. ${(activePolicy.tax.medicareLevyRate * 100).toFixed(0)}% Medicare Levy)` },
       { key: "After-Tax Income Used", value: `$${taxBreakdown.afterTaxIncome.toLocaleString()}/yr` },
       { key: "Marginal Tax Rate", value: `${(taxBreakdown.marginalTaxRate * 100).toFixed(0)}%` },
+      { key: "Stress Test Increment", value: `+${activePolicy.loanDefaults.stressTestIncrement}%` },
+      { key: "Credit Card Servicing", value: `${(activePolicy.liabilityRules.creditCardLimitRate * 100).toFixed(1)}% of limit` },
     ];
 
     const propertyContributionData = {

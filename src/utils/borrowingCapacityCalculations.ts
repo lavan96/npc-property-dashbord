@@ -5,7 +5,29 @@
  * - Instant UI feedback
  * - What-if scenario modeling
  * - Offline calculations
+ * 
+ * Phase 3: Constants are now sourced from the Policy Engine (policyEngine.ts)
  */
+
+import {
+  DEFAULT_POLICY,
+  DEFAULT_INCOME_SHADING_RULES,
+  DEFAULT_HEM_CONFIG,
+  DEFAULT_CONSERVATIVE_CONFIG,
+  DEFAULT_LOAN_PARAMS,
+  DEFAULT_BAND_THRESHOLDS,
+  DEFAULT_TAX_CONFIG,
+  DEFAULT_HECS_CONFIG,
+  calculateIncomeTaxFromPolicy,
+  getHemBenchmarkFromPolicy,
+  getHecsRepaymentFromPolicy,
+  determineServiceabilityBand,
+  type PolicyConfig,
+  type IncomeShadingRule,
+  type HemConfig,
+  type BandThresholds,
+  type ConservativeModeConfig,
+} from './policyEngine';
 
 // ============================================
 // TYPES
@@ -90,20 +112,9 @@ export interface FullAssessmentResult extends BorrowingCapacityResult {
   propertyContributions?: any;
 }
 
-// ============================================
-// 2025-26 AUSTRALIAN TAX BRACKETS
-// ============================================
-
-// Tax brackets excluding Medicare Levy (which is 2% additional)
-export const TAX_BRACKETS_2025_26 = [
-  { min: 0, max: 18200, rate: 0, base: 0 },
-  { min: 18201, max: 45000, rate: 0.16, base: 0 },
-  { min: 45001, max: 135000, rate: 0.30, base: 4288 },
-  { min: 135001, max: 190000, rate: 0.37, base: 31288 },
-  { min: 190001, max: Infinity, rate: 0.45, base: 51638 },
-];
-
-export const MEDICARE_LEVY_RATE = 0.02;
+// Tax brackets and Medicare now sourced from Policy Engine
+export const TAX_BRACKETS_2025_26 = DEFAULT_TAX_CONFIG.brackets;
+export const MEDICARE_LEVY_RATE = DEFAULT_TAX_CONFIG.medicareLevyRate;
 
 /**
  * Calculate income tax payable for a given taxable income (2025-26 rates)
@@ -237,79 +248,32 @@ export function calculateNegativeGearingRefund(taxableLoss: number, grossAnnualI
 }
 
 // ============================================
-// CONSTANTS
+// CONSTANTS — Now sourced from Policy Engine
+// Exported for backward compatibility
 // ============================================
 
-export const INCOME_SHADING_RULES: Record<string, { rate: number; label: string }> = {
-  base_salary: { rate: 1.00, label: "Base Salary (PAYG)" },
-  gross_salary: { rate: 1.00, label: "Gross Salary" },
-  second_job: { rate: 0.80, label: "Second Job" },
-  casual: { rate: 0.60, label: "Casual Income" },
-  bonus: { rate: 0.80, label: "Bonus (avg 2yr)" },
-  commission: { rate: 0.80, label: "Commission" },
-  overtime_essential: { rate: 1.00, label: "Essential Overtime" },
-  overtime_non_essential: { rate: 0.50, label: "Non-Essential Overtime" },
-  allowance: { rate: 0.80, label: "Allowances" },
-  rental_existing: { rate: 0.80, label: "Rental Income (Existing)" },
-  rental_proposed: { rate: 0.70, label: "Rental Income (Proposed)" },
-  investment_income: { rate: 0.80, label: "Investment Income" },
-  government_payments: { rate: 1.00, label: "Government Payments" },
-  self_employed: { rate: 0.80, label: "Self-Employed (2yr avg)" },
-  other_taxable: { rate: 0.80, label: "Other Taxable" },
-};
+export const INCOME_SHADING_RULES = DEFAULT_INCOME_SHADING_RULES;
 
-// HEM BENCHMARK TABLE (Monthly - AUD) - 2024 Industry Standard
-// BASE values - these get scaled by income level
-export const HEM_BENCHMARKS_BASE: Record<string, Record<number, number>> = {
-  single: {
-    0: 2100,  // Base for < $80k income
-    1: 2650,
-    2: 3050,
-    3: 3450,
-  },
-  couple: {
-    0: 2950,  // Base for < $80k income
-    1: 3400,
-    2: 3850,
-    3: 4300,
-  },
-};
-
-// Income-based HEM scaling factors
-// Higher income = higher expected living expenses
-export const HEM_INCOME_SCALING: { maxIncome: number; multiplier: number }[] = [
-  { maxIncome: 80000, multiplier: 1.00 },   // Base HEM
-  { maxIncome: 120000, multiplier: 1.20 },  // 20% uplift for $80-120k
-  { maxIncome: 180000, multiplier: 1.40 },  // 40% uplift for $120-180k
-  { maxIncome: 250000, multiplier: 1.60 },  // 60% uplift for $180-250k
-  { maxIncome: Infinity, multiplier: 1.80 }, // 80% uplift for $250k+
-];
-
-// For backwards compatibility - deprecated, use getHemBenchmark with income param
+// HEM benchmarks (backward-compatible exports)
+export const HEM_BENCHMARKS_BASE = DEFAULT_HEM_CONFIG.baseBenchmarks;
+export const HEM_INCOME_SCALING = DEFAULT_HEM_CONFIG.incomeScaling;
 export const HEM_BENCHMARKS = HEM_BENCHMARKS_BASE;
 
-// Rental income expense ratio - banks assume ~20-25% of rent goes to expenses
-export const RENTAL_EXPENSE_RATIO = 0.20;
-
-// Assessment rate for stress-testing existing loans
-export const LOAN_ASSESSMENT_RATE = 0.095; // 9.5% (approx 6.5% + 3% buffer)
+// Property & loan constants
+export const RENTAL_EXPENSE_RATIO = DEFAULT_POLICY.propertyPolicy.rentalExpenseRatio;
+export const LOAN_ASSESSMENT_RATE = DEFAULT_POLICY.propertyPolicy.loanAssessmentRate;
 
 export const DEFAULT_CALCULATION_PARAMS = {
-  interestRate: 6.50,
-  bufferRate: 3.00,
-  loanTermYears: 30,
+  interestRate: DEFAULT_LOAN_PARAMS.interestRate,
+  bufferRate: DEFAULT_LOAN_PARAMS.bufferRate,
+  loanTermYears: DEFAULT_LOAN_PARAMS.loanTermYears,
 };
 
-// Conservative mode adjustments (stricter serviceability model)
-export const CONSERVATIVE_MODE_ADJUSTMENTS = {
-  minimumSurplusFloor: 1000, // Enforce $1,000/mo minimum surplus
-  residualIncomeFloor: 1500, // Minimum residual income requirement
-  surplusBufferMultiplier: 0.85, // Only use 85% of calculated surplus
-  dtiHardCap: 6, // Hard cap DTI at 6x
-};
+// Conservative mode (backward-compatible export)
+export const CONSERVATIVE_MODE_ADJUSTMENTS = DEFAULT_CONSERVATIVE_CONFIG;
 
-// Default DTI cap settings
-export const DEFAULT_DTI_CAP = 6.0;
+// Default DTI cap
+export const DEFAULT_DTI_CAP = DEFAULT_LOAN_PARAMS.dtiCap;
 
 // ============================================
 // HELPER FUNCTIONS
@@ -368,37 +332,10 @@ export function getHemBenchmark(maritalStatus: string | null, dependentsCount: n
 }
 
 /**
- * Get HECS repayment based on annual income (2024-25 rates)
+ * Get HECS repayment based on annual income — now delegates to Policy Engine
  */
 export function getHecsRepayment(annualIncome: number): number {
-  const thresholds = [
-    { min: 0, max: 54434, rate: 0.00 },
-    { min: 54435, max: 62850, rate: 0.01 },
-    { min: 62851, max: 66620, rate: 0.02 },
-    { min: 66621, max: 70618, rate: 0.025 },
-    { min: 70619, max: 74855, rate: 0.03 },
-    { min: 74856, max: 79346, rate: 0.035 },
-    { min: 79347, max: 84107, rate: 0.04 },
-    { min: 84108, max: 89154, rate: 0.045 },
-    { min: 89155, max: 94503, rate: 0.05 },
-    { min: 94504, max: 100174, rate: 0.055 },
-    { min: 100175, max: 106185, rate: 0.06 },
-    { min: 106186, max: 112556, rate: 0.065 },
-    { min: 112557, max: 119309, rate: 0.07 },
-    { min: 119310, max: 126467, rate: 0.075 },
-    { min: 126468, max: 134056, rate: 0.08 },
-    { min: 134057, max: 142100, rate: 0.085 },
-    { min: 142101, max: 150626, rate: 0.09 },
-    { min: 150627, max: 159663, rate: 0.095 },
-    { min: 159664, max: Infinity, rate: 0.10 },
-  ];
-
-  for (const bracket of thresholds) {
-    if (annualIncome >= bracket.min && annualIncome <= bracket.max) {
-      return (annualIncome * bracket.rate) / 12;
-    }
-  }
-  return (annualIncome * 0.10) / 12;
+  return getHecsRepaymentFromPolicy(annualIncome, DEFAULT_HECS_CONFIG);
 }
 
 /**
@@ -527,8 +464,8 @@ export function calculateBorrowingCapacity(params: BorrowingCapacityInput): Borr
     }
   }
   
-  // Stress test at +1% above assessment
-  const stressRate = ((assessmentRate + 1) / 100) / 12;
+  // Stress test at policy-configured increment above assessment rate
+  const stressRate = ((assessmentRate + DEFAULT_LOAN_PARAMS.stressTestIncrement) / 100) / 12;
   let stressTestedCapacity = 0;
   if (stressRate > 0 && maxNewRepayment > 0) {
     const stressFactor = (1 - Math.pow(1 + stressRate, -periods)) / stressRate;
@@ -540,15 +477,10 @@ export function calculateBorrowingCapacity(params: BorrowingCapacityInput): Borr
     }
   }
   
-  // Determine band
-  let serviceabilityBand: ServiceabilityBand;
-  if (monthlySurplus > 500 && dtiRatio < 6) {
-    serviceabilityBand = 'green';
-  } else if (monthlySurplus > 0 && dtiRatio < 8) {
-    serviceabilityBand = 'amber';
-  } else {
-    serviceabilityBand = 'red';
-  }
+  // Determine band using policy thresholds
+  const serviceabilityBand: ServiceabilityBand = determineServiceabilityBand(
+    monthlySurplus, dtiRatio, DEFAULT_BAND_THRESHOLDS
+  );
   
   // Generate recommendations
   const recommendations: string[] = [];
@@ -645,3 +577,8 @@ export function calculateCapacityChange(
     direction: absoluteChange > 0 ? 'increase' : absoluteChange < 0 ? 'decrease' : 'unchanged',
   };
 }
+
+// Re-export Policy Engine types for consumers
+export type { PolicyConfig, IncomeShadingRule, HemConfig, BandThresholds, ConservativeModeConfig } from './policyEngine';
+export { DEFAULT_POLICY, buildPolicy, getLenderPolicy, LENDER_PROFILES } from './policyEngine';
+export type { LenderProfileId } from './policyEngine';
