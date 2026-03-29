@@ -476,6 +476,9 @@ export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', 
           </CollapsibleContent>
         </Collapsible>
 
+        {/* Phase 5: Audit Trail & Explanation */}
+        <AuditTrailPanel auditTrail={result?.auditTrail} explanation={result?.explanation} />
+
         {/* Disclaimer */}
         <div className="p-3 rounded-lg bg-muted/50 border border-border">
           <p className="text-xs text-muted-foreground flex items-start gap-2">
