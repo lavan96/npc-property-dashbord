@@ -859,7 +859,7 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const body = await req.json();
-    const { clientId, overrides, saveResult = true } = body;
+    const { clientId, overrides, saveResult = true, scenarioDeltas } = body;
 
     // SECURITY: Verify authentication (enforced - TODO removed)
     const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
