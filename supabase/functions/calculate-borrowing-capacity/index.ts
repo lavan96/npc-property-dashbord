@@ -378,10 +378,6 @@ function getTaxBreakdown(grossAnnualIncome: number) {
   };
 }
 
-// ============================================
-// HECS/HELP REPAYMENT THRESHOLDS (2024-25)
-// ============================================
-const HECS_THRESHOLDS = [
 // HECS thresholds now sourced from policy
 const HECS_THRESHOLDS = DEFAULT_POLICY.hecs.thresholds;
 
