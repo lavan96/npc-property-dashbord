@@ -1379,6 +1379,70 @@ Deno.serve(async (req) => {
     const taxBreakdown = getTaxBreakdown(effectiveGrossIncome);
     console.log(`[calculate-borrowing-capacity] Tax breakdown: Marginal rate ${(taxBreakdown.marginalTaxRate * 100).toFixed(0)}%, After-tax income $${taxBreakdown.afterTaxIncome}`);
 
+    // ── PHASE 5: Build Audit Trail ──
+    const audit = new AuditTrailBuilder();
+
+    // Policy selection
+    if (activePolicy.name !== 'Default APRA') {
+      audit.add('policy', 'lender_profile_selected', 'Lender Profile', 0, 0, activePolicy.name, `Policy: ${activePolicy.name}`);
+    }
+    if (overrides?.interestRate !== undefined) audit.add('policy', 'override_applied', 'Interest Rate Override', activePolicy.loanDefaults.interestRate, overrides.interestRate, 'Manual override');
+    if (overrides?.bufferRate !== undefined) audit.add('policy', 'override_applied', 'Buffer Rate Override', activePolicy.loanDefaults.bufferRate, overrides.bufferRate, 'Manual override');
+
+    // Income shading audit
+    for (const item of incomeBreakdown) {
+      if (item.grossAmount > 0) {
+        audit.add('income', 'shading_applied', item.component, item.grossAmount, item.shadedAmount, `${(item.shadingRate * 100).toFixed(0)}% shading`);
+      }
+    }
+
+    // Tax audit
+    audit.add('tax', 'tax_calculated', 'Income Tax', effectiveGrossIncome, taxBreakdown.afterTaxIncome, `${(taxBreakdown.effectiveTaxRate * 100).toFixed(1)}% effective rate`, `Tax: $${taxBreakdown.totalTax}`);
+    audit.add('tax', 'medicare_levy_applied', 'Medicare Levy', 0, taxBreakdown.medicareLevy, `${(activePolicy.tax.medicareLevyRate * 100).toFixed(0)}% of gross`);
+
+    // Expense audit
+    audit.add('expense', expenseMethodUsed === 'hem' ? 'hem_benchmark_applied' : expenseMethodUsed === 'declared_higher' ? 'declared_expenses_used' : 'override_applied',
+      'Living Expenses', totalDeclaredExpenses, livingExpenses, `Method: ${expenseMethodUsed}`, `HEM $${hemBenchmark}/mo vs Declared $${totalDeclaredExpenses}/mo`);
+    for (const ncf of negativeCashFlowBreakdown) {
+      audit.add('property', 'negative_cf_layered', `Neg CF: ${ncf.address}`, 0, ncf.monthlyCashflow, 'Layered on expenses');
+    }
+
+    // Liability audit
+    for (const l of liabilityBreakdown) {
+      const action = l.type.includes('Credit') ? 'credit_card_limit_rate' : l.type.includes('HECS') ? 'hecs_threshold_applied' : l.type.includes('Loan P&I') ? 'pi_conversion' : 'assessment_rate_applied';
+      audit.add('liability', action, l.type, l.balance || 0, l.monthlyServicing, `$${l.monthlyServicing.toFixed(0)}/mo servicing`);
+    }
+
+    // LMI audit
+    if (lmiMode === 'debt_capitalised' && lmiAmount > 0) {
+      audit.add('constraint', 'lmi_capitalised', 'LMI Capitalised', 0, lmiAmount, `+$${lmiMonthlyServicing.toFixed(0)}/mo servicing`);
+    }
+
+    // Stress test audit
+    audit.add('constraint', 'stress_test_applied', 'Stress Test', result.borrowingCapacity, result.stressTestedCapacity, `+${activePolicy.loanDefaults.stressTestIncrement}% above assessment`);
+
+    const auditTrail = audit.build();
+    console.log(`[calculate-borrowing-capacity] Phase 5: Audit trail with ${auditTrail.entries.length} entries`);
+
+    // ── PHASE 5: Generate Explanation ──
+    const explanation = generateExplanationServer({
+      borrowingCapacity: result.borrowingCapacity, monthlySurplus: result.monthlySurplus,
+      serviceabilityBand: result.serviceabilityBand, stressTestedCapacity: result.stressTestedCapacity,
+      dtiRatio: result.dtiRatio, assessmentRate: result.assessmentRate,
+      grossAnnualIncome: effectiveGrossIncome, shadedAnnualIncome: effectiveShadedIncome,
+      incomeBreakdownCount: incomeBreakdown.length,
+      afterTaxAnnualIncome: taxBreakdown.afterTaxIncome, totalTax: taxBreakdown.totalTax,
+      effectiveTaxRate: taxBreakdown.effectiveTaxRate, marginalTaxRate: taxBreakdown.marginalTaxRate,
+      livingExpensesMonthly: livingExpenses, hemBenchmark, declaredExpenses: totalDeclaredExpenses,
+      expenseMethod: expenseMethodUsed, negativePropertyCashFlows, totalLivingExpenses,
+      existingCommitmentsMonthly: effectiveCommitments, totalDebtBalances, liabilityCount: liabilityBreakdown.length,
+      interestRate, bufferRate, loanTermYears,
+      policyName: activePolicy.name, calculationMode: overrides?.calculationMode || 'bank',
+      dtiCapEnabled: overrides?.dtiCapEnabled || false, dtiCapLimit: overrides?.dtiCapLimit || activePolicy.loanDefaults.dtiCap,
+      lmiAmount, lmiMode, propertyCount: properties.length,
+    });
+    console.log(`[calculate-borrowing-capacity] Phase 5: Explanation with ${explanation.steps.length} steps`);
+
     // ── PHASE 2: Build Three-Output Structure ──
     const calculatedAt = new Date().toISOString();
     const effectiveLmiAmount = overrides?.lmiAmount || 0;
