@@ -882,6 +882,10 @@ Deno.serve(async (req) => {
       );
     }
 
+    // ── PHASE 3: Resolve active policy from lender name ──
+    const activePolicy = resolvePolicy(overrides?.selectedLenderName);
+    console.log(`[calculate-borrowing-capacity] Active policy: ${activePolicy.name}`);
+
     console.log(`[calculate-borrowing-capacity] Processing client: ${clientId}`);
 
     // Fetch client data
@@ -932,7 +936,7 @@ Deno.serve(async (req) => {
         : shadedTotal;
 
     // Calculate living expenses (HEM or override) - use income-scaled HEM
-    const hemBenchmark = getHemBenchmark(client.marital_status, client.dependents_count, effectiveGrossIncome);
+    const hemBenchmark = getHemBenchmark(client.marital_status, client.dependents_count, effectiveGrossIncome, activePolicy.hem);
     
     // CRITICAL: Use the HIGHER of HEM benchmark OR declared expenses from database
     // This is the "hybrid" approach that banks use - they take the greater value
@@ -964,7 +968,7 @@ Deno.serve(async (req) => {
 
     // ── PROPERTY CONTRIBUTION ENGINE (Phase 1) ──
     // Run unified assessment alongside legacy for parity validation
-    const propertyContributions = assessAllPropertyContributions(properties);
+    const propertyContributions = assessAllPropertyContributions(properties, activePolicy.propertyPolicy);
     
     // Parity validation: compare engine outputs against legacy functions
     // Legacy income from properties = income added by calculateIncomeBreakdown from positive cashflows
@@ -989,7 +993,7 @@ Deno.serve(async (req) => {
 
     // Calculate liability servicing
     const { totalMonthly: liabilityServicing, breakdown: liabilityBreakdown } = 
-      calculateLiabilityBreakdown(liabilities, properties, effectiveGrossIncome);
+      calculateLiabilityBreakdown(liabilities, properties, effectiveGrossIncome, activePolicy);
     
     // Calculate total outstanding debt balances for DTI (industry standard)
     let totalDebtBalances = liabilityBreakdown.reduce((sum, item) => sum + (item.balance || 0), 0);
