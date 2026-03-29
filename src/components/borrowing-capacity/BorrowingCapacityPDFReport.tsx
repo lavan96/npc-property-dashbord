@@ -811,6 +811,215 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
     }
   }
 
+  // ════════════════════════════════════════════════════════════════════════════
+  // PHASE 5: CALCULATION EXPLANATION (How It Was Calculated)
+  // ════════════════════════════════════════════════════════════════════════════
+  const explanationData = a.explanation || null;
+  if (explanationData && explanationData.steps && explanationData.steps.length > 0) {
+    // Start new page for explanation
+    addFooter(doc, pageNum.value);
+    doc.addPage();
+    pageNum.value++;
+    y = 30;
+
+    y = drawSectionHeader(doc, 'How This Was Calculated', y);
+
+    // Executive summary box
+    if (explanationData.executiveSummary) {
+      const summaryLines: string[] = doc.splitTextToSize(explanationData.executiveSummary, CONTENT_W - 16);
+      const summaryH = summaryLines.length * 4 + 12;
+      y = checkPageBreak(doc, y, summaryH + 5, pageNum);
+      setFill(doc, GOLD_LIGHT);
+      setDraw(doc, GOLD);
+      doc.setLineWidth(0.3);
+      doc.roundedRect(MARGIN, y - 3, CONTENT_W, summaryH, 2, 2, 'FD');
+      setFill(doc, GOLD);
+      doc.rect(MARGIN, y - 1, 2.5, summaryH - 4, 'F');
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      setColor(doc, BODY_TEXT);
+      doc.text(summaryLines, MARGIN + 8, y + 5);
+      y += summaryH + 8;
+    }
+
+    // Explanation steps
+    for (const step of explanationData.steps) {
+      // Estimate step height
+      doc.setFontSize(8);
+      const narLines: string[] = doc.splitTextToSize(step.narrative, CONTENT_W - 24);
+      const figuresH = step.figures && step.figures.length > 0 ? 10 : 0;
+      const stepH = 12 + narLines.length * 4 + figuresH + 8;
+      y = checkPageBreak(doc, y, stepH, pageNum);
+
+      // Step number circle
+      setFill(doc, NAVY);
+      doc.circle(MARGIN + 5, y + 3, 4, 'F');
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      setColor(doc, WHITE);
+      doc.text(String(step.step), MARGIN + 5 - (step.step >= 10 ? 2.5 : 1.5), y + 5);
+
+      // Step title
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      setColor(doc, NAVY);
+      doc.text(step.title, MARGIN + 14, y + 5);
+      y += 12;
+
+      // Narrative
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      setColor(doc, BODY_TEXT);
+      doc.text(narLines, MARGIN + 14, y);
+      y += narLines.length * 4 + 3;
+
+      // Key figures as inline badges
+      if (step.figures && step.figures.length > 0) {
+        let fx = MARGIN + 14;
+        doc.setFontSize(7);
+        for (const fig of step.figures) {
+          const figText = `${fig.label}: ${fig.value}`;
+          const figW = doc.getTextWidth(figText) + 6;
+          if (fx + figW > PAGE_W - MARGIN) {
+            fx = MARGIN + 14;
+            y += 6;
+          }
+          setFill(doc, LIGHT_GRAY);
+          doc.roundedRect(fx, y - 3, figW, 7, 1, 1, 'F');
+          doc.setFont('helvetica', 'normal');
+          setColor(doc, NAVY);
+          doc.text(figText, fx + 3, y + 1);
+          fx += figW + 3;
+        }
+        y += 8;
+      }
+
+      // Subtle separator between steps
+      setFill(doc, { r: 235, g: 235, b: 235 });
+      doc.rect(MARGIN + 14, y, CONTENT_W - 14, 0.3, 'F');
+      y += 5;
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // PHASE 5: AUDIT TRAIL (Raw → Assessed Transformations)
+  // ════════════════════════════════════════════════════════════════════════════
+  const auditData = a.auditTrail || null;
+  if (auditData && auditData.entries && auditData.entries.length > 0) {
+    addFooter(doc, pageNum.value);
+    doc.addPage();
+    pageNum.value++;
+    y = 30;
+
+    y = drawSectionHeader(doc, 'Audit Trail — Raw vs Assessed Values', y);
+
+    // Summary stats row
+    const auditSummary = auditData.summary;
+    if (auditSummary) {
+      const statsBoxH = 20;
+      y = checkPageBreak(doc, y, statsBoxH + 5, pageNum);
+      const statColW = (CONTENT_W - 15) / 4;
+      
+      const statItems = [
+        { label: 'Income Shading', value: fmt(auditSummary.totalIncomeShading || 0), color: GREEN },
+        { label: 'Expense Adj.', value: fmt(auditSummary.totalExpenseAdjustments || 0), color: AMBER },
+        { label: 'Liability Adj.', value: fmt(auditSummary.totalLiabilityAdjustments || 0), color: RED },
+        { label: 'Tax Impact', value: fmt(auditSummary.totalTaxImpact || 0), color: GRAY },
+      ];
+
+      for (let si = 0; si < statItems.length; si++) {
+        const sx = MARGIN + si * (statColW + 5);
+        const stat = statItems[si];
+        setFill(doc, LIGHT_GRAY);
+        doc.roundedRect(sx, y, statColW, statsBoxH, 1.5, 1.5, 'F');
+        setFill(doc, stat.color);
+        doc.rect(sx, y + 2, 2, statsBoxH - 4, 'F');
+        doc.setFontSize(6.5);
+        doc.setFont('helvetica', 'normal');
+        setColor(doc, GRAY);
+        doc.text(stat.label, sx + 6, y + 7);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        setColor(doc, stat.color);
+        doc.text(stat.value, sx + 6, y + 15);
+      }
+      y += statsBoxH + 8;
+    }
+
+    // Audit entries table
+    // Header
+    setFill(doc, NAVY);
+    doc.rect(MARGIN, y - 5, CONTENT_W, ROW_HEIGHT, 'F');
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'bold');
+    setColor(doc, WHITE);
+    doc.text('Item', MARGIN + 3, y + 1);
+    doc.text('Raw Value', MARGIN + 80, y + 1, { align: 'right' } as any);
+    doc.text('Assessed', MARGIN + 110, y + 1, { align: 'right' } as any);
+    doc.text('Delta', MARGIN + 138, y + 1, { align: 'right' } as any);
+    doc.text('Rule', MARGIN + CONTENT_W - 3, y + 1, { align: 'right' } as any);
+    y += ROW_HEIGHT + 1;
+
+    // Group entries by category
+    const categoryOrder: string[] = ['income', 'tax', 'expense', 'property', 'liability', 'constraint', 'policy'];
+    const groupedEntries: Record<string, any[]> = {};
+    for (const entry of auditData.entries) {
+      if (!groupedEntries[entry.category]) groupedEntries[entry.category] = [];
+      groupedEntries[entry.category].push(entry);
+    }
+
+    const categoryLabels: Record<string, string> = {
+      income: 'INCOME', tax: 'TAX', expense: 'EXPENSES', property: 'PROPERTIES',
+      liability: 'LIABILITIES', constraint: 'CONSTRAINTS', policy: 'POLICY',
+    };
+
+    for (const cat of categoryOrder) {
+      const entries = groupedEntries[cat];
+      if (!entries || entries.length === 0) continue;
+
+      // Category sub-header
+      y = checkPageBreak(doc, y, 15, pageNum);
+      setFill(doc, { r: 240, g: 240, b: 245 });
+      doc.rect(MARGIN, y - 4, CONTENT_W, 8, 'F');
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'bold');
+      setColor(doc, NAVY);
+      doc.text(categoryLabels[cat] || cat.toUpperCase(), MARGIN + 3, y);
+      y += 7;
+
+      for (let ei = 0; ei < entries.length; ei++) {
+        y = checkPageBreak(doc, y, 12, pageNum);
+        const entry = entries[ei];
+        const bg = ei % 2 === 0 ? LIGHT_GRAY : undefined;
+        const deltaColor = entry.delta > 0 ? GREEN : entry.delta < 0 ? RED : GRAY;
+        const deltaPrefix = entry.delta > 0 ? '+' : '';
+        const ruleText = (entry.rule || '').length > 25 ? entry.rule.substring(0, 23) + '...' : entry.rule || '';
+        const labelText = (entry.label || '').length > 35 ? entry.label.substring(0, 33) + '...' : entry.label || '';
+
+        y = drawTableRow(doc, y, [
+          { text: labelText, x: MARGIN + 3, maxWidth: 68 },
+          { text: fmt(entry.rawValue), x: MARGIN + 80, align: 'right', color: GRAY },
+          { text: fmt(entry.assessedValue), x: MARGIN + 110, align: 'right', bold: true },
+          { text: entry.delta !== 0 ? `${deltaPrefix}${fmt(entry.delta)}` : '—', x: MARGIN + 138, align: 'right', color: deltaColor },
+          { text: ruleText, x: MARGIN + CONTENT_W - 3, align: 'right', color: GRAY },
+        ], bg);
+      }
+      y += 3;
+    }
+
+    // Overrides / constraints note
+    if (auditSummary?.hasOverrides) {
+      y = checkPageBreak(doc, y, 12, pageNum);
+      setFill(doc, AMBER_LIGHT);
+      doc.rect(MARGIN, y - 3, CONTENT_W, 10, 'F');
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'italic');
+      setColor(doc, { r: 120, g: 90, b: 30 });
+      doc.text('Note: Manual overrides were applied to this assessment. See entries marked "Manual override" above.', MARGIN + 4, y + 2);
+      y += 14;
+    }
+  }
+
   // Add footer to last content page
   addFooter(doc, pageNum.value);
 
@@ -988,10 +1197,44 @@ export async function fetchAndGenerateBorrowingCapacityPDF(clientId: string, cli
       return;
     }
 
+    // Phase 5: If the assessment doesn't have audit/explanation data, run a quick
+    // non-saving calculation to generate it for the PDF
+    let enrichedAssessment = latestAssessment;
+    if (!latestAssessment.auditTrail || !latestAssessment.explanation) {
+      try {
+        const { invokeSecureFunction } = await import('@/lib/secureInvoke');
+        const { data: calcData, error: calcError } = await invokeSecureFunction('calculate-borrowing-capacity', {
+          clientId,
+          overrides: {
+            interestRate: latestAssessment.interest_rate_used,
+            bufferRate: latestAssessment.buffer_rate,
+            loanTermYears: latestAssessment.loan_term_years,
+            proposedLoanAmount: latestAssessment.proposed_loan_amount,
+            calculationMode: latestAssessment.assumptions?.calculationMode || 'bank',
+            dtiCapEnabled: latestAssessment.assumptions?.dtiCapEnabled || false,
+            dtiCapLimit: latestAssessment.assumptions?.dtiCapLimit,
+            selectedLenderName: latestAssessment.assumptions?.selectedLenderName,
+            lmiAmount: latestAssessment.lmi_amount,
+            lmiMode: latestAssessment.lmi_mode,
+          },
+          saveResult: false, // Don't save — just generate audit/explanation
+        });
+        if (!calcError && calcData?.success && calcData.data) {
+          enrichedAssessment = {
+            ...latestAssessment,
+            auditTrail: calcData.data.auditTrail,
+            explanation: calcData.data.explanation,
+          };
+        }
+      } catch (e) {
+        console.warn('Could not generate audit trail for PDF — proceeding without it:', e);
+      }
+    }
+
     await generateBorrowingCapacityPDF({
       clientId,
       clientName,
-      assessment: latestAssessment,
+      assessment: enrichedAssessment,
       incomeSources,
       liabilities,
       expenses,
