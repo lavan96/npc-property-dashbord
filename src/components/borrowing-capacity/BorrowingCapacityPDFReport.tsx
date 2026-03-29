@@ -1197,10 +1197,44 @@ export async function fetchAndGenerateBorrowingCapacityPDF(clientId: string, cli
       return;
     }
 
+    // Phase 5: If the assessment doesn't have audit/explanation data, run a quick
+    // non-saving calculation to generate it for the PDF
+    let enrichedAssessment = latestAssessment;
+    if (!latestAssessment.auditTrail || !latestAssessment.explanation) {
+      try {
+        const { invokeSecureFunction } = await import('@/lib/secureInvoke');
+        const { data: calcData, error: calcError } = await invokeSecureFunction('calculate-borrowing-capacity', {
+          clientId,
+          overrides: {
+            interestRate: latestAssessment.interest_rate_used,
+            bufferRate: latestAssessment.buffer_rate,
+            loanTermYears: latestAssessment.loan_term_years,
+            proposedLoanAmount: latestAssessment.proposed_loan_amount,
+            calculationMode: latestAssessment.assumptions?.calculationMode || 'bank',
+            dtiCapEnabled: latestAssessment.assumptions?.dtiCapEnabled || false,
+            dtiCapLimit: latestAssessment.assumptions?.dtiCapLimit,
+            selectedLenderName: latestAssessment.assumptions?.selectedLenderName,
+            lmiAmount: latestAssessment.lmi_amount,
+            lmiMode: latestAssessment.lmi_mode,
+          },
+          saveResult: false, // Don't save — just generate audit/explanation
+        });
+        if (!calcError && calcData?.success && calcData.data) {
+          enrichedAssessment = {
+            ...latestAssessment,
+            auditTrail: calcData.data.auditTrail,
+            explanation: calcData.data.explanation,
+          };
+        }
+      } catch (e) {
+        console.warn('Could not generate audit trail for PDF — proceeding without it:', e);
+      }
+    }
+
     await generateBorrowingCapacityPDF({
       clientId,
       clientName,
-      assessment: latestAssessment,
+      assessment: enrichedAssessment,
       incomeSources,
       liabilities,
       expenses,
