@@ -40,6 +40,8 @@ interface BorrowingCapacityOverrides {
     vacancyRate: number;
     interestOnlyOffset: number;
   };
+  // Phase 4: Scenario deltas to run server-side
+  scenarioDeltas?: { name: string; deltas: import('@/utils/borrowingCapacityTypes').ScenarioDelta[] }[];
 }
 
 interface UseBorrowingCapacityOptions {
@@ -114,8 +116,9 @@ export function useBorrowingCapacity({ clientId, autoFetch = true }: UseBorrowin
     mutationFn: async (overrides?: BorrowingCapacityOverrides) => {
       const { data, error } = await invokeSecureFunction('calculate-borrowing-capacity', {
         clientId,
-        overrides,
+        overrides: overrides ? { ...overrides, scenarioDeltas: undefined } : undefined,
         saveResult: true,
+        scenarioDeltas: overrides?.scenarioDeltas,
       });
 
       if (error) throw new Error(error.message);
