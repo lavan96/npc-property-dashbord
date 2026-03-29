@@ -464,8 +464,8 @@ export function calculateBorrowingCapacity(params: BorrowingCapacityInput): Borr
     }
   }
   
-  // Stress test at +1% above assessment
-  const stressRate = ((assessmentRate + 1) / 100) / 12;
+  // Stress test at policy-configured increment above assessment rate
+  const stressRate = ((assessmentRate + DEFAULT_LOAN_PARAMS.stressTestIncrement) / 100) / 12;
   let stressTestedCapacity = 0;
   if (stressRate > 0 && maxNewRepayment > 0) {
     const stressFactor = (1 - Math.pow(1 + stressRate, -periods)) / stressRate;
@@ -477,15 +477,10 @@ export function calculateBorrowingCapacity(params: BorrowingCapacityInput): Borr
     }
   }
   
-  // Determine band
-  let serviceabilityBand: ServiceabilityBand;
-  if (monthlySurplus > 500 && dtiRatio < 6) {
-    serviceabilityBand = 'green';
-  } else if (monthlySurplus > 0 && dtiRatio < 8) {
-    serviceabilityBand = 'amber';
-  } else {
-    serviceabilityBand = 'red';
-  }
+  // Determine band using policy thresholds
+  const serviceabilityBand: ServiceabilityBand = determineServiceabilityBand(
+    monthlySurplus, dtiRatio, DEFAULT_BAND_THRESHOLDS
+  );
   
   // Generate recommendations
   const recommendations: string[] = [];
