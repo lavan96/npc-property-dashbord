@@ -13,3 +13,4 @@ export { LiabilitiesSection } from './sections/LiabilitiesSection';
 export { ProposedLoanSection } from './sections/ProposedLoanSection';
 export * from './BorrowingCapacityPDFSection';
 export { generateBorrowingCapacityPDF, fetchAndGenerateBorrowingCapacityPDF } from './BorrowingCapacityPDFReport';
+export type { ThreeOutputAssessment, CurrentCapacityResult, ProposedLoanCheckResult, ScenarioCapacityResult, ScenarioDelta } from '@/utils/borrowingCapacityTypes';
