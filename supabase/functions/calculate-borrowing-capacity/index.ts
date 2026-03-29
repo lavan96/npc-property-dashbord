@@ -754,7 +754,7 @@ function calculateBorrowingCapacity(params: {
   let dtiRatio = params.grossAnnualIncome > 0 ? Math.round((totalDebtWithNewLoan / params.grossAnnualIncome) * 100) / 100 : 0;
   
   // Apply DTI cap if enabled or in conservative mode
-  const effectiveDtiCap = isConservative ? CONSERVATIVE_MODE_ADJUSTMENTS.dtiHardCap : dtiCapLimit;
+  const effectiveDtiCap = isConservative ? conservativeConfig.dtiHardCap : dtiCapLimit;
   const shouldApplyDtiCap = dtiCapEnabled || isConservative;
   
   if (shouldApplyDtiCap && dtiRatio > effectiveDtiCap && grossAnnualIncome > 0) {
@@ -767,8 +767,8 @@ function calculateBorrowingCapacity(params: {
     }
   }
   
-  // Stress test at +1% above assessment
-  const stressRate = ((assessmentRate + 1) / 100) / 12;
+  // Stress test at policy-configured increment above assessment rate
+  const stressRate = ((assessmentRate + activePolicy.loanDefaults.stressTestIncrement) / 100) / 12;
   let stressTestedCapacity = 0;
   if (stressRate > 0 && maxNewRepayment > 0) {
     const stressFactor = (1 - Math.pow(1 + stressRate, -periods)) / stressRate;
@@ -779,11 +779,12 @@ function calculateBorrowingCapacity(params: {
     }
   }
   
-  // Determine band
+  // Determine band using policy thresholds
+  const bandThresholds = activePolicy.bandThresholds;
   let serviceabilityBand: 'green' | 'amber' | 'red';
-  if (monthlySurplus > 500 && dtiRatio < 6) {
+  if (monthlySurplus > bandThresholds.greenSurplusMin && dtiRatio < bandThresholds.greenDtiMax) {
     serviceabilityBand = 'green';
-  } else if (monthlySurplus > 0 && dtiRatio < 8) {
+  } else if (monthlySurplus > 0 && dtiRatio < bandThresholds.amberDtiMax) {
     serviceabilityBand = 'amber';
   } else {
     serviceabilityBand = 'red';
