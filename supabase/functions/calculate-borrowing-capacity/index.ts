@@ -1221,9 +1221,43 @@ Deno.serve(async (req) => {
       netPurchaseCapacity: currentCapacity.netPurchaseCapacity,
       calculatedAt,
       propertyContributions: propertyContributionData,
-      // ── Phase 2: Three-Output Envelope ──
+      // ── Phase 4: Scenario Delta Engine ──
       currentCapacity,
-      scenarios: [], // Phase 4 will populate
+      scenarios: runServerScenarios(scenarioDeltas, {
+        baseInputs: {
+          grossAnnualIncome: effectiveGrossIncome,
+          shadedAnnualIncome: effectiveShadedIncome,
+          monthlyLivingExpenses: totalLivingExpenses,
+          monthlyCommitments: effectiveCommitments,
+          interestRate,
+          bufferRate,
+          loanTermYears,
+          totalDebtBalances,
+          calculationMode: overrides?.calculationMode || 'bank',
+          dtiCapEnabled: overrides?.dtiCapEnabled || false,
+          dtiCapLimit: overrides?.dtiCapLimit || activePolicy.loanDefaults.dtiCap,
+        },
+        baseResult: result,
+        properties: properties.map((p: any) => ({
+          id: p.id,
+          address: p.address,
+          propertyType: p.property_type,
+          currentValue: p.current_value || 0,
+          loanRemaining: p.loan_remaining || 0,
+          monthlyRepayment: p.monthly_interest_repayment || 0,
+          loanRepaymentAmount: p.loan_repayment_amount || p.monthly_interest_repayment || 0,
+          netMonthlyCashflow: p.net_monthly_cashflow || 0,
+          monthlyRentalIncome: p.monthly_rental_income || 0,
+        })),
+        liabilities: liabilityBreakdown.map((l: any, i: number) => ({
+          id: liabilities[i]?.id || `liability-${i}`,
+          type: l.type,
+          label: l.type,
+          balance: l.balance || 0,
+          limit: l.limit,
+          monthlyServicing: l.monthlyServicing,
+        })),
+      }),
       proposedLoanCheck,
     };
 
