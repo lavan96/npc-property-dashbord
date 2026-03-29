@@ -725,15 +725,15 @@ function calculateBorrowingCapacity(params: {
   
   // Conservative mode adjustments (mirrors client-side logic exactly)
   if (isConservative) {
-    monthlySurplus = monthlySurplus * CONSERVATIVE_MODE_ADJUSTMENTS.surplusBufferMultiplier;
+    monthlySurplus = monthlySurplus * conservativeConfig.surplusBufferMultiplier;
     
-    if (monthlySurplus < CONSERVATIVE_MODE_ADJUSTMENTS.minimumSurplusFloor) {
+    if (monthlySurplus < conservativeConfig.minimumSurplusFloor) {
       monthlySurplus = Math.max(0, monthlySurplus);
     }
     
     const residualIncome = monthlyIncome - monthlyCommitments;
-    if (residualIncome < CONSERVATIVE_MODE_ADJUSTMENTS.residualIncomeFloor) {
-      monthlySurplus = Math.max(0, monthlySurplus - (CONSERVATIVE_MODE_ADJUSTMENTS.residualIncomeFloor - residualIncome));
+    if (residualIncome < conservativeConfig.residualIncomeFloor) {
+      monthlySurplus = Math.max(0, monthlySurplus - (conservativeConfig.residualIncomeFloor - residualIncome));
     }
   }
   
