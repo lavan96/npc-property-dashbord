@@ -1025,17 +1025,17 @@ Deno.serve(async (req) => {
         ? liabilityServicing + overrides.additionalLiabilities + lmiMonthlyServicing
         : liabilityServicing + lmiMonthlyServicing;
 
-    // Set calculation parameters
-    const interestRate = overrides?.interestRate ?? 6.50;
-    const bufferRate = overrides?.bufferRate ?? 3.00;
-    const loanTermYears = overrides?.loanTermYears ?? 30;
+    // Set calculation parameters (use policy defaults if no overrides)
+    const interestRate = overrides?.interestRate ?? activePolicy.loanDefaults.interestRate;
+    const bufferRate = overrides?.bufferRate ?? activePolicy.loanDefaults.bufferRate;
+    const loanTermYears = overrides?.loanTermYears ?? activePolicy.loanDefaults.loanTermYears;
 
     // Perform calculation - uses after-tax income internally
     // NOTE: Uses totalLivingExpenses which includes negative property cash flows
     const result = calculateBorrowingCapacity({
       grossAnnualIncome: effectiveGrossIncome,
       shadedAnnualIncome: effectiveShadedIncome,
-      monthlyLivingExpenses: totalLivingExpenses, // Includes negative property cash flows
+      monthlyLivingExpenses: totalLivingExpenses,
       monthlyCommitments: effectiveCommitments,
       interestRate,
       bufferRate,
@@ -1043,7 +1043,8 @@ Deno.serve(async (req) => {
       totalDebtBalances,
       calculationMode: overrides?.calculationMode || 'bank',
       dtiCapEnabled: overrides?.dtiCapEnabled || false,
-      dtiCapLimit: overrides?.dtiCapLimit || DEFAULT_DTI_CAP,
+      dtiCapLimit: overrides?.dtiCapLimit || activePolicy.loanDefaults.dtiCap,
+      policy: activePolicy,
     });
 
     console.log(`[calculate-borrowing-capacity] Result: Capacity $${result.borrowingCapacity}, Band: ${result.serviceabilityBand}`);
