@@ -419,17 +419,16 @@ function getHecsRepayment(annualIncome: number): number {
   return (annualIncome * 0.10) / 12;
 }
 
-function getHemBenchmark(maritalStatus: string | null, dependentsCount: number | null, grossAnnualIncome: number = 0): number {
+function getHemBenchmark(maritalStatus: string | null, dependentsCount: number | null, grossAnnualIncome: number = 0, hemConfig: HemConfig = DEFAULT_POLICY.hem): number {
   const status = maritalStatus?.toLowerCase() || 'single';
   const isCouple = ['married', 'de facto', 'couple', 'partnered'].includes(status);
   const dependents = Math.min(dependentsCount || 0, 3);
   
   const category = isCouple ? 'couple' : 'single';
-  const baseHem = HEM_BENCHMARKS_BASE[category][dependents] || HEM_BENCHMARKS_BASE[category][0];
+  const baseHem = hemConfig.baseBenchmarks[category][dependents] || hemConfig.baseBenchmarks[category][0];
   
-  // Apply income-based scaling
   let multiplier = 1.0;
-  for (const tier of HEM_INCOME_SCALING) {
+  for (const tier of hemConfig.incomeScaling) {
     if (grossAnnualIncome <= tier.maxIncome) {
       multiplier = tier.multiplier;
       break;
@@ -640,8 +639,8 @@ function calculateLiabilityBreakdown(liabilities: any[], properties: any[], annu
 
   // Add existing property loans - stress-tested at P&I repayments
   // Banks assess existing loans at P&I even if currently interest-only
-  const assessmentRateForLoans = 0.095; // 9.5% assessment rate (approx 6.5% + 3% buffer)
-  const loanTermMonths = 30 * 12; // 30 year term for calculation
+  const assessmentRateForLoans = policy.propertyPolicy.loanAssessmentRate;
+  const loanTermMonths = policy.propertyPolicy.loanTermMonths;
   
   for (const property of properties) {
     const propertyType = property.property_type?.toLowerCase() || '';
@@ -684,15 +683,9 @@ function calculateLiabilityBreakdown(liabilities: any[], properties: any[], annu
   return { totalMonthly, breakdown };
 }
 
-// Conservative mode adjustments (matches client-side logic)
-const CONSERVATIVE_MODE_ADJUSTMENTS = {
-  minimumSurplusFloor: 1000,
-  residualIncomeFloor: 1500,
-  surplusBufferMultiplier: 0.85,
-  dtiHardCap: 6,
-};
-
-const DEFAULT_DTI_CAP = 6.0;
+// Conservative mode + DTI cap now sourced from policy
+const CONSERVATIVE_MODE_ADJUSTMENTS = DEFAULT_POLICY.conservativeMode;
+const DEFAULT_DTI_CAP = DEFAULT_POLICY.loanDefaults.dtiCap;
 
 function calculateBorrowingCapacity(params: {
   grossAnnualIncome: number;
