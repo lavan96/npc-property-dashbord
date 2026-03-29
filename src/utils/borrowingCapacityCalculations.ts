@@ -82,6 +82,12 @@ export interface FullAssessmentResult extends BorrowingCapacityResult {
   proposedLoanAmount?: number;
   assumptions: { key: string; value: string }[];
   calculatedAt: string;
+  // Phase 2: Three-Output Envelope fields
+  currentCapacity?: import('./borrowingCapacityTypes').CurrentCapacityResult;
+  scenarios?: import('./borrowingCapacityTypes').ScenarioCapacityResult[];
+  proposedLoanCheck?: import('./borrowingCapacityTypes').ProposedLoanCheckResult | null;
+  // Phase 1: Property contributions
+  propertyContributions?: any;
 }
 
 // ============================================

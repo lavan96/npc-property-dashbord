@@ -980,34 +980,80 @@ Deno.serve(async (req) => {
     const taxBreakdown = getTaxBreakdown(effectiveGrossIncome);
     console.log(`[calculate-borrowing-capacity] Tax breakdown: Marginal rate ${(taxBreakdown.marginalTaxRate * 100).toFixed(0)}%, After-tax income $${taxBreakdown.afterTaxIncome}`);
 
-    // Build response
-    const responseData = {
-      clientId,
-      grossAnnualIncome: effectiveGrossIncome,
-      shadedAnnualIncome: effectiveShadedIncome,
-      incomeBreakdown,
-      livingExpensesMonthly: livingExpenses, // Base living expenses (HEM or declared)
-      negativePropertyCashFlows, // Negative cash flows from properties
-      negativeCashFlowBreakdown, // Breakdown of negative cash flow properties
-      totalLivingExpenses, // Base + negative property cash flows
-      expenseMethod: expenseMethodUsed,
-      hemBenchmark,
-      declaredExpenses: totalDeclaredExpenses,
-      existingCommitmentsMonthly: effectiveCommitments,
-      liabilityBreakdown,
-      interestRate,
-      bufferRate,
-      assessmentRate: result.assessmentRate,
-      loanTermYears,
-      proposedLoanAmount: overrides?.proposedLoanAmount || null,
+    // ── PHASE 2: Build Three-Output Structure ──
+    const calculatedAt = new Date().toISOString();
+    const effectiveLmiAmount = overrides?.lmiAmount || 0;
+    const effectiveLmiMode = overrides?.lmiMode || 'none';
+    const effectiveCalcMode = overrides?.calculationMode || 'bank';
+    const effectiveDtiCapEnabled = overrides?.dtiCapEnabled || false;
+    const effectiveDtiCapLimit = overrides?.dtiCapLimit || DEFAULT_DTI_CAP;
+    
+    const assumptionItems = [
+      { key: "Serviceability Basis", value: "After-Tax Income" },
+      { key: "Buffer Rate", value: `${bufferRate}%` },
+      { key: "Assessment Rate", value: `${result.assessmentRate}%` },
+      { key: "Loan Term", value: `${loanTermYears} years` },
+      { key: "HEM Benchmark", value: `$${hemBenchmark.toLocaleString()}/mo (income-scaled)` },
+      { key: "Repayment Type", value: "Principal & Interest" },
+      { key: "Rental Expense Ratio", value: `${RENTAL_EXPENSE_RATIO * 100}%` },
+      { key: "Existing Loan Assessment", value: "P&I at 9.5%" },
+      { key: "Tax Year", value: "2025-26 (incl. 2% Medicare Levy)" },
+      { key: "After-Tax Income Used", value: `$${taxBreakdown.afterTaxIncome.toLocaleString()}/yr` },
+      { key: "Marginal Tax Rate", value: `${(taxBreakdown.marginalTaxRate * 100).toFixed(0)}%` },
+    ];
+
+    const propertyContributionData = {
+      summary: {
+        totalNetMonthlyContribution: propertyContributions.totalNetMonthlyContribution,
+        totalLegacyIncome: propertyContributions.totalLegacyIncome,
+        totalLegacyExpense: propertyContributions.totalLegacyExpense,
+        totalLegacyLiability: propertyContributions.totalLegacyLiability,
+        totalLegacyDebtBalance: propertyContributions.totalLegacyDebtBalance,
+        parityValidation: parityChecks,
+      },
+      properties: propertyContributions.properties.map(p => ({
+        address: p.address,
+        propertyType: p.propertyType,
+        rawNetMonthlyCashflow: p.rawNetMonthlyCashflow,
+        assessedMonthlyRent: p.assessedMonthlyRent,
+        assessedMonthlyDebt: p.assessedMonthlyDebt,
+        assessedMonthlyHoldingCosts: p.assessedMonthlyHoldingCosts,
+        netMonthlyContribution: p.netMonthlyContribution,
+        auditNotes: p.auditNotes,
+      })),
+    };
+
+    // ── Output 1: Current Capacity ──
+    const currentCapacity = {
       borrowingCapacity: result.borrowingCapacity,
       monthlySurplus: result.monthlySurplus,
       serviceabilityBand: result.serviceabilityBand,
       stressTestedCapacity: result.stressTestedCapacity,
       dtiRatio: result.dtiRatio,
+      assessmentRate: result.assessmentRate,
+      afterTaxAnnualIncome: result.afterTaxAnnualIncome,
+      monthlyAfterTaxIncome: result.monthlyAfterTaxIncome,
+      grossAnnualIncome: effectiveGrossIncome,
+      shadedAnnualIncome: effectiveShadedIncome,
+      incomeBreakdown,
+      livingExpensesMonthly: livingExpenses,
+      expenseMethod: expenseMethodUsed,
+      hemBenchmark,
+      declaredExpenses: totalDeclaredExpenses,
+      negativePropertyCashFlows,
+      totalLivingExpenses,
+      existingCommitmentsMonthly: effectiveCommitments,
+      liabilityBreakdown,
+      interestRate,
+      bufferRate,
+      loanTermYears,
+      calculationMode: effectiveCalcMode,
+      dtiCapEnabled: effectiveDtiCapEnabled,
+      dtiCapLimit: effectiveDtiCapLimit,
+      selectedLenderName: overrides?.selectedLenderName || null,
       recommendations: result.recommendations,
       warnings: result.warnings,
-      // Tax breakdown (2025-26 rates)
+      assumptions: assumptionItems,
       taxBreakdown: {
         taxPayable: taxBreakdown.taxPayable,
         medicareLevy: taxBreakdown.medicareLevy,
@@ -1018,55 +1064,97 @@ Deno.serve(async (req) => {
         marginalBracket: taxBreakdown.marginalBracket,
         monthlyTakeHome: taxBreakdown.monthlyTakeHome,
       },
+      lmiAmount: effectiveLmiAmount,
+      lmiMode: effectiveLmiMode,
+      netPurchaseCapacity: effectiveLmiAmount ? Math.max(0, result.borrowingCapacity - effectiveLmiAmount) : result.borrowingCapacity,
+      propertyContributions: propertyContributionData,
+      calculatedAt,
+    };
+
+    // ── Output 3: Proposed Loan Check ──
+    const proposedLoanAmount = overrides?.proposedLoanAmount || null;
+    let proposedLoanCheck = null;
+    if (proposedLoanAmount && proposedLoanAmount > 0) {
+      const plAssessmentRate = interestRate + bufferRate;
+      const plMonthlyRate = (plAssessmentRate / 100) / 12;
+      const plPeriods = loanTermYears * 12;
+      const plMonthlyRepayment = plMonthlyRate > 0
+        ? Math.round(proposedLoanAmount * (plMonthlyRate * Math.pow(1 + plMonthlyRate, plPeriods)) / (Math.pow(1 + plMonthlyRate, plPeriods) - 1))
+        : 0;
+      const plIsServiceable = result.borrowingCapacity >= proposedLoanAmount;
+      const plHeadroom = result.borrowingCapacity - proposedLoanAmount;
+      const plUtilization = result.borrowingCapacity > 0 
+        ? Math.min(Math.round((proposedLoanAmount / result.borrowingCapacity) * 100), 100) 
+        : 0;
+      const plTotalDebt = totalDebtBalances + proposedLoanAmount;
+      const plDti = effectiveGrossIncome > 0 ? Math.round((plTotalDebt / effectiveGrossIncome) * 100) / 100 : 0;
+      let plBand: 'green' | 'amber' | 'red' = 'red';
+      if (plHeadroom > 0 && plDti < 6) plBand = 'green';
+      else if (plHeadroom >= 0 && plDti < 8) plBand = 'amber';
+
+      proposedLoanCheck = {
+        proposedLoanAmount,
+        isServiceable: plIsServiceable,
+        monthlyRepayment: plMonthlyRepayment,
+        headroom: plHeadroom,
+        utilizationPercent: plUtilization,
+        dtiWithProposedLoan: plDti,
+        projectedBand: plBand,
+      };
+      console.log(`[calculate-borrowing-capacity] Proposed loan check: $${proposedLoanAmount} → ${plIsServiceable ? 'SERVICEABLE' : 'NOT SERVICEABLE'}, headroom $${plHeadroom}`);
+    }
+
+    // ── Build backward-compatible flat responseData (legacy shape) ──
+    // This preserves all existing field paths so consumers don't break
+    const responseData = {
+      clientId,
+      // Legacy flat fields (backward compat)
+      grossAnnualIncome: effectiveGrossIncome,
+      shadedAnnualIncome: effectiveShadedIncome,
+      incomeBreakdown,
+      livingExpensesMonthly: livingExpenses,
+      negativePropertyCashFlows,
+      negativeCashFlowBreakdown,
+      totalLivingExpenses,
+      expenseMethod: expenseMethodUsed,
+      hemBenchmark,
+      declaredExpenses: totalDeclaredExpenses,
+      existingCommitmentsMonthly: effectiveCommitments,
+      liabilityBreakdown,
+      interestRate,
+      bufferRate,
+      assessmentRate: result.assessmentRate,
+      loanTermYears,
+      proposedLoanAmount,
+      borrowingCapacity: result.borrowingCapacity,
+      monthlySurplus: result.monthlySurplus,
+      serviceabilityBand: result.serviceabilityBand,
+      stressTestedCapacity: result.stressTestedCapacity,
+      dtiRatio: result.dtiRatio,
+      recommendations: result.recommendations,
+      warnings: result.warnings,
+      taxBreakdown: currentCapacity.taxBreakdown,
       assumptions: {
-        items: [
-          { key: "Serviceability Basis", value: "After-Tax Income" },
-          { key: "Buffer Rate", value: `${bufferRate}%` },
-          { key: "Assessment Rate", value: `${result.assessmentRate}%` },
-          { key: "Loan Term", value: `${loanTermYears} years` },
-          { key: "HEM Benchmark", value: `$${hemBenchmark.toLocaleString()}/mo (income-scaled)` },
-          { key: "Repayment Type", value: "Principal & Interest" },
-          { key: "Rental Expense Ratio", value: `${RENTAL_EXPENSE_RATIO * 100}%` },
-          { key: "Existing Loan Assessment", value: "P&I at 9.5%" },
-          { key: "Tax Year", value: "2025-26 (incl. 2% Medicare Levy)" },
-          { key: "After-Tax Income Used", value: `$${taxBreakdown.afterTaxIncome.toLocaleString()}/yr` },
-          { key: "Marginal Tax Rate", value: `${(taxBreakdown.marginalTaxRate * 100).toFixed(0)}%` },
-        ],
-        calculationMode: overrides?.calculationMode || 'bank',
-        dtiCapEnabled: overrides?.dtiCapEnabled || false,
-        dtiCapLimit: overrides?.dtiCapLimit || DEFAULT_DTI_CAP,
+        items: assumptionItems,
+        calculationMode: effectiveCalcMode,
+        dtiCapEnabled: effectiveDtiCapEnabled,
+        dtiCapLimit: effectiveDtiCapLimit,
         selectedLenderName: overrides?.selectedLenderName || null,
-        lmiMode: overrides?.lmiMode || 'none',
+        lmiMode: effectiveLmiMode,
         lmiPropertyValue: overrides?.lmiPropertyValue || null,
         lmiDepositAmount: overrides?.lmiDepositAmount || null,
         isFirstHomeBuyer: overrides?.isFirstHomeBuyer || false,
         proposedRentalIncome: overrides?.proposedRentalIncome || null,
       },
-      lmiAmount: overrides?.lmiAmount || 0,
-      lmiMode: overrides?.lmiMode || 'none',
-      netPurchaseCapacity: overrides?.lmiAmount ? Math.max(0, result.borrowingCapacity - (overrides.lmiAmount || 0)) : result.borrowingCapacity,
-      calculatedAt: new Date().toISOString(),
-      // Phase 1: Property Contribution Engine data (unified model)
-      propertyContributions: {
-        summary: {
-          totalNetMonthlyContribution: propertyContributions.totalNetMonthlyContribution,
-          totalLegacyIncome: propertyContributions.totalLegacyIncome,
-          totalLegacyExpense: propertyContributions.totalLegacyExpense,
-          totalLegacyLiability: propertyContributions.totalLegacyLiability,
-          totalLegacyDebtBalance: propertyContributions.totalLegacyDebtBalance,
-          parityValidation: parityChecks,
-        },
-        properties: propertyContributions.properties.map(p => ({
-          address: p.address,
-          propertyType: p.propertyType,
-          rawNetMonthlyCashflow: p.rawNetMonthlyCashflow,
-          assessedMonthlyRent: p.assessedMonthlyRent,
-          assessedMonthlyDebt: p.assessedMonthlyDebt,
-          assessedMonthlyHoldingCosts: p.assessedMonthlyHoldingCosts,
-          netMonthlyContribution: p.netMonthlyContribution,
-          auditNotes: p.auditNotes,
-        })),
-      },
+      lmiAmount: effectiveLmiAmount,
+      lmiMode: effectiveLmiMode,
+      netPurchaseCapacity: currentCapacity.netPurchaseCapacity,
+      calculatedAt,
+      propertyContributions: propertyContributionData,
+      // ── Phase 2: Three-Output Envelope ──
+      currentCapacity,
+      scenarios: [], // Phase 4 will populate
+      proposedLoanCheck,
     };
 
     // Save to database if requested

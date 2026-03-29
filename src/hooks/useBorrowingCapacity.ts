@@ -220,3 +220,12 @@ export type {
   FullAssessmentResult,
   ServiceabilityBand,
 };
+
+// Re-export Phase 2 types for convenience
+export type {
+  ThreeOutputAssessment,
+  CurrentCapacityResult,
+  ProposedLoanCheckResult,
+  ScenarioCapacityResult,
+  ScenarioDelta,
+} from '@/utils/borrowingCapacityTypes';

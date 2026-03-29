@@ -54,8 +54,20 @@ export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', 
   const [showAssumptions, setShowAssumptions] = useState(false);
   const [showTaxBreakdown, setShowTaxBreakdown] = useState(false);
 
-  // Proposed loan serviceability check
+  // Proposed loan serviceability check — prefer engine-provided result, fall back to local calc
   const proposedLoanCheck = useMemo(() => {
+    // Use engine-provided three-output check if available
+    if (result?.proposedLoanCheck) {
+      return {
+        monthlyRepayment: result.proposedLoanCheck.monthlyRepayment,
+        isServiceable: result.proposedLoanCheck.isServiceable,
+        headroom: result.proposedLoanCheck.headroom,
+        utilizationPercent: result.proposedLoanCheck.utilizationPercent,
+        dtiWithProposedLoan: result.proposedLoanCheck.dtiWithProposedLoan,
+        projectedBand: result.proposedLoanCheck.projectedBand,
+      };
+    }
+    // Fallback: compute locally for backward compat
     if (!result || !proposedLoanAmount || proposedLoanAmount <= 0) return null;
     const assessmentRate = (interestRate || 6.5) + (bufferRate ?? 3);
     const monthlyRate = (assessmentRate / 100) / 12;
