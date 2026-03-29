@@ -60,6 +60,153 @@ const HEM_INCOME_SCALING: { maxIncome: number; multiplier: number }[] = [
 const RENTAL_EXPENSE_RATIO = 0.20;
 
 // ============================================
+// PROPERTY CONTRIBUTION ENGINE (Phase 1)
+// Unified per-property assessment model
+// ============================================
+
+interface PropertyContributionPolicy {
+  rentalShadingRate: number;
+  proposedRentalShadingRate: number;
+  vacancyRate: number;
+  loanAssessmentRate: number;
+  loanTermMonths: number;
+  rentalExpenseRatio: number;
+}
+
+const DEFAULT_PROPERTY_POLICY: PropertyContributionPolicy = {
+  rentalShadingRate: 0.80,
+  proposedRentalShadingRate: 0.70,
+  vacancyRate: 0.0,
+  loanAssessmentRate: 0.095,
+  loanTermMonths: 360,
+  rentalExpenseRatio: 0.20,
+};
+
+interface PropertyContributionResult {
+  propertyId: string;
+  address: string;
+  propertyType: string;
+  rawMonthlyRent: number;
+  rawNetMonthlyCashflow: number;
+  rawLoanBalance: number;
+  rawMonthlyRepayment: number;
+  assessedMonthlyRent: number;
+  assessedMonthlyDebt: number;
+  assessedMonthlyHoldingCosts: number;
+  netMonthlyContribution: number;
+  legacyIncomeContribution: number;
+  legacyExpenseContribution: number;
+  legacyLiabilityContribution: number;
+  legacyDebtBalance: number;
+  auditNotes: string[];
+}
+
+interface PropertyContributionSummary {
+  properties: PropertyContributionResult[];
+  totalLegacyIncome: number;
+  totalLegacyExpense: number;
+  totalLegacyLiability: number;
+  totalLegacyDebtBalance: number;
+  totalNetMonthlyContribution: number;
+}
+
+function assessPropertyContribution(
+  property: any,
+  policy: PropertyContributionPolicy = DEFAULT_PROPERTY_POLICY,
+): PropertyContributionResult {
+  const propertyType = property.property_type?.toLowerCase() || '';
+  const address = property.address?.substring(0, 40) || 'Property';
+  const auditNotes: string[] = [];
+
+  if (propertyType === 'rental') {
+    const monthlyRentPaid = property.monthly_rental_income || 0;
+    auditNotes.push(`Rental: client pays $${monthlyRentPaid}/mo`);
+    return {
+      propertyId: property.id || '',
+      address, propertyType,
+      rawMonthlyRent: 0, rawNetMonthlyCashflow: 0, rawLoanBalance: 0, rawMonthlyRepayment: 0,
+      assessedMonthlyRent: 0, assessedMonthlyDebt: 0, assessedMonthlyHoldingCosts: 0,
+      netMonthlyContribution: -monthlyRentPaid,
+      legacyIncomeContribution: 0, legacyExpenseContribution: 0,
+      legacyLiabilityContribution: monthlyRentPaid, legacyDebtBalance: 0,
+      auditNotes,
+    };
+  }
+
+  const rawNetMonthlyCashflow = property.net_monthly_cashflow || 0;
+  const rawMonthlyRent = property.monthly_rental_income || 0;
+  const rawLoanBalance = property.loan_remaining || 0;
+  const rawMonthlyRepayment = property.monthly_interest_repayment || 0;
+
+  const assessedMonthlyRent = rawMonthlyRent * policy.rentalShadingRate * (1 - policy.vacancyRate);
+
+  let assessedMonthlyDebt = 0;
+  if (rawLoanBalance > 0) {
+    const monthlyRate = policy.loanAssessmentRate / 12;
+    const piRepayment = rawLoanBalance *
+      (monthlyRate * Math.pow(1 + monthlyRate, policy.loanTermMonths)) /
+      (Math.pow(1 + monthlyRate, policy.loanTermMonths) - 1);
+    assessedMonthlyDebt = Math.max(piRepayment, rawMonthlyRepayment);
+  }
+
+  const assessedMonthlyHoldingCosts = 0;
+  const netMonthlyContribution = assessedMonthlyRent - assessedMonthlyDebt - assessedMonthlyHoldingCosts;
+
+  let legacyIncomeContribution = 0;
+  if (rawNetMonthlyCashflow > 0) {
+    legacyIncomeContribution = rawNetMonthlyCashflow * 12 * policy.rentalShadingRate;
+  }
+
+  let legacyExpenseContribution = 0;
+  if (rawNetMonthlyCashflow < 0) {
+    legacyExpenseContribution = Math.abs(rawNetMonthlyCashflow);
+  }
+
+  const legacyLiabilityContribution = rawLoanBalance > 0 ? Math.round(assessedMonthlyDebt * 100) / 100 : 0;
+
+  auditNotes.push(`Net contribution: $${netMonthlyContribution.toFixed(2)}/mo`);
+  auditNotes.push(`Legacy: income=$${legacyIncomeContribution.toFixed(2)}/yr, expense=$${legacyExpenseContribution.toFixed(2)}/mo, liability=$${legacyLiabilityContribution.toFixed(2)}/mo`);
+
+  return {
+    propertyId: property.id || '', address, propertyType,
+    rawMonthlyRent, rawNetMonthlyCashflow, rawLoanBalance, rawMonthlyRepayment,
+    assessedMonthlyRent, assessedMonthlyDebt, assessedMonthlyHoldingCosts,
+    netMonthlyContribution,
+    legacyIncomeContribution, legacyExpenseContribution, legacyLiabilityContribution,
+    legacyDebtBalance: rawLoanBalance,
+    auditNotes,
+  };
+}
+
+function assessAllPropertyContributions(
+  properties: any[],
+  policy: PropertyContributionPolicy = DEFAULT_PROPERTY_POLICY,
+): PropertyContributionSummary {
+  const results: PropertyContributionResult[] = [];
+  let totalLegacyIncome = 0;
+  let totalLegacyExpense = 0;
+  let totalLegacyLiability = 0;
+  let totalLegacyDebtBalance = 0;
+  let totalNetMonthlyContribution = 0;
+
+  for (const property of properties) {
+    const result = assessPropertyContribution(property, policy);
+    results.push(result);
+    totalLegacyIncome += result.legacyIncomeContribution;
+    totalLegacyExpense += result.legacyExpenseContribution;
+    totalLegacyLiability += result.legacyLiabilityContribution;
+    totalLegacyDebtBalance += result.legacyDebtBalance;
+    totalNetMonthlyContribution += result.netMonthlyContribution;
+  }
+
+  return {
+    properties: results,
+    totalLegacyIncome, totalLegacyExpense, totalLegacyLiability,
+    totalLegacyDebtBalance, totalNetMonthlyContribution,
+  };
+}
+
+// ============================================
 // 2025-26 AUSTRALIAN TAX BRACKETS
 // ============================================
 const TAX_BRACKETS_2025_26 = [
@@ -747,6 +894,31 @@ Deno.serve(async (req) => {
     console.log(`[calculate-borrowing-capacity] Negative property cash flows: $${negativePropertyCashFlows}/month from ${negativeCashFlowBreakdown.length} properties`);
     console.log(`[calculate-borrowing-capacity] Total living expenses (base + negative CF): $${totalLivingExpenses}/month`);
 
+    // ── PROPERTY CONTRIBUTION ENGINE (Phase 1) ──
+    // Run unified assessment alongside legacy for parity validation
+    const propertyContributions = assessAllPropertyContributions(properties);
+    
+    // Parity validation: compare engine outputs against legacy functions
+    // Legacy income from properties = income added by calculateIncomeBreakdown from positive cashflows
+    const legacyPropertyIncomeFromBreakdown = incomeBreakdown
+      .filter((item: any) => item.component?.startsWith('Positive Cash Flow'))
+      .reduce((sum: number, item: any) => sum + item.shadedAmount, 0);
+    
+    const parityChecks = {
+      incomeMatch: Math.abs(propertyContributions.totalLegacyIncome - legacyPropertyIncomeFromBreakdown) <= 1,
+      expenseMatch: Math.abs(propertyContributions.totalLegacyExpense - negativePropertyCashFlows) <= 1,
+      incomeEngine: propertyContributions.totalLegacyIncome,
+      incomeLegacy: legacyPropertyIncomeFromBreakdown,
+      expenseEngine: propertyContributions.totalLegacyExpense,
+      expenseLegacy: negativePropertyCashFlows,
+      unifiedNetContribution: propertyContributions.totalNetMonthlyContribution,
+    };
+    
+    console.log(`[calculate-borrowing-capacity] Property Contribution Engine:`, JSON.stringify(parityChecks));
+    if (!parityChecks.incomeMatch || !parityChecks.expenseMatch) {
+      console.warn(`[calculate-borrowing-capacity] PARITY WARNING: Property contribution engine outputs differ from legacy!`);
+    }
+
     // Calculate liability servicing
     const { totalMonthly: liabilityServicing, breakdown: liabilityBreakdown } = 
       calculateLiabilityBreakdown(liabilities, properties, effectiveGrossIncome);
@@ -874,6 +1046,27 @@ Deno.serve(async (req) => {
       lmiMode: overrides?.lmiMode || 'none',
       netPurchaseCapacity: overrides?.lmiAmount ? Math.max(0, result.borrowingCapacity - (overrides.lmiAmount || 0)) : result.borrowingCapacity,
       calculatedAt: new Date().toISOString(),
+      // Phase 1: Property Contribution Engine data (unified model)
+      propertyContributions: {
+        summary: {
+          totalNetMonthlyContribution: propertyContributions.totalNetMonthlyContribution,
+          totalLegacyIncome: propertyContributions.totalLegacyIncome,
+          totalLegacyExpense: propertyContributions.totalLegacyExpense,
+          totalLegacyLiability: propertyContributions.totalLegacyLiability,
+          totalLegacyDebtBalance: propertyContributions.totalLegacyDebtBalance,
+          parityValidation: parityChecks,
+        },
+        properties: propertyContributions.properties.map(p => ({
+          address: p.address,
+          propertyType: p.propertyType,
+          rawNetMonthlyCashflow: p.rawNetMonthlyCashflow,
+          assessedMonthlyRent: p.assessedMonthlyRent,
+          assessedMonthlyDebt: p.assessedMonthlyDebt,
+          assessedMonthlyHoldingCosts: p.assessedMonthlyHoldingCosts,
+          netMonthlyContribution: p.netMonthlyContribution,
+          auditNotes: p.auditNotes,
+        })),
+      },
     };
 
     // Save to database if requested
