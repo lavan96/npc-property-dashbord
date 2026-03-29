@@ -302,18 +302,9 @@ function assessAllPropertyContributions(
   };
 }
 
-// ============================================
-// 2025-26 AUSTRALIAN TAX BRACKETS
-// ============================================
-const TAX_BRACKETS_2025_26 = [
-  { min: 0, max: 18200, rate: 0, base: 0 },
-  { min: 18201, max: 45000, rate: 0.16, base: 0 },
-  { min: 45001, max: 135000, rate: 0.30, base: 4288 },
-  { min: 135001, max: 190000, rate: 0.37, base: 31288 },
-  { min: 190001, max: Infinity, rate: 0.45, base: 51638 },
-];
-
-const MEDICARE_LEVY_RATE = 0.02;
+// Tax functions now use policy config (backward-compatible wrappers)
+const TAX_BRACKETS_2025_26 = DEFAULT_POLICY.tax.brackets;
+const MEDICARE_LEVY_RATE = DEFAULT_POLICY.tax.medicareLevyRate;
 
 function calculateIncomeTax(taxableIncome: number, includeMedicareLevy: boolean = true): number {
   if (taxableIncome <= 0) return 0;
