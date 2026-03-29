@@ -585,7 +585,7 @@ function calculateNegativePropertyCashFlows(properties: any[]): {
   return { totalMonthly, breakdown };
 }
 
-function calculateLiabilityBreakdown(liabilities: any[], properties: any[], annualIncome: number): {
+function calculateLiabilityBreakdown(liabilities: any[], properties: any[], annualIncome: number, policy: PolicyConfig = DEFAULT_POLICY): {
   totalMonthly: number;
   breakdown: LiabilityBreakdownItem[];
 } {
