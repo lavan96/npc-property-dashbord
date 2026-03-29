@@ -705,8 +705,6 @@ function calculateBorrowingCapacity(params: {
   const isConservative = calculationMode === 'conservative';
   const conservativeConfig = activePolicy.conservativeMode;
   
-  const isConservative = calculationMode === 'conservative';
-  
   // Assessment rate = current rate + APRA buffer
   const assessmentRate = interestRate + bufferRate;
   const monthlyRate = (assessmentRate / 100) / 12;
