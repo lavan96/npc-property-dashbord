@@ -60,6 +60,153 @@ const HEM_INCOME_SCALING: { maxIncome: number; multiplier: number }[] = [
 const RENTAL_EXPENSE_RATIO = 0.20;
 
 // ============================================
+// PROPERTY CONTRIBUTION ENGINE (Phase 1)
+// Unified per-property assessment model
+// ============================================
+
+interface PropertyContributionPolicy {
+  rentalShadingRate: number;
+  proposedRentalShadingRate: number;
+  vacancyRate: number;
+  loanAssessmentRate: number;
+  loanTermMonths: number;
+  rentalExpenseRatio: number;
+}
+
+const DEFAULT_PROPERTY_POLICY: PropertyContributionPolicy = {
+  rentalShadingRate: 0.80,
+  proposedRentalShadingRate: 0.70,
+  vacancyRate: 0.0,
+  loanAssessmentRate: 0.095,
+  loanTermMonths: 360,
+  rentalExpenseRatio: 0.20,
+};
+
+interface PropertyContributionResult {
+  propertyId: string;
+  address: string;
+  propertyType: string;
+  rawMonthlyRent: number;
+  rawNetMonthlyCashflow: number;
+  rawLoanBalance: number;
+  rawMonthlyRepayment: number;
+  assessedMonthlyRent: number;
+  assessedMonthlyDebt: number;
+  assessedMonthlyHoldingCosts: number;
+  netMonthlyContribution: number;
+  legacyIncomeContribution: number;
+  legacyExpenseContribution: number;
+  legacyLiabilityContribution: number;
+  legacyDebtBalance: number;
+  auditNotes: string[];
+}
+
+interface PropertyContributionSummary {
+  properties: PropertyContributionResult[];
+  totalLegacyIncome: number;
+  totalLegacyExpense: number;
+  totalLegacyLiability: number;
+  totalLegacyDebtBalance: number;
+  totalNetMonthlyContribution: number;
+}
+
+function assessPropertyContribution(
+  property: any,
+  policy: PropertyContributionPolicy = DEFAULT_PROPERTY_POLICY,
+): PropertyContributionResult {
+  const propertyType = property.property_type?.toLowerCase() || '';
+  const address = property.address?.substring(0, 40) || 'Property';
+  const auditNotes: string[] = [];
+
+  if (propertyType === 'rental') {
+    const monthlyRentPaid = property.monthly_rental_income || 0;
+    auditNotes.push(`Rental: client pays $${monthlyRentPaid}/mo`);
+    return {
+      propertyId: property.id || '',
+      address, propertyType,
+      rawMonthlyRent: 0, rawNetMonthlyCashflow: 0, rawLoanBalance: 0, rawMonthlyRepayment: 0,
+      assessedMonthlyRent: 0, assessedMonthlyDebt: 0, assessedMonthlyHoldingCosts: 0,
+      netMonthlyContribution: -monthlyRentPaid,
+      legacyIncomeContribution: 0, legacyExpenseContribution: 0,
+      legacyLiabilityContribution: monthlyRentPaid, legacyDebtBalance: 0,
+      auditNotes,
+    };
+  }
+
+  const rawNetMonthlyCashflow = property.net_monthly_cashflow || 0;
+  const rawMonthlyRent = property.monthly_rental_income || 0;
+  const rawLoanBalance = property.loan_remaining || 0;
+  const rawMonthlyRepayment = property.monthly_interest_repayment || 0;
+
+  const assessedMonthlyRent = rawMonthlyRent * policy.rentalShadingRate * (1 - policy.vacancyRate);
+
+  let assessedMonthlyDebt = 0;
+  if (rawLoanBalance > 0) {
+    const monthlyRate = policy.loanAssessmentRate / 12;
+    const piRepayment = rawLoanBalance *
+      (monthlyRate * Math.pow(1 + monthlyRate, policy.loanTermMonths)) /
+      (Math.pow(1 + monthlyRate, policy.loanTermMonths) - 1);
+    assessedMonthlyDebt = Math.max(piRepayment, rawMonthlyRepayment);
+  }
+
+  const assessedMonthlyHoldingCosts = 0;
+  const netMonthlyContribution = assessedMonthlyRent - assessedMonthlyDebt - assessedMonthlyHoldingCosts;
+
+  let legacyIncomeContribution = 0;
+  if (rawNetMonthlyCashflow > 0) {
+    legacyIncomeContribution = rawNetMonthlyCashflow * 12 * policy.rentalShadingRate;
+  }
+
+  let legacyExpenseContribution = 0;
+  if (rawNetMonthlyCashflow < 0) {
+    legacyExpenseContribution = Math.abs(rawNetMonthlyCashflow);
+  }
+
+  const legacyLiabilityContribution = rawLoanBalance > 0 ? Math.round(assessedMonthlyDebt * 100) / 100 : 0;
+
+  auditNotes.push(`Net contribution: $${netMonthlyContribution.toFixed(2)}/mo`);
+  auditNotes.push(`Legacy: income=$${legacyIncomeContribution.toFixed(2)}/yr, expense=$${legacyExpenseContribution.toFixed(2)}/mo, liability=$${legacyLiabilityContribution.toFixed(2)}/mo`);
+
+  return {
+    propertyId: property.id || '', address, propertyType,
+    rawMonthlyRent, rawNetMonthlyCashflow, rawLoanBalance, rawMonthlyRepayment,
+    assessedMonthlyRent, assessedMonthlyDebt, assessedMonthlyHoldingCosts,
+    netMonthlyContribution,
+    legacyIncomeContribution, legacyExpenseContribution, legacyLiabilityContribution,
+    legacyDebtBalance: rawLoanBalance,
+    auditNotes,
+  };
+}
+
+function assessAllPropertyContributions(
+  properties: any[],
+  policy: PropertyContributionPolicy = DEFAULT_PROPERTY_POLICY,
+): PropertyContributionSummary {
+  const results: PropertyContributionResult[] = [];
+  let totalLegacyIncome = 0;
+  let totalLegacyExpense = 0;
+  let totalLegacyLiability = 0;
+  let totalLegacyDebtBalance = 0;
+  let totalNetMonthlyContribution = 0;
+
+  for (const property of properties) {
+    const result = assessPropertyContribution(property, policy);
+    results.push(result);
+    totalLegacyIncome += result.legacyIncomeContribution;
+    totalLegacyExpense += result.legacyExpenseContribution;
+    totalLegacyLiability += result.legacyLiabilityContribution;
+    totalLegacyDebtBalance += result.legacyDebtBalance;
+    totalNetMonthlyContribution += result.netMonthlyContribution;
+  }
+
+  return {
+    properties: results,
+    totalLegacyIncome, totalLegacyExpense, totalLegacyLiability,
+    totalLegacyDebtBalance, totalNetMonthlyContribution,
+  };
+}
+
+// ============================================
 // 2025-26 AUSTRALIAN TAX BRACKETS
 // ============================================
 const TAX_BRACKETS_2025_26 = [
