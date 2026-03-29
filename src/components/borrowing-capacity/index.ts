@@ -14,3 +14,6 @@ export { ProposedLoanSection } from './sections/ProposedLoanSection';
 export * from './BorrowingCapacityPDFSection';
 export { generateBorrowingCapacityPDF, fetchAndGenerateBorrowingCapacityPDF } from './BorrowingCapacityPDFReport';
 export type { ThreeOutputAssessment, CurrentCapacityResult, ProposedLoanCheckResult, ScenarioCapacityResult, ScenarioDelta } from '@/utils/borrowingCapacityTypes';
+// Phase 4: Scenario Delta Engine
+export { runScenario, runMultipleScenarios, createPayOffAllDebtScenario, createSellPropertyScenario, createRefinanceToIOScenario, createRateChangeScenario, createIncomeChangeScenario, createMaximumStrategyScenario } from '@/utils/scenarioDeltaEngine';
+export type { ScenarioContext, ScenarioProperty, ScenarioLiability } from '@/utils/scenarioDeltaEngine';
