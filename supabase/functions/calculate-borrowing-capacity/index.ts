@@ -171,6 +171,158 @@ const INCOME_SHADING_RULES = DEFAULT_POLICY.incomeShadingRules;
 const RENTAL_EXPENSE_RATIO = DEFAULT_POLICY.propertyPolicy.rentalExpenseRatio;
 
 // ============================================
+// AUDIT TRAIL BUILDER (Phase 5) — inline for edge function
+// ============================================
+
+type AuditCategory = 'income' | 'expense' | 'liability' | 'property' | 'tax' | 'policy' | 'constraint';
+
+interface AuditEntry {
+  seq: number;
+  category: AuditCategory;
+  action: string;
+  label: string;
+  rawValue: number;
+  assessedValue: number;
+  rule: string;
+  delta: number;
+  impact: 'increase' | 'decrease' | 'neutral';
+  note?: string;
+}
+
+interface AuditTrailData {
+  entries: AuditEntry[];
+  summary: {
+    totalTransformations: number;
+    byCategory: Record<AuditCategory, number>;
+    totalIncomeShading: number;
+    totalExpenseAdjustments: number;
+    totalLiabilityAdjustments: number;
+    totalTaxImpact: number;
+    hasOverrides: boolean;
+    hasConstraints: boolean;
+  };
+  generatedAt: string;
+}
+
+class AuditTrailBuilder {
+  private entries: AuditEntry[] = [];
+  private seq = 0;
+
+  add(category: AuditCategory, action: string, label: string, rawValue: number, assessedValue: number, rule: string, note?: string): void {
+    const delta = assessedValue - rawValue;
+    this.entries.push({
+      seq: ++this.seq, category, action, label,
+      rawValue: Math.round(rawValue * 100) / 100,
+      assessedValue: Math.round(assessedValue * 100) / 100,
+      rule, delta: Math.round(delta * 100) / 100,
+      impact: delta > 0.01 ? 'increase' : delta < -0.01 ? 'decrease' : 'neutral',
+      note,
+    });
+  }
+
+  build(): AuditTrailData {
+    const byCategory: Record<AuditCategory, number> = { income: 0, expense: 0, liability: 0, property: 0, tax: 0, policy: 0, constraint: 0 };
+    let totalIncomeShading = 0, totalExpenseAdjustments = 0, totalLiabilityAdjustments = 0, totalTaxImpact = 0;
+    let hasOverrides = false, hasConstraints = false;
+    for (const e of this.entries) {
+      byCategory[e.category]++;
+      if (e.category === 'income') totalIncomeShading += Math.abs(e.delta);
+      if (e.category === 'expense') totalExpenseAdjustments += Math.abs(e.delta);
+      if (e.category === 'liability') totalLiabilityAdjustments += Math.abs(e.delta);
+      if (e.category === 'tax') totalTaxImpact += Math.abs(e.delta);
+      if (e.action === 'override_applied') hasOverrides = true;
+      if (e.category === 'constraint') hasConstraints = true;
+    }
+    return {
+      entries: this.entries,
+      summary: { totalTransformations: this.entries.length, byCategory, totalIncomeShading, totalExpenseAdjustments, totalLiabilityAdjustments, totalTaxImpact, hasOverrides, hasConstraints },
+      generatedAt: new Date().toISOString(),
+    };
+  }
+}
+
+// ============================================
+// EXPLANATION ENGINE (Phase 5) — inline for edge function
+// ============================================
+
+interface ExplanationStep {
+  step: number;
+  title: string;
+  narrative: string;
+  figures: { label: string; value: string }[];
+  icon: string;
+}
+
+interface ExplanationReport {
+  headline: string;
+  steps: ExplanationStep[];
+  executiveSummary: string;
+  generatedAt: string;
+}
+
+function fmtCurrencyServer(value: number): string {
+  return new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
+}
+
+function fmtPercentServer(value: number): string {
+  return `${(value * 100).toFixed(1)}%`;
+}
+
+function generateExplanationServer(p: {
+  borrowingCapacity: number; monthlySurplus: number; serviceabilityBand: string;
+  stressTestedCapacity: number; dtiRatio: number; assessmentRate: number;
+  grossAnnualIncome: number; shadedAnnualIncome: number; incomeBreakdownCount: number;
+  afterTaxAnnualIncome: number; totalTax: number; effectiveTaxRate: number; marginalTaxRate: number;
+  livingExpensesMonthly: number; hemBenchmark: number; declaredExpenses: number;
+  expenseMethod: string; negativePropertyCashFlows: number; totalLivingExpenses: number;
+  existingCommitmentsMonthly: number; totalDebtBalances: number; liabilityCount: number;
+  interestRate: number; bufferRate: number; loanTermYears: number;
+  policyName: string; calculationMode: string; dtiCapEnabled: boolean; dtiCapLimit: number;
+  lmiAmount: number; lmiMode: string; propertyCount: number;
+}): ExplanationReport {
+  const steps: ExplanationStep[] = [];
+  let sn = 0;
+  const fc = fmtCurrencyServer;
+  const fp = fmtPercentServer;
+
+  if (p.policyName !== 'Default APRA') {
+    steps.push({ step: ++sn, title: 'Lender Policy Applied', narrative: `Uses "${p.policyName}" lender profile with specific buffer rates, shading rules, and thresholds.`, figures: [{ label: 'Profile', value: p.policyName }], icon: 'policy' });
+  }
+
+  const shadRed = p.grossAnnualIncome - p.shadedAnnualIncome;
+  steps.push({ step: ++sn, title: 'Income Assessment', narrative: `Gross income of ${fc(p.grossAnnualIncome)} from ${p.incomeBreakdownCount} source(s) assessed at ${fc(p.shadedAnnualIncome)} after APRA shading${shadRed > 0 ? ` (−${fc(shadRed)} reduction)` : ''}.`, figures: [{ label: 'Gross', value: fc(p.grossAnnualIncome) }, { label: 'Shaded', value: fc(p.shadedAnnualIncome) }], icon: 'income' });
+
+  steps.push({ step: ++sn, title: 'Tax & After-Tax Income', narrative: `Tax of ${fc(p.totalTax)} calculated (${fp(p.effectiveTaxRate)} effective, ${fp(p.marginalTaxRate)} marginal). After-tax income: ${fc(p.afterTaxAnnualIncome)}/yr (${fc(Math.round(p.afterTaxAnnualIncome / 12))}/mo).`, figures: [{ label: 'Tax', value: fc(p.totalTax) }, { label: 'After-Tax', value: fc(p.afterTaxAnnualIncome) }], icon: 'tax' });
+
+  let expNar = p.expenseMethod === 'hem' ? `HEM of ${fc(p.hemBenchmark)}/mo used (exceeds declared ${fc(p.declaredExpenses)}/mo).` : p.expenseMethod === 'declared_higher' ? `Declared expenses of ${fc(p.declaredExpenses)}/mo used (exceeds HEM ${fc(p.hemBenchmark)}/mo).` : `Expenses of ${fc(p.livingExpensesMonthly)}/mo via override.`;
+  if (p.negativePropertyCashFlows > 0) expNar += ` Plus ${fc(p.negativePropertyCashFlows)}/mo negative property CF → total ${fc(p.totalLivingExpenses)}/mo.`;
+  steps.push({ step: ++sn, title: 'Living Expenses', narrative: expNar, figures: [{ label: 'Base', value: `${fc(p.livingExpensesMonthly)}/mo` }, { label: 'Total', value: `${fc(p.totalLivingExpenses)}/mo` }], icon: 'expense' });
+
+  steps.push({ step: ++sn, title: 'Existing Commitments', narrative: `${p.liabilityCount} commitment(s) at ${fc(p.existingCommitmentsMonthly)}/mo. Total debt: ${fc(p.totalDebtBalances)}.`, figures: [{ label: 'Monthly', value: `${fc(p.existingCommitmentsMonthly)}/mo` }, { label: 'Debt', value: fc(p.totalDebtBalances) }], icon: 'liability' });
+
+  const mAT = Math.round(p.afterTaxAnnualIncome / 12);
+  steps.push({ step: ++sn, title: 'Capacity Derivation', narrative: `Surplus = ${fc(mAT)} − ${fc(p.totalLivingExpenses)} − ${fc(p.existingCommitmentsMonthly)} = ${fc(p.monthlySurplus)}/mo. At ${p.assessmentRate.toFixed(2)}% over ${p.loanTermYears}yr → max loan ${fc(p.borrowingCapacity)}.`, figures: [{ label: 'Surplus', value: `${fc(p.monthlySurplus)}/mo` }, { label: 'Capacity', value: fc(p.borrowingCapacity) }], icon: 'capacity' });
+
+  steps.push({ step: ++sn, title: 'DTI Ratio', narrative: `DTI = (${fc(p.totalDebtBalances)} + ${fc(p.borrowingCapacity)}) / ${fc(p.grossAnnualIncome)} = ${p.dtiRatio.toFixed(1)}x.${p.dtiCapEnabled ? ` Cap at ${p.dtiCapLimit}x ${p.dtiRatio >= p.dtiCapLimit ? 'has constrained capacity.' : 'is not binding.'}` : ''}`, figures: [{ label: 'DTI', value: `${p.dtiRatio.toFixed(1)}x` }], icon: 'dti' });
+
+  steps.push({ step: ++sn, title: 'Stress Test', narrative: `At +1% (${(p.assessmentRate + 1).toFixed(2)}%), stressed capacity is ${fc(p.stressTestedCapacity)} (−${fc(p.borrowingCapacity - p.stressTestedCapacity)}).`, figures: [{ label: 'Stressed', value: fc(p.stressTestedCapacity) }], icon: 'stress' });
+
+  if (p.lmiMode !== 'none' && p.lmiAmount > 0) {
+    steps.push({ step: ++sn, title: 'LMI', narrative: `LMI of ${fc(p.lmiAmount)} ${p.lmiMode === 'debt_capitalised' ? 'capitalised onto loan' : 'deducted from proceeds'}.`, figures: [{ label: 'LMI', value: fc(p.lmiAmount) }], icon: 'capacity' });
+  }
+
+  const bandDesc: Record<string, string> = { green: 'Strong position.', amber: 'Moderate — proceed with caution.', red: 'Limited — focus on debt reduction.' };
+  steps.push({ step: ++sn, title: 'Serviceability Band', narrative: `${p.serviceabilityBand.toUpperCase()} band. ${bandDesc[p.serviceabilityBand] || ''}`, figures: [{ label: 'Band', value: p.serviceabilityBand.toUpperCase() }], icon: 'band' });
+
+  return {
+    headline: `Borrowing capacity of ${fc(p.borrowingCapacity)} on ${fc(p.grossAnnualIncome)} gross income — ${p.serviceabilityBand.toUpperCase()} serviceability.`,
+    steps,
+    executiveSummary: `On ${fc(p.grossAnnualIncome)} gross (${fc(p.shadedAnnualIncome)} shaded), after-tax ${fc(p.afterTaxAnnualIncome)}, expenses ${fc(p.totalLivingExpenses)}/mo, commitments ${fc(p.existingCommitmentsMonthly)}/mo → capacity ${fc(p.borrowingCapacity)} at ${p.assessmentRate.toFixed(2)}% over ${p.loanTermYears}yr. DTI ${p.dtiRatio.toFixed(1)}x. Band: ${p.serviceabilityBand.toUpperCase()}.`,
+    generatedAt: new Date().toISOString(),
+  };
+}
+
+// ============================================
 // PROPERTY CONTRIBUTION ENGINE (Phase 1)
 // Unified per-property assessment model
 // ============================================
