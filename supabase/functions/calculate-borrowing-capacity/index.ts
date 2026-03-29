@@ -1011,9 +1011,9 @@ Deno.serve(async (req) => {
     // When LMI is added to the loan, it must be serviced at the assessment rate
     let lmiMonthlyServicing = 0;
     if (lmiMode === 'debt_capitalised' && lmiAmount > 0) {
-      const lmiAssessmentRate = ((overrides?.interestRate ?? 6.50) + (overrides?.bufferRate ?? 3.00)) / 100;
+      const lmiAssessmentRate = ((overrides?.interestRate ?? activePolicy.loanDefaults.interestRate) + (overrides?.bufferRate ?? activePolicy.loanDefaults.bufferRate)) / 100;
       const lmiMonthlyRate = lmiAssessmentRate / 12;
-      const lmiPeriods = (overrides?.loanTermYears ?? 30) * 12;
+      const lmiPeriods = (overrides?.loanTermYears ?? activePolicy.loanDefaults.loanTermYears) * 12;
       lmiMonthlyServicing = lmiAmount * (lmiMonthlyRate * Math.pow(1 + lmiMonthlyRate, lmiPeriods)) 
                             / (Math.pow(1 + lmiMonthlyRate, lmiPeriods) - 1);
       console.log(`[calculate-borrowing-capacity] LMI monthly servicing: $${lmiMonthlyServicing.toFixed(2)}/mo at ${(lmiAssessmentRate * 100).toFixed(2)}%`);
@@ -1062,17 +1062,20 @@ Deno.serve(async (req) => {
     const effectiveDtiCapLimit = overrides?.dtiCapLimit || DEFAULT_DTI_CAP;
     
     const assumptionItems = [
+      { key: "Policy Profile", value: activePolicy.name },
       { key: "Serviceability Basis", value: "After-Tax Income" },
       { key: "Buffer Rate", value: `${bufferRate}%` },
       { key: "Assessment Rate", value: `${result.assessmentRate}%` },
       { key: "Loan Term", value: `${loanTermYears} years` },
       { key: "HEM Benchmark", value: `$${hemBenchmark.toLocaleString()}/mo (income-scaled)` },
       { key: "Repayment Type", value: "Principal & Interest" },
-      { key: "Rental Expense Ratio", value: `${RENTAL_EXPENSE_RATIO * 100}%` },
-      { key: "Existing Loan Assessment", value: "P&I at 9.5%" },
-      { key: "Tax Year", value: "2025-26 (incl. 2% Medicare Levy)" },
+      { key: "Rental Expense Ratio", value: `${activePolicy.propertyPolicy.rentalExpenseRatio * 100}%` },
+      { key: "Existing Loan Assessment", value: `P&I at ${(activePolicy.propertyPolicy.loanAssessmentRate * 100).toFixed(1)}%` },
+      { key: "Tax Year", value: `${activePolicy.tax.taxYear} (incl. ${(activePolicy.tax.medicareLevyRate * 100).toFixed(0)}% Medicare Levy)` },
       { key: "After-Tax Income Used", value: `$${taxBreakdown.afterTaxIncome.toLocaleString()}/yr` },
       { key: "Marginal Tax Rate", value: `${(taxBreakdown.marginalTaxRate * 100).toFixed(0)}%` },
+      { key: "Stress Test Increment", value: `+${activePolicy.loanDefaults.stressTestIncrement}%` },
+      { key: "Credit Card Servicing", value: `${(activePolicy.liabilityRules.creditCardLimitRate * 100).toFixed(1)}% of limit` },
     ];
 
     const propertyContributionData = {
