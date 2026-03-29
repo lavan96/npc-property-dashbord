@@ -577,3 +577,8 @@ export function calculateCapacityChange(
     direction: absoluteChange > 0 ? 'increase' : absoluteChange < 0 ? 'decrease' : 'unchanged',
   };
 }
+
+// Re-export Policy Engine types for consumers
+export type { PolicyConfig, IncomeShadingRule, HemConfig, BandThresholds, ConservativeModeConfig } from './policyEngine';
+export { DEFAULT_POLICY, buildPolicy, getLenderPolicy, LENDER_PROFILES } from './policyEngine';
+export type { LenderProfileId } from './policyEngine';
