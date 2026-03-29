@@ -382,26 +382,8 @@ function getTaxBreakdown(grossAnnualIncome: number) {
 // HECS/HELP REPAYMENT THRESHOLDS (2024-25)
 // ============================================
 const HECS_THRESHOLDS = [
-  { min: 0, max: 54434, rate: 0.00 },
-  { min: 54435, max: 62850, rate: 0.01 },
-  { min: 62851, max: 66620, rate: 0.02 },
-  { min: 66621, max: 70618, rate: 0.025 },
-  { min: 70619, max: 74855, rate: 0.03 },
-  { min: 74856, max: 79346, rate: 0.035 },
-  { min: 79347, max: 84107, rate: 0.04 },
-  { min: 84108, max: 89154, rate: 0.045 },
-  { min: 89155, max: 94503, rate: 0.05 },
-  { min: 94504, max: 100174, rate: 0.055 },
-  { min: 100175, max: 106185, rate: 0.06 },
-  { min: 106186, max: 112556, rate: 0.065 },
-  { min: 112557, max: 119309, rate: 0.07 },
-  { min: 119310, max: 126467, rate: 0.075 },
-  { min: 126468, max: 134056, rate: 0.08 },
-  { min: 134057, max: 142100, rate: 0.085 },
-  { min: 142101, max: 150626, rate: 0.09 },
-  { min: 150627, max: 159663, rate: 0.095 },
-  { min: 159664, max: Infinity, rate: 0.10 },
-];
+// HECS thresholds now sourced from policy
+const HECS_THRESHOLDS = DEFAULT_POLICY.hecs.thresholds;
 
 interface IncomeBreakdownItem {
   component: string;
@@ -616,9 +598,9 @@ function calculateLiabilityBreakdown(liabilities: any[], properties: any[], annu
     let monthlyServicing = 0;
 
     if (type.includes('credit') || type.includes('card')) {
-      // Credit card: 3% of credit limit
+      // Credit card: % of credit limit from policy
       const limit = liability.credit_limit || liability.current_balance || 0;
-      monthlyServicing = limit * 0.03;
+      monthlyServicing = limit * policy.liabilityRules.creditCardLimitRate;
       breakdown.push({
         type: 'Credit Card',
         balance: liability.current_balance || 0,
@@ -634,9 +616,9 @@ function calculateLiabilityBreakdown(liabilities: any[], properties: any[], annu
         monthlyServicing,
       });
     } else if (type.includes('afterpay') || type.includes('bnpl') || type.includes('buy now')) {
-      // BNPL: 5% of limit or actual monthly
+      // BNPL: % of limit from policy or actual monthly
       const limit = liability.credit_limit || liability.current_balance || 0;
-      monthlyServicing = Math.max(limit * 0.05, liability.monthly_repayment || 0);
+      monthlyServicing = Math.max(limit * policy.liabilityRules.bnplLimitRate, liability.monthly_repayment || 0);
       breakdown.push({
         type: 'Buy Now Pay Later',
         balance: liability.current_balance || 0,
