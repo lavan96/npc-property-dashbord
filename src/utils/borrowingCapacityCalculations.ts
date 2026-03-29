@@ -248,79 +248,32 @@ export function calculateNegativeGearingRefund(taxableLoss: number, grossAnnualI
 }
 
 // ============================================
-// CONSTANTS
+// CONSTANTS — Now sourced from Policy Engine
+// Exported for backward compatibility
 // ============================================
 
-export const INCOME_SHADING_RULES: Record<string, { rate: number; label: string }> = {
-  base_salary: { rate: 1.00, label: "Base Salary (PAYG)" },
-  gross_salary: { rate: 1.00, label: "Gross Salary" },
-  second_job: { rate: 0.80, label: "Second Job" },
-  casual: { rate: 0.60, label: "Casual Income" },
-  bonus: { rate: 0.80, label: "Bonus (avg 2yr)" },
-  commission: { rate: 0.80, label: "Commission" },
-  overtime_essential: { rate: 1.00, label: "Essential Overtime" },
-  overtime_non_essential: { rate: 0.50, label: "Non-Essential Overtime" },
-  allowance: { rate: 0.80, label: "Allowances" },
-  rental_existing: { rate: 0.80, label: "Rental Income (Existing)" },
-  rental_proposed: { rate: 0.70, label: "Rental Income (Proposed)" },
-  investment_income: { rate: 0.80, label: "Investment Income" },
-  government_payments: { rate: 1.00, label: "Government Payments" },
-  self_employed: { rate: 0.80, label: "Self-Employed (2yr avg)" },
-  other_taxable: { rate: 0.80, label: "Other Taxable" },
-};
+export const INCOME_SHADING_RULES = DEFAULT_INCOME_SHADING_RULES;
 
-// HEM BENCHMARK TABLE (Monthly - AUD) - 2024 Industry Standard
-// BASE values - these get scaled by income level
-export const HEM_BENCHMARKS_BASE: Record<string, Record<number, number>> = {
-  single: {
-    0: 2100,  // Base for < $80k income
-    1: 2650,
-    2: 3050,
-    3: 3450,
-  },
-  couple: {
-    0: 2950,  // Base for < $80k income
-    1: 3400,
-    2: 3850,
-    3: 4300,
-  },
-};
-
-// Income-based HEM scaling factors
-// Higher income = higher expected living expenses
-export const HEM_INCOME_SCALING: { maxIncome: number; multiplier: number }[] = [
-  { maxIncome: 80000, multiplier: 1.00 },   // Base HEM
-  { maxIncome: 120000, multiplier: 1.20 },  // 20% uplift for $80-120k
-  { maxIncome: 180000, multiplier: 1.40 },  // 40% uplift for $120-180k
-  { maxIncome: 250000, multiplier: 1.60 },  // 60% uplift for $180-250k
-  { maxIncome: Infinity, multiplier: 1.80 }, // 80% uplift for $250k+
-];
-
-// For backwards compatibility - deprecated, use getHemBenchmark with income param
+// HEM benchmarks (backward-compatible exports)
+export const HEM_BENCHMARKS_BASE = DEFAULT_HEM_CONFIG.baseBenchmarks;
+export const HEM_INCOME_SCALING = DEFAULT_HEM_CONFIG.incomeScaling;
 export const HEM_BENCHMARKS = HEM_BENCHMARKS_BASE;
 
-// Rental income expense ratio - banks assume ~20-25% of rent goes to expenses
-export const RENTAL_EXPENSE_RATIO = 0.20;
-
-// Assessment rate for stress-testing existing loans
-export const LOAN_ASSESSMENT_RATE = 0.095; // 9.5% (approx 6.5% + 3% buffer)
+// Property & loan constants
+export const RENTAL_EXPENSE_RATIO = DEFAULT_POLICY.propertyPolicy.rentalExpenseRatio;
+export const LOAN_ASSESSMENT_RATE = DEFAULT_POLICY.propertyPolicy.loanAssessmentRate;
 
 export const DEFAULT_CALCULATION_PARAMS = {
-  interestRate: 6.50,
-  bufferRate: 3.00,
-  loanTermYears: 30,
+  interestRate: DEFAULT_LOAN_PARAMS.interestRate,
+  bufferRate: DEFAULT_LOAN_PARAMS.bufferRate,
+  loanTermYears: DEFAULT_LOAN_PARAMS.loanTermYears,
 };
 
-// Conservative mode adjustments (stricter serviceability model)
-export const CONSERVATIVE_MODE_ADJUSTMENTS = {
-  minimumSurplusFloor: 1000, // Enforce $1,000/mo minimum surplus
-  residualIncomeFloor: 1500, // Minimum residual income requirement
-  surplusBufferMultiplier: 0.85, // Only use 85% of calculated surplus
-  dtiHardCap: 6, // Hard cap DTI at 6x
-};
+// Conservative mode (backward-compatible export)
+export const CONSERVATIVE_MODE_ADJUSTMENTS = DEFAULT_CONSERVATIVE_CONFIG;
 
-// Default DTI cap settings
-export const DEFAULT_DTI_CAP = 6.0;
+// Default DTI cap
+export const DEFAULT_DTI_CAP = DEFAULT_LOAN_PARAMS.dtiCap;
 
 // ============================================
 // HELPER FUNCTIONS
