@@ -832,8 +832,8 @@ function calculateBorrowingCapacity(params: {
   if (borrowingCapacity < 100000 && shadedAnnualIncome > 50000) {
     warnings.push("Borrowing capacity constrained by existing commitments");
   }
-  if (isConservative && monthlySurplus < CONSERVATIVE_MODE_ADJUSTMENTS.minimumSurplusFloor) {
-    warnings.push(`Surplus below conservative minimum floor of $${CONSERVATIVE_MODE_ADJUSTMENTS.minimumSurplusFloor}/mo`);
+  if (isConservative && monthlySurplus < conservativeConfig.minimumSurplusFloor) {
+    warnings.push(`Surplus below conservative minimum floor of $${conservativeConfig.minimumSurplusFloor}/mo`);
   }
   
   return {
