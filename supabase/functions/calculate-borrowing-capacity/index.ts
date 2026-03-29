@@ -699,10 +699,15 @@ function calculateBorrowingCapacity(params: {
   calculationMode?: 'bank' | 'conservative';
   dtiCapEnabled?: boolean;
   dtiCapLimit?: number;
+  policy?: PolicyConfig;
 }): CalculationResult & { afterTaxAnnualIncome: number; monthlyAfterTaxIncome: number } {
+  const activePolicy = params.policy || DEFAULT_POLICY;
   const { grossAnnualIncome, shadedAnnualIncome, monthlyLivingExpenses, monthlyCommitments, 
           interestRate, bufferRate, loanTermYears,
-          calculationMode = 'bank', dtiCapEnabled = false, dtiCapLimit = DEFAULT_DTI_CAP } = params;
+          calculationMode = 'bank', dtiCapEnabled = false, dtiCapLimit = activePolicy.loanDefaults.dtiCap } = params;
+  
+  const isConservative = calculationMode === 'conservative';
+  const conservativeConfig = activePolicy.conservativeMode;
   
   const isConservative = calculationMode === 'conservative';
   
