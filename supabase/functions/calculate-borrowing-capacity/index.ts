@@ -64,23 +64,8 @@ const RENTAL_EXPENSE_RATIO = 0.20;
 // Unified per-property assessment model
 // ============================================
 
-interface PropertyContributionPolicy {
-  rentalShadingRate: number;
-  proposedRentalShadingRate: number;
-  vacancyRate: number;
-  loanAssessmentRate: number;
-  loanTermMonths: number;
-  rentalExpenseRatio: number;
-}
-
-const DEFAULT_PROPERTY_POLICY: PropertyContributionPolicy = {
-  rentalShadingRate: 0.80,
-  proposedRentalShadingRate: 0.70,
-  vacancyRate: 0.0,
-  loanAssessmentRate: 0.095,
-  loanTermMonths: 360,
-  rentalExpenseRatio: 0.20,
-};
+// PropertyContributionPolicy now uses PolicyConfig.propertyPolicy
+type PropertyContributionPolicy = PropertyPolicy;
 
 interface PropertyContributionResult {
   propertyId: string;
