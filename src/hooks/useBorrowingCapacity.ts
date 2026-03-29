@@ -40,6 +40,8 @@ interface BorrowingCapacityOverrides {
     vacancyRate: number;
     interestOnlyOffset: number;
   };
+  // Phase 4: Scenario deltas to run server-side
+  scenarioDeltas?: { name: string; deltas: import('@/utils/borrowingCapacityTypes').ScenarioDelta[] }[];
 }
 
 interface UseBorrowingCapacityOptions {
