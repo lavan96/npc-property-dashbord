@@ -112,20 +112,9 @@ export interface FullAssessmentResult extends BorrowingCapacityResult {
   propertyContributions?: any;
 }
 
-// ============================================
-// 2025-26 AUSTRALIAN TAX BRACKETS
-// ============================================
-
-// Tax brackets excluding Medicare Levy (which is 2% additional)
-export const TAX_BRACKETS_2025_26 = [
-  { min: 0, max: 18200, rate: 0, base: 0 },
-  { min: 18201, max: 45000, rate: 0.16, base: 0 },
-  { min: 45001, max: 135000, rate: 0.30, base: 4288 },
-  { min: 135001, max: 190000, rate: 0.37, base: 31288 },
-  { min: 190001, max: Infinity, rate: 0.45, base: 51638 },
-];
-
-export const MEDICARE_LEVY_RATE = 0.02;
+// Tax brackets and Medicare now sourced from Policy Engine
+export const TAX_BRACKETS_2025_26 = DEFAULT_TAX_CONFIG.brackets;
+export const MEDICARE_LEVY_RATE = DEFAULT_TAX_CONFIG.medicareLevyRate;
 
 /**
  * Calculate income tax payable for a given taxable income (2025-26 rates)
