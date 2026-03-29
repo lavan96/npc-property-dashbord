@@ -7,57 +7,168 @@ const corsHeaders = {
 };
 
 // ============================================
-// INCOME SHADING RULES (APRA-Aligned)
+// POLICY ENGINE — Single source of truth for all constants
 // ============================================
-const INCOME_SHADING_RULES: Record<string, { rate: number; label: string }> = {
-  base_salary: { rate: 1.00, label: "Base Salary (PAYG)" },
-  gross_salary: { rate: 1.00, label: "Gross Salary" },
-  second_job: { rate: 0.80, label: "Second Job" },
-  casual: { rate: 0.60, label: "Casual Income" },
-  bonus: { rate: 0.80, label: "Bonus (avg 2yr)" },
-  commission: { rate: 0.80, label: "Commission" },
-  overtime_essential: { rate: 1.00, label: "Essential Overtime" },
-  overtime_non_essential: { rate: 0.50, label: "Non-Essential Overtime" },
-  allowance: { rate: 0.80, label: "Allowances" },
-  rental_existing: { rate: 0.80, label: "Rental Income (Existing)" },
-  rental_proposed: { rate: 0.70, label: "Rental Income (Proposed)" },
-  investment_income: { rate: 0.80, label: "Investment Income" },
-  government_payments: { rate: 1.00, label: "Government Payments" },
-  self_employed: { rate: 0.80, label: "Self-Employed (2yr avg)" },
-  other_taxable: { rate: 0.80, label: "Other Taxable" },
+
+interface IncomeShadingRule { rate: number; label: string; }
+interface HemConfig {
+  baseBenchmarks: Record<'single' | 'couple', Record<number, number>>;
+  incomeScaling: { maxIncome: number; multiplier: number }[];
+}
+interface BandThresholds { greenSurplusMin: number; greenDtiMax: number; amberDtiMax: number; }
+interface ConservativeModeConfig { minimumSurplusFloor: number; residualIncomeFloor: number; surplusBufferMultiplier: number; dtiHardCap: number; }
+interface LoanDefaults { interestRate: number; bufferRate: number; loanTermYears: number; stressTestIncrement: number; dtiCap: number; }
+interface PropertyPolicy { rentalShadingRate: number; proposedRentalShadingRate: number; vacancyRate: number; loanAssessmentRate: number; loanTermMonths: number; rentalExpenseRatio: number; }
+interface LiabilityRules { creditCardLimitRate: number; bnplLimitRate: number; }
+interface TaxConfig { taxYear: string; brackets: { min: number; max: number; rate: number; base: number }[]; medicareLevyRate: number; }
+interface HecsConfig { thresholds: { min: number; max: number; rate: number }[]; }
+
+interface PolicyConfig {
+  name: string;
+  incomeShadingRules: Record<string, IncomeShadingRule>;
+  hem: HemConfig;
+  bandThresholds: BandThresholds;
+  conservativeMode: ConservativeModeConfig;
+  loanDefaults: LoanDefaults;
+  propertyPolicy: PropertyPolicy;
+  liabilityRules: LiabilityRules;
+  tax: TaxConfig;
+  hecs: HecsConfig;
+}
+
+const DEFAULT_POLICY: PolicyConfig = {
+  name: 'Default APRA',
+  incomeShadingRules: {
+    base_salary: { rate: 1.00, label: "Base Salary (PAYG)" },
+    gross_salary: { rate: 1.00, label: "Gross Salary" },
+    second_job: { rate: 0.80, label: "Second Job" },
+    casual: { rate: 0.60, label: "Casual Income" },
+    bonus: { rate: 0.80, label: "Bonus (avg 2yr)" },
+    commission: { rate: 0.80, label: "Commission" },
+    overtime_essential: { rate: 1.00, label: "Essential Overtime" },
+    overtime_non_essential: { rate: 0.50, label: "Non-Essential Overtime" },
+    allowance: { rate: 0.80, label: "Allowances" },
+    rental_existing: { rate: 0.80, label: "Rental Income (Existing)" },
+    rental_proposed: { rate: 0.70, label: "Rental Income (Proposed)" },
+    investment_income: { rate: 0.80, label: "Investment Income" },
+    government_payments: { rate: 1.00, label: "Government Payments" },
+    self_employed: { rate: 0.80, label: "Self-Employed (2yr avg)" },
+    other_taxable: { rate: 0.80, label: "Other Taxable" },
+  },
+  hem: {
+    baseBenchmarks: {
+      single: { 0: 2100, 1: 2650, 2: 3050, 3: 3450 },
+      couple: { 0: 2950, 1: 3400, 2: 3850, 3: 4300 },
+    },
+    incomeScaling: [
+      { maxIncome: 80000, multiplier: 1.00 },
+      { maxIncome: 120000, multiplier: 1.20 },
+      { maxIncome: 180000, multiplier: 1.40 },
+      { maxIncome: 250000, multiplier: 1.60 },
+      { maxIncome: Infinity, multiplier: 1.80 },
+    ],
+  },
+  bandThresholds: { greenSurplusMin: 500, greenDtiMax: 6, amberDtiMax: 8 },
+  conservativeMode: { minimumSurplusFloor: 1000, residualIncomeFloor: 1500, surplusBufferMultiplier: 0.85, dtiHardCap: 6 },
+  loanDefaults: { interestRate: 6.50, bufferRate: 3.00, loanTermYears: 30, stressTestIncrement: 1.0, dtiCap: 6.0 },
+  propertyPolicy: { rentalShadingRate: 0.80, proposedRentalShadingRate: 0.70, vacancyRate: 0.0, loanAssessmentRate: 0.095, loanTermMonths: 360, rentalExpenseRatio: 0.20 },
+  liabilityRules: { creditCardLimitRate: 0.03, bnplLimitRate: 0.05 },
+  tax: {
+    taxYear: '2025-26',
+    brackets: [
+      { min: 0, max: 18200, rate: 0, base: 0 },
+      { min: 18201, max: 45000, rate: 0.16, base: 0 },
+      { min: 45001, max: 135000, rate: 0.30, base: 4288 },
+      { min: 135001, max: 190000, rate: 0.37, base: 31288 },
+      { min: 190001, max: Infinity, rate: 0.45, base: 51638 },
+    ],
+    medicareLevyRate: 0.02,
+  },
+  hecs: {
+    thresholds: [
+      { min: 0, max: 54434, rate: 0.00 },
+      { min: 54435, max: 62850, rate: 0.01 },
+      { min: 62851, max: 66620, rate: 0.02 },
+      { min: 66621, max: 70618, rate: 0.025 },
+      { min: 70619, max: 74855, rate: 0.03 },
+      { min: 74856, max: 79346, rate: 0.035 },
+      { min: 79347, max: 84107, rate: 0.04 },
+      { min: 84108, max: 89154, rate: 0.045 },
+      { min: 89155, max: 94503, rate: 0.05 },
+      { min: 94504, max: 100174, rate: 0.055 },
+      { min: 100175, max: 106185, rate: 0.06 },
+      { min: 106186, max: 112556, rate: 0.065 },
+      { min: 112557, max: 119309, rate: 0.07 },
+      { min: 119310, max: 126467, rate: 0.075 },
+      { min: 126468, max: 134056, rate: 0.08 },
+      { min: 134057, max: 142100, rate: 0.085 },
+      { min: 142101, max: 150626, rate: 0.09 },
+      { min: 150627, max: 159663, rate: 0.095 },
+      { min: 159664, max: Infinity, rate: 0.10 },
+    ],
+  },
 };
 
-// ============================================
-// HEM BENCHMARK TABLE (Monthly - AUD) - 2024 Industry Standard
-// BASE values - these get scaled by income level
-// ============================================
-const HEM_BENCHMARKS_BASE: Record<string, Record<number, number>> = {
-  single: {
-    0: 2100,  // Base for < $80k income
-    1: 2650,
-    2: 3050,
-    3: 3450,
+// Lender profiles
+const LENDER_PROFILES: Record<string, Partial<PolicyConfig>> = {
+  default: { name: 'Default APRA' },
+  conservative: {
+    name: 'Conservative',
+    loanDefaults: { ...DEFAULT_POLICY.loanDefaults, bufferRate: 3.50 },
+    bandThresholds: { greenSurplusMin: 750, greenDtiMax: 5, amberDtiMax: 7 },
   },
-  couple: {
-    0: 2950,  // Base for < $80k income
-    1: 3400,
-    2: 3850,
-    3: 4300,
+  cba: {
+    name: 'Commonwealth Bank',
+    incomeShadingRules: { ...DEFAULT_POLICY.incomeShadingRules, casual: { rate: 0.50, label: "Casual Income (CBA)" }, bonus: { rate: 0.70, label: "Bonus (CBA)" } },
+  },
+  westpac: {
+    name: 'Westpac',
+    incomeShadingRules: { ...DEFAULT_POLICY.incomeShadingRules, overtime_non_essential: { rate: 0.40, label: "Non-Essential OT (Westpac)" } },
+  },
+  anz: {
+    name: 'ANZ',
+    liabilityRules: { creditCardLimitRate: 0.038, bnplLimitRate: 0.05 },
+  },
+  nab: {
+    name: 'NAB',
+    incomeShadingRules: { ...DEFAULT_POLICY.incomeShadingRules, commission: { rate: 0.70, label: "Commission (NAB)" } },
+  },
+  macquarie: {
+    name: 'Macquarie Bank',
+    loanDefaults: { ...DEFAULT_POLICY.loanDefaults, bufferRate: 2.50 },
+    bandThresholds: { greenSurplusMin: 400, greenDtiMax: 7, amberDtiMax: 9 },
   },
 };
 
-// Income-based HEM scaling factors
-// Higher income = higher expected living expenses
-const HEM_INCOME_SCALING: { maxIncome: number; multiplier: number }[] = [
-  { maxIncome: 80000, multiplier: 1.00 },   // Base HEM
-  { maxIncome: 120000, multiplier: 1.20 },  // 20% uplift for $80-120k
-  { maxIncome: 180000, multiplier: 1.40 },  // 40% uplift for $120-180k
-  { maxIncome: 250000, multiplier: 1.60 },  // 60% uplift for $180-250k
-  { maxIncome: Infinity, multiplier: 1.80 }, // 80% uplift for $250k+
-];
+function buildPolicy(overrides: Partial<PolicyConfig> = {}): PolicyConfig {
+  return {
+    name: overrides.name ?? DEFAULT_POLICY.name,
+    incomeShadingRules: { ...DEFAULT_POLICY.incomeShadingRules, ...overrides.incomeShadingRules },
+    hem: overrides.hem ?? DEFAULT_POLICY.hem,
+    bandThresholds: { ...DEFAULT_POLICY.bandThresholds, ...overrides.bandThresholds },
+    conservativeMode: { ...DEFAULT_POLICY.conservativeMode, ...overrides.conservativeMode },
+    loanDefaults: { ...DEFAULT_POLICY.loanDefaults, ...overrides.loanDefaults },
+    propertyPolicy: { ...DEFAULT_POLICY.propertyPolicy, ...overrides.propertyPolicy },
+    liabilityRules: { ...DEFAULT_POLICY.liabilityRules, ...overrides.liabilityRules },
+    tax: overrides.tax ?? DEFAULT_POLICY.tax,
+    hecs: overrides.hecs ?? DEFAULT_POLICY.hecs,
+  };
+}
 
-// Rental income expense ratio - banks assume ~20-25% of rent goes to expenses
-const RENTAL_EXPENSE_RATIO = 0.20;
+function resolvePolicy(lenderName?: string | null): PolicyConfig {
+  if (!lenderName) return DEFAULT_POLICY;
+  const key = lenderName.toLowerCase().replace(/\s+/g, '');
+  for (const [id, profile] of Object.entries(LENDER_PROFILES)) {
+    if (key === id || key.includes(id) || id.includes(key)) {
+      return buildPolicy(profile);
+    }
+  }
+  return DEFAULT_POLICY;
+}
+
+// Backward-compatible aliases
+const INCOME_SHADING_RULES = DEFAULT_POLICY.incomeShadingRules;
+const RENTAL_EXPENSE_RATIO = DEFAULT_POLICY.propertyPolicy.rentalExpenseRatio;
 
 // ============================================
 // PROPERTY CONTRIBUTION ENGINE (Phase 1)
