@@ -5,7 +5,29 @@
  * - Instant UI feedback
  * - What-if scenario modeling
  * - Offline calculations
+ * 
+ * Phase 3: Constants are now sourced from the Policy Engine (policyEngine.ts)
  */
+
+import {
+  DEFAULT_POLICY,
+  DEFAULT_INCOME_SHADING_RULES,
+  DEFAULT_HEM_CONFIG,
+  DEFAULT_CONSERVATIVE_CONFIG,
+  DEFAULT_LOAN_PARAMS,
+  DEFAULT_BAND_THRESHOLDS,
+  DEFAULT_TAX_CONFIG,
+  DEFAULT_HECS_CONFIG,
+  calculateIncomeTaxFromPolicy,
+  getHemBenchmarkFromPolicy,
+  getHecsRepaymentFromPolicy,
+  determineServiceabilityBand,
+  type PolicyConfig,
+  type IncomeShadingRule,
+  type HemConfig,
+  type BandThresholds,
+  type ConservativeModeConfig,
+} from './policyEngine';
 
 // ============================================
 // TYPES
