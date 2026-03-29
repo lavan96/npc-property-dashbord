@@ -1655,6 +1655,9 @@ Deno.serve(async (req) => {
         })),
       }),
       proposedLoanCheck,
+      // ── Phase 5: Audit Trail & Explanation ──
+      auditTrail,
+      explanation,
     };
 
     // Save to database if requested
