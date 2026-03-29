@@ -894,6 +894,31 @@ Deno.serve(async (req) => {
     console.log(`[calculate-borrowing-capacity] Negative property cash flows: $${negativePropertyCashFlows}/month from ${negativeCashFlowBreakdown.length} properties`);
     console.log(`[calculate-borrowing-capacity] Total living expenses (base + negative CF): $${totalLivingExpenses}/month`);
 
+    // ── PROPERTY CONTRIBUTION ENGINE (Phase 1) ──
+    // Run unified assessment alongside legacy for parity validation
+    const propertyContributions = assessAllPropertyContributions(properties);
+    
+    // Parity validation: compare engine outputs against legacy functions
+    // Legacy income from properties = income added by calculateIncomeBreakdown from positive cashflows
+    const legacyPropertyIncomeFromBreakdown = incomeBreakdown
+      .filter((item: any) => item.component?.startsWith('Positive Cash Flow'))
+      .reduce((sum: number, item: any) => sum + item.shadedAmount, 0);
+    
+    const parityChecks = {
+      incomeMatch: Math.abs(propertyContributions.totalLegacyIncome - legacyPropertyIncomeFromBreakdown) <= 1,
+      expenseMatch: Math.abs(propertyContributions.totalLegacyExpense - negativePropertyCashFlows) <= 1,
+      incomeEngine: propertyContributions.totalLegacyIncome,
+      incomeLegacy: legacyPropertyIncomeFromBreakdown,
+      expenseEngine: propertyContributions.totalLegacyExpense,
+      expenseLegacy: negativePropertyCashFlows,
+      unifiedNetContribution: propertyContributions.totalNetMonthlyContribution,
+    };
+    
+    console.log(`[calculate-borrowing-capacity] Property Contribution Engine:`, JSON.stringify(parityChecks));
+    if (!parityChecks.incomeMatch || !parityChecks.expenseMatch) {
+      console.warn(`[calculate-borrowing-capacity] PARITY WARNING: Property contribution engine outputs differ from legacy!`);
+    }
+
     // Calculate liability servicing
     const { totalMonthly: liabilityServicing, breakdown: liabilityBreakdown } = 
       calculateLiabilityBreakdown(liabilities, properties, effectiveGrossIncome);
