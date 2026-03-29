@@ -17,3 +17,7 @@ export type { ThreeOutputAssessment, CurrentCapacityResult, ProposedLoanCheckRes
 // Phase 4: Scenario Delta Engine
 export { runScenario, runMultipleScenarios, createPayOffAllDebtScenario, createSellPropertyScenario, createRefinanceToIOScenario, createRateChangeScenario, createIncomeChangeScenario, createMaximumStrategyScenario } from '@/utils/scenarioDeltaEngine';
 export type { ScenarioContext, ScenarioProperty, ScenarioLiability } from '@/utils/scenarioDeltaEngine';
+// Phase 5: Audit & Explanation Engine
+export { AuditTrailPanel } from './AuditTrailPanel';
+export type { AuditTrail, AuditEntry, AuditSummary } from '@/utils/auditEngine';
+export type { ExplanationReport, ExplanationStep } from '@/utils/explanationEngine';

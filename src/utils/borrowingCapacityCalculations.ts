@@ -110,6 +110,9 @@ export interface FullAssessmentResult extends BorrowingCapacityResult {
   proposedLoanCheck?: import('./borrowingCapacityTypes').ProposedLoanCheckResult | null;
   // Phase 1: Property contributions
   propertyContributions?: any;
+  // Phase 5: Audit Trail & Explanation
+  auditTrail?: import('./auditEngine').AuditTrail;
+  explanation?: import('./explanationEngine').ExplanationReport;
 }
 
 // Tax brackets and Medicare now sourced from Policy Engine

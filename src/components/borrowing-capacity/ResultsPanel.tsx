@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { AuditTrailPanel } from './AuditTrailPanel';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { 
@@ -474,6 +475,9 @@ export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', 
             </div>
           </CollapsibleContent>
         </Collapsible>
+
+        {/* Phase 5: Audit Trail & Explanation */}
+        <AuditTrailPanel auditTrail={result?.auditTrail} explanation={result?.explanation} />
 
         {/* Disclaimer */}
         <div className="p-3 rounded-lg bg-muted/50 border border-border">
