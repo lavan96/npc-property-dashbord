@@ -116,8 +116,9 @@ export function useBorrowingCapacity({ clientId, autoFetch = true }: UseBorrowin
     mutationFn: async (overrides?: BorrowingCapacityOverrides) => {
       const { data, error } = await invokeSecureFunction('calculate-borrowing-capacity', {
         clientId,
-        overrides,
+        overrides: overrides ? { ...overrides, scenarioDeltas: undefined } : undefined,
         saveResult: true,
+        scenarioDeltas: overrides?.scenarioDeltas,
       });
 
       if (error) throw new Error(error.message);
