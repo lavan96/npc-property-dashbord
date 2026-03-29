@@ -1046,6 +1046,27 @@ Deno.serve(async (req) => {
       lmiMode: overrides?.lmiMode || 'none',
       netPurchaseCapacity: overrides?.lmiAmount ? Math.max(0, result.borrowingCapacity - (overrides.lmiAmount || 0)) : result.borrowingCapacity,
       calculatedAt: new Date().toISOString(),
+      // Phase 1: Property Contribution Engine data (unified model)
+      propertyContributions: {
+        summary: {
+          totalNetMonthlyContribution: propertyContributions.totalNetMonthlyContribution,
+          totalLegacyIncome: propertyContributions.totalLegacyIncome,
+          totalLegacyExpense: propertyContributions.totalLegacyExpense,
+          totalLegacyLiability: propertyContributions.totalLegacyLiability,
+          totalLegacyDebtBalance: propertyContributions.totalLegacyDebtBalance,
+          parityValidation: parityChecks,
+        },
+        properties: propertyContributions.properties.map(p => ({
+          address: p.address,
+          propertyType: p.propertyType,
+          rawNetMonthlyCashflow: p.rawNetMonthlyCashflow,
+          assessedMonthlyRent: p.assessedMonthlyRent,
+          assessedMonthlyDebt: p.assessedMonthlyDebt,
+          assessedMonthlyHoldingCosts: p.assessedMonthlyHoldingCosts,
+          netMonthlyContribution: p.netMonthlyContribution,
+          auditNotes: p.auditNotes,
+        })),
+      },
     };
 
     // Save to database if requested
