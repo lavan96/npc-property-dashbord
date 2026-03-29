@@ -844,6 +844,186 @@ function calculateBorrowingCapacity(params: {
   };
 }
 
+// ============================================
+// SCENARIO DELTA ENGINE (Phase 4)
+// Server-side implementation matching client-side scenarioDeltaEngine.ts
+// ============================================
+
+interface ScenarioDelta {
+  id: string;
+  label: string;
+  type: 'income_change' | 'expense_change' | 'debt_change' | 'rate_change' | 'property_sell' | 'property_refinance' | 'property_add' | 'liability_payoff';
+  value: number;
+  unit: 'percent' | 'absolute' | 'rate_points';
+}
+
+interface ScenarioProperty {
+  id: string;
+  address: string;
+  propertyType: string;
+  currentValue: number;
+  loanRemaining: number;
+  monthlyRepayment: number;
+  loanRepaymentAmount?: number;
+  netMonthlyCashflow?: number;
+  monthlyRentalIncome?: number;
+}
+
+interface ScenarioLiabilityItem {
+  id: string;
+  type: string;
+  label: string;
+  balance: number;
+  limit?: number;
+  monthlyServicing: number;
+}
+
+interface ServerScenarioContext {
+  baseInputs: {
+    grossAnnualIncome: number;
+    shadedAnnualIncome: number;
+    monthlyLivingExpenses: number;
+    monthlyCommitments: number;
+    interestRate: number;
+    bufferRate: number;
+    loanTermYears: number;
+    totalDebtBalances: number;
+    calculationMode?: 'bank' | 'conservative';
+    dtiCapEnabled?: boolean;
+    dtiCapLimit?: number;
+  };
+  baseResult: CalculationResult & { afterTaxAnnualIncome: number; monthlyAfterTaxIncome: number };
+  properties: ScenarioProperty[];
+  liabilities: ScenarioLiabilityItem[];
+}
+
+function applyServerDelta(
+  delta: ScenarioDelta,
+  ctx: ServerScenarioContext,
+): { income: number; shadedIncome: number; expense: number; commitment: number; rate: number; debt: number } {
+  const e = { income: 0, shadedIncome: 0, expense: 0, commitment: 0, rate: 0, debt: 0 };
+
+  switch (delta.type) {
+    case 'income_change':
+      if (delta.unit === 'percent') {
+        e.income = ctx.baseInputs.grossAnnualIncome * (delta.value / 100);
+        e.shadedIncome = ctx.baseInputs.shadedAnnualIncome * (delta.value / 100);
+      } else {
+        e.income = delta.value;
+        e.shadedIncome = delta.value * 0.8;
+      }
+      break;
+    case 'expense_change':
+      if (delta.unit === 'percent') {
+        e.expense = ctx.baseInputs.monthlyLivingExpenses * (delta.value / 100);
+      } else {
+        e.expense = delta.value;
+      }
+      break;
+    case 'debt_change':
+      if (delta.unit === 'percent') {
+        e.commitment = ctx.baseInputs.monthlyCommitments * (delta.value / 100);
+        e.debt = ctx.baseInputs.totalDebtBalances * (delta.value / 100);
+      } else {
+        e.commitment = delta.value;
+      }
+      break;
+    case 'rate_change':
+      e.rate = delta.value;
+      break;
+    case 'property_sell': {
+      const p = ctx.properties.find(x => x.id === delta.id);
+      if (p) {
+        const svc = p.loanRepaymentAmount || p.monthlyRepayment || 0;
+        if (svc > 0) e.commitment = -svc;
+        if (p.loanRemaining > 0) e.debt = -p.loanRemaining;
+        const cf = p.netMonthlyCashflow || 0;
+        if (cf > 0) { e.income = -(cf * 12); e.shadedIncome = -(cf * 12 * 0.8); }
+        else if (cf < 0) { e.expense = cf; }
+      }
+      break;
+    }
+    case 'property_refinance': {
+      const p = ctx.properties.find(x => x.id === delta.id);
+      if (p && p.loanRemaining > 0) {
+        const cur = p.monthlyRepayment || 0;
+        const ioRate = ctx.baseInputs.interestRate / 100 / 12;
+        const io = p.loanRemaining * ioRate;
+        const saving = Math.max(0, cur - io);
+        if (saving > 0) e.commitment = -saving;
+      }
+      break;
+    }
+    case 'liability_payoff': {
+      const l = ctx.liabilities.find(x => x.id === delta.id);
+      if (l) {
+        e.commitment = -l.monthlyServicing;
+        e.debt = -(l.balance || 0);
+      }
+      break;
+    }
+    case 'property_add':
+      if (delta.unit === 'absolute') {
+        if (delta.value > 0) { e.income = delta.value * 12; e.shadedIncome = delta.value * 12 * 0.8; }
+        else { e.expense = Math.abs(delta.value); }
+      }
+      break;
+  }
+  return e;
+}
+
+function runServerScenarios(
+  scenarioDeltas: { name: string; deltas: ScenarioDelta[] }[] | undefined | null,
+  ctx: ServerScenarioContext,
+): any[] {
+  if (!scenarioDeltas || !Array.isArray(scenarioDeltas) || scenarioDeltas.length === 0) return [];
+
+  const results: any[] = [];
+  for (const scenario of scenarioDeltas) {
+    let incAdj = 0, shadAdj = 0, expAdj = 0, comAdj = 0, rateAdj = 0, debtAdj = 0;
+
+    for (const delta of (scenario.deltas || [])) {
+      const e = applyServerDelta(delta, ctx);
+      incAdj += e.income; shadAdj += e.shadedIncome; expAdj += e.expense;
+      comAdj += e.commitment; rateAdj += e.rate; debtAdj += e.debt;
+    }
+
+    const scenarioResult = calculateBorrowingCapacity({
+      grossAnnualIncome: Math.max(0, ctx.baseInputs.grossAnnualIncome + incAdj),
+      shadedAnnualIncome: Math.max(0, ctx.baseInputs.shadedAnnualIncome + shadAdj),
+      monthlyLivingExpenses: Math.max(0, ctx.baseInputs.monthlyLivingExpenses + expAdj),
+      monthlyCommitments: Math.max(0, ctx.baseInputs.monthlyCommitments + comAdj),
+      interestRate: Math.max(0.5, ctx.baseInputs.interestRate + rateAdj),
+      bufferRate: ctx.baseInputs.bufferRate,
+      loanTermYears: ctx.baseInputs.loanTermYears,
+      totalDebtBalances: Math.max(0, ctx.baseInputs.totalDebtBalances + debtAdj),
+      calculationMode: ctx.baseInputs.calculationMode,
+      dtiCapEnabled: ctx.baseInputs.dtiCapEnabled,
+      dtiCapLimit: ctx.baseInputs.dtiCapLimit,
+    });
+
+    const abs = scenarioResult.borrowingCapacity - ctx.baseResult.borrowingCapacity;
+    const pct = ctx.baseResult.borrowingCapacity > 0 ? Math.round((abs / ctx.baseResult.borrowingCapacity) * 1000) / 10 : 0;
+
+    results.push({
+      scenarioName: scenario.name,
+      deltas: scenario.deltas,
+      borrowingCapacity: scenarioResult.borrowingCapacity,
+      monthlySurplus: scenarioResult.monthlySurplus,
+      serviceabilityBand: scenarioResult.serviceabilityBand,
+      dtiRatio: scenarioResult.dtiRatio,
+      capacityChange: {
+        absolute: abs,
+        percent: pct,
+        direction: abs > 0 ? 'increase' : abs < 0 ? 'decrease' : 'unchanged',
+      },
+    });
+  }
+
+  console.log(`[calculate-borrowing-capacity] Phase 4: Ran ${results.length} scenario(s)`);
+  return results;
+}
+
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = createCorsHeaders(origin);
