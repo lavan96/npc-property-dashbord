@@ -28,31 +28,20 @@ serve(async (req) => {
     // Action: fetch all emails for a mailbox
     if (action === 'list' || !action) {
       const mailboxFilter = mailbox_source || 'admin';
+      const limit = body.limit || 500;
 
-      // Paginate with service_role to bypass RLS
-      const PAGE_SIZE = 1000;
-      let allData: any[] = [];
-      let from = 0;
-      let hasMore = true;
+      // Single query with limit to avoid statement timeout
+      const { data, error } = await supabase
+        .from('email_copilot_emails')
+        .select('*, clients:client_id(id, primary_first_name, primary_surname)')
+        .eq('mailbox_source', mailboxFilter)
+        .order('received_at', { ascending: false })
+        .limit(limit);
 
-      while (hasMore) {
-        const { data, error } = await supabase
-          .from('email_copilot_emails')
-          .select('*, clients:client_id(id, primary_first_name, primary_surname)')
-          .eq('mailbox_source', mailboxFilter)
-          .order('received_at', { ascending: false })
-          .range(from, from + PAGE_SIZE - 1);
-
-        if (error) throw error;
-
-        const page = data || [];
-        allData = allData.concat(page);
-        hasMore = page.length === PAGE_SIZE;
-        from += PAGE_SIZE;
-      }
+      if (error) throw error;
 
       // Flatten client data into client_name field
-      const enrichedData = allData.map((email: any) => {
+      const enrichedData = (data || []).map((email: any) => {
         const client = email.clients;
         const clientName = client
           ? `${client.primary_first_name || ''} ${client.primary_surname || ''}`.trim() || null
