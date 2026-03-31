@@ -706,43 +706,49 @@ export default function EmailCopilot() {
     }
   };
 
+  const [hasMoreEmails, setHasMoreEmails] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+  const mapEmailData = (email: any): Email => ({
+    id: email.id,
+    sender: email.sender,
+    subject: email.subject,
+    body: email.body,
+    received_at: email.received_at,
+    summary: email.summary as unknown as EmailSummary | null,
+    draft_reply: email.draft_reply,
+    urgency_level: email.urgency_level as 'low' | 'medium' | 'high' | null,
+    linked_property_address: email.linked_property_address,
+    linked_report_id: email.linked_report_id,
+    status: email.status as Email['status'],
+    created_at: email.created_at,
+    to_recipients: (email.to_recipients as string[]) || [],
+    cc_recipients: (email.cc_recipients as string[]) || [],
+    bcc_recipients: (email.bcc_recipients as string[]) || [],
+    attachments: (email.attachments as unknown as EmailAttachment[]) || [],
+    mailbox_source: (email.mailbox_source as 'admin' | 'personal') || 'admin',
+    folder: (email.folder as 'inbox' | 'sent') || 'inbox',
+    client_id: email.client_id || null,
+    client_name: email.client_name || null,
+  });
+
   const fetchEmails = async () => {
     setIsLoading(true);
     try {
       const { data, error } = await invokeSecureFunction('get-email-data', {
         action: 'list',
         mailbox_source: selectedMailbox,
+        limit: 500,
+        offset: 0,
       });
 
       if (error) throw error;
       
-      // Type assertion with proper handling
-      const typedEmails: Email[] = (data?.emails || []).map((email: any) => ({
-        id: email.id,
-        sender: email.sender,
-        subject: email.subject,
-        body: email.body,
-        received_at: email.received_at,
-        summary: email.summary as unknown as EmailSummary | null,
-        draft_reply: email.draft_reply,
-        urgency_level: email.urgency_level as 'low' | 'medium' | 'high' | null,
-        linked_property_address: email.linked_property_address,
-        linked_report_id: email.linked_report_id,
-        status: email.status as Email['status'],
-        created_at: email.created_at,
-        to_recipients: (email.to_recipients as string[]) || [],
-        cc_recipients: (email.cc_recipients as string[]) || [],
-        bcc_recipients: (email.bcc_recipients as string[]) || [],
-        attachments: (email.attachments as unknown as EmailAttachment[]) || [],
-        mailbox_source: (email.mailbox_source as 'admin' | 'personal') || 'admin',
-        folder: (email.folder as 'inbox' | 'sent') || 'inbox',
-        client_id: email.client_id || null,
-        client_name: email.client_name || null,
-      }));
+      const typedEmails: Email[] = (data?.emails || []).map(mapEmailData);
       
       setEmails(typedEmails);
+      setHasMoreEmails(data?.hasMore === true);
       
-      // If we have a selected email, update it with the latest data
       if (selectedEmail) {
         const updatedSelected = typedEmails.find(e => e.id === selectedEmail.id);
         if (updatedSelected) {
@@ -754,6 +760,29 @@ export default function EmailCopilot() {
       toast.error('Failed to fetch emails');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadMoreEmails = async () => {
+    setIsLoadingMore(true);
+    try {
+      const { data, error } = await invokeSecureFunction('get-email-data', {
+        action: 'list',
+        mailbox_source: selectedMailbox,
+        limit: 500,
+        offset: emails.length,
+      });
+
+      if (error) throw error;
+      
+      const moreEmails: Email[] = (data?.emails || []).map(mapEmailData);
+      setEmails(prev => [...prev, ...moreEmails]);
+      setHasMoreEmails(data?.hasMore === true);
+    } catch (error) {
+      console.error('Error loading more emails:', error);
+      toast.error('Failed to load more emails');
+    } finally {
+      setIsLoadingMore(false);
     }
   };
 

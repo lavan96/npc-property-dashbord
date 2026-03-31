@@ -52,7 +52,7 @@ serve(async (req) => {
       });
 
       return new Response(
-        JSON.stringify({ success: true, emails: enrichedData }),
+        JSON.stringify({ success: true, emails: enrichedData, hasMore: enrichedData.length === limit }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
