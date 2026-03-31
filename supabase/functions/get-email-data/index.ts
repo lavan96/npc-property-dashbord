@@ -29,14 +29,15 @@ serve(async (req) => {
     if (action === 'list' || !action) {
       const mailboxFilter = mailbox_source || 'admin';
       const limit = body.limit || 500;
+      const offset = body.offset || 0;
 
-      // Single query with limit to avoid statement timeout
+      // Single query with limit+offset to avoid statement timeout
       const { data, error } = await supabase
         .from('email_copilot_emails')
         .select('*, clients:client_id(id, primary_first_name, primary_surname)')
         .eq('mailbox_source', mailboxFilter)
         .order('received_at', { ascending: false })
-        .limit(limit);
+        .range(offset, offset + limit - 1);
 
       if (error) throw error;
 
@@ -51,7 +52,7 @@ serve(async (req) => {
       });
 
       return new Response(
-        JSON.stringify({ success: true, emails: enrichedData }),
+        JSON.stringify({ success: true, emails: enrichedData, hasMore: enrichedData.length === limit }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
