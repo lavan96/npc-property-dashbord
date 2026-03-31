@@ -1951,6 +1951,26 @@ export default function EmailCopilot() {
                         </div>
                       );
                     })}
+                    {hasMoreEmails && (
+                      <div className="p-4 text-center border-t border-border">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={loadMoreEmails}
+                          disabled={isLoadingMore}
+                          className="w-full"
+                        >
+                          {isLoadingMore ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Loading more emails...
+                            </>
+                          ) : (
+                            <>Load more emails ({emails.length} loaded)</>
+                          )}
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
               </>
