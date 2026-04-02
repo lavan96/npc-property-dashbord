@@ -17,7 +17,7 @@ interface Props {
   plans: GamePlan[];
   isLoading: boolean;
   onSelect: (id: string) => void;
-  onDelete: (id: string) => void;
+  onDelete?: (id: string) => void;
 }
 
 export function GamePlanList({ plans, isLoading, onSelect, onDelete }: Props) {
