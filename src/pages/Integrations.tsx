@@ -155,6 +155,7 @@ interface SupabaseSecretStatus {
 }
 
 export default function Integrations() {
+  const { canEdit: canEditIntegrations } = useModulePermissions('integrations');
   const { toast } = useToast();
   const [values, setValues] = useState<Record<string, string>>({});
   const [savedKeys, setSavedKeys] = useState<Set<string>>(new Set());
