@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
 
 export default function PortfolioReports() {
+  const { canEdit: canEditPortfolio, canDelete: canDeletePortfolio } = useModulePermissions('portfolio_reports');
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const clientId = searchParams.get('clientId');

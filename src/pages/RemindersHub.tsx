@@ -74,6 +74,7 @@ const TYPE_ICONS: Record<string, React.ReactNode> = {
 };
 
 export default function RemindersHub() {
+  const { canEdit: canEditReminders, canDelete: canDeleteReminders } = useModulePermissions('reminders');
   const { data: reminders = [], isLoading } = useAllReminders();
   const navigate = useNavigate();
 
