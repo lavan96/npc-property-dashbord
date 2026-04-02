@@ -76,6 +76,7 @@ interface ClientCardProps {
 
 export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComplete, isSelected, onSelect }: ClientCardProps) {
   const [isSyncing, setIsSyncing] = useState(false);
+  const [showSyncDialog, setShowSyncDialog] = useState(false);
   const queryClient = useQueryClient();
   const propertyCount = client.client_properties?.length || 0;
   const isPositiveCashFlow = Number(client.net_monthly_cash_flow) >= 0;
