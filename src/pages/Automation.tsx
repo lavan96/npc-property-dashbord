@@ -461,7 +461,7 @@ const Automation = () => {
                         <Switch
                           checked={switchItem.is_enabled}
                           onCheckedChange={() => toggleSwitch(switchItem)}
-                          disabled={!masterEnabled}
+                          disabled={!masterEnabled || !canEdit}
                         />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
