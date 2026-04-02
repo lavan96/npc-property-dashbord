@@ -306,6 +306,14 @@ export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComp
           {getGHLStatusBadge()}
         </div>
       </CardContent>
+
+      <SyncToGHLDialog
+        open={showSyncDialog}
+        onOpenChange={setShowSyncDialog}
+        clientId={client.id}
+        clientName={fullName}
+        onSyncComplete={onSyncComplete}
+      />
     </Card>
   );
 }
