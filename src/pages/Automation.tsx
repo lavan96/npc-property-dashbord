@@ -439,10 +439,12 @@ const Automation = () => {
                       Create your first switch to start auto-generating reports
                     </p>
                   </div>
-                  <Button onClick={openCreateModal} className="mt-2">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Switch
-                  </Button>
+                  {canEdit && (
+                    <Button onClick={openCreateModal} className="mt-2">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Switch
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
