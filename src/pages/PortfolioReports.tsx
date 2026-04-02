@@ -1,9 +1,11 @@
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { PortfolioAnalysisReportsList } from '@/components/clients/PortfolioAnalysisReportsList';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
 
 export default function PortfolioReports() {
+  const { canEdit: canEditPortfolio, canDelete: canDeletePortfolio } = useModulePermissions('portfolio_reports');
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const clientId = searchParams.get('clientId');

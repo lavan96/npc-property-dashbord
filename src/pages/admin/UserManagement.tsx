@@ -6,24 +6,21 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { 
-  Users, Shield, Mail, Plus, Trash2, Edit, Crown, UserPlus, Key,
-  Settings, AlertCircle, ShieldOff, Clock
-} from 'lucide-react';
+import { Users, Mail, Plus, Key, AlertCircle, UserPlus } from 'lucide-react';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { PermissionsGrid } from '@/components/admin/PermissionsGrid';
 import { ResetPasswordDialog } from '@/components/admin/ResetPasswordDialog';
 import { SoftDeletedUsersPanel } from '@/components/admin/SoftDeletedUsersPanel';
-import { formatDistanceToNow } from 'date-fns';
+import { UserTableRow } from '@/components/admin/UserTableRow';
+import { BulkUserActions } from '@/components/admin/BulkUserActions';
+import { ClonePermissionsDialog } from '@/components/admin/ClonePermissionsDialog';
 
 interface User {
   id: string;
@@ -83,6 +80,7 @@ export default function UserManagement() {
   const [editPermDialogOpen, setEditPermDialogOpen] = useState(false);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [editPermissions, setEditPermissions] = useState<PermissionSetting[]>([]);
+  const [previousPermissions, setPreviousPermissions] = useState<PermissionSetting[]>([]);
   const [savingPermissions, setSavingPermissions] = useState(false);
 
   // Mailbox editing state
@@ -95,6 +93,13 @@ export default function UserManagement() {
   const [resetPwDialogOpen, setResetPwDialogOpen] = useState(false);
   const [resetPwUser, setResetPwUser] = useState<{ id: string; username: string } | null>(null);
 
+  // Bulk selection state
+  const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
+
+  // Clone permissions state
+  const [cloneDialogOpen, setCloneDialogOpen] = useState(false);
+  const [cloneSourceUserId, setCloneSourceUserId] = useState('');
+
   useEffect(() => {
     if (isSuperadmin) {
       fetchUsers();
@@ -104,26 +109,16 @@ export default function UserManagement() {
 
   const fetchUsers = async () => {
     try {
-      const { data, error } = await invokeSecureFunction('admin-user-management', {
-        action: 'list_users'
-      });
-      if (data?.success) {
-        setUsers(data.users);
-      } else {
-        toast.error(data?.error || error?.message || 'Failed to fetch users');
-      }
-    } catch {
-      toast.error('Failed to fetch users');
-    } finally {
-      setLoading(false);
-    }
+      const { data, error } = await invokeSecureFunction('admin-user-management', { action: 'list_users' });
+      if (data?.success) setUsers(data.users);
+      else toast.error(data?.error || error?.message || 'Failed to fetch users');
+    } catch { toast.error('Failed to fetch users'); }
+    finally { setLoading(false); }
   };
 
   const fetchModules = async () => {
     try {
-      const { data } = await invokeSecureFunction('admin-user-management', {
-        action: 'list_modules'
-      });
+      const { data } = await invokeSecureFunction('admin-user-management', { action: 'list_modules' });
       if (data?.success) {
         setModules(data.modules);
         const defaultPerms = data.modules.map((m: Module) => ({
@@ -132,9 +127,7 @@ export default function UserManagement() {
         setInvitePermissions(defaultPerms);
         setCreatePermissions(defaultPerms);
       }
-    } catch (err) {
-      console.error('Failed to fetch modules:', err);
-    }
+    } catch (err) { console.error('Failed to fetch modules:', err); }
   };
 
   const fetchUserPermissions = async (userId: string) => {
@@ -153,10 +146,25 @@ export default function UserManagement() {
           return existing || { module_key: m.module_key, can_view: false, can_edit: false, can_delete: false };
         });
         setEditPermissions(allPerms);
+        setPreviousPermissions(allPerms.map(p => ({ ...p })));
       }
-    } catch {
-      toast.error('Failed to fetch permissions');
+    } catch { toast.error('Failed to fetch permissions'); }
+  };
+
+  /** Build granular diff of permission changes for audit logging */
+  const buildPermissionDiffs = (before: PermissionSetting[], after: PermissionSetting[]) => {
+    const diffs: Array<{ module: string; field: string; from: boolean; to: boolean }> = [];
+    for (const a of after) {
+      const b = before.find(p => p.module_key === a.module_key);
+      if (!b) continue;
+      for (const field of ['can_view', 'can_edit', 'can_delete'] as const) {
+        if (b[field] !== a[field]) {
+          const mod = modules.find(m => m.module_key === a.module_key);
+          diffs.push({ module: mod?.module_name || a.module_key, field, from: b[field], to: a[field] });
+        }
+      }
     }
+    return diffs;
   };
 
   const handleSendInvite = async () => {
@@ -172,17 +180,11 @@ export default function UserManagement() {
       });
       if (data?.success) {
         toast.success('Invite sent successfully!');
-        if (data.temporary_password) {
-          toast.info(`Temporary password: ${data.temporary_password}`, { duration: 10000 });
-        }
+        if (data.temporary_password) toast.info(`Temporary password: ${data.temporary_password}`, { duration: 10000 });
         logActivityDirect({ actionType: 'user_invited', entityType: 'user', entityName: inviteEmail, metadata: { invite_type: inviteType } });
         addNotification({ type: 'new_user_invited', title: 'User Invite Sent', message: `Invitation sent to ${inviteEmail}` });
-        setInviteDialogOpen(false);
-        setInviteEmail('');
-        setInviteUsername('');
-      } else {
-        toast.error(data?.error || 'Failed to send invite');
-      }
+        setInviteDialogOpen(false); setInviteEmail(''); setInviteUsername('');
+      } else toast.error(data?.error || 'Failed to send invite');
     } catch { toast.error('Failed to send invite'); }
     finally { setInviteSending(false); }
   };
@@ -197,14 +199,21 @@ export default function UserManagement() {
         permissions: editPermissions.filter(p => p.can_view),
       });
       if (data?.success) {
+        const diffs = buildPermissionDiffs(previousPermissions, editPermissions);
         toast.success('Permissions updated');
-        logActivityDirect({ actionType: 'user_permissions_changed', entityType: 'user', entityId: editingUserId, entityName: targetUser?.username, metadata: { permissions_count: editPermissions.filter(p => p.can_view).length } });
+        logActivityDirect({
+          actionType: 'user_permissions_changed', entityType: 'user',
+          entityId: editingUserId, entityName: targetUser?.username,
+          metadata: {
+            permissions_count: editPermissions.filter(p => p.can_view).length,
+            changes: diffs.length > 0 ? diffs : undefined,
+            change_summary: diffs.map(d => `${d.module}: ${d.field} ${d.from}→${d.to}`).join(', ') || 'no changes',
+          }
+        });
         addNotification({ type: 'user_role_updated', title: 'User Permissions Updated', message: `Permissions for ${targetUser?.username || 'user'} have been updated`, entityId: editingUserId });
         setEditPermDialogOpen(false);
         fetchUsers();
-      } else {
-        toast.error(data?.error || 'Failed to update permissions');
-      }
+      } else toast.error(data?.error || 'Failed to update permissions');
     } catch { toast.error('Failed to update permissions'); }
     finally { setSavingPermissions(false); }
   };
@@ -219,7 +228,7 @@ export default function UserManagement() {
         toast.success(isActive ? 'User activated' : 'User deactivated');
         logActivityDirect({ actionType: isActive ? 'user_activated' : 'user_deactivated', entityType: 'user', entityId: userId, entityName: targetUser?.username, metadata: { is_active: isActive } });
         fetchUsers();
-      } else { toast.error(data?.error || 'Failed to update user'); }
+      } else toast.error(data?.error || 'Failed to update user');
     } catch { toast.error('Failed to update user'); }
   };
 
@@ -232,7 +241,7 @@ export default function UserManagement() {
         logActivityDirect({ actionType: 'user_invited', entityType: 'user', entityId: userId, entityName: targetUser?.username, metadata: { action: 'promoted_to_superadmin' } });
         addNotification({ type: 'user_role_updated', title: 'User Promoted to Superadmin', message: `${targetUser?.username || 'User'} has been promoted to superadmin`, entityId: userId });
         fetchUsers();
-      } else { toast.error(data?.error || 'Failed to promote user'); }
+      } else toast.error(data?.error || 'Failed to promote user');
     } catch { toast.error('Failed to promote user'); }
   };
 
@@ -244,7 +253,7 @@ export default function UserManagement() {
         toast.success('User demoted to admin');
         logActivityDirect({ actionType: 'user_deactivated', entityType: 'user', entityId: userId, entityName: targetUser?.username, metadata: { action: 'demoted_from_superadmin' } });
         fetchUsers();
-      } else { toast.error(data?.error || 'Failed to demote user'); }
+      } else toast.error(data?.error || 'Failed to demote user');
     } catch { toast.error('Failed to demote user'); }
   };
 
@@ -256,7 +265,7 @@ export default function UserManagement() {
         toast.success('User moved to deleted');
         logActivityDirect({ actionType: 'user_deactivated', entityType: 'user', entityId: userId, entityName: targetUser?.username, metadata: { action: 'soft_deleted' } });
         fetchUsers();
-      } else { toast.error(data?.error || 'Failed to delete user'); }
+      } else toast.error(data?.error || 'Failed to delete user');
     } catch { toast.error('Failed to delete user'); }
   };
 
@@ -292,7 +301,7 @@ export default function UserManagement() {
         setCreateUsername(''); setCreatePassword(''); setCreateEmail(''); setCreateMailbox('');
         setCreatePermissions(modules.map(m => ({ module_key: m.module_key, can_view: true, can_edit: false, can_delete: false })));
         fetchUsers();
-      } else { toast.error(data?.error || 'Failed to create sub-admin'); }
+      } else toast.error(data?.error || 'Failed to create sub-admin');
     } catch { toast.error('Failed to create sub-admin'); }
     finally { setCreating(false); }
   };
@@ -314,9 +323,26 @@ export default function UserManagement() {
         toast.success('Mailbox updated');
         setMailboxDialogOpen(false);
         fetchUsers();
-      } else { toast.error(data?.error || 'Failed to update mailbox'); }
+      } else toast.error(data?.error || 'Failed to update mailbox');
     } catch { toast.error('Failed to update mailbox'); }
     finally { setSavingMailbox(false); }
+  };
+
+  const toggleSelectUser = (userId: string) => {
+    setSelectedUserIds(prev => {
+      const next = new Set(prev);
+      if (next.has(userId)) next.delete(userId);
+      else next.add(userId);
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedUserIds.size === users.length) {
+      setSelectedUserIds(new Set());
+    } else {
+      setSelectedUserIds(new Set(users.map(u => u.id)));
+    }
   };
 
   if (permLoading) {
@@ -449,6 +475,16 @@ export default function UserManagement() {
         </div>
       </div>
 
+      {/* Bulk Actions */}
+      <BulkUserActions
+        selectedIds={selectedUserIds}
+        currentUserId={user?.id || ''}
+        onToggleSelect={toggleSelectUser}
+        onSelectAll={() => handleSelectAll()}
+        onClearSelection={() => setSelectedUserIds(new Set())}
+        onRefresh={fetchUsers}
+      />
+
       {/* Users List */}
       <Card>
         <CardHeader>
@@ -462,6 +498,12 @@ export default function UserManagement() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={selectedUserIds.size === users.length && users.length > 0}
+                      onCheckedChange={handleSelectAll}
+                    />
+                  </TableHead>
                   <TableHead>User</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Mailbox</TableHead>
@@ -472,128 +514,23 @@ export default function UserManagement() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users.map((u) => {
-                  const isSelf = u.id === user?.id;
-                  const hasSuperadmin = u.user_roles?.some(r => r.role === 'superadmin');
-                  const hasAdmin = u.user_roles?.some(r => r.role === 'admin');
-                  
-                  return (
-                    <TableRow key={u.id}>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium flex items-center gap-2">
-                            {u.username}
-                            {isSelf && <Badge variant="outline" className="text-xs">You</Badge>}
-                          </div>
-                          <div className="text-sm text-muted-foreground">{u.email || 'No email'}</div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          {hasSuperadmin && <Badge className="bg-amber-500"><Crown className="h-3 w-3 mr-1" />Superadmin</Badge>}
-                          {hasAdmin && !hasSuperadmin && <Badge variant="secondary"><Shield className="h-3 w-3 mr-1" />Admin</Badge>}
-                          {!hasSuperadmin && !hasAdmin && <Badge variant="outline">User</Badge>}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {u.personal_mailbox ? (
-                            <span className="text-sm">{u.personal_mailbox}</span>
-                          ) : (
-                            <span className="text-sm text-muted-foreground italic">Not set</span>
-                          )}
-                          <Button variant="ghost" size="sm" onClick={() => openMailboxDialog(u.id, u.personal_mailbox)} className="h-6 w-6 p-0">
-                            <Mail className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Switch checked={u.is_active} onCheckedChange={(v) => handleToggleActive(u.id, v)} disabled={isSelf} />
-                          <span className={u.is_active ? 'text-green-600' : 'text-muted-foreground'}>
-                            {u.is_active ? 'Active' : 'Inactive'}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {u.last_login_at ? (
-                          <div className="flex items-center gap-1 text-sm text-muted-foreground" title={new Date(u.last_login_at).toLocaleString()}>
-                            <Clock className="h-3 w-3" />
-                            {formatDistanceToNow(new Date(u.last_login_at), { addSuffix: true })}
-                          </div>
-                        ) : (
-                          <span className="text-xs text-muted-foreground italic">Never</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {new Date(u.created_at).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          {!hasSuperadmin && !isSelf && (
-                            <Button variant="outline" size="sm" onClick={() => openEditPermissions(u.id)} title="Edit Permissions">
-                              <Settings className="h-4 w-4" />
-                            </Button>
-                          )}
-                          {!isSelf && (
-                            <Button variant="outline" size="sm" onClick={() => { setResetPwUser({ id: u.id, username: u.username }); setResetPwDialogOpen(true); }} title="Reset Password">
-                              <Key className="h-4 w-4" />
-                            </Button>
-                          )}
-                          {!hasSuperadmin && !isSelf && (
-                            <Button variant="outline" size="sm" onClick={() => handlePromoteToSuperadmin(u.id)} title="Promote to Superadmin">
-                              <Crown className="h-4 w-4" />
-                            </Button>
-                          )}
-                          {hasSuperadmin && !isSelf && (
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="outline" size="sm" title="Demote to Admin">
-                                  <ShieldOff className="h-4 w-4" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Demote from Superadmin?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    This will remove superadmin privileges from <strong>{u.username}</strong>. They will become a regular admin.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => handleDemoteFromSuperadmin(u.id)}>Demote</AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          )}
-                          {!isSelf && (
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="destructive" size="sm" title="Delete User">
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Delete User?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    This will soft-delete <strong>{u.username}</strong>. They will be deactivated and can be restored later or permanently purged.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => handleDeleteUser(u.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                                    Delete
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                {users.map((u) => (
+                  <UserTableRow
+                    key={u.id}
+                    u={u}
+                    isSelf={u.id === user?.id}
+                    onToggleActive={handleToggleActive}
+                    onEditPermissions={openEditPermissions}
+                    onResetPassword={(usr) => { setResetPwUser(usr); setResetPwDialogOpen(true); }}
+                    onPromote={handlePromoteToSuperadmin}
+                    onDemote={handleDemoteFromSuperadmin}
+                    onDelete={handleDeleteUser}
+                    onEditMailbox={openMailboxDialog}
+                    onClonePermissions={(userId) => { setCloneSourceUserId(userId); setCloneDialogOpen(true); }}
+                    selected={selectedUserIds.has(u.id)}
+                    onToggleSelect={toggleSelectUser}
+                  />
+                ))}
               </TableBody>
             </Table>
           )}
@@ -635,6 +572,15 @@ export default function UserManagement() {
           username={resetPwUser.username}
         />
       )}
+
+      {/* Clone Permissions Dialog */}
+      <ClonePermissionsDialog
+        open={cloneDialogOpen}
+        onOpenChange={setCloneDialogOpen}
+        sourceUserId={cloneSourceUserId}
+        users={users}
+        onSuccess={fetchUsers}
+      />
 
       {/* Edit Mailbox Dialog */}
       <Dialog open={mailboxDialogOpen} onOpenChange={setMailboxDialogOpen}>

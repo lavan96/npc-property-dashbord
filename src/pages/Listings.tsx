@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSearch } from '@/contexts/SearchContext';
+import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { Search, Download, ExternalLink, Copy, MoreHorizontal, Bed, Bath, Car, BarChart3, X, FileText, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,6 +39,7 @@ const InvestmentReportModal = lazy(() => import('@/components/listings/Investmen
 const BulkGenerationModal = lazy(() => import('@/components/listings/BulkGenerationModal').then(m => ({ default: m.BulkGenerationModal })));
 
 export default function Listings() {
+  const { canEdit: canEditListings, canDelete: canDeleteListings } = useModulePermissions('listings');
   const { globalSearchQuery, setGlobalSearchQuery } = useSearch();
   const [selectedListings, setSelectedListings] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');

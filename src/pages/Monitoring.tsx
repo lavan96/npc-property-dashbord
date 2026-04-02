@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { 
@@ -42,6 +43,7 @@ interface CacheStat {
 }
 
 export default function Monitoring() {
+  const { canEdit: canEditMonitoring } = useModulePermissions('monitoring');
   const [apiStats, setApiStats] = useState<APIHealthStat[]>([]);
   const [cacheStats, setCacheStats] = useState<CacheStat[]>([]);
   const [isLoading, setIsLoading] = useState(true);

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +20,7 @@ interface ChartData {
 }
 
 export default function Charts() {
+  const { canEdit: canEditCharts } = useModulePermissions('charts');
   const [charts, setCharts] = useState<ChartData[]>([]);
   const [loading, setLoading] = useState(true);
 

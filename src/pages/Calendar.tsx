@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Users, Filter, RefreshCw, GripVertical, LayoutList, Zap, Flame, BarChart3, TrendingUp, AlertTriangle, Sparkles, Plus, Layers, Repeat, Bell, X, PanelLeftClose, PanelLeft, Menu, Mail } from 'lucide-react';
+import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
@@ -97,6 +98,7 @@ const SIDEBAR_TABS: { id: SidebarTab; icon: React.ReactNode; label: string; shor
 ];
 
 export default function Calendar() {
+  const { canEdit: canEditCalendar } = useModulePermissions('calendar');
   const isMobile = useIsMobile();
   const { calendars, events, calendarGroups, contactCache, isLoading, isUpdating, error, fetchCalendarData, fetchCalendarGroups, fetchContact, getCalendarColor, rescheduleEvent, updateEvent, deleteEvent, createAppointment, searchContacts, blockSlot, fetchFreeSlots } = useGHLCalendar();
   const {

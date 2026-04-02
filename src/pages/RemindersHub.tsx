@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useModulePermissions } from '@/hooks/useModulePermissions';
 import {
   format,
   isToday,
@@ -73,6 +74,7 @@ const TYPE_ICONS: Record<string, React.ReactNode> = {
 };
 
 export default function RemindersHub() {
+  const { canEdit: canEditReminders, canDelete: canDeleteReminders } = useModulePermissions('reminders');
   const { data: reminders = [], isLoading } = useAllReminders();
   const navigate = useNavigate();
 

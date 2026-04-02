@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -19,6 +20,7 @@ import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 
 export default function Settings() {
+  const { canEdit: canEditSettings } = useModulePermissions('settings');
   const { user } = useAuth();
   const [settings, setSettings] = useState({
     timezone: 'Australia/Sydney',

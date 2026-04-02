@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { Mail, Building2, User, Phone, ArrowUpRight, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +30,7 @@ interface AgentSource {
 }
 
 export default function Sources() {
+  const { canEdit: canEditSources } = useModulePermissions('sources');
   const [listings, setListings] = useState<PropertyListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [emailSources, setEmailSources] = useState<EmailSource[]>([]);

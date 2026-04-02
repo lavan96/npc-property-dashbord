@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -154,6 +155,7 @@ interface SupabaseSecretStatus {
 }
 
 export default function Integrations() {
+  const { canEdit: canEditIntegrations } = useModulePermissions('integrations');
   const { toast } = useToast();
   const [values, setValues] = useState<Record<string, string>>({});
   const [savedKeys, setSavedKeys] = useState<Set<string>>(new Set());
