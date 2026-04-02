@@ -527,6 +527,8 @@ export default function UserManagement() {
                     onDelete={handleDeleteUser}
                     onEditMailbox={openMailboxDialog}
                     onClonePermissions={(userId) => { setCloneSourceUserId(userId); setCloneDialogOpen(true); }}
+                    selected={selectedUserIds.has(u.id)}
+                    onToggleSelect={toggleSelectUser}
                   />
                 ))}
               </TableBody>
