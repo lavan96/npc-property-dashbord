@@ -537,6 +537,7 @@ export default function UserManagement() {
                     onDelete={handleDeleteUser}
                     onEditMailbox={openMailboxDialog}
                     onClonePermissions={(userId) => { setCloneSourceUserId(userId); setCloneDialogOpen(true); }}
+                    onForceLogout={handleForceLogout}
                     selected={selectedUserIds.has(u.id)}
                     onToggleSelect={toggleSelectUser}
                   />
