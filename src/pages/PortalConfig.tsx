@@ -80,6 +80,7 @@ const MODULE_ITEMS = [
 
 export default function PortalConfig() {
   const queryClient = useQueryClient();
+  const { canEdit: canEditPortal } = useModulePermissions('portal_config');
   const [config, setConfig] = useState<PortalConfig | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
 

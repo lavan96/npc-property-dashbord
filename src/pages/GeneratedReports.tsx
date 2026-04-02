@@ -98,6 +98,7 @@ interface ComparisonAnalysis {
 }
 
 export default function GeneratedReports() {
+  const { canEdit: canEditReports, canDelete: canDeleteReports } = useModulePermissions('generated_reports');
   const [reports, setReports] = useState<GeneratedReport[]>([]);
   const [investmentReports, setInvestmentReports] = useState<InvestmentReport[]>([]);
   const [comparisons, setComparisons] = useState<ComparisonAnalysis[]>([]);
