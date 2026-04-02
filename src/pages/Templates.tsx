@@ -70,6 +70,7 @@ const FORMAT_GROUPS = [
 ];
 
 export default function Templates() {
+  const { canEdit: canEditTemplates } = useModulePermissions('templates');
   const [activeTab, setActiveTab] = useState('report-formats');
   const [selectedFormat, setSelectedFormat] = useState<ReportFormat | null>(null);
 

@@ -36,6 +36,7 @@ const AUSTRALIAN_STATES = [
 ];
 
 export default function DataImport() {
+  const { canEdit: canEditImport } = useModulePermissions('data_import');
   const [selectedType, setSelectedType] = useState<string>('');
   const [selectedState, setSelectedState] = useState<string>('');
   const [file, setFile] = useState<File | null>(null);

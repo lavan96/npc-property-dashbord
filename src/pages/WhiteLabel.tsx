@@ -432,6 +432,7 @@ function EmailBannerUpload({ currentBanner, onUpload, onRemove }: EmailBannerUpl
 
 export default function WhiteLabel() {
   const { settings, updateSettings, isLoading, currentTheme } = useWhiteLabel();
+  const { canEdit: canEditWhiteLabel } = useModulePermissions('white_label');
   const [companyName, setCompanyName] = useState(settings.companyName);
 
   const themeOptions: { value: ThemeMode; label: string; icon: React.ReactNode; description: string }[] = [
