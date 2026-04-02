@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { supabase } from '@/integrations/supabase/client';
 import { useSecureCallLogs } from '@/hooks/useSecureCallLogs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
