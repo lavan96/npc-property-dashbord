@@ -690,10 +690,12 @@ export default function Listings() {
                             Copy Address
                           </DropdownMenuItem>
                         )}
-                        <DropdownMenuItem onClick={() => openInvestmentReportModal(listing)}>
-                          <BarChart3 className="h-4 w-4 mr-2" />
-                          Investment Report
-                        </DropdownMenuItem>
+                        {canEditListings && (
+                          <DropdownMenuItem onClick={() => openInvestmentReportModal(listing)}>
+                            <BarChart3 className="h-4 w-4 mr-2" />
+                            Investment Report
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -770,15 +772,17 @@ export default function Listings() {
                 
                 <div className="h-6 w-px bg-border shrink-0 hidden md:block" />
                 
-                <Button
-                  onClick={() => setIsBulkGenerationModalOpen(true)}
-                  disabled={selectedListings.size < 2 || selectedListings.size > 10}
-                  size="sm"
-                  className="shrink-0 text-xs md:text-sm"
-                >
-                  <FileText className="h-4 w-4 md:mr-2" />
-                  <span className="hidden md:inline">Generate Reports</span>
-                </Button>
+                {canEditListings && (
+                  <Button
+                    onClick={() => setIsBulkGenerationModalOpen(true)}
+                    disabled={selectedListings.size < 2 || selectedListings.size > 10}
+                    size="sm"
+                    className="shrink-0 text-xs md:text-sm"
+                  >
+                    <FileText className="h-4 w-4 md:mr-2" />
+                    <span className="hidden md:inline">Generate Reports</span>
+                  </Button>
+                )}
                 
                 <Button
                   variant="ghost"

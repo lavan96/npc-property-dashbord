@@ -4,7 +4,7 @@ import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Crown, Key, Mail, Settings, ShieldOff, Trash2, Shield, Copy } from 'lucide-react';
+import { Crown, Key, Mail, Settings, ShieldOff, Trash2, Shield, Copy, LogOut } from 'lucide-react';
 import { Clock } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -33,13 +33,14 @@ interface UserTableRowProps {
   onDelete: (userId: string) => void;
   onEditMailbox: (userId: string, currentMailbox: string | null) => void;
   onClonePermissions: (userId: string) => void;
+  onForceLogout?: (userId: string) => void;
   selected?: boolean;
   onToggleSelect?: (userId: string) => void;
 }
 
 export function UserTableRow({
   u, isSelf, onToggleActive, onEditPermissions, onResetPassword,
-  onPromote, onDemote, onDelete, onEditMailbox, onClonePermissions, selected, onToggleSelect,
+  onPromote, onDemote, onDelete, onEditMailbox, onClonePermissions, onForceLogout, selected, onToggleSelect,
 }: UserTableRowProps) {
   const hasSuperadmin = u.user_roles?.some(r => r.role === 'superadmin');
   const hasAdmin = u.user_roles?.some(r => r.role === 'admin');
@@ -161,6 +162,16 @@ export function UserTableRow({
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
+            )}
+            {!isSelf && onForceLogout && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="sm" onClick={() => onForceLogout(u.id)}>
+                    <LogOut className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Force Logout</TooltipContent>
+              </Tooltip>
             )}
             {!isSelf && (
               <AlertDialog>

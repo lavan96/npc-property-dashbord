@@ -218,6 +218,16 @@ export default function UserManagement() {
     finally { setSavingPermissions(false); }
   };
 
+  const handleForceLogout = async (userId: string) => {
+    const targetUser = users.find(u => u.id === userId);
+    try {
+      const { data } = await invokeSecureFunction('admin-user-management', { action: 'force_logout', user_id: userId });
+      if (data?.success) {
+        toast.success(data.message || `${targetUser?.username} has been logged out`);
+        logActivityDirect({ actionType: 'user_deactivated', entityType: 'user', entityId: userId, entityName: targetUser?.username, metadata: { action: 'force_logout' } });
+      } else toast.error(data?.error || 'Failed to force logout');
+    } catch { toast.error('Failed to force logout'); }
+  };
   const handleToggleActive = async (userId: string, isActive: boolean) => {
     try {
       const { data } = await invokeSecureFunction('admin-user-management', {
@@ -527,6 +537,7 @@ export default function UserManagement() {
                     onDelete={handleDeleteUser}
                     onEditMailbox={openMailboxDialog}
                     onClonePermissions={(userId) => { setCloneSourceUserId(userId); setCloneDialogOpen(true); }}
+                    onForceLogout={handleForceLogout}
                     selected={selectedUserIds.has(u.id)}
                     onToggleSelect={toggleSelectUser}
                   />
