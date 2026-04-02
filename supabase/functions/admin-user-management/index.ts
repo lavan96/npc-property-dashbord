@@ -479,9 +479,10 @@ serve(async (req: Request) => {
       const { data: users, error } = await supabase
         .from('custom_users')
         .select(`
-          id, username, email, role, is_active, created_at, updated_at, personal_mailbox,
+          id, username, email, role, is_active, created_at, updated_at, personal_mailbox, last_login_at, deleted_at,
           user_roles(role)
         `)
+        .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
       if (error) {
