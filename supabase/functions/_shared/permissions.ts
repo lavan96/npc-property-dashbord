@@ -1,0 +1,179 @@
+/**
+ * Shared permission checking utilities for Edge Functions
+ * Validates that a user has the required module-level permissions (can_view, can_edit, can_delete)
+ * before allowing mutations through the data mediation layer.
+ * 
+ * Superadmins bypass all checks. Service-role calls bypass all checks.
+ */
+
+/** Maps database table names to their governing module key */
+const TABLE_TO_MODULE_MAP: Record<string, string> = {
+  // Client-related tables → clients module
+  clients: 'clients',
+  client_properties: 'clients',
+  client_income: 'clients',
+  client_expenses: 'clients',
+  client_assets: 'clients',
+  client_liabilities: 'clients',
+  client_employment: 'clients',
+  client_notes: 'clients',
+  client_files: 'clients',
+  client_activities: 'clients',
+  client_additional_contacts: 'clients',
+  client_scores: 'clients',
+  client_income_sources: 'clients',
+
+  // Deal-related tables → deal_pipeline module
+  client_deals: 'deal_pipeline',
+  deal_stages: 'deal_pipeline',
+  build_progress_payments: 'deal_pipeline',
+  builder_invoices: 'deal_pipeline',
+
+  // Report-related
+  report_qa_messages: 'report_qa',
+  report_qa_conversations: 'report_qa',
+  portfolio_reviews: 'portfolio_reports',
+  portfolio_analysis_reports: 'portfolio_reports',
+
+  // Reminders
+  client_reminders: 'reminders',
+
+  // Marketing
+  lead_source_attributions: 'marketing_analytics',
+
+  // Portal
+  portal_configuration: 'portal_config',
+  client_portal_reports: 'reports',
+  client_portal_report_requests: 'reports',
+
+  // Agreements
+  agency_agreements: 'agreements',
+
+  // Checklists
+  checklist_instances: 'checklists',
+  checklist_instance_items: 'checklists',
+
+  // Email
+  email_copilot_emails: 'email_copilot',
+
+  // Game plans
+  game_plans: 'game_plans',
+
+  // Automation
+  auto_report_switches: 'automation',
+
+  // Templates
+  report_templates: 'templates',
+
+  // Call logs
+  vapi_call_logs: 'call_logs',
+};
+
+/** Maps CRUD operations to the required permission flag */
+const OPERATION_TO_PERMISSION: Record<string, 'can_view' | 'can_edit' | 'can_delete'> = {
+  create: 'can_edit',
+  update: 'can_edit',
+  upsert: 'can_edit',
+  delete: 'can_delete',
+  bulkDelete: 'can_delete',
+};
+
+interface PermissionCheckResult {
+  allowed: boolean;
+  reason?: string;
+  moduleKey?: string;
+}
+
+/**
+ * Check if a user has the required permission for a table operation.
+ * 
+ * @param supabase - Service-role Supabase client
+ * @param userId - The authenticated user's ID
+ * @param tableName - The database table being accessed
+ * @param operation - The CRUD operation being performed
+ * @param authMethod - How the user authenticated ('jwt' | 'session' | 'service_role')
+ * @returns Whether the operation is allowed
+ */
+export async function checkPermission(
+  supabase: any,
+  userId: string,
+  tableName: string,
+  operation: string,
+  authMethod?: string,
+): Promise<PermissionCheckResult> {
+  // Service-role calls always bypass permission checks (internal edge-function-to-edge-function)
+  if (authMethod === 'service_role' || userId === 'service_role') {
+    return { allowed: true };
+  }
+
+  // Check if user is superadmin (bypass all permission checks)
+  const { data: superadminRole } = await supabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', userId)
+    .eq('role', 'superadmin')
+    .maybeSingle();
+
+  if (superadminRole) {
+    return { allowed: true };
+  }
+
+  // Determine which module governs this table
+  const moduleKey = TABLE_TO_MODULE_MAP[tableName];
+  if (!moduleKey) {
+    // If table isn't mapped, allow by default (legacy tables not yet in module system)
+    console.log(`[permissions] Table "${tableName}" not mapped to any module, allowing by default`);
+    return { allowed: true };
+  }
+
+  // Determine required permission flag
+  const requiredPerm = OPERATION_TO_PERMISSION[operation];
+  if (!requiredPerm) {
+    // Read operations (select/get) only need can_view, but manage-client-data is write-only
+    // If operation isn't mapped, allow it (it's likely a read)
+    return { allowed: true };
+  }
+
+  // Look up the module ID
+  const { data: moduleData } = await supabase
+    .from('dashboard_modules')
+    .select('id')
+    .eq('module_key', moduleKey)
+    .eq('is_active', true)
+    .maybeSingle();
+
+  if (!moduleData) {
+    // Module not registered → allow (don't break functionality for unregistered modules)
+    console.log(`[permissions] Module "${moduleKey}" not found in registry, allowing by default`);
+    return { allowed: true };
+  }
+
+  // Check the user's permission for this module
+  const { data: userPerm } = await supabase
+    .from('user_permissions')
+    .select('can_view, can_edit, can_delete')
+    .eq('user_id', userId)
+    .eq('module_id', moduleData.id)
+    .maybeSingle();
+
+  if (!userPerm) {
+    return {
+      allowed: false,
+      reason: `No permissions assigned for module "${moduleKey}"`,
+      moduleKey,
+    };
+  }
+
+  if (!userPerm[requiredPerm]) {
+    const permLabel = requiredPerm.replace('can_', '');
+    return {
+      allowed: false,
+      reason: `You do not have ${permLabel} permission for the "${moduleKey}" module`,
+      moduleKey,
+    };
+  }
+
+  return { allowed: true, moduleKey };
+}
+
+export { TABLE_TO_MODULE_MAP, OPERATION_TO_PERMISSION };
