@@ -230,27 +230,23 @@ export default function Checklists() {
             </div>
             <div className="flex items-center gap-2">
               {canEdit && (
-                <>
-                  <Button variant="outline" size="sm" className="gap-1" onClick={() => setUploadDialogOpen(true)}>
-                    <Upload className="h-3 w-3" /> Import
-                  </Button>
-                  <TemplateImportDialog
-                    open={uploadDialogOpen}
-                    onOpenChange={setUploadDialogOpen}
-                    onImport={handleImportTemplate}
-                  />
+                <Button variant="outline" size="sm" className="gap-1" onClick={() => setUploadDialogOpen(true)}>
+                  <Upload className="h-3 w-3" /> Import
+                </Button>
+              )}
+              <TemplateImportDialog
+                open={uploadDialogOpen}
+                onOpenChange={setUploadDialogOpen}
+                onImport={handleImportTemplate}
+              />
 
-                  <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button size="sm" className="gap-1">
-                        <Plus className="h-3 w-3" /> New Template
-                      </Button>
-                    </DialogTrigger>
-                </>
-              )}
-              {!canEdit && (
+              {canEdit && (
                 <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-              )}
+                  <DialogTrigger asChild>
+                    <Button size="sm" className="gap-1">
+                      <Plus className="h-3 w-3" /> New Template
+                    </Button>
+                  </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Create New Template</DialogTitle>
