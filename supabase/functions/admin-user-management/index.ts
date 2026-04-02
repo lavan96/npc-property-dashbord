@@ -750,6 +750,7 @@ serve(async (req: Request) => {
       );
     }
 
+    // Soft-delete user (sets deleted_at, deactivates, clears sessions)
     if (action === 'delete_user') {
       const { user_id } = body;
       if (!user_id) {
@@ -767,6 +768,75 @@ serve(async (req: Request) => {
         );
       }
 
+      // Soft-delete: set deleted_at and deactivate
+      const { error } = await supabase
+        .from('custom_users')
+        .update({ 
+          deleted_at: new Date().toISOString(), 
+          is_active: false,
+          updated_at: new Date().toISOString() 
+        })
+        .eq('id', user_id);
+
+      if (error) {
+        return new Response(
+          JSON.stringify({ success: false, error: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Invalidate all sessions for this user
+      await supabase
+        .from('user_sessions')
+        .delete()
+        .eq('user_id', user_id);
+
+      console.log(`User ${user_id} soft-deleted by ${adminUser.username}`);
+      return new Response(
+        JSON.stringify({ success: true, message: 'User deactivated and archived' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Permanently purge a soft-deleted user
+    if (action === 'purge_user') {
+      const { user_id } = body;
+      if (!user_id) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'User ID required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (user_id === adminUser.id) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Cannot purge your own account' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Verify user is soft-deleted before allowing purge
+      const { data: targetUser } = await supabase
+        .from('custom_users')
+        .select('id, deleted_at, username')
+        .eq('id', user_id)
+        .single();
+
+      if (!targetUser) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'User not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (!targetUser.deleted_at) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'User must be archived (soft-deleted) before permanent purge' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Permanently delete
       const { error } = await supabase
         .from('custom_users')
         .delete()
@@ -779,9 +849,64 @@ serve(async (req: Request) => {
         );
       }
 
-      console.log(`User ${user_id} deleted by ${adminUser.username}`);
+      console.log(`User ${targetUser.username} (${user_id}) permanently purged by ${adminUser.username}`);
       return new Response(
-        JSON.stringify({ success: true, message: 'User deleted' }),
+        JSON.stringify({ success: true, message: 'User permanently deleted' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Reset password for a user (superadmin action)
+    if (action === 'reset_user_password') {
+      const { user_id, new_password } = body as any;
+      if (!user_id || !new_password) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'User ID and new password required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (user_id === adminUser.id) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Use your profile settings to change your own password' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Validate password strength
+      const validation = await validatePasswordStrength(new_password);
+      if (!validation.isValid) {
+        return new Response(
+          JSON.stringify({ success: false, error: validation.error }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const hashedPassword = await hashPassword(new_password);
+      const { error } = await supabase
+        .from('custom_users')
+        .update({ 
+          password_hash: hashedPassword, 
+          updated_at: new Date().toISOString() 
+        })
+        .eq('id', user_id);
+
+      if (error) {
+        return new Response(
+          JSON.stringify({ success: false, error: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Invalidate all sessions so user must re-login with new password
+      await supabase
+        .from('user_sessions')
+        .delete()
+        .eq('user_id', user_id);
+
+      console.log(`Password reset for user ${user_id} by ${adminUser.username}`);
+      return new Response(
+        JSON.stringify({ success: true, message: 'Password reset successfully. User sessions invalidated.' }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
