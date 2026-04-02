@@ -38,6 +38,8 @@ interface RequestBody {
   password?: string;
   personal_mailbox?: string;
   email_signature?: string;
+  include_deleted?: boolean;
+  restore?: boolean;
 }
 
 // Helper to verify authentication and check if user is superadmin
@@ -476,14 +478,19 @@ serve(async (req: Request) => {
     }
 
     if (action === 'list_users') {
-      const { data: users, error } = await supabase
+      const includeDeleted = (body as any).include_deleted === true;
+      let query = supabase
         .from('custom_users')
         .select(`
           id, username, email, role, is_active, created_at, updated_at, personal_mailbox, last_login_at, deleted_at,
           user_roles(role)
-        `)
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false });
+        `);
+      
+      if (!includeDeleted) {
+        query = query.is('deleted_at', null);
+      }
+      
+      const { data: users, error } = await query.order('created_at', { ascending: false });
 
       if (error) {
         return new Response(
@@ -689,6 +696,11 @@ serve(async (req: Request) => {
       }
 
       const updateData: any = { updated_at: new Date().toISOString() };
+      // Handle restore from soft-delete
+      if ((body as any).restore === true) {
+        updateData.deleted_at = null;
+        updateData.is_active = true;
+      }
       // Add fields that can be updated by superadmin
       const allowedFields = ['is_active', 'email', 'username', 'personal_mailbox'];
       for (const field of allowedFields) {
