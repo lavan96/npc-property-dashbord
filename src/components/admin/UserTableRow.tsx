@@ -163,6 +163,16 @@ export function UserTableRow({
                 </AlertDialogContent>
               </AlertDialog>
             )}
+            {!isSelf && onForceLogout && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="sm" onClick={() => onForceLogout(u.id)}>
+                    <LogOut className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Force Logout</TooltipContent>
+              </Tooltip>
+            )}
             {!isSelf && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
