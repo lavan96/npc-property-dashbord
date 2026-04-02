@@ -41,14 +41,17 @@ export default function DealPipeline() {
   };
 
   const handleUpdatePayment = (paymentId: string, clientId: string, data: any) => {
+    if (!canEditDeals) { toast.error('You do not have edit permission for deals'); return; }
     updateBuildPayment.mutate({ paymentId, clientId, data });
   };
 
   const handleUpdateDeal = (dealId: string, clientId: string, data: any) => {
+    if (!canEditDeals) { toast.error('You do not have edit permission for deals'); return; }
     updateDeal.mutate({ dealId, clientId, data });
   };
 
   const handleUpdateStage = (stageId: string, clientId: string, data: any) => {
+    if (!canEditDeals) { toast.error('You do not have edit permission for deals'); return; }
     updateDealStage.mutate({ stageId, clientId, data });
   };
 
