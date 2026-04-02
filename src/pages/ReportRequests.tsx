@@ -56,6 +56,7 @@ interface ReportRequest {
 
 export default function ReportRequests() {
   const queryClient = useQueryClient();
+  const { canEdit: canEditRequests } = useModulePermissions('reports');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');

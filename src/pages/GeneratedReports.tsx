@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, lazy, Suspense, useCallback } from 'react';
+import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
