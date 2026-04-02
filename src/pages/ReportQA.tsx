@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -143,6 +144,7 @@ interface SavedConversation {
 export default function ReportQA() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { canEdit: canEditQA, canDelete: canDeleteQA } = useModulePermissions('report_qa');
   const [uploadedReports, setUploadedReports] = useState<UploadedReport[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');

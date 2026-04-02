@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
+import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -431,6 +432,7 @@ function EmailBannerUpload({ currentBanner, onUpload, onRemove }: EmailBannerUpl
 
 export default function WhiteLabel() {
   const { settings, updateSettings, isLoading, currentTheme } = useWhiteLabel();
+  const { canEdit: canEditWhiteLabel } = useModulePermissions('white_label');
   const [companyName, setCompanyName] = useState(settings.companyName);
 
   const themeOptions: { value: ThemeMode; label: string; icon: React.ReactNode; description: string }[] = [

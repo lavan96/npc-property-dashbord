@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -68,6 +69,7 @@ interface DrillDownBreadcrumb {
 }
 
 export default function MarketingAnalytics() {
+  const { canEdit: canEditMarketing } = useModulePermissions('marketing_analytics');
   const [activeChannel, setActiveChannel] = useState('meta');
   const [datePreset, setDatePreset] = useState('last_30d');
   const [customRange, setCustomRange] = useState<{ since: string; until: string } | null>(null);

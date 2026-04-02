@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, lazy, Suspense, useCallback } from 'react';
+import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
@@ -97,6 +98,7 @@ interface ComparisonAnalysis {
 }
 
 export default function GeneratedReports() {
+  const { canEdit: canEditReports, canDelete: canDeleteReports } = useModulePermissions('generated_reports');
   const [reports, setReports] = useState<GeneratedReport[]>([]);
   const [investmentReports, setInvestmentReports] = useState<InvestmentReport[]>([]);
   const [comparisons, setComparisons] = useState<ComparisonAnalysis[]>([]);

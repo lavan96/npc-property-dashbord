@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -79,6 +80,7 @@ const MODULE_ITEMS = [
 
 export default function PortalConfig() {
   const queryClient = useQueryClient();
+  const { canEdit: canEditPortal } = useModulePermissions('portal_config');
   const [config, setConfig] = useState<PortalConfig | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
 

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { supabase } from '@/integrations/supabase/client';
 import { useSecureCallLogs } from '@/hooks/useSecureCallLogs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -147,6 +148,7 @@ interface CallStats {
 const CallLogs = () => {
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const { canEdit: canEditCalls, canDelete: canDeleteCalls } = useModulePermissions('call_logs');
   const { fetchCallLogs } = useSecureCallLogs();
   const recordingPlayerRef = useRef<CallRecordingPlayerHandle>(null);
   const [calls, setCalls] = useState<CallLog[]>([]);

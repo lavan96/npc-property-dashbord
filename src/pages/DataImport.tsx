@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -35,6 +36,7 @@ const AUSTRALIAN_STATES = [
 ];
 
 export default function DataImport() {
+  const { canEdit: canEditImport } = useModulePermissions('data_import');
   const [selectedType, setSelectedType] = useState<string>('');
   const [selectedState, setSelectedState] = useState<string>('');
   const [file, setFile] = useState<File | null>(null);

@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -135,6 +136,7 @@ const FALLBACK_STAGES = [
 
 export default function ClientTracker() {
   const queryClient = useQueryClient();
+  const { canEdit: canEditTracker } = useModulePermissions('client_tracker');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedPipelineId, setSelectedPipelineId] = useState<string>('all');

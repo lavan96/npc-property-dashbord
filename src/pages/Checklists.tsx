@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,7 @@ import type { ParsedTemplate } from '@/utils/checklistTemplateParser';
 import { toast } from 'sonner';
 
 export default function Checklists() {
+  const { canEdit, canDelete } = useModulePermissions('checklists');
   const [activeTab, setActiveTab] = useState('active');
   const [selectedTemplate, setSelectedTemplate] = useState<ChecklistTemplate | null>(null);
   const [selectedInstance, setSelectedInstance] = useState<ChecklistInstance | null>(null);
@@ -227,21 +229,24 @@ export default function Checklists() {
               <p className="text-sm text-muted-foreground">Reusable blueprints for generating checklists</p>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="gap-1" onClick={() => setUploadDialogOpen(true)}>
-                <Upload className="h-3 w-3" /> Import
-              </Button>
+              {canEdit && (
+                <Button variant="outline" size="sm" className="gap-1" onClick={() => setUploadDialogOpen(true)}>
+                  <Upload className="h-3 w-3" /> Import
+                </Button>
+              )}
               <TemplateImportDialog
                 open={uploadDialogOpen}
                 onOpenChange={setUploadDialogOpen}
                 onImport={handleImportTemplate}
               />
 
-              <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm" className="gap-1">
-                    <Plus className="h-3 w-3" /> New Template
-                  </Button>
-                </DialogTrigger>
+              {canEdit && (
+                <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" className="gap-1">
+                      <Plus className="h-3 w-3" /> New Template
+                    </Button>
+                  </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Create New Template</DialogTitle>
@@ -268,7 +273,8 @@ export default function Checklists() {
                     <Button onClick={handleCreateTemplate} disabled={!newName.trim()}>Create Template</Button>
                   </DialogFooter>
                 </DialogContent>
-              </Dialog>
+                </Dialog>
+              )}
             </div>
           </div>
 

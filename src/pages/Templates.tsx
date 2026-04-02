@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useQuery } from '@tanstack/react-query';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
@@ -69,6 +70,7 @@ const FORMAT_GROUPS = [
 ];
 
 export default function Templates() {
+  const { canEdit: canEditTemplates } = useModulePermissions('templates');
   const [activeTab, setActiveTab] = useState('report-formats');
   const [selectedFormat, setSelectedFormat] = useState<ReportFormat | null>(null);
 

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -55,6 +56,7 @@ interface ReportRequest {
 
 export default function ReportRequests() {
   const queryClient = useQueryClient();
+  const { canEdit: canEditRequests } = useModulePermissions('reports');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');

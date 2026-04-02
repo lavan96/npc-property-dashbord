@@ -1,3 +1,4 @@
+import React from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { PermissionPresets } from './PermissionPresets';
@@ -49,8 +50,8 @@ export function PermissionsGrid({ modules, permissions, onUpdate, onApplyPreset,
           </TableHeader>
           <TableBody>
             {Object.entries(groupedModules).map(([category, mods]) => (
-              <>
-                <TableRow key={category} className="bg-muted/50">
+              <React.Fragment key={category}>
+                <TableRow className="bg-muted/50">
                   <TableCell colSpan={4} className="font-semibold capitalize">
                     {category}
                   </TableCell>
@@ -83,7 +84,7 @@ export function PermissionsGrid({ modules, permissions, onUpdate, onApplyPreset,
                     </TableRow>
                   );
                 })}
-              </>
+              </React.Fragment>
             ))}
           </TableBody>
         </Table>

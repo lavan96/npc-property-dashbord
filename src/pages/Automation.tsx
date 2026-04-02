@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
@@ -57,6 +58,7 @@ export interface SwitchCriteria {
 }
 
 const Automation = () => {
+  const { canEdit, canDelete } = useModulePermissions('automation');
   const [masterEnabled, setMasterEnabled] = useState(false);
   const [switches, setSwitches] = useState<AutoReportSwitch[]>([]);
   const [loading, setLoading] = useState(true);
@@ -412,10 +414,12 @@ const Automation = () => {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg sm:text-xl font-semibold">Filter Switches</h2>
-            <Button onClick={openCreateModal} size="sm" className="sm:size-default min-h-[44px] sm:min-h-0">
-              <Plus className="h-4 w-4 mr-2" />
-              Create Switch
-            </Button>
+            {canEdit && (
+              <Button onClick={openCreateModal} size="sm" className="sm:size-default min-h-[44px] sm:min-h-0">
+                <Plus className="h-4 w-4 mr-2" />
+                Create Switch
+              </Button>
+            )}
           </div>
 
           {loading ? (
@@ -435,10 +439,12 @@ const Automation = () => {
                       Create your first switch to start auto-generating reports
                     </p>
                   </div>
-                  <Button onClick={openCreateModal} className="mt-2">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Switch
-                  </Button>
+                  {canEdit && (
+                    <Button onClick={openCreateModal} className="mt-2">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Switch
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -455,7 +461,7 @@ const Automation = () => {
                         <Switch
                           checked={switchItem.is_enabled}
                           onCheckedChange={() => toggleSwitch(switchItem)}
-                          disabled={!masterEnabled}
+                          disabled={!masterEnabled || !canEdit}
                         />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
@@ -483,22 +489,26 @@ const Automation = () => {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 self-end sm:self-auto">
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => openEditModal(switchItem)}
-                          className="min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0"
-                        >
-                          <Settings2 className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => deleteSwitch(switchItem)}
-                          className="text-destructive hover:text-destructive min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {canEdit && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => openEditModal(switchItem)}
+                            className="min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0"
+                          >
+                            <Settings2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {canDelete && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => deleteSwitch(switchItem)}
+                            className="text-destructive hover:text-destructive min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </CardContent>
