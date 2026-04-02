@@ -39,7 +39,7 @@ interface UserTableRowProps {
 
 export function UserTableRow({
   u, isSelf, onToggleActive, onEditPermissions, onResetPassword,
-  onPromote, onDemote, onDelete, onEditMailbox, onClonePermissions,
+  onPromote, onDemote, onDelete, onEditMailbox, onClonePermissions, selected, onToggleSelect,
 }: UserTableRowProps) {
   const hasSuperadmin = u.user_roles?.some(r => r.role === 'superadmin');
   const hasAdmin = u.user_roles?.some(r => r.role === 'admin');
