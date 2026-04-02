@@ -51,6 +51,7 @@ const COLORS = [
 ];
 
 export default function Reports() {
+  const { canEdit: canEditReports } = useModulePermissions('reports');
   const [allListings, setAllListings] = useState<PropertyListing[]>([]);
   const { generateReport, isGenerating, progress, currentStep } = useReportGenerator();
   

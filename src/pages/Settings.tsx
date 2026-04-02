@@ -20,6 +20,7 @@ import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 
 export default function Settings() {
+  const { canEdit: canEditSettings } = useModulePermissions('settings');
   const { user } = useAuth();
   const [settings, setSettings] = useState({
     timezone: 'Australia/Sydney',

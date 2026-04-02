@@ -33,6 +33,7 @@ interface QAMetrics {
 }
 
 export default function QualityAssurance() {
+  const { canEdit: canEditQA } = useModulePermissions('quality_assurance');
   const [reports, setReports] = useState<QAReport[]>([]);
   const [metrics, setMetrics] = useState<QAMetrics | null>(null);
   const [loading, setLoading] = useState(true);

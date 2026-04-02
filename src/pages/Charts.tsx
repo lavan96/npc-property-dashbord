@@ -20,6 +20,7 @@ interface ChartData {
 }
 
 export default function Charts() {
+  const { canEdit: canEditCharts } = useModulePermissions('charts');
   const [charts, setCharts] = useState<ChartData[]>([]);
   const [loading, setLoading] = useState(true);
 

@@ -30,6 +30,7 @@ interface AgentSource {
 }
 
 export default function Sources() {
+  const { canEdit: canEditSources } = useModulePermissions('sources');
   const [listings, setListings] = useState<PropertyListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [emailSources, setEmailSources] = useState<EmailSource[]>([]);

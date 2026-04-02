@@ -43,6 +43,7 @@ interface CacheStat {
 }
 
 export default function Monitoring() {
+  const { canEdit: canEditMonitoring } = useModulePermissions('monitoring');
   const [apiStats, setApiStats] = useState<APIHealthStat[]>([]);
   const [cacheStats, setCacheStats] = useState<CacheStat[]>([]);
   const [isLoading, setIsLoading] = useState(true);
