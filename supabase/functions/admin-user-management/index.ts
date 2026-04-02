@@ -1193,7 +1193,7 @@ serve(async (req: Request) => {
           email: subadmin_data.email || null,
           password_hash: hashedPassword,
           personal_mailbox: subadmin_data.personal_mailbox || null,
-          role: 'admin',
+          role: 'sub_admin',
           is_active: true,
         })
         .select()
