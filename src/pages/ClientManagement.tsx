@@ -130,6 +130,7 @@ export default function ClientManagement() {
   const [showActiveOnly, setShowActiveOnly] = useState(false);
   const [showAddClientModal, setShowAddClientModal] = useState(false);
   const queryClient = useQueryClient();
+  const { canEdit: canEditClients, canDelete: canDeleteClients } = useModulePermissions('clients');
 
   // Fetch clients with property count via secure Edge Function (HttpOnly cookies)
   const { data: clients = [], isLoading, refetch } = useQuery({
