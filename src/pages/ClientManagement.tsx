@@ -522,16 +522,18 @@ export default function ClientManagement() {
             </span>
             <span className="sm:hidden">Import</span>
           </Button>
-          <Button 
-            onClick={() => setShowAddClientModal(true)} 
-            variant="default" 
-            size="sm"
-            className="h-8 text-xs sm:text-sm"
-          >
-            <UserPlus className="h-3.5 w-3.5 mr-1.5" />
-            <span className="hidden sm:inline">Add Client</span>
-            <span className="sm:hidden">Add</span>
-          </Button>
+          {canEditClients && (
+            <Button 
+              onClick={() => setShowAddClientModal(true)} 
+              variant="default" 
+              size="sm"
+              className="h-8 text-xs sm:text-sm"
+            >
+              <UserPlus className="h-3.5 w-3.5 mr-1.5" />
+              <span className="hidden sm:inline">Add Client</span>
+              <span className="sm:hidden">Add</span>
+            </Button>
+          )}
           
           {/* More actions in dropdown on mobile */}
           <DropdownMenu>
