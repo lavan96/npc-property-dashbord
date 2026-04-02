@@ -147,7 +147,20 @@ serve(async (req) => {
 
     console.log(`Authenticated user ${userId} (${username}) performing ${body.operation} on ${body.table}`);
 
+    const authMethod = (await verifyAuth(supabase, req.headers, body)).authMethod;
+
     const { operation, table, clientId, recordId, data } = body;
+
+    // ── Server-side permission check ──
+    // Verify the user has the required module-level permission for this operation
+    const permCheck = await checkPermission(supabase, userId!, table, operation, authMethod);
+    if (!permCheck.allowed) {
+      console.log(`[manage-client-data] Permission denied for user ${userId} on ${table}.${operation}: ${permCheck.reason}`);
+      return new Response(
+        JSON.stringify({ error: permCheck.reason || 'Permission denied', permissionDenied: true }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Validate table name
     if (!ALLOWED_TABLES.includes(table)) {
