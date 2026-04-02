@@ -698,7 +698,7 @@ export default function ClientManagement() {
                     client={client}
                     ghlLocationId={ghlLocationId}
                     onView={() => handleViewClient(client)}
-                    onDelete={() => handleDeleteClient(client)}
+                    onDelete={canDeleteClients ? () => handleDeleteClient(client) : undefined}
                     onSyncComplete={() => refetch()}
                     isSelected={selectedClients.includes(client.id)}
                     onSelect={(checked) => handleSelectClient(client.id, !!checked)}
