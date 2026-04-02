@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useQuery } from '@tanstack/react-query';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
