@@ -229,21 +229,28 @@ export default function Checklists() {
               <p className="text-sm text-muted-foreground">Reusable blueprints for generating checklists</p>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="gap-1" onClick={() => setUploadDialogOpen(true)}>
-                <Upload className="h-3 w-3" /> Import
-              </Button>
-              <TemplateImportDialog
-                open={uploadDialogOpen}
-                onOpenChange={setUploadDialogOpen}
-                onImport={handleImportTemplate}
-              />
-
-              <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm" className="gap-1">
-                    <Plus className="h-3 w-3" /> New Template
+              {canEdit && (
+                <>
+                  <Button variant="outline" size="sm" className="gap-1" onClick={() => setUploadDialogOpen(true)}>
+                    <Upload className="h-3 w-3" /> Import
                   </Button>
-                </DialogTrigger>
+                  <TemplateImportDialog
+                    open={uploadDialogOpen}
+                    onOpenChange={setUploadDialogOpen}
+                    onImport={handleImportTemplate}
+                  />
+
+                  <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button size="sm" className="gap-1">
+                        <Plus className="h-3 w-3" /> New Template
+                      </Button>
+                    </DialogTrigger>
+                </>
+              )}
+              {!canEdit && (
+                <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+              )}
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Create New Template</DialogTitle>
