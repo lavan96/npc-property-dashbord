@@ -58,6 +58,7 @@ export interface SwitchCriteria {
 }
 
 const Automation = () => {
+  const { canEdit, canDelete } = useModulePermissions('automation');
   const [masterEnabled, setMasterEnabled] = useState(false);
   const [switches, setSwitches] = useState<AutoReportSwitch[]>([]);
   const [loading, setLoading] = useState(true);
