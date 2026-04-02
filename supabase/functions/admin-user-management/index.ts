@@ -13,7 +13,7 @@ interface RequestBody {
           'list_modules' | 'get_user_permissions' | 'promote_to_superadmin' | 'demote_from_superadmin' |
           'accept_invite' | 'verify_invite' | 'update_mailbox' | 'get_own_profile' |
           'update_own_mailbox' | 'update_own_signature' | 'create_subadmin' | 'update_own_credentials' |
-          'reset_user_password' | 'purge_user';
+          'reset_user_password' | 'purge_user' | 'force_logout';
   new_username?: string;
   current_password?: string;
   new_password?: string;
