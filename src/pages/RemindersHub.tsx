@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useModulePermissions } from '@/hooks/useModulePermissions';
 import {
   format,
   isToday,
