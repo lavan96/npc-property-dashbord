@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { FollowUpFlag } from './FollowUpFlag';
+import { SyncToGHLDialog } from './SyncToGHLDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -75,6 +76,7 @@ interface ClientCardProps {
 
 export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComplete, isSelected, onSelect }: ClientCardProps) {
   const [isSyncing, setIsSyncing] = useState(false);
+  const [showSyncDialog, setShowSyncDialog] = useState(false);
   const queryClient = useQueryClient();
   const propertyCount = client.client_properties?.length || 0;
   const isPositiveCashFlow = Number(client.net_monthly_cash_flow) >= 0;
@@ -122,30 +124,8 @@ export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComp
     }
   });
 
-  const handleSyncToGHL = async () => {
-    setIsSyncing(true);
-    try {
-      const { data, error } = await invokeSecureFunction('sync-client-to-ghl', {
-        clientId: client.id
-      });
-
-      if (error) throw error;
-
-      if (data?.success) {
-        toast.success(data.isNewContact 
-          ? 'Client created in GoHighLevel' 
-          : 'Client synced to GoHighLevel'
-        );
-        onSyncComplete?.();
-      } else {
-        throw new Error(data?.error || 'Sync failed');
-      }
-    } catch (error: any) {
-      console.error('GHL sync error:', error);
-      toast.error(`Sync failed: ${error.message}`);
-    } finally {
-      setIsSyncing(false);
-    }
+  const handleSyncToGHL = () => {
+    setShowSyncDialog(true);
   };
 
   const getGHLStatusBadge = () => {
@@ -326,6 +306,14 @@ export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComp
           {getGHLStatusBadge()}
         </div>
       </CardContent>
+
+      <SyncToGHLDialog
+        open={showSyncDialog}
+        onOpenChange={setShowSyncDialog}
+        clientId={client.id}
+        clientName={fullName}
+        onSyncComplete={onSyncComplete}
+      />
     </Card>
   );
 }
