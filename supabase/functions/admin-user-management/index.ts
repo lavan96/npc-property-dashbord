@@ -38,6 +38,8 @@ interface RequestBody {
   password?: string;
   personal_mailbox?: string;
   email_signature?: string;
+  include_deleted?: boolean;
+  restore?: boolean;
 }
 
 // Helper to verify authentication and check if user is superadmin
