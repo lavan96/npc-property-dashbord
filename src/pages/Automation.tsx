@@ -414,10 +414,12 @@ const Automation = () => {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg sm:text-xl font-semibold">Filter Switches</h2>
-            <Button onClick={openCreateModal} size="sm" className="sm:size-default min-h-[44px] sm:min-h-0">
-              <Plus className="h-4 w-4 mr-2" />
-              Create Switch
-            </Button>
+            {canEdit && (
+              <Button onClick={openCreateModal} size="sm" className="sm:size-default min-h-[44px] sm:min-h-0">
+                <Plus className="h-4 w-4 mr-2" />
+                Create Switch
+              </Button>
+            )}
           </div>
 
           {loading ? (
