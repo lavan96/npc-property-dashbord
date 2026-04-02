@@ -43,6 +43,7 @@ export default function Agreements() {
   const [previewTitle, setPreviewTitle] = useState('');
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const navigate = useNavigate();
+  const { canEdit: canEditAgreements } = useModulePermissions('agreements');
 
   const filteredAgreements = agreements.filter((a) =>
     a.buyer_names.toLowerCase().includes(searchTerm.toLowerCase()) ||
