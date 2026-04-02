@@ -69,6 +69,7 @@ interface DrillDownBreadcrumb {
 }
 
 export default function MarketingAnalytics() {
+  const { canEdit: canEditMarketing } = useModulePermissions('marketing_analytics');
   const [activeChannel, setActiveChannel] = useState('meta');
   const [datePreset, setDatePreset] = useState('last_30d');
   const [customRange, setCustomRange] = useState<{ since: string; until: string } | null>(null);
