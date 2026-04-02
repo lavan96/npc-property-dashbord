@@ -218,7 +218,17 @@ export default function UserManagement() {
     finally { setSavingPermissions(false); }
   };
 
-  const handleToggleActive = async (userId: string, isActive: boolean) => {
+  const handleForceLogout = async (userId: string) => {
+    const targetUser = users.find(u => u.id === userId);
+    try {
+      const { data } = await invokeSecureFunction('admin-user-management', { action: 'force_logout', user_id: userId });
+      if (data?.success) {
+        toast.success(data.message || `${targetUser?.username} has been logged out`);
+        logActivityDirect({ actionType: 'user_deactivated', entityType: 'user', entityId: userId, entityName: targetUser?.username, metadata: { action: 'force_logout' } });
+      } else toast.error(data?.error || 'Failed to force logout');
+    } catch { toast.error('Failed to force logout'); }
+  };
+
     try {
       const { data } = await invokeSecureFunction('admin-user-management', {
         action: 'update_user', user_id: userId, is_active: isActive,
