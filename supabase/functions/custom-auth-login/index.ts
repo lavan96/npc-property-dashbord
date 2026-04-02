@@ -99,6 +99,12 @@ serve(async (req) => {
 
     console.log(`Login successful for user ${username}`);
 
+    // Update last_login_at timestamp
+    await supabase
+      .from('custom_users')
+      .update({ last_login_at: new Date().toISOString() })
+      .eq('id', user.id);
+
     // Generate session token
     const sessionToken = crypto.randomUUID()
     const expiresAt = new Date()
