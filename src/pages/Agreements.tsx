@@ -310,7 +310,7 @@ export default function Agreements() {
                               <Eye className="h-4 w-4 mr-2" />
                               View Client
                             </DropdownMenuItem>
-                            {agreement.status === 'generated' && (
+                            {canEditAgreements && agreement.status === 'generated' && (
                               <DropdownMenuItem onClick={() => handleSendViaDocuSign(agreement)}>
                                 <Send className="h-4 w-4 mr-2" />
                                 Send via DocuSign
@@ -322,7 +322,7 @@ export default function Agreements() {
                                 Refresh Status
                               </DropdownMenuItem>
                             )}
-                            {['sent', 'delivered', 'viewed'].includes(agreement.status) && (
+                            {canEditAgreements && ['sent', 'delivered', 'viewed'].includes(agreement.status) && (
                               <DropdownMenuItem
                                 className="text-destructive"
                                 onClick={() => handleVoid(agreement.id)}
