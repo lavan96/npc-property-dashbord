@@ -4,7 +4,7 @@ import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Crown, Key, Mail, Settings, ShieldOff, Trash2, Shield, Copy } from 'lucide-react';
+import { Crown, Key, Mail, Settings, ShieldOff, Trash2, Shield, Copy, LogOut } from 'lucide-react';
 import { Clock } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
