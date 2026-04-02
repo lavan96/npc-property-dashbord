@@ -3847,10 +3847,12 @@ export type Database = {
       custom_users: {
         Row: {
           created_at: string
+          deleted_at: string | null
           email: string | null
           email_signature: string | null
           id: string
           is_active: boolean
+          last_login_at: string | null
           microsoft_email: string | null
           outlook_auto_prep_enabled: boolean | null
           outlook_follow_up_blocking: boolean | null
@@ -3865,10 +3867,12 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
           email?: string | null
           email_signature?: string | null
           id?: string
           is_active?: boolean
+          last_login_at?: string | null
           microsoft_email?: string | null
           outlook_auto_prep_enabled?: boolean | null
           outlook_follow_up_blocking?: boolean | null
@@ -3883,10 +3887,12 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
           email?: string | null
           email_signature?: string | null
           id?: string
           is_active?: boolean
+          last_login_at?: string | null
           microsoft_email?: string | null
           outlook_auto_prep_enabled?: boolean | null
           outlook_follow_up_blocking?: boolean | null
