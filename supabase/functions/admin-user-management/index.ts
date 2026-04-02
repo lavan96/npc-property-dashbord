@@ -694,6 +694,11 @@ serve(async (req: Request) => {
       }
 
       const updateData: any = { updated_at: new Date().toISOString() };
+      // Handle restore from soft-delete
+      if ((body as any).restore === true) {
+        updateData.deleted_at = null;
+        updateData.is_active = true;
+      }
       // Add fields that can be updated by superadmin
       const allowedFields = ['is_active', 'email', 'username', 'personal_mailbox'];
       for (const field of allowedFields) {
