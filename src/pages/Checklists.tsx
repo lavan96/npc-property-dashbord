@@ -19,6 +19,7 @@ import type { ParsedTemplate } from '@/utils/checklistTemplateParser';
 import { toast } from 'sonner';
 
 export default function Checklists() {
+  const { canEdit, canDelete } = useModulePermissions('checklists');
   const [activeTab, setActiveTab] = useState('active');
   const [selectedTemplate, setSelectedTemplate] = useState<ChecklistTemplate | null>(null);
   const [selectedInstance, setSelectedInstance] = useState<ChecklistInstance | null>(null);
