@@ -617,7 +617,7 @@ export default function Integrations() {
                         </TooltipProvider>
                         <Button
                           onClick={() => saveIntegration(integration.id)}
-                          disabled={saving === integration.id || syncingToSupabase === integration.id}
+                          disabled={saving === integration.id || syncingToSupabase === integration.id || !canEditIntegrations}
                         >
                           {saving === integration.id ? (
                             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
