@@ -5,12 +5,14 @@ import { GamePlanDetail } from '@/components/gameplan/GamePlanDetail';
 import { CreatePlanDialog } from '@/components/gameplan/CreatePlanDialog';
 import { Button } from '@/components/ui/button';
 import { Plus, Map } from 'lucide-react';
+import { useModulePermissions } from '@/hooks/useModulePermissions';
 
 export default function GamePlan() {
   const { data: plans = [], isLoading } = useGamePlans();
   const { plans: planMut } = useGamePlanMutations();
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const { canEdit, canDelete } = useModulePermissions('game_plans');
 
   const selectedPlan = plans.find(p => p.id === selectedPlanId);
 
@@ -31,9 +33,11 @@ export default function GamePlan() {
             <p className="text-sm text-muted-foreground">Strategic playbooks for your team</p>
           </div>
         </div>
-        <Button onClick={() => setShowCreate(true)} className="gap-2">
-          <Plus className="h-4 w-4" /> New Game Plan
-        </Button>
+        {canEdit && (
+          <Button onClick={() => setShowCreate(true)} className="gap-2">
+            <Plus className="h-4 w-4" /> New Game Plan
+          </Button>
+        )}
       </div>
 
       {/* Plans Grid */}
@@ -41,17 +45,19 @@ export default function GamePlan() {
         plans={plans}
         isLoading={isLoading}
         onSelect={setSelectedPlanId}
-        onDelete={(id) => planMut.remove.mutateAsync(id)}
+        onDelete={canDelete ? (id) => planMut.remove.mutateAsync(id) : undefined}
       />
 
-      <CreatePlanDialog
-        open={showCreate}
-        onOpenChange={setShowCreate}
-        onCreate={async (data) => {
-          await planMut.create.mutateAsync(data);
-          setShowCreate(false);
-        }}
-      />
+      {canEdit && (
+        <CreatePlanDialog
+          open={showCreate}
+          onOpenChange={setShowCreate}
+          onCreate={async (data) => {
+            await planMut.create.mutateAsync(data);
+            setShowCreate(false);
+          }}
+        />
+      )}
     </div>
   );
 }
