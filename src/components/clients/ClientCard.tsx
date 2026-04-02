@@ -124,30 +124,8 @@ export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComp
     }
   });
 
-  const handleSyncToGHL = async () => {
-    setIsSyncing(true);
-    try {
-      const { data, error } = await invokeSecureFunction('sync-client-to-ghl', {
-        clientId: client.id
-      });
-
-      if (error) throw error;
-
-      if (data?.success) {
-        toast.success(data.isNewContact 
-          ? 'Client created in GoHighLevel' 
-          : 'Client synced to GoHighLevel'
-        );
-        onSyncComplete?.();
-      } else {
-        throw new Error(data?.error || 'Sync failed');
-      }
-    } catch (error: any) {
-      console.error('GHL sync error:', error);
-      toast.error(`Sync failed: ${error.message}`);
-    } finally {
-      setIsSyncing(false);
-    }
+  const handleSyncToGHL = () => {
+    setShowSyncDialog(true);
   };
 
   const getGHLStatusBadge = () => {
