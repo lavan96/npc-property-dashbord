@@ -67,7 +67,7 @@ interface ClientCardProps {
   };
   ghlLocationId?: string | null;
   onView: () => void;
-  onDelete: () => void;
+  onDelete?: () => void;
   onSyncComplete?: () => void;
   isSelected?: boolean;
   onSelect?: (checked: boolean) => void;
