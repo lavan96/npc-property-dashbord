@@ -136,7 +136,7 @@ const FALLBACK_STAGES = [
 
 export default function ClientTracker() {
   const queryClient = useQueryClient();
-  const [searchQuery, setSearchQuery] = useState('');
+  const { canEdit: canEditTracker } = useModulePermissions('client_tracker');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedPipelineId, setSelectedPipelineId] = useState<string>('all');
   const [editingClient, setEditingClient] = useState<TrackedClient | null>(null);
