@@ -33,6 +33,8 @@ interface UserTableRowProps {
   onDelete: (userId: string) => void;
   onEditMailbox: (userId: string, currentMailbox: string | null) => void;
   onClonePermissions: (userId: string) => void;
+  selected?: boolean;
+  onToggleSelect?: (userId: string) => void;
 }
 
 export function UserTableRow({
