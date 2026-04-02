@@ -45,7 +45,10 @@ export function UserTableRow({
   const hasAdmin = u.user_roles?.some(r => r.role === 'admin');
 
   return (
-    <TableRow>
+    <TableRow className={selected ? 'bg-muted/30' : ''}>
+      <TableCell>
+        <Checkbox checked={selected} onCheckedChange={() => onToggleSelect?.(u.id)} />
+      </TableCell>
       <TableCell>
         <div>
           <div className="font-medium flex items-center gap-2">
