@@ -1,4 +1,5 @@
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { PortfolioAnalysisReportsList } from '@/components/clients/PortfolioAnalysisReportsList';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
