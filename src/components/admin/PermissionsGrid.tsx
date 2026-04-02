@@ -84,7 +84,7 @@ export function PermissionsGrid({ modules, permissions, onUpdate, onApplyPreset,
                     </TableRow>
                   );
                 })}
-              </>
+              </React.Fragment>
             ))}
           </TableBody>
         </Table>
