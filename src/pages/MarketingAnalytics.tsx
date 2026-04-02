@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
