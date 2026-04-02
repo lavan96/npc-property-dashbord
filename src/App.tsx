@@ -184,51 +184,53 @@ const App = () => (
                           </ProtectedRoute>
                         }>
                 <Route index element={<Overview />} />
-                <Route path="listings" element={<Listings />} />
+                <Route path="listings" element={<ModuleGuard moduleKey="listings"><Listings /></ModuleGuard>} />
                 <Route
                   path="calendar"
                   element={
-                    <ErrorBoundary fallback={<CalendarErrorFallback />}>
-                      <Calendar />
-                    </ErrorBoundary>
+                    <ModuleGuard moduleKey="calendar">
+                      <ErrorBoundary fallback={<CalendarErrorFallback />}>
+                        <Calendar />
+                      </ErrorBoundary>
+                    </ModuleGuard>
                   }
                 />
-                <Route path="sources" element={<Sources />} />
-                <Route path="reports" element={<Reports />} />
-                <Route path="charts" element={<Charts />} />
-                <Route path="generated-reports" element={<GeneratedReports />} />
-                <Route path="generated-reports/:reportId" element={<ReportViewer />} />
+                <Route path="sources" element={<ModuleGuard moduleKey="sources"><Sources /></ModuleGuard>} />
+                <Route path="reports" element={<ModuleGuard moduleKey="reports"><Reports /></ModuleGuard>} />
+                <Route path="charts" element={<ModuleGuard moduleKey="charts"><Charts /></ModuleGuard>} />
+                <Route path="generated-reports" element={<ModuleGuard moduleKey="generated_reports"><GeneratedReports /></ModuleGuard>} />
+                <Route path="generated-reports/:reportId" element={<ModuleGuard moduleKey="generated_reports"><ReportViewer /></ModuleGuard>} />
                 <Route path="user-guide" element={<UserGuide />} />
-                <Route path="monitoring" element={<Monitoring />} />
-                <Route path="quality-assurance" element={<QualityAssurance />} />
-                <Route path="data-import" element={<DataImport />} />
-                <Route path="automation" element={<Automation />} />
-                <Route path="email-copilot" element={<EmailCopilot />} />
-                <Route path="call-logs" element={<CallLogs />} />
-                <Route path="cash-flow-analysis" element={<CashFlowAnalysis />} />
-                <Route path="report-qa" element={<ReportQA />} />
-                <Route path="investment-report/:id" element={<InvestmentReportView />} />
-                <Route path="templates" element={<Templates />} />
-                <Route path="white-label" element={<WhiteLabel />} />
-                <Route path="error-logs" element={<ErrorLogs />} />
-                          <Route path="settings" element={<Settings />} />
-                          <Route path="admin/users" element={<UserManagement />} />
-                          <Route path="admin/activity-logs" element={<ActivityLogs />} />
-                          <Route path="admin/depreciation-comps" element={<DepreciationCompsAdmin />} />
-                          <Route path="integrations" element={<Integrations />} />
-                          <Route path="cloudflare" element={<CloudflareManagement />} />
-                          <Route path="api-usage" element={<ApiUsage />} />
-                          <Route path="clients" element={<ClientManagement />} />
-                          <Route path="client-tracker" element={<ClientTracker />} />
-                           <Route path="portfolio-reports" element={<PortfolioReports />} />
-                           <Route path="report-requests" element={<ReportRequests />} />
-                           <Route path="deal-pipeline" element={<DealPipeline />} />
-                           <Route path="reminders" element={<RemindersHub />} />
-                           <Route path="checklists" element={<Checklists />} />
-                           <Route path="agreements" element={<Agreements />} />
-                           <Route path="game-plan" element={<GamePlan />} />
-                           <Route path="portal-config" element={<PortalConfig />} />
-                           <Route path="marketing-analytics" element={<MarketingAnalytics />} />
+                <Route path="monitoring" element={<ModuleGuard moduleKey="monitoring"><Monitoring /></ModuleGuard>} />
+                <Route path="quality-assurance" element={<ModuleGuard moduleKey="quality_assurance"><QualityAssurance /></ModuleGuard>} />
+                <Route path="data-import" element={<ModuleGuard moduleKey="data_import"><DataImport /></ModuleGuard>} />
+                <Route path="automation" element={<ModuleGuard moduleKey="automation"><Automation /></ModuleGuard>} />
+                <Route path="email-copilot" element={<ModuleGuard moduleKey="email_copilot"><EmailCopilot /></ModuleGuard>} />
+                <Route path="call-logs" element={<ModuleGuard moduleKey="call_logs"><CallLogs /></ModuleGuard>} />
+                <Route path="cash-flow-analysis" element={<ModuleGuard moduleKey="cash_flow"><CashFlowAnalysis /></ModuleGuard>} />
+                <Route path="report-qa" element={<ModuleGuard moduleKey="report_qa"><ReportQA /></ModuleGuard>} />
+                <Route path="investment-report/:id" element={<ModuleGuard moduleKey="reports"><InvestmentReportView /></ModuleGuard>} />
+                <Route path="templates" element={<ModuleGuard moduleKey="templates"><Templates /></ModuleGuard>} />
+                <Route path="white-label" element={<ModuleGuard moduleKey="white_label"><WhiteLabel /></ModuleGuard>} />
+                <Route path="error-logs" element={<ModuleGuard moduleKey="error_logs"><ErrorLogs /></ModuleGuard>} />
+                <Route path="settings" element={<ModuleGuard moduleKey="settings"><Settings /></ModuleGuard>} />
+                <Route path="admin/users" element={<ModuleGuard moduleKey="user_management"><UserManagement /></ModuleGuard>} />
+                <Route path="admin/activity-logs" element={<ModuleGuard moduleKey="activity_logs"><ActivityLogs /></ModuleGuard>} />
+                <Route path="admin/depreciation-comps" element={<ModuleGuard moduleKey="depreciation_comps"><DepreciationCompsAdmin /></ModuleGuard>} />
+                <Route path="integrations" element={<ModuleGuard moduleKey="integrations"><Integrations /></ModuleGuard>} />
+                <Route path="cloudflare" element={<ModuleGuard moduleKey="cloudflare"><CloudflareManagement /></ModuleGuard>} />
+                <Route path="api-usage" element={<ModuleGuard moduleKey="api_usage"><ApiUsage /></ModuleGuard>} />
+                <Route path="clients" element={<ModuleGuard moduleKey="clients"><ClientManagement /></ModuleGuard>} />
+                <Route path="client-tracker" element={<ModuleGuard moduleKey="client_tracker"><ClientTracker /></ModuleGuard>} />
+                <Route path="portfolio-reports" element={<ModuleGuard moduleKey="portfolio_reports"><PortfolioReports /></ModuleGuard>} />
+                <Route path="report-requests" element={<ModuleGuard moduleKey="reports"><ReportRequests /></ModuleGuard>} />
+                <Route path="deal-pipeline" element={<ModuleGuard moduleKey="deal_pipeline"><DealPipeline /></ModuleGuard>} />
+                <Route path="reminders" element={<ModuleGuard moduleKey="reminders"><RemindersHub /></ModuleGuard>} />
+                <Route path="checklists" element={<ModuleGuard moduleKey="checklists"><Checklists /></ModuleGuard>} />
+                <Route path="agreements" element={<ModuleGuard moduleKey="agreements"><Agreements /></ModuleGuard>} />
+                <Route path="game-plan" element={<ModuleGuard moduleKey="game_plans"><GamePlan /></ModuleGuard>} />
+                <Route path="portal-config" element={<ModuleGuard moduleKey="portal_config"><PortalConfig /></ModuleGuard>} />
+                <Route path="marketing-analytics" element={<ModuleGuard moduleKey="marketing_analytics"><MarketingAnalytics /></ModuleGuard>} />
                         </Route>
                         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                         <Route path="*" element={<NotFound />} />
