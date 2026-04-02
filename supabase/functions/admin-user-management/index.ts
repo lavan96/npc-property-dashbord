@@ -1263,6 +1263,51 @@ serve(async (req: Request) => {
       );
     }
 
+    // Force logout a user by invalidating all their sessions
+    if (action === 'force_logout') {
+      const { user_id } = body;
+      if (!user_id) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'User ID required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Prevent self-logout
+      if (user_id === adminUser.id) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Cannot force-logout yourself' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { error } = await supabase
+        .from('user_sessions')
+        .delete()
+        .eq('user_id', user_id);
+
+      if (error) {
+        console.error('Force logout error:', error);
+        return new Response(
+          JSON.stringify({ success: false, error: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Fetch target username for logging
+      const { data: targetUser } = await supabase
+        .from('custom_users')
+        .select('username')
+        .eq('id', user_id)
+        .single();
+
+      console.log(`User ${targetUser?.username || user_id} force-logged out by ${adminUser.username}`);
+      return new Response(
+        JSON.stringify({ success: true, message: `${targetUser?.username || 'User'} has been logged out` }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     return new Response(
       JSON.stringify({ success: false, error: 'Invalid action' }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

@@ -602,9 +602,9 @@ export default function Settings() {
 
       {/* Save Settings - Sticky on mobile */}
       <div className="flex justify-end md:relative fixed bottom-16 left-0 right-0 md:bottom-auto p-4 md:p-0 bg-background/95 backdrop-blur-sm md:bg-transparent border-t md:border-0 z-30">
-        <Button onClick={saveAllSettings} disabled={isSaving} className="w-full md:w-auto">
+        <Button onClick={saveAllSettings} disabled={isSaving || !canEditSettings} className="w-full md:w-auto">
           {isSaving && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
-          Save Settings
+          {!canEditSettings ? 'View Only' : 'Save Settings'}
         </Button>
       </div>
     </div>
