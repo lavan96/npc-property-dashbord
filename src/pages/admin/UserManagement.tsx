@@ -228,7 +228,7 @@ export default function UserManagement() {
       } else toast.error(data?.error || 'Failed to force logout');
     } catch { toast.error('Failed to force logout'); }
   };
-
+  const handleToggleActive = async (userId: string, isActive: boolean) => {
     try {
       const { data } = await invokeSecureFunction('admin-user-management', {
         action: 'update_user', user_id: userId, is_active: isActive,
