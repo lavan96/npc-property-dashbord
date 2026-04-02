@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { Building2, Calendar, AlertTriangle, DollarSign, TrendingUp, Image, FileText, Tag, Ruler } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { KPICard } from '@/components/dashboard/KPICard';
