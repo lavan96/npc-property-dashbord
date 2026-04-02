@@ -489,22 +489,26 @@ const Automation = () => {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 self-end sm:self-auto">
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => openEditModal(switchItem)}
-                          className="min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0"
-                        >
-                          <Settings2 className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => deleteSwitch(switchItem)}
-                          className="text-destructive hover:text-destructive min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {canEdit && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => openEditModal(switchItem)}
+                            className="min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0"
+                          >
+                            <Settings2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {canDelete && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => deleteSwitch(switchItem)}
+                            className="text-destructive hover:text-destructive min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </CardContent>
