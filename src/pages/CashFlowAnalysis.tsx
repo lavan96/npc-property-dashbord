@@ -34,6 +34,7 @@ interface InvestmentReport {
 type BuildTypeFilter = 'all' | 'new_build' | 'existing_property' | 'land_only';
 
 export default function CashFlowAnalysis() {
+  const { canEdit: canEditCashFlow } = useModulePermissions('cash_flow');
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [reports, setReports] = useState<InvestmentReport[]>([]);
