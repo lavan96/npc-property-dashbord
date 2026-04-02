@@ -690,10 +690,12 @@ export default function Listings() {
                             Copy Address
                           </DropdownMenuItem>
                         )}
-                        <DropdownMenuItem onClick={() => openInvestmentReportModal(listing)}>
-                          <BarChart3 className="h-4 w-4 mr-2" />
-                          Investment Report
-                        </DropdownMenuItem>
+                        {canEditListings && (
+                          <DropdownMenuItem onClick={() => openInvestmentReportModal(listing)}>
+                            <BarChart3 className="h-4 w-4 mr-2" />
+                            Investment Report
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
