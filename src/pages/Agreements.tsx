@@ -19,6 +19,7 @@ import { FileSignature, Search, RefreshCw, MoreHorizontal, Eye, XCircle, Downloa
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import GammaTemplateManager from '@/components/agreements/GammaTemplateManager';
 
@@ -43,6 +44,7 @@ export default function Agreements() {
   const [previewTitle, setPreviewTitle] = useState('');
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const navigate = useNavigate();
+  const { canEdit: canEditAgreements } = useModulePermissions('agreements');
 
   const filteredAgreements = agreements.filter((a) =>
     a.buyer_names.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -308,7 +310,7 @@ export default function Agreements() {
                               <Eye className="h-4 w-4 mr-2" />
                               View Client
                             </DropdownMenuItem>
-                            {agreement.status === 'generated' && (
+                            {canEditAgreements && agreement.status === 'generated' && (
                               <DropdownMenuItem onClick={() => handleSendViaDocuSign(agreement)}>
                                 <Send className="h-4 w-4 mr-2" />
                                 Send via DocuSign
@@ -320,7 +322,7 @@ export default function Agreements() {
                                 Refresh Status
                               </DropdownMenuItem>
                             )}
-                            {['sent', 'delivered', 'viewed'].includes(agreement.status) && (
+                            {canEditAgreements && ['sent', 'delivered', 'viewed'].includes(agreement.status) && (
                               <DropdownMenuItem
                                 className="text-destructive"
                                 onClick={() => handleVoid(agreement.id)}

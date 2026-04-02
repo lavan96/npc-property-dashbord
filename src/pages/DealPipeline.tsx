@@ -20,6 +20,7 @@ import { SettlementCountdownCards } from '@/components/deals/SettlementCountdown
 import { CommissionForecastWidget } from '@/components/deals/CommissionForecastWidget';
 import { AtRiskDealsPanel } from '@/components/deals/AtRiskDealsPanel';
 import { toast } from 'sonner';
+import { useModulePermissions } from '@/hooks/useModulePermissions';
 import type { DealWithClient } from '@/hooks/useAllDeals';
 
 export default function DealPipeline() {
@@ -29,6 +30,7 @@ export default function DealPipeline() {
   const [filters, setFilters] = useState<PipelineFilters>(DEFAULT_FILTERS);
   const [filtersExpanded, setFiltersExpanded] = useState(false);
   const navigate = useNavigate();
+  const { canEdit: canEditDeals } = useModulePermissions('deal_pipeline');
 
   // Apply global filters to deals
   const filteredDeals = usePipelineFilters(deals, filters);
@@ -39,14 +41,17 @@ export default function DealPipeline() {
   };
 
   const handleUpdatePayment = (paymentId: string, clientId: string, data: any) => {
+    if (!canEditDeals) { toast.error('You do not have edit permission for deals'); return; }
     updateBuildPayment.mutate({ paymentId, clientId, data });
   };
 
   const handleUpdateDeal = (dealId: string, clientId: string, data: any) => {
+    if (!canEditDeals) { toast.error('You do not have edit permission for deals'); return; }
     updateDeal.mutate({ dealId, clientId, data });
   };
 
   const handleUpdateStage = (stageId: string, clientId: string, data: any) => {
+    if (!canEditDeals) { toast.error('You do not have edit permission for deals'); return; }
     updateDealStage.mutate({ stageId, clientId, data });
   };
 

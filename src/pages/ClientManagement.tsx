@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -130,6 +131,7 @@ export default function ClientManagement() {
   const [showActiveOnly, setShowActiveOnly] = useState(false);
   const [showAddClientModal, setShowAddClientModal] = useState(false);
   const queryClient = useQueryClient();
+  const { canEdit: canEditClients, canDelete: canDeleteClients } = useModulePermissions('clients');
 
   // Fetch clients with property count via secure Edge Function (HttpOnly cookies)
   const { data: clients = [], isLoading, refetch } = useQuery({
@@ -520,16 +522,18 @@ export default function ClientManagement() {
             </span>
             <span className="sm:hidden">Import</span>
           </Button>
-          <Button 
-            onClick={() => setShowAddClientModal(true)} 
-            variant="default" 
-            size="sm"
-            className="h-8 text-xs sm:text-sm"
-          >
-            <UserPlus className="h-3.5 w-3.5 mr-1.5" />
-            <span className="hidden sm:inline">Add Client</span>
-            <span className="sm:hidden">Add</span>
-          </Button>
+          {canEditClients && (
+            <Button 
+              onClick={() => setShowAddClientModal(true)} 
+              variant="default" 
+              size="sm"
+              className="h-8 text-xs sm:text-sm"
+            >
+              <UserPlus className="h-3.5 w-3.5 mr-1.5" />
+              <span className="hidden sm:inline">Add Client</span>
+              <span className="sm:hidden">Add</span>
+            </Button>
+          )}
           
           {/* More actions in dropdown on mobile */}
           <DropdownMenu>
@@ -694,7 +698,7 @@ export default function ClientManagement() {
                     client={client}
                     ghlLocationId={ghlLocationId}
                     onView={() => handleViewClient(client)}
-                    onDelete={() => handleDeleteClient(client)}
+                    onDelete={canDeleteClients ? () => handleDeleteClient(client) : undefined}
                     onSyncComplete={() => refetch()}
                     isSelected={selectedClients.includes(client.id)}
                     onSelect={(checked) => handleSelectClient(client.id, !!checked)}

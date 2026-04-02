@@ -200,7 +200,7 @@ function formatEmailBody(body: string): string {
 
 export default function EmailCopilot() {
   const isMobile = useIsMobile();
-  const { hasModuleAccess, loading: permissionsLoading } = usePermissions();
+  const { hasModuleAccess, canEdit: canEditModule, canDelete: canDeleteModule, loading: permissionsLoading } = usePermissions();
   const { addNotification } = useNotifications();
   const [emails, setEmails] = useState<Email[]>([]);
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
@@ -2276,10 +2276,12 @@ export default function EmailCopilot() {
                           <Archive className="h-4 w-4 mr-2" />
                           Archive
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={handleDeleteEmail} className="text-destructive">
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
+                        {canDeleteModule('email_copilot') && (
+                          <DropdownMenuItem onClick={handleDeleteEmail} className="text-destructive">
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>

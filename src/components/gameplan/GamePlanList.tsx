@@ -17,7 +17,7 @@ interface Props {
   plans: GamePlan[];
   isLoading: boolean;
   onSelect: (id: string) => void;
-  onDelete: (id: string) => void;
+  onDelete?: (id: string) => void;
 }
 
 export function GamePlanList({ plans, isLoading, onSelect, onDelete }: Props) {
@@ -87,14 +87,16 @@ export function GamePlanList({ plans, isLoading, onSelect, onDelete }: Props) {
                   Created {format(new Date(plan.created_at), 'MMM d, yyyy')}
                 </span>
                 <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                    onClick={(e) => { e.stopPropagation(); onDelete(plan.id); }}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
+                  {onDelete && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                      onClick={(e) => { e.stopPropagation(); onDelete(plan.id); }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
                   <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all group-hover:translate-x-1" />
                 </div>
               </div>
