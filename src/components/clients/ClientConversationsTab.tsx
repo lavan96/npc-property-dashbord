@@ -28,6 +28,21 @@ import {
 import { format, formatDistanceToNow, isToday, isYesterday } from 'date-fns';
 import { toast } from 'sonner';
 
+// Normalize GHL channel types
+function normalizeChannel(ch: string | undefined): string {
+  if (!ch) return 'sms';
+  const lower = ch.toLowerCase();
+  const map: Record<string, string> = {
+    type_phone: 'sms', phone: 'sms', sms: 'sms',
+    type_email: 'email', email: 'email',
+    type_whatsapp: 'whatsapp', whatsapp: 'whatsapp',
+    type_instagram: 'instagram', instagram: 'instagram',
+    type_facebook: 'facebook', facebook: 'facebook',
+    type_live_chat: 'live_chat', live_chat: 'live_chat', livechat: 'live_chat',
+  };
+  return map[lower] || lower;
+}
+
 // Channel icon mapping
 const channelIcons: Record<string, any> = {
   sms: Phone,
@@ -187,7 +202,7 @@ export function ClientConversationsTab({ clientId, clientName, ghlContactId }: C
 
   const handleSendReply = () => {
     if (!replyText.trim() || !selectedConversation) return;
-    const type = selectedConversation.channel_type === 'email' ? 'Email' : 'SMS';
+    const type = normalizeChannel(selectedConversation.channel_type) === 'email' ? 'Email' : 'SMS';
     sendMutation.mutate({
       conversationId: selectedConversation.ghl_conversation_id,
       message: replyText.trim(),
@@ -297,8 +312,9 @@ export function ClientConversationsTab({ clientId, clientName, ghlContactId }: C
 
         {/* Conversation list */}
         {filteredConversations.map((conv) => {
-          const ChannelIcon = channelIcons[conv.channel_type] || MessageSquare;
-          const colorClass = channelColors[conv.channel_type] || 'bg-muted text-muted-foreground';
+          const normalized = normalizeChannel(conv.channel_type);
+          const ChannelIcon = channelIcons[normalized] || MessageSquare;
+          const colorClass = channelColors[normalized] || 'bg-muted text-muted-foreground';
 
           return (
             <Card
@@ -351,7 +367,8 @@ export function ClientConversationsTab({ clientId, clientName, ghlContactId }: C
   }
 
   // ===== MESSAGE THREAD VIEW =====
-  const ChannelIcon = channelIcons[selectedConversation.channel_type] || MessageSquare;
+  const normalizedSelectedChannel = normalizeChannel(selectedConversation.channel_type);
+  const ChannelIcon = channelIcons[normalizedSelectedChannel] || MessageSquare;
 
   return (
     <div className="flex flex-col h-full" style={{ minHeight: '400px', maxHeight: '65vh' }}>
@@ -360,12 +377,12 @@ export function ClientConversationsTab({ clientId, clientName, ghlContactId }: C
         <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setSelectedConversation(null)}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <div className={cn('h-7 w-7 rounded-full flex items-center justify-center border', channelColors[selectedConversation.channel_type] || 'bg-muted')}>
+        <div className={cn('h-7 w-7 rounded-full flex items-center justify-center border', channelColors[normalizedSelectedChannel] || 'bg-muted')}>
           <ChannelIcon className="h-3.5 w-3.5" />
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium truncate">{selectedConversation.contact_name || clientName}</p>
-          <p className="text-[10px] text-muted-foreground capitalize">{selectedConversation.channel_type.replace('_', ' ')}</p>
+          <p className="text-[10px] text-muted-foreground capitalize">{normalizedSelectedChannel.replace('_', ' ')}</p>
         </div>
         <Button
           variant="ghost"
@@ -458,7 +475,7 @@ export function ClientConversationsTab({ clientId, clientName, ghlContactId }: C
       <div className="border-t pt-2 shrink-0">
         <div className="flex items-end gap-2">
           <Textarea
-            placeholder={`Reply via ${selectedConversation.channel_type.replace('_', ' ')}...`}
+            placeholder={`Reply via ${normalizedSelectedChannel.replace('_', ' ')}...`}
             value={replyText}
             onChange={(e) => setReplyText(e.target.value)}
             className="min-h-[40px] max-h-[120px] resize-none text-sm"

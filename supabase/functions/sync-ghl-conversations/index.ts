@@ -47,16 +47,18 @@ serve(async (req) => {
     };
 
     // Determine sync mode
-    const { client_id, ghl_contact_id, mode = 'incremental' } = body;
+    const { client_id, ghl_contact_id, clientId: camelClientId, ghlContactId: camelGhlContactId, mode = 'incremental' } = body;
+    const resolvedClientId = client_id || camelClientId;
+    const resolvedGhlContactId = ghl_contact_id || camelGhlContactId;
 
     // If syncing for a specific client, get their GHL contact ID
     let targetContactIds: Array<{ clientId: string; ghlContactId: string }> = [];
 
-    if (client_id) {
+    if (resolvedClientId) {
       const { data: client } = await supabase
         .from('clients')
         .select('id, ghl_contact_id')
-        .eq('id', client_id)
+        .eq('id', resolvedClientId)
         .maybeSingle();
 
       if (!client?.ghl_contact_id) {
@@ -69,16 +71,16 @@ serve(async (req) => {
         });
       }
       targetContactIds = [{ clientId: client.id, ghlContactId: client.ghl_contact_id }];
-    } else if (ghl_contact_id) {
+    } else if (resolvedGhlContactId) {
       const { data: client } = await supabase
         .from('clients')
         .select('id')
-        .eq('ghl_contact_id', ghl_contact_id)
+        .eq('ghl_contact_id', resolvedGhlContactId)
         .maybeSingle();
 
       targetContactIds = [{
         clientId: client?.id || null,
-        ghlContactId: ghl_contact_id,
+        ghlContactId: resolvedGhlContactId,
       }];
     } else {
       // Bulk sync: get all clients with GHL contact IDs
@@ -225,19 +227,25 @@ function mapChannelType(ghlType: string | number | undefined): string {
     'sms': 'sms',
     '1': 'sms',
     'phone': 'sms',
+    'type_phone': 'sms',
     'email': 'email',
     '2': 'email',
+    'type_email': 'email',
     'whatsapp': 'whatsapp',
     '3': 'whatsapp',
+    'type_whatsapp': 'whatsapp',
     'fb': 'facebook',
     'facebook': 'facebook',
     '4': 'facebook',
+    'type_facebook': 'facebook',
     'ig': 'instagram',
     'instagram': 'instagram',
     '5': 'instagram',
+    'type_instagram': 'instagram',
     'live_chat': 'live_chat',
     'livechat': 'live_chat',
     '6': 'live_chat',
+    'type_live_chat': 'live_chat',
     'google_my_business': 'gmb',
     'gmb': 'gmb',
     '7': 'gmb',
