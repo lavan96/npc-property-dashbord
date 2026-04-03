@@ -312,8 +312,9 @@ export function ClientConversationsTab({ clientId, clientName, ghlContactId }: C
 
         {/* Conversation list */}
         {filteredConversations.map((conv) => {
-          const ChannelIcon = channelIcons[conv.channel_type] || MessageSquare;
-          const colorClass = channelColors[conv.channel_type] || 'bg-muted text-muted-foreground';
+          const normalized = normalizeChannel(conv.channel_type);
+          const ChannelIcon = channelIcons[normalized] || MessageSquare;
+          const colorClass = channelColors[normalized] || 'bg-muted text-muted-foreground';
 
           return (
             <Card
