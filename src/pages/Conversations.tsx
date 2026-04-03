@@ -49,12 +49,14 @@ function normalizeChannel(ch: string | undefined): string {
   if (!ch) return 'sms';
   const lower = ch.toLowerCase();
   const map: Record<string, string> = {
-    type_phone: 'sms', phone: 'sms', sms: 'sms',
+    type_phone: 'sms', phone: 'sms', sms: 'sms', type_sms: 'sms', type_sms_reaction: 'sms',
     type_email: 'email', email: 'email',
     type_whatsapp: 'whatsapp', whatsapp: 'whatsapp',
     type_instagram: 'instagram', instagram: 'instagram',
     type_facebook: 'facebook', facebook: 'facebook',
     type_live_chat: 'live_chat', live_chat: 'live_chat', livechat: 'live_chat',
+    type_call: 'sms', type_activity_contact: 'activity', type_activity_opportunity: 'activity',
+    type_activity_appointment: 'activity',
   };
   return map[lower] || lower;
 }
