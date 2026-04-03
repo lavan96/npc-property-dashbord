@@ -17,6 +17,7 @@ import {
   Sparkles,
   Phone,
   MessageSquareText,
+  MessageSquare,
   FileStack,
   Palette,
   Users,
