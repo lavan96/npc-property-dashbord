@@ -111,6 +111,14 @@ interface Message {
   sender_name: string | null;
 }
 
+// ── Sync helper ──────────────────────────────────────────────
+async function triggerGhlSync() {
+  const { data, error } = await invokeSecureFunction('sync-ghl-conversations', { mode: 'incremental' });
+  if (error) throw new Error(error.message);
+  if (data?.error) throw new Error(data.error);
+  return data;
+}
+
 // ── Page Component ───────────────────────────────────────────
 export default function Conversations() {
   const queryClient = useQueryClient();
@@ -126,6 +134,27 @@ export default function Conversations() {
   const [emailSubject, setEmailSubject] = useState('');
   const [selectedMailbox, setSelectedMailbox] = useState<string>('admin');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  // ── Sync from GHL API then refetch local data ──
+  const handleSyncAndRefresh = async () => {
+    setIsSyncing(true);
+    try {
+      await triggerGhlSync();
+      await refetchConversations();
+      if (selectedId) {
+        queryClient.invalidateQueries({ queryKey: ['conversation-messages', selectedId] });
+      }
+      toast.success('Conversations synced from GHL');
+    } catch (err: any) {
+      console.error('GHL sync failed:', err);
+      toast.error('Sync failed: ' + err.message);
+      // Still refetch local data
+      await refetchConversations();
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   // ── Fetch ALL conversations via edge function ──
   const { data: conversations = [], isLoading: loadingConversations, refetch: refetchConversations } = useQuery({
@@ -397,11 +426,11 @@ export default function Conversations() {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => refetchConversations()}
-          disabled={loadingConversations}
+          onClick={handleSyncAndRefresh}
+          disabled={isSyncing || loadingConversations}
         >
-          <RefreshCw className={cn('h-3.5 w-3.5 mr-1.5', loadingConversations && 'animate-spin')} />
-          Refresh
+          <RefreshCw className={cn('h-3.5 w-3.5 mr-1.5', (isSyncing || loadingConversations) && 'animate-spin')} />
+          {isSyncing ? 'Syncing...' : 'Sync'}
         </Button>
       </div>
 
