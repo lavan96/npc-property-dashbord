@@ -23,8 +23,15 @@ import {
   Globe,
   RefreshCw,
   ChevronRight,
+  ChevronDown,
   User,
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { format, formatDistanceToNow, isToday, isYesterday } from 'date-fns';
 import { toast } from 'sonner';
 
