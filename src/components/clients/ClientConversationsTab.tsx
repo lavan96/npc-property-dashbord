@@ -28,6 +28,21 @@ import {
 import { format, formatDistanceToNow, isToday, isYesterday } from 'date-fns';
 import { toast } from 'sonner';
 
+// Normalize GHL channel types
+function normalizeChannel(ch: string | undefined): string {
+  if (!ch) return 'sms';
+  const lower = ch.toLowerCase();
+  const map: Record<string, string> = {
+    type_phone: 'sms', phone: 'sms', sms: 'sms',
+    type_email: 'email', email: 'email',
+    type_whatsapp: 'whatsapp', whatsapp: 'whatsapp',
+    type_instagram: 'instagram', instagram: 'instagram',
+    type_facebook: 'facebook', facebook: 'facebook',
+    type_live_chat: 'live_chat', live_chat: 'live_chat', livechat: 'live_chat',
+  };
+  return map[lower] || lower;
+}
+
 // Channel icon mapping
 const channelIcons: Record<string, any> = {
   sms: Phone,
