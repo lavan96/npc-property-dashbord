@@ -512,16 +512,55 @@ export function ClientConversationsTab({ clientId, clientName, ghlContactId }: C
       </ScrollArea>
 
       {/* Reply composer */}
-      <div className="border-t pt-2 shrink-0">
+      <div className="border-t pt-2 shrink-0 space-y-2">
+        {/* Channel selector row */}
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-muted-foreground whitespace-nowrap">Send via:</span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs px-2.5">
+                {(() => {
+                  const Icon = channelIcons[replyChannel] || MessageSquare;
+                  return <Icon className="h-3 w-3" />;
+                })()}
+                <span className="capitalize">{replyChannel === 'sms' ? 'SMS' : replyChannel === 'whatsapp' ? 'WhatsApp' : 'Email'}</span>
+                <ChevronDown className="h-3 w-3 opacity-50" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="min-w-[140px]">
+              <DropdownMenuItem onClick={() => setReplyChannel('sms')} className="gap-2 text-xs">
+                <Phone className="h-3.5 w-3.5" /> SMS
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setReplyChannel('email')} className="gap-2 text-xs">
+                <Mail className="h-3.5 w-3.5" /> Email
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setReplyChannel('whatsapp')} className="gap-2 text-xs">
+                <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        {/* Email subject field */}
+        {replyChannel === 'email' && (
+          <Input
+            placeholder="Email subject..."
+            value={emailSubject}
+            onChange={(e) => setEmailSubject(e.target.value)}
+            className="h-8 text-sm"
+          />
+        )}
+
+        {/* Message + send */}
         <div className="flex items-end gap-2">
           <Textarea
-            placeholder={`Reply via ${normalizedSelectedChannel.replace('_', ' ')}...`}
+            placeholder={`Type your ${replyChannel === 'sms' ? 'SMS' : replyChannel === 'whatsapp' ? 'WhatsApp' : 'email'} message...`}
             value={replyText}
             onChange={(e) => setReplyText(e.target.value)}
             className="min-h-[40px] max-h-[120px] resize-none text-sm"
-            rows={1}
+            rows={replyChannel === 'email' ? 3 : 1}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
+              if (e.key === 'Enter' && !e.shiftKey && replyChannel !== 'email') {
                 e.preventDefault();
                 handleSendReply();
               }
@@ -531,7 +570,7 @@ export function ClientConversationsTab({ clientId, clientName, ghlContactId }: C
             size="sm"
             className="h-9 w-9 p-0 shrink-0"
             onClick={handleSendReply}
-            disabled={!replyText.trim() || sendMutation.isPending}
+            disabled={!replyText.trim() || sendMutation.isPending || (replyChannel === 'email' && !emailSubject.trim())}
           >
             {sendMutation.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
