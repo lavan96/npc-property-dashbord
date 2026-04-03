@@ -337,7 +337,7 @@ async function fetchConversationMessages(
       const messageRows = messages.map((msg: any) => ({
         conversation_id: localConversationId,
         ghl_message_id: msg.id,
-        direction: mapMessageDirection(msg.direction || msg.type),
+        direction: mapMessageDirection(msg),
         channel_type: mapChannelType(msg.messageType || msg.source),
         body: msg.body || msg.message || msg.text || null,
         content_type: mapContentType(msg.contentType),
