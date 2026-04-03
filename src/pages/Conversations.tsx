@@ -130,27 +130,31 @@ export default function Conversations() {
   const [selectedMailbox, setSelectedMailbox] = useState<string>('admin');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // ── Fetch ALL conversations (direct Supabase query) ──
+  // ── Fetch ALL conversations via edge function ──
   const { data: conversations = [], isLoading: loadingConversations, refetch: refetchConversations } = useQuery({
     queryKey: ['all-conversations'],
     queryFn: async () => {
-      // Fetch conversations with client info
-      const { data: convos, error } = await supabase
-        .from('ghl_conversations')
-        .select('*')
-        .order('last_message_date', { ascending: false });
-      if (error) throw error;
+      // Fetch all conversations through the secure edge function
+      const { data, error } = await invokeSecureFunction('get-client-data', {
+        listMode: true,
+        listOptions: {
+          table: 'ghl_conversations',
+          orderBy: 'last_message_date',
+          order_asc: false,
+        },
+      });
+      if (error) throw new Error(error.message);
+      const convos = (data?.records || []) as any[];
 
       // Fetch client names for all unique client_ids
-      const clientIds = [...new Set((convos || []).map(c => c.client_id).filter(Boolean))] as string[];
+      const clientIds = [...new Set(convos.map(c => c.client_id).filter(Boolean))] as string[];
       let clientMap: Record<string, { name: string; email: string | null }> = {};
       if (clientIds.length > 0) {
-        const { data: clients } = await supabase
-          .from('clients')
-          .select('id, primary_first_name, primary_surname, primary_email')
-          .in('id', clientIds);
-        if (clients) {
-          clients.forEach(c => {
+        const { data: clientData, error: clientErr } = await invokeSecureFunction('get-client-data', {
+          clientIds,
+        });
+        if (!clientErr && clientData?.clients) {
+          clientData.clients.forEach((c: any) => {
             clientMap[c.id] = {
               name: [c.primary_first_name, c.primary_surname].filter(Boolean).join(' ') || 'Unknown',
               email: c.primary_email,
@@ -159,7 +163,7 @@ export default function Conversations() {
         }
       }
 
-      return (convos || []).map(c => ({
+      return convos.map(c => ({
         ...c,
         client_name: c.client_id ? clientMap[c.client_id]?.name || 'Unknown' : 'Unlinked Contact',
         client_email: c.client_id ? clientMap[c.client_id]?.email : null,
@@ -177,13 +181,17 @@ export default function Conversations() {
     queryKey: ['conversation-messages', selectedId],
     queryFn: async () => {
       if (!selectedId) return [];
-      const { data, error } = await supabase
-        .from('ghl_conversation_messages')
-        .select('*')
-        .eq('conversation_id', selectedId)
-        .order('ghl_date_added', { ascending: true });
-      if (error) throw error;
-      return (data || []) as Message[];
+      const { data, error } = await invokeSecureFunction('get-client-data', {
+        listMode: true,
+        listOptions: {
+          table: 'ghl_conversation_messages',
+          filters: { conversation_id: selectedId },
+          orderBy: 'ghl_date_added',
+          order_asc: true,
+        },
+      });
+      if (error) throw new Error(error.message);
+      return (data?.records || []) as Message[];
     },
     enabled: !!selectedId,
   });
@@ -192,12 +200,15 @@ export default function Conversations() {
   const { data: mailboxes = [] } = useQuery({
     queryKey: ['mailboxes-conversations-page'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('custom_users')
-        .select('id, email, personal_mailbox')
-        .not('personal_mailbox', 'is', null);
-      if (error) throw error;
-      return data.filter(u => u.personal_mailbox) || [];
+      const { data, error } = await invokeSecureFunction('get-client-data', {
+        listMode: true,
+        listOptions: {
+          table: 'custom_users',
+          select: 'id, email, personal_mailbox',
+        },
+      });
+      if (error) throw new Error(error.message);
+      return (data?.records || []).filter((u: any) => u.personal_mailbox) || [];
     },
     enabled: replyChannel === 'email',
   });
@@ -327,10 +338,12 @@ export default function Conversations() {
     // Mark as read: reset unread_count to 0
     if (conv.unread_count > 0) {
       try {
-        await supabase
-          .from('ghl_conversations')
-          .update({ unread_count: 0 })
-          .eq('id', conv.id);
+        await invokeSecureFunction('manage-client-data', {
+          table: 'ghl_conversations',
+          operation: 'update',
+          id: conv.id,
+          data: { unread_count: 0 },
+        });
         // Optimistically update the local cache
         queryClient.setQueryData(['all-conversations'], (old: ConversationRow[] | undefined) =>
           (old || []).map(c => c.id === conv.id ? { ...c, unread_count: 0 } : c)
