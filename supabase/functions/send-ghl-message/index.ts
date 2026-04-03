@@ -114,7 +114,8 @@ Deno.serve(async (req) => {
       conversation_id: null as string | null,
       direction: "outbound",
       body: message,
-      message_type: (type || "SMS").toLowerCase(),
+      channel_type: messageType.toLowerCase(),
+      message_type: messageType.toLowerCase(),
       message_status: "delivered",
       ghl_date_added: new Date().toISOString(),
     };
