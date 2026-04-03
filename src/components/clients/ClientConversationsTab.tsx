@@ -475,7 +475,7 @@ export function ClientConversationsTab({ clientId, clientName, ghlContactId }: C
       <div className="border-t pt-2 shrink-0">
         <div className="flex items-end gap-2">
           <Textarea
-            placeholder={`Reply via ${selectedConversation.channel_type.replace('_', ' ')}...`}
+            placeholder={`Reply via ${normalizedSelectedChannel.replace('_', ' ')}...`}
             value={replyText}
             onChange={(e) => setReplyText(e.target.value)}
             className="min-h-[40px] max-h-[120px] resize-none text-sm"
