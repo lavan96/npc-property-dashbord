@@ -371,6 +371,10 @@ NPC Team`
               <Inbox className="h-3 w-3 mr-0.5" />
               Emails
             </TabsTrigger>
+            <TabsTrigger value="conversations" className="text-xs sm:text-sm">
+              <MessageSquare className="h-3 w-3 mr-0.5" />
+              Conversations
+            </TabsTrigger>
             <TabsTrigger value="appointments" className="text-xs sm:text-sm">
               <Calendar className="h-3 w-3 mr-0.5" />
               Appointments
