@@ -47,7 +47,9 @@ serve(async (req) => {
     };
 
     // Determine sync mode
-    const { client_id, ghl_contact_id, mode = 'incremental' } = body;
+    const { client_id, ghl_contact_id, clientId: camelClientId, ghlContactId: camelGhlContactId, mode = 'incremental' } = body;
+    const resolvedClientId = client_id || camelClientId;
+    const resolvedGhlContactId = ghl_contact_id || camelGhlContactId;
 
     // If syncing for a specific client, get their GHL contact ID
     let targetContactIds: Array<{ clientId: string; ghlContactId: string }> = [];
