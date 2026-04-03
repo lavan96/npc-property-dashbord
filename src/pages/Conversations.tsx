@@ -320,9 +320,25 @@ export default function Conversations() {
     return format(d, 'dd/MM/yy');
   };
 
-  const handleSelectConversation = (conv: ConversationRow) => {
+  const handleSelectConversation = async (conv: ConversationRow) => {
     setSelectedId(conv.id);
     setSearchParams({ id: conv.id });
+
+    // Mark as read: reset unread_count to 0
+    if (conv.unread_count > 0) {
+      try {
+        await supabase
+          .from('ghl_conversations')
+          .update({ unread_count: 0 })
+          .eq('id', conv.id);
+        // Optimistically update the local cache
+        queryClient.setQueryData(['all-conversations'], (old: ConversationRow[] | undefined) =>
+          (old || []).map(c => c.id === conv.id ? { ...c, unread_count: 0 } : c)
+        );
+      } catch (err) {
+        console.error('Failed to mark conversation as read:', err);
+      }
+    }
   };
 
   const handleBack = () => {
