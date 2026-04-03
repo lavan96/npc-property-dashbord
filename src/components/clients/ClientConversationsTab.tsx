@@ -382,7 +382,7 @@ export function ClientConversationsTab({ clientId, clientName, ghlContactId }: C
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium truncate">{selectedConversation.contact_name || clientName}</p>
-          <p className="text-[10px] text-muted-foreground capitalize">{selectedConversation.channel_type.replace('_', ' ')}</p>
+          <p className="text-[10px] text-muted-foreground capitalize">{normalizedSelectedChannel.replace('_', ' ')}</p>
         </div>
         <Button
           variant="ghost"
