@@ -63,7 +63,8 @@ export type NotificationType =
   // Game Plan
   | 'game_plan_created'
   | 'game_plan_updated'
-  | 'game_plan_milestone_completed';
+  | 'game_plan_milestone_completed'
+  | 'conversation_reply';
 
 export interface Notification {
   id: string;
