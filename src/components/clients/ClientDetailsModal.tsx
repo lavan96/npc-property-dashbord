@@ -807,6 +807,7 @@ NPC Team`
               <ClientConversationsTab
                 clientId={client.id}
                 clientName={`${client.primary_first_name} ${client.primary_surname}`}
+                clientEmail={client.primary_email}
                 ghlContactId={fullClient?.ghl_contact_id}
               />
             </TabsContent>
