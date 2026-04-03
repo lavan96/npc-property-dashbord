@@ -39,6 +39,7 @@ import ErrorLogs from './pages/ErrorLogs';
 import Automation from './pages/Automation';
 import EmailCopilot from './pages/EmailCopilot';
 import CallLogs from './pages/CallLogs';
+import Conversations from './pages/Conversations';
 import CashFlowAnalysis from './pages/CashFlowAnalysis';
 import ReportQA from './pages/ReportQA';
 import InvestmentReportView from './pages/InvestmentReportView';
