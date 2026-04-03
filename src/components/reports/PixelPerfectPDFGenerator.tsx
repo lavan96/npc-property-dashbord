@@ -2044,13 +2044,13 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
         return { lastY: currentY - 25, needsNewPage: false }; // Increased spacing after table
       };
 
-      // Helper to draw horizontal rule
+      // Helper to draw horizontal rule (gold accent)
       const drawHorizontalRule = (page: any, x: number, y: number, width: number): number => {
         page.drawLine({
           start: { x: x, y: y },
           end: { x: x + width, y: y },
           thickness: 1.5,
-          color: rgb(0.5, 0.5, 0.5),
+          color: GOLD_RGB,
         });
         return y - 20; // Space after rule
       };
