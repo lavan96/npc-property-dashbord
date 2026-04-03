@@ -311,6 +311,8 @@ async function fetchConversationMessages(
         messages = data.data;
       }
 
+      console.log(`[sync-ghl-conversations] Parsed ${messages.length} messages, sample:`, messages.length > 0 ? JSON.stringify(messages[0]).substring(0, 300) : 'none');
+
       if (messages.length === 0) {
         hasMore = false;
         break;
