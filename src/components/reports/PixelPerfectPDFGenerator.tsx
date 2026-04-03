@@ -1269,6 +1269,20 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
       const topMargin = 80; // Top margin (more space for template header)
       const bottomMargin = 70; // Bottom margin
       const lineHeight = 16;
+
+      // ─── Premium Design Tokens (Dark & Gold) ────────────────────────────
+      const GOLD_RGB = rgb(191 / 255, 155 / 255, 80 / 255);     // #BF9B50
+      const GOLD_LIGHT_RGB = rgb(245 / 255, 235 / 255, 210 / 255); // #F5EBD2
+      const NAVY_RGB = rgb(13 / 255, 38 / 255, 77 / 255);       // #0D264D
+      const DARK_BG_RGB = rgb(20 / 255, 20 / 255, 20 / 255);    // #141414
+      const WHITE_RGB = rgb(1, 1, 1);
+      const BODY_TEXT_RGB = rgb(55 / 255, 55 / 255, 55 / 255);   // #373737
+      const SECTION_BG_RGB = rgb(250 / 255, 247 / 255, 240 / 255); // Warm off-white for callouts
+      const TABLE_HEADER_BG = NAVY_RGB;
+      const TABLE_HEADER_TEXT = WHITE_RGB;
+      const TABLE_ALT_ROW = rgb(252 / 255, 249 / 255, 242 / 255); // Very light gold tint
+      const TABLE_BORDER = rgb(210 / 255, 195 / 255, 160 / 255);  // Gold-tinted border
+      const FOOTER_TEXT_RGB = rgb(128 / 255, 128 / 255, 128 / 255);
       const titleSize = 14;
       const textSize = 10;
       
@@ -1945,14 +1959,24 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
             return { lastY: currentY, needsNewPage: true, remainingTableText };
           }
 
-          // Draw cell backgrounds (alternating for readability)
-          if (!isHeader && i % 2 === 0) {
+          // Draw cell backgrounds — premium styled
+          if (isHeader) {
+            // Navy header background
             page.drawRectangle({
               x: x,
               y: currentY - rowHeight + 2,
               width: maxWidth,
               height: rowHeight,
-              color: rgb(0.95, 0.95, 0.95),
+              color: TABLE_HEADER_BG,
+            });
+          } else if (i % 2 === 0) {
+            // Gold-tinted alternating rows
+            page.drawRectangle({
+              x: x,
+              y: currentY - rowHeight + 2,
+              width: maxWidth,
+              height: rowHeight,
+              color: TABLE_ALT_ROW,
             });
           }
 
@@ -1962,35 +1986,55 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
             const cellText = row[j];
             const font = isHeader ? boldFont : normalFont;
             
-            // Draw cell text with wrapping and markdown
-            drawCellText(cellText, cellX, currentY - size - 4, columnWidths[j], font, isHeader);
+            // Override color for header cells to white
+            if (isHeader) {
+              const origDrawCellText = drawCellText;
+              // Draw header text in white by temporarily adjusting the draw
+              const headerParts = parseMarkdownText(stripEmojis(cellText));
+              let cellDrawX = cellX + cellPadding;
+              const cellDrawY = currentY - size - 4;
+              for (const part of headerParts) {
+                const cleanText = part.text.replace(/\*+/g, '').trim();
+                if (!cleanText) continue;
+                page.drawText(cleanText, {
+                  x: cellDrawX,
+                  y: cellDrawY,
+                  size: size,
+                  font: boldFont,
+                  color: TABLE_HEADER_TEXT,
+                });
+                cellDrawX += boldFont.widthOfTextAtSize(cleanText + ' ', size);
+              }
+            } else {
+              drawCellText(cellText, cellX, currentY - size - 4, columnWidths[j], font, isHeader);
+            }
 
-            // Draw vertical cell border
+            // Draw vertical cell border (gold-tinted)
             if (j < row.length - 1) {
               page.drawLine({
                 start: { x: cellX + columnWidths[j], y: currentY },
                 end: { x: cellX + columnWidths[j], y: currentY - rowHeight },
                 thickness: 0.5,
-                color: rgb(0.7, 0.7, 0.7),
+                color: TABLE_BORDER,
               });
             }
           }
 
-          // Draw horizontal border
+          // Draw horizontal border (gold-tinted)
           page.drawLine({
             start: { x: x, y: currentY - rowHeight },
             end: { x: x + maxWidth, y: currentY - rowHeight },
             thickness: isHeader ? 1.5 : 0.5,
-            color: rgb(0.5, 0.5, 0.5),
+            color: isHeader ? GOLD_RGB : TABLE_BORDER,
           });
 
           if (isHeader) {
-            // Draw top border for header
+            // Draw top border for header (gold accent)
             page.drawLine({
               start: { x: x, y: currentY },
               end: { x: x + maxWidth, y: currentY },
               thickness: 1.5,
-              color: rgb(0.5, 0.5, 0.5),
+              color: GOLD_RGB,
             });
           }
 
@@ -2000,13 +2044,13 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
         return { lastY: currentY - 25, needsNewPage: false }; // Increased spacing after table
       };
 
-      // Helper to draw horizontal rule
+      // Helper to draw horizontal rule (gold accent)
       const drawHorizontalRule = (page: any, x: number, y: number, width: number): number => {
         page.drawLine({
           start: { x: x, y: y },
           end: { x: x + width, y: y },
           thickness: 1.5,
-          color: rgb(0.5, 0.5, 0.5),
+          color: GOLD_RGB,
         });
         return y - 20; // Space after rule
       };
@@ -2430,7 +2474,21 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
         const currentPageNumber = pdfDoc.getPageCount(); // Current page we're about to draw on
         sectionPageNumbers.set(cleanSectionName, currentPageNumber);
 
-        // Draw section title with word wrapping (left-aligned for headings)
+        // ─── Premium Section Header: Gold accent bar + Navy text ───────────
+        // Draw gold accent bar on the left
+        currentPage.drawRectangle({
+          x: margin - 8,
+          y: yPosition - 6,
+          width: 3,
+          height: 18,
+          color: GOLD_RGB,
+        });
+        
+        // Draw subtle gold underline below the section title area
+        const sectionTitleClean = stripEmojis(cleanSectionName);
+        const sectionTitleWidth = helveticaBold.widthOfTextAtSize(sectionTitleClean, titleSize);
+        
+        // Draw section title in navy
         let titleResult = drawTextWithWrap(
           currentPage,
           `**${stripEmojis(cleanSectionName)}**`,
@@ -2443,9 +2501,28 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
           20,
           'left' // Section headings should be left-aligned
         );
+        
+        // Draw gold underline after title
+        currentPage.drawLine({
+          start: { x: margin, y: titleResult.lastY + 6 },
+          end: { x: margin + Math.min(sectionTitleWidth + 20, pageWidth - 2 * margin), y: titleResult.lastY + 6 },
+          thickness: 1,
+          color: GOLD_RGB,
+        });
+        
         if (titleResult.needsNewPage) {
           currentPage = await addContentPage();
           yPosition = pageHeight - topMargin - 20;
+          
+          // Re-draw accent bar on new page
+          currentPage.drawRectangle({
+            x: margin - 8,
+            y: yPosition - 6,
+            width: 3,
+            height: 18,
+            color: GOLD_RGB,
+          });
+          
           titleResult = drawTextWithWrap(
             currentPage,
             `**${stripEmojis(cleanSectionName)}**`,
@@ -2456,8 +2533,16 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
             helveticaBold,
             titleSize,
             20,
-            'left' // Section headings should be left-aligned
+            'left'
           );
+          
+          // Draw gold underline on new page
+          currentPage.drawLine({
+            start: { x: margin, y: titleResult.lastY + 6 },
+            end: { x: margin + Math.min(sectionTitleWidth + 20, pageWidth - 2 * margin), y: titleResult.lastY + 6 },
+            thickness: 1,
+            color: GOLD_RGB,
+          });
         }
         yPosition = titleResult.lastY - 10;
 
@@ -2517,18 +2602,18 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
               y: yPosition,
               size: rankHeadingSize,
               font: helveticaBold,
-              color: rgb(0.15, 0.15, 0.15),
+              color: NAVY_RGB,
             });
             
             // Calculate text width for underline
             const textWidth = helveticaBold.widthOfTextAtSize(cleanRankText, rankHeadingSize);
             
-            // Draw underline below the text
+            // Draw underline below the text (gold)
             currentPage.drawLine({
               start: { x: margin, y: yPosition - 3 },
               end: { x: margin + textWidth, y: yPosition - 3 },
               thickness: 1,
-              color: rgb(0.15, 0.15, 0.15),
+              color: GOLD_RGB,
             });
             
             yPosition -= (rankHeadingSize + 12); // Space after rank heading
@@ -2684,23 +2769,23 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
         let tocPage = pdfDoc.getPages()[tocPageIndices[tocPageIdx]];
         let tocY = pageHeight - topMargin - 20;
         
-        // TOC Title
+        // TOC Title - Navy with gold accent
         const tocTitleText = 'TABLE OF CONTENTS';
         tocPage.drawText(tocTitleText, {
           x: margin,
           y: tocY,
           size: 20,
           font: helveticaBold,
-          color: rgb(0.15, 0.15, 0.15),
+          color: NAVY_RGB,
         });
         tocY -= 40;
         
-        // Draw decorative line under title
+        // Draw gold decorative line under title
         tocPage.drawLine({
           start: { x: margin, y: tocY + 15 },
           end: { x: pageWidth - margin, y: tocY + 15 },
           thickness: 2,
-          color: rgb(0.788, 0.647, 0.353), // Gold accent
+          color: GOLD_RGB,
         });
         tocY -= 25;
         
@@ -2761,13 +2846,13 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
           // Get the actual page number for this section
           const actualPageNumber = sectionPageNumbers.get(cleanName) || 0;
           
-          // Draw section number with indentation
+          // Draw section number with gold accent
           tocPage.drawText(sectionNumText, {
             x: margin + indentation,
             y: tocY,
             size: fontSize,
             font: fontToUse,
-            color: rgb(0.3, 0.3, 0.3),
+            color: GOLD_RGB,
           });
           
           // Calculate number text width for positioning
@@ -2777,7 +2862,6 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
           const pageNumWidth = 30; // Reserve space for page number
           const textStartX = margin + indentation + numWidth + 8;
           const maxTocWidth = pageWidth - margin - pageNumWidth - textStartX - 10;
-          // Use word-boundary truncation instead of mid-character truncation
           const displayName = truncateAtWordBoundary(cleanName, maxTocWidth, helveticaFont, fontSize);
           
           tocPage.drawText(displayName, {
@@ -2785,10 +2869,10 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
             y: tocY,
             size: fontSize,
             font: sectionLevel === 2 ? helveticaFont : helveticaFont,
-            color: sectionLevel === 2 ? rgb(0.2, 0.2, 0.2) : rgb(0.35, 0.35, 0.35),
+            color: sectionLevel === 2 ? NAVY_RGB : BODY_TEXT_RGB,
           });
           
-          // Draw dotted leader line
+          // Draw dotted leader line (gold dots)
           const nameWidth = helveticaFont.widthOfTextAtSize(displayName, fontSize);
           const startX = textStartX + nameWidth + 5;
           const endX = pageWidth - margin - pageNumWidth - 5;
@@ -2799,11 +2883,11 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
               x: dx,
               y: tocY + 3,
               size: 0.5,
-              color: rgb(0.5, 0.5, 0.5),
+              color: GOLD_RGB,
             });
           }
           
-          // Draw page number (right-aligned)
+          // Draw page number (right-aligned, navy)
           const pageNumText = String(actualPageNumber);
           const pageNumTextWidth = helveticaBold.widthOfTextAtSize(pageNumText, fontSize);
           tocPage.drawText(pageNumText, {
@@ -2811,7 +2895,7 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
             y: tocY,
             size: fontSize,
             font: helveticaBold,
-            color: rgb(0.3, 0.3, 0.3),
+            color: NAVY_RGB,
           });
           
           // Adjust vertical spacing based on section level
@@ -2838,16 +2922,35 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
         const page = allPages[i];
         const pageNumber = i + 1; // Display page number (2, 3, 4, ...)
         
-        // Draw page number in bottom left corner
-        page.drawText(String(pageNumber), {
-          x: 60, // Left margin position
-          y: 40, // Bottom position
-          size: 10,
-          font: helveticaFont,
-          color: rgb(0.4, 0.4, 0.4), // Gray color
+        // Draw gold accent line above footer
+        page.drawLine({
+          start: { x: margin, y: 52 },
+          end: { x: pageWidth - margin, y: 52 },
+          thickness: 0.5,
+          color: GOLD_RGB,
         });
         
-        console.log(`  ✓ Added page number ${pageNumber} to page index ${i}`);
+        // Draw branded footer text (left)
+        page.drawText('Investment Report  |  Confidential', {
+          x: margin,
+          y: 40,
+          size: 7,
+          font: helveticaFont,
+          color: FOOTER_TEXT_RGB,
+        });
+        
+        // Draw page number (right-aligned)
+        const pageNumStr = `Page ${pageNumber}`;
+        const pageNumWidth = helveticaFont.widthOfTextAtSize(pageNumStr, 7);
+        page.drawText(pageNumStr, {
+          x: pageWidth - margin - pageNumWidth,
+          y: 40,
+          size: 7,
+          font: helveticaFont,
+          color: FOOTER_TEXT_RGB,
+        });
+        
+        console.log(`  ✓ Added styled footer with page ${pageNumber} to page index ${i}`);
       }
       console.log(`✓ Page numbering complete (pages 2-${totalPages - 1})`);
 
