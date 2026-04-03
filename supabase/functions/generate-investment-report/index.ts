@@ -888,12 +888,14 @@ ${previousSections.substring(0, 4000)}...
 **CRITICAL INSTRUCTIONS:**
 1. Generate ONLY the sections listed above - no introduction, no conclusion beyond what's specified
 2. Follow the exact markdown formatting with proper headings (# for main sections)
-3. Include all required tables with complete data (no placeholders like "XX" or "N/A")
-4. Use proper horizontal rules (---) between sections
-5. Each section must meet minimum word counts as specified in the template
-6. Be thorough and data-driven - this is a premium client-facing report
+3. Use tables ONLY for direct comparisons or financial breakdowns (max 5-6 rows per table). Prefer well-written narrative paragraphs over tables for general information
+4. After every table or significant data point, include a brief "What This Means" explanation in plain English
+5. Lead each section with a clear insight or takeaway before presenting supporting data
+6. Be thorough and accurate, but write in a warm, consultative tone that a non-expert investor can easily understand
 7. Start immediately with the first section heading - no preamble
-${sectionDef.id === 'section10' ? '8. MUST include the Investment Score Analysis section with the exact score values provided above' : ''}
+8. Use contextual comparisons (e.g., "30% above the state average") to make numbers meaningful
+9. Include a brief transition sentence at the end of each section to connect to what comes next
+${sectionDef.id === 'section10' ? '10. MUST include the Investment Score Analysis section with the exact score values provided above' : ''}
 
 Generate the ${sectionDef.name} sections now:`;
 
@@ -2770,15 +2772,19 @@ Current market conditions are influenced by the National House Price Growth Rate
 
 # Current Economic Context
 
-| Metric | Value | Period |
-|--------|-------|--------|
-| Cash Rate | ${enhancedData.economics?.cashRate?.current || '4.35'}% | Current |
-| Annual Inflation | ${enhancedData.economics?.inflation?.annual || '3.4'}% | Current |
-| GDP Growth | ${enhancedData.economics?.indicators?.gdpGrowth || '2.1'}% | Current |
-| National Unemployment | ${enhancedData.economics?.indicators?.unemploymentRate || '3.9'}% | Current |
-| National House Price Growth | ${enhancedData.economics?.indicators?.housePriceGrowth || '4.2'}% | Current |
+**VERIFIED ECONOMIC DATA (use these exact figures — sourced ${enhancedData.economics?.retrievedAt ? `on ${new Date(enhancedData.economics.retrievedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}` : 'from latest available data'}):**
 
-The Australian economy is operating at a [growth rate description], with inflation at [X.X]% and the Reserve Bank of Australia maintaining the cash rate at [X.XX]%. The national unemployment rate of [X.X]% indicates [labor market assessment]. These macroeconomic conditions create [environment description] for property values and rental demand in [suburb type] markets like [Suburb].
+| Indicator | Current Value | Source |
+|-----------|--------------|--------|
+| RBA Cash Rate | ${enhancedData.economics?.cashRate?.current || '4.10'}% | ${enhancedData.economics?.cashRate?.source || 'RBA'} |
+| Annual Inflation (CPI) | ${enhancedData.economics?.inflation?.annual || '2.4'}% | ${enhancedData.economics?.inflation?.source || 'ABS'} |
+| Core Inflation (Trimmed Mean) | ${enhancedData.economics?.inflation?.core || '2.9'}% | ABS |
+| GDP Growth | ${enhancedData.economics?.indicators?.gdpGrowth || '1.3'}% | ABS |
+| National Unemployment | ${enhancedData.economics?.indicators?.unemploymentRate || '4.1'}% | ABS Labour Force |
+
+**What This Means for Property Investors:**
+
+Write 2-3 paragraphs in plain English explaining how the current cash rate of ${enhancedData.economics?.cashRate?.current || '4.10'}% and inflation at ${enhancedData.economics?.inflation?.annual || '2.4'}% affect mortgage costs, borrowing capacity, and property demand in practical terms. Avoid jargon — explain as you would to a client sitting across the table. Connect these macro conditions specifically to the property's local market.
 
 ---
 
@@ -4069,11 +4075,25 @@ ${templateContext}
     // ========== END RAG TEMPLATE CONTEXT INJECTION ==========
     
     const areaSystemMessages: Record<string, string> = {
-      'suburb': 'You are an expert Australian suburb analyst with deep knowledge of property markets, demographics, infrastructure, and investment potential across Australian suburbs. Your role is to provide comprehensive, data-driven suburb-level analysis that helps investors understand market dynamics, growth potential, and investment opportunities in specific suburbs. Always include specific numbers, percentages, and statistics in your analysis. Focus on suburb-wide trends, amenities, and characteristics rather than individual properties.',
-      'postcode': 'You are an expert Australian property market analyst specialising in postcode-zone analysis. You provide comprehensive, data-driven analysis comparing all suburbs within a postcode zone, identifying hotspots, and benchmarking against metro and state averages. Always include specific numbers, percentages, and statistics. Focus on zone-wide patterns, suburb-by-suburb comparisons, and investment opportunities across the postcode.',
-      'statewide': 'You are an expert Australian property market economist specialising in state-level macro analysis. You provide comprehensive, data-driven statewide market assessments covering economic conditions, regional comparisons, government policy impacts, infrastructure pipelines, and investment hotspot identification. Always include specific numbers, percentages, and statistics. Focus on macro trends, regional disparities, and strategic investment opportunities across the state.',
+      'suburb': 'You are a trusted property investment advisor at Naidu Property Consulting Services writing suburb-level analysis for clients who may not have a finance background. Lead with clear, plain-English insights and use supporting data selectively — never dump raw statistics without context. Explain what numbers mean in practical terms (e.g., "growing 40% faster than the metro average, which signals strong demand"). Use tables only for direct comparisons, not for listing single values. Every section should feel like advice from a knowledgeable friend, not an academic paper. Still be thorough and accurate — but prioritise readability and actionable takeaways.',
+      'postcode': 'You are a trusted property investment advisor at Naidu Property Consulting Services writing postcode-zone analysis for clients who may not have a finance background. Compare suburbs within the zone using clear narrative language. Use comparison tables sparingly and only when they genuinely aid understanding. Lead each section with the key insight before supporting it with data. Explain implications in practical terms — what does this mean for an investor considering this area?',
+      'statewide': 'You are a trusted property investment advisor at Naidu Property Consulting Services writing statewide macro analysis for clients who may not have a finance background. Provide a bird\'s-eye view of the state\'s property market in accessible, conversational language. Use data to support narrative points, not as the centrepiece. Focus on what matters to investors: where the opportunities are, what risks to watch, and how macro trends translate to real-world investment decisions.',
     };
-    const systemMessage = areaSystemMessages[reportScope] || 'You are an expert Australian property investment analyst for Naidu Property Consulting Services. You produce comprehensive, professional-grade investment reports following strict template structures. Every section is MANDATORY - do not skip any. Use extensive markdown tables for data presentation. Include detailed bullet points with explanations. Never use placeholders like "N/A" or "XX" - provide real data or realistic estimates. Use the EXACT expense values provided in the PRE-CALCULATED ANNUAL COSTS section - do not substitute with defaults. This is a premium client-facing report - be thorough, professional, and data-driven.';
+    const systemMessage = areaSystemMessages[reportScope] || `You are a trusted property investment advisor at Naidu Property Consulting Services writing a premium client-facing report. Your reader is a potential property investor who may not have a finance or economics background.
+
+WRITING STYLE RULES:
+1. Lead every section with a clear, plain-English insight or takeaway BEFORE presenting any data
+2. Use a warm, professional, consultative tone — like a knowledgeable advisor speaking to a client
+3. After any table or data point, add a "What This Means" paragraph explaining the practical implications
+4. Use tables ONLY for direct comparisons or financial breakdowns (max 5-6 rows). Never use a table when a well-written sentence would suffice
+5. Replace jargon with plain language or briefly define technical terms on first use (e.g., "gross rental yield — the annual rent as a percentage of the property price")
+6. Use contextual comparisons to make numbers meaningful (e.g., "This is 15% above the state average" rather than just stating the number)
+7. Include brief connecting sentences between sections for narrative flow
+8. Never use placeholders like "N/A" or "XX" — provide real data or clearly labelled estimates
+9. Use the EXACT expense values provided in the PRE-CALCULATED ANNUAL COSTS section — do not substitute with defaults
+10. Every section is MANDATORY — do not skip any
+
+This report should feel like a polished advisory document that inspires confidence, not a data spreadsheet.`;
 
     console.log('=== MULTI-SECTION REPORT GENERATION ===');
     console.log('Report scope:', reportScope);
