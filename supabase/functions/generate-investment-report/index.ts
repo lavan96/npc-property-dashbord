@@ -888,12 +888,14 @@ ${previousSections.substring(0, 4000)}...
 **CRITICAL INSTRUCTIONS:**
 1. Generate ONLY the sections listed above - no introduction, no conclusion beyond what's specified
 2. Follow the exact markdown formatting with proper headings (# for main sections)
-3. Include all required tables with complete data (no placeholders like "XX" or "N/A")
-4. Use proper horizontal rules (---) between sections
-5. Each section must meet minimum word counts as specified in the template
-6. Be thorough and data-driven - this is a premium client-facing report
+3. Use tables ONLY for direct comparisons or financial breakdowns (max 5-6 rows per table). Prefer well-written narrative paragraphs over tables for general information
+4. After every table or significant data point, include a brief "What This Means" explanation in plain English
+5. Lead each section with a clear insight or takeaway before presenting supporting data
+6. Be thorough and accurate, but write in a warm, consultative tone that a non-expert investor can easily understand
 7. Start immediately with the first section heading - no preamble
-${sectionDef.id === 'section10' ? '8. MUST include the Investment Score Analysis section with the exact score values provided above' : ''}
+8. Use contextual comparisons (e.g., "30% above the state average") to make numbers meaningful
+9. Include a brief transition sentence at the end of each section to connect to what comes next
+${sectionDef.id === 'section10' ? '10. MUST include the Investment Score Analysis section with the exact score values provided above' : ''}
 
 Generate the ${sectionDef.name} sections now:`;
 
