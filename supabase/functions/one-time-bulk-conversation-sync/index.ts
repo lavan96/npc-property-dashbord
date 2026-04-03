@@ -39,8 +39,13 @@ function mapChannelType(ghlType: string | number | undefined): string {
   return mapping[typeStr] || typeStr;
 }
 
-function mapMessageDirection(type: number | string | undefined): string {
-  if (type === 1 || type === '1' || type === 'inbound') return 'inbound';
+function mapMessageDirection(msg: any): string {
+  const dir = msg.direction;
+  if (dir === 'inbound' || dir === 1 || dir === '1') return 'inbound';
+  if (dir === 'outbound' || dir === 2 || dir === '2') return 'outbound';
+  if (msg.incoming === true) return 'inbound';
+  if (msg.incoming === false) return 'outbound';
+  if (msg.userId) return 'outbound';
   return 'outbound';
 }
 

@@ -255,9 +255,20 @@ function mapChannelType(ghlType: string | number | undefined): string {
   return mapping[typeStr] || typeStr;
 }
 
-function mapMessageDirection(type: number | string | undefined): string {
-  // GHL: type 1 = inbound, type 2 = outbound
-  if (type === 1 || type === '1' || type === 'inbound') return 'inbound';
+function mapMessageDirection(msg: any): string {
+  // GHL uses multiple fields to indicate direction:
+  // - direction: "inbound" | "outbound" (string)  
+  // - direction: 1 (inbound) | 2 (outbound) (number)
+  // - incoming: true/false (boolean in some API versions)
+  // - type: 1 (inbound) | 2 (outbound) — but can conflict with messageType
+  const dir = msg.direction;
+  if (dir === 'inbound' || dir === 1 || dir === '1') return 'inbound';
+  if (dir === 'outbound' || dir === 2 || dir === '2') return 'outbound';
+  // Fallback: check incoming flag
+  if (msg.incoming === true) return 'inbound';
+  if (msg.incoming === false) return 'outbound';
+  // Last resort: if contactId sent the message, it's inbound
+  if (msg.userId) return 'outbound'; // sent by a user/agent
   return 'outbound';
 }
 
