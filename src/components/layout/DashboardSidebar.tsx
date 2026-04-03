@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { 
+import {
   Home, 
   Building2, 
   Calendar, 
@@ -17,6 +17,7 @@ import {
   Sparkles,
   Phone,
   MessageSquareText,
+  MessageSquare,
   FileStack,
   Palette,
   Users,
@@ -59,6 +60,7 @@ const navigationItems = [
   { title: 'Report Q&A', url: '/report-qa', icon: MessageSquareText, moduleKey: 'report_qa' },
   { title: 'Email Copilot', url: '/email-copilot', icon: Sparkles, moduleKey: 'email_copilot' },
   { title: 'Call Logs', url: '/call-logs', icon: Phone, moduleKey: 'call_logs' },
+  { title: 'Conversations', url: '/conversations', icon: MessageSquare, moduleKey: 'conversations' },
   { title: 'Clients', url: '/clients', icon: UserCircle, moduleKey: 'clients' },
   { title: 'Client Tracker', url: '/client-tracker', icon: Target, moduleKey: 'client_tracker' },
   { title: 'Portfolio Reports', url: '/portfolio-reports', icon: FileText, moduleKey: 'portfolio_reports' },
