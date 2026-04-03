@@ -296,19 +296,15 @@ async function fetchConversationMessages(
       }
 
       const data = await res.json();
-      console.log(`[sync-ghl-conversations] Messages response for ${ghlConversationId}:`, JSON.stringify(data).substring(0, 800));
       
-      // GHL may return messages under different keys or as a non-array
+      // GHL returns: { messages: { lastMessageId, nextPage, messages: [...] } }
       let messages: any[] = [];
-      if (Array.isArray(data.messages)) {
+      if (data.messages?.messages && Array.isArray(data.messages.messages)) {
+        messages = data.messages.messages;
+        hasMore = data.messages.nextPage === true;
+        lastMessageId = data.messages.lastMessageId || undefined;
+      } else if (Array.isArray(data.messages)) {
         messages = data.messages;
-      } else if (Array.isArray(data)) {
-        messages = data;
-      } else if (data.messages && typeof data.messages === 'object') {
-        // Could be an object with message IDs as keys
-        messages = Object.values(data.messages);
-      } else if (data.data && Array.isArray(data.data)) {
-        messages = data.data;
       }
 
       console.log(`[sync-ghl-conversations] Parsed ${messages.length} messages, sample:`, messages.length > 0 ? JSON.stringify(messages[0]).substring(0, 300) : 'none');
