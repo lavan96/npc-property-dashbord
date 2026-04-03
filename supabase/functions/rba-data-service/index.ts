@@ -3,11 +3,6 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
 serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = createCorsHeaders(origin);
@@ -19,12 +14,10 @@ serve(async (req) => {
   }
 
   try {
-    // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
     const supabase = createClient(supabaseUrl, supabaseKey);
     
-    // SECURITY: Verify authentication
     const body = await req.json().catch(() => ({}));
     const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
     if (authError) {
@@ -32,7 +25,6 @@ serve(async (req) => {
       return createUnauthorizedResponse(authError, corsHeaders);
     }
     console.log(`[rba-data-service] Authenticated user: ${userId}`);
-    console.log('Fetching RBA economic data with caching...');
 
     const rbaData = await fetchRBADataWithCache(supabase);
     
@@ -60,7 +52,7 @@ serve(async (req) => {
 async function fetchRBADataWithCache(supabase: any) {
   console.log('🔍 Checking economic data cache...');
 
-  // Check cache for RBA indicators (data_type: 'rba_indicators')
+  // Cache for 24 hours (economic data changes frequently)
   const { data: cachedData, error: cacheError } = await supabase
     .from('economic_data_cache')
     .select('*')
@@ -78,147 +70,181 @@ async function fetchRBADataWithCache(supabase: any) {
     return { ...cachedData.data, cached: true, lastCached: cachedData.fetched_at };
   }
 
-  console.log('❌ Cache MISS. Fetching fresh RBA data...');
+  console.log('❌ Cache MISS. Fetching live economic data via Perplexity...');
 
-  // Fetch fresh data
-  const freshData = await fetchRBAData();
+  const freshData = await fetchLiveEconomicData();
 
-  // Cache the data for 7 days
-  console.log('💾 Caching RBA economic data for 7 days...');
-  
+  // Cache for 24 hours
+  console.log('💾 Caching economic data for 24 hours...');
   const { error: insertError } = await supabase
     .from('economic_data_cache')
     .upsert({
       data_type: 'rba_indicators',
       data: freshData,
       fetched_at: new Date().toISOString(),
-      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
+      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
     }, {
       onConflict: 'data_type'
     });
 
   if (insertError) {
-    console.error('❌ Error caching RBA data:', insertError);
+    console.error('❌ Error caching data:', insertError);
   } else {
-    console.log('✅ RBA data cached successfully');
+    console.log('✅ Economic data cached successfully');
   }
 
   return { ...freshData, cached: false };
 }
 
-async function fetchRBAData() {
-  const economicData: any = {};
-
-  try {
-    // Fetch cash rate data
-    const cashRateData = await fetchCashRate();
-    economicData.cashRate = cashRateData;
-
-    // Fetch inflation data
-    const inflationData = await fetchInflationData();
-    economicData.inflation = inflationData;
-
-    // Fetch economic indicators
-    const indicators = await fetchEconomicIndicators();
-    economicData.indicators = indicators;
-
-    return economicData;
-
-  } catch (error) {
-    console.error('Error fetching RBA data:', error);
-    return getMockRBAData();
+async function fetchLiveEconomicData() {
+  const perplexityApiKey = Deno.env.get('PERPLEXITY_API_KEY');
+  
+  if (!perplexityApiKey) {
+    console.warn('⚠️ PERPLEXITY_API_KEY not set, using fallback data');
+    return getFallbackData();
   }
-}
 
-async function fetchCashRate() {
   try {
-    // RBA Statistical Tables - Cash Rate
-    const response = await fetch('https://rba.gov.au/statistics/tables/xls/f01hist.xls');
+    console.log('🌐 Querying Perplexity for live Australian economic data...');
     
-    if (response.ok) {
-      // In a real implementation, we'd parse the Excel file
-      // For now, return current estimated rate
-      return {
-        current: 4.35,
-        previous: 4.10,
-        change: 0.25,
-        lastUpdate: new Date().toISOString().split('T')[0],
-        source: 'RBA Statistical Tables F1'
-      };
+    const response = await fetch('https://api.perplexity.ai/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${perplexityApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'sonar',
+        temperature: 0.0,
+        max_tokens: 1000,
+        search_domain_filter: ['rba.gov.au', 'abs.gov.au', 'treasury.gov.au', 'reuters.com', 'afr.com'],
+        search_recency_filter: 'month',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a financial data extraction tool. Return ONLY the requested JSON with exact current values. No commentary.'
+          },
+          {
+            role: 'user',
+            content: `What are the current Australian economic indicators as of today? I need the exact current values for:
+1. RBA Official Cash Rate (the current target cash rate set by the Reserve Bank of Australia)
+2. The previous cash rate before the most recent change
+3. Annual CPI inflation rate (latest ABS quarterly figure)
+4. Trimmed mean (core) inflation rate
+5. Unemployment rate (latest ABS labour force)
+6. GDP annual growth rate
+7. Labour force participation rate
+
+Return ONLY valid JSON in this exact format, no other text:
+{
+  "cashRate": {"current": 0.00, "previous": 0.00, "lastDecisionDate": "YYYY-MM-DD"},
+  "inflation": {"annual": 0.0, "core": 0.0, "quarterly": 0.0},
+  "labour": {"unemploymentRate": 0.0, "participationRate": 0.0},
+  "gdpGrowth": 0.0
+}`
+          }
+        ]
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error('❌ Perplexity API error:', response.status, errText);
+      return getFallbackData();
     }
-  } catch (error) {
-    console.error('Error fetching cash rate:', error);
-  }
 
-  // Return estimated current data
-  return {
-    current: 4.35,
-    previous: 4.10,
-    change: 0.25,
-    lastUpdate: new Date().toISOString().split('T')[0],
-    source: 'RBA Official Cash Rate (estimated)'
-  };
-}
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || '';
+    const citations = data.citations || [];
+    
+    console.log('📊 Perplexity raw response:', content.substring(0, 500));
+    console.log('📎 Citations:', citations.slice(0, 5));
 
-async function fetchInflationData() {
-  try {
-    // RBA typically publishes CPI data
-    return {
-      annual: 3.4,
-      quarterly: 0.8,
-      core: 3.2,
-      target: 2.5,
-      lastUpdate: new Date().toISOString().split('T')[0],
-      source: 'ABS Consumer Price Index (estimated)'
+    // Extract JSON from the response (handle markdown code blocks)
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.error('❌ Could not extract JSON from Perplexity response');
+      return getFallbackData();
+    }
+
+    const parsed = JSON.parse(jsonMatch[0]);
+    
+    // Validate the parsed data has reasonable values
+    if (!parsed.cashRate?.current || parsed.cashRate.current < 0 || parsed.cashRate.current > 20) {
+      console.error('❌ Parsed cash rate seems invalid:', parsed.cashRate?.current);
+      return getFallbackData();
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    
+    const result = {
+      cashRate: {
+        current: parsed.cashRate.current,
+        previous: parsed.cashRate.previous || parsed.cashRate.current,
+        change: Number((parsed.cashRate.current - (parsed.cashRate.previous || parsed.cashRate.current)).toFixed(2)),
+        lastDecisionDate: parsed.cashRate.lastDecisionDate || today,
+        lastUpdate: today,
+        source: 'RBA Official Cash Rate (via Perplexity real-time search)',
+        citations: citations.slice(0, 3),
+      },
+      inflation: {
+        annual: parsed.inflation?.annual || 0,
+        quarterly: parsed.inflation?.quarterly || 0,
+        core: parsed.inflation?.core || 0,
+        target: 2.5, // RBA target band midpoint (always 2-3%)
+        lastUpdate: today,
+        source: 'ABS Consumer Price Index (via Perplexity real-time search)',
+      },
+      indicators: {
+        gdpGrowth: parsed.gdpGrowth || 0,
+        unemploymentRate: parsed.labour?.unemploymentRate || 0,
+        participationRate: parsed.labour?.participationRate || 0,
+        lastUpdate: today,
+        source: 'ABS / RBA (via Perplexity real-time search)',
+      },
+      retrievedAt: new Date().toISOString(),
     };
+
+    console.log('✅ Live economic data retrieved:', {
+      cashRate: result.cashRate.current,
+      inflation: result.inflation.annual,
+      unemployment: result.indicators.unemploymentRate,
+    });
+
+    return result;
+
   } catch (error) {
-    console.error('Error fetching inflation data:', error);
-    return null;
+    console.error('❌ Error fetching live economic data:', error);
+    return getFallbackData();
   }
 }
 
-async function fetchEconomicIndicators() {
-  try {
-    return {
-      gdpGrowth: 2.1,
-      unemploymentRate: 3.9,
-      participationRate: 66.8,
-      housePriceGrowth: 4.2,
-      creditGrowth: 5.8,
-      lastUpdate: new Date().toISOString().split('T')[0],
-      source: 'RBA Statistical Bulletin (estimated)'
-    };
-  } catch (error) {
-    console.error('Error fetching economic indicators:', error);
-    return null;
-  }
-}
-
-function getMockRBAData() {
+function getFallbackData() {
+  const today = new Date().toISOString().split('T')[0];
   return {
     cashRate: {
-      current: 4.35,
-      previous: 4.10,
-      change: 0.25,
-      lastUpdate: new Date().toISOString().split('T')[0],
-      source: 'RBA Official Cash Rate (estimated)'
+      current: 4.10,
+      previous: 4.35,
+      change: -0.25,
+      lastUpdate: today,
+      source: 'RBA Official Cash Rate (fallback — could not fetch live data)',
     },
     inflation: {
-      annual: 3.4,
-      quarterly: 0.8,
-      core: 3.2,
+      annual: 2.4,
+      quarterly: 0.9,
+      core: 2.9,
       target: 2.5,
-      lastUpdate: new Date().toISOString().split('T')[0],
-      source: 'ABS Consumer Price Index (estimated)'
+      lastUpdate: today,
+      source: 'ABS Consumer Price Index (fallback — could not fetch live data)',
     },
     indicators: {
-      gdpGrowth: 2.1,
-      unemploymentRate: 3.9,
-      participationRate: 66.8,
-      housePriceGrowth: 4.2,
-      creditGrowth: 5.8,
-      lastUpdate: new Date().toISOString().split('T')[0],
-      source: 'RBA Statistical Bulletin (estimated)'
-    }
+      gdpGrowth: 1.3,
+      unemploymentRate: 4.1,
+      participationRate: 67.0,
+      lastUpdate: today,
+      source: 'ABS / RBA (fallback — could not fetch live data)',
+    },
+    retrievedAt: new Date().toISOString(),
+    isFallback: true,
   };
 }
