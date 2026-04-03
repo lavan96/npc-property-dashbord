@@ -26,9 +26,9 @@ function mapChannelType(ghlType: string | number | undefined): string {
   if (!ghlType) return 'sms';
   const typeStr = String(ghlType).toLowerCase();
   const mapping: Record<string, string> = {
-    'sms': 'sms', '1': 'sms', 'phone': 'sms', 'type_phone': 'sms',
-    'email': 'email', '2': 'email', 'type_email': 'email',
-    'whatsapp': 'whatsapp', '3': 'whatsapp', 'type_whatsapp': 'whatsapp',
+    'sms': 'sms', '1': 'sms', 'phone': 'sms',
+    'email': 'email', '2': 'email',
+    'whatsapp': 'whatsapp', '3': 'whatsapp',
     'fb': 'facebook', 'facebook': 'facebook', '4': 'facebook',
     'ig': 'instagram', 'instagram': 'instagram', '5': 'instagram',
     'live_chat': 'live_chat', 'livechat': 'live_chat', '6': 'live_chat',
@@ -54,8 +54,8 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
     const body = await req.json().catch(() => ({}));
-    const batchSize = body.batchSize || 30;
-    const offset = body.offset || 0;
+    const convOffset = body.offset || 0;
+    const convLimit = body.limit || 5;
     const startTime = Date.now();
 
     const ghlHeaders = {
@@ -64,114 +64,81 @@ serve(async (req) => {
       'Accept': 'application/json',
     };
 
-    // Get conversations in batches
+    // Get a small batch of conversations
     const { data: conversations, error: convError } = await supabase
       .from('ghl_conversations')
       .select('id, ghl_conversation_id, channel_type')
       .order('created_at', { ascending: true })
-      .range(offset, offset + batchSize - 1);
+      .range(convOffset, convOffset + convLimit - 1);
 
-    if (convError) throw new Error(`Failed to fetch conversations: ${convError.message}`);
+    if (convError) throw new Error(`Fetch error: ${convError.message}`);
     if (!conversations?.length) {
-      return new Response(JSON.stringify({ success: true, message: 'No conversations found' }), {
+      return new Response(JSON.stringify({ success: true, message: 'No more conversations', offset: convOffset }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    console.log(`[backfill] Processing ${conversations.length} conversations`);
+    console.log(`[backfill] Batch offset=${convOffset}, count=${conversations.length}`);
 
     let totalUpdated = 0;
-    let totalSkipped = 0;
     let errors: string[] = [];
 
     for (const conv of conversations) {
-      if (Date.now() - startTime > 50000) {
-        console.log(`[backfill] Timeout approaching, stopping`);
-        break;
-      }
+      if (Date.now() - startTime > 45000) break;
+      
       try {
-        await delay(400);
+        await delay(350);
+        
+        // Fetch first page of messages from GHL
+        const res = await fetch(
+          `${GHL_API_BASE}/conversations/${conv.ghl_conversation_id}/messages?limit=50`,
+          { method: 'GET', headers: ghlHeaders }
+        );
 
-        // Fetch messages from GHL for this conversation
-        let lastMessageId: string | undefined;
-        let hasMore = true;
-        let page = 0;
+        if (!res.ok) {
+          errors.push(`${conv.ghl_conversation_id}: ${res.status}`);
+          continue;
+        }
 
-        while (hasMore && page < 20) {
-          page++;
-          const params = new URLSearchParams({ limit: '50' });
-          if (lastMessageId) params.set('lastMessageId', lastMessageId);
+        const data = await res.json();
+        let messages: any[] = [];
+        if (data.messages?.messages && Array.isArray(data.messages.messages)) {
+          messages = data.messages.messages;
+        } else if (Array.isArray(data.messages)) {
+          messages = data.messages;
+        }
 
-          const res = await fetch(
-            `${GHL_API_BASE}/conversations/${conv.ghl_conversation_id}/messages?${params}`,
-            { method: 'GET', headers: ghlHeaders }
-          );
+        for (const msg of messages) {
+          const direction = mapMessageDirection(msg);
+          const channel = mapChannelType(msg.messageType || msg.source || conv.channel_type);
 
-          if (!res.ok) {
-            console.error(`[backfill] Messages fetch failed for ${conv.ghl_conversation_id}: ${res.status}`);
-            errors.push(`Conv ${conv.ghl_conversation_id}: HTTP ${res.status}`);
-            break;
-          }
+          await supabase
+            .from('ghl_conversation_messages')
+            .update({ direction, channel_type: channel })
+            .eq('ghl_message_id', msg.id);
 
-          const data = await res.json();
-          let messages: any[] = [];
-          if (data.messages?.messages && Array.isArray(data.messages.messages)) {
-            messages = data.messages.messages;
-            hasMore = data.messages.nextPage === true;
-            lastMessageId = data.messages.lastMessageId || undefined;
-          } else if (Array.isArray(data.messages)) {
-            messages = data.messages;
-            hasMore = false;
-          }
-
-          if (messages.length === 0) { hasMore = false; break; }
-
-          // Update each message's direction and channel_type
-          for (const msg of messages) {
-            const correctDirection = mapMessageDirection(msg);
-            const correctChannel = mapChannelType(msg.messageType || msg.source || conv.channel_type);
-
-            const { error: updateError, count } = await supabase
-              .from('ghl_conversation_messages')
-              .update({
-                direction: correctDirection,
-                channel_type: correctChannel,
-              })
-              .eq('ghl_message_id', msg.id);
-
-            if (updateError) {
-              totalSkipped++;
-            } else {
-              totalUpdated++;
-            }
-          }
-
-          if (messages.length < 50) hasMore = false;
-          await delay(300);
+          totalUpdated++;
         }
       } catch (err: any) {
-        console.error(`[backfill] Error for conv ${conv.id}:`, err.message);
-        errors.push(`Conv ${conv.id}: ${err.message}`);
+        errors.push(`${conv.id}: ${err.message}`);
       }
     }
 
-    console.log(`[backfill] Done: ${totalUpdated} updated, ${totalSkipped} skipped, ${errors.length} errors`);
+    const nextOffset = conversations.length === convLimit ? convOffset + convLimit : null;
+    console.log(`[backfill] Done: ${totalUpdated} updated, next=${nextOffset}`);
 
     return new Response(JSON.stringify({
       success: true,
-      offset,
-      batch_size: batchSize,
-      conversations_processed: conversations.length,
+      offset: convOffset,
+      processed: conversations.length,
       messages_updated: totalUpdated,
-      messages_skipped: totalSkipped,
-      next_offset: conversations.length === batchSize ? offset + batchSize : null,
+      next_offset: nextOffset,
       errors: errors.length > 0 ? errors : undefined,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error: any) {
-    console.error('[backfill] Error:', error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
