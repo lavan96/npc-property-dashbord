@@ -63,7 +63,8 @@ export type NotificationType =
   // Game Plan
   | 'game_plan_created'
   | 'game_plan_updated'
-  | 'game_plan_milestone_completed';
+  | 'game_plan_milestone_completed'
+  | 'conversation_reply';
 
 export interface Notification {
   id: string;
@@ -359,6 +360,16 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
           navigate(`/clients?highlight=${notification.entityId}`);
         } else {
           navigate('/reminders');
+        }
+        break;
+      case 'conversation_reply':
+        if (notification.entityId) {
+          // entityId is the client_id; find conversation to deep-link
+          // For now navigate to conversations page — the notification trigger stores client_id as entity_id
+          // We'll look up the conversation ID from the conversations list
+          navigate(`/conversations`);
+        } else {
+          navigate('/conversations');
         }
         break;
       case 'conversation_shared':
