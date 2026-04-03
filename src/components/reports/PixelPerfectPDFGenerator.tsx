@@ -1959,14 +1959,24 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
             return { lastY: currentY, needsNewPage: true, remainingTableText };
           }
 
-          // Draw cell backgrounds (alternating for readability)
-          if (!isHeader && i % 2 === 0) {
+          // Draw cell backgrounds — premium styled
+          if (isHeader) {
+            // Navy header background
             page.drawRectangle({
               x: x,
               y: currentY - rowHeight + 2,
               width: maxWidth,
               height: rowHeight,
-              color: rgb(0.95, 0.95, 0.95),
+              color: TABLE_HEADER_BG,
+            });
+          } else if (i % 2 === 0) {
+            // Gold-tinted alternating rows
+            page.drawRectangle({
+              x: x,
+              y: currentY - rowHeight + 2,
+              width: maxWidth,
+              height: rowHeight,
+              color: TABLE_ALT_ROW,
             });
           }
 
@@ -1976,35 +1986,55 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
             const cellText = row[j];
             const font = isHeader ? boldFont : normalFont;
             
-            // Draw cell text with wrapping and markdown
-            drawCellText(cellText, cellX, currentY - size - 4, columnWidths[j], font, isHeader);
+            // Override color for header cells to white
+            if (isHeader) {
+              const origDrawCellText = drawCellText;
+              // Draw header text in white by temporarily adjusting the draw
+              const headerParts = parseMarkdownText(stripEmojis(cellText));
+              let cellDrawX = cellX + cellPadding;
+              const cellDrawY = currentY - size - 4;
+              for (const part of headerParts) {
+                const cleanText = part.text.replace(/\*+/g, '').trim();
+                if (!cleanText) continue;
+                page.drawText(cleanText, {
+                  x: cellDrawX,
+                  y: cellDrawY,
+                  size: size,
+                  font: boldFont,
+                  color: TABLE_HEADER_TEXT,
+                });
+                cellDrawX += boldFont.widthOfTextAtSize(cleanText + ' ', size);
+              }
+            } else {
+              drawCellText(cellText, cellX, currentY - size - 4, columnWidths[j], font, isHeader);
+            }
 
-            // Draw vertical cell border
+            // Draw vertical cell border (gold-tinted)
             if (j < row.length - 1) {
               page.drawLine({
                 start: { x: cellX + columnWidths[j], y: currentY },
                 end: { x: cellX + columnWidths[j], y: currentY - rowHeight },
                 thickness: 0.5,
-                color: rgb(0.7, 0.7, 0.7),
+                color: TABLE_BORDER,
               });
             }
           }
 
-          // Draw horizontal border
+          // Draw horizontal border (gold-tinted)
           page.drawLine({
             start: { x: x, y: currentY - rowHeight },
             end: { x: x + maxWidth, y: currentY - rowHeight },
             thickness: isHeader ? 1.5 : 0.5,
-            color: rgb(0.5, 0.5, 0.5),
+            color: isHeader ? GOLD_RGB : TABLE_BORDER,
           });
 
           if (isHeader) {
-            // Draw top border for header
+            // Draw top border for header (gold accent)
             page.drawLine({
               start: { x: x, y: currentY },
               end: { x: x + maxWidth, y: currentY },
               thickness: 1.5,
-              color: rgb(0.5, 0.5, 0.5),
+              color: GOLD_RGB,
             });
           }
 
