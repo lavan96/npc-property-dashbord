@@ -316,7 +316,7 @@ async function fetchConversationMessages(
         sender_number: msg.contactId ? null : (msg.phone || msg.from || null),
         recipient_number: msg.phone || msg.to || null,
         message_status: msg.status || 'sent',
-        ghl_date_added: msg.dateAdded || msg.createdAt || null,
+        ghl_date_added: parseGhlDate(msg.dateAdded || msg.createdAt),
       }));
 
       const { error: insertError } = await supabase
