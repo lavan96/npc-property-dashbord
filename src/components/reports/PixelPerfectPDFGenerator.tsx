@@ -2846,13 +2846,13 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
           // Get the actual page number for this section
           const actualPageNumber = sectionPageNumbers.get(cleanName) || 0;
           
-          // Draw section number with indentation
+          // Draw section number with gold accent
           tocPage.drawText(sectionNumText, {
             x: margin + indentation,
             y: tocY,
             size: fontSize,
             font: fontToUse,
-            color: rgb(0.3, 0.3, 0.3),
+            color: GOLD_RGB,
           });
           
           // Calculate number text width for positioning
@@ -2862,7 +2862,6 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
           const pageNumWidth = 30; // Reserve space for page number
           const textStartX = margin + indentation + numWidth + 8;
           const maxTocWidth = pageWidth - margin - pageNumWidth - textStartX - 10;
-          // Use word-boundary truncation instead of mid-character truncation
           const displayName = truncateAtWordBoundary(cleanName, maxTocWidth, helveticaFont, fontSize);
           
           tocPage.drawText(displayName, {
@@ -2870,10 +2869,10 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
             y: tocY,
             size: fontSize,
             font: sectionLevel === 2 ? helveticaFont : helveticaFont,
-            color: sectionLevel === 2 ? rgb(0.2, 0.2, 0.2) : rgb(0.35, 0.35, 0.35),
+            color: sectionLevel === 2 ? NAVY_RGB : BODY_TEXT_RGB,
           });
           
-          // Draw dotted leader line
+          // Draw dotted leader line (gold dots)
           const nameWidth = helveticaFont.widthOfTextAtSize(displayName, fontSize);
           const startX = textStartX + nameWidth + 5;
           const endX = pageWidth - margin - pageNumWidth - 5;
@@ -2884,11 +2883,11 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
               x: dx,
               y: tocY + 3,
               size: 0.5,
-              color: rgb(0.5, 0.5, 0.5),
+              color: GOLD_RGB,
             });
           }
           
-          // Draw page number (right-aligned)
+          // Draw page number (right-aligned, navy)
           const pageNumText = String(actualPageNumber);
           const pageNumTextWidth = helveticaBold.widthOfTextAtSize(pageNumText, fontSize);
           tocPage.drawText(pageNumText, {
@@ -2896,7 +2895,7 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
             y: tocY,
             size: fontSize,
             font: helveticaBold,
-            color: rgb(0.3, 0.3, 0.3),
+            color: NAVY_RGB,
           });
           
           // Adjust vertical spacing based on section level
