@@ -367,7 +367,8 @@ export function ClientConversationsTab({ clientId, clientName, ghlContactId }: C
   }
 
   // ===== MESSAGE THREAD VIEW =====
-  const ChannelIcon = channelIcons[selectedConversation.channel_type] || MessageSquare;
+  const normalizedSelectedChannel = normalizeChannel(selectedConversation.channel_type);
+  const ChannelIcon = channelIcons[normalizedSelectedChannel] || MessageSquare;
 
   return (
     <div className="flex flex-col h-full" style={{ minHeight: '400px', maxHeight: '65vh' }}>
