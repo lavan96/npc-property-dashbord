@@ -108,13 +108,17 @@ export function ClientConversationsTab({ clientId, clientName, ghlContactId }: C
     queryFn: async () => {
       if (!selectedConversation) return [];
       const { data, error } = await invokeSecureFunction('get-client-data', {
-        table: 'ghl_conversation_messages',
-        filters: { conversation_id: selectedConversation.id },
-        orderBy: 'ghl_date_added',
-        orderDirection: 'asc',
+        clientId,
+        listMode: true,
+        listOptions: {
+          table: 'ghl_conversation_messages',
+          filters: { conversation_id: selectedConversation.id },
+          orderBy: 'ghl_date_added',
+          order_asc: true,
+        },
       });
       if (error) throw new Error(error.message);
-      return (data?.data || []) as Message[];
+      return (data?.records || []) as Message[];
     },
     enabled: !!selectedConversation?.id,
   });
