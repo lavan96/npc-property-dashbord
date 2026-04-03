@@ -105,7 +105,9 @@ interface Message {
   ghl_message_id: string;
   direction: string;
   body: string | null;
-  message_type: string | null;
+  message_type?: string | null;
+  content_type?: string | null;
+  channel_type?: string | null;
   message_status: string | null;
   ghl_date_added: string | null;
   attachment_urls: string[] | null;
