@@ -590,14 +590,32 @@ export function ClientConversationsTab({ clientId, clientName, clientEmail, ghlC
           </DropdownMenu>
         </div>
 
-        {/* Email subject field */}
+        {/* Email-specific: mailbox selector + subject */}
         {replyChannel === 'email' && (
-          <Input
-            placeholder="Email subject..."
-            value={emailSubject}
-            onChange={(e) => setEmailSubject(e.target.value)}
-            className="h-8 text-sm"
-          />
+          <>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-muted-foreground whitespace-nowrap">Mailbox:</span>
+              <Select value={selectedMailbox} onValueChange={setSelectedMailbox}>
+                <SelectTrigger className="h-7 text-xs flex-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin" className="text-xs">Admin Mailbox</SelectItem>
+                  {mailboxes.map((mb) => (
+                    <SelectItem key={mb.id} value="personal" className="text-xs">
+                      Personal — {mb.personal_mailbox}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Input
+              placeholder="Email subject..."
+              value={emailSubject}
+              onChange={(e) => setEmailSubject(e.target.value)}
+              className="h-8 text-sm"
+            />
+          </>
         )}
 
         {/* Message + send */}
