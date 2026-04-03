@@ -85,8 +85,12 @@ serve(async (req) => {
     let errors: string[] = [];
 
     for (const conv of conversations) {
+      if (Date.now() - startTime > 50000) {
+        console.log(`[backfill] Timeout approaching, stopping`);
+        break;
+      }
       try {
-        await delay(500);
+        await delay(400);
 
         // Fetch messages from GHL for this conversation
         let lastMessageId: string | undefined;
