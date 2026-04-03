@@ -48,6 +48,8 @@ const ALLOWED_TABLES: TableName[] = [
   'lead_source_attributions',
   'client_portal_reports',
   'client_portal_report_requests',
+  'ghl_conversations',
+  'ghl_conversation_messages',
 ];
 
 // Map employment_type to income source_type and default shading

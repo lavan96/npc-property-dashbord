@@ -67,6 +67,10 @@ const TABLE_TO_MODULE_MAP: Record<string, string> = {
 
   // Call logs
   vapi_call_logs: 'call_logs',
+
+  // GHL Conversations
+  ghl_conversations: 'conversations',
+  ghl_conversation_messages: 'conversations',
 };
 
 /** Maps CRUD operations to the required permission flag */
