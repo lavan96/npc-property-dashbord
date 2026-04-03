@@ -371,7 +371,7 @@ export function ClientConversationsTab({ clientId, clientName, ghlContactId }: C
   const ChannelIcon = channelIcons[normalizedSelectedChannel] || MessageSquare;
 
   return (
-    <div className="flex flex-col h-full" style={{ minHeight: '400px', maxHeight: '65vh' }}>
+    <div className="flex flex-col" style={{ height: '60vh' }}>
       {/* Thread header */}
       <div className="flex items-center gap-2 pb-2 border-b shrink-0">
         <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setSelectedConversation(null)}>
@@ -399,7 +399,7 @@ export function ClientConversationsTab({ clientId, clientName, ghlContactId }: C
       </div>
 
       {/* Messages area */}
-      <ScrollArea className="flex-1 min-h-0 py-2">
+      <ScrollArea className="flex-1 min-h-0 py-2" style={{ overflow: 'auto' }}>
         {loadingMessages ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
