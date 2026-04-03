@@ -1,11 +1,20 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useAuth } from '@/hooks/useAuth';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
@@ -94,17 +103,42 @@ interface Message {
 interface ClientConversationsTabProps {
   clientId: string;
   clientName: string;
+  clientEmail?: string | null;
   ghlContactId?: string | null;
 }
 
-export function ClientConversationsTab({ clientId, clientName, ghlContactId }: ClientConversationsTabProps) {
+export function ClientConversationsTab({ clientId, clientName, clientEmail, ghlContactId }: ClientConversationsTabProps) {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [replyText, setReplyText] = useState('');
   const [replyChannel, setReplyChannel] = useState<string>('sms');
   const [emailSubject, setEmailSubject] = useState('');
+  const [selectedMailbox, setSelectedMailbox] = useState<string>('admin');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Fetch available mailboxes for email sending
+  const { data: mailboxes = [] } = useQuery({
+    queryKey: ['mailboxes-for-conversations'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('custom_users')
+        .select('id, email, personal_mailbox')
+        .not('personal_mailbox', 'is', null);
+      if (error) throw error;
+      return data.filter(u => u.personal_mailbox) || [];
+    },
+    enabled: replyChannel === 'email',
+  });
+
+  // Set default mailbox when mailboxes load
+  useEffect(() => {
+    if (mailboxes.length > 0 && selectedMailbox === 'admin') {
+      const userMailbox = mailboxes.find(m => m.id === user?.id);
+      if (userMailbox) setSelectedMailbox('personal');
+    }
+  }, [mailboxes, user?.id]);
 
   // Fetch conversations for this client
   const { data: conversations = [], isLoading: loadingConversations, refetch: refetchConversations } = useQuery({
@@ -169,9 +203,24 @@ export function ClientConversationsTab({ clientId, clientName, ghlContactId }: C
     onError: (err: any) => toast.error('Sync failed: ' + err.message),
   });
 
-  // Send reply
+  // Send reply - routes email through Email Copilot, SMS/WhatsApp through GHL
   const sendMutation = useMutation({
     mutationFn: async ({ conversationId, message, type, subject }: { conversationId: string; message: string; type: string; subject?: string }) => {
+      // Email channel: route through send-email-reply (Email Copilot) for signature support
+      if (type === 'Email') {
+        if (!clientEmail) throw new Error('Client does not have an email address');
+        const { data, error } = await invokeSecureFunction('send-email-reply', {
+          to: clientEmail,
+          subject: subject || `Message from NPC Services`,
+          body: message,
+          mailboxSource: selectedMailbox,
+        });
+        if (error) throw new Error(error.message);
+        if (data?.error) throw new Error(data.error);
+        return data;
+      }
+      
+      // SMS/WhatsApp: route through GHL
       const { data, error } = await invokeSecureFunction('send-ghl-message', {
         conversationId,
         message,
@@ -541,14 +590,32 @@ export function ClientConversationsTab({ clientId, clientName, ghlContactId }: C
           </DropdownMenu>
         </div>
 
-        {/* Email subject field */}
+        {/* Email-specific: mailbox selector + subject */}
         {replyChannel === 'email' && (
-          <Input
-            placeholder="Email subject..."
-            value={emailSubject}
-            onChange={(e) => setEmailSubject(e.target.value)}
-            className="h-8 text-sm"
-          />
+          <>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-muted-foreground whitespace-nowrap">Mailbox:</span>
+              <Select value={selectedMailbox} onValueChange={setSelectedMailbox}>
+                <SelectTrigger className="h-7 text-xs flex-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin" className="text-xs">Admin Mailbox</SelectItem>
+                  {mailboxes.map((mb) => (
+                    <SelectItem key={mb.id} value="personal" className="text-xs">
+                      Personal — {mb.personal_mailbox}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Input
+              placeholder="Email subject..."
+              value={emailSubject}
+              onChange={(e) => setEmailSubject(e.target.value)}
+              className="h-8 text-sm"
+            />
+          </>
         )}
 
         {/* Message + send */}
