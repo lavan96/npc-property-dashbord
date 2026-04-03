@@ -2769,23 +2769,23 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
         let tocPage = pdfDoc.getPages()[tocPageIndices[tocPageIdx]];
         let tocY = pageHeight - topMargin - 20;
         
-        // TOC Title
+        // TOC Title - Navy with gold accent
         const tocTitleText = 'TABLE OF CONTENTS';
         tocPage.drawText(tocTitleText, {
           x: margin,
           y: tocY,
           size: 20,
           font: helveticaBold,
-          color: rgb(0.15, 0.15, 0.15),
+          color: NAVY_RGB,
         });
         tocY -= 40;
         
-        // Draw decorative line under title
+        // Draw gold decorative line under title
         tocPage.drawLine({
           start: { x: margin, y: tocY + 15 },
           end: { x: pageWidth - margin, y: tocY + 15 },
           thickness: 2,
-          color: rgb(0.788, 0.647, 0.353), // Gold accent
+          color: GOLD_RGB,
         });
         tocY -= 25;
         
