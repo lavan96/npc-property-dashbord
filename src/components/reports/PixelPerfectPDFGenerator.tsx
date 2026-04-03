@@ -2055,7 +2055,247 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
         return y - 20; // Space after rule
       };
 
-      // Helper to parse markdown and detect formatting
+      // ─── Premium KPI Boxes (gold-bordered metric cards) ─────────────────
+      const drawKPIBoxes = (
+        page: any,
+        startY: number,
+        metrics: Array<{ label: string; value: string; subtitle?: string }>,
+        maxWidth: number
+      ): number => {
+        const boxCount = Math.min(metrics.length, 4); // Max 4 boxes per row
+        if (boxCount === 0) return startY;
+        
+        const boxGap = 12;
+        const boxWidth = (maxWidth - (boxCount - 1) * boxGap) / boxCount;
+        const boxHeight = 60;
+        const cornerRadius = 4;
+        
+        for (let i = 0; i < boxCount; i++) {
+          const metric = metrics[i];
+          const boxX = margin + i * (boxWidth + boxGap);
+          const boxY = startY - boxHeight;
+          
+          // Draw warm off-white background
+          page.drawRectangle({
+            x: boxX,
+            y: boxY,
+            width: boxWidth,
+            height: boxHeight,
+            color: SECTION_BG_RGB,
+            borderColor: GOLD_RGB,
+            borderWidth: 1.2,
+          });
+          
+          // Draw gold top accent strip
+          page.drawRectangle({
+            x: boxX,
+            y: boxY + boxHeight - 4,
+            width: boxWidth,
+            height: 4,
+            color: GOLD_RGB,
+          });
+          
+          // Draw value (large, navy)
+          const valueText = stripEmojis(metric.value);
+          const valueSize = 16;
+          const valueWidth = helveticaBold.widthOfTextAtSize(valueText, valueSize);
+          page.drawText(valueText, {
+            x: boxX + (boxWidth - valueWidth) / 2,
+            y: boxY + boxHeight - 26,
+            size: valueSize,
+            font: helveticaBold,
+            color: NAVY_RGB,
+          });
+          
+          // Draw label (small, gray, centered)
+          const labelText = stripEmojis(metric.label).toUpperCase();
+          const labelSize = 7;
+          const labelWidth = helveticaFont.widthOfTextAtSize(labelText, labelSize);
+          page.drawText(labelText, {
+            x: boxX + (boxWidth - labelWidth) / 2,
+            y: boxY + 14,
+            size: labelSize,
+            font: helveticaBold,
+            color: FOOTER_TEXT_RGB,
+          });
+          
+          // Draw subtitle if present
+          if (metric.subtitle) {
+            const subText = stripEmojis(metric.subtitle);
+            const subSize = 6.5;
+            const subWidth = helveticaFont.widthOfTextAtSize(subText, subSize);
+            page.drawText(subText, {
+              x: boxX + (boxWidth - subWidth) / 2,
+              y: boxY + 5,
+              size: subSize,
+              font: helveticaFont,
+              color: FOOTER_TEXT_RGB,
+            });
+          }
+        }
+        
+        return startY - boxHeight - 20; // Return new Y position
+      };
+
+      // ─── Premium Callout Panel (gold left border + warm background) ─────
+      const drawCalloutPanel = (
+        page: any,
+        text: string,
+        startY: number,
+        maxWidth: number
+      ): { lastY: number; needsNewPage: boolean } => {
+        const panelPadding = 14;
+        const borderWidth = 3;
+        const innerWidth = maxWidth - borderWidth - panelPadding * 2;
+        const textSize = 9.5;
+        const lineSpacing = 14;
+        
+        // Calculate text height
+        const textHeight = calculateTextHeight(
+          text, innerWidth, helveticaFont, helveticaBold, textSize, lineSpacing
+        );
+        const panelHeight = textHeight + panelPadding * 2;
+        
+        // Check if panel fits on current page
+        if (startY - panelHeight < bottomMargin + 40) {
+          return { lastY: startY, needsNewPage: true };
+        }
+        
+        const panelY = startY - panelHeight;
+        
+        // Draw warm off-white background
+        page.drawRectangle({
+          x: margin,
+          y: panelY,
+          width: maxWidth,
+          height: panelHeight,
+          color: SECTION_BG_RGB,
+        });
+        
+        // Draw gold left border
+        page.drawRectangle({
+          x: margin,
+          y: panelY,
+          width: borderWidth,
+          height: panelHeight,
+          color: GOLD_RGB,
+        });
+        
+        // Draw "What This Means" label at top
+        const labelText = 'WHAT THIS MEANS';
+        page.drawText(labelText, {
+          x: margin + borderWidth + panelPadding,
+          y: startY - panelPadding - 2,
+          size: 7.5,
+          font: helveticaBold,
+          color: GOLD_RGB,
+        });
+        
+        // Draw the callout text
+        const textStartY = startY - panelPadding - 16;
+        const result = drawTextWithWrap(
+          page,
+          text,
+          margin + borderWidth + panelPadding,
+          textStartY,
+          innerWidth,
+          helveticaFont,
+          helveticaBold,
+          textSize,
+          lineSpacing,
+          'left'
+        );
+        
+        return { lastY: panelY - 15, needsNewPage: false };
+      };
+
+      // Helper to detect and extract "What This Means" callout content
+      const isCalloutParagraph = (text: string): { isCallout: boolean; content: string } => {
+        const calloutPatterns = [
+          /^\*?\*?What This Means\*?\*?[:\s]*(.*)/is,
+          /^\*?\*?What this means for you\*?\*?[:\s]*(.*)/is,
+          /^\*?\*?Key Takeaway\*?\*?[:\s]*(.*)/is,
+          /^\*?\*?Practical Implication\*?\*?[:\s]*(.*)/is,
+          /^\*?\*?Bottom Line\*?\*?[:\s]*(.*)/is,
+          /^\*?\*?In Practice\*?\*?[:\s]*(.*)/is,
+        ];
+        
+        for (const pattern of calloutPatterns) {
+          const match = text.match(pattern);
+          if (match) {
+            return { isCallout: true, content: match[1]?.trim() || text };
+          }
+        }
+        return { isCallout: false, content: text };
+      };
+
+      // Helper to detect KPI-style content and extract metrics
+      const extractKPIMetrics = (sectionName: string, content: string, enhancedData: any): Array<{ label: string; value: string; subtitle?: string }> | null => {
+        const sectionLower = sectionName.toLowerCase();
+        const financialData = enhancedData?.financialData || {};
+        const keyMetrics = financialData?.keyMetrics || {};
+        const assumptions = financialData?.assumptions || {};
+        const initialCosts = financialData?.initialCosts || {};
+        const income = financialData?.income || {};
+        
+        // Only show KPIs for specific financial/market sections
+        if (sectionLower.includes('financial') || sectionLower.includes('investment snapshot') || 
+            sectionLower.includes('key metric') || sectionLower.includes('market kpi') ||
+            sectionLower.includes('property snapshot') || sectionLower.includes('executive summary')) {
+          
+          const metrics: Array<{ label: string; value: string; subtitle?: string }> = [];
+          
+          // Property Value
+          if (initialCosts?.propertyValue) {
+            metrics.push({
+              label: 'Purchase Price',
+              value: '$' + Number(initialCosts.propertyValue).toLocaleString('en-AU', { maximumFractionDigits: 0 }),
+            });
+          }
+          
+          // Gross Yield
+          if (keyMetrics?.grossYield) {
+            metrics.push({
+              label: 'Gross Yield',
+              value: Number(keyMetrics.grossYield).toFixed(2) + '%',
+              subtitle: 'Annual rental return',
+            });
+          }
+          
+          // Net Yield
+          if (keyMetrics?.netRentalYield) {
+            metrics.push({
+              label: 'Net Yield',
+              value: Number(keyMetrics.netRentalYield).toFixed(2) + '%',
+              subtitle: 'After all costs',
+            });
+          }
+          
+          // Capital Growth
+          if (assumptions?.capitalGrowth) {
+            metrics.push({
+              label: 'Capital Growth',
+              value: Number(assumptions.capitalGrowth).toFixed(1) + '%',
+              subtitle: 'Annual forecast',
+            });
+          }
+          
+          // Weekly Rent
+          if (income?.weeklyRent && !metrics.some(m => m.label === 'Purchase Price')) {
+            metrics.push({
+              label: 'Weekly Rent',
+              value: '$' + Number(income.weeklyRent).toLocaleString('en-AU', { maximumFractionDigits: 0 }),
+              subtitle: 'Current market rate',
+            });
+          }
+          
+          return metrics.length >= 2 ? metrics.slice(0, 4) : null; // Only show if 2+ metrics
+        }
+        
+        return null;
+      };
+
+
       const parseMarkdownText = (text: string): Array<{text: string, bold: boolean, italic: boolean}> => {
         // Strip emojis first to prevent encoding errors
         text = stripEmojis(text);
