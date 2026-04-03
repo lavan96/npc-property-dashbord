@@ -2786,6 +2786,18 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
         }
         yPosition = titleResult.lastY - 10;
 
+        // ─── KPI Boxes: Render gold-bordered metric cards for qualifying sections ───
+        const kpiMetrics = extractKPIMetrics(cleanSectionName, content, report.enhanced_data);
+        if (kpiMetrics) {
+          // Check if we have space for KPI boxes (they need ~80px)
+          if (yPosition - 80 < bottomMargin + 40) {
+            currentPage = await addContentPage();
+            yPosition = pageHeight - topMargin - 20;
+          }
+          yPosition = drawKPIBoxes(currentPage, yPosition, kpiMetrics, pageWidth - 2 * margin);
+          console.log(`     ✓ Rendered ${kpiMetrics.length} KPI boxes for "${cleanSectionName}"`);
+        }
+
         // Draw paragraphs with header-table grouping
         for (let pIdx = 0; pIdx < paragraphs.length; pIdx++) {
           const paragraph = paragraphs[pIdx];
