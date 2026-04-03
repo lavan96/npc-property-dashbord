@@ -107,14 +107,38 @@ interface ClientConversationsTabProps {
   ghlContactId?: string | null;
 }
 
-export function ClientConversationsTab({ clientId, clientName, ghlContactId }: ClientConversationsTabProps) {
+export function ClientConversationsTab({ clientId, clientName, clientEmail, ghlContactId }: ClientConversationsTabProps) {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [replyText, setReplyText] = useState('');
   const [replyChannel, setReplyChannel] = useState<string>('sms');
   const [emailSubject, setEmailSubject] = useState('');
+  const [selectedMailbox, setSelectedMailbox] = useState<string>('admin');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Fetch available mailboxes for email sending
+  const { data: mailboxes = [] } = useQuery({
+    queryKey: ['mailboxes-for-conversations'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('custom_users')
+        .select('id, email, personal_mailbox')
+        .not('personal_mailbox', 'is', null);
+      if (error) throw error;
+      return data.filter(u => u.personal_mailbox) || [];
+    },
+    enabled: replyChannel === 'email',
+  });
+
+  // Set default mailbox when mailboxes load
+  useEffect(() => {
+    if (mailboxes.length > 0 && selectedMailbox === 'admin') {
+      const userMailbox = mailboxes.find(m => m.id === user?.id);
+      if (userMailbox) setSelectedMailbox('personal');
+    }
+  }, [mailboxes, user?.id]);
 
   // Fetch conversations for this client
   const { data: conversations = [], isLoading: loadingConversations, refetch: refetchConversations } = useQuery({
