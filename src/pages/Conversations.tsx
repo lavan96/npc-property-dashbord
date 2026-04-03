@@ -130,27 +130,31 @@ export default function Conversations() {
   const [selectedMailbox, setSelectedMailbox] = useState<string>('admin');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // ── Fetch ALL conversations (direct Supabase query) ──
+  // ── Fetch ALL conversations via edge function ──
   const { data: conversations = [], isLoading: loadingConversations, refetch: refetchConversations } = useQuery({
     queryKey: ['all-conversations'],
     queryFn: async () => {
-      // Fetch conversations with client info
-      const { data: convos, error } = await supabase
-        .from('ghl_conversations')
-        .select('*')
-        .order('last_message_date', { ascending: false });
-      if (error) throw error;
+      // Fetch all conversations through the secure edge function
+      const { data, error } = await invokeSecureFunction('get-client-data', {
+        listMode: true,
+        listOptions: {
+          table: 'ghl_conversations',
+          orderBy: 'last_message_date',
+          order_asc: false,
+        },
+      });
+      if (error) throw new Error(error.message);
+      const convos = (data?.records || []) as any[];
 
       // Fetch client names for all unique client_ids
-      const clientIds = [...new Set((convos || []).map(c => c.client_id).filter(Boolean))] as string[];
+      const clientIds = [...new Set(convos.map(c => c.client_id).filter(Boolean))] as string[];
       let clientMap: Record<string, { name: string; email: string | null }> = {};
       if (clientIds.length > 0) {
-        const { data: clients } = await supabase
-          .from('clients')
-          .select('id, primary_first_name, primary_surname, primary_email')
-          .in('id', clientIds);
-        if (clients) {
-          clients.forEach(c => {
+        const { data: clientData, error: clientErr } = await invokeSecureFunction('get-client-data', {
+          clientIds,
+        });
+        if (!clientErr && clientData?.clients) {
+          clientData.clients.forEach((c: any) => {
             clientMap[c.id] = {
               name: [c.primary_first_name, c.primary_surname].filter(Boolean).join(' ') || 'Unknown',
               email: c.primary_email,
@@ -159,7 +163,7 @@ export default function Conversations() {
         }
       }
 
-      return (convos || []).map(c => ({
+      return convos.map(c => ({
         ...c,
         client_name: c.client_id ? clientMap[c.client_id]?.name || 'Unknown' : 'Unlinked Contact',
         client_email: c.client_id ? clientMap[c.client_id]?.email : null,
