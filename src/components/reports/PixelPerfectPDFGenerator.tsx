@@ -2923,16 +2923,35 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
         const page = allPages[i];
         const pageNumber = i + 1; // Display page number (2, 3, 4, ...)
         
-        // Draw page number in bottom left corner
-        page.drawText(String(pageNumber), {
-          x: 60, // Left margin position
-          y: 40, // Bottom position
-          size: 10,
-          font: helveticaFont,
-          color: rgb(0.4, 0.4, 0.4), // Gray color
+        // Draw gold accent line above footer
+        page.drawLine({
+          start: { x: margin, y: 52 },
+          end: { x: pageWidth - margin, y: 52 },
+          thickness: 0.5,
+          color: GOLD_RGB,
         });
         
-        console.log(`  ✓ Added page number ${pageNumber} to page index ${i}`);
+        // Draw branded footer text (left)
+        page.drawText('Investment Report  |  Confidential', {
+          x: margin,
+          y: 40,
+          size: 7,
+          font: helveticaFont,
+          color: FOOTER_TEXT_RGB,
+        });
+        
+        // Draw page number (right-aligned)
+        const pageNumStr = `Page ${pageNumber}`;
+        const pageNumWidth = helveticaFont.widthOfTextAtSize(pageNumStr, 7);
+        page.drawText(pageNumStr, {
+          x: pageWidth - margin - pageNumWidth,
+          y: 40,
+          size: 7,
+          font: helveticaFont,
+          color: FOOTER_TEXT_RGB,
+        });
+        
+        console.log(`  ✓ Added styled footer with page ${pageNumber} to page index ${i}`);
       }
       console.log(`✓ Page numbering complete (pages 2-${totalPages - 1})`);
 
