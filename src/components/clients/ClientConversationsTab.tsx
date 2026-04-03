@@ -102,6 +102,8 @@ export function ClientConversationsTab({ clientId, clientName, ghlContactId }: C
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [replyText, setReplyText] = useState('');
+  const [replyChannel, setReplyChannel] = useState<string>('sms');
+  const [emailSubject, setEmailSubject] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Fetch conversations for this client
