@@ -181,13 +181,17 @@ export default function Conversations() {
     queryKey: ['conversation-messages', selectedId],
     queryFn: async () => {
       if (!selectedId) return [];
-      const { data, error } = await supabase
-        .from('ghl_conversation_messages')
-        .select('*')
-        .eq('conversation_id', selectedId)
-        .order('ghl_date_added', { ascending: true });
-      if (error) throw error;
-      return (data || []) as Message[];
+      const { data, error } = await invokeSecureFunction('get-client-data', {
+        listMode: true,
+        listOptions: {
+          table: 'ghl_conversation_messages',
+          filters: { conversation_id: selectedId },
+          orderBy: 'ghl_date_added',
+          order_asc: true,
+        },
+      });
+      if (error) throw new Error(error.message);
+      return (data?.records || []) as Message[];
     },
     enabled: !!selectedId,
   });
