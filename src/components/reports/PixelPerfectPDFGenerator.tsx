@@ -2230,66 +2230,124 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
       };
 
       // Helper to detect KPI-style content and extract metrics
-      const extractKPIMetrics = (sectionName: string, content: string, enhancedData: any): Array<{ label: string; value: string; subtitle?: string }> | null => {
+      const extractKPIMetrics = (sectionName: string, content: string, enhancedData: any): { row1: Array<{ label: string; value: string; subtitle?: string }>; row2?: Array<{ label: string; value: string; subtitle?: string }> } | null => {
         const sectionLower = sectionName.toLowerCase();
         const financialData = enhancedData?.financialData || {};
         const keyMetrics = financialData?.keyMetrics || {};
         const assumptions = financialData?.assumptions || {};
         const initialCosts = financialData?.initialCosts || {};
         const income = financialData?.income || {};
+        const absData = enhancedData?.absData || {};
         
         // Only show KPIs for specific financial/market sections
         if (sectionLower.includes('financial') || sectionLower.includes('investment snapshot') || 
             sectionLower.includes('key metric') || sectionLower.includes('market kpi') ||
             sectionLower.includes('property snapshot') || sectionLower.includes('executive summary')) {
           
-          const metrics: Array<{ label: string; value: string; subtitle?: string }> = [];
+          const row1: Array<{ label: string; value: string; subtitle?: string }> = [];
           
-          // Property Value
+          // Purchase Price
           if (initialCosts?.propertyValue) {
-            metrics.push({
+            row1.push({
               label: 'Purchase Price',
               value: '$' + Number(initialCosts.propertyValue).toLocaleString('en-AU', { maximumFractionDigits: 0 }),
             });
           }
           
-          // Gross Yield
-          if (keyMetrics?.grossYield) {
-            metrics.push({
-              label: 'Gross Yield',
-              value: Number(keyMetrics.grossYield).toFixed(2) + '%',
-              subtitle: 'Annual rental return',
-            });
-          }
-          
-          // Net Yield
-          if (keyMetrics?.netRentalYield) {
-            metrics.push({
-              label: 'Net Yield',
-              value: Number(keyMetrics.netRentalYield).toFixed(2) + '%',
-              subtitle: 'After all costs',
-            });
-          }
-          
-          // Capital Growth
-          if (assumptions?.capitalGrowth) {
-            metrics.push({
-              label: 'Capital Growth',
-              value: Number(assumptions.capitalGrowth).toFixed(1) + '%',
-              subtitle: 'Annual forecast',
-            });
-          }
-          
-          // Weekly Rent
-          if (income?.weeklyRent && !metrics.some(m => m.label === 'Purchase Price')) {
-            metrics.push({
+          // Weekly Rent — always include prominently
+          if (income?.weeklyRent) {
+            row1.push({
               label: 'Weekly Rent',
               value: '$' + Number(income.weeklyRent).toLocaleString('en-AU', { maximumFractionDigits: 0 }),
               subtitle: 'Current market rate',
             });
           }
           
-          return metrics.length >= 2 ? metrics.slice(0, 4) : null; // Only show if 2+ metrics
+          // LVR
+          if (keyMetrics?.lvr) {
+            row1.push({
+              label: 'LVR',
+              value: Number(keyMetrics.lvr).toFixed(1) + '%',
+              subtitle: 'Loan-to-Value Ratio',
+            });
+          }
+          
+          // Gross Yield
+          if (keyMetrics?.grossYield) {
+            row1.push({
+              label: 'Gross Yield',
+              value: Number(keyMetrics.grossYield).toFixed(2) + '%',
+              subtitle: 'Annual rental return',
+            });
+          }
+          
+          // Net Yield (overflow to ensure we capture it)
+          if (keyMetrics?.netRentalYield && row1.length < 4) {
+            row1.push({
+              label: 'Net Yield',
+              value: Number(keyMetrics.netRentalYield).toFixed(2) + '%',
+              subtitle: 'After all costs',
+            });
+          }
+          
+          // Capital Growth (overflow)
+          if (assumptions?.capitalGrowth && row1.length < 4) {
+            row1.push({
+              label: 'Capital Growth',
+              value: Number(assumptions.capitalGrowth).toFixed(1) + '%',
+              subtitle: 'Annual forecast',
+            });
+          }
+
+          if (row1.length < 2) return null;
+
+          // ─── Row 2: Demographic KPIs ───
+          const row2: Array<{ label: string; value: string; subtitle?: string }> = [];
+          
+          // Extract demographic data from absData
+          const demographics = absData?.demographics || absData?.populationData || absData;
+          
+          // Population
+          const population = demographics?.population || demographics?.totalPopulation || demographics?.total_population;
+          if (population) {
+            row2.push({
+              label: 'Population',
+              value: Number(population).toLocaleString('en-AU', { maximumFractionDigits: 0 }),
+              subtitle: 'Local area',
+            });
+          }
+          
+          // Median Age
+          const medianAge = demographics?.medianAge || demographics?.median_age;
+          if (medianAge) {
+            row2.push({
+              label: 'Median Age',
+              value: String(Math.round(Number(medianAge))),
+              subtitle: 'Years',
+            });
+          }
+          
+          // Median Income
+          const medianIncome = demographics?.medianIncome || demographics?.median_income || demographics?.medianHouseholdIncome || demographics?.median_household_income;
+          if (medianIncome) {
+            row2.push({
+              label: 'Median Income',
+              value: '$' + Number(medianIncome).toLocaleString('en-AU', { maximumFractionDigits: 0 }),
+              subtitle: 'Household p.a.',
+            });
+          }
+          
+          // Median House Price (bonus demographic)
+          const medianHousePrice = demographics?.medianHousePrice || demographics?.median_house_price;
+          if (medianHousePrice && row2.length < 4) {
+            row2.push({
+              label: 'Median House Price',
+              value: '$' + Number(medianHousePrice).toLocaleString('en-AU', { maximumFractionDigits: 0 }),
+              subtitle: 'Local market',
+            });
+          }
+          
+          return { row1: row1.slice(0, 4), row2: row2.length >= 2 ? row2.slice(0, 4) : undefined };
         }
         
         return null;
@@ -2789,13 +2847,33 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
         // ─── KPI Boxes: Render gold-bordered metric cards for qualifying sections ───
         const kpiMetrics = extractKPIMetrics(cleanSectionName, content, report.enhanced_data);
         if (kpiMetrics) {
-          // Check if we have space for KPI boxes (they need ~80px)
-          if (yPosition - 80 < bottomMargin + 40) {
+          // Row 1: Financial KPIs (need ~80px)
+          const totalKPIHeight = kpiMetrics.row2 ? 170 : 80;
+          if (yPosition - totalKPIHeight < bottomMargin + 40) {
             currentPage = await addContentPage();
             yPosition = pageHeight - topMargin - 20;
           }
-          yPosition = drawKPIBoxes(currentPage, yPosition, kpiMetrics, pageWidth - 2 * margin);
-          console.log(`     ✓ Rendered ${kpiMetrics.length} KPI boxes for "${cleanSectionName}"`);
+          yPosition = drawKPIBoxes(currentPage, yPosition, kpiMetrics.row1, pageWidth - 2 * margin);
+          console.log(`     ✓ Rendered ${kpiMetrics.row1.length} financial KPI boxes for "${cleanSectionName}"`);
+          
+          // Row 2: Demographic KPIs
+          if (kpiMetrics.row2) {
+            if (yPosition - 80 < bottomMargin + 40) {
+              currentPage = await addContentPage();
+              yPosition = pageHeight - topMargin - 20;
+            }
+            // Draw a small "Demographics" label above row 2
+            currentPage.drawText('DEMOGRAPHIC SNAPSHOT', {
+              x: margin,
+              y: yPosition - 5,
+              size: 7,
+              font: helveticaBold,
+              color: GOLD_RGB,
+            });
+            yPosition -= 15;
+            yPosition = drawKPIBoxes(currentPage, yPosition, kpiMetrics.row2, pageWidth - 2 * margin);
+            console.log(`     ✓ Rendered ${kpiMetrics.row2.length} demographic KPI boxes for "${cleanSectionName}"`);
+          }
         }
 
         // Draw paragraphs with header-table grouping
