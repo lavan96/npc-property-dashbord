@@ -296,7 +296,7 @@ async function fetchConversationMessages(
       }
 
       const data = await res.json();
-      console.log(`[sync-ghl-conversations] Messages response keys for ${ghlConversationId}:`, Object.keys(data), 'type:', typeof data.messages);
+      console.log(`[sync-ghl-conversations] Messages response for ${ghlConversationId}:`, JSON.stringify(data).substring(0, 800));
       
       // GHL may return messages under different keys or as a non-array
       let messages: any[] = [];
