@@ -86,22 +86,27 @@ export function MessageComposer({ value, onChange, onSend, isSending, disabled, 
       showToolbar && 'ring-0 focus-within:ring-1 focus-within:ring-ring'
     )}>
       {showToolbar && (
-        <div className="flex items-center gap-0.5 px-2 py-1 border-b border-border/40 bg-muted/20">
+        <div className="flex items-center gap-1 px-2 py-1.5 border-b border-border/50 bg-muted/30">
           {formatItems.map(({ icon: Icon, label, prefix, suffix }) => (
-            <Button
-              key={label}
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6"
-              title={label}
-              onClick={() => insertFormatting(prefix, suffix)}
-            >
-              <Icon className="h-3 w-3" />
-            </Button>
+            <Tooltip key={label}>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 hover:bg-accent"
+                  onClick={() => insertFormatting(prefix, suffix)}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                {label}
+              </TooltipContent>
+            </Tooltip>
           ))}
-          <span className="ml-auto text-[9px] text-muted-foreground capitalize">
-            {channel === 'whatsapp' ? 'WhatsApp' : channel} formatting
+          <span className="ml-auto text-[9px] text-muted-foreground/60 capitalize">
+            {channel === 'whatsapp' ? 'WhatsApp' : channel}
           </span>
         </div>
       )}
