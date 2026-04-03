@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
       Version: "2021-04-15",
     };
 
-    console.log(`[send-ghl-message] Sending ${type || 'SMS'} to conversation ${conversationId}`);
+    console.log(`[send-ghl-message] Sending ${messageType} to conversation ${conversationId}`);
 
     const ghlRes = await fetch(ghlUrl, {
       method: "POST",
