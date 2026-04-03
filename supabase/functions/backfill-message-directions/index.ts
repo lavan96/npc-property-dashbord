@@ -159,9 +159,12 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({
       success: true,
+      offset,
+      batch_size: batchSize,
       conversations_processed: conversations.length,
       messages_updated: totalUpdated,
       messages_skipped: totalSkipped,
+      next_offset: conversations.length === batchSize ? offset + batchSize : null,
       errors: errors.length > 0 ? errors : undefined,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
