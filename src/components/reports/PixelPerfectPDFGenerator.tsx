@@ -2474,7 +2474,21 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
         const currentPageNumber = pdfDoc.getPageCount(); // Current page we're about to draw on
         sectionPageNumbers.set(cleanSectionName, currentPageNumber);
 
-        // Draw section title with word wrapping (left-aligned for headings)
+        // ─── Premium Section Header: Gold accent bar + Navy text ───────────
+        // Draw gold accent bar on the left
+        currentPage.drawRectangle({
+          x: margin - 8,
+          y: yPosition - 6,
+          width: 3,
+          height: 18,
+          color: GOLD_RGB,
+        });
+        
+        // Draw subtle gold underline below the section title area
+        const sectionTitleClean = stripEmojis(cleanSectionName);
+        const sectionTitleWidth = helveticaBold.widthOfTextAtSize(sectionTitleClean, titleSize);
+        
+        // Draw section title in navy
         let titleResult = drawTextWithWrap(
           currentPage,
           `**${stripEmojis(cleanSectionName)}**`,
@@ -2487,9 +2501,28 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
           20,
           'left' // Section headings should be left-aligned
         );
+        
+        // Draw gold underline after title
+        currentPage.drawLine({
+          start: { x: margin, y: titleResult.lastY + 6 },
+          end: { x: margin + Math.min(sectionTitleWidth + 20, pageWidth - 2 * margin), y: titleResult.lastY + 6 },
+          thickness: 1,
+          color: GOLD_RGB,
+        });
+        
         if (titleResult.needsNewPage) {
           currentPage = await addContentPage();
           yPosition = pageHeight - topMargin - 20;
+          
+          // Re-draw accent bar on new page
+          currentPage.drawRectangle({
+            x: margin - 8,
+            y: yPosition - 6,
+            width: 3,
+            height: 18,
+            color: GOLD_RGB,
+          });
+          
           titleResult = drawTextWithWrap(
             currentPage,
             `**${stripEmojis(cleanSectionName)}**`,
@@ -2500,8 +2533,16 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
             helveticaBold,
             titleSize,
             20,
-            'left' // Section headings should be left-aligned
+            'left'
           );
+          
+          // Draw gold underline on new page
+          currentPage.drawLine({
+            start: { x: margin, y: titleResult.lastY + 6 },
+            end: { x: margin + Math.min(sectionTitleWidth + 20, pageWidth - 2 * margin), y: titleResult.lastY + 6 },
+            thickness: 1,
+            color: GOLD_RGB,
+          });
         }
         yPosition = titleResult.lastY - 10;
 
