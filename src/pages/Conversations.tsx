@@ -598,7 +598,9 @@ export default function Conversations() {
                                         <p className="text-[10px] font-medium mb-0.5 opacity-70">{msg.sender_name}</p>
                                       )}
                                       {msg.body && (
-                                        <p className="whitespace-pre-wrap break-words text-[13px] leading-relaxed">{msg.body}</p>
+                                        <p className="whitespace-pre-wrap break-words text-[13px] leading-relaxed">
+                                          {renderFormattedMessage(msg.body, msg.channel_type || selectedConversation?.channel_type || 'sms')}
+                                        </p>
                                       )}
                                       {msg.attachment_urls && msg.attachment_urls.length > 0 && (
                                         <div className="mt-1.5 space-y-1">
