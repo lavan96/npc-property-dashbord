@@ -87,6 +87,7 @@ import { DealTrackerTab } from './deal-tracker';
 import { SendAgreementDialog } from '../agreements/SendAgreementDialog';
 import { SendPortalInviteDialog } from '../portal/SendPortalInviteDialog';
 import { LeadSourceCard } from './LeadSourceCard';
+import { ClientConversationsTab } from './ClientConversationsTab';
 import { toast } from 'sonner';
 interface ClientDetailsModalProps {
   client: {
@@ -118,7 +119,7 @@ export function ClientDetailsModal({ client, open, onOpenChange, initialTab, ini
   const [showPortalInviteDialog, setShowPortalInviteDialog] = useState(false);
   const [activeTab, setActiveTab] = useState(initialTab || 'overview');
 
-  const tabOrder = ['overview', 'personal', 'properties', 'deals', 'employment', 'financials', 'reports', 'sent-reports', 'report-requests', 'emails', 'appointments', 'notes', 'reminders', 'vownet-forms', 'files', 'activity', 'insights'];
+  const tabOrder = ['overview', 'personal', 'properties', 'deals', 'employment', 'financials', 'reports', 'sent-reports', 'report-requests', 'emails', 'conversations', 'appointments', 'notes', 'reminders', 'vownet-forms', 'files', 'activity', 'insights'];
 
   const tabSwipeHandlers = useSwipeGesture(
     useCallback(() => {
@@ -369,6 +370,10 @@ NPC Team`
             <TabsTrigger value="emails" className="text-xs sm:text-sm">
               <Inbox className="h-3 w-3 mr-0.5" />
               Emails
+            </TabsTrigger>
+            <TabsTrigger value="conversations" className="text-xs sm:text-sm">
+              <MessageSquare className="h-3 w-3 mr-0.5" />
+              Conversations
             </TabsTrigger>
             <TabsTrigger value="appointments" className="text-xs sm:text-sm">
               <Calendar className="h-3 w-3 mr-0.5" />
@@ -796,6 +801,14 @@ NPC Team`
 
             <TabsContent value="emails" className="mt-4 w-full min-w-0">
               <ClientEmailsTab clientId={client.id} clientName={`${client.primary_first_name} ${client.primary_surname}`} />
+            </TabsContent>
+
+            <TabsContent value="conversations" className="mt-4 w-full min-w-0">
+              <ClientConversationsTab
+                clientId={client.id}
+                clientName={`${client.primary_first_name} ${client.primary_surname}`}
+                ghlContactId={fullClient?.ghl_contact_id}
+              />
             </TabsContent>
 
             <TabsContent value="appointments" className={cn("mt-4", !isMobile && "max-w-3xl mx-auto w-full")}>
