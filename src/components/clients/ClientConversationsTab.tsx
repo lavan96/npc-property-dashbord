@@ -93,6 +93,7 @@ interface Message {
   id: string;
   ghl_message_id: string;
   direction: string;
+  channel_type: string | null;
   body: string | null;
   message_type: string | null;
   message_status: string | null;
