@@ -5012,6 +5012,127 @@ export type Database = {
           },
         ]
       }
+      ghl_conversation_messages: {
+        Row: {
+          attachment_urls: string[] | null
+          body: string | null
+          channel_type: string
+          content_type: string
+          conversation_id: string
+          created_at: string
+          direction: string
+          ghl_date_added: string | null
+          ghl_message_id: string
+          id: string
+          message_status: string | null
+          recipient_number: string | null
+          sender_name: string | null
+          sender_number: string | null
+          updated_at: string
+        }
+        Insert: {
+          attachment_urls?: string[] | null
+          body?: string | null
+          channel_type?: string
+          content_type?: string
+          conversation_id: string
+          created_at?: string
+          direction?: string
+          ghl_date_added?: string | null
+          ghl_message_id: string
+          id?: string
+          message_status?: string | null
+          recipient_number?: string | null
+          sender_name?: string | null
+          sender_number?: string | null
+          updated_at?: string
+        }
+        Update: {
+          attachment_urls?: string[] | null
+          body?: string | null
+          channel_type?: string
+          content_type?: string
+          conversation_id?: string
+          created_at?: string
+          direction?: string
+          ghl_date_added?: string | null
+          ghl_message_id?: string
+          id?: string
+          message_status?: string | null
+          recipient_number?: string | null
+          sender_name?: string | null
+          sender_number?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ghl_conversation_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "ghl_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ghl_conversations: {
+        Row: {
+          assigned_to: string | null
+          channel_type: string
+          client_id: string | null
+          conversation_status: string
+          created_at: string
+          ghl_contact_id: string | null
+          ghl_conversation_id: string
+          id: string
+          last_message_body: string | null
+          last_message_date: string | null
+          last_message_direction: string | null
+          last_synced_at: string | null
+          unread_count: number
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          channel_type?: string
+          client_id?: string | null
+          conversation_status?: string
+          created_at?: string
+          ghl_contact_id?: string | null
+          ghl_conversation_id: string
+          id?: string
+          last_message_body?: string | null
+          last_message_date?: string | null
+          last_message_direction?: string | null
+          last_synced_at?: string | null
+          unread_count?: number
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          channel_type?: string
+          client_id?: string | null
+          conversation_status?: string
+          created_at?: string
+          ghl_contact_id?: string | null
+          ghl_conversation_id?: string
+          id?: string
+          last_message_body?: string | null
+          last_message_date?: string | null
+          last_message_direction?: string | null
+          last_synced_at?: string | null
+          unread_count?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ghl_conversations_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ghl_pipeline_stages: {
         Row: {
           color: string | null
