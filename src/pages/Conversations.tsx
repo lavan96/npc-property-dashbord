@@ -545,7 +545,7 @@ export default function Conversations() {
                           variant="link"
                           size="sm"
                           className="h-auto p-0 ml-2 text-[11px] text-primary"
-                          onClick={() => window.open(`/clients?highlight=${selectedConversation.client_id}`, '_blank')}
+                          onClick={() => window.open(`/clients?clientId=${selectedConversation.client_id}`, '_blank')}
                         >
                           View Client <ExternalLink className="h-2.5 w-2.5 ml-0.5" />
                         </Button>
