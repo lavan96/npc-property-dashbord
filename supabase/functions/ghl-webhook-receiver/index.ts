@@ -134,6 +134,145 @@ async function updateClientPipelineFields(
   }
 }
 
+// ─── Conversation / Message Event Handler ───────────────────────────────────
+
+function mapGhlChannelType(ghlType: string | number | undefined): string {
+  if (!ghlType) return 'sms';
+  const typeStr = String(ghlType).toLowerCase();
+  const mapping: Record<string, string> = {
+    'sms': 'sms', '1': 'sms', 'phone': 'sms',
+    'email': 'email', '2': 'email',
+    'whatsapp': 'whatsapp', '3': 'whatsapp',
+    'fb': 'facebook', 'facebook': 'facebook', '4': 'facebook',
+    'ig': 'instagram', 'instagram': 'instagram', '5': 'instagram',
+    'live_chat': 'live_chat', 'livechat': 'live_chat', '6': 'live_chat',
+    'google_my_business': 'gmb', 'gmb': 'gmb', '7': 'gmb',
+  };
+  return mapping[typeStr] || typeStr;
+}
+
+async function handleConversationMessageEvent(supabase: any, body: any, eventType: string) {
+  // GHL sends: InboundMessage, OutboundMessage, ConversationUnreadUpdate, etc.
+  const messageId = body.id || body.messageId;
+  const conversationId = body.conversationId || body.conversation_id;
+  const contactId = body.contactId || body.contact_id;
+  const messageBody = body.body || body.message || body.text || '';
+  const direction = eventType.includes('inbound') ? 'inbound' : 'outbound';
+  const messageType = body.messageType || body.type;
+  const dateAdded = body.dateAdded || body.createdAt || new Date().toISOString();
+
+  if (!conversationId) {
+    console.error('[ghl-webhook] Message event missing conversationId');
+    return { success: false, error: 'Missing conversationId' };
+  }
+
+  console.log(`[ghl-webhook] Processing message event: type=${eventType}, msgId=${messageId}, conv=${conversationId}, contact=${contactId}`);
+
+  // Find client by ghl_contact_id
+  let clientId: string | null = null;
+  if (contactId) {
+    const { data: client } = await supabase
+      .from('clients')
+      .select('id')
+      .eq('ghl_contact_id', contactId)
+      .maybeSingle();
+    clientId = client?.id || null;
+  }
+
+  // Upsert the conversation record
+  const channelType = mapGhlChannelType(messageType);
+  const { data: convRecord, error: convError } = await supabase
+    .from('ghl_conversations')
+    .upsert({
+      ghl_conversation_id: conversationId,
+      client_id: clientId,
+      ghl_contact_id: contactId || null,
+      channel_type: channelType,
+      last_message_body: messageBody.substring(0, 500),
+      last_message_date: dateAdded,
+      last_message_direction: direction,
+      unread_count: direction === 'inbound' ? 1 : 0,
+      last_synced_at: new Date().toISOString(),
+    }, { onConflict: 'ghl_conversation_id' })
+    .select('id, unread_count')
+    .single();
+
+  if (convError) {
+    console.error('[ghl-webhook] Conversation upsert failed:', convError.message);
+    return { success: false, error: convError.message };
+  }
+
+  // If inbound, increment unread count on existing conversation
+  if (direction === 'inbound' && convRecord) {
+    await supabase
+      .from('ghl_conversations')
+      .update({ unread_count: (convRecord.unread_count || 0) + 1 })
+      .eq('id', convRecord.id);
+  }
+
+  // Upsert the message if we have a message ID
+  if (messageId) {
+    const attachments = body.attachments?.map((a: any) => a.url).filter(Boolean) || null;
+
+    const { error: msgError } = await supabase
+      .from('ghl_conversation_messages')
+      .upsert({
+        conversation_id: convRecord.id,
+        ghl_message_id: messageId,
+        direction,
+        channel_type: channelType,
+        body: messageBody || null,
+        content_type: body.contentType?.includes('image') ? 'image' : 
+                      body.contentType?.includes('video') ? 'video' : 
+                      body.contentType?.includes('audio') ? 'audio' : 'text',
+        attachment_urls: attachments,
+        sender_name: body.contactName || body.userName || null,
+        sender_number: body.from || body.phone || null,
+        recipient_number: body.to || null,
+        message_status: body.status || 'sent',
+        ghl_date_added: dateAdded,
+      }, { onConflict: 'ghl_message_id' });
+
+    if (msgError) {
+      console.error('[ghl-webhook] Message upsert failed:', msgError.message);
+      return { success: false, error: msgError.message };
+    }
+
+    console.log(`[ghl-webhook] ✅ Synced ${direction} message ${messageId} to conversation ${conversationId}`);
+  }
+
+  return {
+    success: true,
+    action: 'message_synced',
+    direction,
+    conversationId,
+    clientId,
+  };
+}
+
+// ─── Conversation Unread Update Handler ─────────────────────────────────────
+
+async function handleConversationUnreadUpdate(supabase: any, body: any) {
+  const conversationId = body.conversationId || body.id;
+  const unreadCount = body.unreadCount ?? body.unread_count ?? 0;
+
+  if (!conversationId) {
+    return { success: false, error: 'Missing conversationId' };
+  }
+
+  const { error } = await supabase
+    .from('ghl_conversations')
+    .update({ unread_count: unreadCount })
+    .eq('ghl_conversation_id', conversationId);
+
+  if (error) {
+    console.error('[ghl-webhook] Unread update failed:', error.message);
+    return { success: false, error: error.message };
+  }
+
+  return { success: true, action: 'unread_updated', conversationId, unreadCount };
+}
+
 // ─── Note Event Handler ─────────────────────────────────────────────────────
 
 async function handleNoteEvent(supabase: any, body: any, eventType: string) {
