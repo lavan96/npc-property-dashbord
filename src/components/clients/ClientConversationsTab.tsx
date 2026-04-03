@@ -93,6 +93,7 @@ interface Message {
   id: string;
   ghl_message_id: string;
   direction: string;
+  channel_type: string | null;
   body: string | null;
   message_type: string | null;
   message_status: string | null;
@@ -513,12 +514,32 @@ export function ClientConversationsTab({ clientId, clientName, clientEmail, ghlC
                 <div className="space-y-2">
                   {group.messages.map((msg) => {
                     const isOutbound = msg.direction === 'outbound';
+                    const msgChannel = normalizeChannel(msg.channel_type || selectedConversation?.channel_type || '');
+                    
+                    const getOutboundBubbleClass = () => {
+                      switch (msgChannel) {
+                        case 'sms': return 'bg-blue-100 dark:bg-blue-900/40 text-foreground rounded-br-md';
+                        case 'whatsapp': return 'bg-green-100 dark:bg-green-900/40 text-foreground rounded-br-md';
+                        case 'email': return 'bg-primary text-primary-foreground rounded-br-md';
+                        default: return 'bg-primary text-primary-foreground rounded-br-md';
+                      }
+                    };
+                    
+                    const getTimestampClass = () => {
+                      if (!isOutbound) return 'text-muted-foreground';
+                      switch (msgChannel) {
+                        case 'sms': return 'text-blue-500 dark:text-blue-400';
+                        case 'whatsapp': return 'text-green-600 dark:text-green-400';
+                        default: return 'text-primary-foreground/70';
+                      }
+                    };
+
                     return (
                       <div key={msg.id} className={cn('flex', isOutbound ? 'justify-end' : 'justify-start')}>
                         <div className={cn(
                           'max-w-[80%] rounded-2xl px-3.5 py-2 text-sm',
                           isOutbound
-                            ? 'bg-primary text-primary-foreground rounded-br-md'
+                            ? getOutboundBubbleClass()
                             : 'bg-muted rounded-bl-md'
                         )}>
                           {msg.body && (
@@ -539,10 +560,7 @@ export function ClientConversationsTab({ clientId, clientName, clientEmail, ghlC
                               ))}
                             </div>
                           )}
-                          <p className={cn(
-                            'text-[10px] mt-1',
-                            isOutbound ? 'text-primary-foreground/70' : 'text-muted-foreground'
-                          )}>
+                          <p className={cn('text-[10px] mt-1', getTimestampClass())}>
                             {msg.ghl_date_added && format(new Date(msg.ghl_date_added), 'h:mm a')}
                             {msg.message_status && msg.message_status !== 'delivered' && (
                               <span className="ml-1.5">· {msg.message_status}</span>

@@ -148,7 +148,15 @@ serve(async (req) => {
             const messageRows = messages.map((msg: any) => ({
               conversation_id: upsertedConv.id,
               ghl_message_id: msg.id,
-              direction: msg.direction === 1 || msg.direction === '1' || msg.type === 1 ? 'inbound' : 'outbound',
+              direction: (() => {
+                const dir = msg.direction;
+                if (dir === 'inbound' || dir === 1 || dir === '1') return 'inbound';
+                if (dir === 'outbound' || dir === 2 || dir === '2') return 'outbound';
+                if (msg.incoming === true) return 'inbound';
+                if (msg.incoming === false) return 'outbound';
+                if (msg.userId) return 'outbound';
+                return 'outbound';
+              })(),
               channel_type: mapChannelType(msg.messageType || msg.source),
               body: msg.body || msg.message || msg.text || null,
               content_type: (msg.contentType || '').includes('image') ? 'image' : 'text',
@@ -171,9 +179,10 @@ serve(async (req) => {
             totalMessages += messages.length;
 
             // Check for new inbound messages that need notifications
-            const latestInbound = messages.filter((m: any) =>
-              (m.direction === 1 || m.direction === '1' || m.type === 1)
-            );
+            const latestInbound = messages.filter((m: any) => {
+              const dir = m.direction;
+              return dir === 'inbound' || dir === 1 || dir === '1' || m.incoming === true;
+            });
 
             for (const msg of latestInbound) {
               // Only create notification if message is recent (last 30 min)

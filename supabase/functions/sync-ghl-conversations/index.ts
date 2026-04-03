@@ -255,9 +255,20 @@ function mapChannelType(ghlType: string | number | undefined): string {
   return mapping[typeStr] || typeStr;
 }
 
-function mapMessageDirection(type: number | string | undefined): string {
-  // GHL: type 1 = inbound, type 2 = outbound
-  if (type === 1 || type === '1' || type === 'inbound') return 'inbound';
+function mapMessageDirection(msg: any): string {
+  // GHL uses multiple fields to indicate direction:
+  // - direction: "inbound" | "outbound" (string)  
+  // - direction: 1 (inbound) | 2 (outbound) (number)
+  // - incoming: true/false (boolean in some API versions)
+  // - type: 1 (inbound) | 2 (outbound) — but can conflict with messageType
+  const dir = msg.direction;
+  if (dir === 'inbound' || dir === 1 || dir === '1') return 'inbound';
+  if (dir === 'outbound' || dir === 2 || dir === '2') return 'outbound';
+  // Fallback: check incoming flag
+  if (msg.incoming === true) return 'inbound';
+  if (msg.incoming === false) return 'outbound';
+  // Last resort: if contactId sent the message, it's inbound
+  if (msg.userId) return 'outbound'; // sent by a user/agent
   return 'outbound';
 }
 
@@ -322,11 +333,13 @@ async function fetchConversationMessages(
         break;
       }
 
+      console.log(`[sync-ghl-conversations] Sample msg direction fields:`, messages.length > 0 ? JSON.stringify({ direction: messages[0].direction, incoming: messages[0].incoming, type: messages[0].type, userId: messages[0].userId }) : 'none');
+
       // Batch upsert messages
       const messageRows = messages.map((msg: any) => ({
         conversation_id: localConversationId,
         ghl_message_id: msg.id,
-        direction: mapMessageDirection(msg.direction || msg.type),
+        direction: mapMessageDirection(msg),
         channel_type: mapChannelType(msg.messageType || msg.source),
         body: msg.body || msg.message || msg.text || null,
         content_type: mapContentType(msg.contentType),
