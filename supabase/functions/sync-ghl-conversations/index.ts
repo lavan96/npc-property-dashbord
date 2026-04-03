@@ -141,7 +141,7 @@ serve(async (req) => {
               ghl_contact_id: ghlContactId,
               channel_type: channelType,
               last_message_body: conv.lastMessageBody || conv.snippet || null,
-              last_message_date: conv.lastMessageDate || conv.dateUpdated || null,
+              last_message_date: parseGhlDate(conv.lastMessageDate || conv.dateUpdated),
               last_message_direction: conv.lastMessageDirection || conv.lastMessageType === 1 ? 'inbound' : 'outbound',
               unread_count: conv.unreadCount || 0,
               conversation_status: conv.starred ? 'starred' : (conv.deleted ? 'archived' : 'open'),
@@ -203,6 +203,20 @@ serve(async (req) => {
 });
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
+
+/** Convert GHL date (could be Unix ms, Unix s, or ISO string) to ISO string */
+function parseGhlDate(val: any): string | null {
+  if (!val) return null;
+  if (typeof val === 'number' || /^\d{10,13}$/.test(String(val))) {
+    const num = Number(val);
+    // If 13 digits, it's milliseconds; if 10, seconds
+    const ms = num > 1e12 ? num : num * 1000;
+    return new Date(ms).toISOString();
+  }
+  // Try parsing as string
+  const d = new Date(val);
+  return isNaN(d.getTime()) ? null : d.toISOString();
+}
 
 function mapChannelType(ghlType: string | number | undefined): string {
   if (!ghlType) return 'sms';
@@ -282,7 +296,18 @@ async function fetchConversationMessages(
       }
 
       const data = await res.json();
-      const messages = data.messages || [];
+      
+      // GHL returns: { messages: { lastMessageId, nextPage, messages: [...] } }
+      let messages: any[] = [];
+      if (data.messages?.messages && Array.isArray(data.messages.messages)) {
+        messages = data.messages.messages;
+        hasMore = data.messages.nextPage === true;
+        lastMessageId = data.messages.lastMessageId || undefined;
+      } else if (Array.isArray(data.messages)) {
+        messages = data.messages;
+      }
+
+      console.log(`[sync-ghl-conversations] Parsed ${messages.length} messages, sample:`, messages.length > 0 ? JSON.stringify(messages[0]).substring(0, 300) : 'none');
 
       if (messages.length === 0) {
         hasMore = false;
@@ -302,7 +327,7 @@ async function fetchConversationMessages(
         sender_number: msg.contactId ? null : (msg.phone || msg.from || null),
         recipient_number: msg.phone || msg.to || null,
         message_status: msg.status || 'sent',
-        ghl_date_added: msg.dateAdded || msg.createdAt || null,
+        ghl_date_added: parseGhlDate(msg.dateAdded || msg.createdAt),
       }));
 
       const { error: insertError } = await supabase

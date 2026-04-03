@@ -1,46 +1,29 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-session-token, x-portal-session-token",
-};
+import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 
 Deno.serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = createCorsHeaders(origin);
+
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
-
-    // Verify auth
-    const sessionToken = req.headers.get("x-session-token");
-    if (!sessionToken) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const { data: session } = await supabase
-      .from("custom_sessions")
-      .select("user_id, expires_at")
-      .eq("session_token", sessionToken)
-      .gt("expires_at", new Date().toISOString())
-      .maybeSingle();
-
-    if (!session) {
-      return new Response(JSON.stringify({ error: "Invalid session" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
     const body = await req.json();
+
+    // Verify authentication using shared auth
+    const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
+    if (authError) {
+      console.log('[send-ghl-message] Auth failed:', authError);
+      return createUnauthorizedResponse(authError, corsHeaders);
+    }
+    console.log(`[send-ghl-message] Authenticated user: ${userId}`);
+
     const { conversationId, message, type } = body;
 
     if (!conversationId || !message) {
@@ -50,27 +33,34 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Get GHL API key
-    const { data: ghlSecret } = await supabase
-      .from("integration_secrets")
-      .select("secret_value")
-      .eq("secret_key", "ghl_api_key")
-      .maybeSingle();
+    // Get GHL API key from env (preferred) or integration_secrets
+    let apiKey = Deno.env.get('GOHIGHLEVEL_API_KEY');
+    let locationId = Deno.env.get('GOHIGHLEVEL_LOCATION_ID');
 
-    if (!ghlSecret?.secret_value) {
+    if (!apiKey) {
+      const { data: ghlSecret } = await supabase
+        .from("integration_secrets")
+        .select("secret_value")
+        .eq("secret_key", "ghl_api_key")
+        .maybeSingle();
+      apiKey = ghlSecret?.secret_value;
+    }
+
+    if (!locationId) {
+      const { data: locationSecret } = await supabase
+        .from("integration_secrets")
+        .select("secret_value")
+        .eq("secret_key", "ghl_location_id")
+        .maybeSingle();
+      locationId = locationSecret?.secret_value;
+    }
+
+    if (!apiKey) {
       return new Response(
         JSON.stringify({ error: "GHL API key not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    const { data: locationSecret } = await supabase
-      .from("integration_secrets")
-      .select("secret_value")
-      .eq("secret_key", "ghl_location_id")
-      .maybeSingle();
-
-    const locationId = locationSecret?.secret_value;
 
     // Send message via GHL API
     const ghlPayload: any = {
@@ -80,15 +70,14 @@ Deno.serve(async (req) => {
     };
 
     const ghlUrl = `https://services.leadconnectorhq.com/conversations/messages`;
-    
+
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${ghlSecret.secret_value}`,
+      Authorization: `Bearer ${apiKey}`,
       Version: "2021-04-15",
     };
-    if (locationId) {
-      headers["channel"] = locationId;
-    }
+
+    console.log(`[send-ghl-message] Sending ${type || 'SMS'} to conversation ${conversationId}`);
 
     const ghlRes = await fetch(ghlUrl, {
       method: "POST",
@@ -99,17 +88,19 @@ Deno.serve(async (req) => {
     const ghlData = await ghlRes.json();
 
     if (!ghlRes.ok) {
-      console.error("GHL send message error:", ghlData);
+      console.error("[send-ghl-message] GHL API error:", ghlData);
       return new Response(
         JSON.stringify({ error: "Failed to send message via GHL", details: ghlData }),
         { status: ghlRes.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
+    console.log(`[send-ghl-message] Message sent successfully: ${ghlData.messageId || ghlData.id}`);
+
     // Store the outbound message in our database
     const messageRecord = {
       ghl_message_id: ghlData.messageId || ghlData.id || crypto.randomUUID(),
-      conversation_id: null as string | null, // We'll look this up
+      conversation_id: null as string | null,
       direction: "outbound",
       body: message,
       message_type: (type || "SMS").toLowerCase(),
@@ -132,7 +123,7 @@ Deno.serve(async (req) => {
         onConflict: "ghl_message_id",
       });
 
-      // Update last message date
+      // Update conversation metadata
       await supabase
         .from("ghl_conversations")
         .update({
@@ -149,7 +140,7 @@ Deno.serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: any) {
-    console.error("Send GHL message error:", error);
+    console.error("[send-ghl-message] Error:", error);
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
