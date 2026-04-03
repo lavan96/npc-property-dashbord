@@ -54,11 +54,11 @@ serve(async (req) => {
     // If syncing for a specific client, get their GHL contact ID
     let targetContactIds: Array<{ clientId: string; ghlContactId: string }> = [];
 
-    if (client_id) {
+    if (resolvedClientId) {
       const { data: client } = await supabase
         .from('clients')
         .select('id, ghl_contact_id')
-        .eq('id', client_id)
+        .eq('id', resolvedClientId)
         .maybeSingle();
 
       if (!client?.ghl_contact_id) {
@@ -71,16 +71,16 @@ serve(async (req) => {
         });
       }
       targetContactIds = [{ clientId: client.id, ghlContactId: client.ghl_contact_id }];
-    } else if (ghl_contact_id) {
+    } else if (resolvedGhlContactId) {
       const { data: client } = await supabase
         .from('clients')
         .select('id')
-        .eq('ghl_contact_id', ghl_contact_id)
+        .eq('ghl_contact_id', resolvedGhlContactId)
         .maybeSingle();
 
       targetContactIds = [{
         clientId: client?.id || null,
-        ghlContactId: ghl_contact_id,
+        ghlContactId: resolvedGhlContactId,
       }];
     } else {
       // Bulk sync: get all clients with GHL contact IDs
