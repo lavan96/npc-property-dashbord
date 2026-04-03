@@ -103,6 +103,7 @@ interface Message {
 interface ClientConversationsTabProps {
   clientId: string;
   clientName: string;
+  clientEmail?: string | null;
   ghlContactId?: string | null;
 }
 
