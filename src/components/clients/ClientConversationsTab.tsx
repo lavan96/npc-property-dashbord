@@ -171,11 +171,12 @@ export function ClientConversationsTab({ clientId, clientName, ghlContactId }: C
 
   // Send reply
   const sendMutation = useMutation({
-    mutationFn: async ({ conversationId, message, type }: { conversationId: string; message: string; type: string }) => {
+    mutationFn: async ({ conversationId, message, type, subject }: { conversationId: string; message: string; type: string; subject?: string }) => {
       const { data, error } = await invokeSecureFunction('send-ghl-message', {
         conversationId,
         message,
         type,
+        ...(subject ? { subject } : {}),
       });
       if (error) throw new Error(error.message);
       if (data?.error) throw new Error(data.error);
@@ -183,6 +184,7 @@ export function ClientConversationsTab({ clientId, clientName, ghlContactId }: C
     },
     onSuccess: () => {
       setReplyText('');
+      setEmailSubject('');
       toast.success('Message sent');
       if (selectedConversation) {
         queryClient.invalidateQueries({ queryKey: ['ghl-messages', selectedConversation.id] });
@@ -191,6 +193,21 @@ export function ClientConversationsTab({ clientId, clientName, ghlContactId }: C
     },
     onError: (err: any) => toast.error('Failed to send: ' + err.message),
   });
+
+  // When conversation changes, default the reply channel to match
+  useEffect(() => {
+    if (selectedConversation) {
+      const ch = normalizeChannel(selectedConversation.channel_type);
+      // Only default to channels we support sending on
+      if (['sms', 'email', 'whatsapp'].includes(ch)) {
+        setReplyChannel(ch);
+      } else {
+        setReplyChannel('sms');
+      }
+      setEmailSubject('');
+      setReplyText('');
+    }
+  }, [selectedConversation?.id]);
 
   // Scroll to bottom when messages load
   useEffect(() => {
@@ -209,13 +226,27 @@ export function ClientConversationsTab({ clientId, clientName, ghlContactId }: C
     );
   }, [conversations, searchTerm]);
 
+  // Map internal channel to GHL API type
+  const channelToGhlType = (ch: string): string => {
+    switch (ch) {
+      case 'email': return 'Email';
+      case 'whatsapp': return 'WhatsApp';
+      case 'sms':
+      default: return 'SMS';
+    }
+  };
+
   const handleSendReply = () => {
     if (!replyText.trim() || !selectedConversation) return;
-    const type = normalizeChannel(selectedConversation.channel_type) === 'email' ? 'Email' : 'SMS';
+    if (replyChannel === 'email' && !emailSubject.trim()) {
+      toast.error('Please enter an email subject');
+      return;
+    }
     sendMutation.mutate({
       conversationId: selectedConversation.ghl_conversation_id,
       message: replyText.trim(),
-      type,
+      type: channelToGhlType(replyChannel),
+      ...(replyChannel === 'email' && emailSubject.trim() ? { subject: emailSubject.trim() } : {}),
     });
   };
 
