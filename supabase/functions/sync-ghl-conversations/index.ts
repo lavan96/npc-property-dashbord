@@ -296,7 +296,20 @@ async function fetchConversationMessages(
       }
 
       const data = await res.json();
-      const messages = data.messages || [];
+      console.log(`[sync-ghl-conversations] Messages response keys for ${ghlConversationId}:`, Object.keys(data), 'type:', typeof data.messages);
+      
+      // GHL may return messages under different keys or as a non-array
+      let messages: any[] = [];
+      if (Array.isArray(data.messages)) {
+        messages = data.messages;
+      } else if (Array.isArray(data)) {
+        messages = data;
+      } else if (data.messages && typeof data.messages === 'object') {
+        // Could be an object with message IDs as keys
+        messages = Object.values(data.messages);
+      } else if (data.data && Array.isArray(data.data)) {
+        messages = data.data;
+      }
 
       if (messages.length === 0) {
         hasMore = false;
