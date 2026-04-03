@@ -87,6 +87,7 @@ import { DealTrackerTab } from './deal-tracker';
 import { SendAgreementDialog } from '../agreements/SendAgreementDialog';
 import { SendPortalInviteDialog } from '../portal/SendPortalInviteDialog';
 import { LeadSourceCard } from './LeadSourceCard';
+import { ClientConversationsTab } from './ClientConversationsTab';
 import { toast } from 'sonner';
 interface ClientDetailsModalProps {
   client: {
