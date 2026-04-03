@@ -203,9 +203,24 @@ export function ClientConversationsTab({ clientId, clientName, clientEmail, ghlC
     onError: (err: any) => toast.error('Sync failed: ' + err.message),
   });
 
-  // Send reply
+  // Send reply - routes email through Email Copilot, SMS/WhatsApp through GHL
   const sendMutation = useMutation({
     mutationFn: async ({ conversationId, message, type, subject }: { conversationId: string; message: string; type: string; subject?: string }) => {
+      // Email channel: route through send-email-reply (Email Copilot) for signature support
+      if (type === 'Email') {
+        if (!clientEmail) throw new Error('Client does not have an email address');
+        const { data, error } = await invokeSecureFunction('send-email-reply', {
+          to: clientEmail,
+          subject: subject || `Message from NPC Services`,
+          body: message,
+          mailboxSource: selectedMailbox,
+        });
+        if (error) throw new Error(error.message);
+        if (data?.error) throw new Error(data.error);
+        return data;
+      }
+      
+      // SMS/WhatsApp: route through GHL
       const { data, error } = await invokeSecureFunction('send-ghl-message', {
         conversationId,
         message,
