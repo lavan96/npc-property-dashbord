@@ -134,6 +134,27 @@ export default function Conversations() {
   const [emailSubject, setEmailSubject] = useState('');
   const [selectedMailbox, setSelectedMailbox] = useState<string>('admin');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  // ── Sync from GHL API then refetch local data ──
+  const handleSyncAndRefresh = async () => {
+    setIsSyncing(true);
+    try {
+      await triggerGhlSync();
+      await refetchConversations();
+      if (selectedId) {
+        queryClient.invalidateQueries({ queryKey: ['conversation-messages', selectedId] });
+      }
+      toast.success('Conversations synced from GHL');
+    } catch (err: any) {
+      console.error('GHL sync failed:', err);
+      toast.error('Sync failed: ' + err.message);
+      // Still refetch local data
+      await refetchConversations();
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   // ── Fetch ALL conversations via edge function ──
   const { data: conversations = [], isLoading: loadingConversations, refetch: refetchConversations } = useQuery({
