@@ -141,7 +141,7 @@ serve(async (req) => {
               ghl_contact_id: ghlContactId,
               channel_type: channelType,
               last_message_body: conv.lastMessageBody || conv.snippet || null,
-              last_message_date: conv.lastMessageDate || conv.dateUpdated || null,
+              last_message_date: parseGhlDate(conv.lastMessageDate || conv.dateUpdated),
               last_message_direction: conv.lastMessageDirection || conv.lastMessageType === 1 ? 'inbound' : 'outbound',
               unread_count: conv.unreadCount || 0,
               conversation_status: conv.starred ? 'starred' : (conv.deleted ? 'archived' : 'open'),
