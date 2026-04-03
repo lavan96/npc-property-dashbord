@@ -53,17 +53,23 @@ serve(async (req) => {
     }
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
+    const body = await req.json().catch(() => ({}));
+    const batchSize = body.batchSize || 30;
+    const offset = body.offset || 0;
+    const startTime = Date.now();
+
     const ghlHeaders = {
       'Authorization': `Bearer ${apiKey}`,
       'Version': '2021-07-28',
       'Accept': 'application/json',
     };
 
-    // Get all conversations
+    // Get conversations in batches
     const { data: conversations, error: convError } = await supabase
       .from('ghl_conversations')
       .select('id, ghl_conversation_id, channel_type')
-      .order('created_at', { ascending: true });
+      .order('created_at', { ascending: true })
+      .range(offset, offset + batchSize - 1);
 
     if (convError) throw new Error(`Failed to fetch conversations: ${convError.message}`);
     if (!conversations?.length) {
