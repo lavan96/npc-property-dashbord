@@ -2847,13 +2847,33 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
         // ─── KPI Boxes: Render gold-bordered metric cards for qualifying sections ───
         const kpiMetrics = extractKPIMetrics(cleanSectionName, content, report.enhanced_data);
         if (kpiMetrics) {
-          // Check if we have space for KPI boxes (they need ~80px)
-          if (yPosition - 80 < bottomMargin + 40) {
+          // Row 1: Financial KPIs (need ~80px)
+          const totalKPIHeight = kpiMetrics.row2 ? 170 : 80;
+          if (yPosition - totalKPIHeight < bottomMargin + 40) {
             currentPage = await addContentPage();
             yPosition = pageHeight - topMargin - 20;
           }
-          yPosition = drawKPIBoxes(currentPage, yPosition, kpiMetrics, pageWidth - 2 * margin);
-          console.log(`     ✓ Rendered ${kpiMetrics.length} KPI boxes for "${cleanSectionName}"`);
+          yPosition = drawKPIBoxes(currentPage, yPosition, kpiMetrics.row1, pageWidth - 2 * margin);
+          console.log(`     ✓ Rendered ${kpiMetrics.row1.length} financial KPI boxes for "${cleanSectionName}"`);
+          
+          // Row 2: Demographic KPIs
+          if (kpiMetrics.row2) {
+            if (yPosition - 80 < bottomMargin + 40) {
+              currentPage = await addContentPage();
+              yPosition = pageHeight - topMargin - 20;
+            }
+            // Draw a small "Demographics" label above row 2
+            currentPage.drawText('DEMOGRAPHIC SNAPSHOT', {
+              x: margin,
+              y: yPosition - 5,
+              size: 7,
+              font: helveticaBold,
+              color: GOLD_RGB,
+            });
+            yPosition -= 15;
+            yPosition = drawKPIBoxes(currentPage, yPosition, kpiMetrics.row2, pageWidth - 2 * margin);
+            console.log(`     ✓ Rendered ${kpiMetrics.row2.length} demographic KPI boxes for "${cleanSectionName}"`);
+          }
         }
 
         // Draw paragraphs with header-table grouping
