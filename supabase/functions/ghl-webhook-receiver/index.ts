@@ -275,7 +275,6 @@ async function handleConversationMessageEvent(supabase: any, body: any, eventTyp
       console.error('[ghl-webhook] Notification insert failed (non-fatal):', notifErr);
     }
   }
-  }
 
   return {
     success: true,
