@@ -683,29 +683,16 @@ export default function Conversations() {
                     </>
                   )}
 
-                  <div className="flex items-end gap-2">
-                    <Textarea
-                      placeholder={`Type your ${replyChannel === 'sms' ? 'SMS' : replyChannel === 'whatsapp' ? 'WhatsApp' : 'email'} message...`}
-                      value={replyText}
-                      onChange={(e) => setReplyText(e.target.value)}
-                      className="min-h-[40px] max-h-[120px] resize-none text-sm"
-                      rows={replyChannel === 'email' ? 3 : 1}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey && replyChannel !== 'email') {
-                          e.preventDefault();
-                          handleSendReply();
-                        }
-                      }}
-                    />
-                    <Button
-                      size="sm"
-                      className="h-9 w-9 p-0 shrink-0"
-                      onClick={handleSendReply}
-                      disabled={!replyText.trim() || sendMutation.isPending || (replyChannel === 'email' && !emailSubject.trim())}
-                    >
-                      {sendMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                    </Button>
-                  </div>
+                  <MessageComposer
+                    value={replyText}
+                    onChange={setReplyText}
+                    onSend={handleSendReply}
+                    isSending={sendMutation.isPending}
+                    disabled={!replyText.trim() || (replyChannel === 'email' && !emailSubject.trim())}
+                    channel={replyChannel as 'sms' | 'email' | 'whatsapp'}
+                    placeholder={`Type your ${replyChannel === 'sms' ? 'SMS' : replyChannel === 'whatsapp' ? 'WhatsApp' : 'email'} message...`}
+                    rows={replyChannel === 'email' ? 3 : 1}
+                  />
                 </div>
               </>
             ) : null}
