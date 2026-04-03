@@ -1269,6 +1269,20 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
       const topMargin = 80; // Top margin (more space for template header)
       const bottomMargin = 70; // Bottom margin
       const lineHeight = 16;
+
+      // ─── Premium Design Tokens (Dark & Gold) ────────────────────────────
+      const GOLD_RGB = rgb(191 / 255, 155 / 255, 80 / 255);     // #BF9B50
+      const GOLD_LIGHT_RGB = rgb(245 / 255, 235 / 255, 210 / 255); // #F5EBD2
+      const NAVY_RGB = rgb(13 / 255, 38 / 255, 77 / 255);       // #0D264D
+      const DARK_BG_RGB = rgb(20 / 255, 20 / 255, 20 / 255);    // #141414
+      const WHITE_RGB = rgb(1, 1, 1);
+      const BODY_TEXT_RGB = rgb(55 / 255, 55 / 255, 55 / 255);   // #373737
+      const SECTION_BG_RGB = rgb(250 / 255, 247 / 255, 240 / 255); // Warm off-white for callouts
+      const TABLE_HEADER_BG = NAVY_RGB;
+      const TABLE_HEADER_TEXT = WHITE_RGB;
+      const TABLE_ALT_ROW = rgb(252 / 255, 249 / 255, 242 / 255); // Very light gold tint
+      const TABLE_BORDER = rgb(210 / 255, 195 / 255, 160 / 255);  // Gold-tinted border
+      const FOOTER_TEXT_RGB = rgb(128 / 255, 128 / 255, 128 / 255);
       const titleSize = 14;
       const textSize = 10;
       
