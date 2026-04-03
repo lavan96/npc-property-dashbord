@@ -23,7 +23,6 @@ import {
   MessageSquare,
   Search,
   Loader2,
-  Send,
   ArrowLeft,
   Phone,
   Mail,
@@ -33,9 +32,7 @@ import {
   Globe,
   RefreshCw,
   ChevronDown,
-  User,
   ExternalLink,
-  Filter,
 } from 'lucide-react';
 import {
   DropdownMenu,
