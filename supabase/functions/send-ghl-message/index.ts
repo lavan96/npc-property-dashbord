@@ -69,15 +69,25 @@ Deno.serve(async (req) => {
       conversationId: conversationId,
     };
 
-    // For Email, use html/subject fields; for SMS/WhatsApp use message
-    if (messageType === 'Email') {
+    // For SMS/WhatsApp, GHL requires contactId — look it up from our DB
+    if (messageType !== 'Email') {
+      const { data: convRecord } = await supabase
+        .from("ghl_conversations")
+        .select("ghl_contact_id")
+        .eq("ghl_conversation_id", conversationId)
+        .maybeSingle();
+
+      if (convRecord?.ghl_contact_id) {
+        ghlPayload.contactId = convRecord.ghl_contact_id;
+      }
+      ghlPayload.message = message;
+    } else {
+      // For Email, use html/subject fields
       ghlPayload.html = message;
-      ghlPayload.message = message; // fallback plain text
+      ghlPayload.message = message;
       if (subject) {
         ghlPayload.subject = subject;
       }
-    } else {
-      ghlPayload.message = message;
     }
 
     const ghlUrl = `https://services.leadconnectorhq.com/conversations/messages`;
