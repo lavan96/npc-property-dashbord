@@ -40,7 +40,7 @@ serve(async (req) => {
     // Get all clients with GHL contact IDs, ordered by least recently synced
     const { data: clients, error: clientsError } = await supabase
       .from('clients')
-      .select('id, first_name, last_name, ghl_contact_id')
+      .select('id, ghl_contact_id')
       .not('ghl_contact_id', 'is', null)
       .order('updated_at', { ascending: true });
 
