@@ -426,11 +426,11 @@ export default function Conversations() {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => refetchConversations()}
-          disabled={loadingConversations}
+          onClick={handleSyncAndRefresh}
+          disabled={isSyncing || loadingConversations}
         >
-          <RefreshCw className={cn('h-3.5 w-3.5 mr-1.5', loadingConversations && 'animate-spin')} />
-          Refresh
+          <RefreshCw className={cn('h-3.5 w-3.5 mr-1.5', (isSyncing || loadingConversations) && 'animate-spin')} />
+          {isSyncing ? 'Syncing...' : 'Sync'}
         </Button>
       </div>
 
