@@ -179,9 +179,10 @@ serve(async (req) => {
             totalMessages += messages.length;
 
             // Check for new inbound messages that need notifications
-            const latestInbound = messages.filter((m: any) =>
-              (m.direction === 1 || m.direction === '1' || m.type === 1)
-            );
+            const latestInbound = messages.filter((m: any) => {
+              const dir = m.direction;
+              return dir === 'inbound' || dir === 1 || dir === '1' || m.incoming === true;
+            });
 
             for (const msg of latestInbound) {
               // Only create notification if message is recent (last 30 min)
