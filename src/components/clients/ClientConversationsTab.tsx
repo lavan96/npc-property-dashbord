@@ -399,7 +399,7 @@ export function ClientConversationsTab({ clientId, clientName, ghlContactId }: C
       </div>
 
       {/* Messages area */}
-      <ScrollArea className="flex-1 min-h-0 py-2">
+      <ScrollArea className="flex-1 min-h-0 py-2" style={{ overflow: 'auto' }}>
         {loadingMessages ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
