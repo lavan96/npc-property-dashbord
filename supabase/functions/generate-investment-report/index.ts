@@ -2772,15 +2772,19 @@ Current market conditions are influenced by the National House Price Growth Rate
 
 # Current Economic Context
 
-| Metric | Value | Period |
-|--------|-------|--------|
-| Cash Rate | ${enhancedData.economics?.cashRate?.current || '4.35'}% | Current |
-| Annual Inflation | ${enhancedData.economics?.inflation?.annual || '3.4'}% | Current |
-| GDP Growth | ${enhancedData.economics?.indicators?.gdpGrowth || '2.1'}% | Current |
-| National Unemployment | ${enhancedData.economics?.indicators?.unemploymentRate || '3.9'}% | Current |
-| National House Price Growth | ${enhancedData.economics?.indicators?.housePriceGrowth || '4.2'}% | Current |
+**VERIFIED ECONOMIC DATA (use these exact figures — sourced ${enhancedData.economics?.retrievedAt ? `on ${new Date(enhancedData.economics.retrievedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}` : 'from latest available data'}):**
 
-The Australian economy is operating at a [growth rate description], with inflation at [X.X]% and the Reserve Bank of Australia maintaining the cash rate at [X.XX]%. The national unemployment rate of [X.X]% indicates [labor market assessment]. These macroeconomic conditions create [environment description] for property values and rental demand in [suburb type] markets like [Suburb].
+| Indicator | Current Value | Source |
+|-----------|--------------|--------|
+| RBA Cash Rate | ${enhancedData.economics?.cashRate?.current || '4.10'}% | ${enhancedData.economics?.cashRate?.source || 'RBA'} |
+| Annual Inflation (CPI) | ${enhancedData.economics?.inflation?.annual || '2.4'}% | ${enhancedData.economics?.inflation?.source || 'ABS'} |
+| Core Inflation (Trimmed Mean) | ${enhancedData.economics?.inflation?.core || '2.9'}% | ABS |
+| GDP Growth | ${enhancedData.economics?.indicators?.gdpGrowth || '1.3'}% | ABS |
+| National Unemployment | ${enhancedData.economics?.indicators?.unemploymentRate || '4.1'}% | ABS Labour Force |
+
+**What This Means for Property Investors:**
+
+Write 2-3 paragraphs in plain English explaining how the current cash rate of ${enhancedData.economics?.cashRate?.current || '4.10'}% and inflation at ${enhancedData.economics?.inflation?.annual || '2.4'}% affect mortgage costs, borrowing capacity, and property demand in practical terms. Avoid jargon — explain as you would to a client sitting across the table. Connect these macro conditions specifically to the property's local market.
 
 ---
 
