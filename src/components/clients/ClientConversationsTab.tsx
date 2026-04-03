@@ -377,7 +377,7 @@ export function ClientConversationsTab({ clientId, clientName, ghlContactId }: C
         <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setSelectedConversation(null)}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <div className={cn('h-7 w-7 rounded-full flex items-center justify-center border', channelColors[selectedConversation.channel_type] || 'bg-muted')}>
+        <div className={cn('h-7 w-7 rounded-full flex items-center justify-center border', channelColors[normalizedSelectedChannel] || 'bg-muted')}>
           <ChannelIcon className="h-3.5 w-3.5" />
         </div>
         <div className="flex-1 min-w-0">
