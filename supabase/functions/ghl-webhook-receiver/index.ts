@@ -650,6 +650,31 @@ serve(async (req) => {
     // OpportunityStageUpdate, OpportunityStatusUpdate, OpportunityMonetaryValueUpdate, etc.
     const eventType = (body.type || body.event || body.eventType || '').toLowerCase();
 
+    // ── Conversation / Message events ──
+    const isMessageEvent = eventType.includes('inboundmessage') || eventType.includes('outboundmessage')
+      || eventType.includes('inbound_message') || eventType.includes('outbound_message')
+      || (body.conversationId && (body.body || body.message) && !eventType.includes('note'));
+
+    if (isMessageEvent) {
+      console.log(`[ghl-webhook] Detected message event: ${eventType}`);
+      const result = await handleConversationMessageEvent(supabase, body, eventType);
+      return new Response(JSON.stringify(result), {
+        status: result.success ? 200 : 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // ── Conversation unread update events ──
+    const isUnreadEvent = eventType.includes('conversationunread') || eventType.includes('conversation_unread');
+    if (isUnreadEvent) {
+      console.log(`[ghl-webhook] Detected unread update event: ${eventType}`);
+      const result = await handleConversationUnreadUpdate(supabase, body);
+      return new Response(JSON.stringify(result), {
+        status: result.success ? 200 : 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // ── Note events ──
     const isNoteEvent = eventType.includes('note')
       || (body.type && body.type.toLowerCase().includes('note'));
