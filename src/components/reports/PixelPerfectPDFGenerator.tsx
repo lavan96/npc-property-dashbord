@@ -2872,6 +2872,30 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
             continue;
           }
 
+          // ─── Callout Panel: Detect "What This Means" paragraphs ───────────
+          const calloutCheck = isCalloutParagraph(paragraph);
+          if (calloutCheck.isCallout && calloutCheck.content.length > 10) {
+            console.log('     ✓ Detected callout paragraph, rendering styled panel');
+            let calloutResult = drawCalloutPanel(
+              currentPage,
+              calloutCheck.content,
+              yPosition,
+              pageWidth - 2 * margin
+            );
+            if (calloutResult.needsNewPage) {
+              currentPage = await addContentPage();
+              yPosition = pageHeight - topMargin - 20;
+              calloutResult = drawCalloutPanel(
+                currentPage,
+                calloutCheck.content,
+                yPosition,
+                pageWidth - 2 * margin
+              );
+            }
+            yPosition = calloutResult.lastY;
+            continue;
+          }
+
           // Check for horizontal rule (---)
           if (paragraph.trim().match(/^-{3,}$/)) {
             // Check if we need a new page
