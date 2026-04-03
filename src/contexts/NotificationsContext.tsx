@@ -361,6 +361,16 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
           navigate('/reminders');
         }
         break;
+      case 'conversation_reply':
+        if (notification.entityId) {
+          // entityId is the client_id; find conversation to deep-link
+          // For now navigate to conversations page — the notification trigger stores client_id as entity_id
+          // We'll look up the conversation ID from the conversations list
+          navigate(`/conversations`);
+        } else {
+          navigate('/conversations');
+        }
+        break;
       case 'conversation_shared':
         // Open the Oryxa agent widget and navigate to the shared conversation
         window.dispatchEvent(new CustomEvent('open-agent-conversation', { 

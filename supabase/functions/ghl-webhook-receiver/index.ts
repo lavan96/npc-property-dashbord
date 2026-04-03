@@ -241,6 +241,42 @@ async function handleConversationMessageEvent(supabase: any, body: any, eventTyp
     console.log(`[ghl-webhook] ✅ Synced ${direction} message ${messageId} to conversation ${conversationId}`);
   }
 
+  // ── Insert notification for inbound messages (webhook-level, supplements DB trigger) ──
+  if (direction === 'inbound' && convRecord) {
+    try {
+      // Get client name for the notification title
+      let clientName = body.contactName || 'Unknown Contact';
+      if (clientId) {
+        const { data: clientRow } = await supabase
+          .from('clients')
+          .select('primary_first_name, primary_surname')
+          .eq('id', clientId)
+          .maybeSingle();
+        if (clientRow) {
+          clientName = [clientRow.primary_first_name, clientRow.primary_surname].filter(Boolean).join(' ') || clientName;
+        }
+      }
+
+      const channelLabel = channelType.toUpperCase();
+      const preview = (messageBody || '(Attachment)').substring(0, 100);
+
+      await supabase
+        .from('notifications')
+        .insert({
+          type: 'conversation_reply',
+          title: `New ${channelLabel} from ${clientName}`,
+          message: preview,
+          entity_id: clientId || convRecord.id,
+          read: false,
+        });
+
+      console.log(`[ghl-webhook] 📬 Notification created for inbound ${channelLabel} from ${clientName}`);
+    } catch (notifErr) {
+      console.error('[ghl-webhook] Notification insert failed (non-fatal):', notifErr);
+    }
+  }
+  }
+
   return {
     success: true,
     action: 'message_synced',
