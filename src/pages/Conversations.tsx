@@ -200,12 +200,15 @@ export default function Conversations() {
   const { data: mailboxes = [] } = useQuery({
     queryKey: ['mailboxes-conversations-page'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('custom_users')
-        .select('id, email, personal_mailbox')
-        .not('personal_mailbox', 'is', null);
-      if (error) throw error;
-      return data.filter(u => u.personal_mailbox) || [];
+      const { data, error } = await invokeSecureFunction('get-client-data', {
+        listMode: true,
+        listOptions: {
+          table: 'custom_users',
+          select: 'id, email, personal_mailbox',
+        },
+      });
+      if (error) throw new Error(error.message);
+      return (data?.records || []).filter((u: any) => u.personal_mailbox) || [];
     },
     enabled: replyChannel === 'email',
   });
