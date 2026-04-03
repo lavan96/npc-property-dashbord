@@ -204,6 +204,20 @@ serve(async (req) => {
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
+/** Convert GHL date (could be Unix ms, Unix s, or ISO string) to ISO string */
+function parseGhlDate(val: any): string | null {
+  if (!val) return null;
+  if (typeof val === 'number' || /^\d{10,13}$/.test(String(val))) {
+    const num = Number(val);
+    // If 13 digits, it's milliseconds; if 10, seconds
+    const ms = num > 1e12 ? num : num * 1000;
+    return new Date(ms).toISOString();
+  }
+  // Try parsing as string
+  const d = new Date(val);
+  return isNaN(d.getTime()) ? null : d.toISOString();
+}
+
 function mapChannelType(ghlType: string | number | undefined): string {
   if (!ghlType) return 'sms';
   const typeStr = String(ghlType).toLowerCase();
