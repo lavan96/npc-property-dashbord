@@ -111,6 +111,14 @@ interface Message {
   sender_name: string | null;
 }
 
+// ── Sync helper ──────────────────────────────────────────────
+async function triggerGhlSync() {
+  const { data, error } = await invokeSecureFunction('sync-ghl-conversations', { mode: 'incremental' });
+  if (error) throw new Error(error.message);
+  if (data?.error) throw new Error(data.error);
+  return data;
+}
+
 // ── Page Component ───────────────────────────────────────────
 export default function Conversations() {
   const queryClient = useQueryClient();
