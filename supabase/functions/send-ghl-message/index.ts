@@ -24,7 +24,7 @@ Deno.serve(async (req) => {
     }
     console.log(`[send-ghl-message] Authenticated user: ${userId}`);
 
-    const { conversationId, message, type } = body;
+    const { conversationId, message, type, subject } = body;
 
     if (!conversationId || !message) {
       return new Response(
@@ -62,12 +62,23 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Send message via GHL API
+    // Build GHL message payload based on channel type
+    const messageType = type || "SMS";
     const ghlPayload: any = {
-      type: type || "SMS",
-      message: message,
+      type: messageType,
       conversationId: conversationId,
     };
+
+    // For Email, use html/subject fields; for SMS/WhatsApp use message
+    if (messageType === 'Email') {
+      ghlPayload.html = message;
+      ghlPayload.message = message; // fallback plain text
+      if (subject) {
+        ghlPayload.subject = subject;
+      }
+    } else {
+      ghlPayload.message = message;
+    }
 
     const ghlUrl = `https://services.leadconnectorhq.com/conversations/messages`;
 
@@ -77,7 +88,7 @@ Deno.serve(async (req) => {
       Version: "2021-04-15",
     };
 
-    console.log(`[send-ghl-message] Sending ${type || 'SMS'} to conversation ${conversationId}`);
+    console.log(`[send-ghl-message] Sending ${messageType} to conversation ${conversationId}`);
 
     const ghlRes = await fetch(ghlUrl, {
       method: "POST",
@@ -103,7 +114,8 @@ Deno.serve(async (req) => {
       conversation_id: null as string | null,
       direction: "outbound",
       body: message,
-      message_type: (type || "SMS").toLowerCase(),
+      channel_type: messageType.toLowerCase(),
+      message_type: messageType.toLowerCase(),
       message_status: "delivered",
       ghl_date_added: new Date().toISOString(),
     };
