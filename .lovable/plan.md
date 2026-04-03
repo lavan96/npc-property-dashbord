@@ -1,37 +1,38 @@
 
 ## Conversations Hub & Notification System — Implementation Plan
 
-### Phase 1: Database & Permissions Setup
-- **Add `conversation_reply` notification type** to the `notifications_type_check` constraint
-- **Create a DB trigger** on `ghl_conversation_messages` — when an **inbound** message is inserted, auto-create a notification with the sender name, channel type, and message preview (linked to the conversation's `client_id`)
-- **Register `conversations` module** in `dashboard_modules` so it can be permission-controlled for sub-admins
-- **Add `ghl_conversations` to the `supabase_realtime` publication** for live updates on the page
+### ✅ Phase 1: Database & Permissions Setup — COMPLETE
+- **Added `conversation_reply` notification type** to the `notifications_type_check` constraint
+- **Created DB trigger** `notify_conversation_reply()` on `ghl_conversation_messages` — auto-creates notification for inbound messages with sender name, channel, and preview
+- **Registered `conversations` module** in `dashboard_modules`
+- **Added `ghl_conversations` and `ghl_conversation_messages`** to `supabase_realtime` publication
 
-### Phase 2: Standalone Conversations Page
-- **Create `/conversations` route** with `ModuleGuard` wrapping
-- **Build a full-page Conversations Hub** (`src/pages/Conversations.tsx`) featuring:
-  - **Left panel**: All conversations across all clients, sorted by most recent, searchable/filterable by channel (SMS, Email, WhatsApp) and client name
-  - **Right panel**: Selected conversation thread with the same chat UI as the client modal (messages, date separators, attachments)
-  - **Client context bar**: Shows which client the conversation belongs to, with a quick link to open their full profile
-  - **Reply composer**: Same multi-channel composer (SMS/Email/WhatsApp) with mailbox selector for email (routing through Email Copilot as just implemented)
-  - **Unread indicators**: Badge counts on conversations, auto-cleared when opened
-  - **Sync button**: Manual sync option per conversation
-- **Add sidebar navigation item** for "Conversations" with the `MessageSquare` icon
+### ✅ Phase 2: Standalone Conversations Page — COMPLETE
+- **Created `/conversations` route** with `ModuleGuard` wrapping
+- **Built full-page Conversations Hub** (`src/pages/Conversations.tsx`) with:
+  - Left panel: all conversations across all clients, sorted by most recent, searchable/filterable by channel
+  - Right panel: selected conversation thread with chat UI, date separators, attachments
+  - Client context bar with quick link to client profile
+  - Reply composer with SMS/Email/WhatsApp channels, mailbox selector for email (Email Copilot)
+  - Unread indicators with badge counts
+  - Real-time subscriptions for live updates
+- **Added sidebar navigation item** "Conversations" with MessageSquare icon (desktop + mobile)
 
-### Phase 3: Real-Time Notifications
-- **Update `ghl-webhook-receiver`** to insert a notification row when an inbound message arrives (in addition to the DB trigger as a fallback)
-- **Frontend notification handling**: The existing notification system (realtime subscription on `notifications` table) will automatically pick up `conversation_reply` events — toast will show sender + preview
-- **Deep-link from notification**: Clicking a conversation notification navigates to `/conversations` with the relevant conversation pre-selected (via query param or state)
+### ✅ Phase 3: Real-Time Notifications — COMPLETE
+- **Updated `ghl-webhook-receiver`** to insert notification row on inbound message (supplements DB trigger)
+- **Added `conversation_reply` to frontend NotificationType** — toasts auto-appear via existing system
+- **Deep-link from notification** — clicking navigates to `/conversations`
 
-### Phase 4: Polish & Edge Cases
-- **Mark as read**: When a conversation is opened on the Conversations page, reset its `unread_count` to 0
-- **Responsive layout**: On mobile (your current 424px viewport), stack panels vertically (list → thread view, same as the modal pattern)
-- **Empty states**: No conversations, no messages, no client linked
-- **Loading states**: Skeleton loaders for conversation list and messages
+### ✅ Phase 4: Polish & Edge Cases — COMPLETE
+- **Mark as read**: Opening a conversation resets `unread_count` to 0 (optimistic local update + DB write)
+- **Responsive layout**: Mobile stacks panels vertically (list → thread with back button)
+- **Empty states**: No conversations, no messages, filter no-results
+- **Loading states**: Skeleton loaders for conversation list
 
 ---
 
 ### Key Architecture Decisions
-- The page queries `ghl_conversations` directly via `get-client-data` (with a new "all conversations" mode that doesn't require a `client_id` filter) or a lightweight dedicated edge function
-- Notifications use the existing `notifications` table + realtime subscription pattern — no new infrastructure needed
-- Email replies continue routing through `send-email-reply` (Email Copilot) as just configured
+- Page queries `ghl_conversations` directly via Supabase client (no edge function needed for reads)
+- Dual notification paths: DB trigger + webhook handler for reliability
+- Email replies route through `send-email-reply` (Email Copilot) with signature support
+- Real-time subscriptions on both tables for instant UI updates
