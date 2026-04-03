@@ -2602,18 +2602,18 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
               y: yPosition,
               size: rankHeadingSize,
               font: helveticaBold,
-              color: rgb(0.15, 0.15, 0.15),
+              color: NAVY_RGB,
             });
             
             // Calculate text width for underline
             const textWidth = helveticaBold.widthOfTextAtSize(cleanRankText, rankHeadingSize);
             
-            // Draw underline below the text
+            // Draw underline below the text (gold)
             currentPage.drawLine({
               start: { x: margin, y: yPosition - 3 },
               end: { x: margin + textWidth, y: yPosition - 3 },
               thickness: 1,
-              color: rgb(0.15, 0.15, 0.15),
+              color: GOLD_RGB,
             });
             
             yPosition -= (rankHeadingSize + 12); // Space after rank heading
