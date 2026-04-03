@@ -333,6 +333,8 @@ async function fetchConversationMessages(
         break;
       }
 
+      console.log(`[sync-ghl-conversations] Sample msg direction fields:`, messages.length > 0 ? JSON.stringify({ direction: messages[0].direction, incoming: messages[0].incoming, type: messages[0].type, userId: messages[0].userId }) : 'none');
+
       // Batch upsert messages
       const messageRows = messages.map((msg: any) => ({
         conversation_id: localConversationId,
