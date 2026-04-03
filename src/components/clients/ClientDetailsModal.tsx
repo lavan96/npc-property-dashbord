@@ -119,7 +119,7 @@ export function ClientDetailsModal({ client, open, onOpenChange, initialTab, ini
   const [showPortalInviteDialog, setShowPortalInviteDialog] = useState(false);
   const [activeTab, setActiveTab] = useState(initialTab || 'overview');
 
-  const tabOrder = ['overview', 'personal', 'properties', 'deals', 'employment', 'financials', 'reports', 'sent-reports', 'report-requests', 'emails', 'appointments', 'notes', 'reminders', 'vownet-forms', 'files', 'activity', 'insights'];
+  const tabOrder = ['overview', 'personal', 'properties', 'deals', 'employment', 'financials', 'reports', 'sent-reports', 'report-requests', 'emails', 'conversations', 'appointments', 'notes', 'reminders', 'vownet-forms', 'files', 'activity', 'insights'];
 
   const tabSwipeHandlers = useSwipeGesture(
     useCallback(() => {
