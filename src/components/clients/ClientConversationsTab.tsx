@@ -202,7 +202,7 @@ export function ClientConversationsTab({ clientId, clientName, ghlContactId }: C
 
   const handleSendReply = () => {
     if (!replyText.trim() || !selectedConversation) return;
-    const type = selectedConversation.channel_type === 'email' ? 'Email' : 'SMS';
+    const type = normalizeChannel(selectedConversation.channel_type) === 'email' ? 'Email' : 'SMS';
     sendMutation.mutate({
       conversationId: selectedConversation.ghl_conversation_id,
       message: replyText.trim(),
