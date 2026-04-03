@@ -338,10 +338,12 @@ export default function Conversations() {
     // Mark as read: reset unread_count to 0
     if (conv.unread_count > 0) {
       try {
-        await supabase
-          .from('ghl_conversations')
-          .update({ unread_count: 0 })
-          .eq('id', conv.id);
+        await invokeSecureFunction('manage-client-data', {
+          table: 'ghl_conversations',
+          operation: 'update',
+          id: conv.id,
+          data: { unread_count: 0 },
+        });
         // Optimistically update the local cache
         queryClient.setQueryData(['all-conversations'], (old: ConversationRow[] | undefined) =>
           (old || []).map(c => c.id === conv.id ? { ...c, unread_count: 0 } : c)
