@@ -881,8 +881,8 @@ ${score.risks?.length ? `- Risks: ${score.risks.join(', ')}` : ''}
 You are generating ONLY the following sections of a comprehensive investment report:
 ${sectionDef.sections.map(s => `- ${s}`).join('\n')}
 
-${investmentScoreContext}${previousSections ? `**CONTEXT FROM PREVIOUS SECTIONS (for consistency, DO NOT repeat this content):**
-${previousSections.substring(0, 4000)}...
+${investmentScoreContext}${previousSections ? `**CONTEXT FROM PREVIOUS SECTIONS (for consistency — you MUST reuse the same figures for distances, risk levels, SEIFA scores, population, labor force, cashflow, and LVR/deposit):**
+${previousSections.substring(Math.max(0, previousSections.length - 6000))}
 ` : ''}
 
 **CRITICAL INSTRUCTIONS:**
@@ -896,6 +896,14 @@ ${previousSections.substring(0, 4000)}...
 8. Use contextual comparisons (e.g., "30% above the state average") to make numbers meaningful
 9. Include a brief transition sentence at the end of each section to connect to what comes next
 ${sectionDef.id === 'section10' ? '10. MUST include the Investment Score Analysis section with the exact score values provided above' : ''}
+
+**CROSS-SECTION CONSISTENCY (MANDATORY):**
+- If previous sections mentioned specific distances, SEIFA scores, risk ratings, population figures, or cashflow numbers, you MUST use the EXACT same values. Do NOT introduce contradicting figures.
+- If you compare a metric to a benchmark (e.g., yield vs national average), verify the comparison is mathematically correct BEFORE writing it. If 4.13% < 4.2%, say "slightly below", never "exceeds".
+- Use ONLY the single financial scenario from the PRE-CALCULATED section (one LVR, one deposit amount). Do not introduce alternative scenarios unless explicitly creating a labelled comparison table.
+- Do NOT fabricate hyper-specific percentages for infrastructure impact (e.g., "9.2% uplift"). Use ranges or qualitative language unless citing a specific study.
+- If a property is negatively geared, describe it honestly as "growth-focused with negative cashflow" — never as "balanced growth + income".
+- All time-sensitive economic data must include "as at [Month Year]".
 
 Generate the ${sectionDef.name} sections now:`;
 
@@ -3644,7 +3652,14 @@ This report synthesizes publicly available data and ${documentContent ? 'provide
 10. **PROFESSIONAL LANGUAGE**: Data-driven, specific, actionable insights throughout
 11. **EXPENSE VALUES**: Use the EXACT expense values provided in PRE-CALCULATED ANNUAL COSTS section - do not substitute with defaults
 12. **COMPLETE SWOT**: Minimum 10 detailed bullet points per SWOT category with 2-3 sentence explanations each
-13. **TOP 3 SECTIONS**: Each of Top 3 Opportunities and Top 3 Risks must be 150+ words with specific dollar amounts`;
+13. **TOP 3 SECTIONS**: Each of Top 3 Opportunities and Top 3 Risks must be 150+ words with specific dollar amounts
+14. **DATA CONSISTENCY**: Every data point (distances, SEIFA scores, risk ratings, labor force, population, cashflow deficit) MUST be stated identically across all sections. A single contradicting figure destroys report credibility.
+15. **BENCHMARK ACCURACY**: Double-check every "exceeds/outperforms/above average" claim — if 4.13% < 4.2%, it is BELOW, not above. Mathematical errors in comparisons are unacceptable.
+16. **SINGLE FINANCIAL SCENARIO**: Use ONE LVR/deposit combination (from PRE-CALCULATED values) throughout. Do not switch between 80% and 90% LVR or 10% and 20% deposit without an explicitly labelled scenario comparison.
+17. **NO FABRICATED PRECISION**: Do not invent specific percentages for infrastructure impact (e.g., "9.2% uplift") without a cited source. Use honest ranges or qualitative language.
+18. **HONEST CHARACTERIZATION**: If negative cashflow, say "growth-focused, negatively geared". If crime is average, say "average" — do not oversell as "low crime elite suburb". Credibility over salesmanship.
+19. **NO DUPLICATE CONTENT**: Each topic (e.g., environmental risks) gets ONE authoritative section. Do not repeat the same analysis in two places with slightly different values.
+20. **DATE-STAMP ECONOMICS**: All economic indicators must include "as at [Month Year]" to convey data currency.`;
 
     // Select the appropriate prompt based on report scope
     let prompt = reportScope === 'suburb' ? suburbPrompt 
@@ -4092,6 +4107,18 @@ WRITING STYLE RULES:
 8. Never use placeholders like "N/A" or "XX" — provide real data or clearly labelled estimates
 9. Use the EXACT expense values provided in the PRE-CALCULATED ANNUAL COSTS section — do not substitute with defaults
 10. Every section is MANDATORY — do not skip any
+
+DATA INTEGRITY & CONSISTENCY RULES (CRITICAL — VIOLATIONS DESTROY REPORT CREDIBILITY):
+11. SINGLE SOURCE OF TRUTH: When a specific data point is stated (e.g., station distance, SEIFA score, flood risk level, labor force size), you MUST use the IDENTICAL value in every section of the report. Never contradict yourself across sections.
+12. BENCHMARK COMPARISONS MUST BE MATHEMATICALLY CORRECT: If you say a value "exceeds" or "outperforms" a benchmark, the value MUST actually be higher. If 4.13% yield is compared to a 4.2% national average, that is BELOW average — say "slightly below" or "competitive with", never "exceeds". Double-check every comparison statement.
+13. ONE FINANCIAL SCENARIO: Use a SINGLE deposit/LVR scenario consistently throughout the report. Do NOT switch between 10% and 20% deposit, or 80% and 90% LVR, without explicitly labelling them as separate scenarios in a dedicated comparison table. The PRIMARY scenario uses the values from the PRE-CALCULATED section.
+14. RISK RATINGS MUST BE CONSISTENT: If flood risk is stated as "Moderate" in the Environmental section, it must remain "Moderate" everywhere. Never contradict a risk rating (e.g., "moderate" then "low/none" then "unverified") — pick the most accurate assessment from the data provided and use it consistently.
+15. NO FABRICATED PRECISION: Do not invent hyper-specific statistics like "9.2% growth uplift from station upgrade" or "8.2% transport-driven uplift" unless you can cite a specific study. Use ranges ("5-8% historically") or qualitative language ("significant positive impact") instead. Overly precise unsourced claims feel fabricated and undermine trust.
+16. HONEST POSITIONING: If a property has structural negative cashflow, do NOT simultaneously call it a "balanced growth + income asset". Be accurate: "growth-focused, negatively geared asset requiring ongoing capital contributions" is honest and builds credibility.
+17. CASHFLOW FIGURES MUST RECONCILE: If you state an annual cashflow deficit, the same figure must align across the Executive Summary, Loan section, and Projections. Do not show ~$4k deficit in one place and ~$16k in another without clearly explaining the difference (e.g., pre-tax vs post-tax, IO vs P&I).
+18. POPULATION/EMPLOYMENT DATA: Use one consistent set of figures. If labor force is stated as 12,450 in Demographics, do not say 9,450 later. If data is from different years, clearly label each with its source year.
+19. NO DUPLICATE SECTIONS: Do not repeat the same analysis twice (e.g., two separate environmental risk sections saying slightly different things). Each topic gets ONE authoritative treatment.
+20. DATE-STAMP TIME-SENSITIVE DATA: For economic indicators (cash rate, CPI, unemployment), always include "as at [Month Year]" so readers know the currency of the data.
 
 This report should feel like a polished advisory document that inspires confidence, not a data spreadsheet.`;
 
