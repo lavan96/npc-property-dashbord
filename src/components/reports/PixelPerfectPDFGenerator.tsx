@@ -1760,7 +1760,7 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
                 y: currentLineY,
                 size,
                 font: word.font,
-                color: rgb(0.2, 0.2, 0.2),
+                color: textColor || rgb(0.2, 0.2, 0.2),
               });
               drawX += word.font.widthOfTextAtSize(word.text, size);
             }
