@@ -3652,7 +3652,14 @@ This report synthesizes publicly available data and ${documentContent ? 'provide
 10. **PROFESSIONAL LANGUAGE**: Data-driven, specific, actionable insights throughout
 11. **EXPENSE VALUES**: Use the EXACT expense values provided in PRE-CALCULATED ANNUAL COSTS section - do not substitute with defaults
 12. **COMPLETE SWOT**: Minimum 10 detailed bullet points per SWOT category with 2-3 sentence explanations each
-13. **TOP 3 SECTIONS**: Each of Top 3 Opportunities and Top 3 Risks must be 150+ words with specific dollar amounts`;
+13. **TOP 3 SECTIONS**: Each of Top 3 Opportunities and Top 3 Risks must be 150+ words with specific dollar amounts
+14. **DATA CONSISTENCY**: Every data point (distances, SEIFA scores, risk ratings, labor force, population, cashflow deficit) MUST be stated identically across all sections. A single contradicting figure destroys report credibility.
+15. **BENCHMARK ACCURACY**: Double-check every "exceeds/outperforms/above average" claim — if 4.13% < 4.2%, it is BELOW, not above. Mathematical errors in comparisons are unacceptable.
+16. **SINGLE FINANCIAL SCENARIO**: Use ONE LVR/deposit combination (from PRE-CALCULATED values) throughout. Do not switch between 80% and 90% LVR or 10% and 20% deposit without an explicitly labelled scenario comparison.
+17. **NO FABRICATED PRECISION**: Do not invent specific percentages for infrastructure impact (e.g., "9.2% uplift") without a cited source. Use honest ranges or qualitative language.
+18. **HONEST CHARACTERIZATION**: If negative cashflow, say "growth-focused, negatively geared". If crime is average, say "average" — do not oversell as "low crime elite suburb". Credibility over salesmanship.
+19. **NO DUPLICATE CONTENT**: Each topic (e.g., environmental risks) gets ONE authoritative section. Do not repeat the same analysis in two places with slightly different values.
+20. **DATE-STAMP ECONOMICS**: All economic indicators must include "as at [Month Year]" to convey data currency.`;
 
     // Select the appropriate prompt based on report scope
     let prompt = reportScope === 'suburb' ? suburbPrompt 
