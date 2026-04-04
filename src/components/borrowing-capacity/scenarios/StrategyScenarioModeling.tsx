@@ -321,6 +321,15 @@ export function StrategyScenarioModeling({
     adjustedCommitments = Math.max(0, adjustedCommitments);
     adjustedExpenses = Math.max(0, adjustedExpenses);
 
+    // 8. DTI Cap Override
+    if (strategy.additional.dtiCapEnabled) {
+      impacts.push({
+        label: `DTI cap applied at ${strategy.additional.dtiCapValue}x`,
+        monthlySaving: 0,
+        type: 'info',
+      });
+    }
+
     const scenarioInputs: BorrowingCapacityInput = {
       ...baseInputs,
       grossAnnualIncome: adjustedGrossIncome,
@@ -329,6 +338,8 @@ export function StrategyScenarioModeling({
       monthlyCommitments: adjustedCommitments,
       interestRate: adjustedRate,
       loanTermYears: adjustedLoanTerm,
+      dtiCapEnabled: strategy.additional.dtiCapEnabled,
+      dtiCapLimit: strategy.additional.dtiCapValue,
     };
 
     const result = calculateBorrowingCapacity(scenarioInputs);
