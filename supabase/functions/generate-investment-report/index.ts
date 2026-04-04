@@ -4093,6 +4093,18 @@ WRITING STYLE RULES:
 9. Use the EXACT expense values provided in the PRE-CALCULATED ANNUAL COSTS section — do not substitute with defaults
 10. Every section is MANDATORY — do not skip any
 
+DATA INTEGRITY & CONSISTENCY RULES (CRITICAL — VIOLATIONS DESTROY REPORT CREDIBILITY):
+11. SINGLE SOURCE OF TRUTH: When a specific data point is stated (e.g., station distance, SEIFA score, flood risk level, labor force size), you MUST use the IDENTICAL value in every section of the report. Never contradict yourself across sections.
+12. BENCHMARK COMPARISONS MUST BE MATHEMATICALLY CORRECT: If you say a value "exceeds" or "outperforms" a benchmark, the value MUST actually be higher. If 4.13% yield is compared to a 4.2% national average, that is BELOW average — say "slightly below" or "competitive with", never "exceeds". Double-check every comparison statement.
+13. ONE FINANCIAL SCENARIO: Use a SINGLE deposit/LVR scenario consistently throughout the report. Do NOT switch between 10% and 20% deposit, or 80% and 90% LVR, without explicitly labelling them as separate scenarios in a dedicated comparison table. The PRIMARY scenario uses the values from the PRE-CALCULATED section.
+14. RISK RATINGS MUST BE CONSISTENT: If flood risk is stated as "Moderate" in the Environmental section, it must remain "Moderate" everywhere. Never contradict a risk rating (e.g., "moderate" then "low/none" then "unverified") — pick the most accurate assessment from the data provided and use it consistently.
+15. NO FABRICATED PRECISION: Do not invent hyper-specific statistics like "9.2% growth uplift from station upgrade" or "8.2% transport-driven uplift" unless you can cite a specific study. Use ranges ("5-8% historically") or qualitative language ("significant positive impact") instead. Overly precise unsourced claims feel fabricated and undermine trust.
+16. HONEST POSITIONING: If a property has structural negative cashflow, do NOT simultaneously call it a "balanced growth + income asset". Be accurate: "growth-focused, negatively geared asset requiring ongoing capital contributions" is honest and builds credibility.
+17. CASHFLOW FIGURES MUST RECONCILE: If you state an annual cashflow deficit, the same figure must align across the Executive Summary, Loan section, and Projections. Do not show ~$4k deficit in one place and ~$16k in another without clearly explaining the difference (e.g., pre-tax vs post-tax, IO vs P&I).
+18. POPULATION/EMPLOYMENT DATA: Use one consistent set of figures. If labor force is stated as 12,450 in Demographics, do not say 9,450 later. If data is from different years, clearly label each with its source year.
+19. NO DUPLICATE SECTIONS: Do not repeat the same analysis twice (e.g., two separate environmental risk sections saying slightly different things). Each topic gets ONE authoritative treatment.
+20. DATE-STAMP TIME-SENSITIVE DATA: For economic indicators (cash rate, CPI, unemployment), always include "as at [Month Year]" so readers know the currency of the data.
+
 This report should feel like a polished advisory document that inspires confidence, not a data spreadsheet.`;
 
     console.log('=== MULTI-SECTION REPORT GENERATION ===');
