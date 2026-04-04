@@ -410,6 +410,8 @@ export function StrategyScenarioModeling({
       ...DEFAULT_STRATEGY,
       consolidatedLiabilities: new Set(),
       refinancedToIO: new Set(),
+      equityReleasePropertyIds: new Set(),
+      equityReleaseTargetLVRs: new Map(),
       additional: { ...DEFAULT_ADDITIONAL_STRATEGY, portfolioSellPropertyIds: new Set() },
     });
   }, []);
