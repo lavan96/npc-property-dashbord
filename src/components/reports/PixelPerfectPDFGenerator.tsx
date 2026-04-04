@@ -1740,7 +1740,8 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
           cellY: number, 
           cellWidth: number, 
           font: any,
-          isHeader: boolean
+          isHeader: boolean,
+          textColor?: any
         ): number => {
           const maxCellWidth = cellWidth - 2 * cellPadding;
           const parts = parseMarkdownText(sanitizeAIContent(stripEmojis(cellText)));
@@ -1759,7 +1760,7 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
                 y: currentLineY,
                 size,
                 font: word.font,
-                color: rgb(0.2, 0.2, 0.2),
+                color: textColor || rgb(0.2, 0.2, 0.2),
               });
               drawX += word.font.widthOfTextAtSize(word.text, size);
             }
@@ -1986,25 +1987,9 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
             const cellText = row[j];
             const font = isHeader ? boldFont : normalFont;
             
-            // Override color for header cells to white
             if (isHeader) {
-              const origDrawCellText = drawCellText;
-              // Draw header text in white by temporarily adjusting the draw
-              const headerParts = parseMarkdownText(stripEmojis(cellText));
-              let cellDrawX = cellX + cellPadding;
-              const cellDrawY = currentY - size - 4;
-              for (const part of headerParts) {
-                const cleanText = part.text.replace(/\*+/g, '').trim();
-                if (!cleanText) continue;
-                page.drawText(cleanText, {
-                  x: cellDrawX,
-                  y: cellDrawY,
-                  size: size,
-                  font: boldFont,
-                  color: TABLE_HEADER_TEXT,
-                });
-                cellDrawX += boldFont.widthOfTextAtSize(cleanText + ' ', size);
-              }
+              // Use drawCellText with white color and word-wrapping for headers
+              drawCellText(cellText, cellX, currentY - size - 4, columnWidths[j], boldFont, true, TABLE_HEADER_TEXT);
             } else {
               drawCellText(cellText, cellX, currentY - size - 4, columnWidths[j], font, isHeader);
             }
