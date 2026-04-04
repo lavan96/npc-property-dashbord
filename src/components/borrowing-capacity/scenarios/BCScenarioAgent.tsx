@@ -8,6 +8,7 @@ import {
   Bot, Send, ChevronDown, ChevronUp, Sparkles, Loader2,
   TrendingUp, CheckCircle2, Zap,
 } from 'lucide-react';
+import { VoiceToTextButton } from '@/components/ui/VoiceToTextButton';
 import ReactMarkdown from 'react-markdown';
 import type { BorrowingCapacityInput, BorrowingCapacityResult } from '@/utils/borrowingCapacityCalculations';
 import type { LiabilityItem, PropertyItem } from './StrategyScenarioModeling';
