@@ -470,22 +470,28 @@ export function StrategyScenarioModeling({
         properties={properties}
         onApplyScenario={(scenario: AIScenario) => {
           // Map AI scenario adjustments to strategy state
-          setStrategy(prev => ({
-            ...prev,
-            consolidatedLiabilities: new Set(scenario.adjustments.consolidatedLiabilityIds || []),
-            refinancedToIO: new Set(scenario.adjustments.refinancedToIOPropertyIds || []),
-            rateAdjustment: scenario.adjustments.rateAdjustment || 0,
-            equityReleaseEnabled: !!scenario.adjustments.equityRelease,
-            equityReleasePropertyId: scenario.adjustments.equityRelease?.propertyId || null,
-            equityReleaseTargetLVR: scenario.adjustments.equityRelease?.targetLVR || 0.80,
-            additional: {
-              ...prev.additional,
-              incomeGrowthEnabled: (scenario.adjustments.incomeGrowthPercent || 0) > 0,
-              incomeGrowthPercent: scenario.adjustments.incomeGrowthPercent || 0,
-              expenseReductionEnabled: (scenario.adjustments.expenseReductionPercent || 0) > 0,
-              expenseReductionPercent: scenario.adjustments.expenseReductionPercent || 0,
-            },
-          }));
+           setStrategy(prev => {
+              const eqRelease = scenario.adjustments.equityRelease;
+              const newPropertyIds = new Set<string>(eqRelease ? [eqRelease.propertyId] : []);
+              const newTargetLVRs = new Map<string, number>();
+              if (eqRelease) newTargetLVRs.set(eqRelease.propertyId, eqRelease.targetLVR || DEFAULT_EQUITY_LVR);
+              return {
+                ...prev,
+                consolidatedLiabilities: new Set(scenario.adjustments.consolidatedLiabilityIds || []),
+                refinancedToIO: new Set(scenario.adjustments.refinancedToIOPropertyIds || []),
+                rateAdjustment: scenario.adjustments.rateAdjustment || 0,
+                equityReleaseEnabled: !!eqRelease,
+                equityReleasePropertyIds: newPropertyIds,
+                equityReleaseTargetLVRs: newTargetLVRs,
+                additional: {
+                  ...prev.additional,
+                  incomeGrowthEnabled: (scenario.adjustments.incomeGrowthPercent || 0) > 0,
+                  incomeGrowthPercent: scenario.adjustments.incomeGrowthPercent || 0,
+                  expenseReductionEnabled: (scenario.adjustments.expenseReductionPercent || 0) > 0,
+                  expenseReductionPercent: scenario.adjustments.expenseReductionPercent || 0,
+                },
+              };
+            });
           // Open relevant sections
           setOpenSections(prev => ({
             ...prev,
