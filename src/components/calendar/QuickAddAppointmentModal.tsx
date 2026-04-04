@@ -871,14 +871,16 @@ export function QuickAddAppointmentModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg w-[95vw]">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-lg w-[95vw] max-h-[90vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Plus className="h-5 w-5 text-primary" />
             Quick Add Appointment
           </DialogTitle>
         </DialogHeader>
-        {formContent}
+        <ScrollArea className="flex-1 min-h-0 -mx-6 px-6">
+          {formContent}
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );
