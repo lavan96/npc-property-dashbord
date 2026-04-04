@@ -1118,13 +1118,13 @@ export function StrategyScenarioModeling({
             </div>
           )}
 
-          {equityRelease && (
+          {totalAccessibleEquity > 0 && (
             <div className="flex items-center justify-between text-sm p-2 rounded bg-muted/50">
               <span className="flex items-center gap-2">
                 <Building2 className="h-3.5 w-3.5 text-primary" />
-                Equity Accessible ({equityRelease.property.address?.slice(0, 20)}...)
+                Equity Accessible ({equityReleaseItems.length} propert{equityReleaseItems.length !== 1 ? 'ies' : 'y'})
               </span>
-              <span className="font-semibold text-primary">{formatCurrency(equityRelease.accessibleEquity)}</span>
+              <span className="font-semibold text-primary">{formatCurrency(totalAccessibleEquity)}</span>
             </div>
           )}
 
