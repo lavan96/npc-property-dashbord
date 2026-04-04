@@ -1226,7 +1226,7 @@ export function StrategyScenarioModeling({
                     <Button
                       size="sm"
                       className="flex-1"
-                      onClick={() => onApplyScenario(scenarioInputs, equityRelease?.accessibleEquity ?? 0)}
+                      onClick={() => onApplyScenario(scenarioInputs, totalAccessibleEquity)}
                     >
                       <Zap className="h-3.5 w-3.5 mr-1.5" />
                       Apply to Calculator
