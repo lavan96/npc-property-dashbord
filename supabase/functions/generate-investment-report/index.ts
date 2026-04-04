@@ -897,6 +897,14 @@ ${previousSections.substring(0, 4000)}...
 9. Include a brief transition sentence at the end of each section to connect to what comes next
 ${sectionDef.id === 'section10' ? '10. MUST include the Investment Score Analysis section with the exact score values provided above' : ''}
 
+**CROSS-SECTION CONSISTENCY (MANDATORY):**
+- If previous sections mentioned specific distances, SEIFA scores, risk ratings, population figures, or cashflow numbers, you MUST use the EXACT same values. Do NOT introduce contradicting figures.
+- If you compare a metric to a benchmark (e.g., yield vs national average), verify the comparison is mathematically correct BEFORE writing it. If 4.13% < 4.2%, say "slightly below", never "exceeds".
+- Use ONLY the single financial scenario from the PRE-CALCULATED section (one LVR, one deposit amount). Do not introduce alternative scenarios unless explicitly creating a labelled comparison table.
+- Do NOT fabricate hyper-specific percentages for infrastructure impact (e.g., "9.2% uplift"). Use ranges or qualitative language unless citing a specific study.
+- If a property is negatively geared, describe it honestly as "growth-focused with negative cashflow" — never as "balanced growth + income".
+- All time-sensitive economic data must include "as at [Month Year]".
+
 Generate the ${sectionDef.name} sections now:`;
 
   // Retry loop with improved backoff and jitter
