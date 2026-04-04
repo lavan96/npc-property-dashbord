@@ -335,45 +335,49 @@ export function StrategyScenarioModeling({
     return { scenarioResult: result, scenarioInputs, impactBreakdown: impacts };
   }, [strategy, baseInputs, consolidatableDebts, investmentProperties, properties]);
 
-  // Equity release calculation
-  const equityRelease = useMemo(() => {
-    if (!strategy.equityReleaseEnabled || !strategy.equityReleasePropertyId) return null;
-    const prop = equityReleaseProperties.find(p => p.id === strategy.equityReleasePropertyId);
-    if (!prop) return null;
-    const maxLoan = prop.current_value * strategy.equityReleaseTargetLVR;
-    const grossAccessibleEquity = Math.max(0, maxLoan - prop.loan_remaining);
-    const currentLVR = prop.current_value > 0 ? (prop.loan_remaining / prop.current_value) * 100 : 0;
-    const currentEquity = prop.current_value - prop.loan_remaining;
-    const targetLVRPercent = strategy.equityReleaseTargetLVR * 100;
+  // Equity release calculation — now supports multiple properties
+  interface EquityReleaseItem {
+    property: PropertyItem;
+    currentLVR: number;
+    currentEquity: number;
+    targetLVR: number;
+    grossAccessibleEquity: number;
+    accessibleEquity: number;
+    maxLoan: number;
+    lmiEstimate: any;
+    lmiAmount: number;
+  }
 
-    // Calculate LMI if target LVR > 80%
-    let lmiEstimate = null;
-    let lmiAmount = 0;
-    if (targetLVRPercent > 80 && grossAccessibleEquity > 0) {
-      const newLoanAmount = maxLoan; // total loan after equity release
-      lmiEstimate = estimateLMI({
-        propertyValue: prop.current_value,
-        depositAmount: prop.current_value - newLoanAmount,
-        loanAmount: newLoanAmount,
-        isFirstHomeBuyer: false,
-      });
-      lmiAmount = lmiEstimate.lmiAmount;
-    }
+  const equityReleaseItems = useMemo<EquityReleaseItem[]>(() => {
+    if (!strategy.equityReleaseEnabled || strategy.equityReleasePropertyIds.size === 0) return [];
+    return Array.from(strategy.equityReleasePropertyIds).map(propId => {
+      const prop = equityReleaseProperties.find(p => p.id === propId);
+      if (!prop) return null;
+      const targetLVR = strategy.equityReleaseTargetLVRs.get(propId) ?? DEFAULT_EQUITY_LVR;
+      const maxLoan = prop.current_value * targetLVR;
+      const grossAccessibleEquity = Math.max(0, maxLoan - prop.loan_remaining);
+      const currentLVR = prop.current_value > 0 ? (prop.loan_remaining / prop.current_value) * 100 : 0;
+      const currentEquity = prop.current_value - prop.loan_remaining;
+      const targetLVRPercent = targetLVR * 100;
 
-    const accessibleEquity = Math.max(0, grossAccessibleEquity - lmiAmount);
+      let lmiEstimate = null;
+      let lmiAmount = 0;
+      if (targetLVRPercent > 80 && grossAccessibleEquity > 0) {
+        lmiEstimate = estimateLMI({
+          propertyValue: prop.current_value,
+          depositAmount: prop.current_value - maxLoan,
+          loanAmount: maxLoan,
+          isFirstHomeBuyer: false,
+        });
+        lmiAmount = lmiEstimate.lmiAmount;
+      }
 
-    return {
-      property: prop,
-      currentLVR,
-      currentEquity,
-      targetLVR: targetLVRPercent,
-      grossAccessibleEquity,
-      accessibleEquity,
-      maxLoan,
-      lmiEstimate,
-      lmiAmount,
-    };
-  }, [strategy.equityReleaseEnabled, strategy.equityReleasePropertyId, strategy.equityReleaseTargetLVR, equityReleaseProperties]);
+      const accessibleEquity = Math.max(0, grossAccessibleEquity - lmiAmount);
+      return { property: prop, currentLVR, currentEquity, targetLVR: targetLVRPercent, grossAccessibleEquity, accessibleEquity, maxLoan, lmiEstimate, lmiAmount };
+    }).filter(Boolean) as EquityReleaseItem[];
+  }, [strategy.equityReleaseEnabled, strategy.equityReleasePropertyIds, strategy.equityReleaseTargetLVRs, equityReleaseProperties]);
+
+  const totalAccessibleEquity = useMemo(() => equityReleaseItems.reduce((sum, item) => sum + item.accessibleEquity, 0), [equityReleaseItems]);
 
   const capacityChange = scenarioResult.borrowingCapacity - baseResult.borrowingCapacity;
   const surplusChange = scenarioResult.monthlySurplus - baseResult.monthlySurplus;
