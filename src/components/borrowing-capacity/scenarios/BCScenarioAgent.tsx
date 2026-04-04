@@ -288,7 +288,12 @@ export function BCScenarioAgent({
             </div>
 
             {/* Input */}
-            <div className="border-t p-3 flex gap-2">
+            <div className="border-t p-3 flex gap-2 items-end">
+              <VoiceToTextButton
+                onTranscript={(text) => setInput(prev => prev ? `${prev} ${text}` : text)}
+                disabled={isLoading}
+                size="sm"
+              />
               <Textarea
                 ref={textareaRef}
                 value={input}
