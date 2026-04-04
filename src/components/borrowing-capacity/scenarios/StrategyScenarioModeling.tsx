@@ -485,9 +485,7 @@ export function StrategyScenarioModeling({
                 equityReleaseTargetLVRs: newTargetLVRs,
                 additional: {
                   ...prev.additional,
-                  incomeGrowthEnabled: (scenario.adjustments.incomeGrowthPercent || 0) > 0,
                   incomeGrowthPercent: scenario.adjustments.incomeGrowthPercent || 0,
-                  expenseReductionEnabled: (scenario.adjustments.expenseReductionPercent || 0) > 0,
                   expenseReductionPercent: scenario.adjustments.expenseReductionPercent || 0,
                 },
               };
