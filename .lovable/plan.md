@@ -1,72 +1,88 @@
 
-# Investment Report Quality Improvement Plan
+# AI Borrowing Capacity Scenario Agent — Implementation Plan
 
-## Problem 1: Inaccurate Research Data (Cash Rate & Economic Figures)
-
-### Root Cause
-The `rba-data-service` edge function **never actually parses** the RBA data it fetches. It downloads an Excel file from `rba.gov.au/statistics/tables/xls/f01hist.xls` but then returns **hardcoded values** (cash rate 4.35%, inflation 3.4%, etc.) regardless of what the file contains. These values are stale and inaccurate.
-
-Additionally, Perplexity (sonar-pro) is relied on for qualitative research figures, but its training data may lag behind real-time changes.
-
-### Solution: Live Economic Data via Perplexity Search
-
-Replace the fake RBA data service with a **Perplexity-powered economic data fetcher** that uses real-time web search to get current figures:
-
-1. **Rewrite `rba-data-service`** to use Perplexity's `sonar` model with structured JSON output to fetch:
-   - Current RBA cash rate (from rba.gov.au)
-   - Current CPI/inflation rate (from ABS)
-   - Unemployment rate, GDP growth, credit growth
-   - Domain-filter to authoritative sources: `rba.gov.au`, `abs.gov.au`, `treasury.gov.au`
-
-2. **Cache with 24-hour TTL** (down from 7 days) — economic data changes more frequently than the current 7-day cache assumes. The RBA meets monthly and can change rates at any meeting.
-
-3. **Inject verified data into the Perplexity prompt** — Instead of relying on Perplexity to independently research these figures during report generation, we inject the pre-fetched verified data as **authoritative context** so the AI uses exact numbers rather than potentially outdated training data.
-
-4. **Add date stamping** — Each data point includes its source URL and retrieval date, so the report can cite "RBA Cash Rate as of [date]: X.XX%".
-
-### Files Changed
-- `supabase/functions/rba-data-service/index.ts` — Rewrite to use Perplexity structured search
-- `supabase/functions/generate-investment-report/index.ts` — Enhance economic data injection into prompts
+## Overview
+Embed a specialised AI chat interface at the top of the **Scenarios tab** inside `BorrowingCapacityModal`. The agent understands the client's full financial position and, through conversation, generates **3 tailored what-if scenarios**. Each scenario includes an "Apply" button that auto-populates the `StrategyScenarioModeling` levers below.
 
 ---
 
-## Problem 2: Reports Too Dense & Not Client-Friendly
+## Architecture
 
-### Root Cause
-The system message and section prompts instruct Perplexity to be "data-driven" with "extensive markdown tables" and "detailed bullet points." This produces reports packed with numbers/figures that read like analyst notes, not client deliverables.
+### 1. New Edge Function: `bc-scenario-agent`
+- **Purpose**: Stateless AI endpoint that receives the client's current BC snapshot + conversation history and returns scenario recommendations.
+- **Model**: Lovable AI Gateway → `google/gemini-3-flash-preview`
+- **System Prompt**: Specialist prompt covering APRA rules, shading, DTI, IO vs P&I, debt consolidation, equity release, rate sensitivity — calibrated to the exact levers available in `StrategyScenarioModeling`.
+- **Structured Output via Tool Calling**: The agent is given a `generate_scenarios` tool that returns exactly 3 scenarios, each with:
+  ```json
+  {
+    "scenarios": [
+      {
+        "name": "Pay Off Car Loan + Refinance IP to IO",
+        "reasoning": "Removing the $450/mo car loan servicing and switching the IP loan to IO saves $1,200/mo...",
+        "adjustments": {
+          "consolidatedLiabilityIds": ["uuid-1"],
+          "refinancedToIOIds": ["uuid-2"],
+          "rateAdjustment": 0,
+          "incomeGrowthPercent": 0,
+          "expenseReductionPercent": 0,
+          "equityRelease": null
+        },
+        "estimatedCapacityChange": "+$85,000"
+      }
+    ]
+  }
+  ```
+- **Context Payload**: The frontend sends `baseInputs`, `baseResult`, `liabilities[]`, `properties[]`, and the conversation `messages[]`.
+- **Streaming**: SSE streaming for the conversational reply; structured scenarios extracted at the end.
 
-### Solution: Consultative Narrative Tone Shift
+### 2. New Frontend Component: `BCScenarioAgent.tsx`
+- Location: `src/components/borrowing-capacity/scenarios/BCScenarioAgent.tsx`
+- **UI**: Compact chat interface (collapsible, 300px max height) with:
+  - Gold/dark themed header: "🤖 Strategy Advisor"
+  - Message list with markdown rendering (`react-markdown`)
+  - Input bar with send button
+  - When scenarios are returned → 3 scenario cards rendered below the chat, each with:
+    - Scenario name + reasoning summary
+    - Key adjustments as badges
+    - Estimated capacity impact (↑/↓)
+    - **"Apply Scenario"** button
+- **Apply Logic**: Clicking "Apply" maps the `adjustments` object to `StrategyState` and calls `onApplyScenario` (existing prop), which switches to the calculator tab with the values pre-filled.
 
-1. **Update the system message** to shift from "analyst producing data tables" to "trusted advisor writing for property investors who are NOT analysts":
-   - Lead with plain-English insights before showing supporting data
-   - Use narrative paragraphs with selective data highlights (not raw data dumps)
-   - Replace dense tables with focused comparison tables (max 4-5 rows)
-   - Add "What This Means For You" callout sections after technical data
-   - Use analogies and context to make numbers meaningful (e.g., "growing 40% faster than the metro average")
+### 3. Integration into `StrategyScenarioModeling.tsx`
+- Import `BCScenarioAgent` and render it above the existing manual levers section.
+- Pass through: `baseInputs`, `baseResult`, `liabilities`, `properties`, `onApplyScenario`.
+- The manual levers remain fully functional below — the AI simply pre-fills them.
 
-2. **Add a readability directive** to each section prompt:
-   - Executive Summary: Conversational, action-oriented, no tables
-   - Location/Demographics: Storytelling with selective stats
-   - Financial sections: Keep tables but add plain-English summaries above each
-   - Market sections: Lead with narrative, support with data
-   - Risk sections: Clear, prioritized, with actionable mitigations
+### 4. Cascade to BC Snapshot PDF
+- Already supported: When a scenario is applied via `onApplyScenario`, it updates the calculator state → the next "Calculate & Save" writes the scenario-adjusted assessment to the DB → the BC PDF (`fetchAndGenerateBorrowingCapacityPDF`) already reads the latest saved assessment.
+- **Enhancement**: Pass the AI-generated scenario `name` and `reasoning` into the saved assessment metadata so the PDF can include a "Strategy Applied" callout box.
 
-3. **Reduce table density** — Add explicit instruction: "Use tables ONLY for direct comparisons or financial breakdowns. Never use a table when a sentence would suffice."
-
-4. **Add section transitions** — Instruct the AI to include brief connecting sentences between sections for narrative flow.
-
-### Files Changed
-- `supabase/functions/generate-investment-report/index.ts` — Update system message and section prompt templates
+### 5. Cascade to Portfolio Performance Report (PPR)
+- **Feasibility**: The PPR already fetches the latest BC assessment via `fetchLatestBorrowingCapacity`. If the user applies an AI scenario → saves it → generates the PPR, it will automatically reflect the updated capacity.
+- **No additional work needed** — the existing data flow handles this. We just need to make it clear in the UI that "Save & Calculate" must be triggered before generating the PPR.
 
 ---
 
-## Implementation Order
+## File Changes Summary
 
-1. **Phase A**: Rewrite `rba-data-service` with Perplexity-powered live data (accuracy fix)
-2. **Phase B**: Update report generation prompts for client-friendly tone (readability fix)
-3. **Phase C**: Deploy and test with a sample report generation
+| File | Change |
+|------|--------|
+| `supabase/functions/bc-scenario-agent/index.ts` | **NEW** — Edge function with Lovable AI integration |
+| `src/components/borrowing-capacity/scenarios/BCScenarioAgent.tsx` | **NEW** — Chat interface + scenario cards |
+| `src/components/borrowing-capacity/scenarios/StrategyScenarioModeling.tsx` | Add `BCScenarioAgent` at top of component |
+| `src/components/borrowing-capacity/BorrowingCapacityModal.tsx` | Minor — pass `clientId` to scenarios tab (already available) |
 
-### Estimated Scope
-- 2 edge functions modified
-- No database schema changes required
-- No frontend changes required (report rendering stays the same, content quality improves)
+---
+
+## Security & Performance
+- Edge function validates auth via `verifyAuth()` (existing pattern)
+- No client data persisted in the AI conversation — stateless per session
+- Rate limiting handled by Lovable AI Gateway (429/402 surfaced to user)
+- Conversation capped at 20 messages to control token usage
+
+---
+
+## What This Delivers
+1. **Conversational scenario generation** — "My client wants to buy a $600k investment property, they have a car loan and 2 IPs" → 3 tailored strategies
+2. **One-click application** — Each strategy maps directly to the existing manual levers
+3. **Automatic cascade** — Applied scenarios flow into BC Snapshot PDF and PPR via the existing save → fetch pipeline
