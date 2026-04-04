@@ -374,6 +374,21 @@ export function BCScenarioAgent({
                         Equity release
                       </Badge>
                     )}
+                    {(scenario.adjustments.loanTermAdjustment ?? 0) !== 0 && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        Term {(scenario.adjustments.loanTermAdjustment ?? 0) > 0 ? '+' : ''}{scenario.adjustments.loanTermAdjustment}yr
+                      </Badge>
+                    )}
+                    {(scenario.adjustments.portfolioSellPropertyIds?.length ?? 0) > 0 && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        Sell {scenario.adjustments.portfolioSellPropertyIds!.length} property(s)
+                      </Badge>
+                    )}
+                    {scenario.adjustments.dtiCapOverride?.enabled && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        DTI cap {scenario.adjustments.dtiCapOverride.value}x
+                      </Badge>
+                    )}
                   </div>
 
                   <Button
