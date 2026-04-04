@@ -412,7 +412,7 @@ export function StrategyScenarioModeling({
       createdAt: new Date().toISOString(),
       adjustedInputs: { ...scenarioInputs },
       result: scenarioResult,
-      accessibleEquity: equityRelease?.accessibleEquity ?? 0,
+      accessibleEquity: totalAccessibleEquity,
     };
     const updated = [...presets, newPreset];
     setPresets(updated);
