@@ -75,18 +75,20 @@ interface StrategyState {
   consolidatedLiabilities: Set<string>;
   refinancedToIO: Set<string>;
   equityReleaseEnabled: boolean;
-  equityReleasePropertyId: string | null;
-  equityReleaseTargetLVR: number;
+  equityReleasePropertyIds: Set<string>;
+  equityReleaseTargetLVRs: Map<string, number>; // per-property target LVR
   rateAdjustment: number;
   additional: AdditionalStrategyState;
 }
+
+const DEFAULT_EQUITY_LVR = 0.80;
 
 const DEFAULT_STRATEGY: StrategyState = {
   consolidatedLiabilities: new Set(),
   refinancedToIO: new Set(),
   equityReleaseEnabled: false,
-  equityReleasePropertyId: null,
-  equityReleaseTargetLVR: 0.80,
+  equityReleasePropertyIds: new Set(),
+  equityReleaseTargetLVRs: new Map(),
   rateAdjustment: 0,
   additional: { ...DEFAULT_ADDITIONAL_STRATEGY },
 };
@@ -333,45 +335,49 @@ export function StrategyScenarioModeling({
     return { scenarioResult: result, scenarioInputs, impactBreakdown: impacts };
   }, [strategy, baseInputs, consolidatableDebts, investmentProperties, properties]);
 
-  // Equity release calculation
-  const equityRelease = useMemo(() => {
-    if (!strategy.equityReleaseEnabled || !strategy.equityReleasePropertyId) return null;
-    const prop = equityReleaseProperties.find(p => p.id === strategy.equityReleasePropertyId);
-    if (!prop) return null;
-    const maxLoan = prop.current_value * strategy.equityReleaseTargetLVR;
-    const grossAccessibleEquity = Math.max(0, maxLoan - prop.loan_remaining);
-    const currentLVR = prop.current_value > 0 ? (prop.loan_remaining / prop.current_value) * 100 : 0;
-    const currentEquity = prop.current_value - prop.loan_remaining;
-    const targetLVRPercent = strategy.equityReleaseTargetLVR * 100;
+  // Equity release calculation — now supports multiple properties
+  interface EquityReleaseItem {
+    property: PropertyItem;
+    currentLVR: number;
+    currentEquity: number;
+    targetLVR: number;
+    grossAccessibleEquity: number;
+    accessibleEquity: number;
+    maxLoan: number;
+    lmiEstimate: any;
+    lmiAmount: number;
+  }
 
-    // Calculate LMI if target LVR > 80%
-    let lmiEstimate = null;
-    let lmiAmount = 0;
-    if (targetLVRPercent > 80 && grossAccessibleEquity > 0) {
-      const newLoanAmount = maxLoan; // total loan after equity release
-      lmiEstimate = estimateLMI({
-        propertyValue: prop.current_value,
-        depositAmount: prop.current_value - newLoanAmount,
-        loanAmount: newLoanAmount,
-        isFirstHomeBuyer: false,
-      });
-      lmiAmount = lmiEstimate.lmiAmount;
-    }
+  const equityReleaseItems = useMemo<EquityReleaseItem[]>(() => {
+    if (!strategy.equityReleaseEnabled || strategy.equityReleasePropertyIds.size === 0) return [];
+    return Array.from(strategy.equityReleasePropertyIds).map(propId => {
+      const prop = equityReleaseProperties.find(p => p.id === propId);
+      if (!prop) return null;
+      const targetLVR = strategy.equityReleaseTargetLVRs.get(propId) ?? DEFAULT_EQUITY_LVR;
+      const maxLoan = prop.current_value * targetLVR;
+      const grossAccessibleEquity = Math.max(0, maxLoan - prop.loan_remaining);
+      const currentLVR = prop.current_value > 0 ? (prop.loan_remaining / prop.current_value) * 100 : 0;
+      const currentEquity = prop.current_value - prop.loan_remaining;
+      const targetLVRPercent = targetLVR * 100;
 
-    const accessibleEquity = Math.max(0, grossAccessibleEquity - lmiAmount);
+      let lmiEstimate = null;
+      let lmiAmount = 0;
+      if (targetLVRPercent > 80 && grossAccessibleEquity > 0) {
+        lmiEstimate = estimateLMI({
+          propertyValue: prop.current_value,
+          depositAmount: prop.current_value - maxLoan,
+          loanAmount: maxLoan,
+          isFirstHomeBuyer: false,
+        });
+        lmiAmount = lmiEstimate.lmiAmount;
+      }
 
-    return {
-      property: prop,
-      currentLVR,
-      currentEquity,
-      targetLVR: targetLVRPercent,
-      grossAccessibleEquity,
-      accessibleEquity,
-      maxLoan,
-      lmiEstimate,
-      lmiAmount,
-    };
-  }, [strategy.equityReleaseEnabled, strategy.equityReleasePropertyId, strategy.equityReleaseTargetLVR, equityReleaseProperties]);
+      const accessibleEquity = Math.max(0, grossAccessibleEquity - lmiAmount);
+      return { property: prop, currentLVR, currentEquity, targetLVR: targetLVRPercent, grossAccessibleEquity, accessibleEquity, maxLoan, lmiEstimate, lmiAmount };
+    }).filter(Boolean) as EquityReleaseItem[];
+  }, [strategy.equityReleaseEnabled, strategy.equityReleasePropertyIds, strategy.equityReleaseTargetLVRs, equityReleaseProperties]);
+
+  const totalAccessibleEquity = useMemo(() => equityReleaseItems.reduce((sum, item) => sum + item.accessibleEquity, 0), [equityReleaseItems]);
 
   const capacityChange = scenarioResult.borrowingCapacity - baseResult.borrowingCapacity;
   const surplusChange = scenarioResult.monthlySurplus - baseResult.monthlySurplus;
@@ -406,7 +412,7 @@ export function StrategyScenarioModeling({
       createdAt: new Date().toISOString(),
       adjustedInputs: { ...scenarioInputs },
       result: scenarioResult,
-      accessibleEquity: equityRelease?.accessibleEquity ?? 0,
+      accessibleEquity: totalAccessibleEquity,
     };
     const updated = [...presets, newPreset];
     setPresets(updated);
@@ -464,22 +470,28 @@ export function StrategyScenarioModeling({
         properties={properties}
         onApplyScenario={(scenario: AIScenario) => {
           // Map AI scenario adjustments to strategy state
-          setStrategy(prev => ({
-            ...prev,
-            consolidatedLiabilities: new Set(scenario.adjustments.consolidatedLiabilityIds || []),
-            refinancedToIO: new Set(scenario.adjustments.refinancedToIOPropertyIds || []),
-            rateAdjustment: scenario.adjustments.rateAdjustment || 0,
-            equityReleaseEnabled: !!scenario.adjustments.equityRelease,
-            equityReleasePropertyId: scenario.adjustments.equityRelease?.propertyId || null,
-            equityReleaseTargetLVR: scenario.adjustments.equityRelease?.targetLVR || 0.80,
-            additional: {
-              ...prev.additional,
-              incomeGrowthEnabled: (scenario.adjustments.incomeGrowthPercent || 0) > 0,
-              incomeGrowthPercent: scenario.adjustments.incomeGrowthPercent || 0,
-              expenseReductionEnabled: (scenario.adjustments.expenseReductionPercent || 0) > 0,
-              expenseReductionPercent: scenario.adjustments.expenseReductionPercent || 0,
-            },
-          }));
+           setStrategy(prev => {
+              const eqRelease = scenario.adjustments.equityRelease;
+              const newPropertyIds = new Set<string>(eqRelease ? [eqRelease.propertyId] : []);
+              const newTargetLVRs = new Map<string, number>();
+              if (eqRelease) newTargetLVRs.set(eqRelease.propertyId, eqRelease.targetLVR || DEFAULT_EQUITY_LVR);
+              return {
+                ...prev,
+                consolidatedLiabilities: new Set(scenario.adjustments.consolidatedLiabilityIds || []),
+                refinancedToIO: new Set(scenario.adjustments.refinancedToIOPropertyIds || []),
+                rateAdjustment: scenario.adjustments.rateAdjustment || 0,
+                equityReleaseEnabled: !!eqRelease,
+                equityReleasePropertyIds: newPropertyIds,
+                equityReleaseTargetLVRs: newTargetLVRs,
+                additional: {
+                  ...prev.additional,
+                  incomeGrowthEnabled: (scenario.adjustments.incomeGrowthPercent || 0) > 0,
+                  incomeGrowthPercent: scenario.adjustments.incomeGrowthPercent || 0,
+                  expenseReductionEnabled: (scenario.adjustments.expenseReductionPercent || 0) > 0,
+                  expenseReductionPercent: scenario.adjustments.expenseReductionPercent || 0,
+                },
+              };
+            });
           // Open relevant sections
           setOpenSections(prev => ({
             ...prev,
@@ -671,9 +683,9 @@ export function StrategyScenarioModeling({
                   Equity Release
                 </CardTitle>
                 <div className="flex items-center gap-2">
-                  {equityRelease && (
+                  {totalAccessibleEquity > 0 && (
                     <Badge variant="secondary" className="text-xs">
-                      {formatCurrency(equityRelease.accessibleEquity)}
+                      {formatCurrency(totalAccessibleEquity)} ({equityReleaseItems.length} prop{equityReleaseItems.length !== 1 ? 's' : ''})
                     </Badge>
                   )}
                   <ChevronDown className={`h-4 w-4 transition-transform ${openSections.equity ? 'rotate-180' : ''}`} />
@@ -684,7 +696,7 @@ export function StrategyScenarioModeling({
           <CollapsibleContent>
             <CardContent className="pt-0 space-y-4">
               <p className="text-xs text-muted-foreground">
-                Explore accessing equity from an existing property to fund a deposit on the next purchase.
+                Explore accessing equity from existing properties to fund a deposit. Select multiple properties to spread the financial load.
               </p>
 
               <div className="flex items-center justify-between">
@@ -695,36 +707,74 @@ export function StrategyScenarioModeling({
                     setStrategy(prev => ({
                       ...prev,
                       equityReleaseEnabled: checked,
-                      equityReleasePropertyId: checked && equityReleaseProperties.length > 0
-                        ? equityReleaseProperties[0].id : null,
+                      equityReleasePropertyIds: checked ? prev.equityReleasePropertyIds : new Set(),
                     }))
                   }
                 />
               </div>
 
-              {/* Property equity overview */}
+              {/* Property equity overview — multi-select */}
               {strategy.equityReleaseEnabled && equityReleaseProperties.length > 0 && (
                 <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground">Portfolio Equity Overview</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs text-muted-foreground">Portfolio Equity Overview</Label>
+                    {equityReleaseProperties.length > 1 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 text-xs px-2"
+                        onClick={() => {
+                          const allIds = new Set(equityReleaseProperties.map(p => p.id));
+                          const allSelected = equityReleaseProperties.every(p => strategy.equityReleasePropertyIds.has(p.id));
+                          setStrategy(prev => ({
+                            ...prev,
+                            equityReleasePropertyIds: allSelected ? new Set() : allIds,
+                          }));
+                        }}
+                      >
+                        {equityReleaseProperties.every(p => strategy.equityReleasePropertyIds.has(p.id)) ? 'Deselect All' : 'Select All'}
+                      </Button>
+                    )}
+                  </div>
                   <div className="space-y-1.5">
                     {equityReleaseProperties.map(prop => {
                       const equity = prop.current_value - prop.loan_remaining;
                       const lvr = prop.current_value > 0 ? (prop.loan_remaining / prop.current_value) * 100 : 0;
-                      const isSelected = strategy.equityReleasePropertyId === prop.id;
+                      const isSelected = strategy.equityReleasePropertyIds.has(prop.id);
                       return (
                         <div
                           key={prop.id}
                           className={`p-3 rounded-lg border cursor-pointer transition-colors ${
                             isSelected ? 'bg-primary/10 border-primary/30' : 'hover:bg-muted/50'
                           }`}
-                          onClick={() => setStrategy(prev => ({ ...prev, equityReleasePropertyId: prop.id }))}
+                          onClick={() => setStrategy(prev => {
+                            const newIds = new Set(prev.equityReleasePropertyIds);
+                            if (newIds.has(prop.id)) {
+                              newIds.delete(prop.id);
+                            } else {
+                              newIds.add(prop.id);
+                            }
+                            return { ...prev, equityReleasePropertyIds: newIds };
+                          })}
                         >
                           <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-sm font-medium">{prop.address?.slice(0, 35) || 'Property'}</p>
-                              <p className="text-xs text-muted-foreground">
-                                Value: {formatCurrency(prop.current_value)} · Loan: {formatCurrency(prop.loan_remaining)} · LVR: {lvr.toFixed(0)}%
-                              </p>
+                            <div className="flex items-center gap-3">
+                              <Switch
+                                checked={isSelected}
+                                onCheckedChange={() => setStrategy(prev => {
+                                  const newIds = new Set(prev.equityReleasePropertyIds);
+                                  if (newIds.has(prop.id)) newIds.delete(prop.id);
+                                  else newIds.add(prop.id);
+                                  return { ...prev, equityReleasePropertyIds: newIds };
+                                })}
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                              <div>
+                                <p className="text-sm font-medium">{prop.address?.slice(0, 35) || 'Property'}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  Value: {formatCurrency(prop.current_value)} · Loan: {formatCurrency(prop.loan_remaining)} · LVR: {lvr.toFixed(0)}%
+                                </p>
+                              </div>
                             </div>
                             <div className="text-right">
                               <p className={`text-sm font-semibold ${equity >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
@@ -733,6 +783,38 @@ export function StrategyScenarioModeling({
                               <p className="text-xs text-muted-foreground">equity</p>
                             </div>
                           </div>
+
+                          {/* Per-property Target LVR selector */}
+                          {isSelected && (
+                            <div className="mt-2 pt-2 border-t border-border/50">
+                              <Label className="text-xs text-muted-foreground">Target LVR</Label>
+                              <div className="flex gap-1.5 mt-1">
+                                {[0.70, 0.80, 0.90].map(lvrOpt => {
+                                  const currentTargetLVR = strategy.equityReleaseTargetLVRs.get(prop.id) ?? DEFAULT_EQUITY_LVR;
+                                  return (
+                                    <button
+                                      key={lvrOpt}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setStrategy(prev => {
+                                          const newMap = new Map(prev.equityReleaseTargetLVRs);
+                                          newMap.set(prop.id, lvrOpt);
+                                          return { ...prev, equityReleaseTargetLVRs: newMap };
+                                        });
+                                      }}
+                                      className={`flex-1 py-1.5 px-2 rounded text-xs font-medium transition-colors ${
+                                        currentTargetLVR === lvrOpt
+                                          ? 'bg-primary text-primary-foreground'
+                                          : 'bg-secondary hover:bg-secondary/80 text-secondary-foreground'
+                                      }`}
+                                    >
+                                      {(lvrOpt * 100).toFixed(0)}%
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -746,81 +828,93 @@ export function StrategyScenarioModeling({
                 </p>
               )}
 
-              {strategy.equityReleaseEnabled && strategy.equityReleasePropertyId && (
-                <>
-                  <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground">Target LVR</Label>
-                    <div className="flex gap-2">
-                      {[0.70, 0.80, 0.90].map(lvr => (
-                        <button
-                          key={lvr}
-                          onClick={() => setStrategy(prev => ({ ...prev, equityReleaseTargetLVR: lvr }))}
-                          className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
-                            strategy.equityReleaseTargetLVR === lvr
-                              ? 'bg-primary text-primary-foreground'
-                              : 'bg-secondary hover:bg-secondary/80 text-secondary-foreground'
-                          }`}
-                        >
-                          {(lvr * 100).toFixed(0)}%
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {equityRelease && (
-                    <div className="p-4 rounded-lg border bg-card space-y-2">
+              {/* Per-property summaries */}
+              {equityReleaseItems.length > 0 && (
+                <div className="space-y-3">
+                  {equityReleaseItems.map((item) => (
+                    <div key={item.property.id} className="p-4 rounded-lg border bg-card space-y-2">
                       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                        Equity Release Summary
+                        {item.property.address?.slice(0, 40) || 'Property'}
                       </p>
                       <div className="space-y-1.5 text-sm">
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Property Value</span>
-                          <span>{formatCurrency(equityRelease.property.current_value)}</span>
+                          <span>{formatCurrency(item.property.current_value)}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Current Loan</span>
-                          <span>{formatCurrency(equityRelease.property.loan_remaining)}</span>
+                          <span>{formatCurrency(item.property.loan_remaining)}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Current Equity</span>
-                          <span className={`font-medium ${equityRelease.currentEquity >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
-                            {formatCurrency(equityRelease.currentEquity)}
+                          <span className={`font-medium ${item.currentEquity >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
+                            {formatCurrency(item.currentEquity)}
                           </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Current LVR</span>
-                          <span>{equityRelease.currentLVR.toFixed(1)}%</span>
+                          <span>{item.currentLVR.toFixed(1)}%</span>
                         </div>
                         <Separator />
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Max Loan at {equityRelease.targetLVR}% LVR</span>
-                          <span>{formatCurrency(equityRelease.maxLoan)}</span>
+                          <span className="text-muted-foreground">Max Loan at {item.targetLVR}% LVR</span>
+                          <span>{formatCurrency(item.maxLoan)}</span>
                         </div>
-                        {equityRelease.lmiAmount > 0 && (
+                        {item.lmiAmount > 0 && (
                           <>
                             <div className="flex justify-between text-amber-600">
                               <span>Gross Accessible Equity</span>
-                              <span>{formatCurrency(equityRelease.grossAccessibleEquity)}</span>
+                              <span>{formatCurrency(item.grossAccessibleEquity)}</span>
                             </div>
                             <div className="flex justify-between text-destructive">
-                              <span>Less: Est. LMI ({equityRelease.lmiEstimate?.estimatedRate.toFixed(2)}%)</span>
-                              <span>-{formatCurrency(equityRelease.lmiAmount)}</span>
+                              <span>Less: Est. LMI ({item.lmiEstimate?.estimatedRate.toFixed(2)}%)</span>
+                              <span>-{formatCurrency(item.lmiAmount)}</span>
                             </div>
                           </>
                         )}
                         <div className="flex justify-between font-semibold text-emerald-600">
                           <span>Net Accessible Equity</span>
-                          <span>{formatCurrency(equityRelease.accessibleEquity)}</span>
+                          <span>{formatCurrency(item.accessibleEquity)}</span>
                         </div>
-                        {equityRelease.lmiAmount > 0 && (
+                        {item.lmiAmount > 0 && (
                           <div className="p-2 rounded bg-amber-500/10 border border-amber-500/20 text-xs text-amber-700 dark:text-amber-400 mt-1">
-                            ⚠ LVR of {equityRelease.targetLVR}% triggers LMI of {formatCurrency(equityRelease.lmiAmount)}, reducing usable equity by the same amount.
+                            ⚠ LVR of {item.targetLVR}% triggers LMI of {formatCurrency(item.lmiAmount)}, reducing usable equity.
                           </div>
                         )}
                       </div>
                     </div>
+                  ))}
+
+                  {/* Combined total if multiple properties */}
+                  {equityReleaseItems.length > 1 && (
+                    <div className="p-4 rounded-lg border-2 border-primary/30 bg-primary/5 space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        Combined Equity Release Summary
+                      </p>
+                      <div className="space-y-1.5 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Properties Selected</span>
+                          <span className="font-medium">{equityReleaseItems.length}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Total Gross Equity</span>
+                          <span>{formatCurrency(equityReleaseItems.reduce((s, i) => s + i.grossAccessibleEquity, 0))}</span>
+                        </div>
+                        {equityReleaseItems.some(i => i.lmiAmount > 0) && (
+                          <div className="flex justify-between text-destructive">
+                            <span>Total LMI</span>
+                            <span>-{formatCurrency(equityReleaseItems.reduce((s, i) => s + i.lmiAmount, 0))}</span>
+                          </div>
+                        )}
+                        <Separator />
+                        <div className="flex justify-between font-semibold text-lg text-emerald-600">
+                          <span>Total Net Accessible Equity</span>
+                          <span>{formatCurrency(totalAccessibleEquity)}</span>
+                        </div>
+                      </div>
+                    </div>
                   )}
-                </>
+                </div>
               )}
             </CardContent>
           </CollapsibleContent>
@@ -1024,13 +1118,13 @@ export function StrategyScenarioModeling({
             </div>
           )}
 
-          {equityRelease && (
+          {totalAccessibleEquity > 0 && (
             <div className="flex items-center justify-between text-sm p-2 rounded bg-muted/50">
               <span className="flex items-center gap-2">
                 <Building2 className="h-3.5 w-3.5 text-primary" />
-                Equity Accessible ({equityRelease.property.address?.slice(0, 20)}...)
+                Equity Accessible ({equityReleaseItems.length} propert{equityReleaseItems.length !== 1 ? 'ies' : 'y'})
               </span>
-              <span className="font-semibold text-primary">{formatCurrency(equityRelease.accessibleEquity)}</span>
+              <span className="font-semibold text-primary">{formatCurrency(totalAccessibleEquity)}</span>
             </div>
           )}
 
@@ -1132,7 +1226,7 @@ export function StrategyScenarioModeling({
                     <Button
                       size="sm"
                       className="flex-1"
-                      onClick={() => onApplyScenario(scenarioInputs, equityRelease?.accessibleEquity ?? 0)}
+                      onClick={() => onApplyScenario(scenarioInputs, totalAccessibleEquity)}
                     >
                       <Zap className="h-3.5 w-3.5 mr-1.5" />
                       Apply to Calculator
