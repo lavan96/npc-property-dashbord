@@ -23,6 +23,8 @@ You analyse a client's financial snapshot (income, expenses, liabilities, proper
 - DTI (Debt-to-Income) ratio: most banks cap at 6-8x gross income
 - Equity release: accessing equity from existing properties for deposits (up to ~80% LVR)
 - Negative gearing: investment property losses offset taxable income
+- Loan term extension: extending from 25yr to 30yr reduces monthly repayments and increases capacity
+- Portfolio restructuring: selling underperforming or negatively-geared properties can free up capacity
 
 ## Available Strategy Levers
 You can recommend combinations of these adjustments:
@@ -32,6 +34,9 @@ You can recommend combinations of these adjustments:
 4. **incomeGrowthPercent** — Percentage increase in gross income (e.g., 10 for 10% growth)
 5. **expenseReductionPercent** — Percentage decrease in living expenses (e.g., 15 for 15% cut)
 6. **equityRelease** — { propertyId, targetLVR } to release equity from a property
+7. **loanTermAdjustment** — Years to add or subtract from base loan term (e.g., 5 for extending 5 years, -5 for shortening)
+8. **portfolioSellPropertyIds** — IDs of properties to sell (removes their loan servicing from commitments)
+9. **dtiCapOverride** — { enabled, value } to model a different DTI cap (e.g., switching to a lender with 8x DTI vs 6x)
 
 ## Conversation Guidelines
 - Be conversational and ask clarifying questions if the user's request is vague
@@ -80,24 +85,43 @@ const SCENARIO_TOOL = {
                   },
                   rateAdjustment: {
                     type: "number",
-                    description: "Rate adjustment in percentage points",
+                    description: "Rate adjustment in percentage points (e.g., -0.5)",
                   },
                   incomeGrowthPercent: {
                     type: "number",
-                    description: "Income growth percentage",
+                    description: "Income growth percentage (e.g., 10 for +10%)",
                   },
                   expenseReductionPercent: {
                     type: "number",
-                    description: "Expense reduction percentage",
+                    description: "Expense reduction percentage (e.g., 15 for -15%)",
                   },
                   equityRelease: {
                     type: "object",
                     properties: {
                       propertyId: { type: "string" },
-                      targetLVR: { type: "number" },
+                      targetLVR: { type: "number", description: "Target LVR as decimal e.g. 0.8 for 80%" },
                     },
                     required: ["propertyId", "targetLVR"],
-                    description: "Equity release configuration",
+                    description: "Equity release configuration. Set to null if not applicable.",
+                    nullable: true,
+                  },
+                  loanTermAdjustment: {
+                    type: "number",
+                    description: "Years to add (+) or subtract (-) from base loan term. E.g., 5 extends by 5 years, -5 shortens by 5 years. Use 0 for no change.",
+                  },
+                  portfolioSellPropertyIds: {
+                    type: "array",
+                    items: { type: "string" },
+                    description: "IDs of properties to sell — removes their loan servicing from commitments. Use empty array if not applicable.",
+                  },
+                  dtiCapOverride: {
+                    type: "object",
+                    properties: {
+                      enabled: { type: "boolean", description: "Whether to enable a custom DTI cap" },
+                      value: { type: "number", description: "DTI cap multiplier e.g. 8 for 8x gross income" },
+                    },
+                    required: ["enabled", "value"],
+                    description: "Override DTI cap to model different lender policies. Set enabled=false if not applicable.",
                     nullable: true,
                   },
                 },
@@ -107,8 +131,9 @@ const SCENARIO_TOOL = {
                   "rateAdjustment",
                   "incomeGrowthPercent",
                   "expenseReductionPercent",
+                  "loanTermAdjustment",
+                  "portfolioSellPropertyIds",
                 ],
-                additionalProperties: false,
               },
               estimatedImpact: {
                 type: "string",
@@ -117,12 +142,10 @@ const SCENARIO_TOOL = {
               },
             },
             required: ["name", "reasoning", "adjustments", "estimatedImpact"],
-            additionalProperties: false,
           },
         },
       },
       required: ["scenarios"],
-      additionalProperties: false,
     },
   },
 };
@@ -168,6 +191,7 @@ serve(async (req) => {
 **Current Borrowing Capacity**: $${baseResult?.borrowingCapacity?.toLocaleString() || "N/A"}
 **Serviceability Band**: ${baseResult?.serviceabilityBand || "N/A"}
 **Monthly Surplus**: $${baseResult?.monthlySurplus?.toLocaleString() || "N/A"}
+**DTI Ratio**: ${baseResult?.dtiRatio || "N/A"}
 
 **Income**: Gross $${baseInputs?.grossAnnualIncome?.toLocaleString() || 0}/yr | Shaded $${baseInputs?.shadedAnnualIncome?.toLocaleString() || 0}/yr
 **Living Expenses**: $${baseInputs?.monthlyLivingExpenses?.toLocaleString() || 0}/mo

@@ -475,6 +475,13 @@ export function StrategyScenarioModeling({
               const newPropertyIds = new Set<string>(eqRelease ? [eqRelease.propertyId] : []);
               const newTargetLVRs = new Map<string, number>();
               if (eqRelease) newTargetLVRs.set(eqRelease.propertyId, eqRelease.targetLVR || DEFAULT_EQUITY_LVR);
+
+              // Map portfolio sell property IDs
+              const sellIds = new Set<string>(scenario.adjustments.portfolioSellPropertyIds || []);
+
+              // Map DTI cap override
+              const dtiOverride = scenario.adjustments.dtiCapOverride;
+
               return {
                 ...prev,
                 consolidatedLiabilities: new Set(scenario.adjustments.consolidatedLiabilityIds || []),
@@ -487,18 +494,26 @@ export function StrategyScenarioModeling({
                   ...prev.additional,
                   incomeGrowthPercent: scenario.adjustments.incomeGrowthPercent || 0,
                   expenseReductionPercent: scenario.adjustments.expenseReductionPercent || 0,
+                  loanTermAdjustment: scenario.adjustments.loanTermAdjustment || 0,
+                  portfolioSellPropertyIds: sellIds,
+                  portfolioSellReinvest: false,
+                  dtiCapEnabled: dtiOverride?.enabled || false,
+                  dtiCapValue: dtiOverride?.value || 6,
                 },
               };
             });
-          // Open relevant sections
+          // Open relevant sections based on which levers the AI activated
           setOpenSections(prev => ({
             ...prev,
             consolidation: (scenario.adjustments.consolidatedLiabilityIds?.length || 0) > 0,
             refinance: (scenario.adjustments.refinancedToIOPropertyIds?.length || 0) > 0,
             equity: !!scenario.adjustments.equityRelease,
             rates: (scenario.adjustments.rateAdjustment || 0) !== 0,
-            incomeGrowth: (scenario.adjustments.incomeGrowthPercent || 0) > 0,
+            incomeGrowth: (scenario.adjustments.incomeGrowthPercent || 0) !== 0,
             expenseReduction: (scenario.adjustments.expenseReductionPercent || 0) > 0,
+            loanTerm: (scenario.adjustments.loanTermAdjustment || 0) !== 0,
+            portfolioPlay: (scenario.adjustments.portfolioSellPropertyIds?.length || 0) > 0,
+            dtiCap: !!scenario.adjustments.dtiCapOverride?.enabled,
           }));
         }}
       />
