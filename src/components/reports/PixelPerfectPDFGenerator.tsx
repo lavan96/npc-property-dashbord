@@ -1740,7 +1740,8 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
           cellY: number, 
           cellWidth: number, 
           font: any,
-          isHeader: boolean
+          isHeader: boolean,
+          textColor?: any
         ): number => {
           const maxCellWidth = cellWidth - 2 * cellPadding;
           const parts = parseMarkdownText(sanitizeAIContent(stripEmojis(cellText)));
