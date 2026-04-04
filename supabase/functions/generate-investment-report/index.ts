@@ -881,8 +881,8 @@ ${score.risks?.length ? `- Risks: ${score.risks.join(', ')}` : ''}
 You are generating ONLY the following sections of a comprehensive investment report:
 ${sectionDef.sections.map(s => `- ${s}`).join('\n')}
 
-${investmentScoreContext}${previousSections ? `**CONTEXT FROM PREVIOUS SECTIONS (for consistency, DO NOT repeat this content):**
-${previousSections.substring(0, 4000)}...
+${investmentScoreContext}${previousSections ? `**CONTEXT FROM PREVIOUS SECTIONS (for consistency — you MUST reuse the same figures for distances, risk levels, SEIFA scores, population, labor force, cashflow, and LVR/deposit):**
+${previousSections.substring(Math.max(0, previousSections.length - 6000))}
 ` : ''}
 
 **CRITICAL INSTRUCTIONS:**
