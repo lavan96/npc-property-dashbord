@@ -23,6 +23,9 @@ interface ScenarioAdjustments {
   incomeGrowthPercent: number;
   expenseReductionPercent: number;
   equityRelease?: { propertyId: string; targetLVR: number } | null;
+  loanTermAdjustment?: number;
+  portfolioSellPropertyIds?: string[];
+  dtiCapOverride?: { enabled: boolean; value: number } | null;
 }
 
 export interface AIScenario {
