@@ -75,18 +75,20 @@ interface StrategyState {
   consolidatedLiabilities: Set<string>;
   refinancedToIO: Set<string>;
   equityReleaseEnabled: boolean;
-  equityReleasePropertyId: string | null;
-  equityReleaseTargetLVR: number;
+  equityReleasePropertyIds: Set<string>;
+  equityReleaseTargetLVRs: Map<string, number>; // per-property target LVR
   rateAdjustment: number;
   additional: AdditionalStrategyState;
 }
+
+const DEFAULT_EQUITY_LVR = 0.80;
 
 const DEFAULT_STRATEGY: StrategyState = {
   consolidatedLiabilities: new Set(),
   refinancedToIO: new Set(),
   equityReleaseEnabled: false,
-  equityReleasePropertyId: null,
-  equityReleaseTargetLVR: 0.80,
+  equityReleasePropertyIds: new Set(),
+  equityReleaseTargetLVRs: new Map(),
   rateAdjustment: 0,
   additional: { ...DEFAULT_ADDITIONAL_STRATEGY },
 };
