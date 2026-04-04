@@ -8,6 +8,7 @@ import {
   Bot, Send, ChevronDown, ChevronUp, Sparkles, Loader2,
   TrendingUp, CheckCircle2, Zap,
 } from 'lucide-react';
+import { VoiceToTextButton } from '@/components/ui/VoiceToTextButton';
 import ReactMarkdown from 'react-markdown';
 import type { BorrowingCapacityInput, BorrowingCapacityResult } from '@/utils/borrowingCapacityCalculations';
 import type { LiabilityItem, PropertyItem } from './StrategyScenarioModeling';
@@ -287,7 +288,12 @@ export function BCScenarioAgent({
             </div>
 
             {/* Input */}
-            <div className="border-t p-3 flex gap-2">
+            <div className="border-t p-3 flex gap-2 items-end">
+              <VoiceToTextButton
+                onTranscript={(text) => setInput(prev => prev ? `${prev} ${text}` : text)}
+                disabled={isLoading}
+                size="sm"
+              />
               <Textarea
                 ref={textareaRef}
                 value={input}
