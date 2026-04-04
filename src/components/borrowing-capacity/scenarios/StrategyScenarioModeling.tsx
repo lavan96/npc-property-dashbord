@@ -456,6 +456,43 @@ export function StrategyScenarioModeling({
 
   return (
     <div className="space-y-4">
+      {/* AI Strategy Advisor */}
+      <BCScenarioAgent
+        baseInputs={baseInputs}
+        baseResult={baseResult}
+        liabilities={liabilities}
+        properties={properties}
+        onApplyScenario={(scenario: AIScenario) => {
+          // Map AI scenario adjustments to strategy state
+          setStrategy(prev => ({
+            ...prev,
+            consolidatedLiabilities: new Set(scenario.adjustments.consolidatedLiabilityIds || []),
+            refinancedToIO: new Set(scenario.adjustments.refinancedToIOPropertyIds || []),
+            rateAdjustment: scenario.adjustments.rateAdjustment || 0,
+            equityReleaseEnabled: !!scenario.adjustments.equityRelease,
+            equityReleasePropertyId: scenario.adjustments.equityRelease?.propertyId || null,
+            equityReleaseTargetLVR: scenario.adjustments.equityRelease?.targetLVR || 0.80,
+            additional: {
+              ...prev.additional,
+              incomeGrowthEnabled: (scenario.adjustments.incomeGrowthPercent || 0) > 0,
+              incomeGrowthPercent: scenario.adjustments.incomeGrowthPercent || 0,
+              expenseReductionEnabled: (scenario.adjustments.expenseReductionPercent || 0) > 0,
+              expenseReductionPercent: scenario.adjustments.expenseReductionPercent || 0,
+            },
+          }));
+          // Open relevant sections
+          setOpenSections(prev => ({
+            ...prev,
+            consolidation: (scenario.adjustments.consolidatedLiabilityIds?.length || 0) > 0,
+            refinance: (scenario.adjustments.refinancedToIOPropertyIds?.length || 0) > 0,
+            equity: !!scenario.adjustments.equityRelease,
+            rates: (scenario.adjustments.rateAdjustment || 0) !== 0,
+            incomeGrowth: (scenario.adjustments.incomeGrowthPercent || 0) > 0,
+            expenseReduction: (scenario.adjustments.expenseReductionPercent || 0) > 0,
+          }));
+        }}
+      />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold flex items-center gap-2">
