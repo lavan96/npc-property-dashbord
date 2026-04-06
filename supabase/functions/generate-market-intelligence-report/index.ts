@@ -285,7 +285,7 @@ async function fetchLayer6_Economic(perplexityKey: string): Promise<PerplexityRe
 8. **Credit Growth** — housing credit growth from RBA data, investor vs owner-occupier lending split
 9. **Household Debt-to-Income Ratio** — latest RBA data on household leverage
 
-Use the most recent ABS, RBA, APRA, and Treasury data. Cite publication dates.`,
+Use the most recent ABS, RBA, APRA, and Treasury data. Cite publication dates. Do NOT include any "Data Limitations" section — only present available data.`,
     perplexityKey
   );
 }
