@@ -151,15 +151,41 @@ export function DataIntegrityPanel({
                 </TabsContent>
 
                 <TabsContent value="fields" className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    {Object.entries(comparison.fieldComparison).map(([field, fieldResult]) => (
-                      <div key={field} className="flex justify-between items-center">
-                        <span className="capitalize">{field}:</span>
-                        <Badge variant={(fieldResult as any).match ? "default" : "destructive"}>
-                          {(fieldResult as any).match ? "✓" : "✗"}
-                        </Badge>
-                      </div>
-                    ))}
+                  <div className="space-y-3">
+                    {Object.entries(comparison.fieldComparison).map(([field, fieldResult]) => {
+                      const result = fieldResult as { dashboard: number; reports: number; match: boolean };
+                      const remediationMap: Record<string, string> = {
+                        price: 'Check source emails for price data that may not be extracted. Verify Airtable "Price" field mapping.',
+                        address: 'Review listings with missing addresses. Check email parser extraction rules for address patterns.',
+                        suburb: 'Run suburb extraction against raw addresses. Ensure suburb field is populated from address parsing.',
+                        propertyType: 'Classify uncategorised listings. Update property type mapping rules in the data pipeline.',
+                        beds: 'Extract bedroom counts from listing descriptions where the structured field is empty.',
+                        baths: 'Extract bathroom counts from listing descriptions where the structured field is empty.',
+                      };
+                      return (
+                        <div key={field} className="rounded-lg border p-3 space-y-1.5">
+                          <div className="flex justify-between items-center">
+                            <span className="capitalize font-medium text-sm">{field}</span>
+                            <Badge variant={result.match ? "default" : "destructive"}>
+                              {result.match ? "✓ Match" : "✗ Mismatch"}
+                            </Badge>
+                          </div>
+                          <div className="flex gap-4 text-xs text-muted-foreground">
+                            <span>Dashboard: <strong className="text-foreground">{result.dashboard}</strong></span>
+                            <span>Reports: <strong className="text-foreground">{result.reports}</strong></span>
+                            {!result.match && (
+                              <span className="text-destructive">Δ {Math.abs(result.dashboard - result.reports)}</span>
+                            )}
+                          </div>
+                          {!result.match && remediationMap[field] && (
+                            <div className="flex items-start gap-1.5 text-xs bg-amber-500/10 text-amber-700 dark:text-amber-400 rounded p-2 mt-1">
+                              <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+                              <span>{remediationMap[field]}</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </TabsContent>
 
