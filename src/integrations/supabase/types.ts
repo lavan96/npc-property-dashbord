@@ -5612,6 +5612,7 @@ export type Database = {
       }
       marketing_intelligence_reports: {
         Row: {
+          audience_segment: string
           created_at: string
           error_message: string | null
           generated_at: string
@@ -5620,10 +5621,12 @@ export type Database = {
           pdf_storage_path: string | null
           report_data: Json | null
           report_period: string | null
+          report_type: string
           status: string
           updated_at: string
         }
         Insert: {
+          audience_segment?: string
           created_at?: string
           error_message?: string | null
           generated_at?: string
@@ -5632,10 +5635,12 @@ export type Database = {
           pdf_storage_path?: string | null
           report_data?: Json | null
           report_period?: string | null
+          report_type?: string
           status?: string
           updated_at?: string
         }
         Update: {
+          audience_segment?: string
           created_at?: string
           error_message?: string | null
           generated_at?: string
@@ -5644,6 +5649,7 @@ export type Database = {
           pdf_storage_path?: string | null
           report_data?: Json | null
           report_period?: string | null
+          report_type?: string
           status?: string
           updated_at?: string
         }
@@ -5713,8 +5719,11 @@ export type Database = {
       }
       marketing_report_schedules: {
         Row: {
+          audience_segment: string
+          content_rotation_enabled: boolean
           created_at: string
           created_by: string | null
+          current_rotation_index: number
           description: string | null
           email_body_template: string
           email_subject_template: string
@@ -5727,14 +5736,19 @@ export type Database = {
           next_scheduled_at: string | null
           pipeline_id: string
           pipeline_name: string | null
+          report_type: string
+          rotation_sequence: string[]
           sender_mailbox_email: string | null
           stage_id: string | null
           stage_name: string | null
           updated_at: string
         }
         Insert: {
+          audience_segment?: string
+          content_rotation_enabled?: boolean
           created_at?: string
           created_by?: string | null
+          current_rotation_index?: number
           description?: string | null
           email_body_template?: string
           email_subject_template?: string
@@ -5747,14 +5761,19 @@ export type Database = {
           next_scheduled_at?: string | null
           pipeline_id: string
           pipeline_name?: string | null
+          report_type?: string
+          rotation_sequence?: string[]
           sender_mailbox_email?: string | null
           stage_id?: string | null
           stage_name?: string | null
           updated_at?: string
         }
         Update: {
+          audience_segment?: string
+          content_rotation_enabled?: boolean
           created_at?: string
           created_by?: string | null
+          current_rotation_index?: number
           description?: string | null
           email_body_template?: string
           email_subject_template?: string
@@ -5767,6 +5786,8 @@ export type Database = {
           next_scheduled_at?: string | null
           pipeline_id?: string
           pipeline_name?: string | null
+          report_type?: string
+          rotation_sequence?: string[]
           sender_mailbox_email?: string | null
           stage_id?: string | null
           stage_name?: string | null
