@@ -202,6 +202,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
     equity: true,
     rentalIncome: true,
     cashFlow: true,
+    loanBalance: true,
   });
   
   // Per-year overrides state (years 2-10)
