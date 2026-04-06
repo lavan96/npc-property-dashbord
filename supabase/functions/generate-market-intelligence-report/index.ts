@@ -669,8 +669,7 @@ For each item, specify: What changed, When, Which states affected, Impact rating
             LOVABLE_API_KEY,
             layer2Result.content,
             layer7Result.content,
-            audiencePrompt,
-            internalNPCData
+            audiencePrompt
           );
         } catch (e) {
           console.error('Layer 8 (Competitive Edge) error:', e);
