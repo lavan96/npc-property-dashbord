@@ -165,6 +165,9 @@ export function ReportDistributionPanel() {
     setFormSubject('Your Market Intelligence Report — {{report_period}}');
     setFormBody('Please find attached the latest Market Intelligence Report, providing a comprehensive analysis of the Australian property market including interest rate movements, housing market data, economic indicators, and strategic outlook.');
     setFormEnabled(true);
+    setFormReportType('full');
+    setFormAudience('general');
+    setFormRotationEnabled(false);
     setEditingSchedule(null);
   };
 
