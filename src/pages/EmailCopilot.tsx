@@ -1822,6 +1822,9 @@ export default function EmailCopilot() {
                             onClick={() => {
                               if (isThreaded && !isExpanded) {
                                 toggleThread(threadKey);
+                              } else if (isThreaded && isExpanded) {
+                                // If already expanded and clicking the header, collapse the thread
+                                toggleThread(threadKey);
                               } else {
                                 handleSelectEmail(latestEmail);
                               }
