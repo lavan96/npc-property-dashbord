@@ -90,7 +90,7 @@ async function queryPerplexity(
       messages: [
         {
           role: 'system',
-          content: 'You are a senior Australian property market analyst providing data-backed intelligence for property investment professionals. Always cite sources and use specific numbers. NPC Services is a strategic property advisory that operates above the noise of the general market — all analysis must reflect this positioning. CRITICAL: Never include "Data Limitations" sections, disclaimers about missing data, or phrases like "the search results do not contain" or "data is not available." If specific data is unavailable, omit that subsection entirely and focus on what IS available. The output is client-facing and must project authority and completeness.'
+          content: `You are a senior Australian property market analyst providing data-backed intelligence for property investment professionals. Always cite sources and use specific numbers. NPC Services is a strategic property advisory that operates above the noise of the general market — all analysis must reflect this positioning. CRITICAL RULES: (1) Never include "Data Limitations" sections, disclaimers about missing data, or phrases like "the search results do not contain" or "data is not available." If specific data is unavailable, omit that subsection entirely and focus on what IS available. (2) Never cite specific property addresses, street names, or individual sale prices — use only published median/aggregate suburb-level statistics. (3) The output is client-facing and must project authority and completeness. ${systemPrompt || ''}`
         },
         { role: 'user', content: prompt }
       ],
@@ -294,26 +294,32 @@ Use the most recent ABS, RBA, APRA, and Treasury data. Cite publication dates. D
 
 async function fetchLayer7_Micro(perplexityKey: string, audiencePrompt: string): Promise<PerplexityResult> {
   return queryPerplexity(
-    `Identify the TOP 5 highest-performing suburbs or corridors in Australia right now for property investment. For EACH suburb provide:
+    `Identify the TOP 5 highest-performing suburbs or corridors in Australia right now for property investment.
+
+CRITICAL REQUIREMENTS:
+- You MUST select suburbs from at least 3 DIFFERENT STATES to provide national diversity (e.g. NSW, VIC, QLD, WA, SA).
+- Do NOT select more than 2 suburbs from the same state.
+- Use ONLY aggregate/median data from published sources. NEVER cite specific street addresses, specific property sales, or individual transaction prices — these cannot be verified and damage credibility.
+
+For EACH suburb provide:
 
 1. **Suburb Name & State** — exact location and postcode
-2. **Median House Price** — current median and 12-month change (%)
+2. **Median House Price** — current median from CoreLogic/PropTrack and 12-month change (%)
 3. **Rental Yield** — current gross rental yield for houses and units
 4. **Days on Market** — average DOM and whether it's tightening or loosening
 5. **Vacancy Rate** — current rate from SQM Research or similar
 6. **Growth Drivers** — infrastructure projects, transport links, employment hubs, amenities driving demand
 7. **Supply-Demand Balance** — new listings vs buyer demand, development pipeline, DSR (demand-to-supply ratio) where available
-8. **Comparable Sales** — 2-3 recent sale examples with prices
-9. **Rental Performance** — median weekly rent and 12-month rental growth
-10. **Entry Strategy** — recommended approach for entering this market
+8. **Rental Performance** — median weekly rent and 12-month rental growth
+9. **Entry Strategy** — recommended approach for entering this market
 
 Also identify 3 emerging corridors showing early-stage growth signals (price momentum beginning, infrastructure announced, rezoning underway).
 
 ${audiencePrompt}
 
-Use data from CoreLogic, PropTrack, Domain, SQM Research, Microburbs, and government infrastructure databases. Prioritise suburbs showing BOTH capital growth AND rental yield strength. Do NOT include any "Data Limitations" section.`,
+Use data from CoreLogic, PropTrack, Domain, SQM Research, Microburbs, and government infrastructure databases. Prioritise suburbs showing BOTH capital growth AND rental yield strength. Do NOT include any "Data Limitations" section. Do NOT cite individual property addresses or sale prices — use only median/aggregate suburb-level statistics.`,
     perplexityKey,
-    'You are a senior Australian property market analyst specialising in suburb-level intelligence. Provide granular, data-backed suburb analysis that helps investors identify specific opportunities. Always cite sources and use specific numbers. Never include "Data Limitations" disclaimers — only present the data you have.'
+    'You are a senior Australian property market analyst specialising in suburb-level intelligence. Provide granular, data-backed suburb analysis using ONLY published aggregate/median statistics from authoritative sources. NEVER fabricate or cite specific property addresses, individual sale prices, or comparable sales with street addresses — only use suburb-level median data. Always cite sources and use specific numbers. Never include "Data Limitations" disclaimers — only present the data you have.'
   );
 }
 
@@ -338,7 +344,7 @@ ${layer7Content.slice(0, 3000)}
 ## Required Analysis (produce ALL sections):
 
 ### 1. Off-Market & Pre-Market Intelligence
-Identify 2-3 opportunities that are likely available off-market or pre-market in the suburbs analysed. Explain what signals suggest off-market activity and how a strategic buyer would access these. Frame this as general market intelligence — do NOT fabricate specific NPC deal pipeline data, active negotiations, or specific property addresses that NPC is supposedly pursuing. Instead, describe the types of opportunities and access strategies available.
+Identify 2-3 opportunities that are likely available off-market or pre-market in the suburbs analysed. Explain what signals suggest off-market activity and how a strategic buyer would access these. Frame this as general market intelligence — do NOT fabricate specific NPC deal pipeline data, active negotiations, or specific property addresses that NPC is supposedly pursuing. Do NOT cite specific street addresses, lot numbers, or individual sale prices — use only suburb-level aggregate data. Instead, describe the types of opportunities and access strategies available.
 
 ### 2. Development & Subdivision Potential
 For the top suburbs identified, analyse:
@@ -372,7 +378,7 @@ For the #1 opportunity identified, provide a detailed strategic playbook:
 
 ${audiencePrompt}
 
-Tone: Confident, strategic, authoritative. This is where NPC proves its value above the noise. NPC Services is a strategic property advisory, not just a buyer's agent — decisions are data-driven and insight-led. IMPORTANT: Do NOT fabricate specific property addresses, deal negotiations, or "pipeline activity" that NPC is supposedly engaged in. Keep recommendations at a strategic framework level.`,
+Tone: Confident, strategic, authoritative. This is where NPC proves its value above the noise. NPC Services is a strategic property advisory, not just a buyer's agent — decisions are data-driven and insight-led. IMPORTANT: Do NOT fabricate specific property addresses, street names, lot numbers, deal negotiations, individual sale prices, or "pipeline activity" that NPC is supposedly engaged in. Use only suburb-level median/aggregate data from published sources. Keep recommendations at a strategic framework level.`,
     lovableKey,
     8000
   );
@@ -503,8 +509,7 @@ A 2-3 sentence compelling paragraph that creates urgency without being pushy.
 2. **Request Detailed Analysis** — for a suburb or opportunity mentioned
 3. **Connect With Our Team** — phone/email with a personal touch
 
-### Why NPC Services?
-A single powerful sentence that reinforces NPC's strategic advantage: NPC Services is a strategic property advisory that delivers data-driven, insight-led guidance — enabling clients to act on opportunities others don't see.
+IMPORTANT: Do NOT include a "Why NPC Services?" section — this is added separately by the PDF generator. End your output after the 3 action steps.
 
 Keep it professional, warm, and action-oriented. No generic "contact us" language.`,
     lovableKey,
@@ -652,7 +657,9 @@ ${layer2Result.content.slice(0, 2000)}
 5. **Tax Policy** — any changes to negative gearing, CGT discount, depreciation rules under discussion
 6. **Building & Planning** — changes to building codes, planning regulations, inclusionary zoning
 
-For each item, specify: What changed, When, Which states affected, Impact rating (High/Medium/Low).`,
+For each item, specify: What changed, When, Which states affected, Impact rating (High/Medium/Low).
+
+CRITICAL INSTRUCTION: If no recent changes have been identified for a specific category, do NOT include that category at all. Do NOT write "N/A" or "No recent changes identified" — simply OMIT that entire section and move to the next one. Only include sections where there is substantive information to report. If only 2 of the 6 categories have real updates, only write those 2.`,
             LOVABLE_API_KEY
           );
         } catch (e) {
@@ -759,8 +766,19 @@ ${audiencePrompt}
 A 3-4 sentence executive view of the next 90 days.
 
 ### Risk/Opportunity Matrix
-Create a table with columns: Factor | Risk Level (Low/Med/High) | Opportunity Level (Low/Med/High) | Key Insight
-Include at least 6 factors.
+
+CRITICAL: You MUST produce a proper markdown table with EXACTLY this format — including the separator row and at least 6 data rows. Do NOT leave the table empty or produce only headers:
+
+| Factor | Risk Level | Opportunity Level | Key Insight |
+| --- | --- | --- | --- |
+| Interest Rates | High | Low | [your insight] |
+| Housing Supply | Medium | High | [your insight] |
+| Rental Market | Low | High | [your insight] |
+| Consumer Sentiment | Medium | Medium | [your insight] |
+| Population Growth | Low | High | [your insight] |
+| Regulatory Environment | Medium | Low | [your insight] |
+
+Replace the example insights with real analysis from the data above. You MUST produce all 6+ data rows. Each row must have all 4 columns filled.
 
 ### Timing Recommendations
 - **Best time to buy**: Specific windows and reasoning

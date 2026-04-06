@@ -111,7 +111,41 @@ function stripDataLimitations(content: string): string {
   cleaned = cleaned.replace(/^.*(?:search results (?:do not|don't|lack|contain no)|data (?:is|are) not (?:available|present|provided)|insufficient (?:data|information)).*$/gmi, '');
   // Remove "This critical data point is absent" type lines
   cleaned = cleaned.replace(/^.*(?:critical data point is absent|not present in (?:these|the) results|would require access to|additional sources.*would be necessary).*$/gmi, '');
+  // Remove "Note:" or "Caveat:" disclaimer lines
+  cleaned = cleaned.replace(/^(?:\*\*)?(?:Note|Caveat|Disclaimer|Important Note|Data Note|Limitation)(?:\*\*)?:.*$/gmi, '');
   // Clean up extra blank lines
+  cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
+  return cleaned.trim();
+}
+
+/**
+ * Strip regulatory sections that are entirely N/A or "No recent changes identified".
+ * These add no value to the client-facing report.
+ */
+function stripEmptyRegulatorySections(content: string): string {
+  if (!content) return '';
+  // Match heading + body where body is mostly N/A or "No recent...changes"
+  const sectionRegex = /#{1,4}\s+\d+\.\s+[^\n]+\n[\s\S]*?(?=#{1,4}\s+\d+\.\s|$)/g;
+  let cleaned = content.replace(sectionRegex, (match) => {
+    // Check if the section body is primarily N/A / empty
+    const bodyWithoutHeadings = match.replace(/#{1,4}\s+[^\n]+\n/g, '');
+    const naPhrases = (bodyWithoutHeadings.match(/\bN\/A\b|No recent.*?(?:changes|updates).*?identified|not.*?identified in the provided/gi) || []).length;
+    const substantiveLines = bodyWithoutHeadings.split('\n').filter(l => l.trim() && !l.match(/^#{1,4}\s|^\s*(?:N\/A|When:|Which States|Impact Rating:)\s*$/i)).length;
+    // If more N/A phrases than substantive lines, strip it
+    if (naPhrases >= 2 && substantiveLines < 4) return '';
+    return match;
+  });
+  cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
+  return cleaned.trim();
+}
+
+/**
+ * Strip "Why NPC Services?" from CTA content since the PDF adds it separately.
+ */
+function stripDuplicateNPCTagline(content: string): string {
+  if (!content) return '';
+  // Remove ### Why NPC Services? section and its content
+  let cleaned = content.replace(/#{1,4}\s*Why NPC Services\?[\s\S]*?(?=\n#{1,4}\s|\n---|\n$)/gi, '');
   cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
   return cleaned.trim();
 }
@@ -922,10 +956,13 @@ class MarketIntelPDFBuilder {
 
     // Layer 4: Regulatory
     if (layers.includes('layer4') && data.layer4_regulatory?.content) {
-      this.addPage();
-      this.drawSectionHeader('Regulatory & Policy Watch');
-      this.resetTableState();
-      this.drawMarkdownContent(stripDataLimitations(data.layer4_regulatory.content));
+      const regulatoryContent = stripEmptyRegulatorySections(stripDataLimitations(data.layer4_regulatory.content));
+      if (regulatoryContent && regulatoryContent.length > 100) {
+        this.addPage();
+        this.drawSectionHeader('Regulatory & Policy Watch');
+        this.resetTableState();
+        this.drawMarkdownContent(regulatoryContent);
+      }
     }
 
     // Layer 6: Economic
@@ -982,7 +1019,7 @@ class MarketIntelPDFBuilder {
 
     // CTA Section
     if (layers.includes('cta') && data.ctaContent) {
-      this.drawCTASection(data.ctaContent);
+      this.drawCTASection(stripDuplicateNPCTagline(data.ctaContent));
     }
 
     // Citations
