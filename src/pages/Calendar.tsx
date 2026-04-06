@@ -1393,7 +1393,10 @@ export default function Calendar() {
                 </div>
               )}
               {sidebarTab === 'availability' && selectedDate && (
-                <AvailabilitySlots selectedDate={selectedDate} events={filteredEvents} onSlotClick={() => setSidebarTab('templates')} />
+                <AvailabilitySlots selectedDate={selectedDate} events={filteredEvents} onSlotClick={(startTime) => {
+                  setQuickAddDefaultHour(startTime.getHours());
+                  setQuickAddModalOpen(true);
+                }} />
               )}
               {sidebarTab === 'templates' && (
                 <EventTemplates calendars={calendars} selectedDate={selectedDate || undefined} onCreateAppointment={createAppointment} isUpdating={isUpdating} />
