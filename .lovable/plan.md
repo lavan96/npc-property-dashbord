@@ -72,7 +72,7 @@ Emails are sent through the existing `send-email-reply` edge function (Microsoft
 ---
 
 ## Execution Order
-1. Database migration (tables)
-2. Edge function (dispatch-marketing-reports)
-3. UI components (schedule management + distribution history)
-4. pg_cron job setup
+1. ✅ Database migration (tables) — DONE
+2. ✅ Edge function (dispatch-marketing-reports) — DONE
+3. ✅ UI components (schedule management + distribution history) — DONE
+4. ⏳ pg_cron job setup — Pending (requires INSERT via Supabase SQL editor)
