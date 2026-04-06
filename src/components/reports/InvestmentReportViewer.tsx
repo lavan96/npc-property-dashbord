@@ -11,7 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { format } from 'date-fns';
-import { Download, Edit, MapPin, Calendar, FileText, TrendingUp, Link, AlertCircle, Settings, ChevronDown, Maximize, Minimize, PenLine, Calculator, X } from 'lucide-react';
+import { Download, Edit, MapPin, Calendar, FileText, TrendingUp, Link, AlertCircle, Settings, ChevronDown, Maximize, Minimize, PenLine, Calculator, X, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
