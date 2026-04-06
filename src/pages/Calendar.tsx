@@ -1574,8 +1574,8 @@ export default function Calendar() {
         onSearchContacts={searchContacts}
       />
 
-      {/* Calendars List */}
-      <Card className={isMobile ? '' : ''}>
+      {/* Calendars List — split into Frequently Used and Other */}
+      <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
@@ -1589,50 +1589,75 @@ export default function Calendar() {
                 <Skeleton key={i} className="h-20 w-full" />
               ))}
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {calendars.map(calendar => (
-                <button
-                  key={calendar.id}
-                  onClick={() => setSelectedCalendarId(calendar.id === selectedCalendarId ? 'all' : calendar.id)}
-                  className={`
-                    p-3 rounded-lg border text-left transition-all
-                    ${selectedCalendarId === calendar.id 
-                      ? 'border-primary bg-primary/10' 
-                      : 'border-border hover:border-primary/50 hover:bg-muted/30'}
-                  `}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <div 
-                          className="w-3 h-3 rounded-full shrink-0"
-                          style={{ backgroundColor: calendar.eventColor || '#3b82f6' }}
-                        />
-                        <span className="font-medium text-sm truncate">{calendar.name}</span>
-                      </div>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Badge variant="outline" className="text-[10px]">
-                          {calendar.calendarType.replace('_', ' ')}
-                        </Badge>
-                        {calendar.isActive && (
-                          <Badge className="text-[10px] bg-green-500/20 text-green-400 border-green-500/30">
-                            Active
-                          </Badge>
-                        )}
-                      </div>
+          ) : (() => {
+            // Sort calendars: active first, then by name. Top 4 active = "Frequently Used"
+            const activeCalendars = calendars.filter(c => c.isActive);
+            const inactiveCalendars = calendars.filter(c => !c.isActive);
+            const frequentlyUsed = activeCalendars.slice(0, 4);
+            const otherCalendars = [...activeCalendars.slice(4), ...inactiveCalendars];
+
+            const renderCalendarCard = (calendar: typeof calendars[0]) => (
+              <button
+                key={calendar.id}
+                onClick={() => setSelectedCalendarId(calendar.id === selectedCalendarId ? 'all' : calendar.id)}
+                className={cn(
+                  'p-3 rounded-lg border text-left transition-all',
+                  selectedCalendarId === calendar.id
+                    ? 'border-primary bg-primary/10'
+                    : 'border-border hover:border-primary/50 hover:bg-muted/30'
+                )}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-3 h-3 rounded-full shrink-0"
+                        style={{ backgroundColor: calendar.eventColor || '#3b82f6' }}
+                      />
+                      <span className="font-medium text-sm truncate">{calendar.name}</span>
                     </div>
-                    {calendar.teamMembers && calendar.teamMembers.length > 0 && (
-                      <div className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Users className="h-3 w-3" />
-                        {calendar.teamMembers.length} member{calendar.teamMembers.length !== 1 ? 's' : ''}
-                      </div>
-                    )}
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge variant="outline" className="text-[10px]">
+                        {calendar.calendarType.replace('_', ' ')}
+                      </Badge>
+                      {calendar.isActive && (
+                        <Badge className="text-[10px] bg-green-500/20 text-green-400 border-green-500/30">
+                          Active
+                        </Badge>
+                      )}
+                    </div>
                   </div>
-                </button>
-              ))}
-            </div>
-          )}
+                  {calendar.teamMembers && calendar.teamMembers.length > 0 && (
+                    <div className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Users className="h-3 w-3" />
+                      {calendar.teamMembers.length} member{calendar.teamMembers.length !== 1 ? 's' : ''}
+                    </div>
+                  )}
+                </div>
+              </button>
+            );
+
+            return (
+              <div className="space-y-6">
+                {frequentlyUsed.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Most Frequently Used</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {frequentlyUsed.map(renderCalendarCard)}
+                    </div>
+                  </div>
+                )}
+                {otherCalendars.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Other Calendars</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {otherCalendars.map(renderCalendarCard)}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </CardContent>
       </Card>
     </div>
