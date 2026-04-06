@@ -658,7 +658,9 @@ ${layer2Result.content.slice(0, 2000)}
 5. **Tax Policy** — any changes to negative gearing, CGT discount, depreciation rules under discussion
 6. **Building & Planning** — changes to building codes, planning regulations, inclusionary zoning
 
-For each item, specify: What changed, When, Which states affected, Impact rating (High/Medium/Low).`,
+For each item, specify: What changed, When, Which states affected, Impact rating (High/Medium/Low).
+
+CRITICAL INSTRUCTION: If no recent changes have been identified for a specific category, do NOT include that category at all. Do NOT write "N/A" or "No recent changes identified" — simply OMIT that entire section and move to the next one. Only include sections where there is substantive information to report. If only 2 of the 6 categories have real updates, only write those 2.`,
             LOVABLE_API_KEY
           );
         } catch (e) {
