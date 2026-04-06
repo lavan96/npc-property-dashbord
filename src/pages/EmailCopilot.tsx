@@ -2121,6 +2121,21 @@ export default function EmailCopilot() {
           </ScrollArea>
         </div>
 
+        {/* Resizable Drag Handle */}
+        {!isMobile && (
+          <div
+            className="w-1.5 hover:w-2 bg-transparent hover:bg-primary/20 cursor-col-resize transition-all flex-shrink-0 relative group"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              isDraggingRef.current = true;
+              dragStartXRef.current = e.clientX;
+              dragStartWidthRef.current = listPanelWidth;
+            }}
+          >
+            <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-0.5 bg-border group-hover:bg-primary/40 transition-colors" />
+          </div>
+        )}
+
         {/* Email Detail Panel - Full screen overlay on mobile */}
         <div className={`${isMobile ? 'absolute inset-0 z-50' : 'flex-1'} flex flex-col bg-muted/20 overflow-hidden ${isMobile && !showMobileDetail ? 'hidden' : ''}`}>
           {viewMode === 'sent' && selectedSentReply ? (
