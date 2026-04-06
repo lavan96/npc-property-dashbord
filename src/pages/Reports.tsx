@@ -431,37 +431,82 @@ export default function Reports() {
               <Card>
                 <CardHeader>
                   <CardTitle>Price Range Distribution</CardTitle>
-                  <CardDescription>Listings grouped by price brackets</CardDescription>
+                  <CardDescription>Listings grouped by price brackets — identifies the dominant market segment</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
                   <ChartContainer ref={priceRangeChartRef} config={chartConfig} className="h-[280px] md:h-[400px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={priceRangeChartData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="range" />
-                        <YAxis />
-                        <ChartTooltip content={<ChartTooltipContent />} />
-                        <Bar dataKey="count" fill="hsl(var(--chart-3))" />
+                        <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                        <XAxis dataKey="range" fontSize={11} tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+                        <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
+                        <ChartTooltip 
+                          content={({ active, payload }) => {
+                            if (!active || !payload?.length) return null;
+                            const data = payload[0].payload;
+                            const pct = totalListings > 0 ? ((data.count / totalListings) * 100).toFixed(1) : '0';
+                            return (
+                              <div className="bg-popover border border-border rounded-lg p-3 shadow-md">
+                                <p className="font-semibold text-sm text-foreground">{data.range}</p>
+                                <p className="text-xs text-muted-foreground mt-1">{data.count} listings • {pct}% of total</p>
+                              </div>
+                            );
+                          }}
+                        />
+                        <Bar dataKey="count" fill="hsl(var(--chart-3))" radius={[4, 4, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </ChartContainer>
+                  {/* Price insights row */}
+                  <div className="grid grid-cols-3 gap-3 pt-2 border-t">
+                    <div className="text-center">
+                      <p className="text-lg font-bold text-foreground">${avgPrice.toLocaleString()}</p>
+                      <p className="text-[11px] text-muted-foreground">Average Price</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-lg font-bold text-foreground">
+                        {priceRangeChartData.length > 0 
+                          ? priceRangeChartData.reduce((max, d) => d.count > max.count ? d : max, priceRangeChartData[0]).range 
+                          : '—'}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">Most Common Range</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-lg font-bold text-foreground">
+                        {allListings.filter(l => l.price && l.price > 0).length}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">With Valid Price</p>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader>
                   <CardTitle>Bedroom Distribution</CardTitle>
-                  <CardDescription>Listings by number of bedrooms</CardDescription>
+                  <CardDescription>Listings by number of bedrooms — reveals the dominant property configuration</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
                   <ChartContainer ref={bedroomChartRef} config={chartConfig} className="h-[280px] md:h-[400px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={bedroomChartData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="beds" />
-                        <YAxis />
-                        <ChartTooltip content={<ChartTooltipContent />} />
-                        <Bar dataKey="count" fill="hsl(var(--chart-4))" />
+                        <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                        <XAxis dataKey="beds" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
+                        <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
+                        <ChartTooltip 
+                          content={({ active, payload }) => {
+                            if (!active || !payload?.length) return null;
+                            const data = payload[0].payload;
+                            const pct = totalListings > 0 ? ((data.count / totalListings) * 100).toFixed(1) : '0';
+                            return (
+                              <div className="bg-popover border border-border rounded-lg p-3 shadow-md">
+                                <p className="font-semibold text-sm text-foreground">{data.beds} Bedroom{data.beds !== '1' ? 's' : ''}</p>
+                                <p className="text-xs text-muted-foreground mt-1">{data.count} listings • {pct}% of total</p>
+                              </div>
+                            );
+                          }}
+                        />
+                        <Bar dataKey="count" fill="hsl(var(--chart-4))" radius={[4, 4, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </ChartContainer>

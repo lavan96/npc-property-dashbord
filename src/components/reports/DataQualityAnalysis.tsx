@@ -1,19 +1,30 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { PropertyListing } from '@/lib/airtable';
-import { AlertTriangle, CheckCircle2, XCircle, Info } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, XCircle, Info, ChevronDown, ChevronUp, Lightbulb, Wrench, TrendingUp } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface DataQualityAnalysisProps {
   listings: PropertyListing[];
 }
 
+interface QualityIssue {
+  label: string;
+  count: number;
+  severity: 'critical' | 'warning' | 'info';
+  rootCause: string;
+  remediation: string;
+  impact: string;
+}
+
 export function DataQualityAnalysis({ listings }: DataQualityAnalysisProps) {
+  const [expandedIssue, setExpandedIssue] = useState<string | null>(null);
+
   const qualityMetrics = useMemo(() => {
     if (!listings.length) return null;
 
-    // Field completeness analysis
     const fieldAnalysis = {
       required: [
         { field: 'address', label: 'Address', weight: 2 },
@@ -61,15 +72,55 @@ export function DataQualityAnalysis({ listings }: DataQualityAnalysisProps) {
       return totalWeight > 0 ? (filledWeight / totalWeight) * 100 : 0;
     };
 
-    // Data quality issues
-    const issues = {
-      duplicates: 0,
-      invalidPrices: listings.filter(l => l.price && (l.price <= 0 || l.price > 50000000)).length,
-      missingAgents: listings.filter(l => !l.agentName || l.agentName === 'Unknown Agent').length,
-      missingLocations: listings.filter(l => !l.address || l.address === 'Unknown Address').length,
-      lowConfidence: listings.filter(l => l.confidence && l.confidence < 0.5).length,
-      missingDates: listings.filter(l => !l.receivedAt && !l.createdTime && !l.createdAt).length,
-    };
+    // Data quality issues with remediation guidance
+    const invalidPriceCount = listings.filter(l => l.price && (l.price <= 0 || l.price > 50000000)).length;
+    const missingAgentCount = listings.filter(l => !l.agentName || l.agentName === 'Unknown Agent').length;
+    const missingLocationCount = listings.filter(l => !l.address || l.address === 'Unknown Address').length;
+    const lowConfidenceCount = listings.filter(l => l.confidence && l.confidence < 0.5).length;
+    const missingDateCount = listings.filter(l => !l.receivedAt && !l.createdTime && !l.createdAt).length;
+
+    const issues: QualityIssue[] = [
+      {
+        label: 'Invalid Prices',
+        count: invalidPriceCount,
+        severity: invalidPriceCount > 0 ? 'critical' : 'info',
+        rootCause: 'Price extraction from email/PDF sources may misinterpret formatting (e.g., "$1,200 pw" rental vs sale price) or pull non-price numeric values.',
+        remediation: 'Review flagged listings in the Listings page. Use the manual override modal to correct prices. Consider adding price validation rules to the email ingestion pipeline.',
+        impact: 'Skews average price KPIs, distorts price range distribution charts, and reduces investment report accuracy.',
+      },
+      {
+        label: 'Missing Agents',
+        count: missingAgentCount,
+        severity: missingAgentCount > 5 ? 'warning' : 'info',
+        rootCause: 'Agent details are often embedded in email signatures or footers which the parser may not reliably extract, especially from image-heavy emails.',
+        remediation: 'Cross-reference with agency CRM data. Enable the "Agent Extraction Enhancement" in Settings > Data Pipeline to improve parser accuracy.',
+        impact: 'Reduces Agent Performance tab accuracy and limits agent-level reporting capability.',
+      },
+      {
+        label: 'Missing Locations',
+        count: missingLocationCount,
+        severity: missingLocationCount > 0 ? 'critical' : 'info',
+        rootCause: 'Address fields may be absent when listings arrive as attachments (PDFs/images) without structured text, or when the source email lacks explicit address formatting.',
+        remediation: 'Use the Data Import page to bulk-update addresses. For recurring sources, configure address extraction patterns in Settings > Email Rules.',
+        impact: 'Listings without locations are excluded from suburb analysis, geographic mapping, and suburb-level investment reports.',
+      },
+      {
+        label: 'Low Confidence',
+        count: lowConfidenceCount,
+        severity: lowConfidenceCount > 10 ? 'warning' : 'info',
+        rootCause: 'Low confidence scores indicate the AI parser was uncertain about extracted fields — typically caused by unstructured email formats, mixed-language content, or heavily styled HTML.',
+        remediation: 'Review low-confidence listings individually. Flag recurring source formats for parser training. Consider manual verification for listings below 40% confidence.',
+        impact: 'Low-confidence data may contain extraction errors that cascade into reports and comparisons.',
+      },
+      {
+        label: 'Missing Dates',
+        count: missingDateCount,
+        severity: missingDateCount > 0 ? 'warning' : 'info',
+        rootCause: 'Date fields rely on email "ReceivedAt" headers. Forwarded emails or manual imports may lack this metadata.',
+        remediation: 'Ensure email forwarding rules preserve original headers. For manual imports, use the date field in the import CSV template.',
+        impact: 'Listings without dates are excluded from temporal trend analysis and "Recent Listings" KPI calculations.',
+      },
+    ];
 
     // Confidence distribution
     const confidenceDistribution = {
@@ -79,6 +130,11 @@ export function DataQualityAnalysis({ listings }: DataQualityAnalysisProps) {
       unknown: listings.filter(l => !l.confidence).length,
     };
 
+    const totalWithConfidence = confidenceDistribution.high + confidenceDistribution.medium + confidenceDistribution.low;
+    const avgConfidence = totalWithConfidence > 0
+      ? listings.filter(l => l.confidence).reduce((s, l) => s + (l.confidence || 0), 0) / totalWithConfidence
+      : 0;
+
     return {
       completeness: {
         required: calculateCompleteness(fieldAnalysis.required),
@@ -87,6 +143,7 @@ export function DataQualityAnalysis({ listings }: DataQualityAnalysisProps) {
       },
       issues,
       confidenceDistribution,
+      avgConfidence,
       totalListings: listings.length,
     };
   }, [listings]);
@@ -94,19 +151,56 @@ export function DataQualityAnalysis({ listings }: DataQualityAnalysisProps) {
   if (!qualityMetrics) return null;
 
   const getCompletenessColor = (percentage: number) => {
-    if (percentage >= 80) return 'text-green-600';
-    if (percentage >= 60) return 'text-yellow-600';
-    return 'text-red-600';
+    if (percentage >= 80) return 'text-green-600 dark:text-green-400';
+    if (percentage >= 60) return 'text-yellow-600 dark:text-yellow-400';
+    return 'text-red-600 dark:text-red-400';
   };
 
-  const getCompletenessVariant = (percentage: number) => {
-    if (percentage >= 80) return 'default';
-    if (percentage >= 60) return 'secondary';
-    return 'destructive';
+  const getSeverityBadge = (severity: string) => {
+    switch (severity) {
+      case 'critical': return 'destructive' as const;
+      case 'warning': return 'secondary' as const;
+      default: return 'outline' as const;
+    }
   };
+
+  const overallScore = (
+    qualityMetrics.completeness.required * 0.5 + 
+    qualityMetrics.completeness.important * 0.3 + 
+    qualityMetrics.completeness.optional * 0.2
+  );
+
+  const activeIssues = qualityMetrics.issues.filter(i => i.count > 0);
 
   return (
     <div className="space-y-6">
+      {/* Overall Quality Score Banner */}
+      <Card className="border-l-4" style={{ borderLeftColor: overallScore >= 80 ? 'hsl(var(--chart-2))' : overallScore >= 60 ? 'hsl(var(--chart-3))' : 'hsl(var(--destructive))' }}>
+        <CardContent className="py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="text-3xl font-bold" style={{ color: overallScore >= 80 ? 'hsl(var(--chart-2))' : overallScore >= 60 ? 'hsl(var(--chart-3))' : 'hsl(var(--destructive))' }}>
+                {overallScore.toFixed(0)}%
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground">Overall Data Quality Score</p>
+                <p className="text-xs text-muted-foreground">
+                  {activeIssues.length === 0 
+                    ? 'All quality checks passed — no issues detected'
+                    : `${activeIssues.length} issue${activeIssues.length > 1 ? 's' : ''} detected across ${qualityMetrics.totalListings} listings`
+                  }
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant={overallScore >= 80 ? 'default' : overallScore >= 60 ? 'secondary' : 'destructive'}>
+                {overallScore >= 80 ? 'Healthy' : overallScore >= 60 ? 'Needs Attention' : 'Action Required'}
+              </Badge>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Field Completeness */}
       <Card>
         <CardHeader>
@@ -156,7 +250,7 @@ export function DataQualityAnalysis({ listings }: DataQualityAnalysisProps) {
         </CardContent>
       </Card>
 
-      {/* Data Quality Issues */}
+      {/* Data Quality Issues with Remediation */}
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
@@ -164,44 +258,60 @@ export function DataQualityAnalysis({ listings }: DataQualityAnalysisProps) {
               <AlertTriangle className="h-5 w-5 text-warning" />
               Data Quality Issues
             </CardTitle>
+            <CardDescription>
+              Click any issue to see root cause and remediation steps
+            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Invalid Prices</span>
-                <Badge variant={qualityMetrics.issues.invalidPrices > 0 ? "destructive" : "secondary"}>
-                  {qualityMetrics.issues.invalidPrices}
-                </Badge>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Missing Agents</span>
-                <Badge variant={qualityMetrics.issues.missingAgents > 0 ? "destructive" : "secondary"}>
-                  {qualityMetrics.issues.missingAgents}
-                </Badge>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Missing Locations</span>
-                <Badge variant={qualityMetrics.issues.missingLocations > 0 ? "destructive" : "secondary"}>
-                  {qualityMetrics.issues.missingLocations}
-                </Badge>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Low Confidence</span>
-                <Badge variant={qualityMetrics.issues.lowConfidence > 0 ? "secondary" : "default"}>
-                  {qualityMetrics.issues.lowConfidence}
-                </Badge>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Missing Dates</span>
-                <Badge variant={qualityMetrics.issues.missingDates > 0 ? "destructive" : "secondary"}>
-                  {qualityMetrics.issues.missingDates}
-                </Badge>
-              </div>
-            </div>
+          <CardContent className="space-y-2">
+            {qualityMetrics.issues.map((issue) => (
+              <Collapsible
+                key={issue.label}
+                open={expandedIssue === issue.label}
+                onOpenChange={(open) => setExpandedIssue(open ? issue.label : null)}
+              >
+                <CollapsibleTrigger className="w-full">
+                  <div className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center gap-2">
+                      {issue.count > 0 && issue.severity === 'critical' && <XCircle className="h-3.5 w-3.5 text-destructive" />}
+                      {issue.count > 0 && issue.severity === 'warning' && <AlertTriangle className="h-3.5 w-3.5 text-yellow-500" />}
+                      {(issue.count === 0 || issue.severity === 'info') && <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
+                      <span className="text-sm">{issue.label}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={issue.count > 0 ? getSeverityBadge(issue.severity) : 'outline'}>
+                        {issue.count}
+                      </Badge>
+                      {expandedIssue === issue.label ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                    </div>
+                  </div>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="ml-6 mr-2 mb-3 p-3 rounded-md bg-muted/30 border border-border/50 space-y-2.5">
+                    <div className="flex items-start gap-2">
+                      <Info className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" />
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground">Root Cause</p>
+                        <p className="text-xs text-foreground">{issue.rootCause}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <Wrench className="h-3.5 w-3.5 mt-0.5 text-primary shrink-0" />
+                      <div>
+                        <p className="text-xs font-medium text-primary">Remediation</p>
+                        <p className="text-xs text-foreground">{issue.remediation}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <TrendingUp className="h-3.5 w-3.5 mt-0.5 text-yellow-500 shrink-0" />
+                      <div>
+                        <p className="text-xs font-medium text-yellow-600 dark:text-yellow-400">Impact</p>
+                        <p className="text-xs text-foreground">{issue.impact}</p>
+                      </div>
+                    </div>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            ))}
           </CardContent>
         </Card>
 
@@ -211,50 +321,83 @@ export function DataQualityAnalysis({ listings }: DataQualityAnalysisProps) {
               <Info className="h-5 w-5 text-info" />
               Confidence Distribution
             </CardTitle>
+            <CardDescription>
+              AI extraction confidence across all listings
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm">High Confidence (≥80%)</span>
-                <Badge variant="default">
-                  {qualityMetrics.confidenceDistribution.high}
-                </Badge>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Medium Confidence (50-79%)</span>
-                <Badge variant="secondary">
-                  {qualityMetrics.confidenceDistribution.medium}
-                </Badge>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Low Confidence (&lt;50%)</span>
-                <Badge variant="destructive">
-                  {qualityMetrics.confidenceDistribution.low}
-                </Badge>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Unknown Confidence</span>
-                <Badge variant="outline">
-                  {qualityMetrics.confidenceDistribution.unknown}
-                </Badge>
-              </div>
+              {[
+                { label: 'High Confidence (≥80%)', count: qualityMetrics.confidenceDistribution.high, variant: 'default' as const, color: 'bg-green-500' },
+                { label: 'Medium Confidence (50-79%)', count: qualityMetrics.confidenceDistribution.medium, variant: 'secondary' as const, color: 'bg-yellow-500' },
+                { label: 'Low Confidence (<50%)', count: qualityMetrics.confidenceDistribution.low, variant: 'destructive' as const, color: 'bg-red-500' },
+                { label: 'Unknown Confidence', count: qualityMetrics.confidenceDistribution.unknown, variant: 'outline' as const, color: 'bg-muted-foreground' },
+              ].map(tier => {
+                const pct = qualityMetrics.totalListings > 0 ? (tier.count / qualityMetrics.totalListings) * 100 : 0;
+                return (
+                  <div key={tier.label} className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">{tier.label}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">{pct.toFixed(0)}%</span>
+                        <Badge variant={tier.variant}>{tier.count}</Badge>
+                      </div>
+                    </div>
+                    <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                      <div className={`h-full ${tier.color} rounded-full transition-all`} style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
             
-            <div className="pt-2 border-t">
-              <p className="text-xs text-muted-foreground">
-                Quality Score: {(
-                  (qualityMetrics.completeness.required * 0.5 + 
-                   qualityMetrics.completeness.important * 0.3 + 
-                   qualityMetrics.completeness.optional * 0.2)
-                ).toFixed(1)}%
-              </p>
+            <div className="pt-3 border-t space-y-1">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">Average Confidence</p>
+                <p className="text-xs font-bold">{(qualityMetrics.avgConfidence * 100).toFixed(1)}%</p>
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">Overall Quality Score</p>
+                <p className="text-xs font-bold">{overallScore.toFixed(1)}%</p>
+              </div>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Actionable Summary */}
+      {activeIssues.length > 0 && (
+        <Card className="bg-muted/30">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Lightbulb className="h-5 w-5 text-yellow-500" />
+              Recommended Actions
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {activeIssues
+                .sort((a, b) => {
+                  const sevOrder = { critical: 0, warning: 1, info: 2 };
+                  return (sevOrder[a.severity] ?? 2) - (sevOrder[b.severity] ?? 2);
+                })
+                .slice(0, 4)
+                .map(issue => (
+                  <div key={issue.label} className="flex items-start gap-2 p-2 rounded-md bg-background border border-border/50">
+                    <Badge variant={getSeverityBadge(issue.severity)} className="text-[10px] mt-0.5 shrink-0">
+                      {issue.severity === 'critical' ? 'URGENT' : issue.severity === 'warning' ? 'REVIEW' : 'FYI'}
+                    </Badge>
+                    <div>
+                      <p className="text-xs font-medium">{issue.label} ({issue.count})</p>
+                      <p className="text-[11px] text-muted-foreground line-clamp-2">{issue.remediation}</p>
+                    </div>
+                  </div>
+                ))
+              }
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
