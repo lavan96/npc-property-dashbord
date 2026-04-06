@@ -1378,7 +1378,7 @@ export default function Calendar() {
                     <Clock className="h-4 w-4" />
                     {selectedDate ? format(selectedDate, 'EEEE, MMM d') : 'Upcoming'}
                   </h4>
-                  <ScrollArea className="h-[280px]">
+                  <div>
                     {isLoading ? (
                       <SidebarLoadingSkeleton />
                     ) : (selectedDate ? selectedDateEvents : upcomingEvents).length === 0 ? (
@@ -1393,7 +1393,7 @@ export default function Calendar() {
                         ))}
                       </div>
                     )}
-                  </ScrollArea>
+                  </div>
                 </div>
               )}
               {sidebarTab === 'availability' && selectedDate && (
