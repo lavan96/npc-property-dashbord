@@ -34,6 +34,18 @@ export function GeographicAnalysis({ listings }: GeographicAnalysisProps) {
       return acc;
     }, {} as Record<string, { count: number; prices: number[]; totalPrice: number; confidenceScores: number[] }>);
 
+    // Extract state/postcode from listings for each suburb
+    const suburbLocationMap = new Map<string, { states: Set<string>; postcodes: Set<string> }>();
+    listings.forEach(listing => {
+      const suburb = listing.suburb || 'Unknown';
+      if (!suburbLocationMap.has(suburb)) {
+        suburbLocationMap.set(suburb, { states: new Set(), postcodes: new Set() });
+      }
+      const loc = suburbLocationMap.get(suburb)!;
+      if (listing.state) loc.states.add(listing.state);
+      if (listing.zipCode) loc.postcodes.add(listing.zipCode);
+    });
+
     const suburbAnalysis = Object.entries(suburbStats).map(([suburb, stats]) => {
       const avgPrice = stats.prices.length > 0 ? stats.totalPrice / stats.prices.length : 0;
       const avgConfidence = stats.confidenceScores.length > 0 
@@ -41,6 +53,7 @@ export function GeographicAnalysis({ listings }: GeographicAnalysisProps) {
         : 0;
       
       const priceVsVolume = avgPrice > 0 && stats.count > 0 ? avgPrice / stats.count : 0;
+      const locationInfo = suburbLocationMap.get(suburb);
       
       return {
         suburb,
@@ -49,6 +62,8 @@ export function GeographicAnalysis({ listings }: GeographicAnalysisProps) {
         avgConfidence: Math.round(avgConfidence),
         priceVsVolume: Math.round(priceVsVolume),
         marketActivity: stats.count > 5 ? 'High' : stats.count > 2 ? 'Medium' : 'Low',
+        state: locationInfo ? Array.from(locationInfo.states).join(', ') : '',
+        postcode: locationInfo ? Array.from(locationInfo.postcodes).join(', ') : '',
       };
     }).sort((a, b) => b.count - a.count);
 
