@@ -458,13 +458,22 @@ export default function Conversations() {
       </div>
 
       {/* Main content area */}
-      <div className="flex flex-1 min-h-0">
+      <div className="flex flex-1 min-h-0"
+        onMouseMove={(e) => {
+          if (!isDraggingConvRef.current) return;
+          const delta = e.clientX - dragStartXConvRef.current;
+          const newWidth = Math.min(550, Math.max(260, dragStartWidthConvRef.current + delta));
+          setConvPanelWidth(newWidth);
+        }}
+        onMouseUp={() => { isDraggingConvRef.current = false; }}
+        onMouseLeave={() => { isDraggingConvRef.current = false; }}
+      >
         {/* ─── LEFT PANEL: Conversation List ─── */}
         {showList && (
-          <div className={cn(
-            'flex flex-col border-r',
-            isMobile ? 'w-full' : 'w-[360px] shrink-0'
-          )}>
+          <div 
+            className={cn('flex flex-col border-r', isMobile && 'w-full')}
+            style={!isMobile ? { width: convPanelWidth, minWidth: 260, maxWidth: 550, flexShrink: 0 } : undefined}
+          >
             {/* Search & filter */}
             <div className="p-3 space-y-2 border-b shrink-0">
               <div className="relative">
