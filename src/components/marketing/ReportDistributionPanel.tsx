@@ -188,6 +188,9 @@ export function ReportDistributionPanel() {
     setFormSubject(schedule.email_subject_template);
     setFormBody(schedule.email_body_template);
     setFormEnabled(schedule.is_enabled);
+    setFormReportType(schedule.report_type || 'full');
+    setFormAudience(schedule.audience_segment || 'general');
+    setFormRotationEnabled(schedule.content_rotation_enabled || false);
     setDialogOpen(true);
   };
 
