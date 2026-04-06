@@ -50,7 +50,7 @@ export interface MarketIntelligenceReportData {
   layer6_economic: { content: string; citations: string[] };
   layer7_micro?: { content: string; citations: string[] };
   layer8_competitive_edge?: { content: string };
-  internalNPCData?: string;
+  
   ctaContent?: string;
   marketEvents: MarketEvent[];
   allCitations: string[];

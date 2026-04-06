@@ -209,110 +209,7 @@ async function extractMarketEvents(apiKey: string): Promise<any[]> {
   return [];
 }
 
-// ─── Internal NPC/GHL Data Fetcher ──────────────────────────────────────────
-
-async function fetchInternalNPCData(supabase: any): Promise<string> {
-  try {
-    console.log('[market-intel-report] Fetching internal NPC/GHL pipeline data...');
-
-    // Pipeline stage distribution
-    const { data: opportunities } = await supabase
-      .from('ghl_client_opportunities')
-      .select('pipeline_name, stage_name, opportunity_status, monetary_value')
-      .order('created_at', { ascending: false })
-      .limit(500);
-
-    // Active deals summary
-    const { data: activeDeals } = await supabase
-      .from('client_deals')
-      .select('deal_type, current_stage, total_contract_price, risk_status')
-      .limit(200);
-
-    // Client count
-    const { count: totalClients } = await supabase
-      .from('clients')
-      .select('id', { count: 'exact', head: true });
-
-    // Build summary
-    const pipelineStats: Record<string, Record<string, number>> = {};
-    let totalPipelineValue = 0;
-    let openOpportunities = 0;
-
-    if (opportunities) {
-      for (const opp of opportunities) {
-        const pipeline = opp.pipeline_name || 'Unknown';
-        const stage = opp.stage_name || 'Unknown';
-        if (!pipelineStats[pipeline]) pipelineStats[pipeline] = {};
-        pipelineStats[pipeline][stage] = (pipelineStats[pipeline][stage] || 0) + 1;
-        if (opp.opportunity_status === 'open') openOpportunities++;
-        totalPipelineValue += Number(opp.monetary_value) || 0;
-      }
-    }
-
-    const dealsByType: Record<string, number> = {};
-    const dealsByStage: Record<string, number> = {};
-    let totalContractValue = 0;
-    let atRiskDeals = 0;
-
-    if (activeDeals) {
-      for (const deal of activeDeals) {
-        const type = deal.deal_type || 'Unknown';
-        const stage = deal.current_stage || 'Unknown';
-        dealsByType[type] = (dealsByType[type] || 0) + 1;
-        dealsByStage[stage] = (dealsByStage[stage] || 0) + 1;
-        totalContractValue += Number(deal.total_contract_price) || 0;
-        if (deal.risk_status === 'at_risk' || deal.risk_status === 'high_risk') atRiskDeals++;
-      }
-    }
-
-    const pipelineSummary = Object.entries(pipelineStats)
-      .map(([pipeline, stages]) => {
-        const stageDetails = Object.entries(stages)
-          .sort((a, b) => b[1] - a[1])
-          .map(([stage, count]) => `  - ${stage}: ${count} contacts`)
-          .join('\n');
-        return `**${pipeline}**:\n${stageDetails}`;
-      })
-      .join('\n');
-
-    const dealSummary = Object.entries(dealsByType)
-      .map(([type, count]) => `- ${type}: ${count} active deals`)
-      .join('\n');
-
-    const stageSummary = Object.entries(dealsByStage)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 8)
-      .map(([stage, count]) => `- ${stage}: ${count}`)
-      .join('\n');
-
-    return `
-## Internal NPC Market Activity (Live CRM Data)
-
-**Total Active Clients**: ${totalClients || 0}
-**Open Pipeline Opportunities**: ${openOpportunities}
-**Total Pipeline Value**: $${totalPipelineValue.toLocaleString()}
-**Total Active Deal Contract Value**: $${totalContractValue.toLocaleString()}
-**At-Risk Deals**: ${atRiskDeals}
-
-### Pipeline Distribution:
-${pipelineSummary || 'No pipeline data available'}
-
-### Active Deal Types:
-${dealSummary || 'No active deals'}
-
-### Deal Stage Distribution:
-${stageSummary || 'No stage data'}
-
-### Market Signals from NPC Activity:
-- Client enquiry volume and pipeline movement indicate current market appetite
-- Deal types in progress reflect where investor confidence is directing capital
-- Stage progression velocity signals market timing sentiment
-`;
-  } catch (error) {
-    console.error('[market-intel-report] Error fetching internal data:', error);
-    return 'Internal NPC data unavailable for this report cycle.';
-  }
-}
+// Internal NPC data deprecated — not included in client-facing reports
 
 // ─── Data Layer Fetchers ─────────────────────────────────────────────────────
 
@@ -421,8 +318,7 @@ async function generateLayer8_CompetitiveEdge(
   lovableKey: string,
   layer2Content: string,
   layer7Content: string,
-  audiencePrompt: string,
-  internalNPCData: string
+  audiencePrompt: string
 ): Promise<string> {
   return callGemini(
     `You are writing the "Competitive Strategic Edge" section of a premium NPC Services Market Intelligence Report. This section differentiates NPC from every other property advisory by revealing insights that typical buyers and competitors overlook.
@@ -433,9 +329,6 @@ ${layer2Content.slice(0, 2000)}
 
 ### Suburb-Level Intelligence:
 ${layer7Content.slice(0, 3000)}
-
-### Internal NPC Market Activity:
-${internalNPCData.slice(0, 1500)}
 
 ## Required Analysis (produce ALL sections):
 
@@ -521,8 +414,7 @@ async function generateActionableStrategy(
   lovableKey: string,
   allLayerSummaries: string,
   reportType: string,
-  audienceSegment: string,
-  internalNPCData: string
+  audienceSegment: string
 ): Promise<string> {
   const audienceFraming: Record<string, string> = {
     general: 'Provide balanced guidance for both investors and homebuyers.',
@@ -536,8 +428,6 @@ async function generateActionableStrategy(
 ## Data Context:
 ${allLayerSummaries.slice(0, 5000)}
 
-## NPC Pipeline Context:
-${internalNPCData.slice(0, 1000)}
 
 ## Required Output Structure:
 
@@ -688,13 +578,10 @@ serve(async (req) => {
     console.log(`[market-intel-report] Report ID: ${reportId}, layers: ${requiredLayers.join(', ')}`);
 
     try {
-      // ── Fetch required layers + internal data in parallel ──────────
+      // ── Fetch required layers in parallel ───────────────────────────
       console.log('[market-intel-report] Fetching data layers...');
 
       const fetchPromises: Record<string, Promise<any>> = {};
-
-      // Always fetch internal NPC data
-      fetchPromises.internalNPC = fetchInternalNPCData(supabase);
 
       if (requiredLayers.includes('layer1')) {
         fetchPromises.layer1 = fetchLayer1_RBA(PERPLEXITY_API_KEY).catch(e => {
@@ -738,7 +625,7 @@ serve(async (req) => {
       const layer6Result: PerplexityResult = layerResults.layer6 || { content: '', citations: [] };
       const layer7Result: PerplexityResult = layerResults.layer7 || { content: '', citations: [] };
       const marketEvents: any[] = layerResults.events || [];
-      const internalNPCData: string = layerResults.internalNPC || '';
+      
 
       // ── Layer 4: Regulatory (Gemini — uses Perplexity context) ──────
       let layer4Regulatory = '';
@@ -777,8 +664,7 @@ For each item, specify: What changed, When, Which states affected, Impact rating
             LOVABLE_API_KEY,
             layer2Result.content,
             layer7Result.content,
-            audiencePrompt,
-            internalNPCData
+            audiencePrompt
           );
         } catch (e) {
           console.error('Layer 8 (Competitive Edge) error:', e);
@@ -794,7 +680,6 @@ For each item, specify: What changed, When, Which states affected, Impact rating
         layer6Result.content ? `## Economic:\n${layer6Result.content.slice(0, 1000)}` : '',
         layer7Result.content ? `## Suburb Intelligence:\n${layer7Result.content.slice(0, 1200)}` : '',
         layer8CompetitiveEdge ? `## Strategic Edge:\n${layer8CompetitiveEdge.slice(0, 800)}` : '',
-        internalNPCData ? `## NPC Activity:\n${internalNPCData.slice(0, 600)}` : '',
       ].filter(Boolean).join('\n\n');
 
       // ── Key Insights Snapshot (NEW — mandatory per master doc) ──────
@@ -822,8 +707,7 @@ For each item, specify: What changed, When, Which states affected, Impact rating
             LOVABLE_API_KEY,
             allLayerSummaries,
             reportType,
-            audienceSegment,
-            internalNPCData
+            audienceSegment
           );
         } catch (e) {
           console.error('Actionable strategy error:', e);
@@ -858,8 +742,6 @@ ${layer6Result.content.slice(0, 1500)}
 ## Layer 7 — Suburb Intelligence:
 ${layer7Result.content.slice(0, 1500)}
 
-## Internal NPC Activity:
-${internalNPCData.slice(0, 800)}
 
 ## Upcoming Events:
 ${marketEvents.filter((e: any) => new Date(e.date) > new Date()).slice(0, 10).map((e: any) => `- [${e.date}] ${e.event} (${e.impact})`).join('\n')}
@@ -920,7 +802,7 @@ Key data points to synthesize:
 - Economic: ${layer6Result.content.slice(0, 500)}
 - Suburb Intelligence: ${layer7Result.content.slice(0, 500)}
 - Competitive Edge: ${layer8CompetitiveEdge.slice(0, 500)}
-- NPC Pipeline Activity: ${internalNPCData.slice(0, 300)}
+
 
 ${audiencePrompt}
 
@@ -989,7 +871,7 @@ Tone: Authoritative, data-backed, actionable. Use bold for key figures. Position
         layer8_competitive_edge: {
           content: layer8CompetitiveEdge,
         },
-        internalNPCData,
+        
         ctaContent,
         marketEvents: marketEvents.sort((a: any, b: any) =>
           new Date(b.date).getTime() - new Date(a.date).getTime()
