@@ -90,7 +90,7 @@ async function queryPerplexity(
       messages: [
         {
           role: 'system',
-          content: systemPrompt || 'You are a senior Australian property market analyst providing data-backed intelligence for property investment professionals. Always cite sources and use specific numbers. NPC Services is a strategic property advisory that operates above the noise of the general market — all analysis must reflect this positioning.'
+          content: 'You are a senior Australian property market analyst providing data-backed intelligence for property investment professionals. Always cite sources and use specific numbers. NPC Services is a strategic property advisory that operates above the noise of the general market — all analysis must reflect this positioning. CRITICAL: Never include "Data Limitations" sections, disclaimers about missing data, or phrases like "the search results do not contain" or "data is not available." If specific data is unavailable, omit that subsection entirely and focus on what IS available. The output is client-facing and must project authority and completeness.'
         },
         { role: 'user', content: prompt }
       ],
@@ -126,7 +126,7 @@ async function callGemini(prompt: string, apiKey: string, maxTokens = 6000): Pro
       messages: [
         {
           role: 'system',
-          content: 'You are a senior Australian property market analyst writing premium client reports for NPC Services, a strategic property advisory. Produce clear, professional, data-driven analysis with specific numbers. Use markdown formatting with headers, bold, bullet points, and tables. Tone: Professional, strategic, clear, confident, client-focused, insight-driven.'
+          content: 'You are a senior Australian property market analyst writing premium client reports for NPC Services, a strategic property advisory. Produce clear, professional, data-driven analysis with specific numbers. Use markdown formatting with headers, bold, bullet points, and tables. Tone: Professional, strategic, clear, confident, client-focused, insight-driven. CRITICAL: Never include "Data Limitations" sections, disclaimers about missing data, or any language suggesting incomplete information. If specific data is unavailable, omit that subsection entirely. The output is client-facing and must project authority.'
         },
         { role: 'user', content: prompt },
       ],
@@ -147,6 +147,11 @@ async function callGemini(prompt: string, apiKey: string, maxTokens = 6000): Pro
 // ─── Structured Event Extraction ─────────────────────────────────────────────
 
 async function extractMarketEvents(apiKey: string): Promise<any[]> {
+  const now = new Date();
+  const currentDateStr = now.toISOString().split('T')[0];
+  const currentYear = now.getFullYear();
+  const currentMonth = now.toLocaleDateString('en-AU', { month: 'long', year: 'numeric' });
+
   const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -158,11 +163,11 @@ async function extractMarketEvents(apiKey: string): Promise<any[]> {
       messages: [
         {
           role: 'system',
-          content: 'You are an Australian market analyst specializing in property investment.'
+          content: `You are an Australian market analyst specializing in property investment. CRITICAL: Today's date is ${currentDateStr}. The current year is ${currentYear}. ALL dates you provide MUST be in ${currentYear} or ${currentYear - 1}. NEVER use dates from 2024 or earlier — this is a ${currentYear} report.`
         },
         {
           role: 'user',
-          content: `List the most significant recent and upcoming Australian market events (last 90 days and next 60 days) that would impact property investment decisions. Include RBA rate decisions, major economic data releases, housing market reports, APRA regulatory changes, state government policy changes, and seasonal patterns. Provide at least 15 events.`
+          content: `Today is ${currentDateStr} (${currentMonth}). List the most significant recent and upcoming Australian market events (last 90 days and next 60 days from today) that would impact property investment decisions. Include RBA rate decisions, major economic data releases, housing market reports, APRA regulatory changes, state government policy changes, and seasonal patterns. Provide at least 15 events. IMPORTANT: All dates must be in ${currentYear - 1} or ${currentYear}. Do NOT use dates from 2024 or earlier.`
         },
       ],
       tools: [{
@@ -225,7 +230,7 @@ async function fetchLayer1_RBA(perplexityKey: string): Promise<PerplexityResult>
 6. **Comparison to Long-Term Average** — how current rates compare to 10yr and 20yr averages
 7. **Major Bank Outlook** — what CBA, Westpac, NAB, ANZ economists are forecasting for rates
 
-Use specific numbers, dates, and percentages. Cite all data sources.`,
+Use specific numbers, dates, and percentages. Cite all data sources. Do NOT include any "Data Limitations" section or disclaimers about missing data — only present what is available.`,
     perplexityKey
   );
 }
@@ -243,7 +248,7 @@ async function fetchLayer2_Housing(perplexityKey: string): Promise<PerplexityRes
 7. **Supply Pipeline** — building approvals trend and new dwelling completions vs population growth
 8. **Vacancy Rates** — SQM Research vacancy rates by capital city
 
-Use specific numbers in AUD. Include data from CoreLogic, PropTrack, Domain, REA Group, SQM Research, and HIA where available.`,
+Use specific numbers in AUD. Include data from CoreLogic, PropTrack, Domain, REA Group, SQM Research, and HIA where available. Do NOT include any "Data Limitations" section — only present available data.`,
     perplexityKey
   );
 }
@@ -261,7 +266,7 @@ async function fetchLayer3_Sentiment(perplexityKey: string): Promise<PerplexityR
 7. **Property Council / UDIA / HIA Sentiment** — any recent industry body sentiment surveys or confidence indices
 8. **Media Sentiment** — overall tone from AFR, The Australian, and ABC property coverage in the last 30 days
 
-Cite all specific readings with their publication dates.`,
+Cite all specific readings with their publication dates. Do NOT include any "Data Limitations" section — only present available data.`,
     perplexityKey
   );
 }
@@ -280,7 +285,7 @@ async function fetchLayer6_Economic(perplexityKey: string): Promise<PerplexityRe
 8. **Credit Growth** — housing credit growth from RBA data, investor vs owner-occupier lending split
 9. **Household Debt-to-Income Ratio** — latest RBA data on household leverage
 
-Use the most recent ABS, RBA, APRA, and Treasury data. Cite publication dates.`,
+Use the most recent ABS, RBA, APRA, and Treasury data. Cite publication dates. Do NOT include any "Data Limitations" section — only present available data.`,
     perplexityKey
   );
 }
@@ -306,9 +311,9 @@ Also identify 3 emerging corridors showing early-stage growth signals (price mom
 
 ${audiencePrompt}
 
-Use data from CoreLogic, PropTrack, Domain, SQM Research, Microburbs, and government infrastructure databases. Prioritise suburbs showing BOTH capital growth AND rental yield strength.`,
+Use data from CoreLogic, PropTrack, Domain, SQM Research, Microburbs, and government infrastructure databases. Prioritise suburbs showing BOTH capital growth AND rental yield strength. Do NOT include any "Data Limitations" section.`,
     perplexityKey,
-    'You are a senior Australian property market analyst specialising in suburb-level intelligence. Provide granular, data-backed suburb analysis that helps investors identify specific opportunities. Always cite sources and use specific numbers.'
+    'You are a senior Australian property market analyst specialising in suburb-level intelligence. Provide granular, data-backed suburb analysis that helps investors identify specific opportunities. Always cite sources and use specific numbers. Never include "Data Limitations" disclaimers — only present the data you have.'
   );
 }
 
@@ -333,7 +338,7 @@ ${layer7Content.slice(0, 3000)}
 ## Required Analysis (produce ALL sections):
 
 ### 1. Off-Market & Pre-Market Intelligence
-Identify 2-3 opportunities that are likely available off-market or pre-market in the suburbs analysed. Explain what signals suggest off-market activity and how a strategic buyer would access these. Reference NPC's pipeline activity where relevant.
+Identify 2-3 opportunities that are likely available off-market or pre-market in the suburbs analysed. Explain what signals suggest off-market activity and how a strategic buyer would access these. Frame this as general market intelligence — do NOT fabricate specific NPC deal pipeline data, active negotiations, or specific property addresses that NPC is supposedly pursuing. Instead, describe the types of opportunities and access strategies available.
 
 ### 2. Development & Subdivision Potential
 For the top suburbs identified, analyse:
@@ -367,7 +372,7 @@ For the #1 opportunity identified, provide a detailed strategic playbook:
 
 ${audiencePrompt}
 
-Tone: Confident, strategic, authoritative. This is where NPC proves its value above the noise. NPC Services is a strategic property advisory, not just a buyer's agent — decisions are data-driven and insight-led.`,
+Tone: Confident, strategic, authoritative. This is where NPC proves its value above the noise. NPC Services is a strategic property advisory, not just a buyer's agent — decisions are data-driven and insight-led. IMPORTANT: Do NOT fabricate specific property addresses, deal negotiations, or "pipeline activity" that NPC is supposedly engaged in. Keep recommendations at a strategic framework level.`,
     lovableKey,
     8000
   );
