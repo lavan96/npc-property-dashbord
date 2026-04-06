@@ -1229,7 +1229,7 @@ export default function GeneratedReports() {
                             {report.report_scope === 'zipcode' && (
                               <>
                                 <Map className="h-3 w-3" />
-                                Area Analysis
+                                Postcode Analysis
                               </>
                             )}
                             {report.report_scope === 'state' && (
