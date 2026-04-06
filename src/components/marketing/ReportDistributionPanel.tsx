@@ -74,6 +74,7 @@ const FREQUENCY_LABELS: Record<string, string> = {
   weekly: 'Weekly',
   fortnightly: 'Fortnightly',
   monthly: 'Monthly',
+  quarterly: 'Quarterly',
   ad_hoc: 'Ad-hoc (Manual)',
 };
 
