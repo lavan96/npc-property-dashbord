@@ -4325,6 +4325,44 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                     </ResponsiveContainer>
                   </div>
                   
+                  {/* Winner Indicator Cards */}
+                  {(() => {
+                    const primaryAddr = report?.property_address.split(',')[0] || 'Primary';
+                    const allProps = [
+                      { name: primaryAddr, yr10Value: projections[10]?.propertyMarketValue || 0, yr10Equity: projections[10]?.equityInProperty || 0, yr10Yield: projections[10]?.grossYield || 0, totalCashFlow: projections.filter(p => p.year >= 1).reduce((s, p) => s + p.afterTaxCashFlowPA, 0), color: COMPARISON_COLORS[0].value },
+                      ...allComparisonProjections.map(({ report: cr, projections: cp }, idx) => ({
+                        name: cr.property_address.split(',')[0],
+                        yr10Value: cp[10]?.propertyMarketValue || 0,
+                        yr10Equity: cp[10]?.equityInProperty || 0,
+                        yr10Yield: cp[10]?.grossYield || 0,
+                        totalCashFlow: cp.filter((_: any, i: number) => i >= 1).reduce((s: number, p: any) => s + (p.afterTaxCashFlowPA || 0), 0),
+                        color: COMPARISON_COLORS[idx + 1]?.value || '#888',
+                      }))
+                    ];
+                    
+                    const categories = [
+                      { label: 'Highest Growth', icon: '📈', getValue: (p: any) => p.yr10Value, format: (v: number) => `$${v.toLocaleString()}` },
+                      { label: 'Most Equity', icon: '🏠', getValue: (p: any) => p.yr10Equity, format: (v: number) => `$${v.toLocaleString()}` },
+                      { label: 'Best Yield', icon: '💰', getValue: (p: any) => p.yr10Yield, format: (v: number) => `${v.toFixed(2)}%` },
+                      { label: 'Best Cash Flow', icon: '💵', getValue: (p: any) => p.totalCashFlow, format: (v: number) => `$${v.toLocaleString()}` },
+                    ];
+
+                    return (
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3 pt-3 border-t">
+                        {categories.map(cat => {
+                          const winner = [...allProps].sort((a, b) => cat.getValue(b) - cat.getValue(a))[0];
+                          return (
+                            <div key={cat.label} className="bg-muted/40 rounded-lg p-2.5 text-center space-y-1">
+                              <p className="text-[10px] text-muted-foreground font-medium">{cat.icon} {cat.label}</p>
+                              <p className="text-xs font-bold truncate" style={{ color: winner.color }}>{winner.name}</p>
+                              <p className="text-[10px] font-semibold text-green-500">{cat.format(cat.getValue(winner))}</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+                  
                   {/* Advanced Investment Metrics Comparison */}
                   <div className="mt-4 space-y-4">
                     <div className="flex items-center justify-between">
