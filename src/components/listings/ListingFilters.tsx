@@ -28,6 +28,7 @@ interface FilterState {
   sourceHost: string;
   hasInspection: boolean;
   lowConfidence: boolean;
+  offMarket: boolean;
   priceMin: string;
   priceMax: string;
   bedsMin: string;
