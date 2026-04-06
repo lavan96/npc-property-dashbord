@@ -876,7 +876,7 @@ Tone: Authoritative, data-backed, actionable. Use bold for key figures. Position
         layer8_competitive_edge: {
           content: layer8CompetitiveEdge,
         },
-        internalNPCData,
+        
         ctaContent,
         marketEvents: marketEvents.sort((a: any, b: any) =>
           new Date(b.date).getTime() - new Date(a.date).getTime()
