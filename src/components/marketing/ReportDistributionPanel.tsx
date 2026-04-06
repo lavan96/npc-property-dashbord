@@ -33,6 +33,11 @@ interface Schedule {
   last_sent_at?: string;
   next_scheduled_at?: string;
   created_at: string;
+  report_type?: string;
+  audience_segment?: string;
+  content_rotation_enabled?: boolean;
+  rotation_sequence?: string[];
+  current_rotation_index?: number;
 }
 
 interface DistributionLog {
