@@ -210,11 +210,6 @@ async function extractMarketEvents(apiKey: string): Promise<any[]> {
 }
 
 // Internal NPC data deprecated — not included in client-facing reports
-  } catch (error) {
-    console.error('[market-intel-report] Error fetching internal data:', error);
-    return 'Internal NPC data unavailable for this report cycle.';
-  }
-}
 
 // ─── Data Layer Fetchers ─────────────────────────────────────────────────────
 
