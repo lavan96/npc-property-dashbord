@@ -123,6 +123,7 @@ export default function GeneratedReports() {
   const [tierFilter, setTierFilter] = useState<string>('all'); // Filter by report tier
   const [sourceFilter, setSourceFilter] = useState<string>('all'); // Filter by generation source (manual/auto)
   const [showArchived, setShowArchived] = useState(false); // Show archived reports
+  const [showArchivedComparisons, setShowArchivedComparisons] = useState(false); // Show archived comparisons
   const [generatingTier, setGeneratingTier] = useState<{ reportId: string; tier: ReportTier } | null>(null);
   const reportsPerPage = 50;
   
