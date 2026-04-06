@@ -311,26 +311,56 @@ export default function Reports() {
               <Card>
                 <CardHeader>
                   <CardTitle>Listings by Suburb</CardTitle>
-                  <CardDescription>Top 10 suburbs by listing count</CardDescription>
+                  <CardDescription>Top 10 suburbs by listing volume — higher bars indicate stronger market activity in that area</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
                   <ChartContainer ref={suburbChartRef} config={chartConfig} className="h-[280px] md:h-[400px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={suburbChartData}>
-                        <CartesianGrid strokeDasharray="3 3" />
+                      <BarChart data={suburbChartData} margin={{ bottom: 60 }}>
+                        <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                         <XAxis 
                           dataKey="suburb" 
                           angle={-45}
                           textAnchor="end"
                           height={80}
-                          fontSize={12}
+                          fontSize={11}
+                          tick={{ fill: 'hsl(var(--muted-foreground))' }}
                         />
-                        <YAxis />
-                        <ChartTooltip content={<ChartTooltipContent />} />
-                        <Bar dataKey="count" fill="hsl(var(--chart-1))" />
+                        <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
+                        <ChartTooltip 
+                          content={({ active, payload }) => {
+                            if (!active || !payload?.length) return null;
+                            const data = payload[0].payload;
+                            const pct = totalListings > 0 ? ((data.count / totalListings) * 100).toFixed(1) : '0';
+                            return (
+                              <div className="bg-popover border border-border rounded-lg p-3 shadow-md">
+                                <p className="font-semibold text-sm text-foreground">{data.suburb}</p>
+                                <p className="text-xs text-muted-foreground mt-1">{data.count} listings ({pct}% of total)</p>
+                              </div>
+                            );
+                          }}
+                        />
+                        <Bar dataKey="count" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </ChartContainer>
+                  {/* Sub-metrics */}
+                  <div className="grid grid-cols-3 gap-3 pt-2 border-t">
+                    <div className="text-center">
+                      <p className="text-lg font-bold text-foreground">{suburbChartData.length}</p>
+                      <p className="text-[11px] text-muted-foreground">Suburbs Tracked</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-lg font-bold text-foreground">{suburbChartData[0]?.suburb || '—'}</p>
+                      <p className="text-[11px] text-muted-foreground">Top Suburb</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-lg font-bold text-foreground">
+                        {suburbChartData.length > 0 ? Math.round(suburbChartData.reduce((s, d) => s + d.count, 0) / suburbChartData.length) : 0}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">Avg per Suburb</p>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -339,9 +369,9 @@ export default function Reports() {
               <Card>
                 <CardHeader>
                   <CardTitle>Property Type Distribution</CardTitle>
-                  <CardDescription>Breakdown by property category</CardDescription>
+                  <CardDescription>Proportional breakdown of listings by property category</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
                   <ChartContainer ref={propertyTypeChartRef} config={chartConfig} className="h-[280px] md:h-[400px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
@@ -349,20 +379,50 @@ export default function Reports() {
                           data={propertyTypeChartData}
                           cx="50%"
                           cy="50%"
-                          labelLine={false}
-                          label={(props: any) => `${props.type}: ${(props.percent * 100).toFixed(0)}%`}
-                          outerRadius={120}
+                          labelLine={true}
+                          label={(props: any) => {
+                            const pct = (props.percent * 100).toFixed(0);
+                            return `${props.type} (${pct}%)`;
+                          }}
+                          outerRadius={110}
+                          innerRadius={50}
                           fill="#8884d8"
                           dataKey="count"
+                          paddingAngle={2}
                         >
                           {propertyTypeChartData.map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                           ))}
                         </Pie>
-                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <ChartTooltip 
+                          content={({ active, payload }) => {
+                            if (!active || !payload?.length) return null;
+                            const data = payload[0].payload;
+                            const pct = totalListings > 0 ? ((data.count / totalListings) * 100).toFixed(1) : '0';
+                            return (
+                              <div className="bg-popover border border-border rounded-lg p-3 shadow-md">
+                                <p className="font-semibold text-sm text-foreground">{data.type}</p>
+                                <p className="text-xs text-muted-foreground mt-1">{data.count} listings • {pct}% of total</p>
+                              </div>
+                            );
+                          }}
+                        />
                       </PieChart>
                     </ResponsiveContainer>
                   </ChartContainer>
+                  {/* Legend table */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-2 border-t">
+                    {propertyTypeChartData.map((entry, i) => {
+                      const pct = totalListings > 0 ? ((entry.count / totalListings) * 100).toFixed(1) : '0';
+                      return (
+                        <div key={entry.type} className="flex items-center gap-2 text-xs">
+                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+                          <span className="text-muted-foreground truncate">{entry.type}</span>
+                          <span className="font-medium ml-auto">{entry.count} ({pct}%)</span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -371,40 +431,106 @@ export default function Reports() {
               <Card>
                 <CardHeader>
                   <CardTitle>Price Range Distribution</CardTitle>
-                  <CardDescription>Listings grouped by price brackets</CardDescription>
+                  <CardDescription>Listings grouped by price brackets — identifies the dominant market segment</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
                   <ChartContainer ref={priceRangeChartRef} config={chartConfig} className="h-[280px] md:h-[400px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={priceRangeChartData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="range" />
-                        <YAxis />
-                        <ChartTooltip content={<ChartTooltipContent />} />
-                        <Bar dataKey="count" fill="hsl(var(--chart-3))" />
+                        <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                        <XAxis dataKey="range" fontSize={11} tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+                        <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
+                        <ChartTooltip 
+                          content={({ active, payload }) => {
+                            if (!active || !payload?.length) return null;
+                            const data = payload[0].payload;
+                            const pct = totalListings > 0 ? ((data.count / totalListings) * 100).toFixed(1) : '0';
+                            return (
+                              <div className="bg-popover border border-border rounded-lg p-3 shadow-md">
+                                <p className="font-semibold text-sm text-foreground">{data.range}</p>
+                                <p className="text-xs text-muted-foreground mt-1">{data.count} listings • {pct}% of total</p>
+                              </div>
+                            );
+                          }}
+                        />
+                        <Bar dataKey="count" fill="hsl(var(--chart-3))" radius={[4, 4, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </ChartContainer>
+                  {/* Price insights row */}
+                  <div className="grid grid-cols-3 gap-3 pt-2 border-t">
+                    <div className="text-center">
+                      <p className="text-lg font-bold text-foreground">${avgPrice.toLocaleString()}</p>
+                      <p className="text-[11px] text-muted-foreground">Average Price</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-lg font-bold text-foreground">
+                        {priceRangeChartData.length > 0 
+                          ? priceRangeChartData.reduce((max, d) => d.count > max.count ? d : max, priceRangeChartData[0]).range 
+                          : '—'}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">Most Common Range</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-lg font-bold text-foreground">
+                        {allListings.filter(l => l.price && l.price > 0).length}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">With Valid Price</p>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader>
                   <CardTitle>Bedroom Distribution</CardTitle>
-                  <CardDescription>Listings by number of bedrooms</CardDescription>
+                  <CardDescription>Listings by number of bedrooms — reveals the dominant property configuration</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
                   <ChartContainer ref={bedroomChartRef} config={chartConfig} className="h-[280px] md:h-[400px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={bedroomChartData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="beds" />
-                        <YAxis />
-                        <ChartTooltip content={<ChartTooltipContent />} />
-                        <Bar dataKey="count" fill="hsl(var(--chart-4))" />
+                        <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                        <XAxis dataKey="beds" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
+                        <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
+                        <ChartTooltip 
+                          content={({ active, payload }) => {
+                            if (!active || !payload?.length) return null;
+                            const data = payload[0].payload;
+                            const pct = totalListings > 0 ? ((data.count / totalListings) * 100).toFixed(1) : '0';
+                            return (
+                              <div className="bg-popover border border-border rounded-lg p-3 shadow-md">
+                                <p className="font-semibold text-sm text-foreground">{data.beds} Bedroom{data.beds !== '1' ? 's' : ''}</p>
+                                <p className="text-xs text-muted-foreground mt-1">{data.count} listings • {pct}% of total</p>
+                              </div>
+                            );
+                          }}
+                        />
+                        <Bar dataKey="count" fill="hsl(var(--chart-4))" radius={[4, 4, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </ChartContainer>
+                  {/* Bedroom insights */}
+                  <div className="grid grid-cols-3 gap-3 pt-2 border-t">
+                    <div className="text-center">
+                      <p className="text-lg font-bold text-foreground">
+                        {bedroomChartData.length > 0 
+                          ? bedroomChartData.reduce((max, d) => d.count > max.count ? d : max, bedroomChartData[0]).beds 
+                          : '—'}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">Most Common</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-lg font-bold text-foreground">{bedroomChartData.length}</p>
+                      <p className="text-[11px] text-muted-foreground">Configurations</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-lg font-bold text-foreground">
+                        {allListings.filter(l => l.beds && l.beds > 0).length}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">With Bed Data</p>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
