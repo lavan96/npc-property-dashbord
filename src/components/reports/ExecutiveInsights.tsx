@@ -167,7 +167,7 @@ export function ExecutiveInsights({ listings }: ExecutiveInsightsProps) {
               <Alert>
                 <Info className="h-4 w-4" />
                 <AlertDescription>
-                  No significant market patterns detected. Continue monitoring for trend development.
+                  Market conditions are stable with no significant trends requiring immediate attention.
                 </AlertDescription>
               </Alert>
             )}
