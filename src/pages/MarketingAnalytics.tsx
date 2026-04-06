@@ -20,6 +20,7 @@ import { ForecastPanel } from '@/components/marketing/ForecastPanel';
 import { WeeklyBriefPanel } from '@/components/marketing/WeeklyBriefPanel';
 import { BenchmarksPanel } from '@/components/marketing/BenchmarksPanel';
 import { MarketCorrelationPanel } from '@/components/marketing/MarketCorrelationPanel';
+import { ReportDistributionPanel } from '@/components/marketing/ReportDistributionPanel';
 import { LeadAttributionPanel } from '@/components/marketing/LeadAttributionPanel';
 import { DateRangePicker } from '@/components/marketing/DateRangePicker';
 import { DrillDownExplorer } from '@/components/marketing/DrillDownExplorer';
@@ -718,6 +719,9 @@ export default function MarketingAnalytics() {
         aiError={marketData?.aiError}
         loading={marketLoading}
       />
+
+      {/* Report Distribution */}
+      <ReportDistributionPanel />
           </div>
         </TabsContent>
 
