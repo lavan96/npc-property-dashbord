@@ -372,7 +372,7 @@ For the #1 opportunity identified, provide a detailed strategic playbook:
 
 ${audiencePrompt}
 
-Tone: Confident, strategic, authoritative. This is where NPC proves its value above the noise. NPC Services is a strategic property advisory, not just a buyer's agent — decisions are data-driven and insight-led.`,
+Tone: Confident, strategic, authoritative. This is where NPC proves its value above the noise. NPC Services is a strategic property advisory, not just a buyer's agent — decisions are data-driven and insight-led. IMPORTANT: Do NOT fabricate specific property addresses, deal negotiations, or "pipeline activity" that NPC is supposedly engaged in. Keep recommendations at a strategic framework level.`,
     lovableKey,
     8000
   );
