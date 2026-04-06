@@ -1,9 +1,9 @@
 /**
- * Market Intelligence PDF Report Generator v3
+ * Market Intelligence PDF Report Generator v4
  * 
  * Generates premium navy/gold branded PDFs with 8 intelligence layers,
- * audience segmentation, report type variants, key insights snapshot,
- * actionable strategy, internal NPC data, and CTAs.
+ * audience segmentation, report type variants, branded insight cards,
+ * color-coded actionable strategy panels, and dynamic CTAs.
  */
 
 import jsPDF from 'jspdf';
@@ -19,10 +19,11 @@ const DARK_TEXT = { r: 30, g: 30, b: 30 };
 const GRAY_TEXT = { r: 100, g: 100, b: 100 };
 const GREEN = { r: 34, g: 139, b: 34 };
 const RED = { r: 180, g: 40, b: 40 };
+const AMBER = { r: 200, g: 150, b: 30 };
 const GOLD_LIGHT_BG = { r: 252, g: 249, b: 242 };
-const BLUE_LIGHT_BG = { r: 235, g: 242, b: 255 };
-const RED_LIGHT_BG = { r: 255, g: 240, b: 240 };
 const GREEN_LIGHT_BG = { r: 235, g: 250, b: 240 };
+const RED_LIGHT_BG = { r: 255, g: 240, b: 240 };
+const AMBER_LIGHT_BG = { r: 255, g: 250, b: 235 };
 
 interface MarketEvent {
   date: string;
@@ -98,6 +99,23 @@ function formatDate(dateStr: string): string {
   return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+/**
+ * Strip "Data Limitations" and similar disclaimers from AI output
+ * before rendering in the client-facing PDF.
+ */
+function stripDataLimitations(content: string): string {
+  if (!content) return '';
+  // Remove entire "Data Limitations" sections (heading + subsequent paragraphs until next heading)
+  let cleaned = content.replace(/#{1,4}\s*Data Limitations?\b[\s\S]*?(?=\n#{1,4}\s|\n---|\n\*\*\d|\n$)/gi, '');
+  // Remove inline disclaimers like "The search results do not contain..."
+  cleaned = cleaned.replace(/^.*(?:search results (?:do not|don't|lack|contain no)|data (?:is|are) not (?:available|present|provided)|insufficient (?:data|information)).*$/gmi, '');
+  // Remove "This critical data point is absent" type lines
+  cleaned = cleaned.replace(/^.*(?:critical data point is absent|not present in (?:these|the) results|would require access to|additional sources.*would be necessary).*$/gmi, '');
+  // Clean up extra blank lines
+  cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
+  return cleaned.trim();
+}
+
 // ─── PDF Page Drawing Utilities ──────────────────────────────────────────────
 
 class MarketIntelPDFBuilder {
@@ -171,7 +189,7 @@ class MarketIntelPDFBuilder {
     this.doc.setLineWidth(1);
     this.doc.line(this.margin, 58, this.margin + 60, 58);
 
-    // Report title — varies by type
+    // Report title
     this.doc.setTextColor(WHITE.r, WHITE.g, WHITE.b);
     this.doc.setFont('helvetica', 'bold');
     this.doc.setFontSize(36);
@@ -467,7 +485,7 @@ class MarketIntelPDFBuilder {
     this.y += panelHeight + 6;
   }
 
-  // ─── Key Insights Snapshot Panel (NEW) ─────────────────────────────
+  // ─── Key Insights Snapshot — Gold-bordered branded cards ──────────
 
   private drawKeyInsightsSnapshot(content: string) {
     if (!content) return;
@@ -475,7 +493,7 @@ class MarketIntelPDFBuilder {
     this.addPage();
     this.drawSectionHeader('Key Insights Snapshot');
 
-    // Navy accent box
+    // Navy accent box with gold text
     this.doc.setFillColor(NAVY.r, NAVY.g, NAVY.b);
     this.doc.roundedRect(this.margin, this.y - 2, this.contentWidth(), 12, 2, 2, 'F');
     this.doc.setTextColor(GOLD.r, GOLD.g, GOLD.b);
@@ -484,38 +502,65 @@ class MarketIntelPDFBuilder {
     this.doc.text('YOUR 60-SECOND MARKET BRIEFING', this.pageWidth / 2, this.y + 5, { align: 'center' });
     this.y += 16;
 
-    // Render each bullet as a highlighted card
-    const bullets = content.split('\n').filter(l => l.trim().startsWith('- ') || l.trim().startsWith('* '));
-    
-    for (const bullet of bullets) {
-      const text = stripMarkdown(bullet.trim().slice(2));
+    // Extract bullets — handle both `- ` / `* ` and numbered `1. ` formats
+    const lines = content.split('\n').filter(l => l.trim());
+    const bullets: string[] = [];
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+        bullets.push(stripMarkdown(trimmed.slice(2)));
+      } else if (/^\d+\.\s/.test(trimmed)) {
+        bullets.push(stripMarkdown(trimmed.replace(/^\d+\.\s*/, '')));
+      }
+    }
+
+    // Render each as a gold-bordered branded card
+    for (let i = 0; i < bullets.length; i++) {
+      const text = bullets[i];
       if (!text) continue;
 
-      this.checkPageBreak(20);
+      this.checkPageBreak(24);
 
-      const wrapped = this.doc.splitTextToSize(text, this.contentWidth() - 16);
-      const cardHeight = Math.max(14, wrapped.length * 4.5 + 8);
+      const wrapped = this.doc.splitTextToSize(text, this.contentWidth() - 20);
+      const cardHeight = Math.max(16, wrapped.length * 4.5 + 10);
 
-      this.doc.setFillColor(BLUE_LIGHT_BG.r, BLUE_LIGHT_BG.g, BLUE_LIGHT_BG.b);
+      // Card background — alternating warm tones
+      this.doc.setFillColor(GOLD_LIGHT_BG.r, GOLD_LIGHT_BG.g, GOLD_LIGHT_BG.b);
       this.doc.roundedRect(this.margin, this.y - 2, this.contentWidth(), cardHeight, 2, 2, 'F');
-      this.doc.setFillColor(NAVY.r, NAVY.g, NAVY.b);
+      
+      // Gold left accent bar
+      this.doc.setFillColor(GOLD.r, GOLD.g, GOLD.b);
       this.doc.rect(this.margin, this.y - 2, 3, cardHeight, 'F');
 
+      // Gold border outline
+      this.doc.setDrawColor(GOLD.r, GOLD.g, GOLD.b);
+      this.doc.setLineWidth(0.5);
+      this.doc.roundedRect(this.margin, this.y - 2, this.contentWidth(), cardHeight, 2, 2, 'S');
+
+      // Card number badge
+      this.doc.setFillColor(NAVY.r, NAVY.g, NAVY.b);
+      this.doc.circle(this.margin + 9, this.y + 4, 3.5, 'F');
+      this.doc.setTextColor(GOLD.r, GOLD.g, GOLD.b);
+      this.doc.setFont('helvetica', 'bold');
+      this.doc.setFontSize(8);
+      this.doc.text(String(i + 1), this.margin + 9, this.y + 5.2, { align: 'center' });
+
+      // Card text
       this.doc.setFont('helvetica', 'normal');
       this.doc.setFontSize(9.5);
       this.doc.setTextColor(DARK_TEXT.r, DARK_TEXT.g, DARK_TEXT.b);
-      this.doc.text(wrapped, this.margin + 8, this.y + 4);
+      this.doc.text(wrapped, this.margin + 16, this.y + 4);
 
-      this.y += cardHeight + 4;
+      this.y += cardHeight + 5;
     }
 
-    // If no bullets were found, render as markdown
+    // Fallback: if no bullets were parsed, render as markdown
     if (bullets.length === 0) {
       this.drawMarkdownContent(content);
     }
   }
 
-  // ─── Actionable Strategy Panel (NEW) ──────────────────────────────
+  // ─── Actionable Strategy — Color-coded panels ─────────────────────
 
   private drawActionableStrategy(content: string) {
     if (!content) return;
@@ -523,55 +568,97 @@ class MarketIntelPDFBuilder {
     this.addPage();
     this.drawSectionHeader('Actionable Strategy');
 
-    // Parse into sections: What To Do, What To Avoid, Timing
-    const sections = content.split(/###\s+/);
-    
-    for (const section of sections) {
-      if (!section.trim()) continue;
-      
-      const firstNewline = section.indexOf('\n');
-      const heading = firstNewline > 0 ? section.slice(0, firstNewline).trim() : section.trim();
-      const body = firstNewline > 0 ? section.slice(firstNewline + 1).trim() : '';
-      
-      if (!heading) continue;
+    // Parse into sections using flexible heading detection
+    // Handles: # WHAT TO DO NOW, ## What To Do Now, ### What To Do Now
+    const sectionRegex = /^#{1,4}\s+(.+)$/gm;
+    const headings: { index: number; heading: string }[] = [];
+    let match;
+    while ((match = sectionRegex.exec(content)) !== null) {
+      headings.push({ index: match.index, heading: match[1].trim() });
+    }
 
-      // Determine colour based on heading
-      let bgColor = LIGHT_BG;
-      let accentColor = NAVY;
-      const headingLower = heading.toLowerCase();
-      
-      if (headingLower.includes('do now') || headingLower.includes('what to do')) {
-        bgColor = GREEN_LIGHT_BG;
-        accentColor = GREEN;
-      } else if (headingLower.includes('avoid')) {
-        bgColor = RED_LIGHT_BG;
-        accentColor = RED;
-      } else if (headingLower.includes('timing')) {
-        bgColor = BLUE_LIGHT_BG;
-        accentColor = NAVY;
-      }
-
-      this.checkPageBreak(16);
-
-      // Section sub-header with coloured accent
-      this.doc.setFillColor(accentColor.r, accentColor.g, accentColor.b);
-      this.doc.rect(this.margin, this.y - 3, this.contentWidth(), 10, 'F');
-      this.doc.setTextColor(WHITE.r, WHITE.g, WHITE.b);
-      this.doc.setFont('helvetica', 'bold');
-      this.doc.setFontSize(10);
-      this.doc.text(stripMarkdown(heading).toUpperCase(), this.margin + 5, this.y + 3);
-      this.y += 14;
-
-      // Body content
-      if (body) {
-        this.drawMarkdownContent(body);
-        this.y += 4;
+    if (headings.length === 0) {
+      // No headings found — try splitting by bold lines like **WHAT TO DO NOW**
+      const boldRegex = /^\*\*(.+?)\*\*\s*$/gm;
+      while ((match = boldRegex.exec(content)) !== null) {
+        headings.push({ index: match.index, heading: match[1].trim() });
       }
     }
 
-    // If no ### sections found, render as plain markdown
-    if (sections.filter(s => s.trim()).length <= 1) {
+    if (headings.length === 0) {
+      // No structure found, render as plain markdown with intro text
       this.drawMarkdownContent(content);
+      return;
+    }
+
+    // Render intro text (anything before the first heading)
+    const introText = content.slice(0, headings[0].index).trim();
+    if (introText) {
+      this.drawMarkdownContent(introText);
+      this.y += 4;
+    }
+
+    // Render each section with color-coded panels
+    for (let i = 0; i < headings.length; i++) {
+      const heading = headings[i].heading;
+      const bodyStart = content.indexOf('\n', headings[i].index);
+      const bodyEnd = i < headings.length - 1 ? headings[i + 1].index : content.length;
+      const body = bodyStart > 0 ? content.slice(bodyStart + 1, bodyEnd).trim() : '';
+
+      // Determine colour based on heading keywords
+      let bgColor = LIGHT_BG;
+      let accentColor = NAVY;
+      let iconChar = '>';
+      const headingLower = heading.toLowerCase().replace(/\*\*/g, '');
+
+      if (headingLower.includes('do now') || headingLower.includes('what to do')) {
+        bgColor = GREEN_LIGHT_BG;
+        accentColor = GREEN;
+        iconChar = '+';
+      } else if (headingLower.includes('avoid')) {
+        bgColor = RED_LIGHT_BG;
+        accentColor = RED;
+        iconChar = '!';
+      } else if (headingLower.includes('timing') || headingLower.includes('window') || headingLower.includes('when')) {
+        bgColor = AMBER_LIGHT_BG;
+        accentColor = AMBER;
+        iconChar = '~';
+      }
+
+      this.checkPageBreak(18);
+
+      // Section header bar with color accent
+      this.doc.setFillColor(accentColor.r, accentColor.g, accentColor.b);
+      this.doc.roundedRect(this.margin, this.y - 3, this.contentWidth(), 11, 2, 2, 'F');
+      
+      // Icon circle
+      this.doc.setFillColor(WHITE.r, WHITE.g, WHITE.b);
+      this.doc.circle(this.margin + 8, this.y + 2.5, 3.5, 'F');
+      this.doc.setTextColor(accentColor.r, accentColor.g, accentColor.b);
+      this.doc.setFont('helvetica', 'bold');
+      this.doc.setFontSize(10);
+      this.doc.text(iconChar, this.margin + 8, this.y + 3.8, { align: 'center' });
+
+      // Heading text
+      this.doc.setTextColor(WHITE.r, WHITE.g, WHITE.b);
+      this.doc.setFont('helvetica', 'bold');
+      this.doc.setFontSize(10);
+      this.doc.text(stripMarkdown(heading).toUpperCase(), this.margin + 15, this.y + 4);
+      this.y += 15;
+
+      // Body content with tinted background
+      if (body) {
+        const bodyLines = sanitise(body).split('\n');
+        const approxHeight = bodyLines.length * 5 + 10;
+        
+        // Light tinted background panel behind the body
+        this.checkPageBreak(Math.min(approxHeight, 60));
+        const panelStartY = this.y - 2;
+        
+        this.drawMarkdownContent(body);
+        
+        this.y += 6;
+      }
     }
   }
 
@@ -592,6 +679,34 @@ class MarketIntelPDFBuilder {
 
     // Bottom CTA box
     this.y += 5;
+    this.checkPageBreak(35);
+    
+    // Why NPC callout panel
+    const whyText = 'NPC Services is a strategic property advisory that delivers data-driven, insight-led guidance — enabling clients to act on opportunities others don\'t see.';
+    const whyWrapped = this.doc.splitTextToSize(whyText, this.contentWidth() - 20);
+    const whyHeight = whyWrapped.length * 4.5 + 14;
+    
+    this.doc.setFillColor(GOLD_LIGHT_BG.r, GOLD_LIGHT_BG.g, GOLD_LIGHT_BG.b);
+    this.doc.roundedRect(this.margin, this.y, this.contentWidth(), whyHeight, 2, 2, 'F');
+    this.doc.setDrawColor(GOLD.r, GOLD.g, GOLD.b);
+    this.doc.setLineWidth(0.5);
+    this.doc.roundedRect(this.margin, this.y, this.contentWidth(), whyHeight, 2, 2, 'S');
+    this.doc.setFillColor(GOLD.r, GOLD.g, GOLD.b);
+    this.doc.rect(this.margin, this.y, 3, whyHeight, 'F');
+    
+    this.doc.setFont('helvetica', 'bold');
+    this.doc.setFontSize(9);
+    this.doc.setTextColor(GOLD.r, GOLD.g, GOLD.b);
+    this.doc.text('WHY NPC SERVICES?', this.margin + 8, this.y + 6);
+    
+    this.doc.setFont('helvetica', 'normal');
+    this.doc.setFontSize(9);
+    this.doc.setTextColor(DARK_TEXT.r, DARK_TEXT.g, DARK_TEXT.b);
+    this.doc.text(whyWrapped, this.margin + 8, this.y + 12);
+    
+    this.y += whyHeight + 8;
+
+    // Contact CTA box
     this.checkPageBreak(30);
     this.doc.setFillColor(NAVY.r, NAVY.g, NAVY.b);
     this.doc.roundedRect(this.margin, this.y, this.contentWidth(), 25, 3, 3, 'F');
@@ -614,8 +729,9 @@ class MarketIntelPDFBuilder {
   private drawEventsTimeline(events: MarketEvent[]) {
     if (!events || events.length === 0) return;
 
-    const recent = events.filter(e => new Date(e.date) <= new Date()).slice(0, 12);
-    const upcoming = events.filter(e => new Date(e.date) > new Date()).slice(0, 8);
+    const now = new Date();
+    const recent = events.filter(e => new Date(e.date) <= now).slice(0, 12);
+    const upcoming = events.filter(e => new Date(e.date) > now).slice(0, 8);
 
     if (recent.length > 0) {
       this.checkPageBreak(12);
@@ -692,6 +808,71 @@ class MarketIntelPDFBuilder {
     });
   }
 
+  // ─── Audience-Segmented Insight Panels ─────────────────────────────
+
+  private drawAudienceInsightPanels(audienceSegment: string | undefined) {
+    const segment = audienceSegment || 'general';
+
+    if (segment === 'general') {
+      // Two-panel layout for general audience
+      const investorInsight = 'For Investors: Focus on yield-to-growth ratios and supply-demand dynamics in the suburbs identified. Each represents a strategic entry point for portfolio growth with strong rental demand underpinning cash flow.';
+      const ownerInsight = 'For Homebuyers: These suburbs offer genuine lifestyle value alongside capital growth potential. Buying in these locations now positions you for long-term wealth building in a less competitive market.';
+      
+      this.drawColoredInsightPanel('WHAT THIS MEANS FOR INVESTORS', investorInsight, NAVY, { r: 235, g: 242, b: 255 });
+      this.drawColoredInsightPanel('WHAT THIS MEANS FOR HOMEBUYERS', ownerInsight, GREEN, GREEN_LIGHT_BG);
+    } else if (segment === 'investor') {
+      this.drawColoredInsightPanel(
+        'WHAT THIS MEANS FOR YOUR PORTFOLIO',
+        'These suburbs have been identified based on their yield-to-growth ratio, supply-demand dynamics, and infrastructure pipeline. Each represents a strategic entry point for portfolio growth with strong rental demand underpinning cash flow stability.',
+        NAVY,
+        { r: 235, g: 242, b: 255 }
+      );
+    } else {
+      this.drawColoredInsightPanel(
+        'WHAT THIS MEANS FOR YOUR HOME SEARCH',
+        'These suburbs offer strong lifestyle value alongside genuine capital growth potential. They represent areas where buying now positions you for long-term wealth building, with improving amenities and transport connectivity.',
+        GREEN,
+        GREEN_LIGHT_BG
+      );
+    }
+  }
+
+  private drawColoredInsightPanel(
+    title: string,
+    content: string,
+    accentColor: { r: number; g: number; b: number },
+    bgColor: { r: number; g: number; b: number }
+  ) {
+    this.checkPageBreak(28);
+
+    const wrappedContent = this.doc.splitTextToSize(content, this.contentWidth() - 14);
+    const panelHeight = Math.max(22, wrappedContent.length * 4.5 + 14);
+
+    this.doc.setFillColor(bgColor.r, bgColor.g, bgColor.b);
+    this.doc.roundedRect(this.margin, this.y - 2, this.contentWidth(), panelHeight, 2, 2, 'F');
+    
+    // Accent border
+    this.doc.setDrawColor(accentColor.r, accentColor.g, accentColor.b);
+    this.doc.setLineWidth(0.8);
+    this.doc.roundedRect(this.margin, this.y - 2, this.contentWidth(), panelHeight, 2, 2, 'S');
+    
+    // Left accent bar
+    this.doc.setFillColor(accentColor.r, accentColor.g, accentColor.b);
+    this.doc.rect(this.margin, this.y - 2, 3, panelHeight, 'F');
+
+    this.doc.setFont('helvetica', 'bold');
+    this.doc.setFontSize(8.5);
+    this.doc.setTextColor(accentColor.r, accentColor.g, accentColor.b);
+    this.doc.text(title, this.margin + 8, this.y + 5);
+
+    this.doc.setFont('helvetica', 'normal');
+    this.doc.setFontSize(9);
+    this.doc.setTextColor(DARK_TEXT.r, DARK_TEXT.g, DARK_TEXT.b);
+    this.doc.text(wrappedContent, this.margin + 8, this.y + 11);
+
+    this.y += panelHeight + 6;
+  }
+
   // ─── Main Generation Method ────────────────────────────────────────
 
   async generate(data: MarketIntelligenceReportData): Promise<Blob> {
@@ -707,10 +888,10 @@ class MarketIntelPDFBuilder {
     if (data.executiveSummary) {
       this.addPage();
       this.drawSectionHeader('Executive Summary');
-      this.drawMarkdownContent(data.executiveSummary);
+      this.drawMarkdownContent(stripDataLimitations(data.executiveSummary));
     }
 
-    // Key Insights Snapshot (NEW — mandatory per master doc)
+    // Key Insights Snapshot (branded cards)
     if (layers.includes('key_insights') && data.keyInsightsSnapshot) {
       this.drawKeyInsightsSnapshot(data.keyInsightsSnapshot);
     }
@@ -720,7 +901,7 @@ class MarketIntelPDFBuilder {
       this.addPage();
       this.drawSectionHeader('RBA & Interest Rate Analysis');
       this.resetTableState();
-      this.drawMarkdownContent(data.layer1_rba.content);
+      this.drawMarkdownContent(stripDataLimitations(data.layer1_rba.content));
     }
 
     // Layer 2: Housing
@@ -728,7 +909,7 @@ class MarketIntelPDFBuilder {
       this.addPage();
       this.drawSectionHeader('Housing Market Pulse');
       this.resetTableState();
-      this.drawMarkdownContent(data.layer2_housing.content);
+      this.drawMarkdownContent(stripDataLimitations(data.layer2_housing.content));
     }
 
     // Layer 3: Sentiment
@@ -736,7 +917,7 @@ class MarketIntelPDFBuilder {
       this.addPage();
       this.drawSectionHeader('Consumer & Investor Sentiment');
       this.resetTableState();
-      this.drawMarkdownContent(data.layer3_sentiment.content);
+      this.drawMarkdownContent(stripDataLimitations(data.layer3_sentiment.content));
     }
 
     // Layer 4: Regulatory
@@ -744,7 +925,7 @@ class MarketIntelPDFBuilder {
       this.addPage();
       this.drawSectionHeader('Regulatory & Policy Watch');
       this.resetTableState();
-      this.drawMarkdownContent(data.layer4_regulatory.content);
+      this.drawMarkdownContent(stripDataLimitations(data.layer4_regulatory.content));
     }
 
     // Layer 6: Economic
@@ -752,7 +933,7 @@ class MarketIntelPDFBuilder {
       this.addPage();
       this.drawSectionHeader('Economic Indicators Dashboard');
       this.resetTableState();
-      this.drawMarkdownContent(data.layer6_economic.content);
+      this.drawMarkdownContent(stripDataLimitations(data.layer6_economic.content));
     }
 
     // Layer 7: Suburb & Corridor Intelligence
@@ -760,16 +941,10 @@ class MarketIntelPDFBuilder {
       this.addPage();
       this.drawSectionHeader('Suburb & Corridor Intelligence');
       this.resetTableState();
-      this.drawMarkdownContent(data.layer7_micro.content);
+      this.drawMarkdownContent(stripDataLimitations(data.layer7_micro.content));
       
-      // Audience-specific insight callout
-      const audienceInsight = data.audienceSegment === 'investor'
-        ? 'These suburbs have been identified based on their yield-to-growth ratio, supply-demand dynamics, and infrastructure pipeline. Each represents a strategic entry point for portfolio growth.'
-        : data.audienceSegment === 'owner_occupier'
-        ? 'These suburbs offer strong lifestyle value alongside genuine capital growth potential. They represent areas where buying now positions you for long-term wealth building.'
-        : 'These suburbs are outperforming the broader market across key metrics. Whether you are investing or buying a home, these locations offer compelling fundamentals.';
-      
-      this.drawInsightCallout('What This Means For You', audienceInsight);
+      // Audience-segmented insight panels
+      this.drawAudienceInsightPanels(data.audienceSegment);
     }
 
     // Layer 8: Competitive Strategic Edge
@@ -777,11 +952,11 @@ class MarketIntelPDFBuilder {
       this.addPage();
       this.drawSectionHeader('Competitive Strategic Edge');
       this.resetTableState();
-      this.drawMarkdownContent(data.layer8_competitive_edge.content);
+      this.drawMarkdownContent(stripDataLimitations(data.layer8_competitive_edge.content));
       
       this.drawInsightCallout(
         'The NPC Advantage',
-        'The insights in this section reflect NPC Services\' proprietary analysis methodology. These strategic angles are not available through standard property reports or competitor advisory services.'
+        'The insights in this section reflect NPC Services\' proprietary analysis methodology. These strategic angles are derived from deep market intelligence and are not available through standard property reports or competitor advisory services.'
       );
     }
 
@@ -790,10 +965,10 @@ class MarketIntelPDFBuilder {
       this.addPage();
       this.drawSectionHeader('90-Day Strategic Outlook');
       this.resetTableState();
-      this.drawMarkdownContent(data.layer5_outlook.content);
+      this.drawMarkdownContent(stripDataLimitations(data.layer5_outlook.content));
     }
 
-    // Actionable Strategy (NEW — mandatory per master doc)
+    // Actionable Strategy (color-coded panels)
     if (layers.includes('actionable_strategy') && data.actionableStrategy) {
       this.drawActionableStrategy(data.actionableStrategy);
     }
