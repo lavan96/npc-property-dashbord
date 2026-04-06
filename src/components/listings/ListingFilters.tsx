@@ -88,6 +88,7 @@ export function ListingFilters({ filters, setFilters, uniqueValues }: ListingFil
       sourceHost: 'all',
       hasInspection: false,
       lowConfidence: false,
+      offMarket: false,
       priceMin: '',
       priceMax: '',
       bedsMin: '',
