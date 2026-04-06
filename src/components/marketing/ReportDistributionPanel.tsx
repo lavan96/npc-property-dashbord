@@ -11,7 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Mail, Plus, Send, Trash2, Edit, Loader2, Clock, CheckCircle2, XCircle, Calendar, Users } from 'lucide-react';
+import { Mail, Plus, Send, Trash2, Edit, Loader2, Clock, CheckCircle2, XCircle, Calendar, Users, RotateCw, Target } from 'lucide-react';
 import { toast } from 'sonner';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { format } from 'date-fns';
@@ -33,6 +33,11 @@ interface Schedule {
   last_sent_at?: string;
   next_scheduled_at?: string;
   created_at: string;
+  report_type?: string;
+  audience_segment?: string;
+  content_rotation_enabled?: boolean;
+  rotation_sequence?: string[];
+  current_rotation_index?: number;
 }
 
 interface DistributionLog {
@@ -72,6 +77,23 @@ const FREQUENCY_LABELS: Record<string, string> = {
   ad_hoc: 'Ad-hoc (Manual)',
 };
 
+const REPORT_TYPE_OPTIONS: Record<string, string> = {
+  full: 'Full Report',
+  market_pulse: 'Market Pulse',
+  hotspot_deep_dive: 'Hotspot Deep Dive',
+  strategy_insight: 'Strategy Insight',
+  finance_update: 'Finance & Lending',
+  deal_breakdown: 'Deal Breakdown',
+  myth_busting: 'Myth Busting',
+  development_spotlight: 'Development Spotlight',
+};
+
+const AUDIENCE_OPTIONS: Record<string, string> = {
+  general: 'General',
+  investor: 'Investor',
+  owner_occupier: 'Owner-Occupier',
+};
+
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
   sent: { label: 'Sent', color: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30', icon: CheckCircle2 },
   failed: { label: 'Failed', color: 'bg-red-500/10 text-red-600 border-red-500/30', icon: XCircle },
@@ -102,6 +124,9 @@ export function ReportDistributionPanel() {
   const [formSubject, setFormSubject] = useState('Your Market Intelligence Report — {{report_period}}');
   const [formBody, setFormBody] = useState('Please find attached the latest Market Intelligence Report, providing a comprehensive analysis of the Australian property market including interest rate movements, housing market data, economic indicators, and strategic outlook.');
   const [formEnabled, setFormEnabled] = useState(true);
+  const [formReportType, setFormReportType] = useState('full');
+  const [formAudience, setFormAudience] = useState('general');
+  const [formRotationEnabled, setFormRotationEnabled] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const loadData = useCallback(async () => {
@@ -140,6 +165,9 @@ export function ReportDistributionPanel() {
     setFormSubject('Your Market Intelligence Report — {{report_period}}');
     setFormBody('Please find attached the latest Market Intelligence Report, providing a comprehensive analysis of the Australian property market including interest rate movements, housing market data, economic indicators, and strategic outlook.');
     setFormEnabled(true);
+    setFormReportType('full');
+    setFormAudience('general');
+    setFormRotationEnabled(false);
     setEditingSchedule(null);
   };
 
@@ -160,6 +188,9 @@ export function ReportDistributionPanel() {
     setFormSubject(schedule.email_subject_template);
     setFormBody(schedule.email_body_template);
     setFormEnabled(schedule.is_enabled);
+    setFormReportType(schedule.report_type || 'full');
+    setFormAudience(schedule.audience_segment || 'general');
+    setFormRotationEnabled(schedule.content_rotation_enabled || false);
     setDialogOpen(true);
   };
 
@@ -187,6 +218,9 @@ export function ReportDistributionPanel() {
         email_subject_template: formSubject,
         email_body_template: formBody,
         is_enabled: formEnabled,
+        report_type: formReportType,
+        audience_segment: formAudience,
+        content_rotation_enabled: formRotationEnabled,
       };
 
       if (editingSchedule) {
@@ -385,7 +419,7 @@ export function ReportDistributionPanel() {
                   <div key={schedule.id} className="rounded-lg border border-border/50 bg-card p-4 space-y-2">
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-semibold">{schedule.name}</span>
                           <Badge variant="outline" className={`text-[10px] ${schedule.is_enabled ? 'border-emerald-500/30 text-emerald-600' : 'border-border text-muted-foreground'}`}>
                             {schedule.is_enabled ? 'Active' : 'Paused'}
@@ -393,6 +427,14 @@ export function ReportDistributionPanel() {
                           <Badge variant="outline" className="text-[10px]">
                             {FREQUENCY_LABELS[schedule.frequency] || schedule.frequency}
                           </Badge>
+                          <Badge variant="outline" className="text-[10px] border-primary/30 text-primary">
+                            {schedule.content_rotation_enabled ? '🔄 Rotation' : (REPORT_TYPE_OPTIONS[schedule.report_type || 'full'] || 'Full')}
+                          </Badge>
+                          {schedule.audience_segment && schedule.audience_segment !== 'general' && (
+                            <Badge variant="outline" className="text-[10px] border-amber-500/30 text-amber-600">
+                              {AUDIENCE_OPTIONS[schedule.audience_segment] || schedule.audience_segment}
+                            </Badge>
+                          )}
                         </div>
                         {schedule.description && (
                           <p className="text-[11px] text-muted-foreground mt-0.5">{schedule.description}</p>
@@ -543,6 +585,48 @@ export function ReportDistributionPanel() {
                   </Select>
                 </div>
               )}
+
+              <Separator />
+
+              {/* Report Type & Audience */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs flex items-center gap-1"><Target className="h-3 w-3" /> Report Type</Label>
+                  <Select value={formReportType} onValueChange={setFormReportType} disabled={formRotationEnabled}>
+                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(REPORT_TYPE_OPTIONS).map(([k, v]) => (
+                        <SelectItem key={k} value={k}>{v}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs flex items-center gap-1"><Users className="h-3 w-3" /> Audience</Label>
+                  <Select value={formAudience} onValueChange={setFormAudience}>
+                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(AUDIENCE_OPTIONS).map(([k, v]) => (
+                        <SelectItem key={k} value={k}>{v}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 p-3 rounded-lg border border-border/50 bg-muted/30">
+                <RotateCw className="h-4 w-4 text-primary shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <Switch checked={formRotationEnabled} onCheckedChange={setFormRotationEnabled} className="scale-75" />
+                    <Label className="text-xs font-medium">Content Rotation</Label>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    Automatically cycle through all 7 report types each send, creating a varied rhythm of communication
+                  </p>
+                </div>
+              </div>
 
               <Separator />
 

@@ -1,8 +1,8 @@
 /**
- * Market Intelligence PDF Report Generator
+ * Market Intelligence PDF Report Generator v2
  * 
- * Generates a premium navy/gold branded PDF from 6-layer market intelligence data.
- * Matches the NPC investment report design system.
+ * Generates premium navy/gold branded PDFs with 8 intelligence layers,
+ * audience segmentation, report type variants, and CTAs.
  */
 
 import jsPDF from 'jspdf';
@@ -10,14 +10,15 @@ import { fetchGlobalReportSettings } from '@/hooks/useGlobalReportSettings';
 import { drawJsPDFDisclaimerPage } from '@/utils/pdfDisclaimerPage';
 
 // ─── Design tokens (matching PixelPerfectPDFGenerator) ───────────────────────
-const NAVY = { r: 13, g: 38, b: 77 };      // #0D264D
-const GOLD = { r: 191, g: 155, b: 80 };     // #BF9B50
+const NAVY = { r: 13, g: 38, b: 77 };
+const GOLD = { r: 191, g: 155, b: 80 };
 const WHITE = { r: 255, g: 255, b: 255 };
 const LIGHT_BG = { r: 245, g: 243, b: 238 };
 const DARK_TEXT = { r: 30, g: 30, b: 30 };
 const GRAY_TEXT = { r: 100, g: 100, b: 100 };
 const GREEN = { r: 34, g: 139, b: 34 };
 const RED = { r: 180, g: 40, b: 40 };
+const GOLD_LIGHT_BG = { r: 252, g: 249, b: 242 };
 
 interface MarketEvent {
   date: string;
@@ -31,6 +32,9 @@ interface MarketEvent {
 export interface MarketIntelligenceReportData {
   generatedAt: string;
   reportPeriod: string;
+  reportType?: string;
+  reportTypeLabel?: string;
+  audienceSegment?: string;
   executiveSummary: string;
   layer1_rba: { content: string; citations: string[] };
   layer2_housing: { content: string; citations: string[] };
@@ -38,9 +42,30 @@ export interface MarketIntelligenceReportData {
   layer4_regulatory: { content: string };
   layer5_outlook: { content: string };
   layer6_economic: { content: string; citations: string[] };
+  layer7_micro?: { content: string; citations: string[] };
+  layer8_competitive_edge?: { content: string };
+  ctaContent?: string;
   marketEvents: MarketEvent[];
   allCitations: string[];
+  includedLayers?: string[];
 }
+
+const REPORT_TYPE_SUBTITLES: Record<string, string> = {
+  full: 'Comprehensive Australian property market analysis powered by live data, AI-driven insights, and authoritative sources.',
+  market_pulse: 'A concise overview of macro market conditions — interest rates, sentiment, and economic indicators shaping the property landscape.',
+  hotspot_deep_dive: 'In-depth suburb and corridor analysis revealing where the strongest opportunities exist right now.',
+  strategy_insight: 'Strategic intelligence and competitive analysis that reveals what others overlook.',
+  finance_update: 'Interest rates, lending policy, and regulatory changes impacting borrowing capacity and investor positioning.',
+  deal_breakdown: 'Suburb-level analysis with strategic structuring recommendations for identified opportunities.',
+  myth_busting: 'Data-driven analysis separating market facts from fiction across key property investment assumptions.',
+  development_spotlight: 'Development, subdivision, and zoning opportunities across high-potential suburbs and corridors.',
+};
+
+const AUDIENCE_LABELS: Record<string, string> = {
+  general: '',
+  investor: 'Investor Edition',
+  owner_occupier: 'Homebuyer Edition',
+};
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -103,11 +128,9 @@ class MarketIntelPDFBuilder {
 
   private drawFooter() {
     const footerY = this.pageHeight - 12;
-    // Gold line
     this.doc.setDrawColor(GOLD.r, GOLD.g, GOLD.b);
     this.doc.setLineWidth(0.5);
     this.doc.line(this.margin, footerY - 3, this.pageWidth - this.margin, footerY - 3);
-    // Footer text
     this.doc.setFontSize(7);
     this.doc.setFont('helvetica', 'normal');
     this.doc.setTextColor(GRAY_TEXT.r, GRAY_TEXT.g, GRAY_TEXT.b);
@@ -117,8 +140,11 @@ class MarketIntelPDFBuilder {
 
   // ─── Cover Page ────────────────────────────────────────────────────
 
-  private drawCoverPage(reportPeriod: string) {
+  private drawCoverPage(data: MarketIntelligenceReportData) {
     this.pageNum++;
+    const reportType = data.reportType || 'full';
+    const audienceLabel = AUDIENCE_LABELS[data.audienceSegment || 'general'] || '';
+
     // Navy background
     this.doc.setFillColor(NAVY.r, NAVY.g, NAVY.b);
     this.doc.rect(0, 0, this.pageWidth, this.pageHeight, 'F');
@@ -138,33 +164,51 @@ class MarketIntelPDFBuilder {
     this.doc.setLineWidth(1);
     this.doc.line(this.margin, 58, this.margin + 60, 58);
 
-    // Report title
+    // Report title — varies by type
     this.doc.setTextColor(WHITE.r, WHITE.g, WHITE.b);
     this.doc.setFont('helvetica', 'bold');
     this.doc.setFontSize(36);
-    this.doc.text('MARKET', this.margin, 85);
-    this.doc.text('INTELLIGENCE', this.margin, 100);
-    this.doc.text('REPORT', this.margin, 115);
+
+    const titleLines = (data.reportTypeLabel || 'MARKET INTELLIGENCE REPORT').toUpperCase().split(' ');
+    let titleY = 85;
+    // Group words into lines of ~2 words
+    const groupedLines: string[] = [];
+    for (let i = 0; i < titleLines.length; i += 2) {
+      groupedLines.push(titleLines.slice(i, i + 2).join(' '));
+    }
+    for (const line of groupedLines) {
+      this.doc.text(line, this.margin, titleY);
+      titleY += 16;
+    }
+
+    // Audience edition badge
+    if (audienceLabel) {
+      this.doc.setFillColor(GOLD.r, GOLD.g, GOLD.b);
+      this.doc.roundedRect(this.margin, titleY, this.doc.getTextWidth(audienceLabel) + 12, 10, 2, 2, 'F');
+      this.doc.setTextColor(NAVY.r, NAVY.g, NAVY.b);
+      this.doc.setFont('helvetica', 'bold');
+      this.doc.setFontSize(9);
+      this.doc.text(audienceLabel.toUpperCase(), this.margin + 6, titleY + 7);
+      titleY += 18;
+    }
 
     // Report period
     this.doc.setTextColor(GOLD.r, GOLD.g, GOLD.b);
     this.doc.setFont('helvetica', 'normal');
     this.doc.setFontSize(16);
-    this.doc.text(reportPeriod.toUpperCase(), this.margin, 135);
+    this.doc.text(data.reportPeriod.toUpperCase(), this.margin, titleY + 5);
 
-    // Gold bar decoration
+    // Gold bar
     this.doc.setFillColor(GOLD.r, GOLD.g, GOLD.b);
-    this.doc.rect(this.margin, 145, 40, 2, 'F');
+    this.doc.rect(this.margin, titleY + 12, 40, 2, 'F');
 
     // Subtitle
     this.doc.setTextColor(WHITE.r, WHITE.g, WHITE.b);
     this.doc.setFont('helvetica', 'normal');
     this.doc.setFontSize(10);
-    const subtitleLines = this.doc.splitTextToSize(
-      'Comprehensive Australian property market analysis powered by live data, AI-driven insights, and authoritative sources.',
-      this.contentWidth()
-    );
-    this.doc.text(subtitleLines, this.margin, 160);
+    const subtitle = REPORT_TYPE_SUBTITLES[reportType] || REPORT_TYPE_SUBTITLES.full;
+    const subtitleLines = this.doc.splitTextToSize(subtitle, this.contentWidth());
+    this.doc.text(subtitleLines, this.margin, titleY + 24);
 
     // Bottom gold accent
     this.doc.setFillColor(GOLD.r, GOLD.g, GOLD.b);
@@ -182,22 +226,28 @@ class MarketIntelPDFBuilder {
 
   // ─── Table of Contents ─────────────────────────────────────────────
 
-  private drawTOC() {
+  private drawTOC(data: MarketIntelligenceReportData) {
     this.addPage();
     this.drawSectionHeader('TABLE OF CONTENTS');
     this.y += 10;
 
-    const tocItems = [
+    const layers = data.includedLayers || ['layer1','layer2','layer3','layer4','layer5','layer6','layer7','layer8','events','executive','cta'];
+    const tocItems: { num: string; title: string }[] = [
       { num: '01', title: 'Executive Summary' },
-      { num: '02', title: 'RBA & Interest Rate Analysis' },
-      { num: '03', title: 'Housing Market Pulse' },
-      { num: '04', title: 'Consumer & Investor Sentiment' },
-      { num: '05', title: 'Regulatory & Policy Watch' },
-      { num: '06', title: 'Economic Indicators Dashboard' },
-      { num: '07', title: '90-Day Strategic Outlook' },
-      { num: '08', title: 'Market Events Timeline' },
-      { num: '09', title: 'Sources & Citations' },
     ];
+
+    let idx = 2;
+    if (layers.includes('layer1')) tocItems.push({ num: String(idx++).padStart(2, '0'), title: 'RBA & Interest Rate Analysis' });
+    if (layers.includes('layer2')) tocItems.push({ num: String(idx++).padStart(2, '0'), title: 'Housing Market Pulse' });
+    if (layers.includes('layer3')) tocItems.push({ num: String(idx++).padStart(2, '0'), title: 'Consumer & Investor Sentiment' });
+    if (layers.includes('layer4')) tocItems.push({ num: String(idx++).padStart(2, '0'), title: 'Regulatory & Policy Watch' });
+    if (layers.includes('layer6')) tocItems.push({ num: String(idx++).padStart(2, '0'), title: 'Economic Indicators Dashboard' });
+    if (layers.includes('layer7')) tocItems.push({ num: String(idx++).padStart(2, '0'), title: 'Suburb & Corridor Intelligence' });
+    if (layers.includes('layer8')) tocItems.push({ num: String(idx++).padStart(2, '0'), title: 'Competitive Strategic Edge' });
+    if (layers.includes('layer5')) tocItems.push({ num: String(idx++).padStart(2, '0'), title: '90-Day Strategic Outlook' });
+    if (layers.includes('events')) tocItems.push({ num: String(idx++).padStart(2, '0'), title: 'Market Events Timeline' });
+    if (layers.includes('cta')) tocItems.push({ num: String(idx++).padStart(2, '0'), title: 'Your Next Steps' });
+    tocItems.push({ num: String(idx++).padStart(2, '0'), title: 'Sources & Citations' });
 
     for (const item of tocItems) {
       this.doc.setFont('helvetica', 'bold');
@@ -209,7 +259,6 @@ class MarketIntelPDFBuilder {
       this.doc.setTextColor(DARK_TEXT.r, DARK_TEXT.g, DARK_TEXT.b);
       this.doc.text(item.title, this.margin + 15, this.y);
 
-      // Dotted leader line
       this.doc.setDrawColor(GOLD.r, GOLD.g, GOLD.b);
       this.doc.setLineDashPattern([1, 2], 0);
       const textWidth = this.doc.getTextWidth(item.title);
@@ -224,7 +273,6 @@ class MarketIntelPDFBuilder {
 
   private drawSectionHeader(title: string) {
     this.checkPageBreak(20);
-    // Gold vertical accent bar
     this.doc.setFillColor(GOLD.r, GOLD.g, GOLD.b);
     this.doc.rect(this.margin, this.y - 5, 3, 14, 'F');
 
@@ -233,7 +281,6 @@ class MarketIntelPDFBuilder {
     this.doc.setTextColor(NAVY.r, NAVY.g, NAVY.b);
     this.doc.text(title.toUpperCase(), this.margin + 8, this.y + 5);
 
-    // Underline
     this.doc.setDrawColor(GOLD.r, GOLD.g, GOLD.b);
     this.doc.setLineWidth(0.5);
     this.doc.line(this.margin, this.y + 10, this.pageWidth - this.margin, this.y + 10);
@@ -267,7 +314,7 @@ class MarketIntelPDFBuilder {
         continue;
       }
 
-      // Bold lines (e.g. **Label:** value)
+      // Bold lines
       const boldMatch = line.match(/^\*\*(.+?)\*\*[:\s]*(.*)$/);
       if (boldMatch) {
         this.checkPageBreak(10);
@@ -298,7 +345,6 @@ class MarketIntelPDFBuilder {
         this.doc.setFont('helvetica', 'normal');
         this.doc.setFontSize(9);
         this.doc.setTextColor(DARK_TEXT.r, DARK_TEXT.g, DARK_TEXT.b);
-        // Gold bullet
         this.doc.setFillColor(GOLD.r, GOLD.g, GOLD.b);
         this.doc.circle(this.margin + 2, this.y - 1, 1, 'F');
         const wrapped = this.doc.splitTextToSize(bulletText, maxW - 10);
@@ -307,12 +353,12 @@ class MarketIntelPDFBuilder {
         continue;
       }
 
-      // Table rows (pipe-delimited)
+      // Table rows
       if (line.includes('|') && !line.match(/^[\s|:-]+$/)) {
         this.drawTableRow(line);
         continue;
       }
-      if (line.match(/^[\s|:-]+$/)) continue; // skip divider rows
+      if (line.match(/^[\s|:-]+$/)) continue;
 
       // Regular paragraph
       this.checkPageBreak(8);
@@ -337,7 +383,6 @@ class MarketIntelPDFBuilder {
     const colWidth = this.contentWidth() / cells.length;
 
     if (this.isTableHeaderRow) {
-      // Navy header background
       this.doc.setFillColor(NAVY.r, NAVY.g, NAVY.b);
       this.doc.rect(this.margin, this.y - 4, this.contentWidth(), 7, 'F');
       this.doc.setFont('helvetica', 'bold');
@@ -351,7 +396,6 @@ class MarketIntelPDFBuilder {
       this.y += 6;
       this.isTableHeaderRow = false;
     } else {
-      // Alternating row background
       this.doc.setFillColor(LIGHT_BG.r, LIGHT_BG.g, LIGHT_BG.b);
       this.doc.rect(this.margin, this.y - 3.5, this.contentWidth(), 6, 'F');
       this.doc.setFont('helvetica', 'normal');
@@ -370,6 +414,69 @@ class MarketIntelPDFBuilder {
     this.isTableHeaderRow = true;
   }
 
+  // ─── "What This Means For You" Callout Panel ──────────────────────
+
+  private drawInsightCallout(title: string, content: string) {
+    if (!content) return;
+    this.checkPageBreak(25);
+
+    // Gold left border + light bg
+    const panelHeight = Math.max(20, this.doc.splitTextToSize(stripMarkdown(content), this.contentWidth() - 14).length * 4.5 + 12);
+    this.doc.setFillColor(GOLD_LIGHT_BG.r, GOLD_LIGHT_BG.g, GOLD_LIGHT_BG.b);
+    this.doc.roundedRect(this.margin, this.y - 2, this.contentWidth(), panelHeight, 2, 2, 'F');
+    this.doc.setFillColor(GOLD.r, GOLD.g, GOLD.b);
+    this.doc.rect(this.margin, this.y - 2, 3, panelHeight, 'F');
+
+    // Title
+    this.doc.setFont('helvetica', 'bold');
+    this.doc.setFontSize(9);
+    this.doc.setTextColor(GOLD.r, GOLD.g, GOLD.b);
+    this.doc.text(sanitise(title).toUpperCase(), this.margin + 8, this.y + 4);
+
+    // Content
+    this.doc.setFont('helvetica', 'normal');
+    this.doc.setFontSize(9);
+    this.doc.setTextColor(DARK_TEXT.r, DARK_TEXT.g, DARK_TEXT.b);
+    const wrapped = this.doc.splitTextToSize(stripMarkdown(content), this.contentWidth() - 14);
+    this.doc.text(wrapped, this.margin + 8, this.y + 10);
+
+    this.y += panelHeight + 6;
+  }
+
+  // ─── CTA Panel ────────────────────────────────────────────────────
+
+  private drawCTASection(ctaContent: string) {
+    if (!ctaContent) return;
+
+    this.addPage();
+    this.drawSectionHeader('Your Next Steps');
+
+    // Full-width gold accent box at top
+    this.doc.setFillColor(GOLD.r, GOLD.g, GOLD.b);
+    this.doc.rect(this.margin, this.y, this.contentWidth(), 1.5, 'F');
+    this.y += 8;
+
+    this.drawMarkdownContent(ctaContent);
+
+    // Bottom CTA box
+    this.y += 5;
+    this.checkPageBreak(30);
+    this.doc.setFillColor(NAVY.r, NAVY.g, NAVY.b);
+    this.doc.roundedRect(this.margin, this.y, this.contentWidth(), 25, 3, 3, 'F');
+    
+    this.doc.setTextColor(GOLD.r, GOLD.g, GOLD.b);
+    this.doc.setFont('helvetica', 'bold');
+    this.doc.setFontSize(11);
+    this.doc.text('Ready to Take the Next Step?', this.pageWidth / 2, this.y + 10, { align: 'center' });
+    
+    this.doc.setTextColor(WHITE.r, WHITE.g, WHITE.b);
+    this.doc.setFont('helvetica', 'normal');
+    this.doc.setFontSize(9);
+    this.doc.text('Contact NPC Services to discuss your personalised property strategy.', this.pageWidth / 2, this.y + 17, { align: 'center' });
+
+    this.y += 32;
+  }
+
   // ─── Market Events Timeline ────────────────────────────────────────
 
   private drawEventsTimeline(events: MarketEvent[]) {
@@ -385,10 +492,7 @@ class MarketIntelPDFBuilder {
       this.doc.setTextColor(NAVY.r, NAVY.g, NAVY.b);
       this.doc.text('Recent Events', this.margin, this.y);
       this.y += 8;
-
-      for (const event of recent) {
-        this.drawEventCard(event, false);
-      }
+      for (const event of recent) { this.drawEventCard(event, false); }
     }
 
     if (upcoming.length > 0) {
@@ -399,46 +503,37 @@ class MarketIntelPDFBuilder {
       this.doc.setTextColor(NAVY.r, NAVY.g, NAVY.b);
       this.doc.text('Upcoming Events to Watch', this.margin, this.y);
       this.y += 8;
-
-      for (const event of upcoming) {
-        this.drawEventCard(event, true);
-      }
+      for (const event of upcoming) { this.drawEventCard(event, true); }
     }
   }
 
   private drawEventCard(event: MarketEvent, isUpcoming: boolean) {
     this.checkPageBreak(20);
 
-    // Card background
     const bgColor = isUpcoming ? { r: 245, g: 248, b: 255 } : LIGHT_BG;
     this.doc.setFillColor(bgColor.r, bgColor.g, bgColor.b);
     this.doc.roundedRect(this.margin, this.y - 3, this.contentWidth(), 16, 2, 2, 'F');
 
-    // Border
     if (isUpcoming) {
       this.doc.setDrawColor(GOLD.r, GOLD.g, GOLD.b);
       this.doc.setLineWidth(0.3);
       this.doc.roundedRect(this.margin, this.y - 3, this.contentWidth(), 16, 2, 2, 'S');
     }
 
-    // Impact indicator
     const impactColor = event.impact === 'positive' ? GREEN : event.impact === 'negative' ? RED : GRAY_TEXT;
     this.doc.setFillColor(impactColor.r, impactColor.g, impactColor.b);
     this.doc.circle(this.margin + 5, this.y + 2, 2, 'F');
 
-    // Event name
     this.doc.setFont('helvetica', 'bold');
     this.doc.setFontSize(8.5);
     this.doc.setTextColor(DARK_TEXT.r, DARK_TEXT.g, DARK_TEXT.b);
     this.doc.text(sanitise(event.event).slice(0, 60), this.margin + 10, this.y + 1);
 
-    // Date + category
     this.doc.setFont('helvetica', 'normal');
     this.doc.setFontSize(7);
     this.doc.setTextColor(GRAY_TEXT.r, GRAY_TEXT.g, GRAY_TEXT.b);
     this.doc.text(`${formatDate(event.date)} | ${event.category}`, this.margin + 10, this.y + 6);
 
-    // Description
     this.doc.setFontSize(7.5);
     this.doc.setTextColor(DARK_TEXT.r, DARK_TEXT.g, DARK_TEXT.b);
     const descWrapped = this.doc.splitTextToSize(sanitise(event.description).slice(0, 120), this.contentWidth() - 15);
@@ -468,67 +563,120 @@ class MarketIntelPDFBuilder {
   // ─── Main Generation Method ────────────────────────────────────────
 
   async generate(data: MarketIntelligenceReportData): Promise<Blob> {
+    const layers = data.includedLayers || ['layer1','layer2','layer3','layer4','layer5','layer6','layer7','layer8','events','executive','cta'];
+
     // Cover page
-    this.drawCoverPage(data.reportPeriod);
+    this.drawCoverPage(data);
 
     // Table of Contents
-    this.drawTOC();
+    this.drawTOC(data);
 
-    // Section 1: Executive Summary
-    this.addPage();
-    this.drawSectionHeader('Executive Summary');
-    this.drawMarkdownContent(data.executiveSummary);
+    // Executive Summary
+    if (data.executiveSummary) {
+      this.addPage();
+      this.drawSectionHeader('Executive Summary');
+      this.drawMarkdownContent(data.executiveSummary);
+    }
 
-    // Section 2: RBA & Interest Rates
-    this.addPage();
-    this.drawSectionHeader('RBA & Interest Rate Analysis');
-    this.resetTableState();
-    this.drawMarkdownContent(data.layer1_rba.content);
+    // Layer 1: RBA
+    if (layers.includes('layer1') && data.layer1_rba?.content) {
+      this.addPage();
+      this.drawSectionHeader('RBA & Interest Rate Analysis');
+      this.resetTableState();
+      this.drawMarkdownContent(data.layer1_rba.content);
+    }
 
-    // Section 3: Housing Market
-    this.addPage();
-    this.drawSectionHeader('Housing Market Pulse');
-    this.resetTableState();
-    this.drawMarkdownContent(data.layer2_housing.content);
+    // Layer 2: Housing
+    if (layers.includes('layer2') && data.layer2_housing?.content) {
+      this.addPage();
+      this.drawSectionHeader('Housing Market Pulse');
+      this.resetTableState();
+      this.drawMarkdownContent(data.layer2_housing.content);
+    }
 
-    // Section 4: Consumer & Investor Sentiment
-    this.addPage();
-    this.drawSectionHeader('Consumer & Investor Sentiment');
-    this.resetTableState();
-    this.drawMarkdownContent(data.layer3_sentiment.content);
+    // Layer 3: Sentiment
+    if (layers.includes('layer3') && data.layer3_sentiment?.content) {
+      this.addPage();
+      this.drawSectionHeader('Consumer & Investor Sentiment');
+      this.resetTableState();
+      this.drawMarkdownContent(data.layer3_sentiment.content);
+    }
 
-    // Section 5: Regulatory & Policy Watch
-    this.addPage();
-    this.drawSectionHeader('Regulatory & Policy Watch');
-    this.resetTableState();
-    this.drawMarkdownContent(data.layer4_regulatory.content);
+    // Layer 4: Regulatory
+    if (layers.includes('layer4') && data.layer4_regulatory?.content) {
+      this.addPage();
+      this.drawSectionHeader('Regulatory & Policy Watch');
+      this.resetTableState();
+      this.drawMarkdownContent(data.layer4_regulatory.content);
+    }
 
-    // Section 6: Economic Indicators
-    this.addPage();
-    this.drawSectionHeader('Economic Indicators Dashboard');
-    this.resetTableState();
-    this.drawMarkdownContent(data.layer6_economic.content);
+    // Layer 6: Economic
+    if (layers.includes('layer6') && data.layer6_economic?.content) {
+      this.addPage();
+      this.drawSectionHeader('Economic Indicators Dashboard');
+      this.resetTableState();
+      this.drawMarkdownContent(data.layer6_economic.content);
+    }
 
-    // Section 7: Strategic Outlook
-    this.addPage();
-    this.drawSectionHeader('90-Day Strategic Outlook');
-    this.resetTableState();
-    this.drawMarkdownContent(data.layer5_outlook.content);
+    // Layer 7: Suburb & Corridor Intelligence (NEW)
+    if (layers.includes('layer7') && data.layer7_micro?.content) {
+      this.addPage();
+      this.drawSectionHeader('Suburb & Corridor Intelligence');
+      this.resetTableState();
+      this.drawMarkdownContent(data.layer7_micro.content);
+      
+      // Audience-specific insight callout
+      const audienceInsight = data.audienceSegment === 'investor'
+        ? 'These suburbs have been identified based on their yield-to-growth ratio, supply-demand dynamics, and infrastructure pipeline. Each represents a strategic entry point for portfolio growth.'
+        : data.audienceSegment === 'owner_occupier'
+        ? 'These suburbs offer strong lifestyle value alongside genuine capital growth potential. They represent areas where buying now positions you for long-term wealth building.'
+        : 'These suburbs are outperforming the broader market across key metrics. Whether you are investing or buying a home, these locations offer compelling fundamentals.';
+      
+      this.drawInsightCallout('What This Means For You', audienceInsight);
+    }
 
-    // Section 8: Market Events Timeline
-    this.addPage();
-    this.drawSectionHeader('Market Events Timeline');
-    this.drawEventsTimeline(data.marketEvents);
+    // Layer 8: Competitive Strategic Edge (NEW)
+    if (layers.includes('layer8') && data.layer8_competitive_edge?.content) {
+      this.addPage();
+      this.drawSectionHeader('Competitive Strategic Edge');
+      this.resetTableState();
+      this.drawMarkdownContent(data.layer8_competitive_edge.content);
+      
+      this.drawInsightCallout(
+        'The NPC Advantage',
+        'The insights in this section reflect NPC Services\' proprietary analysis methodology. These strategic angles are not available through standard property reports or competitor advisory services.'
+      );
+    }
 
-    // Section 9: Sources & Citations
+    // Layer 5: Strategic Outlook
+    if (layers.includes('layer5') && data.layer5_outlook?.content) {
+      this.addPage();
+      this.drawSectionHeader('90-Day Strategic Outlook');
+      this.resetTableState();
+      this.drawMarkdownContent(data.layer5_outlook.content);
+    }
+
+    // Market Events Timeline
+    if (layers.includes('events') && data.marketEvents?.length > 0) {
+      this.addPage();
+      this.drawSectionHeader('Market Events Timeline');
+      this.drawEventsTimeline(data.marketEvents);
+    }
+
+    // CTA Section (NEW)
+    if (layers.includes('cta') && data.ctaContent) {
+      this.drawCTASection(data.ctaContent);
+    }
+
+    // Citations
     this.addPage();
     this.drawSectionHeader('Sources & Citations');
     this.drawCitations(data.allCitations);
 
-    // Draw footer on the last content page
+    // Footer on last page
     this.drawFooter();
 
-    // Disclaimer page
+    // Disclaimer
     try {
       const settings = await fetchGlobalReportSettings();
       drawJsPDFDisclaimerPage(this.doc, settings.contactDetails, settings.disclaimer);

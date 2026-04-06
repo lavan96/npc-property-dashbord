@@ -104,6 +104,9 @@ serve(async (req) => {
           is_enabled: data?.is_enabled !== false,
           next_scheduled_at: nextScheduled,
           created_by: data?.created_by,
+          report_type: data?.report_type || 'full',
+          audience_segment: data?.audience_segment || 'general',
+          content_rotation_enabled: data?.content_rotation_enabled || false,
         })
         .select()
         .single();
@@ -122,7 +125,8 @@ serve(async (req) => {
 
       const updateData: Record<string, any> = {};
       const allowedFields = ['name', 'description', 'pipeline_id', 'pipeline_name', 'stage_id', 'stage_name',
-        'frequency', 'mailbox_source', 'sender_mailbox_email', 'email_subject_template', 'email_body_template', 'is_enabled'];
+        'frequency', 'mailbox_source', 'sender_mailbox_email', 'email_subject_template', 'email_body_template', 
+        'is_enabled', 'report_type', 'audience_segment', 'content_rotation_enabled', 'rotation_sequence', 'current_rotation_index'];
       
       for (const field of allowedFields) {
         if (data?.[field] !== undefined) updateData[field] = data[field];
@@ -234,18 +238,33 @@ serve(async (req) => {
 
       for (const schedule of schedulesToProcess) {
         try {
-          const result = await processScheduleDispatch(supabase, supabaseUrl, supabaseServiceKey, supabaseAnonKey, schedule);
+          // Determine report type — handle content rotation
+          let reportType = schedule.report_type || 'full';
+          const audienceSegment = schedule.audience_segment || 'general';
+
+          if (schedule.content_rotation_enabled && schedule.rotation_sequence?.length > 0) {
+            const idx = schedule.current_rotation_index || 0;
+            reportType = schedule.rotation_sequence[idx % schedule.rotation_sequence.length];
+            console.log(`[dispatch] Rotation: index=${idx}, type=${reportType}`);
+          }
+
+          const result = await processScheduleDispatch(supabase, supabaseUrl, supabaseServiceKey, supabaseAnonKey, schedule, reportType, audienceSegment);
           totalSent += result.sent;
           totalFailed += result.failed;
 
-          // Update schedule timestamps
-          const nextScheduled = calculateNextScheduledAt(schedule.frequency);
+          // Update schedule timestamps + rotation index
+          const updatePayload: Record<string, any> = {
+            last_sent_at: new Date().toISOString(),
+            next_scheduled_at: calculateNextScheduledAt(schedule.frequency),
+          };
+
+          if (schedule.content_rotation_enabled && schedule.rotation_sequence?.length > 0) {
+            updatePayload.current_rotation_index = ((schedule.current_rotation_index || 0) + 1) % schedule.rotation_sequence.length;
+          }
+
           await supabase
             .from('marketing_report_schedules')
-            .update({
-              last_sent_at: new Date().toISOString(),
-              next_scheduled_at: nextScheduled,
-            })
+            .update(updatePayload)
             .eq('id', schedule.id);
 
         } catch (err) {
@@ -281,12 +300,14 @@ async function processScheduleDispatch(
   supabaseUrl: string,
   serviceKey: string,
   anonKey: string,
-  schedule: any
+  schedule: any,
+  reportType: string,
+  audienceSegment: string
 ): Promise<{ sent: number; failed: number }> {
-  console.log(`[dispatch] Processing schedule: ${schedule.name} (${schedule.id})`);
+  console.log(`[dispatch] Processing schedule: ${schedule.name} (${schedule.id}), type=${reportType}, audience=${audienceSegment}`);
 
-  // Step 1: Get or generate a fresh report
-  const report = await getOrGenerateReport(supabase, supabaseUrl, serviceKey, anonKey);
+  // Step 1: Get or generate a fresh report with the correct type/audience
+  const report = await getOrGenerateReport(supabase, supabaseUrl, serviceKey, anonKey, reportType, audienceSegment);
   if (!report) throw new Error('Failed to get/generate market intelligence report');
 
   // Step 2: Download the PDF from storage
@@ -380,13 +401,15 @@ async function processScheduleDispatch(
 
 // ─── Report Management ──────────────────────────────────────────────────────
 
-async function getOrGenerateReport(supabase: any, supabaseUrl: string, serviceKey: string, anonKey: string): Promise<any> {
-  // Check for a recent report (< 24h old)
+async function getOrGenerateReport(supabase: any, supabaseUrl: string, serviceKey: string, anonKey: string, reportType: string, audienceSegment: string): Promise<any> {
+  // Check for a recent report with matching type/audience (< 24h old)
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   const { data: recentReport } = await supabase
     .from('marketing_intelligence_reports')
     .select('*')
     .eq('status', 'completed')
+    .eq('report_type', reportType)
+    .eq('audience_segment', audienceSegment)
     .gte('created_at', oneDayAgo)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -397,8 +420,8 @@ async function getOrGenerateReport(supabase: any, supabaseUrl: string, serviceKe
     return recentReport;
   }
 
-  // Generate a new report
-  console.log('[dispatch] No recent report found, generating new one...');
+  // Generate a new report with the specified type and audience
+  console.log(`[dispatch] Generating new ${reportType} report for ${audienceSegment}...`);
   
   const genResponse = await fetch(`${supabaseUrl.trim()}/functions/v1/generate-market-intelligence-report`, {
     method: 'POST',
@@ -407,7 +430,10 @@ async function getOrGenerateReport(supabase: any, supabaseUrl: string, serviceKe
       'Authorization': `Bearer ${serviceKey.trim()}`,
       'apikey': anonKey.trim(),
     },
-    body: JSON.stringify({}),
+    body: JSON.stringify({
+      report_type: reportType,
+      audience_segment: audienceSegment,
+    }),
   });
 
   if (!genResponse.ok) {
