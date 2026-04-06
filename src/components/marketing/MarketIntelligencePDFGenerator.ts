@@ -1019,7 +1019,7 @@ class MarketIntelPDFBuilder {
 
     // CTA Section
     if (layers.includes('cta') && data.ctaContent) {
-      this.drawCTASection(data.ctaContent);
+      this.drawCTASection(stripDuplicateNPCTagline(data.ctaContent));
     }
 
     // Citations
