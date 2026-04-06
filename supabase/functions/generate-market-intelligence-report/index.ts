@@ -294,26 +294,32 @@ Use the most recent ABS, RBA, APRA, and Treasury data. Cite publication dates. D
 
 async function fetchLayer7_Micro(perplexityKey: string, audiencePrompt: string): Promise<PerplexityResult> {
   return queryPerplexity(
-    `Identify the TOP 5 highest-performing suburbs or corridors in Australia right now for property investment. For EACH suburb provide:
+    `Identify the TOP 5 highest-performing suburbs or corridors in Australia right now for property investment.
+
+CRITICAL REQUIREMENTS:
+- You MUST select suburbs from at least 3 DIFFERENT STATES to provide national diversity (e.g. NSW, VIC, QLD, WA, SA).
+- Do NOT select more than 2 suburbs from the same state.
+- Use ONLY aggregate/median data from published sources. NEVER cite specific street addresses, specific property sales, or individual transaction prices — these cannot be verified and damage credibility.
+
+For EACH suburb provide:
 
 1. **Suburb Name & State** — exact location and postcode
-2. **Median House Price** — current median and 12-month change (%)
+2. **Median House Price** — current median from CoreLogic/PropTrack and 12-month change (%)
 3. **Rental Yield** — current gross rental yield for houses and units
 4. **Days on Market** — average DOM and whether it's tightening or loosening
 5. **Vacancy Rate** — current rate from SQM Research or similar
 6. **Growth Drivers** — infrastructure projects, transport links, employment hubs, amenities driving demand
 7. **Supply-Demand Balance** — new listings vs buyer demand, development pipeline, DSR (demand-to-supply ratio) where available
-8. **Comparable Sales** — 2-3 recent sale examples with prices
-9. **Rental Performance** — median weekly rent and 12-month rental growth
-10. **Entry Strategy** — recommended approach for entering this market
+8. **Rental Performance** — median weekly rent and 12-month rental growth
+9. **Entry Strategy** — recommended approach for entering this market
 
 Also identify 3 emerging corridors showing early-stage growth signals (price momentum beginning, infrastructure announced, rezoning underway).
 
 ${audiencePrompt}
 
-Use data from CoreLogic, PropTrack, Domain, SQM Research, Microburbs, and government infrastructure databases. Prioritise suburbs showing BOTH capital growth AND rental yield strength. Do NOT include any "Data Limitations" section.`,
+Use data from CoreLogic, PropTrack, Domain, SQM Research, Microburbs, and government infrastructure databases. Prioritise suburbs showing BOTH capital growth AND rental yield strength. Do NOT include any "Data Limitations" section. Do NOT cite individual property addresses or sale prices — use only median/aggregate suburb-level statistics.`,
     perplexityKey,
-    'You are a senior Australian property market analyst specialising in suburb-level intelligence. Provide granular, data-backed suburb analysis that helps investors identify specific opportunities. Always cite sources and use specific numbers. Never include "Data Limitations" disclaimers — only present the data you have.'
+    'You are a senior Australian property market analyst specialising in suburb-level intelligence. Provide granular, data-backed suburb analysis using ONLY published aggregate/median statistics from authoritative sources. NEVER fabricate or cite specific property addresses, individual sale prices, or comparable sales with street addresses — only use suburb-level median data. Always cite sources and use specific numbers. Never include "Data Limitations" disclaimers — only present the data you have.'
   );
 }
 
