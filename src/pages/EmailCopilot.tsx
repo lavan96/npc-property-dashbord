@@ -1676,9 +1676,21 @@ export default function EmailCopilot() {
       )}
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden relative">
+      <div className="flex-1 flex overflow-hidden relative"
+        onMouseMove={(e) => {
+          if (!isDraggingRef.current) return;
+          const delta = e.clientX - dragStartXRef.current;
+          const newWidth = Math.min(600, Math.max(280, dragStartWidthRef.current + delta));
+          setListPanelWidth(newWidth);
+        }}
+        onMouseUp={() => { isDraggingRef.current = false; }}
+        onMouseLeave={() => { isDraggingRef.current = false; }}
+      >
         {/* Email List Panel - full width on mobile, hidden when detail shown */}
-        <div className={`${isMobile ? 'w-full' : 'w-[380px] min-w-[280px] max-w-[600px]'} border-r flex flex-col bg-background ${isMobile && showMobileDetail ? 'hidden' : ''} ${!isMobile ? 'resize-x overflow-auto' : ''}`} style={!isMobile ? { resize: 'horizontal' } : undefined}>
+        <div 
+          className={`${isMobile ? 'w-full' : ''} border-r flex flex-col bg-background ${isMobile && showMobileDetail ? 'hidden' : ''}`}
+          style={!isMobile ? { width: listPanelWidth, minWidth: 280, maxWidth: 600, flexShrink: 0 } : undefined}
+        >
           {/* Inbox/Sent Tabs */}
           <div className="px-3 pt-3 border-b">
             <div className="flex gap-1 bg-muted rounded-lg p-1 mb-3">
