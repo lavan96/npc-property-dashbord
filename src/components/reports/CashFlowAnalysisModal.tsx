@@ -22,7 +22,7 @@ import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { secureStorageUpload } from '@/hooks/useSecureStorage';
 import { SendToClientModal } from '@/components/reports/SendToClientModal';
 import { Calculator, Download, TrendingUp, DollarSign, Percent, Home, Save, RotateCcw, BarChart3, Image, GitCompare, X, FileText, Target, Zap, Building, Award, Printer, ChevronDown, ChevronRight, Send } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { ComposedChart, LineChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -202,6 +202,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
     equity: true,
     rentalIncome: true,
     cashFlow: true,
+    loanBalance: true,
   });
   
   // Per-year overrides state (years 2-10)
@@ -3731,55 +3732,27 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                     10-Year Cash Flow Trends
                   </CardTitle>
                   <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-3 text-xs">
-                      <label className="flex items-center gap-1.5 cursor-pointer">
-                        <input 
-                          type="checkbox" 
-                          checked={chartMetrics.propertyValue}
-                          onChange={(e) => setChartMetrics(prev => ({ ...prev, propertyValue: e.target.checked }))}
-                          className="rounded border-border"
-                        />
-                        <span className="flex items-center gap-1">
-                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'hsl(var(--primary))' }} />
-                          Property Value
-                        </span>
-                      </label>
-                      <label className="flex items-center gap-1.5 cursor-pointer">
-                        <input 
-                          type="checkbox" 
-                          checked={chartMetrics.equity}
-                          onChange={(e) => setChartMetrics(prev => ({ ...prev, equity: e.target.checked }))}
-                          className="rounded border-border"
-                        />
-                        <span className="flex items-center gap-1">
-                          <span className="w-2 h-2 rounded-full bg-green-500" />
-                          Equity
-                        </span>
-                      </label>
-                      <label className="flex items-center gap-1.5 cursor-pointer">
-                        <input 
-                          type="checkbox" 
-                          checked={chartMetrics.rentalIncome}
-                          onChange={(e) => setChartMetrics(prev => ({ ...prev, rentalIncome: e.target.checked }))}
-                          className="rounded border-border"
-                        />
-                        <span className="flex items-center gap-1">
-                          <span className="w-2 h-2 rounded-full bg-amber-500" />
-                          Rental Income
-                        </span>
-                      </label>
-                      <label className="flex items-center gap-1.5 cursor-pointer">
-                        <input 
-                          type="checkbox" 
-                          checked={chartMetrics.cashFlow}
-                          onChange={(e) => setChartMetrics(prev => ({ ...prev, cashFlow: e.target.checked }))}
-                          className="rounded border-border"
-                        />
-                        <span className="flex items-center gap-1">
-                          <span className="w-2 h-2 rounded-full bg-violet-500" />
-                          Cash Flow
-                        </span>
-                      </label>
+                    <div className="flex items-center gap-3 text-xs flex-wrap">
+                      {[
+                        { key: 'propertyValue' as const, label: 'Property Value', color: 'hsl(var(--primary))' },
+                        { key: 'equity' as const, label: 'Equity', color: '#22c55e' },
+                        { key: 'loanBalance' as const, label: 'Loan Balance', color: '#ef4444' },
+                        { key: 'rentalIncome' as const, label: 'Rental Income', color: '#f59e0b' },
+                        { key: 'cashFlow' as const, label: 'Cash Flow', color: '#8b5cf6' },
+                      ].map(({ key, label, color }) => (
+                        <label key={key} className="flex items-center gap-1.5 cursor-pointer">
+                          <input 
+                            type="checkbox" 
+                            checked={chartMetrics[key]}
+                            onChange={(e) => setChartMetrics(prev => ({ ...prev, [key]: e.target.checked }))}
+                            className="rounded border-border"
+                          />
+                          <span className="flex items-center gap-1">
+                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
+                            {label}
+                          </span>
+                        </label>
+                      ))}
                     </div>
                     <Button
                       variant="ghost"
@@ -3793,129 +3766,284 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                 </div>
               </CardHeader>
               <CardContent>
-                <div ref={cashFlowChartRef} className="h-[340px] w-full bg-background p-2">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart
-                      data={projections.filter(p => p.year >= 1).map(p => ({
-                        year: `Yr ${p.year}`,
-                        'Property Value': p.propertyMarketValue,
-                        'Rental Income': p.rentalIncome,
-                        'Cash Flow (After Tax)': p.afterTaxCashFlowPA,
-                        'Equity': p.equityInProperty,
-                      }))}
-                      margin={{ top: 10, right: 30, left: 20, bottom: 10 }}
-                    >
-                      <defs>
-                        <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.1}/>
-                          <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
-                      <XAxis 
-                        dataKey="year" 
-                        tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
-                        axisLine={{ stroke: 'hsl(var(--border))' }}
-                        tickLine={false}
-                      />
-                      <YAxis 
-                        tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} 
-                        tickFormatter={(value) => {
-                          if (Math.abs(value) >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
-                          if (Math.abs(value) >= 1000) return `$${(value / 1000).toFixed(0)}K`;
-                          return `$${value}`;
-                        }}
-                        axisLine={false}
-                        tickLine={false}
-                      />
-                      <Tooltip 
-                        formatter={(value: number, name: string) => [`$${value.toLocaleString()}`, name]}
-                        contentStyle={{ 
-                          backgroundColor: 'hsl(var(--popover))', 
-                          border: '1px solid hsl(var(--border))',
-                          borderRadius: '8px',
-                          fontSize: '12px',
-                          boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
-                        }}
-                        labelStyle={{ fontWeight: 600, marginBottom: 4 }}
-                      />
-                      <Legend 
-                        wrapperStyle={{ fontSize: '11px', paddingTop: '12px' }}
-                        iconType="circle"
-                        iconSize={8}
-                      />
-                      {chartMetrics.propertyValue && (
-                        <Line 
-                          type="monotone" 
-                          dataKey="Property Value" 
-                          stroke="hsl(var(--primary))" 
-                          strokeWidth={2.5}
-                          dot={{ r: 4, fill: 'hsl(var(--primary))', strokeWidth: 0 }}
-                          activeDot={{ r: 6, strokeWidth: 2, stroke: 'hsl(var(--background))' }}
-                        />
-                      )}
-                      {chartMetrics.equity && (
-                        <Line 
-                          type="monotone" 
-                          dataKey="Equity" 
-                          stroke="#22c55e" 
-                          strokeWidth={2.5}
-                          dot={{ r: 4, fill: '#22c55e', strokeWidth: 0 }}
-                          activeDot={{ r: 6, strokeWidth: 2, stroke: 'hsl(var(--background))' }}
-                        />
-                      )}
-                      {chartMetrics.rentalIncome && (
-                        <Line 
-                          type="monotone" 
-                          dataKey="Rental Income" 
-                          stroke="#f59e0b" 
-                          strokeWidth={2}
-                          strokeDasharray="6 3"
-                          dot={{ r: 3, fill: '#f59e0b', strokeWidth: 0 }}
-                          activeDot={{ r: 5, strokeWidth: 2, stroke: 'hsl(var(--background))' }}
-                        />
-                      )}
-                      {chartMetrics.cashFlow && (
-                        <Line 
-                          type="monotone" 
-                          dataKey="Cash Flow (After Tax)" 
-                          stroke="#8b5cf6" 
-                          strokeWidth={2}
-                          strokeDasharray="6 3"
-                          dot={{ r: 3, fill: '#8b5cf6', strokeWidth: 0 }}
-                          activeDot={{ r: 5, strokeWidth: 2, stroke: 'hsl(var(--background))' }}
-                        />
-                      )}
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-                {/* Summary row under chart */}
-                {projections.length > 1 && (() => {
-                  const yr1 = projections.find(p => p.year === 1);
-                  const yr10 = projections.find(p => p.year === 10);
-                  if (!yr1 || !yr10) return null;
-                  const totalGrowth = yr1.propertyMarketValue > 0 
-                    ? (((yr10.propertyMarketValue - yr1.propertyMarketValue) / yr1.propertyMarketValue) * 100).toFixed(1) 
-                    : '0';
+                {(() => {
+                  const chartData = projections.filter(p => p.year >= 1).map((p, i, arr) => {
+                    const prev = i > 0 ? arr[i - 1] : null;
+                    return {
+                      year: `Yr ${p.year}`,
+                      'Property Value': p.propertyMarketValue,
+                      'Rental Income': p.rentalIncome,
+                      'Cash Flow (After Tax)': p.afterTaxCashFlowPA,
+                      'Equity': p.equityInProperty,
+                      'Loan Balance': p.loanAmount,
+                      _yoy_propertyValue: prev ? ((p.propertyMarketValue - prev.propertyMarketValue) / prev.propertyMarketValue * 100) : 0,
+                      _yoy_equity: prev ? ((p.equityInProperty - prev.equityInProperty) / (prev.equityInProperty || 1) * 100) : 0,
+                      _yoy_rental: prev ? ((p.rentalIncome - prev.rentalIncome) / (prev.rentalIncome || 1) * 100) : 0,
+                      _yoy_cashFlow: prev ? (p.afterTaxCashFlowPA - prev.afterTaxCashFlowPA) : 0,
+                    };
+                  });
+
+                  // Find break-even year (cash flow turns positive)
+                  const breakEvenYear = projections.filter(p => p.year >= 1).find((p, i, arr) => {
+                    if (i === 0) return p.afterTaxCashFlowPA >= 0;
+                    return arr[i - 1].afterTaxCashFlowPA < 0 && p.afterTaxCashFlowPA >= 0;
+                  });
+
+                  // Find equity-debt crossover
+                  const crossoverYear = projections.filter(p => p.year >= 1).find(p => p.equityInProperty >= p.loanAmount);
+
                   return (
-                    <div className="grid grid-cols-4 gap-2 mt-3 pt-3 border-t text-center">
-                      <div>
-                        <p className="text-xs text-muted-foreground">Yr 1 Value</p>
-                        <p className="text-sm font-semibold">${yr1.propertyMarketValue.toLocaleString()}</p>
+                    <>
+                      <div ref={cashFlowChartRef} className="h-[380px] w-full bg-background p-2">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <ComposedChart
+                            data={chartData}
+                            margin={{ top: 10, right: 30, left: 20, bottom: 10 }}
+                          >
+                            <defs>
+                              <linearGradient id="fillPropertyValue" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.15}/>
+                                <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                              </linearGradient>
+                              <linearGradient id="fillEquity" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#22c55e" stopOpacity={0.15}/>
+                                <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
+                            <XAxis 
+                              dataKey="year" 
+                              tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                              axisLine={{ stroke: 'hsl(var(--border))' }}
+                              tickLine={false}
+                            />
+                            <YAxis 
+                              tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} 
+                              tickFormatter={(value) => {
+                                if (Math.abs(value) >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
+                                if (Math.abs(value) >= 1000) return `$${(value / 1000).toFixed(0)}K`;
+                                return `$${value}`;
+                              }}
+                              axisLine={false}
+                              tickLine={false}
+                            />
+                            <Tooltip 
+                              content={({ active, payload, label }) => {
+                                if (!active || !payload?.length) return null;
+                                return (
+                                  <div className="bg-popover border border-border rounded-lg p-3 shadow-lg text-xs space-y-1.5">
+                                    <p className="font-semibold text-sm mb-2">{label}</p>
+                                    {payload.map((entry: any, idx: number) => {
+                                      const yoyKey = entry.dataKey === 'Property Value' ? '_yoy_propertyValue' :
+                                        entry.dataKey === 'Equity' ? '_yoy_equity' :
+                                        entry.dataKey === 'Rental Income' ? '_yoy_rental' : null;
+                                      const yoyVal = yoyKey ? entry.payload?.[yoyKey] : null;
+                                      return (
+                                        <div key={idx} className="flex items-center justify-between gap-4">
+                                          <span className="flex items-center gap-1.5">
+                                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
+                                            {entry.name}
+                                          </span>
+                                          <span className="font-medium">
+                                            ${Number(entry.value).toLocaleString()}
+                                            {yoyVal !== null && yoyVal !== 0 && (
+                                              <span className={`ml-1.5 ${yoyVal > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                                {yoyVal > 0 ? '↑' : '↓'}{Math.abs(yoyVal).toFixed(1)}%
+                                              </span>
+                                            )}
+                                          </span>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                );
+                              }}
+                            />
+                            <Legend 
+                              wrapperStyle={{ fontSize: '11px', paddingTop: '12px' }}
+                              iconType="circle"
+                              iconSize={8}
+                            />
+                            {/* Break-even vertical line */}
+                            {chartMetrics.cashFlow && breakEvenYear && (
+                              <ReferenceLine 
+                                x={`Yr ${breakEvenYear.year}`} 
+                                stroke="#22c55e" 
+                                strokeDasharray="4 4" 
+                                strokeWidth={1.5}
+                                label={{ 
+                                  value: `Break-even: Yr ${breakEvenYear.year}`, 
+                                  position: 'top', 
+                                  fontSize: 10, 
+                                  fill: '#22c55e',
+                                  fontWeight: 600
+                                }}
+                              />
+                            )}
+                            {/* Crossover annotation */}
+                            {chartMetrics.equity && chartMetrics.loanBalance && crossoverYear && (
+                              <ReferenceLine 
+                                x={`Yr ${crossoverYear.year}`} 
+                                stroke="#06b6d4" 
+                                strokeDasharray="4 4" 
+                                strokeWidth={1.5}
+                                label={{ 
+                                  value: `Equity > Debt: Yr ${crossoverYear.year}`, 
+                                  position: 'insideTopRight', 
+                                  fontSize: 10, 
+                                  fill: '#06b6d4',
+                                  fontWeight: 600
+                                }}
+                              />
+                            )}
+                            {/* Area fills */}
+                            {chartMetrics.propertyValue && (
+                              <Area type="monotone" dataKey="Property Value" fill="url(#fillPropertyValue)" stroke="none" />
+                            )}
+                            {chartMetrics.equity && (
+                              <Area type="monotone" dataKey="Equity" fill="url(#fillEquity)" stroke="none" />
+                            )}
+                            {/* Lines */}
+                            {chartMetrics.propertyValue && (
+                              <Line 
+                                type="monotone" 
+                                dataKey="Property Value" 
+                                stroke="hsl(var(--primary))" 
+                                strokeWidth={2.5}
+                                dot={{ r: 4, fill: 'hsl(var(--primary))', strokeWidth: 0 }}
+                                activeDot={{ r: 6, strokeWidth: 2, stroke: 'hsl(var(--background))' }}
+                              />
+                            )}
+                            {chartMetrics.equity && (
+                              <Line 
+                                type="monotone" 
+                                dataKey="Equity" 
+                                stroke="#22c55e" 
+                                strokeWidth={2.5}
+                                dot={{ r: 4, fill: '#22c55e', strokeWidth: 0 }}
+                                activeDot={{ r: 6, strokeWidth: 2, stroke: 'hsl(var(--background))' }}
+                              />
+                            )}
+                            {chartMetrics.loanBalance && (
+                              <Line 
+                                type="monotone" 
+                                dataKey="Loan Balance" 
+                                stroke="#ef4444" 
+                                strokeWidth={2}
+                                strokeDasharray="8 4"
+                                dot={{ r: 3, fill: '#ef4444', strokeWidth: 0 }}
+                                activeDot={{ r: 5, strokeWidth: 2, stroke: 'hsl(var(--background))' }}
+                              />
+                            )}
+                            {chartMetrics.rentalIncome && (
+                              <Line 
+                                type="monotone" 
+                                dataKey="Rental Income" 
+                                stroke="#f59e0b" 
+                                strokeWidth={2}
+                                strokeDasharray="6 3"
+                                dot={{ r: 3, fill: '#f59e0b', strokeWidth: 0 }}
+                                activeDot={{ r: 5, strokeWidth: 2, stroke: 'hsl(var(--background))' }}
+                              />
+                            )}
+                            {chartMetrics.cashFlow && (
+                              <Line 
+                                type="monotone" 
+                                dataKey="Cash Flow (After Tax)" 
+                                stroke="#8b5cf6" 
+                                strokeWidth={2}
+                                strokeDasharray="6 3"
+                                dot={{ r: 3, fill: '#8b5cf6', strokeWidth: 0 }}
+                                activeDot={{ r: 5, strokeWidth: 2, stroke: 'hsl(var(--background))' }}
+                              />
+                            )}
+                          </ComposedChart>
+                        </ResponsiveContainer>
                       </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Yr 10 Value</p>
-                        <p className="text-sm font-semibold">${yr10.propertyMarketValue.toLocaleString()}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Total Growth</p>
-                        <p className="text-sm font-semibold text-green-500">{totalGrowth}%</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Yr 10 Equity</p>
-                        <p className="text-sm font-semibold">${yr10.equityInProperty.toLocaleString()}</p>
-                      </div>
-                    </div>
+                      {/* Sparkline KPI Cards */}
+                      {projections.length > 1 && (() => {
+                        const yr1 = projections.find(p => p.year === 1);
+                        const yr10 = projections.find(p => p.year === 10);
+                        if (!yr1 || !yr10) return null;
+                        const totalGrowth = yr1.propertyMarketValue > 0 
+                          ? (((yr10.propertyMarketValue - yr1.propertyMarketValue) / yr1.propertyMarketValue) * 100).toFixed(1) 
+                          : '0';
+                        const values = projections.filter(p => p.year >= 1);
+                        
+                        const kpis = [
+                          { 
+                            label: 'Property Value', 
+                            yr1: `$${yr1.propertyMarketValue.toLocaleString()}`, 
+                            yr10: `$${yr10.propertyMarketValue.toLocaleString()}`,
+                            change: `+${totalGrowth}%`,
+                            positive: true,
+                            sparkData: values.map(v => v.propertyMarketValue),
+                            color: 'hsl(var(--primary))'
+                          },
+                          { 
+                            label: 'Equity', 
+                            yr1: `$${yr1.equityInProperty.toLocaleString()}`, 
+                            yr10: `$${yr10.equityInProperty.toLocaleString()}`,
+                            change: `+$${(yr10.equityInProperty - yr1.equityInProperty).toLocaleString()}`,
+                            positive: true,
+                            sparkData: values.map(v => v.equityInProperty),
+                            color: '#22c55e'
+                          },
+                          { 
+                            label: 'Loan Balance', 
+                            yr1: `$${yr1.loanAmount.toLocaleString()}`, 
+                            yr10: `$${yr10.loanAmount.toLocaleString()}`,
+                            change: `-$${(yr1.loanAmount - yr10.loanAmount).toLocaleString()}`,
+                            positive: yr10.loanAmount < yr1.loanAmount,
+                            sparkData: values.map(v => v.loanAmount),
+                            color: '#ef4444'
+                          },
+                          { 
+                            label: 'Cash Flow', 
+                            yr1: `$${yr1.afterTaxCashFlowPA.toLocaleString()}`, 
+                            yr10: `$${yr10.afterTaxCashFlowPA.toLocaleString()}`,
+                            change: yr10.afterTaxCashFlowPA >= 0 ? 'Positive' : 'Negative',
+                            positive: yr10.afterTaxCashFlowPA >= 0,
+                            sparkData: values.map(v => v.afterTaxCashFlowPA),
+                            color: '#8b5cf6'
+                          },
+                        ];
+
+                        return (
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3 pt-3 border-t">
+                            {kpis.map(kpi => {
+                              const min = Math.min(...kpi.sparkData);
+                              const max = Math.max(...kpi.sparkData);
+                              const range = max - min || 1;
+                              const points = kpi.sparkData.map((v, i) => 
+                                `${(i / (kpi.sparkData.length - 1)) * 60},${24 - ((v - min) / range) * 20}`
+                              ).join(' ');
+                              return (
+                                <div key={kpi.label} className="bg-muted/40 rounded-lg p-2.5 space-y-1">
+                                  <p className="text-[10px] text-muted-foreground font-medium">{kpi.label}</p>
+                                  <div className="flex items-end justify-between">
+                                    <div>
+                                      <p className="text-xs font-bold">{kpi.yr10}</p>
+                                      <p className={`text-[10px] font-semibold ${kpi.positive ? 'text-green-500' : 'text-red-500'}`}>
+                                        {kpi.change}
+                                      </p>
+                                    </div>
+                                    <svg width="60" height="24" className="opacity-60">
+                                      <polyline
+                                        fill="none"
+                                        stroke={kpi.color}
+                                        strokeWidth="1.5"
+                                        points={points}
+                                      />
+                                    </svg>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
+                    </>
                   );
                 })()}
               </CardContent>
@@ -3940,89 +4068,175 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                 </div>
               </CardHeader>
               <CardContent>
-                <div ref={yieldChartRef} className="h-[260px] w-full bg-background p-2">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart
-                      data={projections.filter(p => p.year >= 1).map(p => ({
-                        year: `Yr ${p.year}`,
-                        'Gross Yield %': p.grossYield,
-                        'Net Yield %': p.netYield,
-                      }))}
-                      margin={{ top: 10, right: 30, left: 20, bottom: 10 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
-                      <XAxis 
-                        dataKey="year" 
-                        tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
-                        axisLine={{ stroke: 'hsl(var(--border))' }}
-                        tickLine={false}
-                      />
-                      <YAxis 
-                        tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} 
-                        tickFormatter={(value) => `${value}%`}
-                        domain={['auto', 'auto']}
-                        axisLine={false}
-                        tickLine={false}
-                      />
-                      <Tooltip 
-                        formatter={(value: number, name: string) => [`${value.toFixed(2)}%`, name]}
-                        contentStyle={{ 
-                          backgroundColor: 'hsl(var(--popover))', 
-                          border: '1px solid hsl(var(--border))',
-                          borderRadius: '8px',
-                          fontSize: '12px',
-                          boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
-                        }}
-                        labelStyle={{ fontWeight: 600, marginBottom: 4 }}
-                      />
-                      <Legend 
-                        wrapperStyle={{ fontSize: '11px', paddingTop: '12px' }}
-                        iconType="circle"
-                        iconSize={8}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="Gross Yield %" 
-                        stroke="#06b6d4" 
-                        strokeWidth={2.5}
-                        dot={{ r: 4, fill: '#06b6d4', strokeWidth: 0 }}
-                        activeDot={{ r: 6, strokeWidth: 2, stroke: 'hsl(var(--background))' }}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="Net Yield %" 
-                        stroke="#ec4899" 
-                        strokeWidth={2.5}
-                        dot={{ r: 4, fill: '#ec4899', strokeWidth: 0 }}
-                        activeDot={{ r: 6, strokeWidth: 2, stroke: 'hsl(var(--background))' }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-                {/* Yield summary */}
-                {projections.length > 1 && (() => {
-                  const yr1 = projections.find(p => p.year === 1);
-                  const yr10 = projections.find(p => p.year === 10);
-                  if (!yr1 || !yr10) return null;
+                {(() => {
+                  const yieldData = projections.filter(p => p.year >= 1).map((p, i, arr) => {
+                    const prev = i > 0 ? arr[i - 1] : null;
+                    return {
+                      year: `Yr ${p.year}`,
+                      'Gross Yield %': p.grossYield,
+                      'Net Yield %': p.netYield,
+                      'Expense Spread': p.grossYield - p.netYield,
+                      _yoy_gross: prev ? (p.grossYield - prev.grossYield) : 0,
+                      _yoy_net: prev ? (p.netYield - prev.netYield) : 0,
+                    };
+                  });
+
                   return (
-                    <div className="grid grid-cols-4 gap-2 mt-3 pt-3 border-t text-center">
-                      <div>
-                        <p className="text-xs text-muted-foreground">Yr 1 Gross</p>
-                        <p className="text-sm font-semibold">{yr1.grossYield.toFixed(2)}%</p>
+                    <>
+                      <div ref={yieldChartRef} className="h-[280px] w-full bg-background p-2">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <ComposedChart
+                            data={yieldData}
+                            margin={{ top: 10, right: 30, left: 20, bottom: 10 }}
+                          >
+                            <defs>
+                              <linearGradient id="yieldSpread" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.12}/>
+                                <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.03}/>
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
+                            <XAxis 
+                              dataKey="year" 
+                              tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                              axisLine={{ stroke: 'hsl(var(--border))' }}
+                              tickLine={false}
+                            />
+                            <YAxis 
+                              tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} 
+                              tickFormatter={(value) => `${value}%`}
+                              domain={['auto', 'auto']}
+                              axisLine={false}
+                              tickLine={false}
+                            />
+                            <Tooltip 
+                              content={({ active, payload, label }) => {
+                                if (!active || !payload?.length) return null;
+                                const gross = payload.find((p: any) => p.dataKey === 'Gross Yield %');
+                                const net = payload.find((p: any) => p.dataKey === 'Net Yield %');
+                                const yoyGross = gross?.payload?._yoy_gross;
+                                const yoyNet = net?.payload?._yoy_net;
+                                const spread = gross && net ? (Number(gross.value) - Number(net.value)).toFixed(2) : '0';
+                                return (
+                                  <div className="bg-popover border border-border rounded-lg p-3 shadow-lg text-xs space-y-1.5">
+                                    <p className="font-semibold text-sm mb-2">{label}</p>
+                                    {gross && (
+                                      <div className="flex items-center justify-between gap-4">
+                                        <span className="flex items-center gap-1.5">
+                                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#06b6d4' }} />
+                                          Gross Yield
+                                        </span>
+                                        <span className="font-medium">
+                                          {Number(gross.value).toFixed(2)}%
+                                          {yoyGross !== 0 && (
+                                            <span className={`ml-1.5 ${yoyGross > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                              {yoyGross > 0 ? '↑' : '↓'}{Math.abs(yoyGross).toFixed(2)}pp
+                                            </span>
+                                          )}
+                                        </span>
+                                      </div>
+                                    )}
+                                    {net && (
+                                      <div className="flex items-center justify-between gap-4">
+                                        <span className="flex items-center gap-1.5">
+                                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#ec4899' }} />
+                                          Net Yield
+                                        </span>
+                                        <span className="font-medium">
+                                          {Number(net.value).toFixed(2)}%
+                                          {yoyNet !== 0 && (
+                                            <span className={`ml-1.5 ${yoyNet > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                              {yoyNet > 0 ? '↑' : '↓'}{Math.abs(yoyNet).toFixed(2)}pp
+                                            </span>
+                                          )}
+                                        </span>
+                                      </div>
+                                    )}
+                                    <div className="flex items-center justify-between gap-4 pt-1 border-t border-border/50">
+                                      <span className="flex items-center gap-1.5">
+                                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#f59e0b' }} />
+                                        Expense Drag
+                                      </span>
+                                      <span className="font-medium text-amber-500">{spread}pp</span>
+                                    </div>
+                                  </div>
+                                );
+                              }}
+                            />
+                            <Legend 
+                              wrapperStyle={{ fontSize: '11px', paddingTop: '12px' }}
+                              iconType="circle"
+                              iconSize={8}
+                            />
+                            {/* Shaded spread band between gross and net */}
+                            <Area 
+                              type="monotone" 
+                              dataKey="Gross Yield %" 
+                              fill="url(#yieldSpread)" 
+                              stroke="none"
+                              legendType="none"
+                            />
+                            <Line 
+                              type="monotone" 
+                              dataKey="Gross Yield %" 
+                              stroke="#06b6d4" 
+                              strokeWidth={2.5}
+                              dot={{ r: 4, fill: '#06b6d4', strokeWidth: 0 }}
+                              activeDot={{ r: 6, strokeWidth: 2, stroke: 'hsl(var(--background))' }}
+                            />
+                            <Line 
+                              type="monotone" 
+                              dataKey="Net Yield %" 
+                              stroke="#ec4899" 
+                              strokeWidth={2.5}
+                              dot={{ r: 4, fill: '#ec4899', strokeWidth: 0 }}
+                              activeDot={{ r: 6, strokeWidth: 2, stroke: 'hsl(var(--background))' }}
+                            />
+                          </ComposedChart>
+                        </ResponsiveContainer>
                       </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Yr 10 Gross</p>
-                        <p className="text-sm font-semibold">{yr10.grossYield.toFixed(2)}%</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Yr 1 Net</p>
-                        <p className="text-sm font-semibold">{yr1.netYield.toFixed(2)}%</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Yr 10 Net</p>
-                        <p className="text-sm font-semibold">{yr10.netYield.toFixed(2)}%</p>
-                      </div>
-                    </div>
+                      {/* Yield summary with sparklines */}
+                      {projections.length > 1 && (() => {
+                        const yr1 = projections.find(p => p.year === 1);
+                        const yr10 = projections.find(p => p.year === 10);
+                        if (!yr1 || !yr10) return null;
+                        const values = projections.filter(p => p.year >= 1);
+                        const avgSpread = values.reduce((s, v) => s + (v.grossYield - v.netYield), 0) / values.length;
+                        
+                        const yieldKpis = [
+                          { label: 'Gross Yield', value: `${yr10.grossYield.toFixed(2)}%`, sub: `from ${yr1.grossYield.toFixed(2)}%`, sparkData: values.map(v => v.grossYield), color: '#06b6d4' },
+                          { label: 'Net Yield', value: `${yr10.netYield.toFixed(2)}%`, sub: `from ${yr1.netYield.toFixed(2)}%`, sparkData: values.map(v => v.netYield), color: '#ec4899' },
+                          { label: 'Avg Expense Drag', value: `${avgSpread.toFixed(2)}pp`, sub: 'Gross − Net spread', sparkData: values.map(v => v.grossYield - v.netYield), color: '#f59e0b' },
+                        ];
+
+                        return (
+                          <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t">
+                            {yieldKpis.map(kpi => {
+                              const min = Math.min(...kpi.sparkData);
+                              const max = Math.max(...kpi.sparkData);
+                              const range = max - min || 1;
+                              const points = kpi.sparkData.map((v, i) => 
+                                `${(i / (kpi.sparkData.length - 1)) * 60},${24 - ((v - min) / range) * 20}`
+                              ).join(' ');
+                              return (
+                                <div key={kpi.label} className="bg-muted/40 rounded-lg p-2.5 space-y-1">
+                                  <p className="text-[10px] text-muted-foreground font-medium">{kpi.label}</p>
+                                  <div className="flex items-end justify-between">
+                                    <div>
+                                      <p className="text-xs font-bold">{kpi.value}</p>
+                                      <p className="text-[10px] text-muted-foreground">{kpi.sub}</p>
+                                    </div>
+                                    <svg width="60" height="24" className="opacity-60">
+                                      <polyline fill="none" stroke={kpi.color} strokeWidth="1.5" points={points} />
+                                    </svg>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
+                    </>
                   );
                 })()}
               </CardContent>
@@ -4110,6 +4324,44 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
+                  
+                  {/* Winner Indicator Cards */}
+                  {(() => {
+                    const primaryAddr = report?.property_address.split(',')[0] || 'Primary';
+                    const allProps = [
+                      { name: primaryAddr, yr10Value: projections[10]?.propertyMarketValue || 0, yr10Equity: projections[10]?.equityInProperty || 0, yr10Yield: projections[10]?.grossYield || 0, totalCashFlow: projections.filter(p => p.year >= 1).reduce((s, p) => s + p.afterTaxCashFlowPA, 0), color: COMPARISON_COLORS[0].value },
+                      ...allComparisonProjections.map(({ report: cr, projections: cp }, idx) => ({
+                        name: cr.property_address.split(',')[0],
+                        yr10Value: cp[10]?.propertyMarketValue || 0,
+                        yr10Equity: cp[10]?.equityInProperty || 0,
+                        yr10Yield: cp[10]?.grossYield || 0,
+                        totalCashFlow: cp.filter((_: any, i: number) => i >= 1).reduce((s: number, p: any) => s + (p.afterTaxCashFlowPA || 0), 0),
+                        color: COMPARISON_COLORS[idx + 1]?.value || '#888',
+                      }))
+                    ];
+                    
+                    const categories = [
+                      { label: 'Highest Growth', icon: '📈', getValue: (p: any) => p.yr10Value, format: (v: number) => `$${v.toLocaleString()}` },
+                      { label: 'Most Equity', icon: '🏠', getValue: (p: any) => p.yr10Equity, format: (v: number) => `$${v.toLocaleString()}` },
+                      { label: 'Best Yield', icon: '💰', getValue: (p: any) => p.yr10Yield, format: (v: number) => `${v.toFixed(2)}%` },
+                      { label: 'Best Cash Flow', icon: '💵', getValue: (p: any) => p.totalCashFlow, format: (v: number) => `$${v.toLocaleString()}` },
+                    ];
+
+                    return (
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3 pt-3 border-t">
+                        {categories.map(cat => {
+                          const winner = [...allProps].sort((a, b) => cat.getValue(b) - cat.getValue(a))[0];
+                          return (
+                            <div key={cat.label} className="bg-muted/40 rounded-lg p-2.5 text-center space-y-1">
+                              <p className="text-[10px] text-muted-foreground font-medium">{cat.icon} {cat.label}</p>
+                              <p className="text-xs font-bold truncate" style={{ color: winner.color }}>{winner.name}</p>
+                              <p className="text-[10px] font-semibold text-green-500">{cat.format(cat.getValue(winner))}</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
                   
                   {/* Advanced Investment Metrics Comparison */}
                   <div className="mt-4 space-y-4">
