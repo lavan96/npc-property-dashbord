@@ -137,6 +137,12 @@ export default function Conversations() {
   const [selectedMailbox, setSelectedMailbox] = useState<string>('admin');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  
+  // Resizable panel state
+  const [convPanelWidth, setConvPanelWidth] = useState(360);
+  const isDraggingConvRef = useRef(false);
+  const dragStartXConvRef = useRef(0);
+  const dragStartWidthConvRef = useRef(360);
 
   // ── Sync from GHL API then refetch local data ──
   const handleSyncAndRefresh = async () => {
@@ -268,10 +274,25 @@ export default function Conversations() {
       if (data?.error) throw new Error(data.error);
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       setReplyText('');
       setEmailSubject('');
       toast.success('Message sent');
+      // Optimistically add the sent message to the cache so it appears immediately
+      queryClient.setQueryData(['conversation-messages', selectedId], (old: any) => {
+        if (!old) return old;
+        const optimisticMsg = {
+          id: `optimistic-${Date.now()}`,
+          conversation_id: selectedId,
+          body: variables.message,
+          direction: 'outbound',
+          message_type: variables.type,
+          date_added: new Date().toISOString(),
+          status: 'sent',
+        };
+        return { ...old, records: [...(old.records || []), optimisticMsg] };
+      });
+      // Also refetch to get the real server data
       queryClient.invalidateQueries({ queryKey: ['conversation-messages', selectedId] });
       refetchConversations();
     },
@@ -437,13 +458,22 @@ export default function Conversations() {
       </div>
 
       {/* Main content area */}
-      <div className="flex flex-1 min-h-0">
+      <div className="flex flex-1 min-h-0"
+        onMouseMove={(e) => {
+          if (!isDraggingConvRef.current) return;
+          const delta = e.clientX - dragStartXConvRef.current;
+          const newWidth = Math.min(550, Math.max(260, dragStartWidthConvRef.current + delta));
+          setConvPanelWidth(newWidth);
+        }}
+        onMouseUp={() => { isDraggingConvRef.current = false; }}
+        onMouseLeave={() => { isDraggingConvRef.current = false; }}
+      >
         {/* ─── LEFT PANEL: Conversation List ─── */}
         {showList && (
-          <div className={cn(
-            'flex flex-col border-r',
-            isMobile ? 'w-full' : 'w-[360px] shrink-0'
-          )}>
+          <div 
+            className={cn('flex flex-col border-r', isMobile && 'w-full')}
+            style={!isMobile ? { width: convPanelWidth, minWidth: 260, maxWidth: 550, flexShrink: 0 } : undefined}
+          >
             {/* Search & filter */}
             <div className="p-3 space-y-2 border-b shrink-0">
               <div className="relative">
@@ -541,6 +571,21 @@ export default function Conversations() {
                 </div>
               )}
             </ScrollArea>
+          </div>
+        )}
+
+        {/* Resizable Drag Handle */}
+        {!isMobile && showList && (
+          <div
+            className="w-1.5 hover:w-2 bg-transparent hover:bg-primary/20 cursor-col-resize transition-all flex-shrink-0 relative group"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              isDraggingConvRef.current = true;
+              dragStartXConvRef.current = e.clientX;
+              dragStartWidthConvRef.current = convPanelWidth;
+            }}
+          >
+            <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-0.5 bg-border group-hover:bg-primary/40 transition-colors" />
           </div>
         )}
 
@@ -740,7 +785,7 @@ export default function Conversations() {
                     disabled={!replyText.trim() || (replyChannel === 'email' && !emailSubject.trim())}
                     channel={replyChannel as 'sms' | 'email' | 'whatsapp'}
                     placeholder={`Type your ${replyChannel === 'sms' ? 'SMS' : replyChannel === 'whatsapp' ? 'WhatsApp' : 'email'} message...`}
-                    rows={replyChannel === 'email' ? 3 : 1}
+                    rows={replyChannel === 'email' ? 4 : 2}
                   />
                 </div>
               </>
