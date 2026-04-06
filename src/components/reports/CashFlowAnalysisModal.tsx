@@ -4068,89 +4068,175 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                 </div>
               </CardHeader>
               <CardContent>
-                <div ref={yieldChartRef} className="h-[260px] w-full bg-background p-2">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart
-                      data={projections.filter(p => p.year >= 1).map(p => ({
-                        year: `Yr ${p.year}`,
-                        'Gross Yield %': p.grossYield,
-                        'Net Yield %': p.netYield,
-                      }))}
-                      margin={{ top: 10, right: 30, left: 20, bottom: 10 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
-                      <XAxis 
-                        dataKey="year" 
-                        tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
-                        axisLine={{ stroke: 'hsl(var(--border))' }}
-                        tickLine={false}
-                      />
-                      <YAxis 
-                        tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} 
-                        tickFormatter={(value) => `${value}%`}
-                        domain={['auto', 'auto']}
-                        axisLine={false}
-                        tickLine={false}
-                      />
-                      <Tooltip 
-                        formatter={(value: number, name: string) => [`${value.toFixed(2)}%`, name]}
-                        contentStyle={{ 
-                          backgroundColor: 'hsl(var(--popover))', 
-                          border: '1px solid hsl(var(--border))',
-                          borderRadius: '8px',
-                          fontSize: '12px',
-                          boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
-                        }}
-                        labelStyle={{ fontWeight: 600, marginBottom: 4 }}
-                      />
-                      <Legend 
-                        wrapperStyle={{ fontSize: '11px', paddingTop: '12px' }}
-                        iconType="circle"
-                        iconSize={8}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="Gross Yield %" 
-                        stroke="#06b6d4" 
-                        strokeWidth={2.5}
-                        dot={{ r: 4, fill: '#06b6d4', strokeWidth: 0 }}
-                        activeDot={{ r: 6, strokeWidth: 2, stroke: 'hsl(var(--background))' }}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="Net Yield %" 
-                        stroke="#ec4899" 
-                        strokeWidth={2.5}
-                        dot={{ r: 4, fill: '#ec4899', strokeWidth: 0 }}
-                        activeDot={{ r: 6, strokeWidth: 2, stroke: 'hsl(var(--background))' }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-                {/* Yield summary */}
-                {projections.length > 1 && (() => {
-                  const yr1 = projections.find(p => p.year === 1);
-                  const yr10 = projections.find(p => p.year === 10);
-                  if (!yr1 || !yr10) return null;
+                {(() => {
+                  const yieldData = projections.filter(p => p.year >= 1).map((p, i, arr) => {
+                    const prev = i > 0 ? arr[i - 1] : null;
+                    return {
+                      year: `Yr ${p.year}`,
+                      'Gross Yield %': p.grossYield,
+                      'Net Yield %': p.netYield,
+                      'Expense Spread': p.grossYield - p.netYield,
+                      _yoy_gross: prev ? (p.grossYield - prev.grossYield) : 0,
+                      _yoy_net: prev ? (p.netYield - prev.netYield) : 0,
+                    };
+                  });
+
                   return (
-                    <div className="grid grid-cols-4 gap-2 mt-3 pt-3 border-t text-center">
-                      <div>
-                        <p className="text-xs text-muted-foreground">Yr 1 Gross</p>
-                        <p className="text-sm font-semibold">{yr1.grossYield.toFixed(2)}%</p>
+                    <>
+                      <div ref={yieldChartRef} className="h-[280px] w-full bg-background p-2">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <ComposedChart
+                            data={yieldData}
+                            margin={{ top: 10, right: 30, left: 20, bottom: 10 }}
+                          >
+                            <defs>
+                              <linearGradient id="yieldSpread" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.12}/>
+                                <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.03}/>
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
+                            <XAxis 
+                              dataKey="year" 
+                              tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                              axisLine={{ stroke: 'hsl(var(--border))' }}
+                              tickLine={false}
+                            />
+                            <YAxis 
+                              tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} 
+                              tickFormatter={(value) => `${value}%`}
+                              domain={['auto', 'auto']}
+                              axisLine={false}
+                              tickLine={false}
+                            />
+                            <Tooltip 
+                              content={({ active, payload, label }) => {
+                                if (!active || !payload?.length) return null;
+                                const gross = payload.find((p: any) => p.dataKey === 'Gross Yield %');
+                                const net = payload.find((p: any) => p.dataKey === 'Net Yield %');
+                                const yoyGross = gross?.payload?._yoy_gross;
+                                const yoyNet = net?.payload?._yoy_net;
+                                const spread = gross && net ? (Number(gross.value) - Number(net.value)).toFixed(2) : '0';
+                                return (
+                                  <div className="bg-popover border border-border rounded-lg p-3 shadow-lg text-xs space-y-1.5">
+                                    <p className="font-semibold text-sm mb-2">{label}</p>
+                                    {gross && (
+                                      <div className="flex items-center justify-between gap-4">
+                                        <span className="flex items-center gap-1.5">
+                                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#06b6d4' }} />
+                                          Gross Yield
+                                        </span>
+                                        <span className="font-medium">
+                                          {Number(gross.value).toFixed(2)}%
+                                          {yoyGross !== 0 && (
+                                            <span className={`ml-1.5 ${yoyGross > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                              {yoyGross > 0 ? '↑' : '↓'}{Math.abs(yoyGross).toFixed(2)}pp
+                                            </span>
+                                          )}
+                                        </span>
+                                      </div>
+                                    )}
+                                    {net && (
+                                      <div className="flex items-center justify-between gap-4">
+                                        <span className="flex items-center gap-1.5">
+                                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#ec4899' }} />
+                                          Net Yield
+                                        </span>
+                                        <span className="font-medium">
+                                          {Number(net.value).toFixed(2)}%
+                                          {yoyNet !== 0 && (
+                                            <span className={`ml-1.5 ${yoyNet > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                              {yoyNet > 0 ? '↑' : '↓'}{Math.abs(yoyNet).toFixed(2)}pp
+                                            </span>
+                                          )}
+                                        </span>
+                                      </div>
+                                    )}
+                                    <div className="flex items-center justify-between gap-4 pt-1 border-t border-border/50">
+                                      <span className="flex items-center gap-1.5">
+                                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#f59e0b' }} />
+                                        Expense Drag
+                                      </span>
+                                      <span className="font-medium text-amber-500">{spread}pp</span>
+                                    </div>
+                                  </div>
+                                );
+                              }}
+                            />
+                            <Legend 
+                              wrapperStyle={{ fontSize: '11px', paddingTop: '12px' }}
+                              iconType="circle"
+                              iconSize={8}
+                            />
+                            {/* Shaded spread band between gross and net */}
+                            <Area 
+                              type="monotone" 
+                              dataKey="Gross Yield %" 
+                              fill="url(#yieldSpread)" 
+                              stroke="none"
+                              legendType="none"
+                            />
+                            <Line 
+                              type="monotone" 
+                              dataKey="Gross Yield %" 
+                              stroke="#06b6d4" 
+                              strokeWidth={2.5}
+                              dot={{ r: 4, fill: '#06b6d4', strokeWidth: 0 }}
+                              activeDot={{ r: 6, strokeWidth: 2, stroke: 'hsl(var(--background))' }}
+                            />
+                            <Line 
+                              type="monotone" 
+                              dataKey="Net Yield %" 
+                              stroke="#ec4899" 
+                              strokeWidth={2.5}
+                              dot={{ r: 4, fill: '#ec4899', strokeWidth: 0 }}
+                              activeDot={{ r: 6, strokeWidth: 2, stroke: 'hsl(var(--background))' }}
+                            />
+                          </ComposedChart>
+                        </ResponsiveContainer>
                       </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Yr 10 Gross</p>
-                        <p className="text-sm font-semibold">{yr10.grossYield.toFixed(2)}%</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Yr 1 Net</p>
-                        <p className="text-sm font-semibold">{yr1.netYield.toFixed(2)}%</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Yr 10 Net</p>
-                        <p className="text-sm font-semibold">{yr10.netYield.toFixed(2)}%</p>
-                      </div>
-                    </div>
+                      {/* Yield summary with sparklines */}
+                      {projections.length > 1 && (() => {
+                        const yr1 = projections.find(p => p.year === 1);
+                        const yr10 = projections.find(p => p.year === 10);
+                        if (!yr1 || !yr10) return null;
+                        const values = projections.filter(p => p.year >= 1);
+                        const avgSpread = values.reduce((s, v) => s + (v.grossYield - v.netYield), 0) / values.length;
+                        
+                        const yieldKpis = [
+                          { label: 'Gross Yield', value: `${yr10.grossYield.toFixed(2)}%`, sub: `from ${yr1.grossYield.toFixed(2)}%`, sparkData: values.map(v => v.grossYield), color: '#06b6d4' },
+                          { label: 'Net Yield', value: `${yr10.netYield.toFixed(2)}%`, sub: `from ${yr1.netYield.toFixed(2)}%`, sparkData: values.map(v => v.netYield), color: '#ec4899' },
+                          { label: 'Avg Expense Drag', value: `${avgSpread.toFixed(2)}pp`, sub: 'Gross − Net spread', sparkData: values.map(v => v.grossYield - v.netYield), color: '#f59e0b' },
+                        ];
+
+                        return (
+                          <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t">
+                            {yieldKpis.map(kpi => {
+                              const min = Math.min(...kpi.sparkData);
+                              const max = Math.max(...kpi.sparkData);
+                              const range = max - min || 1;
+                              const points = kpi.sparkData.map((v, i) => 
+                                `${(i / (kpi.sparkData.length - 1)) * 60},${24 - ((v - min) / range) * 20}`
+                              ).join(' ');
+                              return (
+                                <div key={kpi.label} className="bg-muted/40 rounded-lg p-2.5 space-y-1">
+                                  <p className="text-[10px] text-muted-foreground font-medium">{kpi.label}</p>
+                                  <div className="flex items-end justify-between">
+                                    <div>
+                                      <p className="text-xs font-bold">{kpi.value}</p>
+                                      <p className="text-[10px] text-muted-foreground">{kpi.sub}</p>
+                                    </div>
+                                    <svg width="60" height="24" className="opacity-60">
+                                      <polyline fill="none" stroke={kpi.color} strokeWidth="1.5" points={points} />
+                                    </svg>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
+                    </>
                   );
                 })()}
               </CardContent>
