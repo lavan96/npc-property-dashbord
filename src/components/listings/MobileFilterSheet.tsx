@@ -21,6 +21,7 @@ interface FilterState {
   sourceHost: string;
   hasInspection: boolean;
   lowConfidence: boolean;
+  offMarket: boolean;
   priceMin: string;
   priceMax: string;
   bedsMin: string;
@@ -80,6 +81,7 @@ export function MobileFilterSheet({ filters, setFilters, uniqueValues }: MobileF
       sourceHost: 'all',
       hasInspection: false,
       lowConfidence: false,
+      offMarket: false,
       priceMin: '',
       priceMax: '',
       bedsMin: '',
@@ -358,6 +360,16 @@ export function MobileFilterSheet({ filters, setFilters, uniqueValues }: MobileF
                     }
                   />
                   <span className="text-sm font-medium">Low confidence only</span>
+                </label>
+                
+                <label className="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/30">
+                  <Checkbox
+                    checked={localFilters.offMarket}
+                    onCheckedChange={(checked) => 
+                      setLocalFilters({ ...localFilters, offMarket: !!checked })
+                    }
+                  />
+                  <span className="text-sm font-medium">Off-market properties</span>
                 </label>
               </div>
             </div>
