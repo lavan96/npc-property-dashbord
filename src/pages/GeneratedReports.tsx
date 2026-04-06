@@ -1052,7 +1052,7 @@ export default function GeneratedReports() {
                         <div className="flex items-center gap-2"><Building2 className="h-4 w-4" />Suburb Analysis</div>
                       </SelectItem>
                       <SelectItem value="zipcode">
-                        <div className="flex items-center gap-2"><Map className="h-4 w-4" />Area Analysis</div>
+                        <div className="flex items-center gap-2"><Map className="h-4 w-4" />Postcode Analysis</div>
                       </SelectItem>
                       <SelectItem value="state">
                         <div className="flex items-center gap-2"><Globe className="h-4 w-4" />State Analysis</div>

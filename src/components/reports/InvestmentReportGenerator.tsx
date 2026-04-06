@@ -489,7 +489,7 @@ export function InvestmentReportGenerator() {
       const scopeText = queryType === 'address' 
         ? `Property: ${query}` 
         : queryType === 'zipcode' 
-          ? `ZIP Code: ${query}`
+          ? `Postcode: ${query}`
           : queryType === 'suburb'
             ? `Suburb: ${query}`
             : `Statewide Analysis: ${query}`;
