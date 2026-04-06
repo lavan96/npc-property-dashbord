@@ -580,6 +580,7 @@ serve(async (req) => {
         report_period: reportPeriod,
         report_type: reportType,
         audience_segment: audienceSegment,
+        include_npc_strategy: includeNpcStrategy,
       })
       .select('id')
       .single();
