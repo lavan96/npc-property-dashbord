@@ -1378,7 +1378,7 @@ export default function Calendar() {
                     <Clock className="h-4 w-4" />
                     {selectedDate ? format(selectedDate, 'EEEE, MMM d') : 'Upcoming'}
                   </h4>
-                  <ScrollArea className="h-[280px]">
+                  <div>
                     {isLoading ? (
                       <SidebarLoadingSkeleton />
                     ) : (selectedDate ? selectedDateEvents : upcomingEvents).length === 0 ? (
@@ -1393,7 +1393,7 @@ export default function Calendar() {
                         ))}
                       </div>
                     )}
-                  </ScrollArea>
+                  </div>
                 </div>
               )}
               {sidebarTab === 'availability' && selectedDate && (
@@ -1687,9 +1687,9 @@ function EventCard({
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-sm truncate">{event.title || 'Untitled Event'}</p>
+          <p className="font-medium text-sm">{event.title || 'Untitled Event'}</p>
           {event.calendarName && (
-            <p className="text-xs text-muted-foreground truncate flex items-center gap-1">
+            <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
               <span 
                 className="w-2 h-2 rounded-full shrink-0"
                 style={{ backgroundColor: color }}
@@ -1702,7 +1702,7 @@ function EventCard({
           {event.appointmentStatus || event.status}
         </Badge>
       </div>
-      <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs text-muted-foreground">
         <div className="flex items-center gap-1">
           <Clock className="h-3 w-3" />
           {safeFormatISO(event.startTime, 'MMM d, HH:mm')} - {safeFormatISO(event.endTime, 'HH:mm')}
@@ -1715,7 +1715,7 @@ function EventCard({
         )}
       </div>
       {event.notes && (
-        <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{event.notes}</p>
+        <p className="text-xs text-muted-foreground mt-2">{event.notes}</p>
       )}
     </button>
   );
