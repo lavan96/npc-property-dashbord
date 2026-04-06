@@ -77,6 +77,23 @@ const FREQUENCY_LABELS: Record<string, string> = {
   ad_hoc: 'Ad-hoc (Manual)',
 };
 
+const REPORT_TYPE_OPTIONS: Record<string, string> = {
+  full: 'Full Report',
+  market_pulse: 'Market Pulse',
+  hotspot_deep_dive: 'Hotspot Deep Dive',
+  strategy_insight: 'Strategy Insight',
+  finance_update: 'Finance & Lending',
+  deal_breakdown: 'Deal Breakdown',
+  myth_busting: 'Myth Busting',
+  development_spotlight: 'Development Spotlight',
+};
+
+const AUDIENCE_OPTIONS: Record<string, string> = {
+  general: 'General',
+  investor: 'Investor',
+  owner_occupier: 'Owner-Occupier',
+};
+
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
   sent: { label: 'Sent', color: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30', icon: CheckCircle2 },
   failed: { label: 'Failed', color: 'bg-red-500/10 text-red-600 border-red-500/30', icon: XCircle },
