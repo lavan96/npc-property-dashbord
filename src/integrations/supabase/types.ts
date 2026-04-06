@@ -5739,6 +5739,7 @@ export type Database = {
           next_scheduled_at: string | null
           pipeline_id: string
           pipeline_name: string | null
+          pipeline_stage_targets: Json
           report_type: string
           rotation_sequence: string[]
           sender_mailbox_email: string | null
@@ -5764,6 +5765,7 @@ export type Database = {
           next_scheduled_at?: string | null
           pipeline_id: string
           pipeline_name?: string | null
+          pipeline_stage_targets?: Json
           report_type?: string
           rotation_sequence?: string[]
           sender_mailbox_email?: string | null
@@ -5789,6 +5791,7 @@ export type Database = {
           next_scheduled_at?: string | null
           pipeline_id?: string
           pipeline_name?: string | null
+          pipeline_stage_targets?: Json
           report_type?: string
           rotation_sequence?: string[]
           sender_mailbox_email?: string | null

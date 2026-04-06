@@ -11,10 +11,18 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Mail, Plus, Send, Trash2, Edit, Loader2, Clock, CheckCircle2, XCircle, Calendar, Users, RotateCw, Target } from 'lucide-react';
 import { toast } from 'sonner';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { format } from 'date-fns';
+
+interface PipelineStageTarget {
+  pipeline_id: string;       // Internal UUID
+  pipeline_name: string;
+  stage_id?: string;         // Internal UUID — omit for "all stages"
+  stage_name?: string;
+}
 
 interface Schedule {
   id: string;
@@ -24,6 +32,7 @@ interface Schedule {
   pipeline_name?: string;
   stage_id?: string;
   stage_name?: string;
+  pipeline_stage_targets?: PipelineStageTarget[];
   frequency: string;
   mailbox_source: string;
   sender_mailbox_email?: string;
@@ -117,8 +126,7 @@ export function ReportDistributionPanel() {
   // Form state
   const [formName, setFormName] = useState('');
   const [formDescription, setFormDescription] = useState('');
-  const [formPipelineId, setFormPipelineId] = useState('');
-  const [formStageId, setFormStageId] = useState('');
+  const [formTargets, setFormTargets] = useState<PipelineStageTarget[]>([]);
   const [formFrequency, setFormFrequency] = useState('monthly');
   const [formMailboxSource, setFormMailboxSource] = useState('admin');
   const [formSenderEmail, setFormSenderEmail] = useState('');
@@ -158,8 +166,7 @@ export function ReportDistributionPanel() {
   const resetForm = () => {
     setFormName('');
     setFormDescription('');
-    setFormPipelineId('');
-    setFormStageId('');
+    setFormTargets([]);
     setFormFrequency('monthly');
     setFormMailboxSource('admin');
     setFormSenderEmail('');
@@ -181,8 +188,23 @@ export function ReportDistributionPanel() {
     setEditingSchedule(schedule);
     setFormName(schedule.name);
     setFormDescription(schedule.description || '');
-    setFormPipelineId(schedule.pipeline_id);
-    setFormStageId(schedule.stage_id || '');
+    
+    // Migrate legacy single pipeline/stage to targets array
+    if (schedule.pipeline_stage_targets && schedule.pipeline_stage_targets.length > 0) {
+      setFormTargets(schedule.pipeline_stage_targets);
+    } else if (schedule.pipeline_id) {
+      // Legacy: convert single pipeline/stage to targets format
+      const pipeline = pipelines.find(p => p.ghl_pipeline_id === schedule.pipeline_id);
+      setFormTargets([{
+        pipeline_id: pipeline?.id || schedule.pipeline_id,
+        pipeline_name: schedule.pipeline_name || pipeline?.name || 'Unknown',
+        stage_id: schedule.stage_id || undefined,
+        stage_name: schedule.stage_name || undefined,
+      }]);
+    } else {
+      setFormTargets([]);
+    }
+    
     setFormFrequency(schedule.frequency);
     setFormMailboxSource(schedule.mailbox_source);
     setFormSenderEmail(schedule.sender_mailbox_email || '');
@@ -196,23 +218,24 @@ export function ReportDistributionPanel() {
   };
 
   const handleSave = async () => {
-    if (!formName || !formPipelineId) {
-      toast.error('Name and pipeline are required');
+    if (!formName || formTargets.length === 0) {
+      toast.error('Name and at least one pipeline target are required');
       return;
     }
 
     setSaving(true);
     try {
-      const selectedPipeline = pipelines.find(p => p.ghl_pipeline_id === formPipelineId);
-      const selectedStage = stages.find(s => s.ghl_stage_id === formStageId);
+      // Use first target as the legacy pipeline_id for backward compat
+      const firstTarget = formTargets[0];
 
       const payload: Record<string, any> = {
         name: formName,
         description: formDescription || null,
-        pipeline_id: formPipelineId,
-        pipeline_name: selectedPipeline?.name || null,
-        stage_id: formStageId || null,
-        stage_name: selectedStage?.name || null,
+        pipeline_id: firstTarget.pipeline_id,
+        pipeline_name: firstTarget.pipeline_name,
+        stage_id: firstTarget.stage_id || null,
+        stage_name: firstTarget.stage_name || null,
+        pipeline_stage_targets: formTargets,
         frequency: formFrequency,
         mailbox_source: formMailboxSource,
         sender_mailbox_email: formMailboxSource === 'personal' ? formSenderEmail : null,
@@ -305,10 +328,68 @@ export function ReportDistributionPanel() {
     }
   };
 
-  const filteredStages = stages.filter(s => {
-    const selectedPipeline = pipelines.find(p => p.ghl_pipeline_id === formPipelineId);
-    return selectedPipeline ? s.pipeline_id === selectedPipeline.id : false;
-  });
+  // ─── Pipeline/Stage Multi-Select Helpers ─────────────────────────────
+
+  const toggleStageTarget = (pipeline: Pipeline, stage?: Stage) => {
+    setFormTargets(prev => {
+      const targetKey = stage
+        ? `${pipeline.id}:${stage.id}`
+        : `${pipeline.id}:all`;
+
+      const exists = prev.some(t =>
+        t.pipeline_id === pipeline.id && (stage ? t.stage_id === stage.id : !t.stage_id)
+      );
+
+      if (exists) {
+        return prev.filter(t =>
+          !(t.pipeline_id === pipeline.id && (stage ? t.stage_id === stage.id : !t.stage_id))
+        );
+      } else {
+        // If adding "all stages", remove any individual stage selections for this pipeline
+        if (!stage) {
+          return [
+            ...prev.filter(t => t.pipeline_id !== pipeline.id),
+            { pipeline_id: pipeline.id, pipeline_name: pipeline.name },
+          ];
+        }
+        // If adding a specific stage, remove "all stages" for this pipeline
+        return [
+          ...prev.filter(t => !(t.pipeline_id === pipeline.id && !t.stage_id)),
+          {
+            pipeline_id: pipeline.id,
+            pipeline_name: pipeline.name,
+            stage_id: stage.id,
+            stage_name: stage.name,
+          },
+        ];
+      }
+    });
+  };
+
+  const isTargetSelected = (pipelineId: string, stageId?: string) => {
+    return formTargets.some(t =>
+      t.pipeline_id === pipelineId && (stageId ? t.stage_id === stageId : !t.stage_id)
+    );
+  };
+
+  const getTargetSummary = (targets: PipelineStageTarget[]) => {
+    if (!targets || targets.length === 0) return 'No targets';
+    
+    const grouped = new Map<string, string[]>();
+    for (const t of targets) {
+      const key = t.pipeline_name || t.pipeline_id;
+      if (!grouped.has(key)) grouped.set(key, []);
+      if (t.stage_name) {
+        grouped.get(key)!.push(t.stage_name);
+      } else {
+        grouped.set(key, ['All stages']);
+      }
+    }
+
+    return Array.from(grouped.entries())
+      .map(([pipeline, stagesList]) => `${pipeline} → ${stagesList.join(', ')}`)
+      .join(' | ');
+  };
 
   if (loading) {
     return (
@@ -337,7 +418,6 @@ export function ReportDistributionPanel() {
               <CardTitle className="text-lg flex items-center gap-2">
                 <Mail className="h-5 w-5 text-primary" />
                 Report Distribution
-                <Badge variant="secondary" className="text-[10px]">Phase 4</Badge>
               </CardTitle>
               <CardDescription className="mt-1">
                 Automated Market Intelligence Report delivery to GHL pipeline contacts
@@ -357,7 +437,6 @@ export function ReportDistributionPanel() {
         </CardHeader>
         <CardContent>
           {showHistory ? (
-            // Distribution History
             <div className="space-y-3">
               <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Recent Distribution History</h4>
               {history.length === 0 ? (
@@ -390,7 +469,7 @@ export function ReportDistributionPanel() {
                                 {statusConfig.label}
                               </Badge>
                               {log.error_message && (
-                                <p className="text-[10px] text-red-500 mt-0.5 max-w-[200px] truncate" title={log.error_message}>
+                                <p className="text-[10px] text-destructive mt-0.5 max-w-[200px] truncate" title={log.error_message}>
                                   {log.error_message}
                                 </p>
                               )}
@@ -407,7 +486,6 @@ export function ReportDistributionPanel() {
               )}
             </div>
           ) : (
-            // Schedules List
             <div className="space-y-3">
               {schedules.length === 0 ? (
                 <div className="text-center py-8">
@@ -416,82 +494,88 @@ export function ReportDistributionPanel() {
                   <p className="text-xs text-muted-foreground/70 mt-1">Create a schedule to automatically send reports to pipeline contacts</p>
                 </div>
               ) : (
-                schedules.map(schedule => (
-                  <div key={schedule.id} className="rounded-lg border border-border/50 bg-card p-4 space-y-2">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-semibold">{schedule.name}</span>
-                          <Badge variant="outline" className={`text-[10px] ${schedule.is_enabled ? 'border-emerald-500/30 text-emerald-600' : 'border-border text-muted-foreground'}`}>
-                            {schedule.is_enabled ? 'Active' : 'Paused'}
-                          </Badge>
-                          <Badge variant="outline" className="text-[10px]">
-                            {FREQUENCY_LABELS[schedule.frequency] || schedule.frequency}
-                          </Badge>
-                          <Badge variant="outline" className="text-[10px] border-primary/30 text-primary">
-                            {schedule.content_rotation_enabled ? '🔄 Rotation' : (REPORT_TYPE_OPTIONS[schedule.report_type || 'full'] || 'Full')}
-                          </Badge>
-                          {schedule.audience_segment && schedule.audience_segment !== 'general' && (
-                            <Badge variant="outline" className="text-[10px] border-amber-500/30 text-amber-600">
-                              {AUDIENCE_OPTIONS[schedule.audience_segment] || schedule.audience_segment}
+                schedules.map(schedule => {
+                  const targets = schedule.pipeline_stage_targets || [];
+                  return (
+                    <div key={schedule.id} className="rounded-lg border border-border/50 bg-card p-4 space-y-2">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-semibold">{schedule.name}</span>
+                            <Badge variant="outline" className={`text-[10px] ${schedule.is_enabled ? 'border-emerald-500/30 text-emerald-600' : 'border-border text-muted-foreground'}`}>
+                              {schedule.is_enabled ? 'Active' : 'Paused'}
                             </Badge>
+                            <Badge variant="outline" className="text-[10px]">
+                              {FREQUENCY_LABELS[schedule.frequency] || schedule.frequency}
+                            </Badge>
+                            <Badge variant="outline" className="text-[10px] border-primary/30 text-primary">
+                              {schedule.content_rotation_enabled ? '🔄 Rotation' : (REPORT_TYPE_OPTIONS[schedule.report_type || 'full'] || 'Full')}
+                            </Badge>
+                            {schedule.audience_segment && schedule.audience_segment !== 'general' && (
+                              <Badge variant="outline" className="text-[10px] border-amber-500/30 text-amber-600">
+                                {AUDIENCE_OPTIONS[schedule.audience_segment] || schedule.audience_segment}
+                              </Badge>
+                            )}
+                          </div>
+                          {schedule.description && (
+                            <p className="text-[11px] text-muted-foreground mt-0.5">{schedule.description}</p>
                           )}
                         </div>
-                        {schedule.description && (
-                          <p className="text-[11px] text-muted-foreground mt-0.5">{schedule.description}</p>
-                        )}
+                        <div className="flex items-center gap-1 shrink-0 ml-2">
+                          <Switch
+                            checked={schedule.is_enabled}
+                            onCheckedChange={() => handleToggleEnabled(schedule)}
+                            className="scale-75"
+                          />
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1 shrink-0 ml-2">
-                        <Switch
-                          checked={schedule.is_enabled}
-                          onCheckedChange={() => handleToggleEnabled(schedule)}
-                          className="scale-75"
-                        />
-                      </div>
-                    </div>
 
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Users className="h-3 w-3" />
-                        {schedule.pipeline_name || 'Pipeline'}{schedule.stage_name ? ` → ${schedule.stage_name}` : ' (All stages)'}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Mail className="h-3 w-3" />
-                        {schedule.mailbox_source === 'personal' ? schedule.sender_mailbox_email || 'Personal' : 'Admin'}
-                      </span>
-                      {schedule.last_sent_at && (
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
                         <span className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          Last: {format(new Date(schedule.last_sent_at), 'dd MMM yy')}
+                          <Users className="h-3 w-3" />
+                          {targets.length > 0
+                            ? getTargetSummary(targets)
+                            : `${schedule.pipeline_name || 'Pipeline'}${schedule.stage_name ? ` → ${schedule.stage_name}` : ' (All stages)'}`
+                          }
                         </span>
-                      )}
-                    </div>
-
-                    <div className="flex gap-1.5 pt-1">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 text-xs gap-1"
-                        onClick={() => handleDispatch(schedule.id)}
-                        disabled={dispatching === schedule.id}
-                      >
-                        {dispatching === schedule.id ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <Send className="h-3 w-3" />
+                        <span className="flex items-center gap-1">
+                          <Mail className="h-3 w-3" />
+                          {schedule.mailbox_source === 'personal' ? schedule.sender_mailbox_email || 'Personal' : 'Admin'}
+                        </span>
+                        {schedule.last_sent_at && (
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            Last: {format(new Date(schedule.last_sent_at), 'dd MMM yy')}
+                          </span>
                         )}
-                        Send Now
-                      </Button>
-                      <Button size="sm" variant="ghost" className="h-7 text-xs gap-1" onClick={() => openEditDialog(schedule)}>
-                        <Edit className="h-3 w-3" />
-                        Edit
-                      </Button>
-                      <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 text-destructive hover:text-destructive" onClick={() => handleDelete(schedule.id)}>
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
+                      </div>
+
+                      <div className="flex gap-1.5 pt-1">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs gap-1"
+                          onClick={() => handleDispatch(schedule.id)}
+                          disabled={dispatching === schedule.id}
+                        >
+                          {dispatching === schedule.id ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Send className="h-3 w-3" />
+                          )}
+                          Send Now
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-7 text-xs gap-1" onClick={() => openEditDialog(schedule)}>
+                          <Edit className="h-3 w-3" />
+                          Edit
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 text-destructive hover:text-destructive" onClick={() => handleDelete(schedule.id)}>
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           )}
@@ -521,32 +605,80 @@ export function ReportDistributionPanel() {
 
               <Separator />
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Pipeline *</Label>
-                  <Select value={formPipelineId} onValueChange={v => { setFormPipelineId(v); setFormStageId(''); }}>
-                    <SelectTrigger className="h-9"><SelectValue placeholder="Select pipeline" /></SelectTrigger>
-                    <SelectContent>
-                      {pipelines.map(p => (
-                        <SelectItem key={p.ghl_pipeline_id} value={p.ghl_pipeline_id}>{p.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              {/* Multi-Pipeline/Stage Selector */}
+              <div className="space-y-2">
+                <Label className="text-xs flex items-center gap-1">
+                  <Users className="h-3 w-3" /> Pipeline & Stage Targets *
+                </Label>
+                <p className="text-[10px] text-muted-foreground">
+                  Select one or more pipeline stages. Contacts in selected stages will receive the report.
+                </p>
 
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Stage (optional)</Label>
-                  <Select value={formStageId} onValueChange={setFormStageId}>
-                    <SelectTrigger className="h-9"><SelectValue placeholder="All stages" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">All Stages</SelectItem>
-                      {filteredStages.map(s => (
-                        <SelectItem key={s.ghl_stage_id} value={s.ghl_stage_id}>{s.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                {formTargets.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    {formTargets.map((t, i) => (
+                      <Badge
+                        key={i}
+                        variant="secondary"
+                        className="text-[10px] gap-1 cursor-pointer hover:bg-destructive/20"
+                        onClick={() => {
+                          const pipeline = pipelines.find(p => p.id === t.pipeline_id);
+                          const stage = t.stage_id ? stages.find(s => s.id === t.stage_id) : undefined;
+                          if (pipeline) toggleStageTarget(pipeline, stage);
+                        }}
+                      >
+                        {t.pipeline_name} → {t.stage_name || 'All stages'}
+                        <XCircle className="h-2.5 w-2.5" />
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+
+                <div className="border rounded-lg divide-y max-h-[200px] overflow-y-auto">
+                  {pipelines.map(pipeline => {
+                    const pipelineStages = stages.filter(s => s.pipeline_id === pipeline.id);
+                    const allStagesSelected = isTargetSelected(pipeline.id);
+
+                    return (
+                      <div key={pipeline.id} className="p-2">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <Checkbox
+                            checked={allStagesSelected}
+                            onCheckedChange={() => toggleStageTarget(pipeline)}
+                            id={`pipeline-all-${pipeline.id}`}
+                          />
+                          <label htmlFor={`pipeline-all-${pipeline.id}`} className="text-xs font-medium cursor-pointer flex-1">
+                            {pipeline.name}
+                            <span className="text-muted-foreground font-normal ml-1">(All stages)</span>
+                          </label>
+                        </div>
+                        {!allStagesSelected && pipelineStages.length > 0 && (
+                          <div className="ml-5 grid grid-cols-2 gap-1">
+                            {pipelineStages.map(stage => (
+                              <div key={stage.id} className="flex items-center gap-1.5">
+                                <Checkbox
+                                  checked={isTargetSelected(pipeline.id, stage.id)}
+                                  onCheckedChange={() => toggleStageTarget(pipeline, stage)}
+                                  id={`stage-${stage.id}`}
+                                  className="h-3.5 w-3.5"
+                                />
+                                <label htmlFor={`stage-${stage.id}`} className="text-[11px] cursor-pointer truncate">
+                                  {stage.name}
+                                </label>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {pipelines.length === 0 && (
+                    <p className="text-xs text-muted-foreground text-center py-4">No pipelines synced from GHL</p>
+                  )}
                 </div>
               </div>
+
+              <Separator />
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
