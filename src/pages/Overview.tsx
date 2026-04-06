@@ -1,7 +1,7 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useModulePermissions } from '@/hooks/useModulePermissions';
-import { Building2, Calendar, AlertTriangle, DollarSign, TrendingUp, Image, FileText, Tag, Ruler } from 'lucide-react';
+import { Building2, Calendar, AlertTriangle, DollarSign, TrendingUp, Image, FileText, Tag, Ruler, Download, MapPin } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,6 +17,7 @@ import { DashboardKPIs } from '@/types/airtable';
 import { useAutoRefresh } from '@/hooks/use-auto-refresh';
 import { propertyDataService } from '@/services/propertyDataService';
 import { chartDataService } from '@/services/chartDataService';
+import { toast } from 'sonner';
 import { 
   BarChart, 
   Bar, 
@@ -41,6 +42,7 @@ export default function Overview() {
   const isMobile = useIsMobile();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [allListings, setAllListings] = useState<PropertyListing[]>([]);
   const [kpis, setKpis] = useState<DashboardKPIs>({
     newThisWeek: 0,
     withInspections: 0,
@@ -62,33 +64,28 @@ export default function Overview() {
     emailSources: 0,
   });
 
-  // Filters state
+  // Filters state — renamed zipCode → postcode for AU localization
   const [filters, setFilters] = useState({
     state: 'all',
-    zipCode: 'all',
+    postcode: 'all',
     suburb: 'all',
     propertyType: 'all',
   });
   
   const [uniqueValues, setUniqueValues] = useState({
     states: [] as string[],
-    zipCodes: [] as string[],
+    postcodes: [] as string[],
     suburbs: [] as string[],
     propertyTypes: [] as string[],
   });
 
-  // Helper functions (stable references)
+  // Stable helpers
   const safeParseDate = useCallback((date: Date | string | null | undefined): Date | null => {
     if (!date) return null;
-    
     try {
       const validDate = date instanceof Date ? date : new Date(date);
-      if (isNaN(validDate.getTime())) {
-        return null;
-      }
-      return validDate;
-    } catch (error) {
-      console.warn('Error parsing date:', date, error);
+      return isNaN(validDate.getTime()) ? null : validDate;
+    } catch {
       return null;
     }
   }, []);
@@ -104,247 +101,216 @@ export default function Overview() {
 
   const formatDate = useCallback((date: Date | string | null | undefined) => {
     if (!date) return 'Unknown Date';
-    
     try {
       const validDate = date instanceof Date ? date : new Date(date);
-      if (isNaN(validDate.getTime())) {
-        return 'Invalid Date';
-      }
-      
+      if (isNaN(validDate.getTime())) return 'Invalid Date';
       return new Intl.DateTimeFormat('en-AU', {
         month: 'short',
         day: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
       }).format(validDate);
-    } catch (error) {
-      console.warn('Error formatting date:', date, error);
+    } catch {
       return 'Invalid Date';
     }
   }, []);
 
-  // Memoize the load function to prevent unnecessary re-renders
-  const loadDashboardData = useCallback(async () => {
+  // Extract state from address
+  const extractState = useCallback((address: string): string | null => {
+    const match = address.match(/\b(NSW|VIC|QLD|SA|WA|TAS|NT|ACT)\b/i);
+    return match ? match[0].toUpperCase() : null;
+  }, []);
+
+  // Extract postcode from address
+  const extractPostcode = useCallback((address: string): string | null => {
+    const match = address.match(/\b(\d{4})\b/);
+    return match ? match[0] : null;
+  }, []);
+
+  // ─── STEP 1: Fetch raw data (cached, only re-fetches when cache expires) ───
+  const fetchData = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
       
-      console.log('Loading dashboard data...');
-      
-      // Use the unified data service for consistent data fetching
       const result = await propertyDataService.fetchAllListings({
         includeDebugInfo: true
       });
 
-      console.log('Got unified data:', result.debugInfo);
-      console.log('Overview listings count:', result.listings.length);
-      let listings = result.listings;
-
-      // Extract unique values for filters
-      // Extract states and zip codes from addresses
-      const states = [...new Set(listings.map(l => {
-        const address = l.address || '';
-        // Extract state from address (assuming format like "123 Main St, Sydney NSW 2000")
-        const match = address.match(/\b(NSW|VIC|QLD|SA|WA|TAS|NT|ACT)\b/i);
-        return match ? match[0].toUpperCase() : null;
-      }).filter(Boolean))];
-      
-      const zipCodes = [...new Set(listings.map(l => {
-        const address = l.address || '';
-        // Extract 4-digit postcodes from address
-        const match = address.match(/\b(\d{4})\b/);
-        return match ? match[0] : null;
-      }).filter(Boolean))];
-      
-      const suburbs = [...new Set(listings.map(l => l.suburb).filter(Boolean))];
-      const propertyTypes = [...new Set(listings.map(l => l.propertyType).filter(Boolean))];
-
-      setUniqueValues({
-        states: states.sort(),
-        zipCodes: zipCodes.sort(),
-        suburbs: suburbs.sort(),
-        propertyTypes: propertyTypes.sort(),
-      });
-
-      // Apply filters
-      if (filters.state !== 'all') {
-        listings = listings.filter(l => {
-          const address = l.address || '';
-          const match = address.match(/\b(NSW|VIC|QLD|SA|WA|TAS|NT|ACT)\b/i);
-          const state = match ? match[0].toUpperCase() : null;
-          return state === filters.state;
-        });
-      }
-      if (filters.zipCode !== 'all') {
-        listings = listings.filter(l => {
-          const address = l.address || '';
-          const match = address.match(/\b(\d{4})\b/);
-          const zipCode = match ? match[0] : null;
-          return zipCode === filters.zipCode;
-        });
-      }
-      if (filters.suburb !== 'all') {
-        listings = listings.filter(l => l.suburb === filters.suburb);
-      }
-      if (filters.propertyType !== 'all') {
-        listings = listings.filter(l => l.propertyType === filters.propertyType);
-      }
-      
-      // Calculate KPIs
-      const now = new Date();
-      const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-      const newThisWeek = listings.filter(l => {
-        const createdDate = l.createdAt || l.createdTime || l.receivedAt;
-        const parsedDate = safeParseDate(createdDate);
-        return parsedDate && parsedDate >= oneWeekAgo;
-      }).length;
-
-      const withInspections = listings.filter(l => l.inspectionStart).length;
-      
-      const needsReview = listings.filter(l => 
-        l.confidence !== undefined && l.confidence !== null && l.confidence < 0.7
-      ).length;
-
-      const recentWithPrice = listings.filter(l => {
-        const createdDate = l.createdAt || l.createdTime || l.receivedAt;
-        const parsedDate = safeParseDate(createdDate);
-        return l.price && parsedDate && parsedDate >= thirtyDaysAgo;
-      });
-      const averagePrice = recentWithPrice.length > 0 
-        ? recentWithPrice.reduce((sum, l) => sum + (l.price || 0), 0) / recentWithPrice.length
-        : 0;
-
-      setKpis({
-        newThisWeek,
-        withInspections,
-        needsReview,
-        averagePrice,
-      });
-
-      // Set recent listings (top 20)
-      setRecentListings(listings.slice(0, 20));
-
-      // Use unified chart data service for consistent suburb data
-      const suburbChartData = chartDataService.generateSuburbData(listings, 10);
-      setSuburbData(suburbChartData.data.map(item => ({ 
-        suburb: item.label, 
-        count: item.value 
-      })));
-
-      // Use unified chart data service for consistent property type data
-      const propertyTypeChartData = chartDataService.generatePropertyTypeData(listings);
-      setPropertyTypeData(propertyTypeChartData.data.map(item => ({ 
-        type: item.label, 
-        count: item.value 
-      })));
-
-      // Use unified chart data service for consistent daily activity data
-      const dailyActivityData = chartDataService.generateDailyActivityData(listings, 30);
-      setDailyData(dailyActivityData.data.map(item => ({ 
-        date: item.metadata?.fullDate || item.label,
-        count: item.value 
-      })));
-
-      // Calculate property status distribution (Available vs others)
-      const statusCounts = listings.reduce((acc, listing) => {
-        const status = listing.status || 'Available';
-        acc[status] = (acc[status] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-
-      const statusData = Object.entries(statusCounts)
-        .map(([status, count]) => ({ status, count }));
-
-      setCategoryData(statusData);
-
-      // Use unified chart data service for consistent agency data
-      const agencyChartData = chartDataService.generateAgencyData(listings, 10);
-      setAgencyData(agencyChartData.data.map(item => ({ 
-        agency: item.metadata?.fullName || item.label, 
-        count: item.value 
-      })));
-
-      // Calculate actual property statistics from Properties table
-      const withPrices = listings.filter(l => l.price && l.price > 0).length;
-      const withImages = listings.filter(l => l.images && l.images.length > 0).length;
-      const withFloorplans = listings.filter(l => l.floorplans && l.floorplans.length > 0).length;
-      const withKeyEntities = listings.filter(l => l.keyEntities && l.keyEntities.trim() !== '').length;
-      const emailSources = listings.filter(l => l.source && l.source.includes('@')).length;
-
-      console.log('Content Statistics (Corrected):', {
-        withPrices,
-        withImages,
-        withFloorplans,
-        withKeyEntities,
-        emailSources
-      });
-
-      setContentStats({
-        withPrices,
-        withImages,
-        withFloorplans,
-        withKeyEntities,
-        emailSources,
-      });
-
-      // Use unified chart data service for consistent source data
-      const sourceChartData = chartDataService.generateSourceData(listings, 10);
-      setSourceData(sourceChartData.data.map(item => ({ 
-        source: item.label, 
-        count: item.value 
-      })));
-
+      console.log('Fetched data:', result.debugInfo.totalFetched, 'records, fromCache:', result.debugInfo.fromCache, 'in', result.debugInfo.fetchTime, 'ms');
+      setAllListings(result.listings);
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
       setError(error instanceof Error ? error.message : 'Failed to load dashboard data');
-      // Don't throw the error to prevent auto-refresh from stopping
     } finally {
       setIsLoading(false);
     }
-  }, [safeParseDate, filters]); // Depend on filters to reload when they change
+  }, []);
 
-  // Auto-refresh functionality - COMPLETELY DISABLED to prevent infinite loops
-  const { startAutoRefresh, stopAutoRefresh } = useAutoRefresh(loadDashboardData);
-
-  // Effect for initial load and filter changes
+  // ─── STEP 2: Compute filtered data + KPIs client-side (instant on filter change) ───
   useEffect(() => {
-    console.log('Overview useEffect running...');
-    let mounted = true;
-    
-    const loadData = async () => {
-      console.log('loadData called, mounted:', mounted);
-      if (mounted) {
-        try {
-          await loadDashboardData();
-          console.log('loadDashboardData completed');
-        } catch (error) {
-          console.error('Error in loadData:', error);
-        }
-      }
-    };
-    
-    loadData();
+    if (allListings.length === 0 && !isLoading) return;
+    if (allListings.length === 0) return;
 
-    return () => {
-      console.log('Overview component unmounting');
-      mounted = false;
-      stopAutoRefresh();
-    };
-  }, [loadDashboardData]); // Depend on loadDashboardData which includes filters
+    const listings = allListings;
 
-  // Show error state if there's an error
+    // Extract unique values for filters (from ALL data, not filtered)
+    const states = [...new Set(listings.map(l => extractState(l.address || '')).filter(Boolean))] as string[];
+    const postcodes = [...new Set(listings.map(l => l.zipCode || extractPostcode(l.address || '')).filter(Boolean))] as string[];
+    const suburbs = [...new Set(listings.map(l => l.suburb).filter(Boolean))] as string[];
+    const propertyTypes = [...new Set(listings.map(l => l.propertyType).filter(Boolean))] as string[];
+
+    setUniqueValues({
+      states: states.sort(),
+      postcodes: postcodes.sort(),
+      suburbs: suburbs.sort(),
+      propertyTypes: propertyTypes.sort(),
+    });
+
+    // Apply filters
+    let filtered = listings;
+    if (filters.state !== 'all') {
+      filtered = filtered.filter(l => extractState(l.address || '') === filters.state);
+    }
+    if (filters.postcode !== 'all') {
+      filtered = filtered.filter(l => {
+        const pc = l.zipCode || extractPostcode(l.address || '');
+        return pc === filters.postcode;
+      });
+    }
+    if (filters.suburb !== 'all') {
+      filtered = filtered.filter(l => l.suburb === filters.suburb);
+    }
+    if (filters.propertyType !== 'all') {
+      filtered = filtered.filter(l => l.propertyType === filters.propertyType);
+    }
+
+    // Calculate KPIs
+    const now = new Date();
+    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const newThisWeek = filtered.filter(l => {
+      const parsedDate = safeParseDate(l.createdAt || l.createdTime || l.receivedAt);
+      return parsedDate && parsedDate >= oneWeekAgo;
+    }).length;
+
+    const withInspections = filtered.filter(l => l.inspectionStart).length;
+    const needsReview = filtered.filter(l => l.confidence !== undefined && l.confidence !== null && l.confidence < 0.7).length;
+
+    const recentWithPrice = filtered.filter(l => {
+      const parsedDate = safeParseDate(l.createdAt || l.createdTime || l.receivedAt);
+      return l.price && parsedDate && parsedDate >= thirtyDaysAgo;
+    });
+    const averagePrice = recentWithPrice.length > 0
+      ? recentWithPrice.reduce((sum, l) => sum + (l.price || 0), 0) / recentWithPrice.length
+      : 0;
+
+    setKpis({ newThisWeek, withInspections, needsReview, averagePrice });
+    setRecentListings(filtered.slice(0, 20));
+
+    // Chart data
+    const suburbChartData = chartDataService.generateSuburbData(filtered, 10);
+    setSuburbData(suburbChartData.data.map(item => ({ suburb: item.label, count: item.value })));
+
+    const propertyTypeChartData = chartDataService.generatePropertyTypeData(filtered);
+    setPropertyTypeData(propertyTypeChartData.data.map(item => ({ type: item.label, count: item.value })));
+
+    const dailyActivityData = chartDataService.generateDailyActivityData(filtered, 30);
+    setDailyData(dailyActivityData.data.map(item => ({ date: item.metadata?.fullDate || item.label, count: item.value })));
+
+    const statusCounts = filtered.reduce((acc, listing) => {
+      const status = listing.status || 'Available';
+      acc[status] = (acc[status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    setCategoryData(Object.entries(statusCounts).map(([status, count]) => ({ status, count })));
+
+    const agencyChartData = chartDataService.generateAgencyData(filtered, 10);
+    setAgencyData(agencyChartData.data.map(item => ({ agency: item.metadata?.fullName || item.label, count: item.value })));
+
+    // Content statistics — properly check for images/floorplans including attachment objects
+    const withPrices = filtered.filter(l => l.price && l.price > 0).length;
+    const withImages = filtered.filter(l => {
+      if (!l.images) return false;
+      if (Array.isArray(l.images) && l.images.length > 0) return true;
+      return false;
+    }).length;
+    const withFloorplans = filtered.filter(l => {
+      if (!l.floorplans) return false;
+      if (Array.isArray(l.floorplans) && l.floorplans.length > 0) return true;
+      return false;
+    }).length;
+    const withKeyEntities = filtered.filter(l => l.keyEntities && l.keyEntities.trim() !== '').length;
+    const emailSources = filtered.filter(l => l.source && l.source.includes('@')).length;
+
+    setContentStats({ withPrices, withImages, withFloorplans, withKeyEntities, emailSources });
+
+    const sourceChartData = chartDataService.generateSourceData(filtered, 10);
+    setSourceData(sourceChartData.data.map(item => ({ source: item.label, count: item.value })));
+
+  }, [allListings, filters, safeParseDate, extractState, extractPostcode]);
+
+  // ─── STEP 3: Initial data fetch (only once) ───
+  const { startAutoRefresh, stopAutoRefresh } = useAutoRefresh(fetchData);
+
+  useEffect(() => {
+    fetchData();
+    return () => { stopAutoRefresh(); };
+  }, [fetchData]);
+
+  // ─── Export snapshot ───
+  const handleExportSnapshot = useCallback(() => {
+    try {
+      const snapshot = {
+        exportedAt: new Date().toISOString(),
+        summary: {
+          totalListings: allListings.length,
+          newThisWeek: kpis.newThisWeek,
+          withInspections: kpis.withInspections,
+          needsReview: kpis.needsReview,
+          averagePrice: kpis.averagePrice,
+          withImages: contentStats.withImages,
+          withFloorplans: contentStats.withFloorplans,
+          withPrices: contentStats.withPrices,
+        },
+        filters: filters,
+        topSuburbs: suburbData.slice(0, 10),
+        propertyTypes: propertyTypeData,
+        topAgencies: agencyData.slice(0, 10),
+        recentListings: recentListings.map(l => ({
+          address: l.address,
+          suburb: l.suburb,
+          postcode: l.zipCode || extractPostcode(l.address || ''),
+          price: l.price,
+          propertyType: l.propertyType,
+          beds: l.beds,
+          baths: l.baths,
+          source: l.source,
+        })),
+      };
+      
+      const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `overview-snapshot-${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Snapshot exported successfully');
+    } catch {
+      toast.error('Failed to export snapshot');
+    }
+  }, [allListings, kpis, contentStats, filters, suburbData, propertyTypeData, agencyData, recentListings, extractPostcode]);
+
+  // ─── Error state ───
   if (error) {
     return (
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Overview</h1>
-          <p className="text-muted-foreground">
-            Property intake dashboard overview and key metrics
-          </p>
+          <p className="text-muted-foreground">Property intake dashboard overview and key metrics</p>
         </div>
-
         <Card className="border-destructive/50 bg-destructive/10">
           <CardContent className="pt-6">
             <div className="flex items-center gap-2 text-destructive mb-2">
@@ -358,12 +324,8 @@ export default function Overview() {
               <strong>Error:</strong> {error}
             </div>
             <div className="mt-4 flex gap-2">
-              <Button variant="outline" onClick={() => window.location.href = '/settings'}>
-                Go to Settings
-              </Button>
-              <Button variant="outline" onClick={() => window.location.reload()}>
-                Retry
-              </Button>
+              <Button variant="outline" onClick={() => window.location.href = '/settings'}>Go to Settings</Button>
+              <Button variant="outline" onClick={() => window.location.reload()}>Retry</Button>
             </div>
           </CardContent>
         </Card>
@@ -371,16 +333,14 @@ export default function Overview() {
     );
   }
 
+  // ─── Loading state ───
   if (isLoading) {
     return (
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Overview</h1>
-          <p className="text-muted-foreground">
-            Property intake dashboard overview and key metrics
-          </p>
+          <p className="text-muted-foreground">Property intake dashboard overview and key metrics</p>
         </div>
-
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <Card key={i}>
@@ -395,16 +355,11 @@ export default function Overview() {
             </Card>
           ))}
         </div>
-
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
             <Card key={i}>
-              <CardHeader>
-                <Skeleton className="h-5 w-32" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-64 w-full" />
-              </CardContent>
+              <CardHeader><Skeleton className="h-5 w-32" /></CardHeader>
+              <CardContent><Skeleton className="h-64 w-full" /></CardContent>
             </Card>
           ))}
         </div>
@@ -421,11 +376,17 @@ export default function Overview() {
             Property intake dashboard overview and key metrics
           </p>
         </div>
-        <OverviewFilters 
-          filters={filters}
-          setFilters={setFilters}
-          uniqueValues={uniqueValues}
-        />
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleExportSnapshot}>
+            <Download className="h-4 w-4 mr-2" />
+            Export Snapshot
+          </Button>
+          <OverviewFilters 
+            filters={filters}
+            setFilters={setFilters}
+            uniqueValues={uniqueValues}
+          />
+        </div>
       </div>
 
       {/* KPI Cards */}
@@ -436,21 +397,18 @@ export default function Overview() {
           icon={<TrendingUp className="h-4 w-4" />}
           description="Properties received in last 7 days"
         />
-        
         <KPICard
           title="With Inspections"
           value={kpis.withInspections}
           icon={<Calendar className="h-4 w-4" />}
           description="Properties with scheduled inspections"
         />
-        
         <KPICard
           title="Needs Review"
           value={kpis.needsReview}
           icon={<AlertTriangle className="h-4 w-4" />}
           description="Low confidence (<0.7) properties"
         />
-        
         <KPICard
           title="Average Price"
           value={formatCurrency(kpis.averagePrice)}
@@ -467,28 +425,24 @@ export default function Overview() {
           icon={<DollarSign className="h-4 w-4" />}
           description="Properties with price information"
         />
-        
         <KPICard
           title="With Images" 
           value={contentStats.withImages}
           icon={<Image className="h-4 w-4" />}
           description="Properties with image attachments"
         />
-        
         <KPICard
           title="With Floorplans"
           value={contentStats.withFloorplans}
           icon={<FileText className="h-4 w-4" />}
           description="Properties with floorplan documents"
         />
-        
         <KPICard
           title="With Key Entities"
           value={contentStats.withKeyEntities}
           icon={<Tag className="h-4 w-4" />}
           description="Properties with extracted entities"
         />
-
         <KPICard
           title="Email Sources"
           value={contentStats.emailSources}
@@ -497,7 +451,6 @@ export default function Overview() {
         />
       </div>
 
-      {/* Data Integrity Monitor */}
       {/* Reviews Due Widget & Data Integrity Panel */}
       <div className="grid gap-4 lg:grid-cols-2 animate-fade-in">
         <ReviewsDueWidget />
@@ -551,7 +504,21 @@ export default function Overview() {
                     data={propertyTypeData}
                     cx="50%"
                     cy="40%"
-                    labelLine={false}
+                    labelLine={!isMobile}
+                    label={(props: any) => {
+                      const total = propertyTypeData.reduce((sum, item) => sum + item.count, 0);
+                      const percentage = total > 0 ? ((props.count / total) * 100).toFixed(1) : '0.0';
+                      if (parseFloat(percentage) < 3) return null;
+                      const RADIAN = Math.PI / 180;
+                      const radius = (props.outerRadius || 100) + 18;
+                      const x = props.cx + radius * Math.cos(-props.midAngle * RADIAN);
+                      const y = props.cy + radius * Math.sin(-props.midAngle * RADIAN);
+                      return (
+                        <text x={x} y={y} fill="hsl(var(--foreground))" textAnchor={x > props.cx ? 'start' : 'end'} dominantBaseline="central" fontSize={isMobile ? 10 : 12}>
+                          {percentage}%
+                        </text>
+                      );
+                    }}
                     outerRadius={isMobile ? 70 : 100}
                     fill="#8884d8"
                     dataKey="count"
@@ -582,17 +549,21 @@ export default function Overview() {
                     wrapperStyle={{ paddingTop: '10px', fontSize: isMobile ? '10px' : '12px' }}
                     content={() => (
                       <div className="flex flex-wrap justify-center gap-1.5 md:gap-2">
-                        {propertyTypeData.map((entry, index) => (
-                          <div key={entry.type} className="flex items-center gap-1">
-                            <div 
-                              className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-sm" 
-                              style={{ backgroundColor: COLORS[index % COLORS.length] }}
-                            />
-                            <span className="text-[10px] md:text-xs text-muted-foreground">
-                              {entry.type} ({entry.count})
-                            </span>
-                          </div>
-                        ))}
+                        {propertyTypeData.map((entry, index) => {
+                          const total = propertyTypeData.reduce((sum, item) => sum + item.count, 0);
+                          const pct = total > 0 ? ((entry.count / total) * 100).toFixed(1) : '0.0';
+                          return (
+                            <div key={entry.type} className="flex items-center gap-1">
+                              <div 
+                                className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-sm" 
+                                style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                              />
+                              <span className="text-[10px] md:text-xs text-muted-foreground">
+                                {entry.type} ({entry.count} · {pct}%)
+                              </span>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   />
@@ -618,7 +589,7 @@ export default function Overview() {
                     tick={{ textAnchor: 'middle' }}
                     tickFormatter={(value) => {
                       const date = new Date(value);
-                      return `${date.getMonth() + 1}/${date.getDate()}`;
+                      return `${date.getDate()}/${date.getMonth() + 1}`;
                     }}
                     interval={isMobile ? 'preserveStartEnd' : undefined}
                   />
@@ -808,12 +779,21 @@ export default function Overview() {
                     {listing.status && listing.status !== 'Available' && (
                       <Badge variant="secondary" className="text-[10px] md:text-xs shrink-0">{listing.status}</Badge>
                     )}
-                    {listing.confidence !== undefined && (
+                    {listing.confidence !== undefined && listing.confidence !== null && (
                       <ConfidenceBadge confidence={listing.confidence} />
                     )}
                   </div>
                   <div className="flex items-center gap-2 md:gap-4 text-xs md:text-sm text-muted-foreground flex-wrap">
-                    <span className="font-medium">{listing.suburb || 'Unknown Suburb'}</span>
+                    {/* Suburb + Postcode */}
+                    <span className="font-medium flex items-center gap-1">
+                      <MapPin className="h-3 w-3" />
+                      {listing.suburb || 'Unknown Suburb'}
+                      {(listing.zipCode || extractPostcode(listing.address || '')) && (
+                        <span className="text-muted-foreground/70">
+                          {listing.zipCode || extractPostcode(listing.address || '')}
+                        </span>
+                      )}
+                    </span>
                     {listing.price && listing.price > 0 && (
                       <span className="font-semibold text-primary">{formatCurrency(listing.price)}</span>
                     )}
