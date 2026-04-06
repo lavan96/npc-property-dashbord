@@ -630,7 +630,7 @@ serve(async (req) => {
       const layer6Result: PerplexityResult = layerResults.layer6 || { content: '', citations: [] };
       const layer7Result: PerplexityResult = layerResults.layer7 || { content: '', citations: [] };
       const marketEvents: any[] = layerResults.events || [];
-      const internalNPCData: string = layerResults.internalNPC || '';
+      
 
       // ── Layer 4: Regulatory (Gemini — uses Perplexity context) ──────
       let layer4Regulatory = '';
