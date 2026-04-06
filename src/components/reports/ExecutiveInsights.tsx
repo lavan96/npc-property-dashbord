@@ -140,7 +140,7 @@ export function ExecutiveInsights({ listings }: ExecutiveInsightsProps) {
       <Card>
         <CardHeader>
           <CardTitle>Executive Summary</CardTitle>
-          <CardDescription>AI-generated insights from your property data</CardDescription>
+          <CardDescription>Key insights and market observations from your property data</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
