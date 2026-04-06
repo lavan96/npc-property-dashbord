@@ -1314,29 +1314,38 @@ export function InvestmentReportGenerator() {
   };
 
 
-  const fetchRecentReports = async () => {
+  const fetchRecentReports = useCallback(async () => {
     try {
-      const { data, error } = await supabase
-        .from('investment_reports')
-        .select('id, property_address, created_at')
-        .order('created_at', { ascending: false })
-        .limit(5);
+      const { data, error } = await invokeSecureFunction('get-investment-reports', {
+        listMode: true,
+        listOptions: {
+          select: 'id, property_address, created_at, status',
+          orderBy: 'created_at',
+          orderAsc: false,
+          limit: 8,
+          isClientReport: false
+        }
+      });
 
-      if (error) {
-        console.error('Error fetching recent reports:', error);
+      if (error || !data?.success) {
+        console.error('Error fetching recent reports:', error?.message || data?.error);
         return;
       }
 
-      setRecentReports(data || []);
+      setRecentReports((data.reports || []) as RecentReport[]);
     } catch (error) {
       console.error('Error:', error);
     }
-  };
+  }, []);
 
-  // Fetch recent reports on component mount
-  useState(() => {
+  // Fetch recent reports on mount and listen for refresh events
+  useEffect(() => {
     fetchRecentReports();
-  });
+
+    const handleRefresh = () => fetchRecentReports();
+    window.addEventListener('refreshInvestmentReports', handleRefresh);
+    return () => window.removeEventListener('refreshInvestmentReports', handleRefresh);
+  }, [fetchRecentReports]);
 
   const getQueryTypeIcon = () => {
     switch (queryType) {

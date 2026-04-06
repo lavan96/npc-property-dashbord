@@ -417,6 +417,47 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
                     )}
                   </div>
                 </div>
+
+                {/* Investment Score Display - Compass reports */}
+                {report.investment_score && currentTier === 'compass' && (
+                  <div className="mt-4 flex items-center justify-between p-4 rounded-lg bg-muted/50 border">
+                    <div className="flex items-center gap-4">
+                      <div className={`w-14 h-14 rounded-xl font-bold text-xl flex items-center justify-center shadow-sm ${
+                        (() => {
+                          const grade = report.investment_score.grade?.toUpperCase();
+                          if (grade === 'A+' || grade === 'A') return 'bg-emerald-500 text-white';
+                          if (grade === 'B+' || grade === 'B') return 'bg-yellow-500 text-black';
+                          if (grade === 'C+' || grade === 'C') return 'bg-orange-500 text-white';
+                          return 'bg-red-500 text-white';
+                        })()
+                      }`}>
+                        {report.investment_score.grade || '—'}
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-semibold">Investment Grade</span>
+                        <span className="text-xs text-muted-foreground">
+                          {report.investment_score.recommendation || 'Score calculated from market, financial & location data'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="flex flex-col items-end">
+                        <span className="text-xs text-muted-foreground">Overall Score</span>
+                        <div className="flex items-center gap-1">
+                          <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
+                          <span className={`text-2xl font-bold ${
+                            (report.investment_score.totalScore || 0) >= 75 ? 'text-emerald-600 dark:text-emerald-400' :
+                            (report.investment_score.totalScore || 0) >= 55 ? 'text-yellow-600 dark:text-yellow-400' :
+                            'text-red-600 dark:text-red-400'
+                          }`}>
+                            {report.investment_score.totalScore || 0}
+                          </span>
+                          <span className="text-sm text-muted-foreground">/100</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </CardHeader>
             </Card>
 
