@@ -956,10 +956,13 @@ class MarketIntelPDFBuilder {
 
     // Layer 4: Regulatory
     if (layers.includes('layer4') && data.layer4_regulatory?.content) {
-      this.addPage();
-      this.drawSectionHeader('Regulatory & Policy Watch');
-      this.resetTableState();
-      this.drawMarkdownContent(stripDataLimitations(data.layer4_regulatory.content));
+      const regulatoryContent = stripEmptyRegulatorySections(stripDataLimitations(data.layer4_regulatory.content));
+      if (regulatoryContent && regulatoryContent.length > 100) {
+        this.addPage();
+        this.drawSectionHeader('Regulatory & Policy Watch');
+        this.resetTableState();
+        this.drawMarkdownContent(regulatoryContent);
+      }
     }
 
     // Layer 6: Economic
