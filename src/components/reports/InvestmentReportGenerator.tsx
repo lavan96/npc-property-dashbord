@@ -258,7 +258,7 @@ export function InvestmentReportGenerator() {
     if (!query.trim()) {
       toast({
         title: "Input Required",
-        description: "Please enter a property address, zip code, or state.",
+        description: "Please enter a property address, postcode, or state.",
         variant: "destructive",
       });
       return;
