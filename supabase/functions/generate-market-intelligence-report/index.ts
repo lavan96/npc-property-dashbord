@@ -17,14 +17,14 @@ interface PerplexityResult {
 
 // Report type configurations — which layers each type needs
 const REPORT_TYPE_LAYERS: Record<string, string[]> = {
-  full: ['layer1', 'layer2', 'layer3', 'layer4', 'layer5', 'layer6', 'layer7', 'layer8', 'events', 'executive', 'cta'],
-  market_pulse: ['layer1', 'layer3', 'layer6', 'events', 'executive', 'cta'],
-  hotspot_deep_dive: ['layer1', 'layer2', 'layer7', 'layer8', 'executive', 'cta'],
-  strategy_insight: ['layer5', 'layer7', 'layer8', 'executive', 'cta'],
-  finance_update: ['layer1', 'layer4', 'layer6', 'events', 'executive', 'cta'],
-  deal_breakdown: ['layer2', 'layer7', 'layer8', 'executive', 'cta'],
-  myth_busting: ['layer1', 'layer2', 'layer3', 'layer6', 'executive', 'cta'],
-  development_spotlight: ['layer2', 'layer7', 'layer8', 'executive', 'cta'],
+  full: ['layer1', 'layer2', 'layer3', 'layer4', 'layer5', 'layer6', 'layer7', 'layer8', 'events', 'executive', 'key_insights', 'actionable_strategy', 'cta'],
+  market_pulse: ['layer1', 'layer3', 'layer6', 'events', 'executive', 'key_insights', 'actionable_strategy', 'cta'],
+  hotspot_deep_dive: ['layer1', 'layer2', 'layer7', 'layer8', 'executive', 'key_insights', 'actionable_strategy', 'cta'],
+  strategy_insight: ['layer5', 'layer7', 'layer8', 'executive', 'key_insights', 'actionable_strategy', 'cta'],
+  finance_update: ['layer1', 'layer4', 'layer6', 'events', 'executive', 'key_insights', 'actionable_strategy', 'cta'],
+  deal_breakdown: ['layer2', 'layer7', 'layer8', 'executive', 'key_insights', 'actionable_strategy', 'cta'],
+  myth_busting: ['layer1', 'layer2', 'layer3', 'layer6', 'executive', 'key_insights', 'actionable_strategy', 'cta'],
+  development_spotlight: ['layer2', 'layer7', 'layer8', 'executive', 'key_insights', 'actionable_strategy', 'cta'],
 };
 
 const AUDIENCE_SYSTEM_PROMPTS: Record<string, string> = {
@@ -44,6 +44,34 @@ const REPORT_TYPE_LABELS: Record<string, string> = {
   development_spotlight: 'Development Spotlight',
 };
 
+// ─── Expanded Domain Filter ─────────────────────────────────────────────────
+// Master doc mandates: RBA, ABS, APRA, Treasury, CoreLogic, PropTrack, SQM,
+// Domain, REA, Property Council, UDIA, HIA, AFR, The Australian, ABC News,
+// major banks
+
+const PERPLEXITY_DOMAINS = [
+  'rba.gov.au',
+  'abs.gov.au',
+  'apra.gov.au',
+  'treasury.gov.au',
+  'corelogic.com.au',
+  'domain.com.au',
+  'realestate.com.au',
+  'sqmresearch.com.au',
+  'propertycouncil.com.au',
+  'udia.com.au',
+  'hia.com.au',
+  'afr.com',
+  'theaustralian.com.au',
+  'abc.net.au',
+  'proptrack.com.au',
+  'commbank.com.au',
+  'westpac.com.au',
+  'nab.com.au',
+  'anz.com.au',
+  'microburbs.com.au',
+];
+
 // ─── Perplexity Query ────────────────────────────────────────────────────────
 
 async function queryPerplexity(
@@ -62,13 +90,13 @@ async function queryPerplexity(
       messages: [
         {
           role: 'system',
-          content: systemPrompt || 'You are a senior Australian property market analyst providing data-backed intelligence for property investment professionals. Always cite sources and use specific numbers.'
+          content: systemPrompt || 'You are a senior Australian property market analyst providing data-backed intelligence for property investment professionals. Always cite sources and use specific numbers. NPC Services is a strategic property advisory that operates above the noise of the general market — all analysis must reflect this positioning.'
         },
         { role: 'user', content: prompt }
       ],
       temperature: 0.2,
       search_recency_filter: 'week',
-      search_domain_filter: ['rba.gov.au', 'abs.gov.au', 'corelogic.com.au', 'domain.com.au', 'realestate.com.au', 'apra.gov.au', 'treasury.gov.au', 'sqmresearch.com.au'],
+      search_domain_filter: PERPLEXITY_DOMAINS,
     }),
   });
 
@@ -98,7 +126,7 @@ async function callGemini(prompt: string, apiKey: string, maxTokens = 6000): Pro
       messages: [
         {
           role: 'system',
-          content: 'You are a senior Australian property market analyst writing premium client reports. Produce clear, professional, data-driven analysis with specific numbers. Use markdown formatting with headers, bold, bullet points, and tables.'
+          content: 'You are a senior Australian property market analyst writing premium client reports for NPC Services, a strategic property advisory. Produce clear, professional, data-driven analysis with specific numbers. Use markdown formatting with headers, bold, bullet points, and tables. Tone: Professional, strategic, clear, confident, client-focused, insight-driven.'
         },
         { role: 'user', content: prompt },
       ],
@@ -181,6 +209,111 @@ async function extractMarketEvents(apiKey: string): Promise<any[]> {
   return [];
 }
 
+// ─── Internal NPC/GHL Data Fetcher ──────────────────────────────────────────
+
+async function fetchInternalNPCData(supabase: any): Promise<string> {
+  try {
+    console.log('[market-intel-report] Fetching internal NPC/GHL pipeline data...');
+
+    // Pipeline stage distribution
+    const { data: opportunities } = await supabase
+      .from('ghl_client_opportunities')
+      .select('pipeline_name, stage_name, opportunity_status, monetary_value')
+      .order('created_at', { ascending: false })
+      .limit(500);
+
+    // Active deals summary
+    const { data: activeDeals } = await supabase
+      .from('client_deals')
+      .select('deal_type, current_stage, total_contract_price, risk_status')
+      .limit(200);
+
+    // Client count
+    const { count: totalClients } = await supabase
+      .from('clients')
+      .select('id', { count: 'exact', head: true });
+
+    // Build summary
+    const pipelineStats: Record<string, Record<string, number>> = {};
+    let totalPipelineValue = 0;
+    let openOpportunities = 0;
+
+    if (opportunities) {
+      for (const opp of opportunities) {
+        const pipeline = opp.pipeline_name || 'Unknown';
+        const stage = opp.stage_name || 'Unknown';
+        if (!pipelineStats[pipeline]) pipelineStats[pipeline] = {};
+        pipelineStats[pipeline][stage] = (pipelineStats[pipeline][stage] || 0) + 1;
+        if (opp.opportunity_status === 'open') openOpportunities++;
+        totalPipelineValue += Number(opp.monetary_value) || 0;
+      }
+    }
+
+    const dealsByType: Record<string, number> = {};
+    const dealsByStage: Record<string, number> = {};
+    let totalContractValue = 0;
+    let atRiskDeals = 0;
+
+    if (activeDeals) {
+      for (const deal of activeDeals) {
+        const type = deal.deal_type || 'Unknown';
+        const stage = deal.current_stage || 'Unknown';
+        dealsByType[type] = (dealsByType[type] || 0) + 1;
+        dealsByStage[stage] = (dealsByStage[stage] || 0) + 1;
+        totalContractValue += Number(deal.total_contract_price) || 0;
+        if (deal.risk_status === 'at_risk' || deal.risk_status === 'high_risk') atRiskDeals++;
+      }
+    }
+
+    const pipelineSummary = Object.entries(pipelineStats)
+      .map(([pipeline, stages]) => {
+        const stageDetails = Object.entries(stages)
+          .sort((a, b) => b[1] - a[1])
+          .map(([stage, count]) => `  - ${stage}: ${count} contacts`)
+          .join('\n');
+        return `**${pipeline}**:\n${stageDetails}`;
+      })
+      .join('\n');
+
+    const dealSummary = Object.entries(dealsByType)
+      .map(([type, count]) => `- ${type}: ${count} active deals`)
+      .join('\n');
+
+    const stageSummary = Object.entries(dealsByStage)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([stage, count]) => `- ${stage}: ${count}`)
+      .join('\n');
+
+    return `
+## Internal NPC Market Activity (Live CRM Data)
+
+**Total Active Clients**: ${totalClients || 0}
+**Open Pipeline Opportunities**: ${openOpportunities}
+**Total Pipeline Value**: $${totalPipelineValue.toLocaleString()}
+**Total Active Deal Contract Value**: $${totalContractValue.toLocaleString()}
+**At-Risk Deals**: ${atRiskDeals}
+
+### Pipeline Distribution:
+${pipelineSummary || 'No pipeline data available'}
+
+### Active Deal Types:
+${dealSummary || 'No active deals'}
+
+### Deal Stage Distribution:
+${stageSummary || 'No stage data'}
+
+### Market Signals from NPC Activity:
+- Client enquiry volume and pipeline movement indicate current market appetite
+- Deal types in progress reflect where investor confidence is directing capital
+- Stage progression velocity signals market timing sentiment
+`;
+  } catch (error) {
+    console.error('[market-intel-report] Error fetching internal data:', error);
+    return 'Internal NPC data unavailable for this report cycle.';
+  }
+}
+
 // ─── Data Layer Fetchers ─────────────────────────────────────────────────────
 
 async function fetchLayer1_RBA(perplexityKey: string): Promise<PerplexityResult> {
@@ -190,9 +323,10 @@ async function fetchLayer1_RBA(perplexityKey: string): Promise<PerplexityResult>
 1. **Current RBA Cash Rate** — exact rate and date of last decision
 2. **Rate Decision History** — last 6 RBA decisions with dates and changes
 3. **Forward Rate Expectations** — what ASX rate futures/market pricing suggests for the next 6 months
-4. **Impact on Borrowing Capacity** — how the current rate affects typical borrower serviceability
+4. **Impact on Borrowing Capacity** — how the current rate affects typical borrower serviceability (reference APRA's 3% buffer)
 5. **Impact on Investor Sentiment** — current investor activity levels relative to rate environment
 6. **Comparison to Long-Term Average** — how current rates compare to 10yr and 20yr averages
+7. **Major Bank Outlook** — what CBA, Westpac, NAB, ANZ economists are forecasting for rates
 
 Use specific numbers, dates, and percentages. Cite all data sources.`,
     perplexityKey
@@ -204,13 +338,15 @@ async function fetchLayer2_Housing(perplexityKey: string): Promise<PerplexityRes
     `Provide a comprehensive snapshot of Australia's current housing market:
 
 1. **Auction Clearance Rates** — national and by capital city (Sydney, Melbourne, Brisbane, Perth, Adelaide) for the most recent weekend
-2. **Median House Price Changes** — quarterly and annual change by capital city
+2. **Median House Price Changes** — quarterly and annual change by capital city (CoreLogic and PropTrack data)
 3. **Days on Market** — average DOM by capital city, trend direction
 4. **Rental Yields** — gross rental yields by capital city for houses and units
 5. **Listing Volumes** — new listings vs. historical averages, supply pressure
 6. **Regional vs. Metro Trends** — any divergence in performance
+7. **Supply Pipeline** — building approvals trend and new dwelling completions vs population growth
+8. **Vacancy Rates** — SQM Research vacancy rates by capital city
 
-Use specific numbers in AUD. Include data from CoreLogic, Domain, REA Group, or SQM Research where available.`,
+Use specific numbers in AUD. Include data from CoreLogic, PropTrack, Domain, REA Group, SQM Research, and HIA where available.`,
     perplexityKey
   );
 }
@@ -225,6 +361,8 @@ async function fetchLayer3_Sentiment(perplexityKey: string): Promise<PerplexityR
 4. **Property Investment Intent** — investor loan approvals trend (ABS data)
 5. **First Home Buyer Activity** — FHB loan approvals vs historical average
 6. **Rental Market Stress** — vacancy rates by capital city from SQM Research
+7. **Property Council / UDIA / HIA Sentiment** — any recent industry body sentiment surveys or confidence indices
+8. **Media Sentiment** — overall tone from AFR, The Australian, and ABC property coverage in the last 30 days
 
 Cite all specific readings with their publication dates.`,
     perplexityKey
@@ -242,13 +380,15 @@ async function fetchLayer6_Economic(perplexityKey: string): Promise<PerplexityRe
 5. **Population Growth & Migration** — latest ABS NOM data, impact on housing demand
 6. **AUD Exchange Rate** — current AUD/USD, impact on foreign investment appetite
 7. **Building Approvals** — latest trend, supply pipeline implications
+8. **Credit Growth** — housing credit growth from RBA data, investor vs owner-occupier lending split
+9. **Household Debt-to-Income Ratio** — latest RBA data on household leverage
 
-Use the most recent ABS, RBA, and Treasury data. Cite publication dates.`,
+Use the most recent ABS, RBA, APRA, and Treasury data. Cite publication dates.`,
     perplexityKey
   );
 }
 
-// ─── NEW: Layer 7 — Micro/Suburb Intelligence ───────────────────────────────
+// ─── Layer 7 — Micro/Suburb Intelligence ────────────────────────────────────
 
 async function fetchLayer7_Micro(perplexityKey: string, audiencePrompt: string): Promise<PerplexityResult> {
   return queryPerplexity(
@@ -260,7 +400,7 @@ async function fetchLayer7_Micro(perplexityKey: string, audiencePrompt: string):
 4. **Days on Market** — average DOM and whether it's tightening or loosening
 5. **Vacancy Rate** — current rate from SQM Research or similar
 6. **Growth Drivers** — infrastructure projects, transport links, employment hubs, amenities driving demand
-7. **Supply-Demand Balance** — new listings vs buyer demand, development pipeline
+7. **Supply-Demand Balance** — new listings vs buyer demand, development pipeline, DSR (demand-to-supply ratio) where available
 8. **Comparable Sales** — 2-3 recent sale examples with prices
 9. **Rental Performance** — median weekly rent and 12-month rental growth
 10. **Entry Strategy** — recommended approach for entering this market
@@ -269,19 +409,20 @@ Also identify 3 emerging corridors showing early-stage growth signals (price mom
 
 ${audiencePrompt}
 
-Use data from CoreLogic, Domain, SQM Research, and government infrastructure databases. Prioritise suburbs showing BOTH capital growth AND rental yield strength.`,
+Use data from CoreLogic, PropTrack, Domain, SQM Research, Microburbs, and government infrastructure databases. Prioritise suburbs showing BOTH capital growth AND rental yield strength.`,
     perplexityKey,
     'You are a senior Australian property market analyst specialising in suburb-level intelligence. Provide granular, data-backed suburb analysis that helps investors identify specific opportunities. Always cite sources and use specific numbers.'
   );
 }
 
-// ─── NEW: Layer 8 — Competitive Edge (NPC Differentiation) ──────────────────
+// ─── Layer 8 — Competitive Edge (NPC Differentiation) ───────────────────────
 
 async function generateLayer8_CompetitiveEdge(
   lovableKey: string,
   layer2Content: string,
   layer7Content: string,
-  audiencePrompt: string
+  audiencePrompt: string,
+  internalNPCData: string
 ): Promise<string> {
   return callGemini(
     `You are writing the "Competitive Strategic Edge" section of a premium NPC Services Market Intelligence Report. This section differentiates NPC from every other property advisory by revealing insights that typical buyers and competitors overlook.
@@ -293,16 +434,20 @@ ${layer2Content.slice(0, 2000)}
 ### Suburb-Level Intelligence:
 ${layer7Content.slice(0, 3000)}
 
+### Internal NPC Market Activity:
+${internalNPCData.slice(0, 1500)}
+
 ## Required Analysis (produce ALL sections):
 
 ### 1. Off-Market & Pre-Market Intelligence
-Identify 2-3 opportunities that are likely available off-market or pre-market in the suburbs analysed. Explain what signals suggest off-market activity and how a strategic buyer would access these.
+Identify 2-3 opportunities that are likely available off-market or pre-market in the suburbs analysed. Explain what signals suggest off-market activity and how a strategic buyer would access these. Reference NPC's pipeline activity where relevant.
 
 ### 2. Development & Subdivision Potential
 For the top suburbs identified, analyse:
 - Which properties/sites have subdivision potential (lot sizes, zoning, frontage)
 - Estimated uplift from a subdivide-and-hold or subdivide-and-sell strategy
 - Planning approval likelihood and timeframes
+- Reference council DA tracker trends where applicable
 
 ### 3. Zoning & Overlay Opportunities
 Identify zoning advantages in the target areas:
@@ -329,13 +474,100 @@ For the #1 opportunity identified, provide a detailed strategic playbook:
 
 ${audiencePrompt}
 
-Tone: Confident, strategic, authoritative. This is where NPC proves its value above the noise.`,
+Tone: Confident, strategic, authoritative. This is where NPC proves its value above the noise. NPC Services is a strategic property advisory, not just a buyer's agent — decisions are data-driven and insight-led.`,
     lovableKey,
     8000
   );
 }
 
-// ─── NEW: CTA Generation ────────────────────────────────────────────────────
+// ─── Key Insights Snapshot Generator ────────────────────────────────────────
+
+async function generateKeyInsightsSnapshot(
+  lovableKey: string,
+  allLayerSummaries: string,
+  reportType: string,
+  audiencePrompt: string
+): Promise<string> {
+  return callGemini(
+    `Generate a "Key Insights Snapshot" section for an NPC Services ${REPORT_TYPE_LABELS[reportType] || 'Market Intelligence Report'}.
+
+## Data Summary:
+${allLayerSummaries.slice(0, 6000)}
+
+## Required Output:
+Produce exactly 5 concise, punchy bullet points that summarise the most critical takeaways from this report. Each bullet must:
+- Lead with a bold key metric or finding
+- Include a specific number, percentage, or date
+- End with a brief "so what" implication for the reader
+- Be no longer than 2 sentences
+
+${audiencePrompt}
+
+Format as markdown bullet points. These will appear prominently after the executive summary as a quick-reference panel.
+
+Example format:
+- **Cash Rate held at X.XX%** — Forward pricing suggests [direction], creating a [window/risk] for [buyer type]. Act [now/wait].
+- **Sydney median up X.X% quarterly** — Outperforming Melbourne by [X]pp, driven by [factor]. [Implication].
+
+Tone: Sharp, data-backed, actionable. No fluff.`,
+    lovableKey,
+    1500
+  );
+}
+
+// ─── Actionable Strategy Generator ──────────────────────────────────────────
+
+async function generateActionableStrategy(
+  lovableKey: string,
+  allLayerSummaries: string,
+  reportType: string,
+  audienceSegment: string,
+  internalNPCData: string
+): Promise<string> {
+  const audienceFraming: Record<string, string> = {
+    general: 'Provide balanced guidance for both investors and homebuyers.',
+    investor: 'Frame all advice through a portfolio growth, yield optimisation, and tax efficiency lens.',
+    owner_occupier: 'Frame all advice through a lifestyle, long-term wealth, and practical buying lens.',
+  };
+
+  return callGemini(
+    `Generate the "Actionable Strategy" section for an NPC Services ${REPORT_TYPE_LABELS[reportType] || 'Market Intelligence Report'}.
+
+## Data Context:
+${allLayerSummaries.slice(0, 5000)}
+
+## NPC Pipeline Context:
+${internalNPCData.slice(0, 1000)}
+
+## Required Output Structure:
+
+### What To Do Now
+3-4 specific, actionable recommendations. Each must include:
+- The specific action to take
+- Why now (timing rationale with data)
+- Expected benefit or outcome
+
+### What To Avoid
+3 clear warnings — things the reader should NOT do in the current market. Be specific and data-backed:
+- Common mistakes in the current environment
+- Traps that less-informed buyers are falling into
+- Timing errors based on current cycle positioning
+
+### Timing Considerations
+- **Buy Window**: Is this a good time to buy? For which property types and locations?
+- **Hold Strategy**: For existing portfolio holders, what's the optimal play?
+- **Watch Signals**: What specific data releases or events should trigger action?
+- **90-Day Outlook**: Brief forward view with key decision points
+
+${audienceFraming[audienceSegment] || audienceFraming.general}
+
+Tone: Decisive, strategic, authoritative. NPC provides clarity where others provide confusion. Every recommendation must be justified with data.`,
+    lovableKey,
+    3000
+  );
+}
+
+// ─── CTA Generation ─────────────────────────────────────────────────────────
 
 async function generateCTA(lovableKey: string, reportType: string, audienceSegment: string): Promise<string> {
   const ctaPrompts: Record<string, string> = {
@@ -377,7 +609,7 @@ A 2-3 sentence compelling paragraph that creates urgency without being pushy.
 3. **Connect With Our Team** — phone/email with a personal touch
 
 ### Why NPC Services?
-A single powerful sentence that reinforces NPC's strategic advantage.
+A single powerful sentence that reinforces NPC's strategic advantage: NPC Services is a strategic property advisory that delivers data-driven, insight-led guidance — enabling clients to act on opportunities others don't see.
 
 Keep it professional, warm, and action-oriented. No generic "contact us" language.`,
     lovableKey,
@@ -456,10 +688,13 @@ serve(async (req) => {
     console.log(`[market-intel-report] Report ID: ${reportId}, layers: ${requiredLayers.join(', ')}`);
 
     try {
-      // ── Fetch required layers in parallel ───────────────────────────
+      // ── Fetch required layers + internal data in parallel ──────────
       console.log('[market-intel-report] Fetching data layers...');
 
       const fetchPromises: Record<string, Promise<any>> = {};
+
+      // Always fetch internal NPC data
+      fetchPromises.internalNPC = fetchInternalNPCData(supabase);
 
       if (requiredLayers.includes('layer1')) {
         fetchPromises.layer1 = fetchLayer1_RBA(PERPLEXITY_API_KEY).catch(e => {
@@ -503,6 +738,7 @@ serve(async (req) => {
       const layer6Result: PerplexityResult = layerResults.layer6 || { content: '', citations: [] };
       const layer7Result: PerplexityResult = layerResults.layer7 || { content: '', citations: [] };
       const marketEvents: any[] = layerResults.events || [];
+      const internalNPCData: string = layerResults.internalNPC || '';
 
       // ── Layer 4: Regulatory (Gemini — uses Perplexity context) ──────
       let layer4Regulatory = '';
@@ -541,10 +777,56 @@ For each item, specify: What changed, When, Which states affected, Impact rating
             LOVABLE_API_KEY,
             layer2Result.content,
             layer7Result.content,
-            audiencePrompt
+            audiencePrompt,
+            internalNPCData
           );
         } catch (e) {
           console.error('Layer 8 (Competitive Edge) error:', e);
+        }
+      }
+
+      // ── Build summary for cross-layer generators ────────────────────
+      const allLayerSummaries = [
+        layer1Result.content ? `## Interest Rates:\n${layer1Result.content.slice(0, 1200)}` : '',
+        layer2Result.content ? `## Housing Market:\n${layer2Result.content.slice(0, 1200)}` : '',
+        layer3Result.content ? `## Sentiment:\n${layer3Result.content.slice(0, 1000)}` : '',
+        layer4Regulatory ? `## Regulatory:\n${layer4Regulatory.slice(0, 800)}` : '',
+        layer6Result.content ? `## Economic:\n${layer6Result.content.slice(0, 1000)}` : '',
+        layer7Result.content ? `## Suburb Intelligence:\n${layer7Result.content.slice(0, 1200)}` : '',
+        layer8CompetitiveEdge ? `## Strategic Edge:\n${layer8CompetitiveEdge.slice(0, 800)}` : '',
+        internalNPCData ? `## NPC Activity:\n${internalNPCData.slice(0, 600)}` : '',
+      ].filter(Boolean).join('\n\n');
+
+      // ── Key Insights Snapshot (NEW — mandatory per master doc) ──────
+      let keyInsightsSnapshot = '';
+      if (requiredLayers.includes('key_insights')) {
+        console.log('[market-intel-report] Generating key insights snapshot...');
+        try {
+          keyInsightsSnapshot = await generateKeyInsightsSnapshot(
+            LOVABLE_API_KEY,
+            allLayerSummaries,
+            reportType,
+            audiencePrompt
+          );
+        } catch (e) {
+          console.error('Key insights snapshot error:', e);
+        }
+      }
+
+      // ── Actionable Strategy (NEW — mandatory per master doc) ────────
+      let actionableStrategy = '';
+      if (requiredLayers.includes('actionable_strategy')) {
+        console.log('[market-intel-report] Generating actionable strategy...');
+        try {
+          actionableStrategy = await generateActionableStrategy(
+            LOVABLE_API_KEY,
+            allLayerSummaries,
+            reportType,
+            audienceSegment,
+            internalNPCData
+          );
+        } catch (e) {
+          console.error('Actionable strategy error:', e);
         }
       }
 
@@ -575,6 +857,9 @@ ${layer6Result.content.slice(0, 1500)}
 
 ## Layer 7 — Suburb Intelligence:
 ${layer7Result.content.slice(0, 1500)}
+
+## Internal NPC Activity:
+${internalNPCData.slice(0, 800)}
 
 ## Upcoming Events:
 ${marketEvents.filter((e: any) => new Date(e.date) > new Date()).slice(0, 10).map((e: any) => `- [${e.date}] ${e.event} (${e.impact})`).join('\n')}
@@ -635,6 +920,7 @@ Key data points to synthesize:
 - Economic: ${layer6Result.content.slice(0, 500)}
 - Suburb Intelligence: ${layer7Result.content.slice(0, 500)}
 - Competitive Edge: ${layer8CompetitiveEdge.slice(0, 500)}
+- NPC Pipeline Activity: ${internalNPCData.slice(0, 300)}
 
 ${audiencePrompt}
 
@@ -646,7 +932,7 @@ Write 5-6 dense paragraphs covering:
 5. Top suburb opportunities identified
 6. The bottom line — what the reader should do NOW
 
-Tone: Authoritative, data-backed, actionable. Use bold for key figures.`,
+Tone: Authoritative, data-backed, actionable. Use bold for key figures. Position NPC Services as a strategic property advisory delivering insight-led guidance.`,
             LOVABLE_API_KEY,
             3000
           );
@@ -672,6 +958,8 @@ Tone: Authoritative, data-backed, actionable. Use bold for key figures.`,
         reportTypeLabel: REPORT_TYPE_LABELS[reportType] || reportType,
         audienceSegment,
         executiveSummary,
+        keyInsightsSnapshot,
+        actionableStrategy,
         layer1_rba: {
           content: layer1Result.content,
           citations: layer1Result.citations,
@@ -701,6 +989,7 @@ Tone: Authoritative, data-backed, actionable. Use bold for key figures.`,
         layer8_competitive_edge: {
           content: layer8CompetitiveEdge,
         },
+        internalNPCData,
         ctaContent,
         marketEvents: marketEvents.sort((a: any, b: any) =>
           new Date(b.date).getTime() - new Date(a.date).getTime()
