@@ -92,10 +92,11 @@ serve(async (req) => {
         .insert({
           name: data?.name,
           description: data?.description,
-          pipeline_id: data?.pipeline_id,
+          pipeline_id: data?.pipeline_id || 'none',
           pipeline_name: data?.pipeline_name,
           stage_id: data?.stage_id || null,
           stage_name: data?.stage_name || null,
+          pipeline_stage_targets: data?.pipeline_stage_targets || [],
           frequency: data?.frequency || 'monthly',
           mailbox_source: data?.mailbox_source || 'admin',
           sender_mailbox_email: data?.sender_mailbox_email || null,
