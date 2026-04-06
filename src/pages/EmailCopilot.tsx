@@ -83,6 +83,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { format, formatDistanceToNow, isToday, isYesterday } from 'date-fns';
+import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 
 interface EmailSummary {
   tldr: string;
