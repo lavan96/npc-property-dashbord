@@ -425,6 +425,20 @@ export default function Reports() {
                       </PieChart>
                     </ResponsiveContainer>
                   </ChartContainer>
+                  {/* Dominant type callout */}
+                  {propertyTypeChartData.length > 0 && (() => {
+                    const dominant = propertyTypeChartData.reduce((max, d) => d.count > max.count ? d : max, propertyTypeChartData[0]);
+                    const dominantPct = totalListings > 0 ? ((dominant.count / totalListings) * 100).toFixed(0) : '0';
+                    return (
+                      <div className="flex items-center gap-2 p-3 rounded-md bg-muted/30 border border-border/50">
+                        <Lightbulb className="h-4 w-4 text-yellow-500 shrink-0" />
+                        <p className="text-xs text-foreground">
+                          <span className="font-semibold">{dominant.type}</span> properties dominate at <span className="font-semibold">{dominantPct}%</span> of all listings ({dominant.count} of {totalListings}).
+                        </p>
+                        <Badge variant="outline" className="ml-auto shrink-0 text-[10px]">Dominant</Badge>
+                      </div>
+                    );
+                  })()}
                   {/* Legend table */}
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-2 border-t">
                     {propertyTypeChartData.map((entry, i) => {
