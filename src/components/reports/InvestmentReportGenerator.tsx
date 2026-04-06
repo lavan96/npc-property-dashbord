@@ -1374,7 +1374,7 @@ export function InvestmentReportGenerator() {
       <div className="space-y-2">
         <h2 className="text-2xl font-bold text-foreground">Investment Report Generator</h2>
         <p className="text-muted-foreground">
-          Generate comprehensive property investment analysis using AI-powered research for addresses, zip codes, or states across Australia.
+          Generate comprehensive property investment analysis for addresses, postcodes, or states across Australia.
         </p>
       </div>
 
