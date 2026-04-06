@@ -268,10 +268,25 @@ export default function Conversations() {
       if (data?.error) throw new Error(data.error);
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       setReplyText('');
       setEmailSubject('');
       toast.success('Message sent');
+      // Optimistically add the sent message to the cache so it appears immediately
+      queryClient.setQueryData(['conversation-messages', selectedId], (old: any) => {
+        if (!old) return old;
+        const optimisticMsg = {
+          id: `optimistic-${Date.now()}`,
+          conversation_id: selectedId,
+          body: variables.message,
+          direction: 'outbound',
+          message_type: variables.type,
+          date_added: new Date().toISOString(),
+          status: 'sent',
+        };
+        return { ...old, records: [...(old.records || []), optimisticMsg] };
+      });
+      // Also refetch to get the real server data
       queryClient.invalidateQueries({ queryKey: ['conversation-messages', selectedId] });
       refetchConversations();
     },
