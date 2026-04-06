@@ -3940,51 +3940,91 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                 </div>
               </CardHeader>
               <CardContent>
-                <div ref={yieldChartRef} className="h-[220px] w-full bg-background p-2">
+                <div ref={yieldChartRef} className="h-[260px] w-full bg-background p-2">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart
                       data={projections.filter(p => p.year >= 1).map(p => ({
-                        year: `Year ${p.year}`,
+                        year: `Yr ${p.year}`,
                         'Gross Yield %': p.grossYield,
                         'Net Yield %': p.netYield,
                       }))}
-                      margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                      margin={{ top: 10, right: 30, left: 20, bottom: 10 }}
                     >
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                      <XAxis dataKey="year" className="text-xs" tick={{ fontSize: 11 }} />
+                      <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
+                      <XAxis 
+                        dataKey="year" 
+                        tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                        axisLine={{ stroke: 'hsl(var(--border))' }}
+                        tickLine={false}
+                      />
                       <YAxis 
-                        className="text-xs" 
-                        tick={{ fontSize: 11 }} 
+                        tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} 
                         tickFormatter={(value) => `${value}%`}
                         domain={['auto', 'auto']}
+                        axisLine={false}
+                        tickLine={false}
                       />
                       <Tooltip 
-                        formatter={(value: number) => [`${value.toFixed(2)}%`, undefined]}
+                        formatter={(value: number, name: string) => [`${value.toFixed(2)}%`, name]}
                         contentStyle={{ 
-                          backgroundColor: 'hsl(var(--background))', 
+                          backgroundColor: 'hsl(var(--popover))', 
                           border: '1px solid hsl(var(--border))',
-                          borderRadius: '6px',
-                          fontSize: '12px'
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
                         }}
+                        labelStyle={{ fontWeight: 600, marginBottom: 4 }}
                       />
-                      <Legend wrapperStyle={{ fontSize: '12px' }} />
+                      <Legend 
+                        wrapperStyle={{ fontSize: '11px', paddingTop: '12px' }}
+                        iconType="circle"
+                        iconSize={8}
+                      />
                       <Line 
                         type="monotone" 
                         dataKey="Gross Yield %" 
                         stroke="#06b6d4" 
-                        strokeWidth={2}
-                        dot={{ r: 3 }}
+                        strokeWidth={2.5}
+                        dot={{ r: 4, fill: '#06b6d4', strokeWidth: 0 }}
+                        activeDot={{ r: 6, strokeWidth: 2, stroke: 'hsl(var(--background))' }}
                       />
                       <Line 
                         type="monotone" 
                         dataKey="Net Yield %" 
                         stroke="#ec4899" 
-                        strokeWidth={2}
-                        dot={{ r: 3 }}
+                        strokeWidth={2.5}
+                        dot={{ r: 4, fill: '#ec4899', strokeWidth: 0 }}
+                        activeDot={{ r: 6, strokeWidth: 2, stroke: 'hsl(var(--background))' }}
                       />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
+                {/* Yield summary */}
+                {projections.length > 1 && (() => {
+                  const yr1 = projections.find(p => p.year === 1);
+                  const yr10 = projections.find(p => p.year === 10);
+                  if (!yr1 || !yr10) return null;
+                  return (
+                    <div className="grid grid-cols-4 gap-2 mt-3 pt-3 border-t text-center">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Yr 1 Gross</p>
+                        <p className="text-sm font-semibold">{yr1.grossYield.toFixed(2)}%</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Yr 10 Gross</p>
+                        <p className="text-sm font-semibold">{yr10.grossYield.toFixed(2)}%</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Yr 1 Net</p>
+                        <p className="text-sm font-semibold">{yr1.netYield.toFixed(2)}%</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Yr 10 Net</p>
+                        <p className="text-sm font-semibold">{yr10.netYield.toFixed(2)}%</p>
+                      </div>
+                    </div>
+                  );
+                })()}
               </CardContent>
             </Card>
 
