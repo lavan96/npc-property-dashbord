@@ -582,6 +582,40 @@ export default function GeneratedReports() {
     }
   }, [showArchived]);
 
+  // Filtered comparisons based on archive state
+  const filteredComparisons = useMemo(() => {
+    return comparisons.filter(c => showArchivedComparisons ? (c as any).is_archived === true : (c as any).is_archived !== true);
+  }, [comparisons, showArchivedComparisons]);
+
+  // Archive/unarchive a comparison
+  const archiveComparison = async (comparisonId: string, archive: boolean) => {
+    try {
+      const { error } = await (supabase as any)
+        .from('property_comparisons')
+        .update({ is_archived: archive })
+        .eq('id', comparisonId);
+
+      if (error) throw error;
+
+      // Update local state
+      setComparisons(prev =>
+        prev.map(c => c.id === comparisonId ? { ...c, is_archived: archive } as any : c)
+      );
+
+      toast({
+        title: archive ? 'Comparison archived' : 'Comparison restored',
+        description: archive ? 'The comparison has been archived.' : 'The comparison has been restored.',
+      });
+    } catch (error: any) {
+      console.error('Archive comparison error:', error);
+      toast({
+        title: 'Action failed',
+        description: error?.message || 'Could not update comparison.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const fetchComparisons = async () => {
     try {
       // Cast to any to bypass TypeScript for property_comparisons table
