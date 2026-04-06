@@ -42,6 +42,31 @@ export function InvestmentReportModal({
     setIsGenerating(true);
     setHasStartedGeneration(true);
     
+    // Save a preliminary 'processing' record so the floating progress tracker can see it
+    let preliminaryReportId: string | null = null;
+    if (user) {
+      try {
+        const { data: insertResult, error: insertError } = await invokeSecureFunction('manage-investment-reports', {
+          action: 'insert',
+          data: {
+            property_address: propertyAddress,
+            property_listing_id: propertyDetails?.id || null,
+            report_content: '',
+            sources_content: '',
+            generated_by: user.id,
+            status: 'processing',
+          },
+        });
+        if (!insertError && insertResult?.success && insertResult.report) {
+          preliminaryReportId = insertResult.report.id;
+          setReportId(insertResult.report.id);
+          console.log('Created preliminary report record:', insertResult.report.id);
+        }
+      } catch (e) {
+        console.error('Failed to create preliminary report record:', e);
+      }
+    }
+
     if (runInBackground) {
       setIsBackgroundGeneration(true);
       toast({
