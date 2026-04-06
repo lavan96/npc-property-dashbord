@@ -126,7 +126,7 @@ serve(async (req) => {
 
       const updateData: Record<string, any> = {};
       const allowedFields = ['name', 'description', 'pipeline_id', 'pipeline_name', 'stage_id', 'stage_name',
-        'frequency', 'mailbox_source', 'sender_mailbox_email', 'email_subject_template', 'email_body_template', 
+        'pipeline_stage_targets', 'frequency', 'mailbox_source', 'sender_mailbox_email', 'email_subject_template', 'email_body_template', 
         'is_enabled', 'report_type', 'audience_segment', 'content_rotation_enabled', 'rotation_sequence', 'current_rotation_index'];
       
       for (const field of allowedFields) {
