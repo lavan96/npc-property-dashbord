@@ -311,26 +311,56 @@ export default function Reports() {
               <Card>
                 <CardHeader>
                   <CardTitle>Listings by Suburb</CardTitle>
-                  <CardDescription>Top 10 suburbs by listing count</CardDescription>
+                  <CardDescription>Top 10 suburbs by listing volume — higher bars indicate stronger market activity in that area</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
                   <ChartContainer ref={suburbChartRef} config={chartConfig} className="h-[280px] md:h-[400px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={suburbChartData}>
-                        <CartesianGrid strokeDasharray="3 3" />
+                      <BarChart data={suburbChartData} margin={{ bottom: 60 }}>
+                        <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                         <XAxis 
                           dataKey="suburb" 
                           angle={-45}
                           textAnchor="end"
                           height={80}
-                          fontSize={12}
+                          fontSize={11}
+                          tick={{ fill: 'hsl(var(--muted-foreground))' }}
                         />
-                        <YAxis />
-                        <ChartTooltip content={<ChartTooltipContent />} />
-                        <Bar dataKey="count" fill="hsl(var(--chart-1))" />
+                        <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
+                        <ChartTooltip 
+                          content={({ active, payload }) => {
+                            if (!active || !payload?.length) return null;
+                            const data = payload[0].payload;
+                            const pct = totalListings > 0 ? ((data.count / totalListings) * 100).toFixed(1) : '0';
+                            return (
+                              <div className="bg-popover border border-border rounded-lg p-3 shadow-md">
+                                <p className="font-semibold text-sm text-foreground">{data.suburb}</p>
+                                <p className="text-xs text-muted-foreground mt-1">{data.count} listings ({pct}% of total)</p>
+                              </div>
+                            );
+                          }}
+                        />
+                        <Bar dataKey="count" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </ChartContainer>
+                  {/* Sub-metrics */}
+                  <div className="grid grid-cols-3 gap-3 pt-2 border-t">
+                    <div className="text-center">
+                      <p className="text-lg font-bold text-foreground">{suburbChartData.length}</p>
+                      <p className="text-[11px] text-muted-foreground">Suburbs Tracked</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-lg font-bold text-foreground">{suburbChartData[0]?.suburb || '—'}</p>
+                      <p className="text-[11px] text-muted-foreground">Top Suburb</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-lg font-bold text-foreground">
+                        {suburbChartData.length > 0 ? Math.round(suburbChartData.reduce((s, d) => s + d.count, 0) / suburbChartData.length) : 0}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">Avg per Suburb</p>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
