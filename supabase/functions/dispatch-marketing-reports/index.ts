@@ -104,6 +104,9 @@ serve(async (req) => {
           is_enabled: data?.is_enabled !== false,
           next_scheduled_at: nextScheduled,
           created_by: data?.created_by,
+          report_type: data?.report_type || 'full',
+          audience_segment: data?.audience_segment || 'general',
+          content_rotation_enabled: data?.content_rotation_enabled || false,
         })
         .select()
         .single();
