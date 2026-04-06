@@ -807,7 +807,7 @@ Key data points to synthesize:
 - Economic: ${layer6Result.content.slice(0, 500)}
 - Suburb Intelligence: ${layer7Result.content.slice(0, 500)}
 - Competitive Edge: ${layer8CompetitiveEdge.slice(0, 500)}
-- NPC Pipeline Activity: ${internalNPCData.slice(0, 300)}
+
 
 ${audiencePrompt}
 
