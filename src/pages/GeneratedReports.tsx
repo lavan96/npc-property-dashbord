@@ -978,7 +978,7 @@ export default function GeneratedReports() {
                               <SelectItem value="all">All Reports</SelectItem>
                               <SelectItem value="address">Property Analysis</SelectItem>
                               <SelectItem value="suburb">Suburb Analysis</SelectItem>
-                              <SelectItem value="zipcode">Area Analysis</SelectItem>
+                              <SelectItem value="zipcode">Postcode Analysis</SelectItem>
                               <SelectItem value="state">State Analysis</SelectItem>
                             </SelectContent>
                           </Select>
@@ -1052,7 +1052,7 @@ export default function GeneratedReports() {
                         <div className="flex items-center gap-2"><Building2 className="h-4 w-4" />Suburb Analysis</div>
                       </SelectItem>
                       <SelectItem value="zipcode">
-                        <div className="flex items-center gap-2"><Map className="h-4 w-4" />Area Analysis</div>
+                        <div className="flex items-center gap-2"><Map className="h-4 w-4" />Postcode Analysis</div>
                       </SelectItem>
                       <SelectItem value="state">
                         <div className="flex items-center gap-2"><Globe className="h-4 w-4" />State Analysis</div>
@@ -1229,7 +1229,7 @@ export default function GeneratedReports() {
                             {report.report_scope === 'zipcode' && (
                               <>
                                 <Map className="h-3 w-3" />
-                                Area Analysis
+                                Postcode Analysis
                               </>
                             )}
                             {report.report_scope === 'state' && (

@@ -140,7 +140,7 @@ export function ExecutiveInsights({ listings }: ExecutiveInsightsProps) {
       <Card>
         <CardHeader>
           <CardTitle>Executive Summary</CardTitle>
-          <CardDescription>AI-generated insights from your property data</CardDescription>
+          <CardDescription>Key insights and market observations from your property data</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
@@ -167,7 +167,7 @@ export function ExecutiveInsights({ listings }: ExecutiveInsightsProps) {
               <Alert>
                 <Info className="h-4 w-4" />
                 <AlertDescription>
-                  No significant market patterns detected. Continue monitoring for trend development.
+                  Market conditions are stable with no significant trends requiring immediate attention.
                 </AlertDescription>
               </Alert>
             )}
@@ -207,7 +207,7 @@ export function ExecutiveInsights({ listings }: ExecutiveInsightsProps) {
                 ))
               ) : (
                 <div className="text-sm text-muted-foreground text-center py-4">
-                  No specific actions required at this time.
+                  All key metrics are within expected ranges. No immediate action required.
                 </div>
               )}
             </div>
@@ -242,7 +242,7 @@ export function ExecutiveInsights({ listings }: ExecutiveInsightsProps) {
                 ))
               ) : (
                 <div className="text-sm text-muted-foreground text-center py-4">
-                  No significant anomalies detected in current data.
+                  Market data is consistent with no notable anomalies detected across monitored suburbs.
                 </div>
               )}
             </div>

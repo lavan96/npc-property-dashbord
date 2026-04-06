@@ -258,7 +258,7 @@ export function InvestmentReportGenerator() {
     if (!query.trim()) {
       toast({
         title: "Input Required",
-        description: "Please enter a property address, zip code, or state.",
+        description: "Please enter a property address, postcode, or state.",
         variant: "destructive",
       });
       return;
@@ -489,7 +489,7 @@ export function InvestmentReportGenerator() {
       const scopeText = queryType === 'address' 
         ? `Property: ${query}` 
         : queryType === 'zipcode' 
-          ? `ZIP Code: ${query}`
+          ? `Postcode: ${query}`
           : queryType === 'suburb'
             ? `Suburb: ${query}`
             : `Statewide Analysis: ${query}`;
@@ -1374,7 +1374,7 @@ export function InvestmentReportGenerator() {
       <div className="space-y-2">
         <h2 className="text-2xl font-bold text-foreground">Investment Report Generator</h2>
         <p className="text-muted-foreground">
-          Generate comprehensive property investment analysis using AI-powered research for addresses, zip codes, or states across Australia.
+          Generate comprehensive property investment analysis for addresses, postcodes, or states across Australia.
         </p>
       </div>
 
@@ -1486,7 +1486,7 @@ export function InvestmentReportGenerator() {
                         <SelectItem value="zipcode">
                           <div className="flex items-center gap-2">
                             <Hash className="h-4 w-4" />
-                            Zip Code Area Analysis
+                            Postcode Area Analysis
                           </div>
                         </SelectItem>
                         <SelectItem value="suburb">
@@ -1510,7 +1510,7 @@ export function InvestmentReportGenerator() {
                     <Label htmlFor="query" className="flex items-center gap-2">
                       {getQueryTypeIcon()}
                       {queryType === 'address' && 'Property Address'}
-                      {queryType === 'zipcode' && 'Zip Code'}
+                      {queryType === 'zipcode' && 'Postcode'}
                       {queryType === 'suburb' && 'Suburb Name'}
                       {queryType === 'state' && 'State'}
                     </Label>

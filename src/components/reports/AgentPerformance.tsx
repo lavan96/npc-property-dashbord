@@ -1,9 +1,10 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { PropertyListing } from '@/lib/airtable';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 interface AgentPerformanceProps {
@@ -92,8 +93,8 @@ export function AgentPerformance({ listings }: AgentPerformanceProps) {
       .sort((a, b) => b.count - a.count);
 
     return {
-      topAgents: agentAnalysis.slice(0, 10),
-      topAgencies: agencyAnalysis.slice(0, 8),
+      allAgents: agentAnalysis,
+      allAgencies: agencyAnalysis,
     };
   }, [listings]);
 
@@ -103,17 +104,23 @@ export function AgentPerformance({ listings }: AgentPerformanceProps) {
     agentCount: { label: "Agents", color: "hsl(var(--chart-5))" },
   };
 
+  const [showAllAgents, setShowAllAgents] = useState(false);
+  const [showAllAgencies, setShowAllAgencies] = useState(false);
+  
+  const displayedAgents = showAllAgents ? agentData.allAgents : agentData.allAgents.slice(0, 10);
+  const displayedAgencies = showAllAgencies ? agentData.allAgencies : agentData.allAgencies.slice(0, 10);
+
   return (
     <div className="space-y-6">
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Top Performing Agents</CardTitle>
-            <CardDescription>Agents by listing volume and performance</CardDescription>
+            <CardTitle>Performing Agents</CardTitle>
+            <CardDescription>{agentData.allAgents.length} agents by listing volume and performance</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {agentData.topAgents.slice(0, 6).map((agent, index) => (
+            <div className="space-y-3 max-h-[500px] overflow-y-auto">
+              {displayedAgents.map((agent, index) => (
                 <div key={agent.agentName} className="flex items-center gap-3 p-3 border rounded-lg">
                   <div className="flex items-center gap-3 flex-1">
                     <Avatar className="h-8 w-8">
@@ -139,17 +146,27 @@ export function AgentPerformance({ listings }: AgentPerformanceProps) {
                 </div>
               ))}
             </div>
+            {agentData.allAgents.length > 10 && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="w-full mt-3 text-xs"
+                onClick={() => setShowAllAgents(!showAllAgents)}
+              >
+                {showAllAgents ? 'Show Less' : `Show All ${agentData.allAgents.length} Agents`}
+              </Button>
+            )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
             <CardTitle>Agency Performance</CardTitle>
-            <CardDescription>Agencies by total listings and agent count</CardDescription>
+            <CardDescription>{agentData.allAgencies.length} agencies by total listings and agent count</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {agentData.topAgencies.slice(0, 6).map((agency) => (
+            <div className="space-y-3 max-h-[500px] overflow-y-auto">
+              {displayedAgencies.map((agency) => (
                 <div key={agency.agencyName} className="flex items-center justify-between p-3 border rounded-lg">
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-sm truncate">{agency.agencyName}</div>
@@ -164,6 +181,16 @@ export function AgentPerformance({ listings }: AgentPerformanceProps) {
                 </div>
               ))}
             </div>
+            {agentData.allAgencies.length > 10 && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="w-full mt-3 text-xs"
+                onClick={() => setShowAllAgencies(!showAllAgencies)}
+              >
+                {showAllAgencies ? 'Show Less' : `Show All ${agentData.allAgencies.length} Agencies`}
+              </Button>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -177,7 +204,7 @@ export function AgentPerformance({ listings }: AgentPerformanceProps) {
           <CardContent>
             <ChartContainer config={chartConfig} className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={agentData.topAgents.slice(0, 8)}>
+                <BarChart data={agentData.allAgents.slice(0, 8)}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis 
                     dataKey="agentName" 
@@ -204,7 +231,7 @@ export function AgentPerformance({ listings }: AgentPerformanceProps) {
           <CardContent>
             <ChartContainer config={chartConfig} className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={agentData.topAgencies.slice(0, 6)}>
+                <BarChart data={agentData.allAgencies.slice(0, 6)}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis 
                     dataKey="agencyName" 

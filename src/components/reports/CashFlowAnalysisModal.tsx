@@ -464,7 +464,8 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       // CRITICAL: capitalGrowth may be in assumptions.capitalGrowth (nested) or fc.capitalGrowth (root)
       const baseCapitalGrowthRate = (mo.capitalGrowth ?? assumptions.capitalGrowth ?? fc.capitalGrowth ?? 5) / 100;
       const baseInterestRate = (mo.interestRate ?? fc.interestRate ?? 5.5) / 100;
-      const baseCpiRate = (mo.cpiGrowthRate ?? cashFlow.cpiGrowthRate ?? 3) / 100;
+      // CPI Growth fallback: if no CPI value entered, use capital growth rate as fallback
+      const baseCpiRate = (mo.cpiGrowthRate ?? cashFlow.cpiGrowthRate ?? (mo.capitalGrowth ?? assumptions.capitalGrowth ?? fc.capitalGrowth ?? 3)) / 100;
       const taxRate = (mo.taxRate ?? cashFlow.taxRate ?? 30) / 100;
       const baseDepreciation = includeDepreciation ? (mo.depreciation ?? cashFlow.depreciation ?? 6000) : 0;
       const depreciationSchedule = mo.depreciationSchedule as Record<number, number> | undefined;
@@ -669,7 +670,8 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       agentFee: mo.agentFee ?? fc.agentFee ?? 0,
 
       // Tax & Growth
-      cpiGrowthRate: mo.cpiGrowthRate ?? cashFlow.cpiGrowthRate ?? 3,
+      // CPI Growth fallback: if not manually entered, use capital growth rate
+      cpiGrowthRate: mo.cpiGrowthRate ?? cashFlow.cpiGrowthRate ?? (mo.capitalGrowth ?? assumptions.capitalGrowth ?? fc.capitalGrowth ?? 3),
       depreciation: includeDepreciation ? (mo.depreciation ?? cashFlow.depreciation ?? 6000) : 0,
       taxRate: mo.taxRate ?? cashFlow.taxRate ?? 30,
       constructionYear: mo.constructionYear ?? cashFlow.constructionYear ?? new Date().getFullYear(),
