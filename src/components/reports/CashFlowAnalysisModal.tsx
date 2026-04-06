@@ -670,7 +670,8 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       agentFee: mo.agentFee ?? fc.agentFee ?? 0,
 
       // Tax & Growth
-      cpiGrowthRate: mo.cpiGrowthRate ?? cashFlow.cpiGrowthRate ?? 3,
+      // CPI Growth fallback: if not manually entered, use capital growth rate
+      cpiGrowthRate: mo.cpiGrowthRate ?? cashFlow.cpiGrowthRate ?? (mo.capitalGrowth ?? assumptions.capitalGrowth ?? fc.capitalGrowth ?? 3),
       depreciation: includeDepreciation ? (mo.depreciation ?? cashFlow.depreciation ?? 6000) : 0,
       taxRate: mo.taxRate ?? cashFlow.taxRate ?? 30,
       constructionYear: mo.constructionYear ?? cashFlow.constructionYear ?? new Date().getFullYear(),
