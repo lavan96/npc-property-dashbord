@@ -145,17 +145,27 @@ export function AgentPerformance({ listings }: AgentPerformanceProps) {
                 </div>
               ))}
             </div>
+            {agentData.allAgents.length > 10 && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="w-full mt-3 text-xs"
+                onClick={() => setShowAllAgents(!showAllAgents)}
+              >
+                {showAllAgents ? 'Show Less' : `Show All ${agentData.allAgents.length} Agents`}
+              </Button>
+            )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
             <CardTitle>Agency Performance</CardTitle>
-            <CardDescription>Agencies by total listings and agent count</CardDescription>
+            <CardDescription>{agentData.allAgencies.length} agencies by total listings and agent count</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {agentData.topAgencies.slice(0, 6).map((agency) => (
+            <div className="space-y-3 max-h-[500px] overflow-y-auto">
+              {displayedAgencies.map((agency) => (
                 <div key={agency.agencyName} className="flex items-center justify-between p-3 border rounded-lg">
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-sm truncate">{agency.agencyName}</div>
