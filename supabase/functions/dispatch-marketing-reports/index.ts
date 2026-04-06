@@ -300,12 +300,14 @@ async function processScheduleDispatch(
   supabaseUrl: string,
   serviceKey: string,
   anonKey: string,
-  schedule: any
+  schedule: any,
+  reportType: string,
+  audienceSegment: string
 ): Promise<{ sent: number; failed: number }> {
-  console.log(`[dispatch] Processing schedule: ${schedule.name} (${schedule.id})`);
+  console.log(`[dispatch] Processing schedule: ${schedule.name} (${schedule.id}), type=${reportType}, audience=${audienceSegment}`);
 
-  // Step 1: Get or generate a fresh report
-  const report = await getOrGenerateReport(supabase, supabaseUrl, serviceKey, anonKey);
+  // Step 1: Get or generate a fresh report with the correct type/audience
+  const report = await getOrGenerateReport(supabase, supabaseUrl, serviceKey, anonKey, reportType, audienceSegment);
   if (!report) throw new Error('Failed to get/generate market intelligence report');
 
   // Step 2: Download the PDF from storage
