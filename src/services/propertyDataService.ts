@@ -3,6 +3,7 @@ import { airtableService, PropertyListing } from '@/lib/airtable';
 export interface PropertyDataOptions {
   maxRecords?: number;
   includeDebugInfo?: boolean;
+  bypassCache?: boolean;
 }
 
 export interface PropertyDataResult {
@@ -18,6 +19,7 @@ export interface PropertyDataResult {
       withBedrooms: number;
       withPropertyType: number;
     };
+    fromCache: boolean;
   };
 }
 
@@ -29,25 +31,31 @@ class PropertyDataService {
   private cache: {
     data: PropertyListing[] | null;
     timestamp: number;
-    ttl: number; // 5 minutes
+    ttl: number;
   } = {
     data: null,
     timestamp: 0,
-    ttl: 5 * 60 * 1000
+    ttl: 5 * 60 * 1000 // 5 minutes
   };
 
   /**
-   * Fetch all property listings with consistent processing
+   * Fetch all property listings with consistent processing and caching
    */
   async fetchAllListings(options: PropertyDataOptions = {}): Promise<PropertyDataResult> {
     const startTime = Date.now();
-    const { maxRecords, includeDebugInfo = false } = options;
+    const { maxRecords, includeDebugInfo = false, bypassCache = false } = options;
 
-    // FORCE FRESH DATA - DISABLE CACHE TEMPORARILY
-    console.log('FORCING FRESH DATA FETCH - CACHE DISABLED');
-    this.clearCache();
-    
     const now = Date.now();
+
+    // Use cache if valid and not bypassed
+    if (!bypassCache && this.cache.data && (now - this.cache.timestamp) < this.cache.ttl) {
+      console.log('Using cached property data:', this.cache.data.length, 'records');
+      let listings = this.cache.data;
+      if (maxRecords) {
+        listings = listings.slice(0, maxRecords);
+      }
+      return this.buildResult(listings, startTime, includeDebugInfo, true);
+    }
 
     try {
       let allRecords: PropertyListing[] = [];
@@ -55,14 +63,13 @@ class PropertyDataService {
       let pageCount = 0;
       const maxPages = maxRecords ? Math.ceil(maxRecords / 100) : Infinity;
 
-      console.log('Fetching property data from Airtable...');
+      console.log('Fetching fresh property data from Airtable...');
 
-      // Fetch all data consistently
       do {
         const response = await airtableService.getRecords({
           pageSize: 100,
           offset,
-          sortField: 'Created', // Use 'Created' instead of 'ReceivedAt'
+          sortField: 'Created',
           sortDirection: 'desc'
         });
 
@@ -71,27 +78,19 @@ class PropertyDataService {
         pageCount++;
 
         console.log(`Fetched page ${pageCount}, total records: ${allRecords.length}`);
-        if (pageCount === 1) {
-          console.log('First raw record from airtableService:', allRecords[0]);
-        }
 
-        // Break if we've reached max records limit
         if (maxRecords && allRecords.length >= maxRecords) {
           allRecords = allRecords.slice(0, maxRecords);
           break;
         }
 
-        // Break if we've reached max pages (safety check)
         if (pageCount >= maxPages) {
           break;
         }
       } while (offset);
 
-      console.log(`Raw data fetched: ${allRecords.length} records`);
+      console.log(`Raw data fetched: ${allRecords.length} records in ${Date.now() - startTime}ms`);
 
-      // Process and deduplicate the data for better quality
-      console.log('Raw records about to be processed:', allRecords.length);
-      console.log('Sample raw record:', allRecords[0]);
       const processedListings = this.processAndDeduplicateListings(allRecords);
 
       // Update cache
@@ -102,9 +101,8 @@ class PropertyDataService {
       };
 
       console.log(`Processed data: ${processedListings.length} unique records`);
-      console.log('Sample processed listing:', processedListings[0]);
 
-      return this.buildResult(processedListings, startTime, includeDebugInfo);
+      return this.buildResult(processedListings, startTime, includeDebugInfo, false);
 
     } catch (error) {
       console.error('Error fetching property data:', error);
@@ -127,13 +125,7 @@ class PropertyDataService {
    * Minimal processing - server already handles deduplication
    */
   private processAndDeduplicateListings(rawListings: PropertyListing[]): PropertyListing[] {
-    console.log('Server-side deduplication already applied, using data as-is...');
-    
-    // Only standardize data format, no deduplication here since server handles it
     const standardized = rawListings.map(listing => this.standardizeListing(listing));
-    
-    console.log(`Using server-deduplicated data: ${standardized.length} listings`);
-    
     return standardized;
   }
 
@@ -143,23 +135,15 @@ class PropertyDataService {
   private standardizeListing(listing: PropertyListing): PropertyListing {
     return {
       ...listing,
-      // Standardize property type
       propertyType: this.standardizePropertyType(listing.propertyType),
-      
-      // Standardize suburb/location
       suburb: this.standardizeSuburb(listing.suburb || listing.location),
-      
-      // Standardize price
       price: this.standardizePrice(listing.price),
-      
-      // Standardize bed/bath counts
       beds: this.standardizeBedBath(listing.beds || listing.bedrooms),
       baths: this.standardizeBedBath(listing.baths || listing.bathrooms),
-      
-      // Preserve original dates to avoid data corruption
       receivedAt: listing.receivedAt || listing.createdAt || listing.createdTime,
-      
-      // Add data quality metrics
+      // Normalize images/floorplans - Airtable returns attachment objects or URL strings
+      images: this.normalizeAttachments(listing.images),
+      floorplans: this.normalizeAttachments(listing.floorplans),
       dataQuality: this.calculateDataQualityScore(listing),
       isValidPrice: this.isValidPrice(listing.price),
       isValidLocation: this.isValidLocation(listing.address || listing.location),
@@ -168,17 +152,21 @@ class PropertyDataService {
   }
 
   /**
-   * Create a unique key for deduplication based on core characteristics
+   * Normalize Airtable attachment fields - handles both attachment objects and URL strings
    */
-  private createDeduplicationKey(listing: PropertyListing): string {
-    const address = this.normalizeAddress(listing.address || listing.location || '');
-    const price = listing.price || 0;
-    const beds = listing.beds || listing.bedrooms || 0;
-    const baths = listing.baths || listing.bathrooms || 0;
-    const suburb = this.standardizeSuburb(listing.suburb || listing.location);
-
-    // Create a composite key that captures the essence of the listing
-    return `${address}|${suburb}|${price}|${beds}|${baths}`;
+  private normalizeAttachments(attachments: any): string[] {
+    if (!attachments) return [];
+    if (!Array.isArray(attachments)) return [];
+    if (attachments.length === 0) return [];
+    
+    return attachments.map((att: any) => {
+      if (typeof att === 'string') return att;
+      if (att && typeof att === 'object') {
+        // Airtable attachment object: { id, url, filename, ... }
+        return att.url || att.thumbnails?.large?.url || att.thumbnails?.small?.url || '';
+      }
+      return '';
+    }).filter((url: string) => url.length > 0);
   }
 
   /**
@@ -187,14 +175,8 @@ class PropertyDataService {
   private calculateDataQualityScore(listing: PropertyListing): number {
     let score = 0;
     const weights = {
-      price: 25,
-      address: 20,
-      bedrooms: 15,
-      bathrooms: 10,
-      propertyType: 10,
-      suburb: 10,
-      agent: 5,
-      description: 5
+      price: 25, address: 20, bedrooms: 15, bathrooms: 10,
+      propertyType: 10, suburb: 10, agent: 5, description: 5
     };
 
     if (this.isValidPrice(listing.price)) score += weights.price;
@@ -209,139 +191,58 @@ class PropertyDataService {
     return score;
   }
 
-  /**
-   * Standardize property types
-   */
   private standardizePropertyType(type?: string): string {
     if (!type) return 'Unknown';
-    
     const normalized = type.toLowerCase().trim();
-    
     if (normalized.includes('house') || normalized.includes('home')) return 'House';
     if (normalized.includes('apartment') || normalized.includes('unit')) return 'Apartment';
     if (normalized.includes('townhouse') || normalized.includes('town house')) return 'Townhouse';
     if (normalized.includes('villa')) return 'Villa';
     if (normalized.includes('duplex')) return 'Duplex';
     if (normalized.includes('land') || normalized.includes('lot')) return 'Land';
-    
-    return type; // Return original if no match
+    return type;
   }
 
-  /**
-   * Standardize suburb names
-   */
   private standardizeSuburb(suburb?: string): string {
     if (!suburb) return 'Unknown';
-    
-    return suburb
-      .trim()
-      .replace(/\s+/g, ' ')
-      .split(' ')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(' ');
+    return suburb.trim().replace(/\s+/g, ' ')
+      .split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
   }
 
-  /**
-   * Standardize price values
-   */
   private standardizePrice(price?: number | null): number | null {
-    if (!price || price <= 0 || price > 50000000) return null; // Invalid prices
+    if (!price || price <= 0 || price > 50000000) return null;
     return Math.round(price);
   }
 
-  /**
-   * Standardize bed/bath counts
-   */
   private standardizeBedBath(count?: number | null): number | null {
-    if (!count || count < 0 || count > 20) return null; // Invalid counts
+    if (!count || count < 0 || count > 20) return null;
     return Math.round(count);
   }
 
-  /**
-   * Standardize dates - minimal transformation to avoid data loss
-   */
-  private standardizeDate(date?: Date | string | null): string | null {
-    if (!date) return null;
-    
-    try {
-      if (typeof date === 'string') {
-        // Validate string dates but keep them as strings
-        const testDate = new Date(date);
-        if (isNaN(testDate.getTime())) {
-          console.log('Invalid date string:', date);
-          return null;
-        }
-        return date; // Keep original string
-      }
-      
-      if (date instanceof Date) {
-        if (isNaN(date.getTime())) {
-          console.log('Invalid Date object:', date);
-          return null;
-        }
-        return date.toISOString(); // Convert Date to ISO string
-      }
-      
-      return null;
-    } catch (error) {
-      console.log('Date parsing error:', date, error);
-      return null;
-    }
-  }
-
-  /**
-   * Normalize address for comparison
-   */
-  private normalizeAddress(address: string): string {
-    return address
-      .toLowerCase()
-      .replace(/[^\\w\\s]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-  }
-
-  /**
-   * Check if price is valid
-   */
   private isValidPrice(price?: number | null): boolean {
     return !!(price && price > 0 && price <= 50000000);
   }
 
-  /**
-   * Check if location is valid
-   */
   private isValidLocation(location?: string): boolean {
     return !!(location && location.trim().length > 3);
   }
 
-  /**
-   * Calculate completeness score
-   */
   private calculateCompletenessScore(listing: PropertyListing): number {
-    const fields = [
-      'price', 'address', 'beds', 'baths', 'propertyType', 'suburb',
-      'agent', 'description', 'images', 'source'
-    ];
-    
+    const fields = ['price', 'address', 'beds', 'baths', 'propertyType', 'suburb', 'agent', 'description', 'images', 'source'];
     let filledFields = 0;
     fields.forEach(field => {
       const value = (listing as any)[field];
-      if (value !== null && value !== undefined && value !== '' && 
-          !(Array.isArray(value) && value.length === 0)) {
+      if (value !== null && value !== undefined && value !== '' && !(Array.isArray(value) && value.length === 0)) {
         filledFields++;
       }
     });
-    
     return (filledFields / fields.length) * 100;
   }
 
-  /**
-   * Build the final result with debug information
-   */
-  private buildResult(listings: PropertyListing[], startTime: number, includeDebugInfo: boolean): PropertyDataResult {
+  private buildResult(listings: PropertyListing[], startTime: number, includeDebugInfo: boolean, fromCache: boolean): PropertyDataResult {
     const debugInfo = includeDebugInfo ? {
       totalFetched: listings.length,
-      duplicatesRemoved: 0, // Will be calculated during processing
+      duplicatesRemoved: 0,
       fetchTime: Date.now() - startTime,
       sources: this.calculateSourceDistribution(listings),
       dataQuality: {
@@ -349,24 +250,17 @@ class PropertyDataService {
         withLocation: listings.filter(l => this.isValidLocation(l.address || l.location)).length,
         withBedrooms: listings.filter(l => (l.beds || l.bedrooms) && (l.beds || l.bedrooms)! > 0).length,
         withPropertyType: listings.filter(l => l.propertyType && l.propertyType !== 'Unknown').length,
-      }
+      },
+      fromCache,
     } : {
-      totalFetched: 0,
-      duplicatesRemoved: 0,
-      fetchTime: 0,
-      sources: {},
-      dataQuality: { withPrice: 0, withLocation: 0, withBedrooms: 0, withPropertyType: 0 }
+      totalFetched: 0, duplicatesRemoved: 0, fetchTime: 0, sources: {},
+      dataQuality: { withPrice: 0, withLocation: 0, withBedrooms: 0, withPropertyType: 0 },
+      fromCache,
     };
 
-    return {
-      listings,
-      debugInfo
-    };
+    return { listings, debugInfo };
   }
 
-  /**
-   * Calculate source distribution for debugging
-   */
   private calculateSourceDistribution(listings: PropertyListing[]): Record<string, number> {
     return listings.reduce((acc, listing) => {
       const source = listing.source || 'Unknown';

@@ -5,10 +5,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
+import { getFullStateName } from '@/lib/states';
 
 interface OverviewFilterState {
   state: string;
-  zipCode: string;
+  postcode: string;
   suburb: string;
   propertyType: string;
 }
@@ -18,7 +19,7 @@ interface OverviewFiltersProps {
   setFilters: (filters: OverviewFilterState) => void;
   uniqueValues: {
     states: string[];
-    zipCodes: string[];
+    postcodes: string[];
     suburbs: string[];
     propertyTypes: string[];
   };
@@ -34,7 +35,7 @@ export function OverviewFilters({ filters, setFilters, uniqueValues }: OverviewF
   const clearAllFilters = () => {
     setFilters({
       state: 'all',
-      zipCode: 'all',
+      postcode: 'all',
       suburb: 'all',
       propertyType: 'all',
     });
@@ -83,28 +84,28 @@ export function OverviewFilters({ filters, setFilters, uniqueValues }: OverviewF
                 <SelectItem value="all">All states</SelectItem>
                 {uniqueValues.states.filter(state => state && state.trim() !== '').map((state) => (
                   <SelectItem key={state} value={state}>
-                    {state}
+                    {state} — {getFullStateName(state)}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
-          {/* Zip Code */}
+          {/* Postcode */}
           <div className="space-y-2">
-            <Label>Zip Code</Label>
+            <Label>Postcode</Label>
             <Select
-              value={filters.zipCode}
-              onValueChange={(value) => setFilters({ ...filters, zipCode: value })}
+              value={filters.postcode}
+              onValueChange={(value) => setFilters({ ...filters, postcode: value })}
             >
               <SelectTrigger>
-                <SelectValue placeholder="All zip codes" />
+                <SelectValue placeholder="All postcodes" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All zip codes</SelectItem>
-                {uniqueValues.zipCodes.filter(zip => zip && zip.trim() !== '').map((zip) => (
-                  <SelectItem key={zip} value={zip}>
-                    {zip}
+                <SelectItem value="all">All postcodes</SelectItem>
+                {uniqueValues.postcodes.filter(pc => pc && pc.trim() !== '').map((pc) => (
+                  <SelectItem key={pc} value={pc}>
+                    {pc}
                   </SelectItem>
                 ))}
               </SelectContent>
