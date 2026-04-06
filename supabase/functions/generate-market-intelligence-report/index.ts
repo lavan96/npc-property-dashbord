@@ -230,7 +230,7 @@ async function fetchLayer1_RBA(perplexityKey: string): Promise<PerplexityResult>
 6. **Comparison to Long-Term Average** — how current rates compare to 10yr and 20yr averages
 7. **Major Bank Outlook** — what CBA, Westpac, NAB, ANZ economists are forecasting for rates
 
-Use specific numbers, dates, and percentages. Cite all data sources.`,
+Use specific numbers, dates, and percentages. Cite all data sources. Do NOT include any "Data Limitations" section or disclaimers about missing data — only present what is available.`,
     perplexityKey
   );
 }
