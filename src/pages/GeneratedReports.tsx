@@ -123,6 +123,7 @@ export default function GeneratedReports() {
   const [tierFilter, setTierFilter] = useState<string>('all'); // Filter by report tier
   const [sourceFilter, setSourceFilter] = useState<string>('all'); // Filter by generation source (manual/auto)
   const [showArchived, setShowArchived] = useState(false); // Show archived reports
+  const [showArchivedComparisons, setShowArchivedComparisons] = useState(false); // Show archived comparisons
   const [generatingTier, setGeneratingTier] = useState<{ reportId: string; tier: ReportTier } | null>(null);
   const reportsPerPage = 50;
   
@@ -580,6 +581,40 @@ export default function GeneratedReports() {
       fetchArchivedReports();
     }
   }, [showArchived]);
+
+  // Filtered comparisons based on archive state
+  const filteredComparisons = useMemo(() => {
+    return comparisons.filter(c => showArchivedComparisons ? (c as any).is_archived === true : (c as any).is_archived !== true);
+  }, [comparisons, showArchivedComparisons]);
+
+  // Archive/unarchive a comparison
+  const archiveComparison = async (comparisonId: string, archive: boolean) => {
+    try {
+      const { error } = await (supabase as any)
+        .from('property_comparisons')
+        .update({ is_archived: archive })
+        .eq('id', comparisonId);
+
+      if (error) throw error;
+
+      // Update local state
+      setComparisons(prev =>
+        prev.map(c => c.id === comparisonId ? { ...c, is_archived: archive } as any : c)
+      );
+
+      toast({
+        title: archive ? 'Comparison archived' : 'Comparison restored',
+        description: archive ? 'The comparison has been archived.' : 'The comparison has been restored.',
+      });
+    } catch (error: any) {
+      console.error('Archive comparison error:', error);
+      toast({
+        title: 'Action failed',
+        description: error?.message || 'Could not update comparison.',
+        variant: 'destructive',
+      });
+    }
+  };
 
   const fetchComparisons = async () => {
     try {
@@ -1432,26 +1467,47 @@ export default function GeneratedReports() {
         </TabsContent>
 
         <TabsContent value="comparisons" className="space-y-4">
-          {comparisons.length === 0 ? (
+          {/* Comparisons Archive Toggle */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-xs">{comparisons.length} comparison{comparisons.length !== 1 ? 's' : ''}</Badge>
+            </div>
+            <Button
+              variant={showArchivedComparisons ? "secondary" : "outline"}
+              size="sm"
+              onClick={() => setShowArchivedComparisons(!showArchivedComparisons)}
+              className="gap-2"
+            >
+              <Archive className="h-4 w-4" />
+              {showArchivedComparisons ? 'Viewing Archived' : 'Show Archived'}
+            </Button>
+          </div>
+
+          {filteredComparisons.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center h-96 space-y-4">
-                <div className="text-6xl text-muted-foreground">🔄</div>
+                <div className="text-6xl text-muted-foreground">{showArchivedComparisons ? '📦' : '🔄'}</div>
                 <div className="text-center space-y-2">
-                  <h3 className="text-lg font-semibold">No Comparison Analyses Yet</h3>
+                  <h3 className="text-lg font-semibold">
+                    {showArchivedComparisons ? 'No Archived Comparisons' : 'No Comparison Analyses Yet'}
+                  </h3>
                   <p className="text-muted-foreground">
-                    Select 2-5 investment reports and click "Compare Properties" to create your first comparison analysis
+                    {showArchivedComparisons 
+                      ? 'Archived comparisons will appear here'
+                      : 'Select 2-5 investment reports and click "Compare Properties" to create your first comparison analysis'
+                    }
                   </p>
                 </div>
               </CardContent>
             </Card>
           ) : (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {comparisons.map((comparison: any) => (
+              {filteredComparisons.map((comparison: any) => (
                 <Card key={comparison.id} className="hover:shadow-lg transition-shadow">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <MapPin className="h-5 w-5" />
-                      {comparison.report_title || `${comparison.property_count} Property Comparison`}
+                      <span className="flex-1 line-clamp-2">{comparison.report_title || `${comparison.property_count} Property Comparison`}</span>
                     </CardTitle>
                     <CardDescription className="space-y-1">
                       <div className="flex items-center gap-2">
@@ -1491,6 +1547,19 @@ export default function GeneratedReports() {
                       >
                         <Eye className="mr-1 h-3 w-3" />
                         View Analysis
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => archiveComparison(comparison.id, !comparison.is_archived)}
+                        title={comparison.is_archived ? "Restore comparison" : "Archive comparison"}
+                        className="px-2"
+                      >
+                        {comparison.is_archived ? (
+                          <ArchiveRestore className="h-3 w-3 text-green-600" />
+                        ) : (
+                          <Archive className="h-3 w-3 text-muted-foreground" />
+                        )}
                       </Button>
                     </div>
                   </CardContent>
