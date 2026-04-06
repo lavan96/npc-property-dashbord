@@ -256,6 +256,12 @@ export default function EmailCopilot() {
   // Threading state
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
   
+  // Resizable panel state
+  const [listPanelWidth, setListPanelWidth] = useState(380);
+  const isDraggingRef = useRef(false);
+  const dragStartXRef = useRef(0);
+  const dragStartWidthRef = useRef(380);
+  
   // New email form state
   const [newEmail, setNewEmail] = useState({
     sender: '',
