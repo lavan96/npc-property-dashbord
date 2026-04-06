@@ -1486,7 +1486,7 @@ export function InvestmentReportGenerator() {
                         <SelectItem value="zipcode">
                           <div className="flex items-center gap-2">
                             <Hash className="h-4 w-4" />
-                            Zip Code Area Analysis
+                            Postcode Area Analysis
                           </div>
                         </SelectItem>
                         <SelectItem value="suburb">
