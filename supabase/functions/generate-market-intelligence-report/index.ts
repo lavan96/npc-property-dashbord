@@ -147,6 +147,11 @@ async function callGemini(prompt: string, apiKey: string, maxTokens = 6000): Pro
 // ─── Structured Event Extraction ─────────────────────────────────────────────
 
 async function extractMarketEvents(apiKey: string): Promise<any[]> {
+  const now = new Date();
+  const currentDateStr = now.toISOString().split('T')[0];
+  const currentYear = now.getFullYear();
+  const currentMonth = now.toLocaleDateString('en-AU', { month: 'long', year: 'numeric' });
+
   const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -158,11 +163,11 @@ async function extractMarketEvents(apiKey: string): Promise<any[]> {
       messages: [
         {
           role: 'system',
-          content: 'You are an Australian market analyst specializing in property investment.'
+          content: `You are an Australian market analyst specializing in property investment. CRITICAL: Today's date is ${currentDateStr}. The current year is ${currentYear}. ALL dates you provide MUST be in ${currentYear} or ${currentYear - 1}. NEVER use dates from 2024 or earlier — this is a ${currentYear} report.`
         },
         {
           role: 'user',
-          content: `List the most significant recent and upcoming Australian market events (last 90 days and next 60 days) that would impact property investment decisions. Include RBA rate decisions, major economic data releases, housing market reports, APRA regulatory changes, state government policy changes, and seasonal patterns. Provide at least 15 events.`
+          content: `Today is ${currentDateStr} (${currentMonth}). List the most significant recent and upcoming Australian market events (last 90 days and next 60 days from today) that would impact property investment decisions. Include RBA rate decisions, major economic data releases, housing market reports, APRA regulatory changes, state government policy changes, and seasonal patterns. Provide at least 15 events. IMPORTANT: All dates must be in ${currentYear - 1} or ${currentYear}. Do NOT use dates from 2024 or earlier.`
         },
       ],
       tools: [{
