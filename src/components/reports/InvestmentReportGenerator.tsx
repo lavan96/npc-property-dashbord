@@ -1510,7 +1510,7 @@ export function InvestmentReportGenerator() {
                     <Label htmlFor="query" className="flex items-center gap-2">
                       {getQueryTypeIcon()}
                       {queryType === 'address' && 'Property Address'}
-                      {queryType === 'zipcode' && 'Zip Code'}
+                      {queryType === 'zipcode' && 'Postcode'}
                       {queryType === 'suburb' && 'Suburb Name'}
                       {queryType === 'state' && 'State'}
                     </Label>
