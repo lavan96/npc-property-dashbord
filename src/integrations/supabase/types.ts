@@ -5618,6 +5618,7 @@ export type Database = {
           generated_at: string
           generated_by: string
           id: string
+          include_npc_strategy: boolean
           pdf_storage_path: string | null
           report_data: Json | null
           report_period: string | null
@@ -5632,6 +5633,7 @@ export type Database = {
           generated_at?: string
           generated_by: string
           id?: string
+          include_npc_strategy?: boolean
           pdf_storage_path?: string | null
           report_data?: Json | null
           report_period?: string | null
@@ -5646,6 +5648,7 @@ export type Database = {
           generated_at?: string
           generated_by?: string
           id?: string
+          include_npc_strategy?: boolean
           pdf_storage_path?: string | null
           report_data?: Json | null
           report_period?: string | null
