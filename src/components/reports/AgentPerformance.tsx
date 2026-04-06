@@ -180,6 +180,16 @@ export function AgentPerformance({ listings }: AgentPerformanceProps) {
                 </div>
               ))}
             </div>
+            {agentData.allAgencies.length > 10 && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="w-full mt-3 text-xs"
+                onClick={() => setShowAllAgencies(!showAllAgencies)}
+              >
+                {showAllAgencies ? 'Show Less' : `Show All ${agentData.allAgencies.length} Agencies`}
+              </Button>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -193,7 +203,7 @@ export function AgentPerformance({ listings }: AgentPerformanceProps) {
           <CardContent>
             <ChartContainer config={chartConfig} className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={agentData.topAgents.slice(0, 8)}>
+                <BarChart data={agentData.allAgents.slice(0, 8)}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis 
                     dataKey="agentName" 
