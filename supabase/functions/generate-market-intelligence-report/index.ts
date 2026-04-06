@@ -583,13 +583,10 @@ serve(async (req) => {
     console.log(`[market-intel-report] Report ID: ${reportId}, layers: ${requiredLayers.join(', ')}`);
 
     try {
-      // ── Fetch required layers + internal data in parallel ──────────
+      // ── Fetch required layers in parallel ───────────────────────────
       console.log('[market-intel-report] Fetching data layers...');
 
       const fetchPromises: Record<string, Promise<any>> = {};
-
-      // Always fetch internal NPC data
-      fetchPromises.internalNPC = fetchInternalNPCData(supabase);
 
       if (requiredLayers.includes('layer1')) {
         fetchPromises.layer1 = fetchLayer1_RBA(PERPLEXITY_API_KEY).catch(e => {
