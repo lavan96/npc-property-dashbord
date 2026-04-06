@@ -323,8 +323,7 @@ async function generateLayer8_CompetitiveEdge(
   lovableKey: string,
   layer2Content: string,
   layer7Content: string,
-  audiencePrompt: string,
-  internalNPCData: string
+  audiencePrompt: string
 ): Promise<string> {
   return callGemini(
     `You are writing the "Competitive Strategic Edge" section of a premium NPC Services Market Intelligence Report. This section differentiates NPC from every other property advisory by revealing insights that typical buyers and competitors overlook.
@@ -335,9 +334,6 @@ ${layer2Content.slice(0, 2000)}
 
 ### Suburb-Level Intelligence:
 ${layer7Content.slice(0, 3000)}
-
-### Internal NPC Market Activity:
-${internalNPCData.slice(0, 1500)}
 
 ## Required Analysis (produce ALL sections):
 
