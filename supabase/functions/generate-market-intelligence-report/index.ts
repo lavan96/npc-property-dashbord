@@ -747,8 +747,6 @@ ${layer6Result.content.slice(0, 1500)}
 ## Layer 7 — Suburb Intelligence:
 ${layer7Result.content.slice(0, 1500)}
 
-## Internal NPC Activity:
-${internalNPCData.slice(0, 800)}
 
 ## Upcoming Events:
 ${marketEvents.filter((e: any) => new Date(e.date) > new Date()).slice(0, 10).map((e: any) => `- [${e.date}] ${e.event} (${e.impact})`).join('\n')}
