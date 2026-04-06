@@ -8,6 +8,7 @@ interface ReportRequest {
   session_token?: string;
   report_type?: string;
   audience_segment?: string;
+  include_npc_strategy?: boolean;
 }
 
 interface PerplexityResult {
@@ -532,6 +533,7 @@ serve(async (req) => {
     const body: ReportRequest = await req.json();
     const reportType = body.report_type || 'full';
     const audienceSegment = body.audience_segment || 'general';
+    const includeNpcStrategy = body.include_npc_strategy !== false; // default true
 
     // Allow internal service calls (from dispatch function) without auth
     const authHeader = req.headers.get('Authorization') || '';
@@ -558,7 +560,12 @@ serve(async (req) => {
       });
     }
 
-    const requiredLayers = REPORT_TYPE_LAYERS[reportType] || REPORT_TYPE_LAYERS.full;
+    let requiredLayers = [...(REPORT_TYPE_LAYERS[reportType] || REPORT_TYPE_LAYERS.full)];
+    
+    // Remove layer8 if NPC strategy is excluded
+    if (!includeNpcStrategy) {
+      requiredLayers = requiredLayers.filter(l => l !== 'layer8');
+    }
     const audiencePrompt = AUDIENCE_SYSTEM_PROMPTS[audienceSegment] || AUDIENCE_SYSTEM_PROMPTS.general;
 
     // Create report record
@@ -573,6 +580,7 @@ serve(async (req) => {
         report_period: reportPeriod,
         report_type: reportType,
         audience_segment: audienceSegment,
+        include_npc_strategy: includeNpcStrategy,
       })
       .select('id')
       .single();
