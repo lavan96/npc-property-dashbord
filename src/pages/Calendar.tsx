@@ -1261,7 +1261,7 @@ export default function Calendar() {
                             handleTogglePin(tab.id);
                           }}
                           className={cn(
-                            'h-8 w-8 flex items-center justify-center rounded-md transition-colors relative',
+                            'h-9 w-9 flex flex-col items-center justify-center rounded-md transition-colors relative gap-0.5',
                             sidebarTab === tab.id 
                               ? 'bg-primary text-primary-foreground' 
                               : 'hover:bg-muted text-muted-foreground hover:text-foreground',
@@ -1269,6 +1269,7 @@ export default function Calendar() {
                           )}
                         >
                           {tab.icon}
+                          <span className="text-[8px] leading-none">{tab.label}</span>
                         </button>
                       </TooltipTrigger>
                       <TooltipContent side="left">
