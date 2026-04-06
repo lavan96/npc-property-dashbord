@@ -169,16 +169,9 @@ export function InvestmentReportModal({
           }
 
             // Notification is now handled server-side by the Edge Function to prevent duplicates
-            // The BackgroundJobTracker will also detect completion, so we skip adding notification here
             if (runInBackground) {
               console.log('📬 Skipping frontend notification - server-side notification will be created');
             }
-          } else if (insertError || !insertResult?.success) {
-            console.error('Error saving report:', insertError || insertResult?.error);
-            throw new Error(
-              `Failed to save report: ${insertError?.message || insertResult?.error || 'Unknown error'}`
-            );
-          }
         } else {
           console.warn('No user found, report not saved to database');
         }
