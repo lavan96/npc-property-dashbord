@@ -345,6 +345,21 @@ export default function Reports() {
                     </ResponsiveContainer>
                   </ChartContainer>
                   {/* Sub-metrics */}
+                  {suburbChartData.length >= 2 && (() => {
+                    const top = suburbChartData[0];
+                    const second = suburbChartData[1];
+                    const topPct = totalListings > 0 ? ((top.count / totalListings) * 100).toFixed(0) : '0';
+                    const ratio = second.count > 0 ? (top.count / second.count).toFixed(1) : '—';
+                    return (
+                      <div className="flex items-start gap-2 p-3 rounded-md bg-muted/30 border border-border/50">
+                        <Lightbulb className="h-4 w-4 mt-0.5 text-yellow-500 shrink-0" />
+                        <p className="text-xs text-foreground">
+                          <span className="font-semibold">{top.suburb}</span> leads with {topPct}% of all listings ({top.count}), {ratio}× the volume of the next suburb ({second.suburb} at {second.count}).
+                          {suburbChartData.length >= 3 && ` The top 3 suburbs account for ${totalListings > 0 ? (((suburbChartData[0].count + suburbChartData[1].count + suburbChartData[2].count) / totalListings) * 100).toFixed(0) : 0}% of total activity.`}
+                        </p>
+                      </div>
+                    );
+                  })()}
                   <div className="grid grid-cols-3 gap-3 pt-2 border-t">
                     <div className="text-center">
                       <p className="text-lg font-bold text-foreground">{suburbChartData.length}</p>
