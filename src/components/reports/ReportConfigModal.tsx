@@ -575,7 +575,10 @@ export function ReportConfigModal({ onGenerateReport, isGenerating, progress = 0
                 <Button 
                   type="button" 
                   variant="outline" 
-                  onClick={() => navigate('/charts')}
+                  onClick={() => {
+                    setOpen(false);
+                    navigate('/generated-reports?tab=quantitative');
+                  }}
                   className="gap-2"
                 >
                   <BarChart3 className="h-4 w-4" />
