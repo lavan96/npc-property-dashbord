@@ -83,18 +83,18 @@ const safeFormatISO = (value: string | undefined | null, fmt: string): string =>
 
 // Tab configurations with icons and shortcuts
 const SIDEBAR_TABS: { id: SidebarTab; icon: React.ReactNode; label: string; shortcut: string }[] = [
-  { id: 'events', icon: <CalendarIcon className="h-3 w-3" />, label: 'Events', shortcut: '1' },
-  { id: 'availability', icon: <Clock className="h-3 w-3" />, label: 'Availability', shortcut: '2' },
-  { id: 'templates', icon: <Zap className="h-3 w-3" />, label: 'Templates', shortcut: '3' },
-  { id: 'heatmap', icon: <Flame className="h-3 w-3" />, label: 'Heatmap', shortcut: '4' },
-  { id: 'analytics', icon: <BarChart3 className="h-3 w-3" />, label: 'Analytics', shortcut: '5' },
-  { id: 'summary', icon: <TrendingUp className="h-3 w-3" />, label: 'Summary', shortcut: '6' },
-  { id: 'conflicts', icon: <AlertTriangle className="h-3 w-3" />, label: 'Conflicts', shortcut: '7' },
-  { id: 'optimize', icon: <Sparkles className="h-3 w-3" />, label: 'Optimize', shortcut: '8' },
-  { id: 'overlay', icon: <Layers className="h-3 w-3" />, label: 'Overlay', shortcut: '9' },
-  { id: 'outlook', icon: <Mail className="h-3 w-3" />, label: 'Outlook', shortcut: '' },
-  { id: 'patterns', icon: <Repeat className="h-3 w-3" />, label: 'Patterns', shortcut: '' },
-  { id: 'reminders', icon: <Bell className="h-3 w-3" />, label: 'Reminders', shortcut: '' },
+  { id: 'events', icon: <CalendarIcon className="h-4 w-4" />, label: 'Events', shortcut: '1' },
+  { id: 'availability', icon: <Clock className="h-4 w-4" />, label: 'Availability', shortcut: '2' },
+  { id: 'templates', icon: <Zap className="h-4 w-4" />, label: 'Templates', shortcut: '3' },
+  { id: 'heatmap', icon: <Flame className="h-4 w-4" />, label: 'Heatmap', shortcut: '4' },
+  { id: 'analytics', icon: <BarChart3 className="h-4 w-4" />, label: 'Analytics', shortcut: '5' },
+  { id: 'summary', icon: <TrendingUp className="h-4 w-4" />, label: 'Summary', shortcut: '6' },
+  { id: 'conflicts', icon: <AlertTriangle className="h-4 w-4" />, label: 'Conflicts', shortcut: '7' },
+  { id: 'optimize', icon: <Sparkles className="h-4 w-4" />, label: 'Optimize', shortcut: '8' },
+  { id: 'overlay', icon: <Layers className="h-4 w-4" />, label: 'Overlay', shortcut: '9' },
+  { id: 'outlook', icon: <Mail className="h-4 w-4" />, label: 'Outlook', shortcut: '' },
+  { id: 'patterns', icon: <Repeat className="h-4 w-4" />, label: 'Patterns', shortcut: '' },
+  { id: 'reminders', icon: <Bell className="h-4 w-4" />, label: 'Reminders', shortcut: '' },
 ];
 
 export default function Calendar() {
