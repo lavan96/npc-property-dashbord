@@ -19,7 +19,7 @@ export function MarketIntelligenceExportButton() {
     try {
       // Step 1: Call edge function to fetch all 6 data layers
       setProgress('Analysing RBA, housing, sentiment & economic data...');
-      const { data, error } = await invokeSecureFunction('generate-market-intelligence-report', {});
+      const { data, error } = await invokeSecureFunction('generate-market-intelligence-report', { report_type: 'full', audience_segment: 'general' });
 
       if (error) throw new Error(error.message || 'Failed to generate report data');
       if (!data?.reportData) throw new Error('No report data returned');
