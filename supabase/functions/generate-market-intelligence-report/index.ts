@@ -509,8 +509,7 @@ A 2-3 sentence compelling paragraph that creates urgency without being pushy.
 2. **Request Detailed Analysis** — for a suburb or opportunity mentioned
 3. **Connect With Our Team** — phone/email with a personal touch
 
-### Why NPC Services?
-A single powerful sentence that reinforces NPC's strategic advantage: NPC Services is a strategic property advisory that delivers data-driven, insight-led guidance — enabling clients to act on opportunities others don't see.
+IMPORTANT: Do NOT include a "Why NPC Services?" section — this is added separately by the PDF generator. End your output after the 3 action steps.
 
 Keep it professional, warm, and action-oriented. No generic "contact us" language.`,
     lovableKey,
