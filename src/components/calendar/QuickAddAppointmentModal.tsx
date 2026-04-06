@@ -854,16 +854,19 @@ export function QuickAddAppointmentModal({
   if (isMobile) {
     return (
       <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent className="max-h-[90vh]">
-          <DrawerHeader className="pb-2">
+        <DrawerContent className="h-[90vh] max-h-[90vh] flex flex-col overflow-hidden">
+          <DrawerHeader className="flex-shrink-0 pb-2">
             <DrawerTitle className="flex items-center gap-2">
               <Plus className="h-5 w-5 text-primary" />
               Quick Add Appointment
             </DrawerTitle>
           </DrawerHeader>
-          <ScrollArea className="px-4 pb-6 max-h-[70vh]">
+          <div
+            className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 pb-6"
+            data-vaul-no-drag
+          >
             {formContent}
-          </ScrollArea>
+          </div>
         </DrawerContent>
       </Drawer>
     );
@@ -871,15 +874,17 @@ export function QuickAddAppointmentModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg w-[95vw] max-h-[90vh] flex flex-col">
-        <DialogHeader className="flex-shrink-0">
+      <DialogContent className="sm:max-w-lg w-[95vw] h-[90vh] max-h-[90vh] flex flex-col overflow-hidden gap-0 p-0">
+        <DialogHeader className="flex-shrink-0 px-6 pt-6 pb-4 pr-14">
           <DialogTitle className="flex items-center gap-2">
             <Plus className="h-5 w-5 text-primary" />
             Quick Add Appointment
           </DialogTitle>
         </DialogHeader>
-        <ScrollArea className="flex-1 min-h-0 -mx-6 px-6">
-          {formContent}
+        <ScrollArea className="flex-1 min-h-0">
+          <div className="px-6 pb-6">
+            {formContent}
+          </div>
         </ScrollArea>
       </DialogContent>
     </Dialog>
