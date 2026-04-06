@@ -311,9 +311,9 @@ Also identify 3 emerging corridors showing early-stage growth signals (price mom
 
 ${audiencePrompt}
 
-Use data from CoreLogic, PropTrack, Domain, SQM Research, Microburbs, and government infrastructure databases. Prioritise suburbs showing BOTH capital growth AND rental yield strength.`,
+Use data from CoreLogic, PropTrack, Domain, SQM Research, Microburbs, and government infrastructure databases. Prioritise suburbs showing BOTH capital growth AND rental yield strength. Do NOT include any "Data Limitations" section.`,
     perplexityKey,
-    'You are a senior Australian property market analyst specialising in suburb-level intelligence. Provide granular, data-backed suburb analysis that helps investors identify specific opportunities. Always cite sources and use specific numbers.'
+    'You are a senior Australian property market analyst specialising in suburb-level intelligence. Provide granular, data-backed suburb analysis that helps investors identify specific opportunities. Always cite sources and use specific numbers. Never include "Data Limitations" disclaimers — only present the data you have.'
   );
 }
 
