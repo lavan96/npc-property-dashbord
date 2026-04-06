@@ -591,6 +591,9 @@ function calculateNextScheduledAt(frequency: string): string {
     case 'monthly':
       now.setMonth(now.getMonth() + 1);
       break;
+    case 'quarterly':
+      now.setMonth(now.getMonth() + 3);
+      break;
     case 'ad_hoc':
     default:
       return new Date('9999-12-31').toISOString();
