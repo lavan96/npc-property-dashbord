@@ -373,25 +373,34 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       const fetchReports = async () => {
         setLoadingReports(true);
         try {
-          const { data, error } = await supabase
-            .from('investment_reports')
-            .select('id, property_address, financial_calculations, manual_overrides')
-            .eq('status', 'completed')
-            .neq('id', report.id)
-            .order('created_at', { ascending: false })
-            .limit(50);
+          const { data, error } = await invokeSecureFunction('get-investment-reports', {
+            listMode: true,
+            listOptions: {
+              select: 'id, property_address, financial_calculations, manual_overrides',
+              status: 'completed',
+              orderBy: 'created_at',
+              orderAsc: false
+            }
+          });
 
-          if (error) throw error;
-          setAvailableReports(data || []);
+          if (error) throw new Error(error.message);
+          // Filter out the current report
+          const allReports = (data?.reports || []) as InvestmentReport[];
+          setAvailableReports(allReports.filter(r => r.id !== report.id));
         } catch (error) {
-          console.error('Error fetching reports:', error);
+          console.error('Error fetching reports for comparison:', error);
+          toast({
+            title: "Failed to load reports",
+            description: "Could not fetch available reports for comparison. Please try again.",
+            variant: "destructive",
+          });
         } finally {
           setLoadingReports(false);
         }
       };
       fetchReports();
     }
-  }, [comparisonMode, isOpen, report]);
+  }, [comparisonMode, isOpen, report, toast]);
 
   // Fetch selected comparison reports details
   useEffect(() => {
@@ -3784,46 +3793,65 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                 </div>
               </CardHeader>
               <CardContent>
-                <div ref={cashFlowChartRef} className="h-[280px] w-full bg-background p-2">
+                <div ref={cashFlowChartRef} className="h-[340px] w-full bg-background p-2">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart
                       data={projections.filter(p => p.year >= 1).map(p => ({
-                        year: `Year ${p.year}`,
+                        year: `Yr ${p.year}`,
                         'Property Value': p.propertyMarketValue,
                         'Rental Income': p.rentalIncome,
                         'Cash Flow (After Tax)': p.afterTaxCashFlowPA,
                         'Equity': p.equityInProperty,
                       }))}
-                      margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                      margin={{ top: 10, right: 30, left: 20, bottom: 10 }}
                     >
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                      <XAxis dataKey="year" className="text-xs" tick={{ fontSize: 11 }} />
+                      <defs>
+                        <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.1}/>
+                          <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
+                      <XAxis 
+                        dataKey="year" 
+                        tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                        axisLine={{ stroke: 'hsl(var(--border))' }}
+                        tickLine={false}
+                      />
                       <YAxis 
-                        className="text-xs" 
-                        tick={{ fontSize: 11 }} 
+                        tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} 
                         tickFormatter={(value) => {
                           if (Math.abs(value) >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
                           if (Math.abs(value) >= 1000) return `$${(value / 1000).toFixed(0)}K`;
                           return `$${value}`;
                         }}
+                        axisLine={false}
+                        tickLine={false}
                       />
                       <Tooltip 
-                        formatter={(value: number) => [`$${value.toLocaleString()}`, undefined]}
+                        formatter={(value: number, name: string) => [`$${value.toLocaleString()}`, name]}
                         contentStyle={{ 
-                          backgroundColor: 'hsl(var(--background))', 
+                          backgroundColor: 'hsl(var(--popover))', 
                           border: '1px solid hsl(var(--border))',
-                          borderRadius: '6px',
-                          fontSize: '12px'
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
                         }}
+                        labelStyle={{ fontWeight: 600, marginBottom: 4 }}
                       />
-                      <Legend wrapperStyle={{ fontSize: '12px' }} />
+                      <Legend 
+                        wrapperStyle={{ fontSize: '11px', paddingTop: '12px' }}
+                        iconType="circle"
+                        iconSize={8}
+                      />
                       {chartMetrics.propertyValue && (
                         <Line 
                           type="monotone" 
                           dataKey="Property Value" 
                           stroke="hsl(var(--primary))" 
-                          strokeWidth={2}
-                          dot={{ r: 3 }}
+                          strokeWidth={2.5}
+                          dot={{ r: 4, fill: 'hsl(var(--primary))', strokeWidth: 0 }}
+                          activeDot={{ r: 6, strokeWidth: 2, stroke: 'hsl(var(--background))' }}
                         />
                       )}
                       {chartMetrics.equity && (
@@ -3831,8 +3859,9 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                           type="monotone" 
                           dataKey="Equity" 
                           stroke="#22c55e" 
-                          strokeWidth={2}
-                          dot={{ r: 3 }}
+                          strokeWidth={2.5}
+                          dot={{ r: 4, fill: '#22c55e', strokeWidth: 0 }}
+                          activeDot={{ r: 6, strokeWidth: 2, stroke: 'hsl(var(--background))' }}
                         />
                       )}
                       {chartMetrics.rentalIncome && (
@@ -3841,7 +3870,9 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                           dataKey="Rental Income" 
                           stroke="#f59e0b" 
                           strokeWidth={2}
-                          dot={{ r: 3 }}
+                          strokeDasharray="6 3"
+                          dot={{ r: 3, fill: '#f59e0b', strokeWidth: 0 }}
+                          activeDot={{ r: 5, strokeWidth: 2, stroke: 'hsl(var(--background))' }}
                         />
                       )}
                       {chartMetrics.cashFlow && (
@@ -3850,12 +3881,43 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                           dataKey="Cash Flow (After Tax)" 
                           stroke="#8b5cf6" 
                           strokeWidth={2}
-                          dot={{ r: 3 }}
+                          strokeDasharray="6 3"
+                          dot={{ r: 3, fill: '#8b5cf6', strokeWidth: 0 }}
+                          activeDot={{ r: 5, strokeWidth: 2, stroke: 'hsl(var(--background))' }}
                         />
                       )}
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
+                {/* Summary row under chart */}
+                {projections.length > 1 && (() => {
+                  const yr1 = projections.find(p => p.year === 1);
+                  const yr10 = projections.find(p => p.year === 10);
+                  if (!yr1 || !yr10) return null;
+                  const totalGrowth = yr1.propertyMarketValue > 0 
+                    ? (((yr10.propertyMarketValue - yr1.propertyMarketValue) / yr1.propertyMarketValue) * 100).toFixed(1) 
+                    : '0';
+                  return (
+                    <div className="grid grid-cols-4 gap-2 mt-3 pt-3 border-t text-center">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Yr 1 Value</p>
+                        <p className="text-sm font-semibold">${yr1.propertyMarketValue.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Yr 10 Value</p>
+                        <p className="text-sm font-semibold">${yr10.propertyMarketValue.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Total Growth</p>
+                        <p className="text-sm font-semibold text-green-500">{totalGrowth}%</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Yr 10 Equity</p>
+                        <p className="text-sm font-semibold">${yr10.equityInProperty.toLocaleString()}</p>
+                      </div>
+                    </div>
+                  );
+                })()}
               </CardContent>
             </Card>
 
@@ -3878,51 +3940,91 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                 </div>
               </CardHeader>
               <CardContent>
-                <div ref={yieldChartRef} className="h-[220px] w-full bg-background p-2">
+                <div ref={yieldChartRef} className="h-[260px] w-full bg-background p-2">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart
                       data={projections.filter(p => p.year >= 1).map(p => ({
-                        year: `Year ${p.year}`,
+                        year: `Yr ${p.year}`,
                         'Gross Yield %': p.grossYield,
                         'Net Yield %': p.netYield,
                       }))}
-                      margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                      margin={{ top: 10, right: 30, left: 20, bottom: 10 }}
                     >
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                      <XAxis dataKey="year" className="text-xs" tick={{ fontSize: 11 }} />
+                      <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
+                      <XAxis 
+                        dataKey="year" 
+                        tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                        axisLine={{ stroke: 'hsl(var(--border))' }}
+                        tickLine={false}
+                      />
                       <YAxis 
-                        className="text-xs" 
-                        tick={{ fontSize: 11 }} 
+                        tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} 
                         tickFormatter={(value) => `${value}%`}
                         domain={['auto', 'auto']}
+                        axisLine={false}
+                        tickLine={false}
                       />
                       <Tooltip 
-                        formatter={(value: number) => [`${value.toFixed(2)}%`, undefined]}
+                        formatter={(value: number, name: string) => [`${value.toFixed(2)}%`, name]}
                         contentStyle={{ 
-                          backgroundColor: 'hsl(var(--background))', 
+                          backgroundColor: 'hsl(var(--popover))', 
                           border: '1px solid hsl(var(--border))',
-                          borderRadius: '6px',
-                          fontSize: '12px'
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
                         }}
+                        labelStyle={{ fontWeight: 600, marginBottom: 4 }}
                       />
-                      <Legend wrapperStyle={{ fontSize: '12px' }} />
+                      <Legend 
+                        wrapperStyle={{ fontSize: '11px', paddingTop: '12px' }}
+                        iconType="circle"
+                        iconSize={8}
+                      />
                       <Line 
                         type="monotone" 
                         dataKey="Gross Yield %" 
                         stroke="#06b6d4" 
-                        strokeWidth={2}
-                        dot={{ r: 3 }}
+                        strokeWidth={2.5}
+                        dot={{ r: 4, fill: '#06b6d4', strokeWidth: 0 }}
+                        activeDot={{ r: 6, strokeWidth: 2, stroke: 'hsl(var(--background))' }}
                       />
                       <Line 
                         type="monotone" 
                         dataKey="Net Yield %" 
                         stroke="#ec4899" 
-                        strokeWidth={2}
-                        dot={{ r: 3 }}
+                        strokeWidth={2.5}
+                        dot={{ r: 4, fill: '#ec4899', strokeWidth: 0 }}
+                        activeDot={{ r: 6, strokeWidth: 2, stroke: 'hsl(var(--background))' }}
                       />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
+                {/* Yield summary */}
+                {projections.length > 1 && (() => {
+                  const yr1 = projections.find(p => p.year === 1);
+                  const yr10 = projections.find(p => p.year === 10);
+                  if (!yr1 || !yr10) return null;
+                  return (
+                    <div className="grid grid-cols-4 gap-2 mt-3 pt-3 border-t text-center">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Yr 1 Gross</p>
+                        <p className="text-sm font-semibold">{yr1.grossYield.toFixed(2)}%</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Yr 10 Gross</p>
+                        <p className="text-sm font-semibold">{yr10.grossYield.toFixed(2)}%</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Yr 1 Net</p>
+                        <p className="text-sm font-semibold">{yr1.netYield.toFixed(2)}%</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Yr 10 Net</p>
+                        <p className="text-sm font-semibold">{yr10.netYield.toFixed(2)}%</p>
+                      </div>
+                    </div>
+                  );
+                })()}
               </CardContent>
             </Card>
 

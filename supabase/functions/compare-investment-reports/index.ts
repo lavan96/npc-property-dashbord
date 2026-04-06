@@ -368,61 +368,107 @@ Format your response as valid JSON with this structure:
 
     console.log('Calling Lovable AI for comparison analysis...');
 
-    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are an expert property investment analyst specializing in comparative analysis. Provide detailed, actionable insights based on data. CRITICAL: Always respond with ONLY valid JSON - no markdown formatting, no code blocks, no ```json wrappers. Return pure JSON starting with { and ending with }.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 4000
-      }),
-    });
+    const maxRetries = 2;
+    let lastError: string = '';
+    let aiData: any = null;
 
-    if (!aiResponse.ok) {
-      const errorText = await aiResponse.text();
-      console.error('Lovable AI error:', aiResponse.status, errorText);
-      
-      // Handle specific error codes
-      if (aiResponse.status === 429) {
-        return new Response(
-          JSON.stringify({ 
-            error: 'Rate limit exceeded', 
-            details: 'Too many requests. Please wait a moment and try again.' 
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout
+
+        const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'google/gemini-2.5-flash',
+            messages: [
+              {
+                role: 'system',
+                content: 'You are an expert property investment analyst specializing in comparative analysis. Provide detailed, actionable insights based on data. CRITICAL: Always respond with ONLY valid JSON - no markdown formatting, no code blocks, no ```json wrappers. Return pure JSON starting with { and ending with }.'
+              },
+              {
+                role: 'user',
+                content: prompt
+              }
+            ],
+            temperature: 0.7,
+            max_tokens: 12000
           }),
-          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!aiResponse.ok) {
+          const errorText = await aiResponse.text();
+          console.error(`Lovable AI error (attempt ${attempt + 1}):`, aiResponse.status, errorText);
+          
+          if (aiResponse.status === 429) {
+            if (attempt < maxRetries) {
+              console.log(`Rate limited, retrying in ${(attempt + 1) * 3}s...`);
+              await new Promise(r => setTimeout(r, (attempt + 1) * 3000));
+              continue;
+            }
+            return new Response(
+              JSON.stringify({ error: 'Rate limit exceeded. Please wait a moment and try again.' }),
+              { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+          
+          if (aiResponse.status === 402) {
+            return new Response(
+              JSON.stringify({ error: 'AI credits exhausted. Please add credits to your Lovable workspace.' }),
+              { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+          
+          lastError = errorText;
+          if (attempt < maxRetries) {
+            console.log(`AI error, retrying (attempt ${attempt + 2})...`);
+            await new Promise(r => setTimeout(r, 2000));
+            continue;
+          }
+          
+          return new Response(
+            JSON.stringify({ error: 'AI analysis failed after retries', details: lastError }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        aiData = await aiResponse.json();
+        break; // Success
+      } catch (fetchErr) {
+        const errMsg = fetchErr instanceof Error ? fetchErr.message : 'Unknown fetch error';
+        console.error(`Fetch error (attempt ${attempt + 1}):`, errMsg);
+        lastError = errMsg;
+        
+        if (errMsg.includes('aborted')) {
+          lastError = 'AI request timed out after 2 minutes. Try reducing the number of properties or using "quick" analysis depth.';
+        }
+        
+        if (attempt < maxRetries) {
+          await new Promise(r => setTimeout(r, 2000));
+          continue;
+        }
+        
+        return new Response(
+          JSON.stringify({ error: `Failed to reach AI service: ${lastError}` }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      
-      if (aiResponse.status === 402) {
-        return new Response(
-          JSON.stringify({ 
-            error: 'Payment required', 
-            details: 'AI credits exhausted. Please add credits to your Lovable workspace.' 
-          }),
-          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
+    }
+
+    if (!aiData) {
       return new Response(
-        JSON.stringify({ error: 'AI analysis failed', details: errorText }),
+        JSON.stringify({ error: 'AI analysis failed after all retries' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const aiData = await aiResponse.json();
     const analysisText = aiData.choices[0].message.content;
 
     // Parse JSON response
