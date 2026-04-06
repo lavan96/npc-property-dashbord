@@ -1670,9 +1670,10 @@ export default function EmailCopilot() {
       )}
 
       {/* Main Content */}
+      {isMobile ? (
       <div className="flex-1 flex overflow-hidden relative">
         {/* Email List Panel - full width on mobile, hidden when detail shown */}
-        <div className={`${isMobile ? 'w-full' : 'w-[380px]'} border-r flex flex-col bg-background ${isMobile && showMobileDetail ? 'hidden' : ''}`}>
+        <div className={`w-full border-r flex flex-col bg-background ${showMobileDetail ? 'hidden' : ''}`}>
           {/* Inbox/Sent Tabs */}
           <div className="px-3 pt-3 border-b">
             <div className="flex gap-1 bg-muted rounded-lg p-1 mb-3">
