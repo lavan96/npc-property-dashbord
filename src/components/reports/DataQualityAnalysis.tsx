@@ -325,31 +325,48 @@ export function DataQualityAnalysis({ listings }: DataQualityAnalysisProps) {
               AI extraction confidence across all listings
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="space-y-2">
-              {[
-                { label: 'High Confidence (≥80%)', count: qualityMetrics.confidenceDistribution.high, variant: 'default' as const, color: 'bg-green-500' },
-                { label: 'Medium Confidence (50-79%)', count: qualityMetrics.confidenceDistribution.medium, variant: 'secondary' as const, color: 'bg-yellow-500' },
-                { label: 'Low Confidence (<50%)', count: qualityMetrics.confidenceDistribution.low, variant: 'destructive' as const, color: 'bg-red-500' },
-                { label: 'Unknown Confidence', count: qualityMetrics.confidenceDistribution.unknown, variant: 'outline' as const, color: 'bg-muted-foreground' },
-              ].map(tier => {
-                const pct = qualityMetrics.totalListings > 0 ? (tier.count / qualityMetrics.totalListings) * 100 : 0;
-                return (
-                  <div key={tier.label} className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">{tier.label}</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">{pct.toFixed(0)}%</span>
-                        <Badge variant={tier.variant}>{tier.count}</Badge>
-                      </div>
-                    </div>
-                    <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                      <div className={`h-full ${tier.color} rounded-full transition-all`} style={{ width: `${pct}%` }} />
-                    </div>
+          <CardContent className="space-y-4">
+            {/* Stacked horizontal bar */}
+            {(() => {
+              const tiers = [
+                { label: 'High', count: qualityMetrics.confidenceDistribution.high, color: 'hsl(var(--chart-2))' },
+                { label: 'Medium', count: qualityMetrics.confidenceDistribution.medium, color: 'hsl(var(--chart-3))' },
+                { label: 'Low', count: qualityMetrics.confidenceDistribution.low, color: 'hsl(var(--destructive))' },
+                { label: 'Unknown', count: qualityMetrics.confidenceDistribution.unknown, color: 'hsl(var(--muted-foreground))' },
+              ];
+              const total = qualityMetrics.totalListings;
+              return (
+                <div className="space-y-3">
+                  <div className="h-6 w-full rounded-full overflow-hidden flex bg-muted">
+                    {tiers.map(tier => {
+                      const pct = total > 0 ? (tier.count / total) * 100 : 0;
+                      if (pct === 0) return null;
+                      return (
+                        <div
+                          key={tier.label}
+                          className="h-full transition-all relative group"
+                          style={{ width: `${pct}%`, backgroundColor: tier.color }}
+                          title={`${tier.label}: ${tier.count} (${pct.toFixed(0)}%)`}
+                        />
+                      );
+                    })}
                   </div>
-                );
-              })}
-            </div>
+                  {/* Legend */}
+                  <div className="grid grid-cols-2 gap-2">
+                    {tiers.map(tier => {
+                      const pct = total > 0 ? (tier.count / total) * 100 : 0;
+                      return (
+                        <div key={tier.label} className="flex items-center gap-2 text-xs">
+                          <span className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: tier.color }} />
+                          <span className="text-muted-foreground">{tier.label}</span>
+                          <span className="font-semibold ml-auto">{tier.count} <span className="text-muted-foreground font-normal">({pct.toFixed(0)}%)</span></span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
             
             <div className="pt-3 border-t space-y-1">
               <div className="flex items-center justify-between">
