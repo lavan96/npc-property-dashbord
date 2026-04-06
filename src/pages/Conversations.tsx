@@ -574,6 +574,21 @@ export default function Conversations() {
           </div>
         )}
 
+        {/* Resizable Drag Handle */}
+        {!isMobile && showList && (
+          <div
+            className="w-1.5 hover:w-2 bg-transparent hover:bg-primary/20 cursor-col-resize transition-all flex-shrink-0 relative group"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              isDraggingConvRef.current = true;
+              dragStartXConvRef.current = e.clientX;
+              dragStartWidthConvRef.current = convPanelWidth;
+            }}
+          >
+            <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-0.5 bg-border group-hover:bg-primary/40 transition-colors" />
+          </div>
+        )}
+
         {/* ─── RIGHT PANEL: Thread View ─── */}
         {(selectedId || !isMobile) && (
           <div className={cn('flex flex-col flex-1 min-w-0', !selectedId && 'items-center justify-center')}>
