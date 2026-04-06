@@ -238,18 +238,33 @@ serve(async (req) => {
 
       for (const schedule of schedulesToProcess) {
         try {
-          const result = await processScheduleDispatch(supabase, supabaseUrl, supabaseServiceKey, supabaseAnonKey, schedule);
+          // Determine report type — handle content rotation
+          let reportType = schedule.report_type || 'full';
+          const audienceSegment = schedule.audience_segment || 'general';
+
+          if (schedule.content_rotation_enabled && schedule.rotation_sequence?.length > 0) {
+            const idx = schedule.current_rotation_index || 0;
+            reportType = schedule.rotation_sequence[idx % schedule.rotation_sequence.length];
+            console.log(`[dispatch] Rotation: index=${idx}, type=${reportType}`);
+          }
+
+          const result = await processScheduleDispatch(supabase, supabaseUrl, supabaseServiceKey, supabaseAnonKey, schedule, reportType, audienceSegment);
           totalSent += result.sent;
           totalFailed += result.failed;
 
-          // Update schedule timestamps
-          const nextScheduled = calculateNextScheduledAt(schedule.frequency);
+          // Update schedule timestamps + rotation index
+          const updatePayload: Record<string, any> = {
+            last_sent_at: new Date().toISOString(),
+            next_scheduled_at: calculateNextScheduledAt(schedule.frequency),
+          };
+
+          if (schedule.content_rotation_enabled && schedule.rotation_sequence?.length > 0) {
+            updatePayload.current_rotation_index = ((schedule.current_rotation_index || 0) + 1) % schedule.rotation_sequence.length;
+          }
+
           await supabase
             .from('marketing_report_schedules')
-            .update({
-              last_sent_at: new Date().toISOString(),
-              next_scheduled_at: nextScheduled,
-            })
+            .update(updatePayload)
             .eq('id', schedule.id);
 
         } catch (err) {
