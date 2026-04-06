@@ -740,7 +740,7 @@ export default function Conversations() {
                     disabled={!replyText.trim() || (replyChannel === 'email' && !emailSubject.trim())}
                     channel={replyChannel as 'sms' | 'email' | 'whatsapp'}
                     placeholder={`Type your ${replyChannel === 'sms' ? 'SMS' : replyChannel === 'whatsapp' ? 'WhatsApp' : 'email'} message...`}
-                    rows={replyChannel === 'email' ? 3 : 1}
+                    rows={replyChannel === 'email' ? 4 : 2}
                   />
                 </div>
               </>
