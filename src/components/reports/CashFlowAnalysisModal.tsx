@@ -373,25 +373,34 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       const fetchReports = async () => {
         setLoadingReports(true);
         try {
-          const { data, error } = await supabase
-            .from('investment_reports')
-            .select('id, property_address, financial_calculations, manual_overrides')
-            .eq('status', 'completed')
-            .neq('id', report.id)
-            .order('created_at', { ascending: false })
-            .limit(50);
+          const { data, error } = await invokeSecureFunction('get-investment-reports', {
+            listMode: true,
+            listOptions: {
+              select: 'id, property_address, financial_calculations, manual_overrides',
+              status: 'completed',
+              orderBy: 'created_at',
+              orderAsc: false
+            }
+          });
 
-          if (error) throw error;
-          setAvailableReports(data || []);
+          if (error) throw new Error(error.message);
+          // Filter out the current report
+          const allReports = (data?.reports || []) as InvestmentReport[];
+          setAvailableReports(allReports.filter(r => r.id !== report.id));
         } catch (error) {
-          console.error('Error fetching reports:', error);
+          console.error('Error fetching reports for comparison:', error);
+          toast({
+            title: "Failed to load reports",
+            description: "Could not fetch available reports for comparison. Please try again.",
+            variant: "destructive",
+          });
         } finally {
           setLoadingReports(false);
         }
       };
       fetchReports();
     }
-  }, [comparisonMode, isOpen, report]);
+  }, [comparisonMode, isOpen, report, toast]);
 
   // Fetch selected comparison reports details
   useEffect(() => {
