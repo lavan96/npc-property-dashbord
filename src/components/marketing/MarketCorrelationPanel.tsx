@@ -5,6 +5,7 @@ import remarkGfm from 'remark-gfm';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Activity, Brain, AlertTriangle, ExternalLink, Globe, ArrowUp, ArrowDown, Minus, Calendar } from 'lucide-react';
 import { EnhancedResearchRenderer, createMarkdownComponents } from './EnhancedResearchRenderer';
+import { MarketIntelligenceExportButton } from './MarketIntelligenceExportButton';
 
 interface MarketEvent {
   date: string;
