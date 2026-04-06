@@ -978,7 +978,7 @@ export default function GeneratedReports() {
                               <SelectItem value="all">All Reports</SelectItem>
                               <SelectItem value="address">Property Analysis</SelectItem>
                               <SelectItem value="suburb">Suburb Analysis</SelectItem>
-                              <SelectItem value="zipcode">Area Analysis</SelectItem>
+                              <SelectItem value="zipcode">Postcode Analysis</SelectItem>
                               <SelectItem value="state">State Analysis</SelectItem>
                             </SelectContent>
                           </Select>
