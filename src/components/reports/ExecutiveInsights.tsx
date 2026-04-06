@@ -207,7 +207,7 @@ export function ExecutiveInsights({ listings }: ExecutiveInsightsProps) {
                 ))
               ) : (
                 <div className="text-sm text-muted-foreground text-center py-4">
-                  No specific actions required at this time.
+                  All key metrics are within expected ranges. No immediate action required.
                 </div>
               )}
             </div>
