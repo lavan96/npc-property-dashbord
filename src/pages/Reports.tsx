@@ -487,26 +487,40 @@ export default function Reports() {
                     </ResponsiveContainer>
                   </ChartContainer>
                   {/* Price insights row */}
-                  <div className="grid grid-cols-3 gap-3 pt-2 border-t">
-                    <div className="text-center">
-                      <p className="text-lg font-bold text-foreground">${avgPrice.toLocaleString()}</p>
-                      <p className="text-[11px] text-muted-foreground">Average Price</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-lg font-bold text-foreground">
-                        {priceRangeChartData.length > 0 
-                          ? priceRangeChartData.reduce((max, d) => d.count > max.count ? d : max, priceRangeChartData[0]).range 
-                          : '—'}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground">Most Common Range</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-lg font-bold text-foreground">
-                        {allListings.filter(l => l.price && l.price > 0).length}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground">With Valid Price</p>
-                    </div>
-                  </div>
+                  {(() => {
+                    const validPrices = allListings.filter(l => l.price && l.price > 0).map(l => l.price!).sort((a, b) => a - b);
+                    const medianPrice = validPrices.length > 0 ? validPrices[Math.floor(validPrices.length / 2)] : 0;
+                    const p25 = validPrices.length > 0 ? validPrices[Math.floor(validPrices.length * 0.25)] : 0;
+                    const p75 = validPrices.length > 0 ? validPrices[Math.floor(validPrices.length * 0.75)] : 0;
+                    return (
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 pt-2 border-t">
+                        <div className="text-center">
+                          <p className="text-lg font-bold text-foreground">${medianPrice.toLocaleString()}</p>
+                          <p className="text-[11px] text-muted-foreground">Median Price</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-lg font-bold text-foreground">${avgPrice.toLocaleString()}</p>
+                          <p className="text-[11px] text-muted-foreground">Average Price</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-lg font-bold text-foreground">${p25.toLocaleString()}</p>
+                          <p className="text-[11px] text-muted-foreground">25th Percentile</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-lg font-bold text-foreground">${p75.toLocaleString()}</p>
+                          <p className="text-[11px] text-muted-foreground">75th Percentile</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-lg font-bold text-foreground">
+                            {priceRangeChartData.length > 0 
+                              ? priceRangeChartData.reduce((max, d) => d.count > max.count ? d : max, priceRangeChartData[0]).range 
+                              : '—'}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground">Most Common Range</p>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </CardContent>
               </Card>
 
