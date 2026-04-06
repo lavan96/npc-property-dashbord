@@ -560,7 +560,12 @@ serve(async (req) => {
       });
     }
 
-    const requiredLayers = REPORT_TYPE_LAYERS[reportType] || REPORT_TYPE_LAYERS.full;
+    let requiredLayers = [...(REPORT_TYPE_LAYERS[reportType] || REPORT_TYPE_LAYERS.full)];
+    
+    // Remove layer8 if NPC strategy is excluded
+    if (!includeNpcStrategy) {
+      requiredLayers = requiredLayers.filter(l => l !== 'layer8');
+    }
     const audiencePrompt = AUDIENCE_SYSTEM_PROMPTS[audienceSegment] || AUDIENCE_SYSTEM_PROMPTS.general;
 
     // Create report record
