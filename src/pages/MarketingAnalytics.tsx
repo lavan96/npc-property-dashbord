@@ -719,6 +719,9 @@ export default function MarketingAnalytics() {
         aiError={marketData?.aiError}
         loading={marketLoading}
       />
+
+      {/* Report Distribution */}
+      <ReportDistributionPanel />
           </div>
         </TabsContent>
 
