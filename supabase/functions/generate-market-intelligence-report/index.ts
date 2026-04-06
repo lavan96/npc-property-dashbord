@@ -8,6 +8,7 @@ interface ReportRequest {
   session_token?: string;
   report_type?: string;
   audience_segment?: string;
+  include_npc_strategy?: boolean;
 }
 
 interface PerplexityResult {
