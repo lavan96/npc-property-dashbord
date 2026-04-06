@@ -153,11 +153,20 @@ export default function ClientManagement() {
     }
   });
 
-  // Deep-link: auto-open client modal from ?clientId= query param
+  // Deep-link: auto-open client modal or apply filter from query params
   useEffect(() => {
     const clientId = searchParams.get('clientId');
     const tab = searchParams.get('tab');
     const dealId = searchParams.get('dealId');
+    const filterParam = searchParams.get('filter');
+
+    // Handle reviews_due filter deep-link from Overview widget
+    if (filterParam === 'reviews_due' && !isLoading) {
+      setFilters(prev => ({ ...prev, reviewStatus: 'overdue' as const }));
+      setSearchParams({}, { replace: true });
+      return;
+    }
+
     if (!clientId || isLoading || clients.length === 0) return;
 
     const target = clients.find(c => c.id === clientId);
