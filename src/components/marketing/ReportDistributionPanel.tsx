@@ -419,7 +419,7 @@ export function ReportDistributionPanel() {
                   <div key={schedule.id} className="rounded-lg border border-border/50 bg-card p-4 space-y-2">
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-semibold">{schedule.name}</span>
                           <Badge variant="outline" className={`text-[10px] ${schedule.is_enabled ? 'border-emerald-500/30 text-emerald-600' : 'border-border text-muted-foreground'}`}>
                             {schedule.is_enabled ? 'Active' : 'Paused'}
@@ -427,6 +427,14 @@ export function ReportDistributionPanel() {
                           <Badge variant="outline" className="text-[10px]">
                             {FREQUENCY_LABELS[schedule.frequency] || schedule.frequency}
                           </Badge>
+                          <Badge variant="outline" className="text-[10px] border-primary/30 text-primary">
+                            {schedule.content_rotation_enabled ? '🔄 Rotation' : (REPORT_TYPE_OPTIONS[schedule.report_type || 'full'] || 'Full')}
+                          </Badge>
+                          {schedule.audience_segment && schedule.audience_segment !== 'general' && (
+                            <Badge variant="outline" className="text-[10px] border-amber-500/30 text-amber-600">
+                              {AUDIENCE_OPTIONS[schedule.audience_segment] || schedule.audience_segment}
+                            </Badge>
+                          )}
                         </div>
                         {schedule.description && (
                           <p className="text-[11px] text-muted-foreground mt-0.5">{schedule.description}</p>
