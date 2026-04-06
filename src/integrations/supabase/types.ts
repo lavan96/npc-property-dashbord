@@ -5657,6 +5657,131 @@ export type Database = {
           },
         ]
       }
+      marketing_report_distribution_log: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          ghl_contact_id: string | null
+          id: string
+          recipient_email: string
+          recipient_name: string | null
+          report_id: string | null
+          schedule_id: string | null
+          sent_at: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          ghl_contact_id?: string | null
+          id?: string
+          recipient_email: string
+          recipient_name?: string | null
+          report_id?: string | null
+          schedule_id?: string | null
+          sent_at?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          ghl_contact_id?: string | null
+          id?: string
+          recipient_email?: string
+          recipient_name?: string | null
+          report_id?: string | null
+          schedule_id?: string | null
+          sent_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_report_distribution_log_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_intelligence_reports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_report_distribution_log_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_report_schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketing_report_schedules: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          email_body_template: string
+          email_subject_template: string
+          frequency: string
+          id: string
+          is_enabled: boolean
+          last_sent_at: string | null
+          mailbox_source: string
+          name: string
+          next_scheduled_at: string | null
+          pipeline_id: string
+          pipeline_name: string | null
+          sender_mailbox_email: string | null
+          stage_id: string | null
+          stage_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          email_body_template?: string
+          email_subject_template?: string
+          frequency?: string
+          id?: string
+          is_enabled?: boolean
+          last_sent_at?: string | null
+          mailbox_source?: string
+          name: string
+          next_scheduled_at?: string | null
+          pipeline_id: string
+          pipeline_name?: string | null
+          sender_mailbox_email?: string | null
+          stage_id?: string | null
+          stage_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          email_body_template?: string
+          email_subject_template?: string
+          frequency?: string
+          id?: string
+          is_enabled?: boolean
+          last_sent_at?: string | null
+          mailbox_source?: string
+          name?: string
+          next_scheduled_at?: string | null
+          pipeline_id?: string
+          pipeline_name?: string | null
+          sender_mailbox_email?: string | null
+          stage_id?: string | null
+          stage_name?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_report_schedules_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       marketing_reports: {
         Row: {
           anomalies_snapshot: Json | null
