@@ -712,8 +712,7 @@ For each item, specify: What changed, When, Which states affected, Impact rating
             LOVABLE_API_KEY,
             allLayerSummaries,
             reportType,
-            audienceSegment,
-            internalNPCData
+            audienceSegment
           );
         } catch (e) {
           console.error('Actionable strategy error:', e);
