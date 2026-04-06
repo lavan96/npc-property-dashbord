@@ -401,13 +401,15 @@ async function processScheduleDispatch(
 
 // ─── Report Management ──────────────────────────────────────────────────────
 
-async function getOrGenerateReport(supabase: any, supabaseUrl: string, serviceKey: string, anonKey: string): Promise<any> {
-  // Check for a recent report (< 24h old)
+async function getOrGenerateReport(supabase: any, supabaseUrl: string, serviceKey: string, anonKey: string, reportType: string, audienceSegment: string): Promise<any> {
+  // Check for a recent report with matching type/audience (< 24h old)
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   const { data: recentReport } = await supabase
     .from('marketing_intelligence_reports')
     .select('*')
     .eq('status', 'completed')
+    .eq('report_type', reportType)
+    .eq('audience_segment', audienceSegment)
     .gte('created_at', oneDayAgo)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -418,8 +420,8 @@ async function getOrGenerateReport(supabase: any, supabaseUrl: string, serviceKe
     return recentReport;
   }
 
-  // Generate a new report
-  console.log('[dispatch] No recent report found, generating new one...');
+  // Generate a new report with the specified type and audience
+  console.log(`[dispatch] Generating new ${reportType} report for ${audienceSegment}...`);
   
   const genResponse = await fetch(`${supabaseUrl.trim()}/functions/v1/generate-market-intelligence-report`, {
     method: 'POST',
@@ -428,7 +430,10 @@ async function getOrGenerateReport(supabase: any, supabaseUrl: string, serviceKe
       'Authorization': `Bearer ${serviceKey.trim()}`,
       'apikey': anonKey.trim(),
     },
-    body: JSON.stringify({}),
+    body: JSON.stringify({
+      report_type: reportType,
+      audience_segment: audienceSegment,
+    }),
   });
 
   if (!genResponse.ok) {
