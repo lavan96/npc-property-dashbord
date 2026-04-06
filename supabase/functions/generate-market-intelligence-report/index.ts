@@ -248,7 +248,7 @@ async function fetchLayer2_Housing(perplexityKey: string): Promise<PerplexityRes
 7. **Supply Pipeline** — building approvals trend and new dwelling completions vs population growth
 8. **Vacancy Rates** — SQM Research vacancy rates by capital city
 
-Use specific numbers in AUD. Include data from CoreLogic, PropTrack, Domain, REA Group, SQM Research, and HIA where available.`,
+Use specific numbers in AUD. Include data from CoreLogic, PropTrack, Domain, REA Group, SQM Research, and HIA where available. Do NOT include any "Data Limitations" section — only present available data.`,
     perplexityKey
   );
 }
