@@ -92,8 +92,8 @@ export function AgentPerformance({ listings }: AgentPerformanceProps) {
       .sort((a, b) => b.count - a.count);
 
     return {
-      topAgents: agentAnalysis.slice(0, 10),
-      topAgencies: agencyAnalysis.slice(0, 8),
+      allAgents: agentAnalysis,
+      allAgencies: agencyAnalysis,
     };
   }, [listings]);
 
