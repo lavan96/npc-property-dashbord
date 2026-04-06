@@ -83,6 +83,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { format, formatDistanceToNow, isToday, isYesterday } from 'date-fns';
+import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 
 interface EmailSummary {
   tldr: string;
@@ -254,6 +255,12 @@ export default function EmailCopilot() {
   
   // Threading state
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
+  
+  // Resizable panel state
+  const [listPanelWidth, setListPanelWidth] = useState(380);
+  const isDraggingRef = useRef(false);
+  const dragStartXRef = useRef(0);
+  const dragStartWidthRef = useRef(380);
   
   // New email form state
   const [newEmail, setNewEmail] = useState({
@@ -1669,9 +1676,21 @@ export default function EmailCopilot() {
       )}
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden relative">
+      <div className="flex-1 flex overflow-hidden relative"
+        onMouseMove={(e) => {
+          if (!isDraggingRef.current) return;
+          const delta = e.clientX - dragStartXRef.current;
+          const newWidth = Math.min(600, Math.max(280, dragStartWidthRef.current + delta));
+          setListPanelWidth(newWidth);
+        }}
+        onMouseUp={() => { isDraggingRef.current = false; }}
+        onMouseLeave={() => { isDraggingRef.current = false; }}
+      >
         {/* Email List Panel - full width on mobile, hidden when detail shown */}
-        <div className={`${isMobile ? 'w-full' : 'w-[380px]'} border-r flex flex-col bg-background ${isMobile && showMobileDetail ? 'hidden' : ''}`}>
+        <div 
+          className={`${isMobile ? 'w-full' : ''} border-r flex flex-col bg-background ${isMobile && showMobileDetail ? 'hidden' : ''}`}
+          style={!isMobile ? { width: listPanelWidth, minWidth: 280, maxWidth: 600, flexShrink: 0 } : undefined}
+        >
           {/* Inbox/Sent Tabs */}
           <div className="px-3 pt-3 border-b">
             <div className="flex gap-1 bg-muted rounded-lg p-1 mb-3">
@@ -1821,6 +1840,9 @@ export default function EmailCopilot() {
                           <div
                             onClick={() => {
                               if (isThreaded && !isExpanded) {
+                                toggleThread(threadKey);
+                              } else if (isThreaded && isExpanded) {
+                                // If already expanded and clicking the header, collapse the thread
                                 toggleThread(threadKey);
                               } else {
                                 handleSelectEmail(latestEmail);
@@ -2098,6 +2120,21 @@ export default function EmailCopilot() {
             )}
           </ScrollArea>
         </div>
+
+        {/* Resizable Drag Handle */}
+        {!isMobile && (
+          <div
+            className="w-1.5 hover:w-2 bg-transparent hover:bg-primary/20 cursor-col-resize transition-all flex-shrink-0 relative group"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              isDraggingRef.current = true;
+              dragStartXRef.current = e.clientX;
+              dragStartWidthRef.current = listPanelWidth;
+            }}
+          >
+            <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-0.5 bg-border group-hover:bg-primary/40 transition-colors" />
+          </div>
+        )}
 
         {/* Email Detail Panel - Full screen overlay on mobile */}
         <div className={`${isMobile ? 'absolute inset-0 z-50' : 'flex-1'} flex flex-col bg-muted/20 overflow-hidden ${isMobile && !showMobileDetail ? 'hidden' : ''}`}>
