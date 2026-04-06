@@ -433,8 +433,6 @@ async function generateActionableStrategy(
 ## Data Context:
 ${allLayerSummaries.slice(0, 5000)}
 
-## NPC Pipeline Context:
-${internalNPCData.slice(0, 1000)}
 
 ## Required Output Structure:
 
