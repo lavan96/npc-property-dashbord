@@ -510,6 +510,27 @@ export default function Reports() {
                       </BarChart>
                     </ResponsiveContainer>
                   </ChartContainer>
+                  {/* Bedroom insights */}
+                  <div className="grid grid-cols-3 gap-3 pt-2 border-t">
+                    <div className="text-center">
+                      <p className="text-lg font-bold text-foreground">
+                        {bedroomChartData.length > 0 
+                          ? bedroomChartData.reduce((max, d) => d.count > max.count ? d : max, bedroomChartData[0]).beds 
+                          : '—'}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">Most Common</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-lg font-bold text-foreground">{bedroomChartData.length}</p>
+                      <p className="text-[11px] text-muted-foreground">Configurations</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-lg font-bold text-foreground">
+                        {allListings.filter(l => l.beds && l.beds > 0).length}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">With Bed Data</p>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
