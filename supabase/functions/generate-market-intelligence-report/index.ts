@@ -419,8 +419,7 @@ async function generateActionableStrategy(
   lovableKey: string,
   allLayerSummaries: string,
   reportType: string,
-  audienceSegment: string,
-  internalNPCData: string
+  audienceSegment: string
 ): Promise<string> {
   const audienceFraming: Record<string, string> = {
     general: 'Provide balanced guidance for both investors and homebuyers.',
