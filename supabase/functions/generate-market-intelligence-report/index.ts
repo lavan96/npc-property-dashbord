@@ -266,7 +266,7 @@ async function fetchLayer3_Sentiment(perplexityKey: string): Promise<PerplexityR
 7. **Property Council / UDIA / HIA Sentiment** — any recent industry body sentiment surveys or confidence indices
 8. **Media Sentiment** — overall tone from AFR, The Australian, and ABC property coverage in the last 30 days
 
-Cite all specific readings with their publication dates.`,
+Cite all specific readings with their publication dates. Do NOT include any "Data Limitations" section — only present available data.`,
     perplexityKey
   );
 }
