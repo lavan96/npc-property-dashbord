@@ -2533,17 +2533,21 @@ export function InvestmentReportGenerator() {
                       key={report.id}
                       className="border rounded-lg p-3 hover:bg-muted/50 transition-colors cursor-pointer"
                       onClick={() => {
-                        // Navigate to the Generated Reports page
-                        window.location.href = '/generated-reports';
+                        window.location.href = `/generated-reports?reportId=${report.id}`;
                       }}
                     >
                       <div className="space-y-1">
                         <p className="text-sm font-medium line-clamp-2">
                           {report.property_address}
                         </p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(report.created_at).toLocaleDateString()}
-                        </p>
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(report.created_at).toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' })}
+                          </p>
+                          {(report as any).status === 'processing' && (
+                            <Badge variant="secondary" className="text-xs animate-pulse">Processing</Badge>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}

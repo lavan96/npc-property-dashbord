@@ -621,7 +621,7 @@ export default function GeneratedReports() {
       // Cast to any to bypass TypeScript for property_comparisons table
       const { data, error } = await (supabase as any)
         .from('property_comparisons')
-        .select('id, property_count, property_addresses, property_states, report_title, report_ids, created_at, analysis_summary, executive_summary, rankings, recommendations, financial_comparison, location_comparison, risk_comparison, red_flags')
+        .select('id, property_count, property_addresses, property_states, report_title, report_ids, created_at, analysis_summary, executive_summary, rankings, recommendations, financial_comparison, location_comparison, risk_comparison, red_flags, is_archived')
         .order('created_at', { ascending: false });
 
       if (error) {

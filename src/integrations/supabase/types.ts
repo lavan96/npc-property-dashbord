@@ -6377,6 +6377,7 @@ export type Database = {
           id: string
           investor_matches: Json | null
           investor_profile: string | null
+          is_archived: boolean
           location_comparison: Json | null
           model_used: string | null
           processing_time_ms: number | null
@@ -6402,6 +6403,7 @@ export type Database = {
           id?: string
           investor_matches?: Json | null
           investor_profile?: string | null
+          is_archived?: boolean
           location_comparison?: Json | null
           model_used?: string | null
           processing_time_ms?: number | null
@@ -6427,6 +6429,7 @@ export type Database = {
           id?: string
           investor_matches?: Json | null
           investor_profile?: string | null
+          is_archived?: boolean
           location_comparison?: Json | null
           model_used?: string | null
           processing_time_ms?: number | null
