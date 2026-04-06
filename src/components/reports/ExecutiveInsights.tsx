@@ -242,7 +242,7 @@ export function ExecutiveInsights({ listings }: ExecutiveInsightsProps) {
                 ))
               ) : (
                 <div className="text-sm text-muted-foreground text-center py-4">
-                  No significant anomalies detected in current data.
+                  Market data is consistent with no notable anomalies detected across monitored suburbs.
                 </div>
               )}
             </div>

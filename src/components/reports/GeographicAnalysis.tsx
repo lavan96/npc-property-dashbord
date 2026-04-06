@@ -103,6 +103,8 @@ export function GeographicAnalysis({ listings }: GeographicAnalysisProps) {
                     <div className="font-medium">{suburb.suburb}</div>
                     <div className="text-sm text-muted-foreground">
                       {suburb.count} listings • ${suburb.avgPrice.toLocaleString()} avg
+                      {suburb.state && ` • ${suburb.state}`}
+                      {suburb.postcode && ` ${suburb.postcode}`}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">

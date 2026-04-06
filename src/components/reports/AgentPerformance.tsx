@@ -4,6 +4,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { PropertyListing } from '@/lib/airtable';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 interface AgentPerformanceProps {
