@@ -588,6 +588,48 @@ export function ReportDistributionPanel() {
 
               <Separator />
 
+              {/* Report Type & Audience */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs flex items-center gap-1"><Target className="h-3 w-3" /> Report Type</Label>
+                  <Select value={formReportType} onValueChange={setFormReportType} disabled={formRotationEnabled}>
+                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(REPORT_TYPE_OPTIONS).map(([k, v]) => (
+                        <SelectItem key={k} value={k}>{v}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs flex items-center gap-1"><Users className="h-3 w-3" /> Audience</Label>
+                  <Select value={formAudience} onValueChange={setFormAudience}>
+                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(AUDIENCE_OPTIONS).map(([k, v]) => (
+                        <SelectItem key={k} value={k}>{v}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 p-3 rounded-lg border border-border/50 bg-muted/30">
+                <RotateCw className="h-4 w-4 text-primary shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <Switch checked={formRotationEnabled} onCheckedChange={setFormRotationEnabled} className="scale-75" />
+                    <Label className="text-xs font-medium">Content Rotation</Label>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    Automatically cycle through all 7 report types each send, creating a varied rhythm of communication
+                  </p>
+                </div>
+              </div>
+
+              <Separator />
+
               <div className="space-y-1.5">
                 <Label className="text-xs">Email Subject</Label>
                 <Input value={formSubject} onChange={e => setFormSubject(e.target.value)} className="h-9" />
