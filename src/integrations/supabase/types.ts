@@ -5610,6 +5610,53 @@ export type Database = {
           },
         ]
       }
+      marketing_intelligence_reports: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          generated_at: string
+          generated_by: string
+          id: string
+          pdf_storage_path: string | null
+          report_data: Json | null
+          report_period: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          generated_at?: string
+          generated_by: string
+          id?: string
+          pdf_storage_path?: string | null
+          report_data?: Json | null
+          report_period?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          generated_at?: string
+          generated_by?: string
+          id?: string
+          pdf_storage_path?: string | null
+          report_data?: Json | null
+          report_period?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_intelligence_reports_generated_by_fkey"
+            columns: ["generated_by"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       marketing_reports: {
         Row: {
           anomalies_snapshot: Json | null
