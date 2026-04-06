@@ -103,17 +103,23 @@ export function AgentPerformance({ listings }: AgentPerformanceProps) {
     agentCount: { label: "Agents", color: "hsl(var(--chart-5))" },
   };
 
+  const [showAllAgents, setShowAllAgents] = useState(false);
+  const [showAllAgencies, setShowAllAgencies] = useState(false);
+  
+  const displayedAgents = showAllAgents ? agentData.allAgents : agentData.allAgents.slice(0, 10);
+  const displayedAgencies = showAllAgencies ? agentData.allAgencies : agentData.allAgencies.slice(0, 10);
+
   return (
     <div className="space-y-6">
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Top Performing Agents</CardTitle>
-            <CardDescription>Agents by listing volume and performance</CardDescription>
+            <CardTitle>Performing Agents</CardTitle>
+            <CardDescription>{agentData.allAgents.length} agents by listing volume and performance</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {agentData.topAgents.slice(0, 6).map((agent, index) => (
+            <div className="space-y-3 max-h-[500px] overflow-y-auto">
+              {displayedAgents.map((agent, index) => (
                 <div key={agent.agentName} className="flex items-center gap-3 p-3 border rounded-lg">
                   <div className="flex items-center gap-3 flex-1">
                     <Avatar className="h-8 w-8">
