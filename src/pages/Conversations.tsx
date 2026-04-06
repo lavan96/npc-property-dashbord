@@ -137,6 +137,12 @@ export default function Conversations() {
   const [selectedMailbox, setSelectedMailbox] = useState<string>('admin');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  
+  // Resizable panel state
+  const [convPanelWidth, setConvPanelWidth] = useState(360);
+  const isDraggingConvRef = useRef(false);
+  const dragStartXConvRef = useRef(0);
+  const dragStartWidthConvRef = useRef(360);
 
   // ── Sync from GHL API then refetch local data ──
   const handleSyncAndRefresh = async () => {
