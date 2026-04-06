@@ -81,6 +81,7 @@ export function MobileFilterSheet({ filters, setFilters, uniqueValues }: MobileF
       sourceHost: 'all',
       hasInspection: false,
       lowConfidence: false,
+      offMarket: false,
       priceMin: '',
       priceMax: '',
       bedsMin: '',
