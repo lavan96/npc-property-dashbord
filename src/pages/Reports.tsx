@@ -369,9 +369,9 @@ export default function Reports() {
               <Card>
                 <CardHeader>
                   <CardTitle>Property Type Distribution</CardTitle>
-                  <CardDescription>Breakdown by property category</CardDescription>
+                  <CardDescription>Proportional breakdown of listings by property category</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
                   <ChartContainer ref={propertyTypeChartRef} config={chartConfig} className="h-[280px] md:h-[400px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
@@ -379,20 +379,50 @@ export default function Reports() {
                           data={propertyTypeChartData}
                           cx="50%"
                           cy="50%"
-                          labelLine={false}
-                          label={(props: any) => `${props.type}: ${(props.percent * 100).toFixed(0)}%`}
-                          outerRadius={120}
+                          labelLine={true}
+                          label={(props: any) => {
+                            const pct = (props.percent * 100).toFixed(0);
+                            return `${props.type} (${pct}%)`;
+                          }}
+                          outerRadius={110}
+                          innerRadius={50}
                           fill="#8884d8"
                           dataKey="count"
+                          paddingAngle={2}
                         >
                           {propertyTypeChartData.map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                           ))}
                         </Pie>
-                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <ChartTooltip 
+                          content={({ active, payload }) => {
+                            if (!active || !payload?.length) return null;
+                            const data = payload[0].payload;
+                            const pct = totalListings > 0 ? ((data.count / totalListings) * 100).toFixed(1) : '0';
+                            return (
+                              <div className="bg-popover border border-border rounded-lg p-3 shadow-md">
+                                <p className="font-semibold text-sm text-foreground">{data.type}</p>
+                                <p className="text-xs text-muted-foreground mt-1">{data.count} listings • {pct}% of total</p>
+                              </div>
+                            );
+                          }}
+                        />
                       </PieChart>
                     </ResponsiveContainer>
                   </ChartContainer>
+                  {/* Legend table */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-2 border-t">
+                    {propertyTypeChartData.map((entry, i) => {
+                      const pct = totalListings > 0 ? ((entry.count / totalListings) * 100).toFixed(1) : '0';
+                      return (
+                        <div key={entry.type} className="flex items-center gap-2 text-xs">
+                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+                          <span className="text-muted-foreground truncate">{entry.type}</span>
+                          <span className="font-medium ml-auto">{entry.count} ({pct}%)</span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
