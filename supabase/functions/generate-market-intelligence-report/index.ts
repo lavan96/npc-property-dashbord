@@ -344,7 +344,7 @@ ${layer7Content.slice(0, 3000)}
 ## Required Analysis (produce ALL sections):
 
 ### 1. Off-Market & Pre-Market Intelligence
-Identify 2-3 opportunities that are likely available off-market or pre-market in the suburbs analysed. Explain what signals suggest off-market activity and how a strategic buyer would access these. Frame this as general market intelligence — do NOT fabricate specific NPC deal pipeline data, active negotiations, or specific property addresses that NPC is supposedly pursuing. Instead, describe the types of opportunities and access strategies available.
+Identify 2-3 opportunities that are likely available off-market or pre-market in the suburbs analysed. Explain what signals suggest off-market activity and how a strategic buyer would access these. Frame this as general market intelligence — do NOT fabricate specific NPC deal pipeline data, active negotiations, or specific property addresses that NPC is supposedly pursuing. Do NOT cite specific street addresses, lot numbers, or individual sale prices — use only suburb-level aggregate data. Instead, describe the types of opportunities and access strategies available.
 
 ### 2. Development & Subdivision Potential
 For the top suburbs identified, analyse:
