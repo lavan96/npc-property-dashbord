@@ -201,9 +201,6 @@ export function ResourceOptimization({ events, currentWeek, selectedDate, onSlot
           <Sparkles className="h-4 w-4 text-primary" />
           Resource Optimization
         </h3>
-        <Badge variant="outline" className="text-xs">
-          AI Powered
-        </Badge>
       </div>
 
       <ScrollArea className="h-[380px]">

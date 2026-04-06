@@ -136,6 +136,22 @@ export function QuickAddAppointmentModal({
     }
   }, [open, defaultDate, defaultHour, calendars, selectedCalendarId]);
 
+  // Auto-detect appointment type from selected calendar name
+  useEffect(() => {
+    if (!selectedCalendarId || calendars.length === 0) return;
+    const cal = calendars.find(c => c.id === selectedCalendarId);
+    if (!cal) return;
+    const name = cal.name.toLowerCase();
+    if (name.includes('zoom') || name.includes('video') || name.includes('virtual')) {
+      setAppointmentType('zoom');
+    } else if (name.includes('phone') || name.includes('call') || name.includes('discovery')) {
+      setAppointmentType('call');
+    } else if (name.includes('in person') || name.includes('in-person') || name.includes('office') || name.includes('face')) {
+      setAppointmentType('in-person');
+    }
+    // else keep current selection
+  }, [selectedCalendarId, calendars]);
+
   // Debounced contact search
   useEffect(() => {
     if (!contactSearch.trim() || !onSearchContacts) {
