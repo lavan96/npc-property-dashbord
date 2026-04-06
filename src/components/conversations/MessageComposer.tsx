@@ -116,12 +116,18 @@ export function MessageComposer({ value, onChange, onSend, isSending, disabled, 
         <Textarea
           ref={textareaRef}
           value={value}
-          onChange={e => onChange(e.target.value)}
+          onChange={(e) => {
+            onChange(e.target.value);
+            // Auto-resize textarea
+            const el = e.target;
+            el.style.height = 'auto';
+            el.style.height = Math.min(el.scrollHeight, 160) + 'px';
+          }}
           placeholder={placeholder}
           rows={rows}
-          className="border-0 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 resize-none min-h-[36px] max-h-[120px] text-sm py-1.5"
+          className="border-0 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 resize-none min-h-[60px] max-h-[160px] text-sm py-1.5"
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey && channel !== 'email') {
+            if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
               onSend();
             }
