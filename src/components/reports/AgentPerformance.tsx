@@ -230,7 +230,7 @@ export function AgentPerformance({ listings }: AgentPerformanceProps) {
           <CardContent>
             <ChartContainer config={chartConfig} className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={agentData.topAgencies.slice(0, 6)}>
+                <BarChart data={agentData.allAgencies.slice(0, 6)}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis 
                     dataKey="agencyName" 
