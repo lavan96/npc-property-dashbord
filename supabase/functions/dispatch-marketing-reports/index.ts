@@ -92,10 +92,11 @@ serve(async (req) => {
         .insert({
           name: data?.name,
           description: data?.description,
-          pipeline_id: data?.pipeline_id,
+          pipeline_id: data?.pipeline_id || 'none',
           pipeline_name: data?.pipeline_name,
           stage_id: data?.stage_id || null,
           stage_name: data?.stage_name || null,
+          pipeline_stage_targets: data?.pipeline_stage_targets || [],
           frequency: data?.frequency || 'monthly',
           mailbox_source: data?.mailbox_source || 'admin',
           sender_mailbox_email: data?.sender_mailbox_email || null,
@@ -125,7 +126,7 @@ serve(async (req) => {
 
       const updateData: Record<string, any> = {};
       const allowedFields = ['name', 'description', 'pipeline_id', 'pipeline_name', 'stage_id', 'stage_name',
-        'frequency', 'mailbox_source', 'sender_mailbox_email', 'email_subject_template', 'email_body_template', 
+        'pipeline_stage_targets', 'frequency', 'mailbox_source', 'sender_mailbox_email', 'email_subject_template', 'email_body_template', 
         'is_enabled', 'report_type', 'audience_segment', 'content_rotation_enabled', 'rotation_sequence', 'current_rotation_index'];
       
       for (const field of allowedFields) {
@@ -503,50 +504,66 @@ interface Recipient {
 }
 
 async function resolveRecipients(supabase: any, schedule: any): Promise<Recipient[]> {
-  // Query ghl_client_opportunities for contacts in the target pipeline/stage
-  let query = supabase
-    .from('ghl_client_opportunities')
-    .select('client_id, ghl_contact_id, contact_name, contact_email')
-    .eq('pipeline_id', schedule.pipeline_id);
-
-  if (schedule.stage_id) {
-    query = query.eq('stage_id', schedule.stage_id);
+  const targets: Array<{ pipeline_id: string; stage_id?: string }> = schedule.pipeline_stage_targets || [];
+  
+  // Fallback to legacy single pipeline/stage if no targets configured
+  if (targets.length === 0 && schedule.pipeline_id) {
+    targets.push({
+      pipeline_id: schedule.pipeline_id,
+      stage_id: schedule.stage_id || undefined,
+    });
   }
 
-  const { data: opportunities, error } = await query;
-
-  if (error) {
-    console.error('[dispatch] Error fetching opportunities:', error);
+  if (targets.length === 0) {
+    console.log('[dispatch] No pipeline targets configured');
     return [];
   }
 
-  // Deduplicate by email and collect recipients
   const emailMap = new Map<string, Recipient>();
 
-  for (const opp of (opportunities || [])) {
-    let email = opp.contact_email;
-    let name = opp.contact_name || '';
+  for (const target of targets) {
+    // Query ghl_client_opportunities using the internal UUID pipeline_id
+    let query = supabase
+      .from('ghl_client_opportunities')
+      .select('client_id, ghl_contact_id, contact_name, contact_email')
+      .eq('pipeline_id', target.pipeline_id);
 
-    // If no email on opportunity, try the clients table
-    if (!email && opp.client_id) {
-      const { data: client } = await supabase
-        .from('clients')
-        .select('primary_email, primary_first_name, primary_surname')
-        .eq('id', opp.client_id)
-        .maybeSingle();
-
-      if (client?.primary_email) {
-        email = client.primary_email;
-        name = name || `${client.primary_first_name || ''} ${client.primary_surname || ''}`.trim();
-      }
+    if (target.stage_id) {
+      query = query.eq('stage_id', target.stage_id);
     }
 
-    if (email && !emailMap.has(email.toLowerCase())) {
-      emailMap.set(email.toLowerCase(), {
-        email: email.toLowerCase(),
-        name,
-        ghl_contact_id: opp.ghl_contact_id,
-      });
+    const { data: opportunities, error } = await query;
+
+    if (error) {
+      console.error(`[dispatch] Error fetching opportunities for pipeline ${target.pipeline_id}:`, error);
+      continue;
+    }
+
+    for (const opp of (opportunities || [])) {
+      let email = opp.contact_email;
+      let name = opp.contact_name || '';
+
+      // If no email on opportunity, try the clients table
+      if (!email && opp.client_id) {
+        const { data: client } = await supabase
+          .from('clients')
+          .select('primary_email, primary_first_name, primary_surname')
+          .eq('id', opp.client_id)
+          .maybeSingle();
+
+        if (client?.primary_email) {
+          email = client.primary_email;
+          name = name || `${client.primary_first_name || ''} ${client.primary_surname || ''}`.trim();
+        }
+      }
+
+      if (email && !emailMap.has(email.toLowerCase())) {
+        emailMap.set(email.toLowerCase(), {
+          email: email.toLowerCase(),
+          name,
+          ghl_contact_id: opp.ghl_contact_id,
+        });
+      }
     }
   }
 
