@@ -685,7 +685,6 @@ For each item, specify: What changed, When, Which states affected, Impact rating
         layer6Result.content ? `## Economic:\n${layer6Result.content.slice(0, 1000)}` : '',
         layer7Result.content ? `## Suburb Intelligence:\n${layer7Result.content.slice(0, 1200)}` : '',
         layer8CompetitiveEdge ? `## Strategic Edge:\n${layer8CompetitiveEdge.slice(0, 800)}` : '',
-        internalNPCData ? `## NPC Activity:\n${internalNPCData.slice(0, 600)}` : '',
       ].filter(Boolean).join('\n\n');
 
       // ── Key Insights Snapshot (NEW — mandatory per master doc) ──────
