@@ -218,6 +218,9 @@ export function ReportDistributionPanel() {
         email_subject_template: formSubject,
         email_body_template: formBody,
         is_enabled: formEnabled,
+        report_type: formReportType,
+        audience_segment: formAudience,
+        content_rotation_enabled: formRotationEnabled,
       };
 
       if (editingSchedule) {
