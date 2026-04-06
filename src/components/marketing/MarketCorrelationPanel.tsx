@@ -5,6 +5,7 @@ import remarkGfm from 'remark-gfm';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Activity, Brain, AlertTriangle, ExternalLink, Globe, ArrowUp, ArrowDown, Minus, Calendar } from 'lucide-react';
 import { EnhancedResearchRenderer, createMarkdownComponents } from './EnhancedResearchRenderer';
+import { MarketIntelligenceExportButton } from './MarketIntelligenceExportButton';
 
 interface MarketEvent {
   date: string;
@@ -78,15 +79,18 @@ export function MarketCorrelationPanel({ marketEvents, perplexityResearch, citat
   return (
     <Card>
       <CardHeader className="pb-3">
-        <div>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Activity className="h-5 w-5 text-primary" />
-            Market Correlation & Intelligence
-            <Badge variant="secondary" className="text-[10px]">Phase 4</Badge>
-          </CardTitle>
-          <CardDescription className="mt-1">
-            How macro events impact your ad performance
-          </CardDescription>
+        <div className="flex items-start justify-between">
+          <div>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Activity className="h-5 w-5 text-primary" />
+              Market Correlation & Intelligence
+              <Badge variant="secondary" className="text-[10px]">Phase 4</Badge>
+            </CardTitle>
+            <CardDescription className="mt-1">
+              How macro events impact your ad performance
+            </CardDescription>
+          </div>
+          <MarketIntelligenceExportButton />
         </div>
       </CardHeader>
       <CardContent className="space-y-5">
