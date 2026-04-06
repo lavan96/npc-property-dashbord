@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react
 import { useQuery } from '@tanstack/react-query';
 import { useSearch } from '@/contexts/SearchContext';
 import { useModulePermissions } from '@/hooks/useModulePermissions';
-import { Search, Download, ExternalLink, Copy, MoreHorizontal, Bed, Bath, Car, BarChart3, X, FileText, RefreshCw } from 'lucide-react';
+import { Search, Download, ExternalLink, Copy, MoreHorizontal, Bed, Bath, Car, BarChart3, X, FileText, RefreshCw, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -38,6 +38,57 @@ const ListingDetailsModal = lazy(() => import('@/components/listings/ListingDeta
 const InvestmentReportModal = lazy(() => import('@/components/listings/InvestmentReportModal').then(m => ({ default: m.InvestmentReportModal })));
 const BulkGenerationModal = lazy(() => import('@/components/listings/BulkGenerationModal').then(m => ({ default: m.BulkGenerationModal })));
 
+// Default empty filter state — keyword always starts blank
+const DEFAULT_FILTERS = {
+  propertyType: 'all',
+  suburb: 'all',
+  state: 'all',
+  zipCode: 'all',
+  sourceHost: 'all',
+  hasInspection: false,
+  lowConfidence: false,
+  offMarket: false,
+  priceMin: '',
+  priceMax: '',
+  bedsMin: '',
+  bedsMax: '',
+  bathsMin: '',
+  bathsMax: '',
+  carsMin: '',
+  carsMax: '',
+  agencyName: 'all',
+  keywordSearch: '',
+  includeNearbySuburbs: false,
+};
+
+/**
+ * Build the full address string for clipboard: "Street, Suburb, STATE Postcode"
+ */
+function buildFullAddress(listing: PropertyListing): string {
+  const parts: string[] = [];
+  if (listing.address && listing.address !== 'Unknown Address') parts.push(listing.address);
+  if (listing.suburb && listing.suburb !== 'Unknown' && listing.suburb !== 'Unknown Suburb') parts.push(listing.suburb);
+
+  // State + postcode
+  const stateStr = listing.state || extractAUState(listing.address || '');
+  const postcodeStr = listing.zipCode || extractPostcode(listing.address || '');
+  if (stateStr || postcodeStr) {
+    parts.push([stateStr, postcodeStr].filter(Boolean).join(' '));
+  }
+
+  return parts.join(', ') || listing.address || '';
+}
+
+function extractAUState(address: string): string | null {
+  const match = address.match(/\b(NSW|VIC|QLD|SA|WA|TAS|NT|ACT)\b/i);
+  return match ? match[0].toUpperCase() : null;
+}
+
+function extractPostcode(address: string): string | null {
+  const match = address.match(/\b(\d{4})\b/);
+  return match ? match[0] : null;
+}
+
 export default function Listings() {
   const { canEdit: canEditListings, canDelete: canDeleteListings } = useModulePermissions('listings');
   const { globalSearchQuery, setGlobalSearchQuery } = useSearch();
@@ -46,50 +97,33 @@ export default function Listings() {
   const isMobile = useIsMobile();
   
   // Use React Query for caching and efficient data fetching
-  const { data: listings = [], isLoading, refetch } = useQuery({
+  const { data: listings = [], isLoading, refetch, isFetching } = useQuery({
     queryKey: ['listings'],
     queryFn: async () => {
       const result = await propertyDataService.fetchAllListings({
         includeDebugInfo: true
       });
-      console.log(`Fetched listings (already deduplicated server-side): ${result.listings.length}`);
       return result.listings;
     },
-    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
-    gcTime: 30 * 60 * 1000, // Keep in cache for 30 minutes
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
   });
   
-  // Load filters from localStorage on mount
+  // Load filters from localStorage — always reset keywordSearch to blank on mount
   const [filters, setFilters] = useState(() => {
     const savedFilters = localStorage.getItem('listingFilters');
     if (savedFilters) {
       try {
-        return JSON.parse(savedFilters);
+        const parsed = JSON.parse(savedFilters);
+        // Always reset keyword search to blank on page load to prevent stale pre-population
+        return { ...DEFAULT_FILTERS, ...parsed, keywordSearch: '' };
       } catch (e) {
         console.error('Failed to parse saved filters:', e);
       }
     }
-    return {
-      propertyType: 'all',
-      suburb: 'all',
-      state: 'all',
-      zipCode: 'all',
-      sourceHost: 'all',
-      hasInspection: false,
-      lowConfidence: false,
-      priceMin: '',
-      priceMax: '',
-      bedsMin: '',
-      bedsMax: '',
-      bathsMin: '',
-      bathsMax: '',
-      carsMin: '',
-      carsMax: '',
-      agencyName: 'all',
-      keywordSearch: '',
-      includeNearbySuburbs: false,
-    };
+    return { ...DEFAULT_FILTERS };
   });
+
   const [selectedListing, setSelectedListing] = useState<PropertyListing | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [investmentReportListing, setInvestmentReportListing] = useState<PropertyListing | null>(null);
@@ -97,7 +131,6 @@ export default function Listings() {
   const [isBulkGenerationModalOpen, setIsBulkGenerationModalOpen] = useState(false);
   
   const { toast } = useToast();
-
 
   // Sync global search with local search when component mounts or global search changes
   useEffect(() => {
@@ -109,8 +142,9 @@ export default function Listings() {
     localStorage.setItem('listingFilters', JSON.stringify(filters));
   }, [filters]);
 
-  // Refresh function using React Query's refetch
+  // Refresh function — bypass cache for explicit user refresh
   const loadListings = useCallback(() => {
+    propertyDataService.clearCache();
     refetch();
   }, [refetch]);
 
@@ -175,16 +209,23 @@ export default function Listings() {
     }).format(dateObj);
   };
 
-  // Get unique values for filter options
+  // Get unique values for filter options — extract state from address if field is empty
   const uniqueValues = useMemo(() => {
     const propertyTypes = [...new Set(listings.map(l => l.propertyType).filter(Boolean))].sort();
     const suburbs = [...new Set(listings.map(l => l.suburb).filter(Boolean))].sort();
     const sourceHosts = [...new Set(listings.map(l => l.sourceHost).filter(Boolean))].sort();
     const agencies = [...new Set(listings.map(l => l.agencyName).filter(Boolean))].sort();
     
-    // Get states and zip codes from actual fields
-    const states = [...new Set(listings.map(l => l.state).filter(Boolean))].sort();
-    const zipCodes = [...new Set(listings.map(l => l.zipCode).filter(Boolean))].sort();
+    // Extract states from both field and address — AU states only
+    const states = [...new Set(listings.map(l => {
+      if (l.state) return l.state;
+      return extractAUState(l.address || '');
+    }).filter(Boolean))].sort() as string[];
+
+    const zipCodes = [...new Set(listings.map(l => {
+      if (l.zipCode) return l.zipCode;
+      return extractPostcode(l.address || '');
+    }).filter(Boolean))].sort() as string[];
     
     return { propertyTypes, suburbs, states, zipCodes, sourceHosts, agencies };
   }, [listings]);
@@ -210,9 +251,7 @@ export default function Listings() {
           listing.agentName
         ].join(' ').toLowerCase();
         
-        if (!searchText.includes(query)) {
-          return false;
-        }
+        if (!searchText.includes(query)) return false;
       }
 
       // Keyword search across summary, rawExtract, keyEntities, description
@@ -226,100 +265,71 @@ export default function Listings() {
           listing.address,
         ].filter(Boolean).join(' ').toLowerCase();
         
-        // All keywords must match (AND logic)
-        if (!keywords.every(kw => contentText.includes(kw))) {
-          return false;
-        }
+        if (!keywords.every(kw => contentText.includes(kw))) return false;
       }
 
       // Property type filter
-      if (filters.propertyType && filters.propertyType !== 'all' && listing.propertyType !== filters.propertyType) {
-        return false;
-      }
+      if (filters.propertyType && filters.propertyType !== 'all' && listing.propertyType !== filters.propertyType) return false;
 
       // Suburb filter (with nearby suburbs support)
       if (filters.suburb && filters.suburb !== 'all') {
         if (filters.includeNearbySuburbs && nearbySuburbsList) {
-          if (!listing.suburb || !nearbySuburbsList.includes(listing.suburb)) {
-            return false;
-          }
+          if (!listing.suburb || !nearbySuburbsList.includes(listing.suburb)) return false;
         } else {
-          if (listing.suburb !== filters.suburb) {
-            return false;
-          }
+          if (listing.suburb !== filters.suburb) return false;
         }
       }
 
-      // State filter
-      if (filters.state && filters.state !== 'all' && listing.state !== filters.state) {
-        return false;
+      // State filter — check both field and extracted from address
+      if (filters.state && filters.state !== 'all') {
+        const listingState = listing.state || extractAUState(listing.address || '');
+        if (listingState !== filters.state) return false;
       }
 
-      // Zip code filter
-      if (filters.zipCode && filters.zipCode !== 'all' && listing.zipCode !== filters.zipCode) {
-        return false;
+      // Postcode filter — check both field and extracted
+      if (filters.zipCode && filters.zipCode !== 'all') {
+        const listingPostcode = listing.zipCode || extractPostcode(listing.address || '');
+        if (listingPostcode !== filters.zipCode) return false;
       }
 
       // Source host filter
-      if (filters.sourceHost && filters.sourceHost !== 'all' && listing.sourceHost !== filters.sourceHost) {
-        return false;
-      }
+      if (filters.sourceHost && filters.sourceHost !== 'all' && listing.sourceHost !== filters.sourceHost) return false;
 
       // Has inspection filter
-      if (filters.hasInspection && !listing.inspectionStart) {
-        return false;
-      }
+      if (filters.hasInspection && !listing.inspectionStart) return false;
 
       // Low confidence filter
-      if (filters.lowConfidence && (listing.confidence === undefined || listing.confidence >= 0.7)) {
-        return false;
+      if (filters.lowConfidence && (listing.confidence === undefined || listing.confidence >= 0.7)) return false;
+
+      // Off-market filter
+      if (filters.offMarket) {
+        const status = (listing.status || '').toLowerCase();
+        const category = (listing.category || '').toLowerCase();
+        const isOffMarket = status.includes('off-market') || status.includes('off market') || 
+                            category.includes('off-market') || category.includes('off market');
+        if (!isOffMarket) return false;
       }
 
       // Agency filter
-      if (filters.agencyName && filters.agencyName !== 'all' && listing.agencyName !== filters.agencyName) {
-        return false;
-      }
+      if (filters.agencyName && filters.agencyName !== 'all' && listing.agencyName !== filters.agencyName) return false;
 
-      // Price filters - exclude properties without pricing when price filter is active
+      // Price filters
       const hasPriceFilter = filters.priceMin || filters.priceMax;
-      if (hasPriceFilter && (!listing.price || listing.price <= 0)) {
-        return false;
-      }
-
-      if (filters.priceMin && listing.price && listing.price < parseFloat(filters.priceMin)) {
-        return false;
-      }
-
-      if (filters.priceMax && listing.price && listing.price > parseFloat(filters.priceMax)) {
-        return false;
-      }
+      if (hasPriceFilter && (!listing.price || listing.price <= 0)) return false;
+      if (filters.priceMin && listing.price && listing.price < parseFloat(filters.priceMin)) return false;
+      if (filters.priceMax && listing.price && listing.price > parseFloat(filters.priceMax)) return false;
 
       // Bedroom filters
-      if (filters.bedsMin && listing.beds && listing.beds < parseInt(filters.bedsMin)) {
-        return false;
-      }
-
-      if (filters.bedsMax && listing.beds && listing.beds > parseInt(filters.bedsMax)) {
-        return false;
-      }
+      if (filters.bedsMin && listing.beds && listing.beds < parseInt(filters.bedsMin)) return false;
+      if (filters.bedsMax && listing.beds && listing.beds > parseInt(filters.bedsMax)) return false;
 
       // Bathroom filters
-      if (filters.bathsMin && listing.baths && listing.baths < parseInt(filters.bathsMin)) {
-        return false;
-      }
-
-      if (filters.bathsMax && listing.baths && listing.baths > parseInt(filters.bathsMax)) {
-        return false;
-      }
+      if (filters.bathsMin && listing.baths && listing.baths < parseInt(filters.bathsMin)) return false;
+      if (filters.bathsMax && listing.baths && listing.baths > parseInt(filters.bathsMax)) return false;
 
       // Car space filters
-      if (filters.carsMin && listing.carSpaces && listing.carSpaces < parseInt(filters.carsMin)) {
-        return false;
-      }
-
-      if (filters.carsMax && listing.carSpaces && listing.carSpaces > parseInt(filters.carsMax)) {
-        return false;
-      }
+      if (filters.carsMin && listing.carSpaces && listing.carSpaces < parseInt(filters.carsMin)) return false;
+      if (filters.carsMax && listing.carSpaces && listing.carSpaces > parseInt(filters.carsMax)) return false;
 
       return true;
     });
@@ -349,31 +359,12 @@ export default function Listings() {
   };
 
   const clearAllFilters = () => {
-    setFilters({
-      propertyType: 'all',
-      suburb: 'all',
-      state: 'all',
-      zipCode: 'all',
-      sourceHost: 'all',
-      hasInspection: false,
-      lowConfidence: false,
-      priceMin: '',
-      priceMax: '',
-      bedsMin: '',
-      bedsMax: '',
-      bathsMin: '',
-      bathsMax: '',
-      carsMin: '',
-      carsMax: '',
-      agencyName: 'all',
-      keywordSearch: '',
-      includeNearbySuburbs: false,
-    });
+    setFilters({ ...DEFAULT_FILTERS });
   };
 
   const hasActiveFilters = Object.entries(filters).some(([key, value]) => {
     if (typeof value === 'boolean') return value;
-    if (key === 'propertyType' || key === 'suburb' || key === 'state' || key === 'zipCode' || key === 'sourceHost' || key === 'agencyName') {
+    if (['propertyType', 'suburb', 'state', 'zipCode', 'sourceHost', 'agencyName'].includes(key)) {
       return value !== '' && value !== 'all';
     }
     return value !== '';
@@ -437,9 +428,13 @@ export default function Listings() {
               Export ({selectedListings.size})
             </Button>
           )}
-          <Button onClick={loadListings} size="sm" variant="outline">
-            <RefreshCw className="h-4 w-4 md:mr-2" />
-            <span className="hidden md:inline">Refresh</span>
+          <Button onClick={loadListings} size="sm" variant="outline" disabled={isFetching}>
+            {isFetching ? (
+              <Loader2 className="h-4 w-4 md:mr-2 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4 md:mr-2" />
+            )}
+            <span className="hidden md:inline">{isFetching ? 'Refreshing...' : 'Refresh'}</span>
           </Button>
         </div>
       </div>
@@ -498,6 +493,14 @@ export default function Listings() {
           >
             Low Confidence
           </Button>
+          <Button
+            variant={filters.offMarket ? "default" : "outline"}
+            size="sm"
+            onClick={() => setFilters(prev => ({ ...prev, offMarket: !prev.offMarket }))}
+            className="h-8 text-xs"
+          >
+            Off-Market
+          </Button>
           {hasActiveFilters && isMobile && (
             <Button 
               variant="ghost" 
@@ -533,7 +536,7 @@ export default function Listings() {
                 onSelect={(checked) => handleSelectListing(listing.id, checked)}
                 onOpenDetails={() => openDetailsModal(listing)}
                 onOpenInvestmentReport={() => openInvestmentReportModal(listing)}
-                onCopyAddress={() => copyToClipboard(listing.address || '', 'Address')}
+                onCopyAddress={() => copyToClipboard(buildFullAddress(listing), 'Full address')}
                 onOpenSource={listing.url ? () => openSourceUrl(listing.url!) : undefined}
                 formatCurrency={formatCurrency}
                 formatDate={formatDate}
@@ -579,8 +582,8 @@ export default function Listings() {
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <span>
                           {listing.suburb || 'Unknown Suburb'}
-                          {listing.state && `, ${listing.state}`}
-                          {listing.zipCode && ` ${listing.zipCode}`}
+                          {(listing.state || extractAUState(listing.address || '')) && `, ${listing.state || extractAUState(listing.address || '')}`}
+                          {(listing.zipCode || extractPostcode(listing.address || '')) && ` ${listing.zipCode || extractPostcode(listing.address || '')}`}
                         </span>
                         {listing.propertyType && (
                           <Badge variant="outline" className="text-xs">
@@ -597,60 +600,35 @@ export default function Listings() {
                   
                   <TableCell>
                     <div className="flex items-center gap-3 text-sm">
-                      {listing.beds && listing.beds > 0 ? (
-                        <div className="flex items-center gap-1">
-                          <Bed className="h-3 w-3 text-muted-foreground" />
-                          <span>{listing.beds}</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1">
-                          <Bed className="h-3 w-3 text-muted-foreground" />
-                          <span>-</span>
-                        </div>
-                      )}
-                      {listing.baths && listing.baths > 0 ? (
-                        <div className="flex items-center gap-1">
-                          <Bath className="h-3 w-3 text-muted-foreground" />
-                          <span>{listing.baths}</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1">
-                          <Bath className="h-3 w-3 text-muted-foreground" />
-                          <span>-</span>
-                        </div>
-                      )}
-                      {listing.carSpaces && listing.carSpaces > 0 ? (
-                        <div className="flex items-center gap-1">
-                          <Car className="h-3 w-3 text-muted-foreground" />
-                          <span>{listing.carSpaces}</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1">
-                          <Car className="h-3 w-3 text-muted-foreground" />
-                          <span>-</span>
-                        </div>
-                      )}
+                      <div className="flex items-center gap-1">
+                        <Bed className="h-3 w-3 text-muted-foreground" />
+                        <span>{listing.beds && listing.beds > 0 ? listing.beds : '-'}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Bath className="h-3 w-3 text-muted-foreground" />
+                        <span>{listing.baths && listing.baths > 0 ? listing.baths : '-'}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Car className="h-3 w-3 text-muted-foreground" />
+                        <span>{listing.carSpaces && listing.carSpaces > 0 ? listing.carSpaces : '-'}</span>
+                      </div>
                     </div>
                   </TableCell>
                   
                   <TableCell>
                     {listing.inspectionStart ? (
-                      <div className="text-sm">
-                        {formatDate(listing.inspectionStart)}
-                      </div>
+                      <div className="text-sm">{formatDate(listing.inspectionStart)}</div>
                     ) : (
                       <span className="text-muted-foreground">-</span>
                     )}
                   </TableCell>
                   
                   <TableCell>
-                    <div className="text-sm">
-                      {listing.agencyName || 'Unknown Agency'}
-                    </div>
+                    <div className="text-sm">{listing.agencyName || 'Unknown Agency'}</div>
                   </TableCell>
                   
                   <TableCell>
-                    {listing.confidence !== undefined ? (
+                    {listing.confidence !== undefined && listing.confidence !== null ? (
                       <ConfidenceBadge confidence={listing.confidence} />
                     ) : (
                       <span className="text-muted-foreground">-</span>
@@ -659,9 +637,7 @@ export default function Listings() {
                   
                   <TableCell>
                     {listing.receivedAt ? (
-                      <div className="text-sm">
-                        {formatDate(listing.receivedAt)}
-                      </div>
+                      <div className="text-sm">{formatDate(listing.receivedAt)}</div>
                     ) : (
                       <span className="text-muted-foreground">-</span>
                     )}
@@ -684,12 +660,10 @@ export default function Listings() {
                             Open Source
                           </DropdownMenuItem>
                         )}
-                        {listing.address && (
-                          <DropdownMenuItem onClick={() => copyToClipboard(listing.address!, "Address")}>
-                            <Copy className="h-4 w-4 mr-2" />
-                            Copy Address
-                          </DropdownMenuItem>
-                        )}
+                        <DropdownMenuItem onClick={() => copyToClipboard(buildFullAddress(listing), "Full address")}>
+                          <Copy className="h-4 w-4 mr-2" />
+                          Copy Address
+                        </DropdownMenuItem>
                         {canEditListings && (
                           <DropdownMenuItem onClick={() => openInvestmentReportModal(listing)}>
                             <BarChart3 className="h-4 w-4 mr-2" />
@@ -709,6 +683,11 @@ export default function Listings() {
               <div className="text-muted-foreground">
                 No listings found matching your criteria.
               </div>
+              {hasActiveFilters && (
+                <Button variant="outline" onClick={clearAllFilters} className="mt-4 mr-2">
+                  Clear Filters
+                </Button>
+              )}
               <Button variant="outline" onClick={loadListings} className="mt-4">
                 Refresh Data
               </Button>
@@ -733,7 +712,7 @@ export default function Listings() {
           <InvestmentReportModal
             isOpen={isInvestmentReportModalOpen}
             onClose={() => setIsInvestmentReportModalOpen(false)}
-            propertyAddress={investmentReportListing ? `${investmentReportListing.address || ''} ${investmentReportListing.suburb || ''} ${investmentReportListing.state || ''} ${investmentReportListing.zipCode || ''}`.trim() : ''}
+            propertyAddress={investmentReportListing ? buildFullAddress(investmentReportListing) : ''}
             propertyDetails={investmentReportListing}
           />
         </Suspense>

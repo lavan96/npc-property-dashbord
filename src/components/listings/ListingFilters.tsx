@@ -363,20 +363,27 @@ export function ListingFilters({ filters, setFilters, uniqueValues }: ListingFil
             {/* Quick Filters */}
             <div className="space-y-3">
               <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Quick Filters</h4>
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2 p-3 rounded-lg border border-border bg-muted/30 flex-1 cursor-pointer">
+              <div className="flex flex-wrap gap-3">
+                <label className="flex items-center gap-2 p-3 rounded-lg border border-border bg-muted/30 flex-1 min-w-[180px] cursor-pointer">
                   <Checkbox
                     checked={localFilters.hasInspection}
                     onCheckedChange={(checked) => setLocalFilters({ ...localFilters, hasInspection: !!checked })}
                   />
                   <span className="text-sm font-medium">Has inspection scheduled</span>
                 </label>
-                <label className="flex items-center gap-2 p-3 rounded-lg border border-border bg-muted/30 flex-1 cursor-pointer">
+                <label className="flex items-center gap-2 p-3 rounded-lg border border-border bg-muted/30 flex-1 min-w-[180px] cursor-pointer">
                   <Checkbox
                     checked={localFilters.lowConfidence}
                     onCheckedChange={(checked) => setLocalFilters({ ...localFilters, lowConfidence: !!checked })}
                   />
                   <span className="text-sm font-medium">Low confidence only</span>
+                </label>
+                <label className="flex items-center gap-2 p-3 rounded-lg border border-border bg-muted/30 flex-1 min-w-[180px] cursor-pointer">
+                  <Checkbox
+                    checked={localFilters.offMarket}
+                    onCheckedChange={(checked) => setLocalFilters({ ...localFilters, offMarket: !!checked })}
+                  />
+                  <span className="text-sm font-medium">Off-market properties</span>
                 </label>
               </div>
             </div>
