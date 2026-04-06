@@ -124,6 +124,9 @@ export function ReportDistributionPanel() {
   const [formSubject, setFormSubject] = useState('Your Market Intelligence Report — {{report_period}}');
   const [formBody, setFormBody] = useState('Please find attached the latest Market Intelligence Report, providing a comprehensive analysis of the Australian property market including interest rate movements, housing market data, economic indicators, and strategic outlook.');
   const [formEnabled, setFormEnabled] = useState(true);
+  const [formReportType, setFormReportType] = useState('full');
+  const [formAudience, setFormAudience] = useState('general');
+  const [formRotationEnabled, setFormRotationEnabled] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const loadData = useCallback(async () => {
