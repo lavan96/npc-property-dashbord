@@ -533,6 +533,7 @@ serve(async (req) => {
     const body: ReportRequest = await req.json();
     const reportType = body.report_type || 'full';
     const audienceSegment = body.audience_segment || 'general';
+    const includeNpcStrategy = body.include_npc_strategy !== false; // default true
 
     // Allow internal service calls (from dispatch function) without auth
     const authHeader = req.headers.get('Authorization') || '';
