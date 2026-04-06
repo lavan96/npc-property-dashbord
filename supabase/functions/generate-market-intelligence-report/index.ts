@@ -765,8 +765,19 @@ ${audiencePrompt}
 A 3-4 sentence executive view of the next 90 days.
 
 ### Risk/Opportunity Matrix
-Create a table with columns: Factor | Risk Level (Low/Med/High) | Opportunity Level (Low/Med/High) | Key Insight
-Include at least 6 factors.
+
+CRITICAL: You MUST produce a proper markdown table with EXACTLY this format — including the separator row and at least 6 data rows. Do NOT leave the table empty or produce only headers:
+
+| Factor | Risk Level | Opportunity Level | Key Insight |
+| --- | --- | --- | --- |
+| Interest Rates | High | Low | [your insight] |
+| Housing Supply | Medium | High | [your insight] |
+| Rental Market | Low | High | [your insight] |
+| Consumer Sentiment | Medium | Medium | [your insight] |
+| Population Growth | Low | High | [your insight] |
+| Regulatory Environment | Medium | Low | [your insight] |
+
+Replace the example insights with real analysis from the data above. You MUST produce all 6+ data rows. Each row must have all 4 columns filled.
 
 ### Timing Recommendations
 - **Best time to buy**: Specific windows and reasoning
