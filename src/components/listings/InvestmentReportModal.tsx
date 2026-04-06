@@ -113,33 +113,60 @@ export function InvestmentReportModal({
       setSourcesContent(data.sourcesContent || '');
       setEnhancedData(data.enhancedData || null);
       
-      // Save report to database with enhanced data
-      let savedReportId: string | null = null;
+      // Save/update report in database with enhanced data
+      let savedReportId: string | null = preliminaryReportId;
       try {
         if (user) {
-          // Use secure edge function for insert (service_role required due to RLS)
-          // NOTE: Avoid direct client-side queries to investment_reports due to service-role-only policy.
-          const { data: insertResult, error: insertError } = await invokeSecureFunction('manage-investment-reports', {
-            action: 'insert',
-            data: {
-              property_address: propertyAddress,
-              property_listing_id: propertyDetails?.id || null,
-              report_content: data.reportContent,
-              sources_content: data.sourcesContent || '',
-              generated_by: user.id,
-              location_intelligence: data.enhancedData?.locationIntelligence || null,
-              investment_score: data.enhancedData?.investmentScore || null,
-              financial_calculations: data.enhancedData?.financials || null,
-              demographics_data: data.enhancedData?.demographics || null,
-              economic_data: data.enhancedData?.economics || null,
-              status: 'completed',
-            },
-          });
+          if (preliminaryReportId) {
+            // Update the preliminary record we created earlier
+            const { data: updateResult, error: updateError } = await invokeSecureFunction('manage-investment-reports', {
+              action: 'update',
+              reportId: preliminaryReportId,
+              data: {
+                report_content: data.reportContent,
+                sources_content: data.sourcesContent || '',
+                location_intelligence: data.enhancedData?.locationIntelligence || null,
+                investment_score: data.enhancedData?.investmentScore || null,
+                financial_calculations: data.enhancedData?.financials || null,
+                demographics_data: data.enhancedData?.demographics || null,
+                economic_data: data.enhancedData?.economics || null,
+                status: 'completed',
+              },
+            });
 
-          if (!insertError && insertResult?.success && insertResult.report) {
-            savedReportId = insertResult.report.id;
-            setReportId(insertResult.report.id);
-            console.log('Report saved with ID:', insertResult.report.id);
+            if (!updateError && updateResult?.success) {
+              console.log('Report updated with ID:', preliminaryReportId);
+            } else {
+              console.error('Error updating report:', updateError || updateResult?.error);
+              throw new Error(`Failed to update report: ${updateError?.message || updateResult?.error || 'Unknown error'}`);
+            }
+          } else {
+            // Fallback: insert new record if no preliminary was created
+            const { data: insertResult, error: insertError } = await invokeSecureFunction('manage-investment-reports', {
+              action: 'insert',
+              data: {
+                property_address: propertyAddress,
+                property_listing_id: propertyDetails?.id || null,
+                report_content: data.reportContent,
+                sources_content: data.sourcesContent || '',
+                generated_by: user.id,
+                location_intelligence: data.enhancedData?.locationIntelligence || null,
+                investment_score: data.enhancedData?.investmentScore || null,
+                financial_calculations: data.enhancedData?.financials || null,
+                demographics_data: data.enhancedData?.demographics || null,
+                economic_data: data.enhancedData?.economics || null,
+                status: 'completed',
+              },
+            });
+
+            if (!insertError && insertResult?.success && insertResult.report) {
+              savedReportId = insertResult.report.id;
+              setReportId(insertResult.report.id);
+              console.log('Report saved with ID:', insertResult.report.id);
+            } else {
+              throw new Error(`Failed to save report: ${insertError?.message || insertResult?.error || 'Unknown error'}`);
+            }
+          }
 
             // Notification is now handled server-side by the Edge Function to prevent duplicates
             // The BackgroundJobTracker will also detect completion, so we skip adding notification here
