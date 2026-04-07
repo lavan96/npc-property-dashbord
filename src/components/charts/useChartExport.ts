@@ -47,12 +47,10 @@ async function chartToDataUrl(chart: ChartData): Promise<string> {
     return canvas.toDataURL('image/png');
   }
 
-  // Already a data URL or regular image
   if (chart.image_data.startsWith('data:image/')) {
     return chart.image_data;
   }
 
-  // URL-based image — fetch and convert
   const response = await fetch(chart.image_data);
   const blob = await response.blob();
   return new Promise((resolve, reject) => {
@@ -67,10 +65,89 @@ function sanitizeFilename(title: string): string {
   return title.replace(/[^a-zA-Z0-9\s-_]/g, '').replace(/\s+/g, '_').substring(0, 50);
 }
 
+/** Enhancement #6: Render analysis text as caption on the exported PNG */
+async function chartToDataUrlWithAnalysis(chart: ChartData): Promise<string> {
+  const baseDataUrl = await chartToDataUrl(chart);
+
+  if (!chart.analysis_text) return baseDataUrl;
+
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const padding = 20;
+      const maxTextWidth = img.width - padding * 2;
+      const fontSize = 13;
+      const lineHeight = 18;
+
+      // Measure text lines
+      const measureCanvas = document.createElement('canvas');
+      const mCtx = measureCanvas.getContext('2d');
+      if (!mCtx) { resolve(baseDataUrl); return; }
+      mCtx.font = `${fontSize}px Arial, sans-serif`;
+
+      const words = chart.analysis_text!.split(' ');
+      const lines: string[] = [];
+      let currentLine = '';
+      for (const word of words) {
+        const test = currentLine ? `${currentLine} ${word}` : word;
+        if (mCtx.measureText(test).width > maxTextWidth) {
+          if (currentLine) lines.push(currentLine);
+          currentLine = word;
+        } else {
+          currentLine = test;
+        }
+      }
+      if (currentLine) lines.push(currentLine);
+
+      // Limit to 4 lines
+      const displayLines = lines.slice(0, 4);
+      if (lines.length > 4) displayLines[3] = displayLines[3].slice(0, -3) + '...';
+
+      const captionHeight = displayLines.length * lineHeight + padding * 2 + 10;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height + captionHeight;
+      const ctx = canvas.getContext('2d')!;
+
+      // White background
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Draw chart image
+      ctx.drawImage(img, 0, 0);
+
+      // Draw caption area
+      ctx.fillStyle = '#fffbeb';
+      ctx.fillRect(0, img.height, canvas.width, captionHeight);
+      ctx.fillStyle = '#f59e0b';
+      ctx.fillRect(0, img.height, canvas.width, 2);
+
+      // Draw caption header
+      ctx.font = `bold ${fontSize}px Arial, sans-serif`;
+      ctx.fillStyle = '#b45309';
+      ctx.fillText('✨ AI Analysis', padding, img.height + padding + fontSize);
+
+      // Draw caption text
+      ctx.font = `${fontSize}px Arial, sans-serif`;
+      ctx.fillStyle = '#78350f';
+      displayLines.forEach((line, i) => {
+        ctx.fillText(line, padding, img.height + padding + fontSize + lineHeight + i * lineHeight);
+      });
+
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = () => reject(new Error('Failed to load image'));
+    img.src = baseDataUrl;
+  });
+}
+
 export function useChartExport() {
-  const exportSingle = useCallback(async (chart: ChartData) => {
+  const exportSingle = useCallback(async (chart: ChartData, includeAnalysis = true) => {
     try {
-      const dataUrl = await chartToDataUrl(chart);
+      const dataUrl = includeAnalysis && chart.analysis_text
+        ? await chartToDataUrlWithAnalysis(chart)
+        : await chartToDataUrl(chart);
       const filename = `${sanitizeFilename(chart.title)}_${chart.chart_type}.png`;
       downloadDataUrl(dataUrl, filename);
       toast.success(`Exported "${chart.title}"`);
@@ -80,26 +157,27 @@ export function useChartExport() {
     }
   }, []);
 
-  const exportBulk = useCallback(async (charts: ChartData[]) => {
+  const exportBulk = useCallback(async (charts: ChartData[], includeAnalysis = true) => {
     if (charts.length === 0) {
       toast.error('No charts selected');
       return;
     }
 
     if (charts.length === 1) {
-      return exportSingle(charts[0]);
+      return exportSingle(charts[0], includeAnalysis);
     }
 
     toast.info(`Exporting ${charts.length} charts...`);
 
-    // For bulk, we use JSZip if available, otherwise download individually
     try {
       const JSZip = (await import('jszip')).default;
       const zip = new JSZip();
 
       for (let i = 0; i < charts.length; i++) {
         try {
-          const dataUrl = await chartToDataUrl(charts[i]);
+          const dataUrl = includeAnalysis && charts[i].analysis_text
+            ? await chartToDataUrlWithAnalysis(charts[i])
+            : await chartToDataUrl(charts[i]);
           const base64Data = dataUrl.split(',')[1];
           const filename = `${String(i + 1).padStart(2, '0')}_${sanitizeFilename(charts[i].title)}.png`;
           zip.file(filename, base64Data, { base64: true });
@@ -115,9 +193,8 @@ export function useChartExport() {
 
       toast.success(`Exported ${charts.length} charts as ZIP`);
     } catch {
-      // Fallback: download one by one
       for (const chart of charts) {
-        await exportSingle(chart);
+        await exportSingle(chart, includeAnalysis);
         await new Promise(r => setTimeout(r, 300));
       }
     }
