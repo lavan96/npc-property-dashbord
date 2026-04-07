@@ -146,6 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Valid session - set user and roles
         setUser(data.user);
         setRoles(data.roles || []);
+        resetAuthFailures(); // Reset global auth circuit breaker on valid session
         
         // Store access token for Supabase client
         if (data.access_token) {
