@@ -118,6 +118,21 @@ export default function ReportRequests() {
 
   const requests = requestsData || [];
 
+  // Auto-open a highlighted request from notification deep link
+  const highlightId = searchParams.get('highlight');
+  useEffect(() => {
+    if (highlightId && requests.length > 0) {
+      const target = requests.find((r: ReportRequest) => r.id === highlightId);
+      if (target) {
+        setSelectedRequest(target);
+        setAdminNotes(target.admin_notes || '');
+        // Clear the highlight param so refresh doesn't re-open
+        searchParams.delete('highlight');
+        setSearchParams(searchParams, { replace: true });
+      }
+    }
+  }, [highlightId, requests]);
+
   const filtered = requests.filter((r: ReportRequest) => {
     const matchesSearch = !search ||
       r.client_name?.toLowerCase().includes(search.toLowerCase()) ||
