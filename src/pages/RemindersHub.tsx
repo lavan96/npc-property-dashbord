@@ -16,6 +16,7 @@ import {
 import { cn } from '@/lib/utils';
 import {
   Bell,
+  Plus,
   CalendarDays,
   Clock,
   CheckCircle2,
@@ -41,6 +42,7 @@ import {
 } from '@/components/ui/select';
 import { useAllReminders, type UnifiedReminder } from '@/hooks/useAllReminders';
 import { TeamRemindersSection } from '@/components/reminders/TeamRemindersSection';
+import { CreateReminderForm } from '@/components/reminders/CreateReminderForm';
 import { toast } from 'sonner';
 
 type ReminderTab = 'client' | 'team';
@@ -82,6 +84,7 @@ export default function RemindersHub() {
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all');
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>('all');
+  const [showCreateForm, setShowCreateForm] = useState(false);
 
   const now = new Date();
   const todayStart = startOfDay(now);
@@ -288,6 +291,24 @@ export default function RemindersHub() {
         </TabsList>
 
         <TabsContent value="client">
+          {/* Create Reminder Button / Form */}
+          {canEditReminders && (
+            showCreateForm ? (
+              <div className="mb-4">
+                <CreateReminderForm onClose={() => setShowCreateForm(false)} />
+              </div>
+            ) : (
+              <Button
+                onClick={() => setShowCreateForm(true)}
+                variant="outline"
+                className="w-full gap-2 mb-4"
+              >
+                <Plus className="h-4 w-4" />
+                Create Reminder
+              </Button>
+            )
+          )}
+
           {/* Time Tabs + Filters Row */}
           <div className="flex flex-col sm:flex-row gap-3 mb-4">
             <Tabs value={timeFilter} onValueChange={(v) => setTimeFilter(v as TimeFilter)} className="flex-1">
