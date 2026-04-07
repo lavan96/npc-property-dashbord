@@ -1456,10 +1456,15 @@ export default function ClientTracker() {
                               </Badge>
                             ) : '-'}
                           </TableCell>
-                          </TableCell>
                           <TableCell>
                             {client.follow_up_date 
                               ? format(new Date(client.follow_up_date), 'MMM d, yyyy')
+                              : '-'
+                            }
+                          </TableCell>
+                          <TableCell>
+                            {client.pipeline_updated_at
+                              ? format(new Date(client.pipeline_updated_at), 'MMM d, yyyy')
                               : '-'
                             }
                           </TableCell>
