@@ -82,24 +82,34 @@ export default function ReportRequests() {
       const requests = (data as any)?.records || (data as any)?.data || [];
 
       // Fetch client names for all unique client_ids
-      const clientIds = [...new Set(requests.map((r: any) => r.client_id))];
+      const clientIds = [...new Set(requests.map((r: any) => r.client_id).filter(Boolean))];
+      const clientMap: Record<string, string> = {};
+      
       if (clientIds.length > 0) {
+        // Fetch clients using list mode with no filters to get all, then filter in memory
+        // This avoids the per-client fetch overhead
         const { data: clientsData } = await invokeSecureFunction('get-client-data', {
-          clientIds,
-          include: { client: true },
+          listMode: true,
+          listOptions: {
+            table: 'clients',
+            select: 'id,primary_first_name,primary_surname',
+            limit: 500,
+          },
         });
-        const clientMap: Record<string, string> = {};
-        if (clientsData?.clients) {
-          for (const c of clientsData.clients) {
-            clientMap[c.id] = `${c.primary_first_name || ''} ${c.primary_surname || ''}`.trim();
+        
+        const clientRecords = (clientsData as any)?.records || (clientsData as any)?.clients || [];
+        for (const c of clientRecords) {
+          if (clientIds.includes(c.id)) {
+            const name = `${c.primary_first_name || ''} ${c.primary_surname || ''}`.trim();
+            clientMap[c.id] = name || 'Unnamed Client';
           }
         }
-        return requests.map((r: any) => ({
-          ...r,
-          client_name: clientMap[r.client_id] || 'Unknown Client',
-        }));
       }
-      return requests;
+      
+      return requests.map((r: any) => ({
+        ...r,
+        client_name: clientMap[r.client_id] || 'Unknown Client',
+      }));
     },
     staleTime: 15000,
   });

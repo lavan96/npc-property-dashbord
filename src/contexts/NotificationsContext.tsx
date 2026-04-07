@@ -334,7 +334,11 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         break;
       case 'report_request':
       case 'portal_report_requested':
-        navigate('/report-requests');
+        if (notification.entityId) {
+          navigate(`/report-requests?highlight=${notification.entityId}`);
+        } else {
+          navigate('/report-requests');
+        }
         break;
       case 'agreement_generated':
         if (notification.entityId) {

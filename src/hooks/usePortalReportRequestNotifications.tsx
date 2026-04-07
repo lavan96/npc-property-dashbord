@@ -32,11 +32,29 @@ export function usePortalReportRequestNotifications() {
             .replace(/_/g, ' ')
             .replace(/\b\w/g, (c: string) => c.toUpperCase());
 
+          // Try to resolve client name for a more informative notification
+          let clientLabel = 'A client';
+          if (request.client_id) {
+            try {
+              const { data: clientData } = await supabase
+                .from('clients')
+                .select('primary_first_name, primary_surname')
+                .eq('id', request.client_id)
+                .maybeSingle();
+              if (clientData) {
+                const name = `${clientData.primary_first_name || ''} ${clientData.primary_surname || ''}`.trim();
+                if (name) clientLabel = name;
+              }
+            } catch (e) {
+              console.warn('[PortalReportRequestNotifications] Could not resolve client name:', e);
+            }
+          }
+
           console.log('[PortalReportRequestNotifications] New request:', request.id);
           await addNotification({
             type: 'portal_report_requested',
             title: 'New Report Request',
-            message: `A client has requested a ${requestType}`,
+            message: `${clientLabel} has requested a ${requestType}`,
             entityId: request.id
           });
         }
