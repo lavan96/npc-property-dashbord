@@ -4,14 +4,19 @@ import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { BarChart3, Download, RefreshCw } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { BarChart3, Download, RefreshCw, ChevronDown, FileText } from 'lucide-react';
 import { toast } from 'sonner';
+import { subDays, subMonths, subYears } from 'date-fns';
 import { ChartCard, type ChartData } from '@/components/charts/ChartCard';
 import { ChartListRow } from '@/components/charts/ChartListRow';
 import { ChartLightbox } from '@/components/charts/ChartLightbox';
 import { ChartFilters } from '@/components/charts/ChartFilters';
 import { ChartStats } from '@/components/charts/ChartStats';
 import { useChartExport } from '@/components/charts/useChartExport';
+
+const CHARTS_PER_PAGE = 24;
 
 export default function Charts() {
   const { canEdit: canEditCharts } = useModulePermissions('charts');
@@ -23,7 +28,9 @@ export default function Charts() {
   const [chartTypeFilter, setChartTypeFilter] = useState('all');
   const [reportFilter, setReportFilter] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [dateRange, setDateRange] = useState('all');
+  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'grouped'>('grid');
+  const [visibleCount, setVisibleCount] = useState(CHARTS_PER_PAGE);
 
   // Selection
   const [selectionMode, setSelectionMode] = useState(false);
@@ -31,6 +38,9 @@ export default function Charts() {
 
   // Lightbox
   const [expandedChart, setExpandedChart] = useState<ChartData | null>(null);
+
+  // Delete confirmation
+  const [chartToDelete, setChartToDelete] = useState<ChartData | null>(null);
 
   const { exportSingle, exportBulk } = useChartExport();
 
@@ -66,9 +76,33 @@ export default function Charts() {
         }
       }
 
+      // Fetch chart analysis (Enhancement #1)
+      const chartIds = chartsData.map((c: any) => c.id);
+      let analysisMap = new Map<string, string>();
+
+      if (chartIds.length > 0) {
+        try {
+          const { data: analysisResult } = await invokeSecureFunction('manage-templates', {
+            operation: 'list',
+            table: 'chart_analysis',
+            listOptions: { orderBy: 'created_at', orderAsc: false, limit: 500 }
+          });
+          if (analysisResult?.records) {
+            analysisResult.records.forEach((a: any) => {
+              if (a.chart_id && a.analysis_text) {
+                analysisMap.set(a.chart_id, a.analysis_text);
+              }
+            });
+          }
+        } catch (e) {
+          console.log('No chart analysis available');
+        }
+      }
+
       const transformed: ChartData[] = chartsData.map((chart: any) => ({
         ...chart,
         generated_reports: chart.report_id ? reportsMap.get(chart.report_id) || null : null,
+        analysis_text: analysisMap.get(chart.id) || null,
       }));
 
       setCharts(transformed);
@@ -92,28 +126,45 @@ export default function Charts() {
     return Array.from(map.entries()).map(([id, title]) => ({ id, title }));
   }, [charts]);
 
+  // Date range cutoff
+  const dateCutoff = useMemo(() => {
+    const now = new Date();
+    switch (dateRange) {
+      case '7d': return subDays(now, 7);
+      case '30d': return subDays(now, 30);
+      case '90d': return subDays(now, 90);
+      case '6m': return subMonths(now, 6);
+      case '1y': return subYears(now, 1);
+      default: return null;
+    }
+  }, [dateRange]);
+
   // Filtering + sorting
   const filteredCharts = useMemo(() => {
     let result = [...charts];
 
-    // Search
+    // Search — also searches analysis text
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       result = result.filter(c =>
         c.title.toLowerCase().includes(q) ||
         c.chart_type.toLowerCase().includes(q) ||
-        c.generated_reports?.title.toLowerCase().includes(q)
+        c.generated_reports?.title.toLowerCase().includes(q) ||
+        c.analysis_text?.toLowerCase().includes(q)
       );
     }
 
-    // Type filter
     if (chartTypeFilter !== 'all') {
       result = result.filter(c => c.chart_type === chartTypeFilter);
     }
 
-    // Report filter
     if (reportFilter !== 'all') {
       result = result.filter(c => c.report_id === reportFilter);
+    }
+
+    // Date range filter (Enhancement #5)
+    if (dateCutoff) {
+      result = result.filter(c => new Date(c.created_at) >= dateCutoff);
     }
 
     // Sort
@@ -136,7 +187,39 @@ export default function Charts() {
     }
 
     return result;
-  }, [charts, searchQuery, chartTypeFilter, reportFilter, sortBy]);
+  }, [charts, searchQuery, chartTypeFilter, reportFilter, sortBy, dateCutoff]);
+
+  // Pagination (Enhancement #9)
+  const paginatedCharts = useMemo(() => filteredCharts.slice(0, visibleCount), [filteredCharts, visibleCount]);
+  const hasMore = visibleCount < filteredCharts.length;
+
+  // Reset pagination when filters change
+  useEffect(() => { setVisibleCount(CHARTS_PER_PAGE); }, [searchQuery, chartTypeFilter, reportFilter, sortBy, dateRange]);
+
+  // Grouped view data (Enhancement #2)
+  const groupedByReport = useMemo(() => {
+    if (viewMode !== 'grouped') return [];
+    const groups = new Map<string, { reportTitle: string; reportId: string; charts: ChartData[] }>();
+    const ungrouped: ChartData[] = [];
+
+    paginatedCharts.forEach(c => {
+      if (c.generated_reports) {
+        const key = c.report_id;
+        if (!groups.has(key)) {
+          groups.set(key, { reportTitle: c.generated_reports.title, reportId: c.report_id, charts: [] });
+        }
+        groups.get(key)!.charts.push(c);
+      } else {
+        ungrouped.push(c);
+      }
+    });
+
+    const result = Array.from(groups.values());
+    if (ungrouped.length > 0) {
+      result.push({ reportTitle: 'Unlinked Charts', reportId: 'none', charts: ungrouped });
+    }
+    return result;
+  }, [viewMode, paginatedCharts]);
 
   // Selection handlers
   const toggleSelect = useCallback((id: string) => {
@@ -171,6 +254,35 @@ export default function Charts() {
     const selectedCharts = charts.filter(c => selectedIds.has(c.id));
     exportBulk(selectedCharts);
   }, [charts, selectedIds, exportBulk]);
+
+  // Delete handler (Enhancement #4)
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!chartToDelete) return;
+    try {
+      await invokeSecureFunction('manage-templates', {
+        operation: 'delete',
+        table: 'charts',
+        recordId: chartToDelete.id,
+      });
+      setCharts(prev => prev.filter(c => c.id !== chartToDelete.id));
+      toast.success(`Deleted "${chartToDelete.title}"`);
+    } catch (error) {
+      toast.error('Failed to delete chart');
+    } finally {
+      setChartToDelete(null);
+    }
+  }, [chartToDelete]);
+
+  // Shared card/row props
+  const cardProps = useCallback((chart: ChartData) => ({
+    chart,
+    isSelected: selectedIds.has(chart.id),
+    onToggleSelect: toggleSelect,
+    onExpand: setExpandedChart,
+    onExport: exportSingle,
+    onDelete: canEditCharts ? setChartToDelete : undefined,
+    selectionMode,
+  }), [selectedIds, toggleSelect, exportSingle, canEditCharts, selectionMode]);
 
   // Loading skeleton
   if (loading) {
@@ -215,9 +327,7 @@ export default function Charts() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-foreground">Charts</h1>
-            <p className="text-sm text-muted-foreground">
-              Visual analytics generated from reports
-            </p>
+            <p className="text-sm text-muted-foreground">Visual analytics generated from reports</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -242,6 +352,8 @@ export default function Charts() {
           onReportChange={setReportFilter}
           sortBy={sortBy}
           onSortChange={setSortBy}
+          dateRange={dateRange}
+          onDateRangeChange={setDateRange}
           viewMode={viewMode}
           onViewModeChange={setViewMode}
           selectionMode={selectionMode}
@@ -269,7 +381,7 @@ export default function Charts() {
         </div>
       )}
 
-      {/* Empty state */}
+      {/* Content */}
       {charts.length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center h-80 space-y-4">
@@ -291,50 +403,72 @@ export default function Charts() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => { setSearchQuery(''); setChartTypeFilter('all'); setReportFilter('all'); }}
+              onClick={() => { setSearchQuery(''); setChartTypeFilter('all'); setReportFilter('all'); setDateRange('all'); }}
             >
               Clear filters
             </Button>
           </CardContent>
         </Card>
+      ) : viewMode === 'grouped' ? (
+        /* Grouped by Report view (Enhancement #2) */
+        <div className="space-y-4">
+          {groupedByReport.map(group => (
+            <Collapsible key={group.reportId} defaultOpen>
+              <CollapsibleTrigger asChild>
+                <button className="flex items-center gap-2 w-full text-left p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors group/trigger">
+                  <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <span className="font-medium text-sm flex-1 truncate">{group.reportTitle}</span>
+                  <Badge variant="secondary" className="text-[10px] shrink-0">{group.charts.length}</Badge>
+                  <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]/trigger:rotate-180" />
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mt-3">
+                  {group.charts.map(chart => (
+                    <ChartCard key={chart.id} {...cardProps(chart)} />
+                  ))}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          ))}
+        </div>
       ) : viewMode === 'grid' ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filteredCharts.map(chart => (
-            <ChartCard
-              key={chart.id}
-              chart={chart}
-              isSelected={selectedIds.has(chart.id)}
-              onToggleSelect={toggleSelect}
-              onExpand={setExpandedChart}
-              onExport={exportSingle}
-              selectionMode={selectionMode}
-            />
+          {paginatedCharts.map(chart => (
+            <ChartCard key={chart.id} {...cardProps(chart)} />
           ))}
         </div>
       ) : (
         <div className="space-y-2">
-          {filteredCharts.map(chart => (
-            <ChartListRow
-              key={chart.id}
-              chart={chart}
-              isSelected={selectedIds.has(chart.id)}
-              onToggleSelect={toggleSelect}
-              onExpand={setExpandedChart}
-              onExport={exportSingle}
-              selectionMode={selectionMode}
-            />
+          {paginatedCharts.map(chart => (
+            <ChartListRow key={chart.id} {...cardProps(chart)} />
           ))}
+        </div>
+      )}
+
+      {/* Load more (Enhancement #9) */}
+      {hasMore && viewMode !== 'grouped' && (
+        <div className="flex justify-center pt-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={() => setVisibleCount(prev => prev + CHARTS_PER_PAGE)}
+          >
+            Load more ({filteredCharts.length - visibleCount} remaining)
+          </Button>
         </div>
       )}
 
       {/* Results count */}
       {filteredCharts.length > 0 && filteredCharts.length !== charts.length && (
         <p className="text-xs text-muted-foreground text-center">
-          Showing {filteredCharts.length} of {charts.length} charts
+          Showing {Math.min(visibleCount, filteredCharts.length)} of {filteredCharts.length} charts
+          {filteredCharts.length !== charts.length && ` (${charts.length} total)`}
         </p>
       )}
 
-      {/* Lightbox */}
+      {/* Lightbox (includes keyboard navigation — Enhancement #3) */}
       <ChartLightbox
         chart={expandedChart}
         onClose={() => setExpandedChart(null)}
@@ -344,6 +478,24 @@ export default function Charts() {
         hasPrev={expandedIndex > 0}
         hasNext={expandedIndex < filteredCharts.length - 1}
       />
+
+      {/* Delete confirmation dialog (Enhancement #4) */}
+      <AlertDialog open={!!chartToDelete} onOpenChange={(open) => !open && setChartToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete chart?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete "{chartToDelete?.title}". This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
