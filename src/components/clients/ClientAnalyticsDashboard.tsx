@@ -11,7 +11,7 @@ import {
   Bar,
   XAxis,
   YAxis,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   Legend
 } from 'recharts';
 import { 
