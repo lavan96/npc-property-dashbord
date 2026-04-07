@@ -25,7 +25,7 @@ export function CreatePlanDialog({ open, onOpenChange, onCreate }: Props) {
   const [description, setDescription] = useState('');
   const [icon, setIcon] = useState('🎯');
   const [color, setColor] = useState('#6366f1');
-  const [status, setStatus] = useState('planning');
+  const [status, setStatus] = useState<'planning' | 'active' | 'completed' | 'archived'>('planning');
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
   const [loading, setLoading] = useState(false);
