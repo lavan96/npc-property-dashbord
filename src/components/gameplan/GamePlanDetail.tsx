@@ -2,7 +2,10 @@ import { useState } from 'react';
 import { type GamePlan, useGamePlanPhases, useGamePlanMilestones, useGamePlanKPIs, useGamePlanNotes, useGamePlanActions, useGamePlanMutations } from '@/hooks/useGamePlans';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Plus } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ArrowLeft, Plus, Pencil, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { PhaseCard } from './PhaseCard';
 import { TimelineBar } from './TimelineBar';
@@ -13,11 +16,11 @@ interface Props {
   onBack: () => void;
 }
 
-const statusConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-  planning: { label: 'Planning', variant: 'outline' },
-  active: { label: 'Active', variant: 'default' },
-  completed: { label: 'Completed', variant: 'secondary' },
-  archived: { label: 'Archived', variant: 'destructive' },
+const statusConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; emoji: string }> = {
+  planning: { label: 'Planning', variant: 'outline', emoji: '📋' },
+  active: { label: 'Active', variant: 'default', emoji: '🟢' },
+  completed: { label: 'Completed', variant: 'secondary', emoji: '✅' },
+  archived: { label: 'Archived', variant: 'destructive', emoji: '📦' },
 };
 
 export function GamePlanDetail({ plan, onBack }: Props) {
@@ -29,6 +32,9 @@ export function GamePlanDetail({ plan, onBack }: Props) {
   const { data: actions = [] } = useGamePlanActions(phaseIds);
   const mutations = useGamePlanMutations();
   const [showAddPhase, setShowAddPhase] = useState(false);
+  const [editingPlan, setEditingPlan] = useState(false);
+  const [editName, setEditName] = useState(plan.name);
+  const [editDescription, setEditDescription] = useState(plan.description || '');
 
   const cfg = statusConfig[plan.status] || statusConfig.planning;
 
@@ -36,6 +42,18 @@ export function GamePlanDetail({ plan, onBack }: Props) {
   const totalMilestones = milestones.length;
   const completedMilestones = milestones.filter(m => m.status === 'completed').length;
   const overallProgress = totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0;
+
+  const totalActions = actions.length;
+  const completedActions = actions.filter(a => a.is_done).length;
+
+  const savePlanEdit = () => {
+    mutations.plans.update.mutate({ id: plan.id, name: editName.trim(), description: editDescription.trim() || null });
+    setEditingPlan(false);
+  };
+
+  const handleStatusChange = (newStatus: string) => {
+    mutations.plans.update.mutate({ id: plan.id, status: newStatus });
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -45,22 +63,55 @@ export function GamePlanDetail({ plan, onBack }: Props) {
           <ArrowLeft className="h-4 w-4" /> Back to Game Plans
         </Button>
 
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div
-              className="h-12 w-12 rounded-xl flex items-center justify-center text-2xl shadow-lg"
-              style={{ background: `linear-gradient(135deg, ${plan.color}, ${plan.color}80)` }}
-            >
-              {plan.icon}
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl sm:text-2xl font-bold text-foreground">{plan.name}</h1>
-                <Badge variant={cfg.variant}>{cfg.label}</Badge>
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+          {editingPlan ? (
+            <div className="flex-1 space-y-2 p-3 rounded-lg border border-primary/30 bg-primary/5">
+              <Input value={editName} onChange={e => setEditName(e.target.value)} className="text-lg font-bold" />
+              <Textarea value={editDescription} onChange={e => setEditDescription(e.target.value)} placeholder="Description..." rows={2} />
+              <div className="flex gap-2">
+                <Button size="sm" onClick={savePlanEdit} disabled={!editName.trim()}>Save</Button>
+                <Button size="sm" variant="ghost" onClick={() => { setEditingPlan(false); setEditName(plan.name); setEditDescription(plan.description || ''); }}>Cancel</Button>
               </div>
-              {plan.description && <p className="text-sm text-muted-foreground mt-0.5">{plan.description}</p>}
             </div>
-          </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <div
+                className="h-12 w-12 rounded-xl flex items-center justify-center text-2xl shadow-lg shrink-0"
+                style={{ background: `linear-gradient(135deg, ${plan.color}, ${plan.color}80)` }}
+              >
+                {plan.icon}
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-xl sm:text-2xl font-bold text-foreground">{plan.name}</h1>
+                  {/* Status dropdown */}
+                  <Select value={plan.status} onValueChange={handleStatusChange}>
+                    <SelectTrigger className="h-7 w-auto gap-1 border-none px-2 text-xs">
+                      <Badge variant={cfg.variant}>{cfg.emoji} {cfg.label}</Badge>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(statusConfig).map(([key, c]) => (
+                        <SelectItem key={key} value={key}>
+                          <span className="flex items-center gap-1.5">{c.emoji} {c.label}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingPlan(true)}>
+                    <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                  </Button>
+                </div>
+                {plan.description && <p className="text-sm text-muted-foreground mt-0.5">{plan.description}</p>}
+                {(plan.start_date || plan.end_date) && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {plan.start_date && format(new Date(plan.start_date), 'MMM d, yyyy')}
+                    {plan.start_date && plan.end_date && ' → '}
+                    {plan.end_date && format(new Date(plan.end_date), 'MMM d, yyyy')}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
           <Button onClick={() => setShowAddPhase(true)} className="gap-2 shrink-0">
             <Plus className="h-4 w-4" /> Add Phase
           </Button>
@@ -68,10 +119,11 @@ export function GamePlanDetail({ plan, onBack }: Props) {
       </div>
 
       {/* Summary Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {[
           { label: 'Phases', value: phases.length, emoji: '📋' },
           { label: 'Milestones', value: `${completedMilestones}/${totalMilestones}`, emoji: '🏁' },
+          { label: 'Actions', value: `${completedActions}/${totalActions}`, emoji: '✅' },
           { label: 'KPIs Tracked', value: kpis.length, emoji: '📊' },
           { label: 'Progress', value: `${overallProgress}%`, emoji: '🚀' },
         ].map(stat => (
