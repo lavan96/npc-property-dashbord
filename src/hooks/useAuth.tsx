@@ -215,6 +215,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       setUser(data.user);
       setRoles(data.roles || []);
+      // Reset global auth circuit breaker on successful login
+      resetAuthFailures();
       
       // Log successful login activity
       logActivity({
