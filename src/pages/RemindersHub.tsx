@@ -83,6 +83,7 @@ export default function RemindersHub() {
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all');
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>('all');
+  const [showCreateForm, setShowCreateForm] = useState(false);
 
   const now = new Date();
   const todayStart = startOfDay(now);
