@@ -882,9 +882,23 @@ NPC Team`
         <Sheet open={open} onOpenChange={onOpenChange}>
           <SheetContent side="bottom" className="h-[95vh] flex flex-col p-0">
             <SheetHeader className="px-4 pt-4 pb-2 border-b shrink-0">
-              <SheetTitle className="flex items-center gap-2 text-base">
-                <User className="h-4 w-4" />
-                {client.primary_first_name} {client.primary_surname}
+              <SheetTitle className="flex flex-col gap-0.5">
+                <span className="flex items-center gap-2 text-base">
+                  <User className="h-4 w-4" />
+                  {client.primary_first_name} {client.primary_surname}
+                </span>
+                {client.primary_email && (
+                  <span className="flex items-center gap-1.5 text-xs font-normal text-muted-foreground">
+                    <Mail className="h-3 w-3" />
+                    {client.primary_email}
+                  </span>
+                )}
+                {client.primary_mobile && (
+                  <span className="flex items-center gap-1.5 text-xs font-normal text-muted-foreground">
+                    <Phone className="h-3 w-3" />
+                    {client.primary_mobile}
+                  </span>
+                )}
               </SheetTitle>
             </SheetHeader>
             <div className="flex-1 overflow-auto px-4 py-2 pb-20">
@@ -896,9 +910,25 @@ NPC Team`
         <Dialog open={open} onOpenChange={onOpenChange}>
           <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <User className="h-5 w-5" />
-                {client.primary_first_name} {client.primary_surname}
+              <DialogTitle className="flex items-center gap-3">
+                <User className="h-5 w-5 shrink-0" />
+                <div className="flex flex-col gap-0.5">
+                  <span>{client.primary_first_name} {client.primary_surname}</span>
+                  <div className="flex items-center gap-3 text-xs font-normal text-muted-foreground">
+                    {client.primary_email && (
+                      <span className="flex items-center gap-1">
+                        <Mail className="h-3 w-3" />
+                        {client.primary_email}
+                      </span>
+                    )}
+                    {client.primary_mobile && (
+                      <span className="flex items-center gap-1">
+                        <Phone className="h-3 w-3" />
+                        {client.primary_mobile}
+                      </span>
+                    )}
+                  </div>
+                </div>
               </DialogTitle>
               <DialogDescription className="sr-only">
                 View and manage client details, properties, and reports

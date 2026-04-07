@@ -76,6 +76,9 @@ interface Client {
   client_properties?: { id: string }[];
   pipeline_status?: string | null;
   follow_up_date?: string | null;
+  next_review_due?: string | null;
+  review_frequency?: string | null;
+  last_review_date?: string | null;
 }
 
 const AUTO_SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes
@@ -384,6 +387,32 @@ export default function ClientManagement() {
         if (followUp < now || followUp > weekFromNow) return false;
       }
       if (filters.followUpStatus === 'none' && followUp) return false;
+    }
+
+    // Review status filter
+    if (filters.reviewStatus !== 'all') {
+      const now = new Date();
+      const nextReview = client.next_review_due ? new Date(client.next_review_due) : null;
+      if (filters.reviewStatus === 'overdue' && (!nextReview || nextReview >= now)) return false;
+      if (filters.reviewStatus === 'due_soon') {
+        if (!nextReview) return false;
+        const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+        if (nextReview < now || nextReview > weekFromNow) return false;
+      }
+      if (filters.reviewStatus === 'upcoming') {
+        if (!nextReview) return false;
+        const monthFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+        if (nextReview < now || nextReview > monthFromNow) return false;
+      }
+      if (filters.reviewStatus === 'no_review' && nextReview) return false;
+    }
+
+    // Review frequency filter
+    if (filters.reviewFrequency !== 'all') {
+      const freq = client.review_frequency || '';
+      if (filters.reviewFrequency === 'quarterly' && freq !== 'quarterly') return false;
+      if (filters.reviewFrequency === 'bi_annual' && freq !== 'bi_annual') return false;
+      if (filters.reviewFrequency === 'annual' && freq !== 'annual') return false;
     }
 
     return true;

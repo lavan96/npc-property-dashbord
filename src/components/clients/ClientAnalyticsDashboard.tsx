@@ -11,7 +11,7 @@ import {
   Bar,
   XAxis,
   YAxis,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   Legend
 } from 'recharts';
 import { 
@@ -21,8 +21,15 @@ import {
   TrendingDown,
   Percent,
   AlertCircle,
-  CheckCircle
+  CheckCircle,
+  Info
 } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface Client {
   id: string;
@@ -115,7 +122,19 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
                 <DollarSign className="h-5 w-5 text-blue-600" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Total AUM</p>
+                <div className="flex items-center gap-1">
+                  <p className="text-xs text-muted-foreground">Total Assets Under Management</p>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-3 w-3 text-muted-foreground/60 cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-[220px] text-xs">
+                        Combined estimated value of all client properties across your portfolio.
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
                 <p className="text-xl font-bold">{formatCurrency(analytics.totalPortfolioValue)}</p>
               </div>
             </div>
@@ -195,7 +214,7 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <RechartsTooltip />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -223,7 +242,7 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
                 <BarChart data={analytics.portfolioDistribution}>
                   <XAxis dataKey="name" tick={{ fontSize: 10 }} />
                   <YAxis tick={{ fontSize: 10 }} />
-                  <Tooltip />
+                  <RechartsTooltip />
                   <Bar dataKey="value" fill="#3B82F6" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -253,7 +272,7 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <RechartsTooltip />
                 </PieChart>
               </ResponsiveContainer>
             </div>
