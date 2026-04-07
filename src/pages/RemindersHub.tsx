@@ -41,6 +41,7 @@ import {
 } from '@/components/ui/select';
 import { useAllReminders, type UnifiedReminder } from '@/hooks/useAllReminders';
 import { TeamRemindersSection } from '@/components/reminders/TeamRemindersSection';
+import { CreateReminderForm } from '@/components/reminders/CreateReminderForm';
 import { toast } from 'sonner';
 
 type ReminderTab = 'client' | 'team';
