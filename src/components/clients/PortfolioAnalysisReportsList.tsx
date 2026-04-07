@@ -194,7 +194,7 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
       const url = URL.createObjectURL(result.blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Portfolio_Analysis_${report.client_name.replace(/\s+/g, '_')}.pdf`;
+      a.download = `Portfolio_Analysis_${smartCapitalize(report.client_name).replace(/\s+/g, '_')}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
       toast.success('PDF downloaded successfully');
@@ -387,7 +387,7 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Report</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this portfolio analysis report for {reportToDelete?.client_name}?
+              Are you sure you want to delete this portfolio analysis report for {smartCapitalize(reportToDelete?.client_name)}?
               This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
