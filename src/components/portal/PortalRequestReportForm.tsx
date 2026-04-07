@@ -76,6 +76,7 @@ export function PortalRequestReportForm({ properties, onSubmitted, onCancel }: P
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submittedSummary, setSubmittedSummary] = useState<{ type: string; property?: string; notes?: string } | null>(null);
 
   const formatPropertyAddress = (p: Property) => {
     return [p.address, p.suburb, p.state, p.postcode].filter(Boolean).join(', ');
@@ -138,9 +139,26 @@ export function PortalRequestReportForm({ properties, onSubmitted, onCancel }: P
         throw new Error(result.error || 'Failed to submit request');
       }
 
+      // Save summary for confirmation screen
+      const typeLabel = reportTypes.find(t => t.value === requestType)?.label || requestType;
+      let propertyLabel: string | undefined;
+      if (requestType === 'investment_property') {
+        if (propertySource === 'portfolio' && selectedPropertyId) {
+          const prop = properties.find(p => p.id === selectedPropertyId);
+          if (prop) propertyLabel = formatPropertyAddress(prop);
+        } else if (propertySource === 'external') {
+          propertyLabel = externalAddress.trim();
+        }
+      }
+      setSubmittedSummary({
+        type: typeLabel,
+        property: propertyLabel,
+        notes: notes.trim() || undefined,
+      });
+
       setSubmitted(true);
       toast.success('Report request submitted successfully!');
-      setTimeout(() => onSubmitted(), 1500);
+      setTimeout(() => onSubmitted(), 2500);
     } catch (err: any) {
       toast.error('Failed to submit: ' + (err.message || 'Unknown error'));
     } finally {
@@ -148,13 +166,33 @@ export function PortalRequestReportForm({ properties, onSubmitted, onCancel }: P
     }
   };
 
-  if (submitted) {
+  if (submitted && submittedSummary) {
     return (
       <Card className="border-emerald-200 bg-emerald-500/5">
-        <CardContent className="py-8 text-center">
-          <CheckCircle2 className="h-12 w-12 text-emerald-500 mx-auto mb-3" />
-          <p className="text-sm font-semibold text-foreground">Request Submitted!</p>
-          <p className="text-xs text-muted-foreground mt-1">Your advisor will review this and prepare the report for you.</p>
+        <CardContent className="py-8 text-center space-y-3">
+          <CheckCircle2 className="h-12 w-12 text-emerald-500 mx-auto" />
+          <div>
+            <p className="text-sm font-semibold text-foreground">Request Submitted!</p>
+            <p className="text-xs text-muted-foreground mt-1">Your advisor will review this and prepare the report for you.</p>
+          </div>
+          <div className="mx-auto max-w-xs rounded-lg border bg-background p-3 text-left space-y-1.5">
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-muted-foreground">Report:</span>
+              <span className="font-medium text-foreground">{submittedSummary.type}</span>
+            </div>
+            {submittedSummary.property && (
+              <div className="flex items-start gap-2 text-xs">
+                <span className="text-muted-foreground shrink-0">Property:</span>
+                <span className="font-medium text-foreground">{submittedSummary.property}</span>
+              </div>
+            )}
+            {submittedSummary.notes && (
+              <div className="flex items-start gap-2 text-xs">
+                <span className="text-muted-foreground shrink-0">Notes:</span>
+                <span className="text-foreground line-clamp-2">{submittedSummary.notes}</span>
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
     );
