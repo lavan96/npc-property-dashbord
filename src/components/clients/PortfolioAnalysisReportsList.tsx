@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { smartCapitalize } from '@/lib/nameUtils';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { secureStorageDownload } from '@/hooks/useSecureStorage';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -310,7 +311,7 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
                     <TableRow key={report.id}>
                       {!clientId && (
                         <TableCell className="font-medium">
-                          {report.client_name}
+                          {smartCapitalize(report.client_name)}
                         </TableCell>
                       )}
                       <TableCell>
