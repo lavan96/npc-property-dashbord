@@ -276,7 +276,12 @@ function ReportGenerationProgressInner() {
       return;
     }
 
-    // Guard: stop polling if we've hit too many consecutive auth failures
+    // Guard: stop polling if global auth circuit breaker has tripped
+    if (isAuthExhausted()) {
+      return;
+    }
+
+    // Guard: stop polling if we've hit too many consecutive auth failures locally
     if (authFailCountRef.current >= AUTH_FAIL_THRESHOLD) {
       return;
     }
