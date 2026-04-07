@@ -43,6 +43,7 @@ import {
 import { useAllReminders, type UnifiedReminder } from '@/hooks/useAllReminders';
 import { TeamRemindersSection } from '@/components/reminders/TeamRemindersSection';
 import { CreateReminderForm } from '@/components/reminders/CreateReminderForm';
+import { ReminderActions } from '@/components/reminders/ReminderActions';
 import { toast } from 'sonner';
 
 type ReminderTab = 'client' | 'team';
@@ -375,72 +376,83 @@ export default function RemindersHub() {
                       const daysUntil = differenceInDays(new Date(reminder.due_date), now);
                       const priorityCfg = PRIORITY_CONFIG[reminder.priority];
 
-                      return (
-                        <Card
-                          key={reminder.id}
-                          className={cn(
-                            'cursor-pointer transition-all hover:shadow-sm',
-                            isOverdue && 'border-destructive/30 bg-destructive/5',
-                            isToday(new Date(reminder.due_date)) && !isOverdue && 'border-amber-500/20 bg-amber-500/5',
-                          )}
-                          onClick={() => handleReminderClick(reminder)}
-                        >
-                          <CardContent className="p-2.5 sm:p-3 flex items-center gap-2.5">
-                            {/* Source Icon */}
-                            <div className={cn(
-                              'h-8 w-8 rounded-full flex items-center justify-center shrink-0',
-                              isOverdue ? 'bg-destructive/10 text-destructive' : 'bg-muted',
-                              !isOverdue && SOURCE_COLORS[reminder.source]
-                            )}>
-                              {TYPE_ICONS[reminder.reminder_type] || SOURCE_ICONS[reminder.source]}
-                            </div>
-
-                            {/* Content */}
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="text-xs sm:text-sm font-semibold truncate">{reminder.title}</span>
-                                <Badge className={cn('text-[8px] px-1 py-0 h-3.5 border shrink-0', priorityCfg.color)}>
-                                  {priorityCfg.label}
-                                </Badge>
-                              </div>
-                              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                                <span className="text-[10px] text-muted-foreground">{reminder.client_name}</span>
-                                <span className="text-[10px] text-muted-foreground">·</span>
-                                <span className="text-[10px] text-muted-foreground">{reminder.source_label}</span>
-                                {reminder.description && (
-                                  <>
-                                    <span className="text-[10px] text-muted-foreground">·</span>
-                                    <span className="text-[10px] text-muted-foreground truncate max-w-[200px]">{reminder.description}</span>
-                                  </>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Date & Action */}
-                            <div className="flex items-center gap-2 shrink-0">
-                              <div className="text-right">
-                                <p className={cn(
-                                  'text-[10px] sm:text-xs font-medium',
-                                  isOverdue ? 'text-destructive' : isToday(new Date(reminder.due_date)) ? 'text-amber-600' : 'text-muted-foreground'
+                        return (
+                          <Card
+                            key={reminder.id}
+                            className={cn(
+                              'group cursor-pointer transition-all hover:shadow-sm',
+                              isOverdue && 'border-destructive/30 bg-destructive/5',
+                              isToday(new Date(reminder.due_date)) && !isOverdue && 'border-amber-500/20 bg-amber-500/5',
+                            )}
+                            onClick={() => handleReminderClick(reminder)}
+                          >
+                            <CardContent className="p-2.5 sm:p-3">
+                              <div className="flex items-center gap-2.5">
+                                {/* Source Icon */}
+                                <div className={cn(
+                                  'h-8 w-8 rounded-full flex items-center justify-center shrink-0',
+                                  isOverdue ? 'bg-destructive/10 text-destructive' : 'bg-muted',
+                                  !isOverdue && SOURCE_COLORS[reminder.source]
                                 )}>
-                                  {isOverdue
-                                    ? `${Math.abs(daysUntil)}d overdue`
-                                    : isToday(new Date(reminder.due_date))
-                                      ? 'Today'
-                                      : isTomorrow(new Date(reminder.due_date))
-                                        ? 'Tomorrow'
-                                        : format(new Date(reminder.due_date), 'dd MMM')
-                                  }
-                                </p>
-                                <p className="text-[9px] text-muted-foreground">
-                                  {format(new Date(reminder.due_date), 'EEE')}
-                                </p>
+                                  {TYPE_ICONS[reminder.reminder_type] || SOURCE_ICONS[reminder.source]}
+                                </div>
+
+                                {/* Content */}
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="text-xs sm:text-sm font-semibold truncate">{reminder.title}</span>
+                                    <Badge className={cn('text-[8px] px-1 py-0 h-3.5 border shrink-0', priorityCfg.color)}>
+                                      {priorityCfg.label}
+                                    </Badge>
+                                  </div>
+                                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                    <span className="text-[10px] text-muted-foreground">{reminder.client_name}</span>
+                                    <span className="text-[10px] text-muted-foreground">·</span>
+                                    <span className="text-[10px] text-muted-foreground">{reminder.source_label}</span>
+                                    {reminder.description && (
+                                      <>
+                                        <span className="text-[10px] text-muted-foreground">·</span>
+                                        <span className="text-[10px] text-muted-foreground truncate max-w-[200px]">{reminder.description}</span>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Date */}
+                                <div className="text-right shrink-0">
+                                  <p className={cn(
+                                    'text-[10px] sm:text-xs font-medium',
+                                    isOverdue ? 'text-destructive' : isToday(new Date(reminder.due_date)) ? 'text-amber-600' : 'text-muted-foreground'
+                                  )}>
+                                    {isOverdue
+                                      ? `${Math.abs(daysUntil)}d overdue`
+                                      : isToday(new Date(reminder.due_date))
+                                        ? 'Today'
+                                        : isTomorrow(new Date(reminder.due_date))
+                                          ? 'Tomorrow'
+                                          : format(new Date(reminder.due_date), 'dd MMM')
+                                    }
+                                  </p>
+                                  <p className="text-[9px] text-muted-foreground">
+                                    {format(new Date(reminder.due_date), 'EEE')}
+                                  </p>
+                                </div>
+
+                                {/* Actions */}
+                                <ReminderActions
+                                  reminderId={reminder.id}
+                                  rawId={reminder.raw_id}
+                                  title={reminder.title}
+                                  dueDate={reminder.due_date}
+                                  priority={reminder.priority}
+                                  source={reminder.source}
+                                  canEdit={canEditReminders}
+                                  canDelete={canDeleteReminders}
+                                />
                               </div>
-                              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-                            </div>
-                          </CardContent>
-                        </Card>
-                      );
+                            </CardContent>
+                          </Card>
+                        );
                     })}
                   </div>
                 </div>
