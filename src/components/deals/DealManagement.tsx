@@ -49,13 +49,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
 import { RISK_STATUS_CONFIG } from '@/components/clients/deal-tracker/types';
+import { smartCapitalize } from '@/utils/nameFormatting';
 import type { DealWithClient } from '@/hooks/useAllDeals';
+
+const UNASSIGNED_SENTINEL = '__unassigned__';
 
 interface Props {
   deals: DealWithClient[];
@@ -196,6 +194,108 @@ function StageActions({
   );
 }
 
+// ─── Expanded Stage Detail (rendered as a separate <tr>) ───
+function DealExpandedRow({
+  deal,
+  onUpdateDeal,
+  onUpdateStage,
+}: {
+  deal: DealWithClient;
+  onUpdateDeal?: (dealId: string, clientId: string, data: any) => void;
+  onUpdateStage?: (stageId: string, clientId: string, data: any) => void;
+}) {
+  const stages = deal.stages || [];
+
+  const handleUpdateField = useCallback((field: string, value: any) => {
+    onUpdateDeal?.(deal.id, deal.client_id, { [field]: value });
+  }, [deal.id, deal.client_id, onUpdateDeal]);
+
+  return (
+    <TableRow>
+      <TableCell colSpan={8} className="bg-muted/20 p-0">
+        <div className="p-4 space-y-4">
+          {/* Stage timeline */}
+          <div>
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1">
+              <Settings2 className="h-3 w-3" /> Stage Management
+            </p>
+            <div className="grid gap-1.5">
+              {stages.map((stage, i) => (
+                <div
+                  key={stage.id || i}
+                  className={cn(
+                    'flex items-center gap-3 px-3 py-1.5 rounded-md border transition-colors',
+                    stage.status === 'complete' && 'bg-success/5 border-success/20',
+                    stage.status === 'in_progress' && 'bg-primary/5 border-primary/20',
+                    stage.status === 'skipped' && 'bg-muted/50 border-border/30 opacity-60',
+                    stage.status === 'pending' && 'border-border/50',
+                  )}
+                >
+                  <span className="shrink-0">{STAGE_STATUS_ICONS[stage.status] || <Circle className="h-3.5 w-3.5" />}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-[8px] px-1 h-3.5 shrink-0">S{stage.stage_number}</Badge>
+                      <span className={cn('text-xs font-medium truncate', stage.status === 'skipped' && 'line-through')}>{stage.stage_name}</span>
+                    </div>
+                    {stage.internal_action && (
+                      <p className="text-[9px] text-muted-foreground mt-0.5 truncate">{stage.internal_action}</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {stage.completed_at && (
+                      <span className="text-[9px] text-muted-foreground">{format(new Date(stage.completed_at), 'dd MMM')}</span>
+                    )}
+                    <StageActions stage={stage} clientId={deal.client_id} onUpdateStage={onUpdateStage} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Inline notes editor */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                <MessageSquare className="h-3 w-3" /> Deal Notes
+              </p>
+              <InlineEditField
+                key={`${deal.id}-notes`}
+                defaultValue={deal.notes || ''}
+                onSave={(val) => handleUpdateField('notes', val || null)}
+                placeholder="Add notes about this deal..."
+                type="textarea"
+              />
+            </div>
+            <div className="space-y-3">
+              <div>
+                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                  <User className="h-3 w-3" /> Responsible Person
+                </p>
+                <InlineEditField
+                  key={`${deal.id}-responsible-input`}
+                  defaultValue={deal.responsible_person || ''}
+                  onSave={(val) => handleUpdateField('responsible_person', val || null)}
+                  placeholder="Enter name..."
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Deal Value</p>
+                  <p className="text-xs font-medium">{deal.total_contract_price ? formatCurrency(deal.total_contract_price) : '—'}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Settlement</p>
+                  <p className="text-xs font-medium">{deal.settlement_date ? format(new Date(deal.settlement_date), 'dd MMM yyyy') : '—'}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </TableCell>
+    </TableRow>
+  );
+}
+
 // ─── Deal Management Row ───
 function DealManageRow({
   deal,
@@ -224,23 +324,23 @@ function DealManageRow({
     onUpdateDeal?.(deal.id, deal.client_id, { [field]: value });
   }, [deal.id, deal.client_id, onUpdateDeal]);
 
+  const displayName = smartCapitalize(deal.client_name || 'Unknown');
+
   return (
-    <Collapsible open={expanded} onOpenChange={setExpanded}>
+    <>
       <TableRow className="group hover:bg-muted/30 transition-colors">
         {/* Expand */}
         <TableCell className="w-8 px-2">
-          <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-              {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-            </Button>
-          </CollapsibleTrigger>
+          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setExpanded(!expanded)}>
+            {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+          </Button>
         </TableCell>
 
         {/* Client */}
         <TableCell className="cursor-pointer" onClick={onDealClick}>
           <div className="flex items-center gap-1.5 min-w-0">
             <span className="text-muted-foreground">{getDealTypeIcon(deal.deal_type)}</span>
-            <span className="text-xs font-semibold truncate">{deal.client_name}</span>
+            <span className="text-xs font-semibold truncate">{displayName}</span>
           </div>
           <span className="text-[9px] text-muted-foreground">{getDealTypeLabel(deal.deal_type)} · {ageInDays}d old</span>
         </TableCell>
@@ -265,14 +365,14 @@ function DealManageRow({
         <TableCell className="hidden md:table-cell w-[140px]">
           <Select
             key={`${deal.id}-responsible`}
-            defaultValue={deal.responsible_person || ''}
-            onValueChange={(v) => handleUpdateField('responsible_person', v || null)}
+            defaultValue={deal.responsible_person || UNASSIGNED_SENTINEL}
+            onValueChange={(v) => handleUpdateField('responsible_person', v === UNASSIGNED_SENTINEL ? null : v)}
           >
             <SelectTrigger className="h-7 text-[10px] w-full">
               <SelectValue placeholder="Assign..." />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="" className="text-xs italic">Unassigned</SelectItem>
+              <SelectItem value={UNASSIGNED_SENTINEL} className="text-xs italic">Unassigned</SelectItem>
               {responsiblePersons.map(p => (
                 <SelectItem key={p} value={p} className="text-xs">{p}</SelectItem>
               ))}
@@ -287,7 +387,7 @@ function DealManageRow({
             defaultValue={deal.risk_status}
             onValueChange={(v) => handleUpdateField('risk_status', v)}
           >
-            <SelectTrigger className={cn('h-7 text-[10px] w-full border', riskCfg.color)}>
+            <SelectTrigger className={cn('h-7 text-[10px] w-full border', riskCfg?.color)}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -360,92 +460,15 @@ function DealManageRow({
         </TableCell>
       </TableRow>
 
-      {/* Expanded: Stage timeline + notes editor */}
-      <TableRow className={cn(!expanded && 'hidden')}>
-        <TableCell colSpan={8} className="bg-muted/20 p-0">
-          <CollapsibleContent>
-            <div className="p-4 space-y-4">
-              {/* Stage timeline */}
-              <div>
-                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1">
-                  <Settings2 className="h-3 w-3" /> Stage Management
-                </p>
-                <div className="grid gap-1.5">
-                  {stages.map((stage, i) => (
-                    <div
-                      key={stage.id || i}
-                      className={cn(
-                        'flex items-center gap-3 px-3 py-1.5 rounded-md border transition-colors',
-                        stage.status === 'complete' && 'bg-success/5 border-success/20',
-                        stage.status === 'in_progress' && 'bg-primary/5 border-primary/20',
-                        stage.status === 'skipped' && 'bg-muted/50 border-border/30 opacity-60',
-                        stage.status === 'pending' && 'border-border/50',
-                      )}
-                    >
-                      <span className="shrink-0">{STAGE_STATUS_ICONS[stage.status] || <Circle className="h-3.5 w-3.5" />}</span>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-[8px] px-1 h-3.5 shrink-0">S{stage.stage_number}</Badge>
-                          <span className={cn('text-xs font-medium truncate', stage.status === 'skipped' && 'line-through')}>{stage.stage_name}</span>
-                        </div>
-                        {stage.internal_action && (
-                          <p className="text-[9px] text-muted-foreground mt-0.5 truncate">{stage.internal_action}</p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        {stage.completed_at && (
-                          <span className="text-[9px] text-muted-foreground">{format(new Date(stage.completed_at), 'dd MMM')}</span>
-                        )}
-                        <StageActions stage={stage} clientId={deal.client_id} onUpdateStage={onUpdateStage} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Inline notes editor */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1">
-                    <MessageSquare className="h-3 w-3" /> Deal Notes
-                  </p>
-                  <InlineEditField
-                    key={`${deal.id}-notes`}
-                    defaultValue={deal.notes || ''}
-                    onSave={(val) => handleUpdateField('notes', val || null)}
-                    placeholder="Add notes about this deal..."
-                    type="textarea"
-                  />
-                </div>
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1">
-                      <User className="h-3 w-3" /> Responsible Person
-                    </p>
-                    <InlineEditField
-                      key={`${deal.id}-responsible-input`}
-                      defaultValue={deal.responsible_person || ''}
-                      onSave={(val) => handleUpdateField('responsible_person', val || null)}
-                      placeholder="Enter name..."
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Deal Value</p>
-                      <p className="text-xs font-medium">{deal.total_contract_price ? formatCurrency(deal.total_contract_price) : '—'}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Settlement</p>
-                      <p className="text-xs font-medium">{deal.settlement_date ? format(new Date(deal.settlement_date), 'dd MMM yyyy') : '—'}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CollapsibleContent>
-        </TableCell>
-      </TableRow>
-    </Collapsible>
+      {/* Expanded: Stage timeline + notes editor — plain <tr> avoids invalid DOM */}
+      {expanded && (
+        <DealExpandedRow
+          deal={deal}
+          onUpdateDeal={onUpdateDeal}
+          onUpdateStage={onUpdateStage}
+        />
+      )}
+    </>
   );
 }
 

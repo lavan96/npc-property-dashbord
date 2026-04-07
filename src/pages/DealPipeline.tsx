@@ -55,6 +55,23 @@ export default function DealPipeline() {
     updateDealStage.mutate({ stageId, clientId, data });
   };
 
+  if (error) {
+    return (
+      <div className="p-3 sm:p-6 space-y-4">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 text-primary shrink-0" />
+          <h1 className="text-lg sm:text-2xl font-bold tracking-tight">Deal Pipeline</h1>
+        </div>
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-6 text-center">
+          <p className="text-sm font-medium text-destructive">Unable to load deals</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {error instanceof Error ? error.message : 'Please try refreshing the page or logging in again.'}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
       <div className="flex items-center gap-2 sm:gap-3">
