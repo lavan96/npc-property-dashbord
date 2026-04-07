@@ -80,6 +80,11 @@ async function invokeEdgeFunction(
     // Get session token from storage for authentication fallback
     const sessionToken = getStoredValue(SESSION_TOKEN_KEY);
     
+    // Prefer stored access token (real user JWT) over anon key
+    // This ensures JWT-based auth works even if session token is stale
+    const accessToken = getStoredValue(ACCESS_TOKEN_KEY);
+    const bearerToken = accessToken || SUPABASE_ANON_KEY;
+    
     // Include session token in body as fallback if cookies fail
     const requestBody = body 
       ? { ...body, session_token: sessionToken }
@@ -90,11 +95,16 @@ async function invokeEdgeFunction(
       headers: {
         'Content-Type': 'application/json',
         'apikey': SUPABASE_ANON_KEY,
-        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        // Use real user token when available; fall back to anon for unauthenticated calls.
+        'Authorization': `Bearer ${bearerToken}`,
         // Add session token as custom header for additional fallback
         ...(sessionToken ? { 'x-session-token': sessionToken } : {}),
       },
-      credentials: 'include', // Required for HttpOnly cookies
+      // Do NOT include cross-site cookies here.
+      // Using credentials: 'include' makes this a credentialed CORS request which is
+      // incompatible with wildcard CORS and surfaces as browser-level "Failed to fetch".
+      // We authenticate via Bearer token + x-session-token header instead.
+      credentials: 'omit',
       body: JSON.stringify(requestBody),
     });
 
@@ -185,6 +195,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (username: string, password: string, turnstileToken?: string) => {
     try {
+      // Clear any stale tokens BEFORE login to prevent old tokens from lingering
+      clearStoredValue(ACCESS_TOKEN_KEY);
+      clearStoredValue(SESSION_TOKEN_KEY);
+      
       const { data, error } = await invokeEdgeFunction('custom-auth-login', { 
         username, 
         password,
