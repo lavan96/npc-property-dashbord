@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
@@ -56,6 +57,7 @@ interface ReportRequest {
 
 export default function ReportRequests() {
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { canEdit: canEditRequests } = useModulePermissions('reports');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
