@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
-import { invokeSecureFunction, hasActiveSession } from '@/lib/secureInvoke';
+import { invokeSecureFunction, hasActiveSession, isAuthExhausted } from '@/lib/secureInvoke';
+import { useAuth } from '@/hooks/useAuth';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Loader2, AlertCircle, PlayCircle, X, Zap, Clock, RefreshCw, CheckCircle2, ChevronUp, ChevronDown } from 'lucide-react';
@@ -54,12 +55,14 @@ function getAutoContinueSettings(): AutoContinueSettings {
 
 export function ReportGenerationProgress() {
   const location = useLocation();
+  const { user, loading } = useAuth();
   const isClientPortalRoute = location.pathname.startsWith('/client') || location.pathname.startsWith('/portal');
 
   // Don't render on client-facing portal routes
-  if (isClientPortalRoute) {
-    return null;
-  }
+  if (isClientPortalRoute) return null;
+
+  // Don't render (and therefore don't poll) if auth is still loading or no user is logged in
+  if (loading || !user) return null;
   
   return <ReportGenerationProgressInner />;
 }
@@ -273,7 +276,12 @@ function ReportGenerationProgressInner() {
       return;
     }
 
-    // Guard: stop polling if we've hit too many consecutive auth failures
+    // Guard: stop polling if global auth circuit breaker has tripped
+    if (isAuthExhausted()) {
+      return;
+    }
+
+    // Guard: stop polling if we've hit too many consecutive auth failures locally
     if (authFailCountRef.current >= AUTH_FAIL_THRESHOLD) {
       return;
     }

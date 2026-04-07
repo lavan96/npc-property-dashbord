@@ -7,6 +7,30 @@
 const SUPABASE_URL = "https://dduzbchuswwbefdunfct.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkdXpiY2h1c3d3YmVmZHVuZmN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0NDM4NzksImV4cCI6MjA3MTAxOTg3OX0.eSYU6fxIc3tBQuGLsdBRff0alBMkNfvv7OpW0efNjxk";
 
+// ── Global auth-failure circuit breaker ──
+// Module-level flag that survives component re-mounts.
+// Once set, ALL polling/secure calls skip until a successful auth restores it.
+let _globalAuthExhausted = false;
+const GLOBAL_AUTH_FAIL_LIMIT = 5;
+let _globalAuthFailCount = 0;
+
+export function markAuthFailure(): void {
+  _globalAuthFailCount++;
+  if (_globalAuthFailCount >= GLOBAL_AUTH_FAIL_LIMIT) {
+    _globalAuthExhausted = true;
+    console.warn('[secureInvoke] Global auth circuit breaker tripped – all polling stopped until re-login.');
+  }
+}
+
+export function resetAuthFailures(): void {
+  _globalAuthFailCount = 0;
+  _globalAuthExhausted = false;
+}
+
+export function isAuthExhausted(): boolean {
+  return _globalAuthExhausted;
+}
+
 // Matches src/hooks/useAuth.tsx
 const ACCESS_TOKEN_KEY = 'supabase_access_token';
 const SESSION_TOKEN_KEY = 'session_token';
@@ -96,12 +120,21 @@ export async function invokeSecureFunction<T = any>(
         hasAccessToken: Boolean(accessToken),
         hasSessionToken: Boolean(sessionToken),
       });
+
+      // Track auth failures globally
+      if (response.status === 401) {
+        markAuthFailure();
+      }
+
       return { 
         data: data as T, 
         error: { message: data.error || `HTTP ${response.status}` } 
       };
     }
     
+    // Successful response resets the global auth breaker
+    resetAuthFailures();
+
     return { data: data as T, error: null };
   } catch (error: any) {
     return { 

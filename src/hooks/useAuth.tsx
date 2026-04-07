@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { logActivity } from '@/hooks/useActivityLogger';
+import { resetAuthFailures } from '@/lib/secureInvoke';
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -145,6 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Valid session - set user and roles
         setUser(data.user);
         setRoles(data.roles || []);
+        resetAuthFailures(); // Reset global auth circuit breaker on valid session
         
         // Store access token for Supabase client
         if (data.access_token) {
@@ -214,6 +216,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       setUser(data.user);
       setRoles(data.roles || []);
+      // Reset global auth circuit breaker on successful login
+      resetAuthFailures();
       
       // Log successful login activity
       logActivity({
