@@ -1411,7 +1411,9 @@ export default function ClientTracker() {
                       <TableHead>Client Name</TableHead>
                       <TableHead>Pipeline</TableHead>
                       <TableHead>Stage</TableHead>
+                      <TableHead>Status</TableHead>
                       <TableHead>Follow-up Date</TableHead>
+                      <TableHead>Last Updated</TableHead>
                       <TableHead>Borrowing Capacity</TableHead>
                       <TableHead>Rental Income</TableHead>
                       <TableHead>Equity Release</TableHead>
@@ -1441,6 +1443,19 @@ export default function ClientTracker() {
                             >
                               {stageInfo.name}
                             </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {client.opportunity_status ? (
+                              <Badge variant="outline" className={cn(
+                                "text-xs",
+                                client.opportunity_status === 'won' && 'border-emerald-500/30 text-emerald-600',
+                                client.opportunity_status === 'lost' && 'border-red-500/30 text-red-500',
+                                client.opportunity_status === 'open' && 'border-blue-500/30 text-blue-600',
+                              )}>
+                                {client.opportunity_status.charAt(0).toUpperCase() + client.opportunity_status.slice(1)}
+                              </Badge>
+                            ) : '-'}
+                          </TableCell>
                           </TableCell>
                           <TableCell>
                             {client.follow_up_date 
