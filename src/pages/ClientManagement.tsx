@@ -758,18 +758,20 @@ export default function ClientManagement() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg font-semibold">Portfolio Performance Reports</h2>
-              <p className="text-sm text-muted-foreground">View generated portfolio analysis reports across all clients</p>
+              <p className="text-sm text-muted-foreground">
+                Quick view of recent portfolio analysis reports — open the full page for search, stats, and bulk actions
+              </p>
             </div>
             <Button
-              variant="outline"
+              variant="default"
               size="sm"
               onClick={() => window.location.href = '/portfolio-reports'}
             >
               <ExternalLink className="h-4 w-4 mr-2" />
-              Open Full Page View
+              Full Reports Page
             </Button>
           </div>
-          <PortfolioAnalysisReportsList showHeader={true} />
+          <PortfolioAnalysisReportsList showHeader={false} />
         </TabsContent>
 
         <TabsContent value="import" className="space-y-4">
