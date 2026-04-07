@@ -85,7 +85,7 @@ export function GamePlanDetail({ plan, onBack }: Props) {
                 <div className="flex items-center gap-2 flex-wrap">
                   <h1 className="text-xl sm:text-2xl font-bold text-foreground">{plan.name}</h1>
                   {/* Status dropdown */}
-                  <Select value={plan.status} onValueChange={handleStatusChange}>
+                  <Select value={plan.status} onValueChange={(v) => handleStatusChange(v as 'planning' | 'active' | 'completed' | 'archived')}>
                     <SelectTrigger className="h-7 w-auto gap-1 border-none px-2 text-xs">
                       <Badge variant={cfg.variant}>{cfg.emoji} {cfg.label}</Badge>
                     </SelectTrigger>
