@@ -67,7 +67,7 @@ export function CreatePlanDialog({ open, onOpenChange, onCreate }: Props) {
           </div>
           <div>
             <Label>Initial Status</Label>
-            <Select value={status} onValueChange={setStatus}>
+            <Select value={status} onValueChange={(v) => setStatus(v as 'planning' | 'active' | 'completed' | 'archived')}>
               <SelectTrigger className="mt-1">
                 <SelectValue />
               </SelectTrigger>
