@@ -1411,7 +1411,9 @@ export default function ClientTracker() {
                       <TableHead>Client Name</TableHead>
                       <TableHead>Pipeline</TableHead>
                       <TableHead>Stage</TableHead>
+                      <TableHead>Status</TableHead>
                       <TableHead>Follow-up Date</TableHead>
+                      <TableHead>Last Updated</TableHead>
                       <TableHead>Borrowing Capacity</TableHead>
                       <TableHead>Rental Income</TableHead>
                       <TableHead>Equity Release</TableHead>
@@ -1425,7 +1427,7 @@ export default function ClientTracker() {
                       return (
                         <TableRow key={client.id}>
                           <TableCell className="font-medium">
-                            {client.primary_first_name} {client.primary_surname}
+                            {formatFullName(client.primary_first_name, client.primary_surname)}
                           </TableCell>
                           <TableCell>
                             {pipeline ? (
@@ -1443,8 +1445,26 @@ export default function ClientTracker() {
                             </Badge>
                           </TableCell>
                           <TableCell>
+                            {client.opportunity_status ? (
+                              <Badge variant="outline" className={cn(
+                                "text-xs",
+                                client.opportunity_status === 'won' && 'border-emerald-500/30 text-emerald-600',
+                                client.opportunity_status === 'lost' && 'border-red-500/30 text-red-500',
+                                client.opportunity_status === 'open' && 'border-blue-500/30 text-blue-600',
+                              )}>
+                                {client.opportunity_status.charAt(0).toUpperCase() + client.opportunity_status.slice(1)}
+                              </Badge>
+                            ) : '-'}
+                          </TableCell>
+                          <TableCell>
                             {client.follow_up_date 
                               ? format(new Date(client.follow_up_date), 'MMM d, yyyy')
+                              : '-'
+                            }
+                          </TableCell>
+                          <TableCell>
+                            {client.pipeline_updated_at
+                              ? format(new Date(client.pipeline_updated_at), 'MMM d, yyyy')
                               : '-'
                             }
                           </TableCell>
@@ -1702,6 +1722,32 @@ function KanbanCard({
         </p>
       )}
       
+      {/* Status & Timestamp metadata */}
+      {(client.opportunity_status || client.pipeline_updated_at) && (
+        <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+          {client.opportunity_status && (
+            <Badge 
+              variant="outline" 
+              className={cn(
+                "text-[10px] px-1.5 py-0",
+                client.opportunity_status === 'won' && 'border-emerald-500/30 text-emerald-600 bg-emerald-500/10',
+                client.opportunity_status === 'lost' && 'border-red-500/30 text-red-500 bg-red-500/10',
+                client.opportunity_status === 'open' && 'border-blue-500/30 text-blue-600 bg-blue-500/10',
+                client.opportunity_status === 'abandoned' && 'border-orange-500/30 text-orange-600 bg-orange-500/10',
+              )}
+            >
+              {client.opportunity_status.charAt(0).toUpperCase() + client.opportunity_status.slice(1)}
+            </Badge>
+          )}
+          {client.pipeline_updated_at && (
+            <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+              <Clock className="h-2.5 w-2.5" />
+              {format(new Date(client.pipeline_updated_at), 'MMM d')}
+            </span>
+          )}
+        </div>
+      )}
+
       <div className="flex items-center justify-between mt-2">
         {client.follow_up_date && (
           <p className={cn(
