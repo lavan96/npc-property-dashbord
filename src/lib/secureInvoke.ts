@@ -112,11 +112,9 @@ export async function invokeSecureFunction<T = any>(
 }
 
 /**
- * Check if the user has an active session
- * This is a lightweight check without full verification
+ * Check if the user has an active session token or access token stored.
+ * Lightweight client-side check — the server still validates.
  */
 export function hasActiveSession(): boolean {
-  // With HttpOnly cookies, we can't check directly from JS
-  // Return true to allow the request to be made - the server will validate
-  return true;
+  return Boolean(getSessionToken() || getAccessToken());
 }
