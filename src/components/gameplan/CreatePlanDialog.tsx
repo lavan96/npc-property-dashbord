@@ -17,7 +17,7 @@ const COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f97316', '#eab308'
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreate: (data: { name: string; description: string; icon: string; color: string; status?: string; start_date?: string | null; end_date?: string | null }) => Promise<void>;
+  onCreate: (data: { name: string; description: string; icon: string; color: string; status?: 'planning' | 'active' | 'completed' | 'archived'; start_date?: string | null; end_date?: string | null }) => Promise<void>;
 }
 
 export function CreatePlanDialog({ open, onOpenChange, onCreate }: Props) {

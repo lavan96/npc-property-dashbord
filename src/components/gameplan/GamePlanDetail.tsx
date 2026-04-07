@@ -51,7 +51,7 @@ export function GamePlanDetail({ plan, onBack }: Props) {
     setEditingPlan(false);
   };
 
-  const handleStatusChange = (newStatus: string) => {
+  const handleStatusChange = (newStatus: 'planning' | 'active' | 'completed' | 'archived') => {
     mutations.plans.update.mutate({ id: plan.id, status: newStatus });
   };
 
