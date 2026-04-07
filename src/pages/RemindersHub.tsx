@@ -16,6 +16,7 @@ import {
 import { cn } from '@/lib/utils';
 import {
   Bell,
+  Plus,
   CalendarDays,
   Clock,
   CheckCircle2,
