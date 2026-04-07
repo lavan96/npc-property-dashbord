@@ -120,12 +120,21 @@ export async function invokeSecureFunction<T = any>(
         hasAccessToken: Boolean(accessToken),
         hasSessionToken: Boolean(sessionToken),
       });
+
+      // Track auth failures globally
+      if (response.status === 401) {
+        markAuthFailure();
+      }
+
       return { 
         data: data as T, 
         error: { message: data.error || `HTTP ${response.status}` } 
       };
     }
     
+    // Successful response resets the global auth breaker
+    resetAuthFailures();
+
     return { data: data as T, error: null };
   } catch (error: any) {
     return { 
