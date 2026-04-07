@@ -1,8 +1,7 @@
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, LayoutGrid, List, CheckSquare, X } from 'lucide-react';
+import { Search, LayoutGrid, List, CheckSquare, X, FolderOpen, CalendarDays } from 'lucide-react';
 
 interface ChartFiltersProps {
   searchQuery: string;
@@ -13,8 +12,10 @@ interface ChartFiltersProps {
   onReportChange: (id: string) => void;
   sortBy: string;
   onSortChange: (sort: string) => void;
-  viewMode: 'grid' | 'list';
-  onViewModeChange: (mode: 'grid' | 'list') => void;
+  dateRange: string;
+  onDateRangeChange: (range: string) => void;
+  viewMode: 'grid' | 'list' | 'grouped';
+  onViewModeChange: (mode: 'grid' | 'list' | 'grouped') => void;
   selectionMode: boolean;
   onToggleSelectionMode: () => void;
   selectedCount: number;
@@ -27,6 +28,7 @@ export function ChartFilters({
   chartTypeFilter, onChartTypeChange,
   reportFilter, onReportChange,
   sortBy, onSortChange,
+  dateRange, onDateRangeChange,
   viewMode, onViewModeChange,
   selectionMode, onToggleSelectionMode,
   selectedCount,
@@ -35,12 +37,12 @@ export function ChartFilters({
 }: ChartFiltersProps) {
   return (
     <div className="space-y-3">
-      {/* Search + View controls */}
+      {/* Search + filters */}
       <div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search charts by title or report..."
+            placeholder="Search charts by title, report, or analysis..."
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             className="pl-9 h-9"
@@ -52,9 +54,9 @@ export function ChartFilters({
           )}
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Select value={chartTypeFilter} onValueChange={onChartTypeChange}>
-            <SelectTrigger className="w-[130px] h-9">
+            <SelectTrigger className="w-[120px] h-9">
               <SelectValue placeholder="Chart type" />
             </SelectTrigger>
             <SelectContent>
@@ -66,21 +68,37 @@ export function ChartFilters({
           </Select>
 
           <Select value={reportFilter} onValueChange={onReportChange}>
-            <SelectTrigger className="w-[160px] h-9">
+            <SelectTrigger className="w-[150px] h-9">
               <SelectValue placeholder="All reports" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All reports</SelectItem>
               {reports.map(r => (
                 <SelectItem key={r.id} value={r.id}>
-                  <span className="truncate max-w-[140px] block">{r.title}</span>
+                  <span className="truncate max-w-[130px] block">{r.title}</span>
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
 
-          <Select value={sortBy} onValueChange={onSortChange}>
+          {/* Date range filter (Enhancement #5) */}
+          <Select value={dateRange} onValueChange={onDateRangeChange}>
             <SelectTrigger className="w-[130px] h-9">
+              <CalendarDays className="h-3.5 w-3.5 mr-1.5 shrink-0" />
+              <SelectValue placeholder="Date range" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All time</SelectItem>
+              <SelectItem value="7d">Last 7 days</SelectItem>
+              <SelectItem value="30d">Last 30 days</SelectItem>
+              <SelectItem value="90d">Last 90 days</SelectItem>
+              <SelectItem value="6m">Last 6 months</SelectItem>
+              <SelectItem value="1y">Last year</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={sortBy} onValueChange={onSortChange}>
+            <SelectTrigger className="w-[120px] h-9">
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
             <SelectContent>
@@ -102,6 +120,7 @@ export function ChartFilters({
             size="sm"
             className="h-8 rounded-none px-2.5"
             onClick={() => onViewModeChange('grid')}
+            title="Grid view"
           >
             <LayoutGrid className="h-3.5 w-3.5" />
           </Button>
@@ -110,8 +129,18 @@ export function ChartFilters({
             size="sm"
             className="h-8 rounded-none px-2.5"
             onClick={() => onViewModeChange('list')}
+            title="List view"
           >
             <List className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant={viewMode === 'grouped' ? 'secondary' : 'ghost'}
+            size="sm"
+            className="h-8 rounded-none px-2.5"
+            onClick={() => onViewModeChange('grouped')}
+            title="Group by report"
+          >
+            <FolderOpen className="h-3.5 w-3.5" />
           </Button>
         </div>
 

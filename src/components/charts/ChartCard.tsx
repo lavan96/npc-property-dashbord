@@ -1,13 +1,15 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Download, Maximize2, FileText, Calendar } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Download, Maximize2, FileText, Calendar, ExternalLink, Trash2, Sparkles, ChevronDown } from 'lucide-react';
 import { format } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 
-interface ChartData {
+export interface ChartData {
   id: string;
   chart_type: string;
   title: string;
@@ -15,6 +17,7 @@ interface ChartData {
   created_at: string;
   report_id: string;
   chart_config?: any;
+  analysis_text?: string | null;
   generated_reports: {
     id: string;
     title: string;
@@ -28,6 +31,7 @@ interface ChartCardProps {
   onToggleSelect: (id: string) => void;
   onExpand: (chart: ChartData) => void;
   onExport: (chart: ChartData) => void;
+  onDelete?: (chart: ChartData) => void;
   selectionMode: boolean;
 }
 
@@ -89,8 +93,10 @@ function renderChartImage(chart: ChartData) {
   );
 }
 
-export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExport, selectionMode }: ChartCardProps) {
+export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExport, onDelete, selectionMode }: ChartCardProps) {
   const cfg = CHART_TYPE_CONFIG[chart.chart_type] || { color: 'bg-muted text-muted-foreground border-border', emoji: '📊', label: chart.chart_type };
+  const navigate = useNavigate();
+  const [showAnalysis, setShowAnalysis] = useState(false);
 
   return (
     <Card className={`group overflow-hidden transition-all duration-200 hover:shadow-lg hover:border-primary/30 ${isSelected ? 'ring-2 ring-primary border-primary/50' : ''}`}>
@@ -120,12 +126,16 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <span className="flex items-center gap-1 truncate max-w-[160px]">
+                  <button
+                    className="flex items-center gap-1 truncate max-w-[160px] hover:text-primary transition-colors"
+                    onClick={() => navigate(`/report/${chart.report_id}`)}
+                  >
                     <FileText className="h-3 w-3 shrink-0" />
                     <span className="truncate">{chart.generated_reports.title}</span>
-                  </span>
+                    <ExternalLink className="h-2.5 w-2.5 shrink-0 opacity-0 group-hover:opacity-100" />
+                  </button>
                 </TooltipTrigger>
-                <TooltipContent><p>{chart.generated_reports.title}</p></TooltipContent>
+                <TooltipContent><p>View report: {chart.generated_reports.title}</p></TooltipContent>
               </Tooltip>
             </TooltipProvider>
           )}
@@ -136,7 +146,7 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
         </div>
       </CardHeader>
 
-      <CardContent className="pt-0 pb-3 px-3">
+      <CardContent className="pt-0 pb-3 px-3 space-y-2">
         <div
           className="relative bg-background border rounded-lg overflow-hidden cursor-pointer group/img"
           onClick={() => onExpand(chart)}
@@ -151,7 +161,32 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+        {/* Analysis insight */}
+        {chart.analysis_text && (
+          <Collapsible open={showAnalysis} onOpenChange={setShowAnalysis}>
+            <CollapsibleTrigger asChild>
+              <button className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors w-full text-left">
+                <Sparkles className="h-3 w-3 text-amber-500 shrink-0" />
+                <span className="truncate">{showAnalysis ? 'Hide AI Analysis' : 'View AI Analysis'}</span>
+                <ChevronDown className={`h-3 w-3 ml-auto transition-transform ${showAnalysis ? 'rotate-180' : ''}`} />
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="mt-1.5 p-2 bg-amber-500/5 border border-amber-500/15 rounded-md">
+                <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-4">{chart.analysis_text}</p>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+
+        <div className="flex items-center justify-between gap-1 opacity-0 group-hover:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+          <div>
+            {onDelete && (
+              <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-destructive hover:text-destructive" onClick={() => onDelete(chart)}>
+                <Trash2 className="h-3 w-3" /> Delete
+              </Button>
+            )}
+          </div>
           <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => onExport(chart)}>
             <Download className="h-3 w-3" /> Export
           </Button>
@@ -161,5 +196,4 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
   );
 }
 
-export { renderChartImage };
-export type { ChartData };
+export { renderChartImage, CHART_TYPE_CONFIG };
