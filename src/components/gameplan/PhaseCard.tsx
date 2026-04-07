@@ -10,12 +10,20 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { ChevronDown, Plus, Trash2, Target, StickyNote, CheckCircle2, CircleDot, AlertCircle, Clock, Pin, Pencil, X, Calendar as CalendarIcon, GripVertical } from 'lucide-react';
+import { ChevronDown, Plus, Trash2, Target, StickyNote, CheckCircle2, CircleDot, AlertCircle, Clock, Pin, Pencil, X, Calendar as CalendarIcon, Copy, ChevronUp, ChevronDown as ChevronDownIcon, ListChecks } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { RichTextEditor } from './RichTextEditor';
+import { toast } from 'sonner';
 
 const phaseStatusMap: Record<string, { label: string; icon: typeof CircleDot; color: string }> = {
+  not_started: { label: 'Not Started', icon: Clock, color: 'text-muted-foreground' },
+  in_progress: { label: 'In Progress', icon: CircleDot, color: 'text-primary' },
+  completed: { label: 'Completed', icon: CheckCircle2, color: 'text-green-500' },
+  blocked: { label: 'Blocked', icon: AlertCircle, color: 'text-destructive' },
+};
+
+const milestoneStatusMap: Record<string, { label: string; icon: typeof CircleDot; color: string }> = {
   not_started: { label: 'Not Started', icon: Clock, color: 'text-muted-foreground' },
   in_progress: { label: 'In Progress', icon: CircleDot, color: 'text-primary' },
   completed: { label: 'Completed', icon: CheckCircle2, color: 'text-green-500' },
@@ -30,6 +38,8 @@ const noteTypeColors: Record<string, string> = {
 };
 
 const PHASE_ICONS = ['📌', '🔬', '🛠️', '🚀', '📦', '🎯', '📣', '🧪', '📋', '⚙️', '💡', '🏆', '🔥', '📈', '🗺️'];
+const PHASE_COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#3b82f6', '#64748b'];
+const KPI_ICONS = ['📊', '💰', '📈', '🎯', '⚡', '🏆', '📉', '💎', '🔥', '⭐', '🚀', '💵'];
 
 interface Props {
   phase: GamePlanPhase;
@@ -39,9 +49,12 @@ interface Props {
   actions: GamePlanAction[];
   mutations: any;
   index: number;
+  totalPhases: number;
+  onReorder?: (phaseId: string, direction: 'up' | 'down') => void;
+  onClone?: (phase: GamePlanPhase, milestones: GamePlanMilestone[], kpis: GamePlanKPI[], notes: GamePlanNote[], actions: GamePlanAction[]) => void;
 }
 
-export function PhaseCard({ phase, milestones, kpis, notes, actions, mutations, index }: Props) {
+export function PhaseCard({ phase, milestones, kpis, notes, actions, mutations, index, totalPhases, onReorder, onClone }: Props) {
   const [isOpen, setIsOpen] = useState(true);
   const [newMilestone, setNewMilestone] = useState('');
   const [newMilestoneOwner, setNewMilestoneOwner] = useState('');
@@ -57,6 +70,9 @@ export function PhaseCard({ phase, milestones, kpis, notes, actions, mutations, 
   const [editName, setEditName] = useState(phase.name);
   const [editDescription, setEditDescription] = useState(phase.description || '');
   const [editIcon, setEditIcon] = useState(phase.icon);
+  const [editColor, setEditColor] = useState(phase.color);
+  const [editStartDate, setEditStartDate] = useState<Date | undefined>(phase.start_date ? new Date(phase.start_date) : undefined);
+  const [editEndDate, setEditEndDate] = useState<Date | undefined>(phase.end_date ? new Date(phase.end_date) : undefined);
 
   const statusCfg = phaseStatusMap[phase.status] || phaseStatusMap.not_started;
   const StatusIcon = statusCfg.icon;
@@ -74,6 +90,9 @@ export function PhaseCard({ phase, milestones, kpis, notes, actions, mutations, 
       name: editName.trim(),
       description: editDescription.trim() || null,
       icon: editIcon,
+      color: editColor,
+      start_date: editStartDate ? editStartDate.toISOString() : null,
+      end_date: editEndDate ? editEndDate.toISOString() : null,
     });
     setEditingPhase(false);
   };
@@ -82,6 +101,9 @@ export function PhaseCard({ phase, milestones, kpis, notes, actions, mutations, 
     setEditName(phase.name);
     setEditDescription(phase.description || '');
     setEditIcon(phase.icon);
+    setEditColor(phase.color);
+    setEditStartDate(phase.start_date ? new Date(phase.start_date) : undefined);
+    setEditEndDate(phase.end_date ? new Date(phase.end_date) : undefined);
     setEditingPhase(false);
   };
 
@@ -133,6 +155,24 @@ export function PhaseCard({ phase, milestones, kpis, notes, actions, mutations, 
     setNewActionDue(undefined);
   };
 
+  const bulkCompleteMilestones = () => {
+    const pending = milestones.filter(m => m.status !== 'completed');
+    if (!pending.length) return;
+    pending.forEach(m => {
+      mutations.milestones.update.mutate({ id: m.id, status: 'completed', completed_at: new Date().toISOString() });
+    });
+    toast.success(`Marked ${pending.length} milestones complete`);
+  };
+
+  const bulkCompleteActions = () => {
+    const pending = actions.filter(a => !a.is_done);
+    if (!pending.length) return;
+    pending.forEach(a => {
+      mutations.actions.update.mutate({ id: a.id, is_done: true, completed_at: new Date().toISOString() });
+    });
+    toast.success(`Marked ${pending.length} actions complete`);
+  };
+
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <Card
@@ -145,6 +185,19 @@ export function PhaseCard({ phase, milestones, kpis, notes, actions, mutations, 
         <CollapsibleTrigger className="w-full">
           <div className="flex items-center justify-between p-4 hover:bg-muted/30 transition-colors">
             <div className="flex items-center gap-3 min-w-0">
+              {/* Reorder buttons */}
+              {onReorder && (
+                <div className="flex flex-col gap-0.5 shrink-0" onClick={e => e.stopPropagation()}>
+                  <Button variant="ghost" size="icon" className="h-4 w-4 p-0" disabled={index === 0}
+                    onClick={() => onReorder(phase.id, 'up')}>
+                    <ChevronUp className="h-3 w-3 text-muted-foreground" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-4 w-4 p-0" disabled={index === totalPhases - 1}
+                    onClick={() => onReorder(phase.id, 'down')}>
+                    <ChevronDownIcon className="h-3 w-3 text-muted-foreground" />
+                  </Button>
+                </div>
+              )}
               <span className="text-xl shrink-0">{phase.icon}</span>
               <div className="text-left min-w-0">
                 <h3 className="font-semibold text-foreground truncate">{phase.name}</h3>
@@ -174,7 +227,6 @@ export function PhaseCard({ phase, milestones, kpis, notes, actions, mutations, 
                   </SelectContent>
                 </Select>
               </div>
-              {/* Progress summary chips */}
               {milestones.length > 0 && (
                 <div className="hidden sm:flex items-center gap-2">
                   <div className="w-16 h-1.5 rounded-full bg-muted overflow-hidden">
@@ -183,7 +235,6 @@ export function PhaseCard({ phase, milestones, kpis, notes, actions, mutations, 
                   <span className="text-[10px] text-muted-foreground font-medium">{phaseProgress}%</span>
                 </div>
               )}
-              {/* Quick counts */}
               <div className="hidden sm:flex items-center gap-1.5 text-[10px] text-muted-foreground">
                 {milestones.length > 0 && <span>{completedMilestones}/{milestones.length} 🏁</span>}
                 {actions.length > 0 && <span>{completedActions}/{actions.length} ✓</span>}
@@ -198,8 +249,9 @@ export function PhaseCard({ phase, milestones, kpis, notes, actions, mutations, 
             {/* Phase edit section */}
             {editingPhase ? (
               <div className="p-3 rounded-lg border border-primary/30 bg-primary/5 space-y-3">
-                <div className="flex items-center gap-2">
-                  <div className="flex flex-wrap gap-1.5">
+                <div>
+                  <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Icon</span>
+                  <div className="flex flex-wrap gap-1.5 mt-1">
                     {PHASE_ICONS.map(i => (
                       <button key={i} onClick={() => setEditIcon(i)}
                         className={cn('text-lg w-7 h-7 rounded-md flex items-center justify-center transition-all',
@@ -209,23 +261,76 @@ export function PhaseCard({ phase, milestones, kpis, notes, actions, mutations, 
                     ))}
                   </div>
                 </div>
+                <div>
+                  <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Color</span>
+                  <div className="flex flex-wrap gap-1.5 mt-1">
+                    {PHASE_COLORS.map(c => (
+                      <button key={c} onClick={() => setEditColor(c)}
+                        className={cn('w-6 h-6 rounded-full transition-all',
+                          editColor === c ? 'ring-2 ring-primary ring-offset-2 ring-offset-background scale-110' : 'hover:scale-105')}
+                        style={{ backgroundColor: c }} />
+                    ))}
+                  </div>
+                </div>
                 <Input value={editName} onChange={e => setEditName(e.target.value)} placeholder="Phase name" className="h-9 font-medium" />
                 <Textarea value={editDescription} onChange={e => setEditDescription(e.target.value)} placeholder="Phase description..." rows={2} className="text-sm" />
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Start Date</span>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className={cn('w-full mt-1 justify-start text-left font-normal h-8 text-xs', !editStartDate && 'text-muted-foreground')}>
+                          <CalendarIcon className="mr-1.5 h-3 w-3" />
+                          {editStartDate ? format(editStartDate, 'MMM d, yyyy') : 'Pick date'}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar mode="single" selected={editStartDate} onSelect={setEditStartDate} initialFocus className={cn("p-3 pointer-events-auto")} />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">End Date</span>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className={cn('w-full mt-1 justify-start text-left font-normal h-8 text-xs', !editEndDate && 'text-muted-foreground')}>
+                          <CalendarIcon className="mr-1.5 h-3 w-3" />
+                          {editEndDate ? format(editEndDate, 'MMM d, yyyy') : 'Pick date'}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar mode="single" selected={editEndDate} onSelect={setEditEndDate}
+                          disabled={d => editStartDate ? d < editStartDate : false} initialFocus className={cn("p-3 pointer-events-auto")} />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
                 <div className="flex gap-2">
                   <Button size="sm" onClick={savePhaseEdit} disabled={!editName.trim()}>Save Changes</Button>
                   <Button size="sm" variant="ghost" onClick={cancelPhaseEdit}>Cancel</Button>
                 </div>
               </div>
             ) : (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Button variant="ghost" size="sm" className="text-xs text-muted-foreground gap-1.5 h-7" onClick={() => setEditingPhase(true)}>
-                  <Pencil className="h-3 w-3" /> Edit Phase Details
+                  <Pencil className="h-3 w-3" /> Edit Phase
                 </Button>
+                {onClone && (
+                  <Button variant="ghost" size="sm" className="text-xs text-muted-foreground gap-1.5 h-7"
+                    onClick={() => onClone(phase, milestones, kpis, notes, actions)}>
+                    <Copy className="h-3 w-3" /> Clone Phase
+                  </Button>
+                )}
               </div>
             )}
 
             {/* ── Milestones ── */}
-            <Section title="Milestones" icon={<Target className="h-3.5 w-3.5" />} count={milestones.length}>
+            <Section title="Milestones" icon={<Target className="h-3.5 w-3.5" />} count={milestones.length}
+              bulkAction={milestones.length > 0 && completedMilestones < milestones.length ? (
+                <Button variant="ghost" size="sm" className="h-5 text-[10px] text-muted-foreground gap-1 px-1.5" onClick={bulkCompleteMilestones}>
+                  <ListChecks className="h-3 w-3" /> Mark All Done
+                </Button>
+              ) : undefined}>
               {milestones.map(m => (
                 <MilestoneRow key={m.id} milestone={m} mutations={mutations} />
               ))}
@@ -268,7 +373,25 @@ export function PhaseCard({ phase, milestones, kpis, notes, actions, mutations, 
               ))}
               {showAddSection === 'kpi' ? (
                 <div className="p-3 rounded-lg border border-border/50 bg-muted/30 space-y-2">
-                  <Input value={newKPI.name} onChange={e => setNewKPI(p => ({ ...p, name: e.target.value }))} placeholder="Metric name (e.g. Revenue)" className="h-8 text-sm" autoFocus />
+                  <div className="flex gap-2 items-center">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-8 w-10 text-lg p-0">{newKPI.icon}</Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-2" align="start">
+                        <div className="grid grid-cols-6 gap-1">
+                          {KPI_ICONS.map(ic => (
+                            <button key={ic} onClick={() => setNewKPI(p => ({ ...p, icon: ic }))}
+                              className={cn('text-lg w-8 h-8 rounded-md flex items-center justify-center transition-all',
+                                newKPI.icon === ic ? 'bg-primary/20 ring-2 ring-primary' : 'hover:bg-muted')}>
+                              {ic}
+                            </button>
+                          ))}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                    <Input value={newKPI.name} onChange={e => setNewKPI(p => ({ ...p, name: e.target.value }))} placeholder="Metric name (e.g. Revenue)" className="h-8 text-sm flex-1" autoFocus />
+                  </div>
                   <div className="flex gap-2">
                     <Input value={newKPI.target} onChange={e => setNewKPI(p => ({ ...p, target: e.target.value }))} placeholder="Target" type="number" className="h-8 text-sm w-28" />
                     <Input value={newKPI.unit} onChange={e => setNewKPI(p => ({ ...p, unit: e.target.value }))} placeholder="Unit (%, $, etc)" className="h-8 text-sm w-28" />
@@ -286,7 +409,12 @@ export function PhaseCard({ phase, milestones, kpis, notes, actions, mutations, 
             </Section>
 
             {/* ── Action Items ── */}
-            <Section title="Action Items" icon={<CheckCircle2 className="h-3.5 w-3.5" />} count={actions.length}>
+            <Section title="Action Items" icon={<CheckCircle2 className="h-3.5 w-3.5" />} count={actions.length}
+              bulkAction={actions.length > 0 && completedActions < actions.length ? (
+                <Button variant="ghost" size="sm" className="h-5 text-[10px] text-muted-foreground gap-1 px-1.5" onClick={bulkCompleteActions}>
+                  <ListChecks className="h-3 w-3" /> Mark All Done
+                </Button>
+              ) : undefined}>
               {actions.map(a => (
                 <ActionRow key={a.id} action={a} mutations={mutations} />
               ))}
@@ -324,7 +452,7 @@ export function PhaseCard({ phase, milestones, kpis, notes, actions, mutations, 
 
             {/* ── Notes ── */}
             <Section title="Strategy Notes" icon={<StickyNote className="h-3.5 w-3.5" />} count={notes.length}>
-              {notes.sort((a, b) => (b.is_pinned ? 1 : 0) - (a.is_pinned ? 1 : 0)).map(n => (
+              {[...notes].sort((a, b) => (b.is_pinned ? 1 : 0) - (a.is_pinned ? 1 : 0)).map(n => (
                 <NoteCard key={n.id} note={n} mutations={mutations} noteTypeColors={noteTypeColors} />
               ))}
               {showAddSection === 'note' ? (
@@ -372,15 +500,26 @@ export function PhaseCard({ phase, milestones, kpis, notes, actions, mutations, 
   );
 }
 
-/* ── Milestone Row with inline editing ── */
+/* ── Milestone Row with 4-state status + inline editing ── */
 function MilestoneRow({ milestone: m, mutations }: { milestone: GamePlanMilestone; mutations: any }) {
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(m.title);
   const [editOwner, setEditOwner] = useState(m.owner || '');
 
+  const statusCfg = milestoneStatusMap[m.status] || milestoneStatusMap.not_started;
+  const StatusIcon = statusCfg.icon;
+
   const save = () => {
     mutations.milestones.update.mutate({ id: m.id, title: editTitle.trim(), owner: editOwner.trim() || null });
     setEditing(false);
+  };
+
+  const handleStatusChange = (newStatus: string) => {
+    mutations.milestones.update.mutate({
+      id: m.id,
+      status: newStatus,
+      completed_at: newStatus === 'completed' ? new Date().toISOString() : null,
+    });
   };
 
   if (editing) {
@@ -401,14 +540,29 @@ function MilestoneRow({ milestone: m, mutations }: { milestone: GamePlanMileston
 
   return (
     <div className="flex items-center gap-2 group">
-      <Checkbox
-        checked={m.status === 'completed'}
-        onCheckedChange={(checked) => mutations.milestones.update.mutate({
-          id: m.id,
-          status: checked ? 'completed' : 'not_started',
-          completed_at: checked ? new Date().toISOString() : null,
-        })}
-      />
+      {/* 4-state status selector */}
+      <Popover>
+        <PopoverTrigger asChild>
+          <button className="shrink-0 p-0.5 rounded hover:bg-muted transition-colors" title={statusCfg.label}>
+            <StatusIcon className={cn('h-4 w-4', statusCfg.color)} />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-1.5" align="start">
+          <div className="flex flex-col gap-0.5">
+            {Object.entries(milestoneStatusMap).map(([key, cfg]) => {
+              const Icon = cfg.icon;
+              return (
+                <button key={key} onClick={() => handleStatusChange(key)}
+                  className={cn('flex items-center gap-2 px-2 py-1.5 rounded text-xs hover:bg-muted transition-colors text-left',
+                    m.status === key && 'bg-muted font-medium')}>
+                  <Icon className={cn('h-3.5 w-3.5', cfg.color)} />
+                  {cfg.label}
+                </button>
+              );
+            })}
+          </div>
+        </PopoverContent>
+      </Popover>
       <span className={cn('text-sm flex-1 cursor-pointer', m.status === 'completed' && 'line-through text-muted-foreground')}
         onDoubleClick={() => setEditing(true)}>
         {m.title}
@@ -431,10 +585,11 @@ function MilestoneRow({ milestone: m, mutations }: { milestone: GamePlanMileston
   );
 }
 
-/* ── KPI Row with inline value update ── */
+/* ── KPI Row with inline value update + icon editing ── */
 function KPIRow({ kpi: k, mutations }: { kpi: GamePlanKPI; mutations: any }) {
   const [editingValue, setEditingValue] = useState(false);
   const [currentVal, setCurrentVal] = useState(String(k.current_value));
+  const [editingIcon, setEditingIcon] = useState(false);
   const pct = k.target_value > 0 ? Math.min(100, Math.round((k.current_value / k.target_value) * 100)) : 0;
 
   const saveValue = () => {
@@ -448,7 +603,25 @@ function KPIRow({ kpi: k, mutations }: { kpi: GamePlanKPI; mutations: any }) {
   return (
     <div className="group">
       <div className="flex items-center justify-between mb-1">
-        <span className="text-sm font-medium text-foreground">{k.icon} {k.metric_name}</span>
+        <div className="flex items-center gap-1">
+          <Popover open={editingIcon} onOpenChange={setEditingIcon}>
+            <PopoverTrigger asChild>
+              <button className="text-sm hover:bg-muted rounded p-0.5 transition-colors" title="Change icon">{k.icon}</button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-2" align="start">
+              <div className="grid grid-cols-6 gap-1">
+                {KPI_ICONS.map(ic => (
+                  <button key={ic} onClick={() => { mutations.kpis.update.mutate({ id: k.id, icon: ic }); setEditingIcon(false); }}
+                    className={cn('text-lg w-7 h-7 rounded-md flex items-center justify-center transition-all',
+                      k.icon === ic ? 'bg-primary/20 ring-2 ring-primary' : 'hover:bg-muted')}>
+                    {ic}
+                  </button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+          <span className="text-sm font-medium text-foreground">{k.metric_name}</span>
+        </div>
         <div className="flex items-center gap-2">
           {editingValue ? (
             <div className="flex items-center gap-1">
@@ -473,10 +646,10 @@ function KPIRow({ kpi: k, mutations }: { kpi: GamePlanKPI; mutations: any }) {
       </div>
       <div className="relative h-2 rounded-full bg-muted overflow-hidden">
         <div className="absolute inset-y-0 left-0 rounded-full transition-all duration-700"
-          style={{ width: `${pct}%`, background: pct >= 100 ? '#22c55e' : pct >= 60 ? '#3b82f6' : '#f97316' }} />
+          style={{ width: `${pct}%`, background: pct >= 100 ? 'hsl(var(--primary))' : pct >= 60 ? 'hsl(var(--primary))' : 'hsl(var(--destructive))' }} />
       </div>
       <div className="text-right mt-0.5">
-        <span className="text-[10px] font-bold" style={{ color: pct >= 100 ? '#22c55e' : pct >= 60 ? '#3b82f6' : '#f97316' }}>{pct}%</span>
+        <span className={cn('text-[10px] font-bold', pct >= 100 ? 'text-green-500' : pct >= 60 ? 'text-primary' : 'text-destructive')}>{pct}%</span>
       </div>
     </div>
   );
@@ -541,14 +714,15 @@ function ActionRow({ action: a, mutations }: { action: GamePlanAction; mutations
   );
 }
 
-/* ── Section wrapper ── */
-function Section({ title, icon, count, children }: { title: string; icon: React.ReactNode; count: number; children: React.ReactNode }) {
+/* ── Section wrapper with optional bulk action ── */
+function Section({ title, icon, count, children, bulkAction }: { title: string; icon: React.ReactNode; count: number; children: React.ReactNode; bulkAction?: React.ReactNode }) {
   return (
     <div>
       <div className="flex items-center gap-1.5 mb-2">
         {icon}
         <span className="text-xs font-semibold text-foreground uppercase tracking-wider">{title}</span>
         <Badge variant="secondary" className="text-[9px] h-4 px-1.5">{count}</Badge>
+        {bulkAction && <div className="ml-auto">{bulkAction}</div>}
       </div>
       <div className="space-y-2 pl-0.5">
         {children}
