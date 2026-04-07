@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
-import { invokeSecureFunction, hasActiveSession } from '@/lib/secureInvoke';
+import { invokeSecureFunction, hasActiveSession, isAuthExhausted } from '@/lib/secureInvoke';
+import { useAuth } from '@/hooks/useAuth';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Loader2, AlertCircle, PlayCircle, X, Zap, Clock, RefreshCw, CheckCircle2, ChevronUp, ChevronDown } from 'lucide-react';
