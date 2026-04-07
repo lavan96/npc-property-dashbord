@@ -244,7 +244,16 @@ function ReportGenerationProgressInner() {
     saveRetryState();
   }, [cancelScheduledRetry, saveRetryState]);
 
+  // Track consecutive auth failures to implement backoff
+  const authFailCountRef = useRef(0);
+  const AUTH_FAIL_THRESHOLD = 3; // Stop polling after 3 consecutive 401s
+
   useEffect(() => {
+    // Reset auth fail count when session state changes
+    if (hasActiveSession()) {
+      authFailCountRef.current = 0;
+    }
+
     // Initial fetch
     fetchActiveReports();
 
@@ -259,6 +268,16 @@ function ReportGenerationProgressInner() {
   }, [cancelScheduledRetry]);
 
   const fetchActiveReports = async () => {
+    // Guard: don't poll if no session token is available
+    if (!hasActiveSession()) {
+      return;
+    }
+
+    // Guard: stop polling if we've hit too many consecutive auth failures
+    if (authFailCountRef.current >= AUTH_FAIL_THRESHOLD) {
+      return;
+    }
+
     const { data, error } = await invokeSecureFunction('get-investment-reports', {
       listMode: true,
       listOptions: {
@@ -271,9 +290,20 @@ function ReportGenerationProgressInner() {
     });
 
     if (error) {
+      // Check if it's an auth error (401) and increment counter
+      const isAuthError = error.message === 'Authentication required' || error.message?.includes('401');
+      if (isAuthError) {
+        authFailCountRef.current += 1;
+        if (authFailCountRef.current >= AUTH_FAIL_THRESHOLD) {
+          console.warn('[ReportGenerationProgress] Stopped polling after repeated auth failures. User may need to re-login.');
+        }
+      }
       console.error('Error fetching active reports:', error);
       return;
     }
+
+    // Reset auth fail counter on success
+    authFailCountRef.current = 0;
 
     const records = data?.reports || [];
     
