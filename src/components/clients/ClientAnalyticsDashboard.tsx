@@ -214,7 +214,7 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <RechartsTooltip />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -242,7 +242,7 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
                 <BarChart data={analytics.portfolioDistribution}>
                   <XAxis dataKey="name" tick={{ fontSize: 10 }} />
                   <YAxis tick={{ fontSize: 10 }} />
-                  <Tooltip />
+                  <RechartsTooltip />
                   <Bar dataKey="value" fill="#3B82F6" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -272,7 +272,7 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <RechartsTooltip />
                 </PieChart>
               </ResponsiveContainer>
             </div>
