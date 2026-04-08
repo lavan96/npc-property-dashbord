@@ -1204,6 +1204,8 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
       liabsByType[type].push(liab);
     });
     
+    const totalCreditLimit = liabilities.reduce((sum, l) => sum + (l.credit_limit || 0), 0);
+    
     return `
       <div class="liabilities-summary">
         <div class="liab-summary-item">
@@ -1215,7 +1217,24 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
           <span class="liab-value">${formatCurrency(totalRepayments)}</span>
         </div>
       </div>
-      ${Object.entries(liabsByType).map(([type, liabList]) => `
+      ${totalCreditLimit > 0 ? `
+        <div class="liabilities-summary" style="margin-top: 6px; background: #f0f4f8; border-left: 3px solid ${NPC_COLORS.darkBlue};">
+          <div class="liab-summary-item">
+            <span class="liab-label">TOTAL CREDIT LIMIT</span>
+            <span class="liab-value" style="color: ${NPC_COLORS.darkBlue};">${formatCurrency(totalCreditLimit)}</span>
+          </div>
+          <div class="liab-summary-item">
+            <span class="liab-label">AVAILABLE CREDIT</span>
+            <span class="liab-value" style="color: #2d8a4e;">${formatCurrency(totalCreditLimit - totalLiabilities > 0 ? totalCreditLimit - totalLiabilities : 0)}</span>
+          </div>
+        </div>
+      ` : ''}
+      ${Object.entries(liabsByType).map(([type, liabList]) => {
+        const isCreditCard = type === 'credit_card';
+        const hasAnyLimit = liabList.some(l => (l.credit_limit || 0) > 0);
+        const hasAnyRate = liabList.some(l => (l.interest_rate || 0) > 0);
+        
+        return `
         <div class="liability-category">
           <div class="liability-category-header">
             <span class="category-icon">${getLiabilityEmoji(type)}</span>
@@ -1225,22 +1244,30 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
             <thead>
               <tr>
                 <th>PROVIDER</th>
+                ${(isCreditCard || hasAnyLimit) ? '<th class="text-right">LIMIT</th>' : ''}
                 <th class="text-right">BALANCE</th>
+                ${hasAnyRate ? '<th class="text-right">RATE</th>' : ''}
                 <th class="text-right">REPAYMENT</th>
               </tr>
             </thead>
             <tbody>
-              ${liabList.map(liab => `
+              ${liabList.map(liab => {
+                const utilisation = (isCreditCard && (liab.credit_limit || 0) > 0) 
+                  ? Math.round(((liab.current_balance || 0) / liab.credit_limit!) * 100) 
+                  : null;
+                return `
                 <tr>
                   <td class="value">${liab.provider_name || '-'}</td>
-                  <td class="value currency">${formatCurrency(liab.current_balance)}</td>
+                  ${(isCreditCard || hasAnyLimit) ? `<td class="value currency">${(liab.credit_limit || 0) > 0 ? formatCurrency(liab.credit_limit) : '-'}</td>` : ''}
+                  <td class="value currency" style="${utilisation !== null && utilisation > 80 ? 'color: #dc2626; font-weight: 600;' : ''}">${formatCurrency(liab.current_balance)}${utilisation !== null ? ` <span style="font-size: 7px; color: #666;">(${utilisation}%)</span>` : ''}</td>
+                  ${hasAnyRate ? `<td class="value currency">${(liab.interest_rate || 0) > 0 ? liab.interest_rate + '%' : '-'}</td>` : ''}
                   <td class="value currency">${formatCurrency(liab.monthly_repayment)}/mo</td>
                 </tr>
-              `).join('')}
+              `;}).join('')}
             </tbody>
           </table>
         </div>
-      `).join('')}
+      `;}).join('')}
     `;
   };
 
