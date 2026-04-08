@@ -229,6 +229,7 @@ NPC Team`
       income: true,
       assets: true,
       liabilities: true,
+      expenses: true,
       additionalContacts: true,
       deals: true,
       attributions: true,
@@ -243,6 +244,7 @@ NPC Team`
   const income = secureData?.income || [];
   const assets = secureData?.assets || [];
   const liabilities = secureData?.liabilities || [];
+  const expenses = secureData?.expenses || [];
   const additionalContacts = secureData?.additionalContacts || [];
   const attributions = secureData?.attributions || [];
 
@@ -294,6 +296,7 @@ NPC Team`
             income: income as any[],
             assets: assets as any[],
             liabilities: liabilities as any[],
+            expenses: expenses as any[],
           }}
           clientName={`${client.primary_first_name} ${client.primary_surname}`}
           onEmailClick={handlePdfEmailClick}
