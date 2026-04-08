@@ -2051,13 +2051,13 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
           <div class="summary-box">
             <div class="summary-title">📊 Monthly Cashflow Analysis</div>
             <table class="data-table alt-rows compact">
-              <tr><td class="label">Total Monthly Income</td><td class="value currency income-value">${formatCurrency(client.total_monthly_income || 0)}</td></tr>
-              <tr><td class="label">Total Monthly Expenditure</td><td class="value currency">${formatCurrency(client.total_monthly_expenditure || 0)}</td></tr>
-              <tr class="cashflow-row ${(client.net_monthly_cash_flow || totalNetCF || 0) >= 0 ? 'cf-positive-row' : 'cf-negative-row'}">
+              <tr><td class="label">Total Monthly Income</td><td class="value currency income-value">${formatCurrency(Math.round(displayMonthlyIncome))}</td></tr>
+              <tr><td class="label">Total Monthly Expenditure</td><td class="value currency">${formatCurrency(Math.round(displayMonthlyExpenditure))}</td></tr>
+              <tr class="cashflow-row ${displayNetCashFlow >= 0 ? 'cf-positive-row' : 'cf-negative-row'}">
                 <td class="label"><strong>Net Monthly Cash Flow</strong></td>
                 <td class="value currency">
-                  ${getCashflowIndicator(client.net_monthly_cash_flow || totalNetCF)}
-                  <strong>${formatCurrency(client.net_monthly_cash_flow || totalNetCF)}</strong>
+                  ${getCashflowIndicator(displayNetCashFlow)}
+                  <strong>${formatCurrency(Math.round(displayNetCashFlow))}</strong>
                 </td>
               </tr>
             </table>
