@@ -1037,19 +1037,44 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
         </div>
       `;
     }
-    return empList.map((emp, idx) => `
+    return empList.map((emp, idx) => {
+      // Calculate tenure
+      let tenureStr = '-';
+      if (emp.start_date) {
+        const start = new Date(emp.start_date);
+        const now = new Date();
+        const totalMonths = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
+        const years = Math.floor(totalMonths / 12);
+        const months = totalMonths % 12;
+        tenureStr = years > 0 ? `${years}yr${years > 1 ? 's' : ''} ${months}mo` : `${months} month${months !== 1 ? 's' : ''}`;
+      }
+      
+      // Calculate total annual from employment record
+      const annualSalary = emp.gross_annual_salary || (emp.salary_amount ? (() => {
+        const freq = emp.salary_frequency || 'annually';
+        if (freq === 'weekly') return (emp.salary_amount || 0) * 52;
+        if (freq === 'fortnightly') return (emp.salary_amount || 0) * 26;
+        if (freq === 'monthly') return (emp.salary_amount || 0) * 12;
+        return emp.salary_amount || 0;
+      })() : 0);
+      
+      return `
       <div class="info-card ${idx > 0 ? 'mt-2' : ''}">
         <div class="info-card-header">
           <span class="employer-icon">🏢</span>
           <span class="employer-name">${emp.employer_name || 'Unknown Employer'}</span>
+          ${emp.is_current !== false ? '<span class="emp-type-badge" style="background: #16a34a; color: white; font-size: 7px; padding: 1px 6px; border-radius: 3px; margin-left: 6px;">CURRENT</span>' : '<span class="emp-type-badge" style="background: #94a3b8; color: white; font-size: 7px; padding: 1px 6px; border-radius: 3px; margin-left: 6px;">PREVIOUS</span>'}
         </div>
         <table class="data-table compact alt-rows">
-          <tr><td class="label">Employment Type</td><td class="value"><span class="emp-type-badge">${emp.employment_type || '-'}</span></td></tr>
+          <tr><td class="label">Employment Type</td><td class="value"><span class="emp-type-badge">${(emp.employment_type || '-').toUpperCase()}</span></td></tr>
           <tr><td class="label">Role</td><td class="value">${emp.occupation_role || '-'}</td></tr>
           <tr><td class="label">Start Date</td><td class="value">${formatDate(emp.start_date)}</td></tr>
+          <tr><td class="label">Tenure</td><td class="value">${tenureStr}</td></tr>
+          ${annualSalary > 0 ? `<tr><td class="label">Gross Annual Salary</td><td class="value currency">${formatCurrency(annualSalary)}</td></tr>` : ''}
+          ${emp.salary_amount && emp.salary_frequency ? `<tr><td class="label">Pay Cycle</td><td class="value">${formatCurrency(emp.salary_amount)} <span style="font-size:7px;color:#666;">(${emp.salary_frequency})</span></td></tr>` : ''}
         </table>
       </div>
-    `).join('');
+    `;}).join('');
   };
 
   // Income tables
