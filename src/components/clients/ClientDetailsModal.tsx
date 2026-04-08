@@ -783,6 +783,7 @@ NPC Team`
                 income={income}
                 assets={assets}
                 liabilities={liabilities}
+                expenses={expenses}
                 onEmailClick={handlePdfEmailClick}
                 onOpenEmailCompose={() => { setPdfAttachment(null); setShowEmailCompose(true); }}
               />
