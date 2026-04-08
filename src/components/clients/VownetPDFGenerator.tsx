@@ -144,6 +144,16 @@ export interface VownetPDFData {
   income?: IncomeData[];
   assets?: AssetData[];
   liabilities?: LiabilityData[];
+  expenses?: ExpenseData[];
+}
+
+interface ExpenseData {
+  id?: string;
+  expense_category?: string;
+  expense_name?: string;
+  monthly_amount?: number;
+  frequency?: string;
+  is_essential?: boolean;
 }
 
 interface VownetPDFGeneratorProps {
@@ -808,7 +818,7 @@ const NPC_COLORS = {
 
 // Generate the full HTML content for the PDF
 function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean = true): string {
-  const { client, properties, employment = [], income = [], assets = [], liabilities = [] } = data;
+  const { client, properties, employment = [], income = [], assets = [], liabilities = [], expenses = [] } = data;
   const reportDate = new Date().toLocaleDateString('en-AU', { day: '2-digit', month: 'long', year: 'numeric' });
   
   // Always find owner occupied property (shown on page 1 regardless of toggle)
