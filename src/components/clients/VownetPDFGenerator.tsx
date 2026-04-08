@@ -94,6 +94,16 @@ interface EmploymentData {
   employment_type?: string | null;
   occupation_role?: string | null;
   start_date?: string | null;
+  is_current?: boolean | null;
+  salary_amount?: number | null;
+  salary_frequency?: string | null;
+  gross_annual_salary?: number | null;
+  bonus?: number | null;
+  allowance?: number | null;
+  commission?: number | null;
+  overtime_essential?: number | null;
+  overtime_non_essential?: number | null;
+  other_taxable_income?: number | null;
 }
 
 interface IncomeData {
