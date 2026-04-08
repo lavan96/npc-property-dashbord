@@ -76,6 +76,7 @@ interface ClientReportsTabProps {
   income: any[];
   assets: any[];
   liabilities: any[];
+  expenses?: any[];
   onEmailClick: (blob: Blob, fileName: string) => void;
   onOpenEmailCompose: () => void;
 }
@@ -108,6 +109,7 @@ export function ClientReportsTab({
   income,
   assets,
   liabilities,
+  expenses = [],
   onEmailClick,
   onOpenEmailCompose,
 }: ClientReportsTabProps) {
@@ -620,6 +622,7 @@ export function ClientReportsTab({
               income,
               assets,
               liabilities,
+              expenses,
             }}
             clientName={clientName}
             onEmailClick={onEmailClick}
