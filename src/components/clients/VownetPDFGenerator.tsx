@@ -2097,8 +2097,23 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
           <div class="summary-box">
             <div class="summary-title">📊 Monthly Cashflow Analysis</div>
             <table class="data-table alt-rows compact">
-              <tr><td class="label">Total Monthly Income</td><td class="value currency income-value">${formatCurrency(Math.round(displayMonthlyIncome))}</td></tr>
-              <tr><td class="label">Total Monthly Expenditure</td><td class="value currency">${formatCurrency(Math.round(displayMonthlyExpenditure))}</td></tr>
+              <tr style="background: #f0fdf4;">
+                <td class="label" colspan="2" style="font-weight:700; color: ${NPC_COLORS.success}; font-size:8pt; text-transform:uppercase; letter-spacing:0.5px; padding:6px 10px;">Income</td>
+              </tr>
+              <tr><td class="label" style="padding-left:20px;">Employment Income</td><td class="value currency income-value">${formatCurrency(Math.round(totalEmploymentIncome))}</td></tr>
+              <tr><td class="label" style="padding-left:20px;">Rental Income</td><td class="value currency income-value">${formatCurrency(Math.round(totalRental))}</td></tr>
+              <tr style="border-top: 1px solid #d1d5db;"><td class="label"><strong>Total Monthly Income</strong></td><td class="value currency income-value"><strong>${formatCurrency(Math.round(displayMonthlyIncome))}</strong></td></tr>
+              
+              <tr style="background: #fef2f2;">
+                <td class="label" colspan="2" style="font-weight:700; color: ${NPC_COLORS.danger}; font-size:8pt; text-transform:uppercase; letter-spacing:0.5px; padding:6px 10px;">Expenditure</td>
+              </tr>
+              ${totalPropertyExpenses > 0 ? `<tr><td class="label" style="padding-left:20px;">Property Holding Costs</td><td class="value currency">${formatCurrency(Math.round(totalPropertyExpenses))}</td></tr>` : ''}
+              ${totalLiabilityRepayments > 0 ? `<tr><td class="label" style="padding-left:20px;">Liability Repayments</td><td class="value currency">${formatCurrency(Math.round(totalLiabilityRepayments))}</td></tr>` : ''}
+              ${totalRentalExpenses > 0 ? `<tr><td class="label" style="padding-left:20px;">Rent Paid (PPOR)</td><td class="value currency">${formatCurrency(Math.round(totalRentalExpenses))}</td></tr>` : ''}
+              ${totalLivingExpenses > 0 ? `<tr><td class="label" style="padding-left:20px;">Living Expenses</td><td class="value currency">${formatCurrency(Math.round(totalLivingExpenses))}</td></tr>` : ''}
+              ${totalLivingExpenses === 0 && totalPropertyExpenses > 0 ? `<tr><td class="label" style="padding-left:20px; color: #9ca3af; font-style:italic;">Living Expenses</td><td class="value" style="color:#9ca3af; font-style:italic; font-size:8pt;">Not recorded</td></tr>` : ''}
+              <tr style="border-top: 1px solid #d1d5db;"><td class="label"><strong>Total Monthly Expenditure</strong></td><td class="value currency"><strong>${formatCurrency(Math.round(displayMonthlyExpenditure))}</strong></td></tr>
+              
               <tr class="cashflow-row ${displayNetCashFlow >= 0 ? 'cf-positive-row' : 'cf-negative-row'}">
                 <td class="label"><strong>Net Monthly Cash Flow</strong></td>
                 <td class="value currency">
@@ -2107,6 +2122,7 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
                 </td>
               </tr>
             </table>
+            ${totalLivingExpenses === 0 ? `<div style="font-size:7pt; color:#9ca3af; margin-top:4px; padding-left:4px; font-style:italic;">⚠ Living expenses not yet recorded — figures reflect property & liability commitments only.</div>` : ''}
           </div>
           
           <div class="section" style="margin-top: 20px;">
