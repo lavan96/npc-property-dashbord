@@ -1347,25 +1347,27 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
   const totalRental = summaryProperties.reduce((sum, p) => sum + (p.monthly_rental_income || 0), 0);
   const totalNetCF = summaryProperties.reduce((sum, p) => sum + (p.net_monthly_cashflow || 0), 0);
 
-  // Calculate accurate monthly income from all sources (employment + other income + rental)
-  const totalEmploymentIncome = employment.reduce((sum, emp) => {
-    const annual = (emp.annual_salary || 0) + (emp.annual_bonus || 0) + (emp.annual_commission || 0) + (emp.annual_overtime || 0);
-    return sum + (annual / 12);
+  // Calculate accurate monthly income from all sources (employment + rental)
+  const totalEmploymentIncome = income.reduce((sum, inc) => {
+    const gross = inc.gross_salary || 0;
+    const freq = inc.salary_frequency || 'annually';
+    let monthly = 0;
+    if (freq === 'weekly') monthly = gross * (52 / 12);
+    else if (freq === 'fortnightly') monthly = gross * (26 / 12);
+    else if (freq === 'monthly') monthly = gross;
+    else monthly = gross / 12; // annually
+    // Add other income components (assumed annual)
+    monthly += ((inc.bonus || 0) + (inc.commission || 0) + (inc.overtime_essential || 0) + (inc.overtime_non_essential || 0) + (inc.allowance || 0) + (inc.other_taxable_income || 0)) / 12;
+    return sum + monthly;
   }, 0);
-  const totalOtherIncome = income.reduce((sum, inc) => {
-    if (inc.frequency === 'weekly') return sum + ((inc.amount || 0) * (52 / 12));
-    if (inc.frequency === 'fortnightly') return sum + ((inc.amount || 0) * (26 / 12));
-    if (inc.frequency === 'annually') return sum + ((inc.amount || 0) / 12);
-    return sum + (inc.amount || 0); // monthly
-  }, 0);
-  const calculatedMonthlyIncome = totalEmploymentIncome + totalOtherIncome + totalRental;
+  const calculatedMonthlyIncome = totalEmploymentIncome + totalRental;
 
   // Calculate accurate monthly expenditure from properties + liabilities + rental expenses
   const totalPropertyExpenses = summaryProperties.reduce((sum, p) => {
     return sum + (p.monthly_interest_repayment || 0) + (p.monthly_body_corporate || 0) +
-      (p.monthly_insurance || 0) + (p.monthly_council_rates ? p.monthly_council_rates / 12 : 0) +
-      (p.monthly_water_rates ? p.monthly_water_rates / 12 : 0) + (p.monthly_management_fees || 0) +
-      (p.monthly_land_tax ? p.monthly_land_tax / 12 : 0);
+      (p.monthly_landlord_insurance || 0) + (p.monthly_building_insurance || 0) +
+      (p.monthly_repairs_maintenance || 0) + (p.monthly_property_management || 0) +
+      ((p.monthly_council_rates || 0) / 12) + ((p.monthly_water_rates || 0) / 12);
   }, 0);
   const totalLiabilityRepayments = liabilities.reduce((sum, l) => sum + (l.monthly_repayment || 0), 0);
   const totalRentalExpenses = rentalProperties.reduce((sum, p) => sum + (p.monthly_rental_income || 0), 0);
