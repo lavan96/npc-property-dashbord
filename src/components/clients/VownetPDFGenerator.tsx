@@ -1347,6 +1347,37 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
   const totalRental = summaryProperties.reduce((sum, p) => sum + (p.monthly_rental_income || 0), 0);
   const totalNetCF = summaryProperties.reduce((sum, p) => sum + (p.net_monthly_cashflow || 0), 0);
 
+  // Calculate accurate monthly income from all sources (employment + rental)
+  const totalEmploymentIncome = income.reduce((sum, inc) => {
+    const gross = inc.gross_salary || 0;
+    const freq = inc.salary_frequency || 'annually';
+    let monthly = 0;
+    if (freq === 'weekly') monthly = gross * (52 / 12);
+    else if (freq === 'fortnightly') monthly = gross * (26 / 12);
+    else if (freq === 'monthly') monthly = gross;
+    else monthly = gross / 12; // annually
+    // Add other income components (assumed annual)
+    monthly += ((inc.bonus || 0) + (inc.commission || 0) + (inc.overtime_essential || 0) + (inc.overtime_non_essential || 0) + (inc.allowance || 0) + (inc.other_taxable_income || 0)) / 12;
+    return sum + monthly;
+  }, 0);
+  const calculatedMonthlyIncome = totalEmploymentIncome + totalRental;
+
+  // Calculate accurate monthly expenditure from properties + liabilities + rental expenses
+  const totalPropertyExpenses = summaryProperties.reduce((sum, p) => {
+    return sum + (p.monthly_interest_repayment || 0) + (p.monthly_body_corporate || 0) +
+      (p.monthly_landlord_insurance || 0) + (p.monthly_building_insurance || 0) +
+      (p.monthly_repairs_maintenance || 0) + (p.monthly_property_management || 0) +
+      ((p.monthly_council_rates || 0) / 12) + ((p.monthly_water_rates || 0) / 12);
+  }, 0);
+  const totalLiabilityRepayments = liabilities.reduce((sum, l) => sum + (l.monthly_repayment || 0), 0);
+  const totalRentalExpenses = rentalProperties.reduce((sum, p) => sum + (p.monthly_rental_income || 0), 0);
+  const calculatedMonthlyExpenditure = totalPropertyExpenses + totalLiabilityRepayments + totalRentalExpenses;
+
+  // Use calculated values, falling back to client record only if no source data exists
+  const displayMonthlyIncome = calculatedMonthlyIncome > 0 ? calculatedMonthlyIncome : (client.total_monthly_income || 0);
+  const displayMonthlyExpenditure = calculatedMonthlyExpenditure > 0 ? calculatedMonthlyExpenditure : (client.total_monthly_expenditure || 0);
+  const displayNetCashFlow = displayMonthlyIncome - displayMonthlyExpenditure;
+
   // Properly capitalize client names
   const primaryName = `${smartCapitalize(client.primary_first_name)} ${smartCapitalize(client.primary_surname)}`;
   const secondaryName = client.secondary_first_name 
@@ -2020,13 +2051,13 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
           <div class="summary-box">
             <div class="summary-title">📊 Monthly Cashflow Analysis</div>
             <table class="data-table alt-rows compact">
-              <tr><td class="label">Total Monthly Income</td><td class="value currency income-value">${formatCurrency(client.total_monthly_income || 0)}</td></tr>
-              <tr><td class="label">Total Monthly Expenditure</td><td class="value currency">${formatCurrency(client.total_monthly_expenditure || 0)}</td></tr>
-              <tr class="cashflow-row ${(client.net_monthly_cash_flow || totalNetCF || 0) >= 0 ? 'cf-positive-row' : 'cf-negative-row'}">
+              <tr><td class="label">Total Monthly Income</td><td class="value currency income-value">${formatCurrency(Math.round(displayMonthlyIncome))}</td></tr>
+              <tr><td class="label">Total Monthly Expenditure</td><td class="value currency">${formatCurrency(Math.round(displayMonthlyExpenditure))}</td></tr>
+              <tr class="cashflow-row ${displayNetCashFlow >= 0 ? 'cf-positive-row' : 'cf-negative-row'}">
                 <td class="label"><strong>Net Monthly Cash Flow</strong></td>
                 <td class="value currency">
-                  ${getCashflowIndicator(client.net_monthly_cash_flow || totalNetCF)}
-                  <strong>${formatCurrency(client.net_monthly_cash_flow || totalNetCF)}</strong>
+                  ${getCashflowIndicator(displayNetCashFlow)}
+                  <strong>${formatCurrency(Math.round(displayNetCashFlow))}</strong>
                 </td>
               </tr>
             </table>
