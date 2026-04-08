@@ -622,6 +622,7 @@ export function ClientReportsTab({
               income,
               assets,
               liabilities,
+              expenses,
             }}
             clientName={clientName}
             onEmailClick={onEmailClick}
