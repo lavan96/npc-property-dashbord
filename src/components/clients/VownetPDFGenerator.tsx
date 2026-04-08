@@ -1407,7 +1407,7 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
   }, 0);
   const calculatedMonthlyIncome = totalEmploymentIncome + totalRental;
 
-  // Calculate accurate monthly expenditure from properties + liabilities + rental expenses
+  // Calculate accurate monthly expenditure from properties + liabilities + rental + living expenses
   const totalPropertyExpenses = summaryProperties.reduce((sum, p) => {
     return sum + (p.monthly_interest_repayment || 0) + (p.monthly_body_corporate || 0) +
       (p.monthly_landlord_insurance || 0) + (p.monthly_building_insurance || 0) +
@@ -1416,7 +1416,8 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
   }, 0);
   const totalLiabilityRepayments = liabilities.reduce((sum, l) => sum + (l.monthly_repayment || 0), 0);
   const totalRentalExpenses = rentalProperties.reduce((sum, p) => sum + (p.monthly_rental_income || 0), 0);
-  const calculatedMonthlyExpenditure = totalPropertyExpenses + totalLiabilityRepayments + totalRentalExpenses;
+  const totalLivingExpenses = expenses.reduce((sum, e) => sum + (e.monthly_amount || 0), 0);
+  const calculatedMonthlyExpenditure = totalPropertyExpenses + totalLiabilityRepayments + totalRentalExpenses + totalLivingExpenses;
 
   // Use calculated values, falling back to client record only if no source data exists
   const displayMonthlyIncome = calculatedMonthlyIncome > 0 ? calculatedMonthlyIncome : (client.total_monthly_income || 0);
