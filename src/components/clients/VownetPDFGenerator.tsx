@@ -1347,6 +1347,35 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
   const totalRental = summaryProperties.reduce((sum, p) => sum + (p.monthly_rental_income || 0), 0);
   const totalNetCF = summaryProperties.reduce((sum, p) => sum + (p.net_monthly_cashflow || 0), 0);
 
+  // Calculate accurate monthly income from all sources (employment + other income + rental)
+  const totalEmploymentIncome = employment.reduce((sum, emp) => {
+    const annual = (emp.annual_salary || 0) + (emp.annual_bonus || 0) + (emp.annual_commission || 0) + (emp.annual_overtime || 0);
+    return sum + (annual / 12);
+  }, 0);
+  const totalOtherIncome = income.reduce((sum, inc) => {
+    if (inc.frequency === 'weekly') return sum + ((inc.amount || 0) * (52 / 12));
+    if (inc.frequency === 'fortnightly') return sum + ((inc.amount || 0) * (26 / 12));
+    if (inc.frequency === 'annually') return sum + ((inc.amount || 0) / 12);
+    return sum + (inc.amount || 0); // monthly
+  }, 0);
+  const calculatedMonthlyIncome = totalEmploymentIncome + totalOtherIncome + totalRental;
+
+  // Calculate accurate monthly expenditure from properties + liabilities + rental expenses
+  const totalPropertyExpenses = summaryProperties.reduce((sum, p) => {
+    return sum + (p.monthly_interest_repayment || 0) + (p.monthly_body_corporate || 0) +
+      (p.monthly_insurance || 0) + (p.monthly_council_rates ? p.monthly_council_rates / 12 : 0) +
+      (p.monthly_water_rates ? p.monthly_water_rates / 12 : 0) + (p.monthly_management_fees || 0) +
+      (p.monthly_land_tax ? p.monthly_land_tax / 12 : 0);
+  }, 0);
+  const totalLiabilityRepayments = liabilities.reduce((sum, l) => sum + (l.monthly_repayment || 0), 0);
+  const totalRentalExpenses = rentalProperties.reduce((sum, p) => sum + (p.monthly_rental_income || 0), 0);
+  const calculatedMonthlyExpenditure = totalPropertyExpenses + totalLiabilityRepayments + totalRentalExpenses;
+
+  // Use calculated values, falling back to client record only if no source data exists
+  const displayMonthlyIncome = calculatedMonthlyIncome > 0 ? calculatedMonthlyIncome : (client.total_monthly_income || 0);
+  const displayMonthlyExpenditure = calculatedMonthlyExpenditure > 0 ? calculatedMonthlyExpenditure : (client.total_monthly_expenditure || 0);
+  const displayNetCashFlow = displayMonthlyIncome - displayMonthlyExpenditure;
+
   // Properly capitalize client names
   const primaryName = `${smartCapitalize(client.primary_first_name)} ${smartCapitalize(client.primary_surname)}`;
   const secondaryName = client.secondary_first_name 
