@@ -1649,6 +1649,11 @@ export default function Calendar() {
                           Active
                         </Badge>
                       )}
+                      {calEventCount > 0 && (
+                        <Badge variant="secondary" className="text-[10px]">
+                          {calEventCount} event{calEventCount !== 1 ? 's' : ''}
+                        </Badge>
+                      )}
                     </div>
                   </div>
                   {calendar.teamMembers && calendar.teamMembers.length > 0 && (
@@ -1660,6 +1665,7 @@ export default function Calendar() {
                 </div>
               </button>
             );
+            };
 
             return (
               <div className="space-y-6">
