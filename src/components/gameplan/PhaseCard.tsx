@@ -10,11 +10,13 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { ChevronDown, Plus, Trash2, Target, StickyNote, CheckCircle2, CircleDot, AlertCircle, Clock, Pin, Pencil, X, Calendar as CalendarIcon, Copy, ChevronUp, ChevronDown as ChevronDownIcon, ListChecks } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { ChevronDown, Plus, Trash2, Target, StickyNote, CheckCircle2, CircleDot, AlertCircle, Clock, Pin, Pencil, X, Calendar as CalendarIcon, Copy, ChevronUp, ChevronDown as ChevronDownIcon, ListChecks, UserCircle, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { RichTextEditor } from './RichTextEditor';
 import { toast } from 'sonner';
+import { useTeamUsers } from '@/hooks/useTeamUsers';
 
 const phaseStatusMap: Record<string, { label: string; icon: typeof CircleDot; color: string }> = {
   not_started: { label: 'Not Started', icon: Clock, color: 'text-muted-foreground' },
@@ -40,6 +42,75 @@ const noteTypeColors: Record<string, string> = {
 const PHASE_ICONS = ['📌', '🔬', '🛠️', '🚀', '📦', '🎯', '📣', '🧪', '📋', '⚙️', '💡', '🏆', '🔥', '📈', '🗺️'];
 const PHASE_COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#3b82f6', '#64748b'];
 const KPI_ICONS = ['📊', '💰', '📈', '🎯', '⚡', '🏆', '📉', '💎', '🔥', '⭐', '🚀', '💵'];
+
+const UNASSIGNED = '__unassigned__';
+
+/** Reusable user select for Owner / Assign To fields */
+function UserSelectField({
+  value,
+  onValueChange,
+  placeholder,
+  label,
+  tooltip,
+  className,
+}: {
+  value: string;
+  onValueChange: (value: string) => void;
+  placeholder?: string;
+  label?: string;
+  tooltip?: string;
+  className?: string;
+}) {
+  const { data: users = [], isLoading } = useTeamUsers();
+
+  const selectEl = (
+    <Select value={value || UNASSIGNED} onValueChange={(v) => onValueChange(v === UNASSIGNED ? '' : v)}>
+      <SelectTrigger className={cn('h-8 text-sm', className)}>
+        <div className="flex items-center gap-1.5">
+          <UserCircle className="h-3 w-3 text-muted-foreground shrink-0" />
+          <SelectValue placeholder={isLoading ? 'Loading...' : placeholder || 'Select user...'} />
+        </div>
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value={UNASSIGNED}>
+          <span className="text-muted-foreground italic">Unassigned</span>
+        </SelectItem>
+        {users.map((user) => (
+          <SelectItem key={user.id} value={user.username}>
+            <div className="flex flex-col">
+              <span className="text-xs">{user.username}</span>
+              {user.email && <span className="text-[10px] text-muted-foreground">{user.email}</span>}
+            </div>
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+
+  if (tooltip && label) {
+    return (
+      <div className="space-y-0.5">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider cursor-help flex items-center gap-1">
+                {label}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-[200px] text-xs">
+              {tooltip}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        {selectEl}
+      </div>
+    );
+  }
+
+  return selectEl;
+}
+
+
 
 interface Props {
   phase: GamePlanPhase;
@@ -339,8 +410,12 @@ export function PhaseCard({ phase, milestones, kpis, notes, actions, mutations, 
                   <Input value={newMilestone} onChange={e => setNewMilestone(e.target.value)} placeholder="Milestone title..."
                     className="h-8 text-sm" onKeyDown={e => e.key === 'Enter' && addMilestone()} autoFocus />
                   <div className="flex flex-wrap gap-2">
-                    <Input value={newMilestoneOwner} onChange={e => setNewMilestoneOwner(e.target.value)}
-                      placeholder="Owner (optional)" className="h-8 text-sm flex-1 min-w-[120px]" />
+                    <UserSelectField
+                      value={newMilestoneOwner}
+                      onValueChange={setNewMilestoneOwner}
+                      placeholder="Owner (optional)"
+                      className="flex-1 min-w-[140px]"
+                    />
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
@@ -423,8 +498,12 @@ export function PhaseCard({ phase, milestones, kpis, notes, actions, mutations, 
                   <Input value={newAction} onChange={e => setNewAction(e.target.value)} placeholder="Action item..."
                     className="h-8 text-sm" onKeyDown={e => e.key === 'Enter' && addAction()} autoFocus />
                   <div className="flex flex-wrap gap-2">
-                    <Input value={newActionAssignee} onChange={e => setNewActionAssignee(e.target.value)}
-                      placeholder="Assign to (optional)" className="h-8 text-sm flex-1 min-w-[120px]" />
+                    <UserSelectField
+                      value={newActionAssignee}
+                      onValueChange={setNewActionAssignee}
+                      placeholder="Assign to (optional)"
+                      className="flex-1 min-w-[140px]"
+                    />
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
@@ -527,8 +606,8 @@ function MilestoneRow({ milestone: m, mutations }: { milestone: GamePlanMileston
       <div className="p-2 rounded-md border bg-muted/30 space-y-2">
         <Input value={editTitle} onChange={e => setEditTitle(e.target.value)} className="h-8 text-sm" autoFocus
           onKeyDown={e => e.key === 'Enter' && save()} />
-        <div className="flex gap-2">
-          <Input value={editOwner} onChange={e => setEditOwner(e.target.value)} placeholder="Owner" className="h-8 text-sm flex-1" />
+        <div className="flex gap-2 items-end">
+          <UserSelectField value={editOwner} onValueChange={setEditOwner} placeholder="Owner" className="flex-1" />
           <Button size="sm" className="h-8 text-xs" onClick={save}>Save</Button>
           <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => { setEditing(false); setEditTitle(m.title); setEditOwner(m.owner || ''); }}>
             <X className="h-3 w-3" />
@@ -572,7 +651,19 @@ function MilestoneRow({ milestone: m, mutations }: { milestone: GamePlanMileston
           {format(new Date(m.due_date), 'MMM d')}
         </span>
       )}
-      {m.owner && <Badge variant="outline" className="text-[10px] shrink-0">{m.owner}</Badge>}
+      {m.owner && (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="outline" className="text-[10px] shrink-0 gap-1">
+                <Users className="h-2.5 w-2.5" />
+                {m.owner}
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="text-xs">Owner — accountable for this milestone</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
       <div className="flex gap-0.5 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditing(true)}>
           <Pencil className="h-3 w-3 text-muted-foreground" />
@@ -671,8 +762,8 @@ function ActionRow({ action: a, mutations }: { action: GamePlanAction; mutations
       <div className="p-2 rounded-md border bg-muted/30 space-y-2">
         <Input value={editLabel} onChange={e => setEditLabel(e.target.value)} className="h-8 text-sm" autoFocus
           onKeyDown={e => e.key === 'Enter' && save()} />
-        <div className="flex gap-2">
-          <Input value={editAssignee} onChange={e => setEditAssignee(e.target.value)} placeholder="Assigned to" className="h-8 text-sm flex-1" />
+        <div className="flex gap-2 items-end">
+          <UserSelectField value={editAssignee} onValueChange={setEditAssignee} placeholder="Assign to" className="flex-1" />
           <Button size="sm" className="h-8 text-xs" onClick={save}>Save</Button>
           <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => { setEditing(false); setEditLabel(a.label); setEditAssignee(a.assigned_to || ''); }}>
             <X className="h-3 w-3" />
@@ -701,7 +792,19 @@ function ActionRow({ action: a, mutations }: { action: GamePlanAction; mutations
           {format(new Date(a.due_date), 'MMM d')}
         </span>
       )}
-      {a.assigned_to && <Badge variant="outline" className="text-[10px] shrink-0">{a.assigned_to}</Badge>}
+      {a.assigned_to && (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="outline" className="text-[10px] shrink-0 gap-1">
+                <UserCircle className="h-2.5 w-2.5" />
+                {a.assigned_to}
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="text-xs">Assigned to — responsible for completing this action</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
       <div className="flex gap-0.5 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditing(true)}>
           <Pencil className="h-3 w-3 text-muted-foreground" />
