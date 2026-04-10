@@ -7,6 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import { ConfidenceBadge } from '@/components/dashboard/ConfidenceBadge';
 import { InvestmentReportModal } from '@/components/listings/InvestmentReportModal';
 import { getFullStateName } from '@/lib/states';
+import { buildFullAddress } from '@/lib/addressUtils';
 import { PropertyListing } from '@/lib/airtable';
 import { useToast } from '@/hooks/use-toast';
 
@@ -84,7 +85,7 @@ export function ListingDetailsModal({ listing, isOpen, onClose }: ListingDetails
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <MapPin className="h-5 w-5" />
-            {listing.address || 'Unknown Address'}
+            {buildFullAddress(listing)}
           </DialogTitle>
         </DialogHeader>
 
@@ -415,17 +416,7 @@ export function ListingDetailsModal({ listing, isOpen, onClose }: ListingDetails
             )}
             
             {listing.address && (
-              <Button variant="outline" onClick={() => {
-                const parts: string[] = [];
-                if (listing.address && listing.address !== 'Unknown Address') parts.push(listing.address);
-                if (listing.suburb && listing.suburb !== 'Unknown' && listing.suburb !== 'Unknown Suburb') parts.push(listing.suburb);
-                const stateMatch = (listing.address || '').match(/\b(NSW|VIC|QLD|SA|WA|TAS|NT|ACT)\b/i);
-                const postcodeMatch = (listing.address || '').match(/\b(\d{4})\b/);
-                const stateStr = stateMatch ? stateMatch[0].toUpperCase() : null;
-                const postcodeStr = listing.zipCode || (postcodeMatch ? postcodeMatch[0] : null);
-                if (stateStr || postcodeStr) parts.push([stateStr, postcodeStr].filter(Boolean).join(' '));
-                copyToClipboard(parts.join(', ') || listing.address!, "Full address");
-              }}>
+              <Button variant="outline" onClick={() => copyToClipboard(buildFullAddress(listing), "Full address")}>
                 <Copy className="h-4 w-4 mr-2" />
                 Copy Address
               </Button>
@@ -449,7 +440,7 @@ export function ListingDetailsModal({ listing, isOpen, onClose }: ListingDetails
           <InvestmentReportModal
             isOpen={investmentModalOpen}
             onClose={() => setInvestmentModalOpen(false)}
-            propertyAddress={listing.location || listing.address || 'Unknown Address'}
+            propertyAddress={buildFullAddress(listing)}
             propertyDetails={{
               id: listing.id,
               price: listing.price,
