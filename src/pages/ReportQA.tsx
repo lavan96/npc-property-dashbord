@@ -2288,7 +2288,7 @@ export default function ReportQA() {
               )}
                 <Button
                   onClick={() => handleSendMessage()}
-                  disabled={!inputMessage.trim() || isProcessing || isRecording || inputMessage.length > MAX_MESSAGE_LENGTH}
+                  disabled={!inputMessage.trim() || isProcessing || isRecording || isIndexing || inputMessage.length > MAX_MESSAGE_LENGTH}
                   className="h-10 flex-shrink-0"
                 >
                   <Send className="h-4 w-4" />
