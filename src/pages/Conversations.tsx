@@ -292,7 +292,7 @@ export default function Conversations() {
           ghl_date_added: new Date().toISOString(),
           message_status: 'sent',
           attachment_urls: null,
-          sender_name: user?.name || user?.email || null,
+          sender_name: null,
         };
         return [...old, optimisticMsg];
       });
