@@ -165,8 +165,8 @@ export function CalendarSearchDropdown({
 
       {/* Dropdown */}
       {isOpen && searchQuery.trim() && (
-        <div className="absolute top-full mt-1 left-0 w-[360px] bg-popover border border-border rounded-md shadow-lg z-50">
-          <ScrollArea className="max-h-[320px]">
+        <div className="absolute top-full mt-1 left-0 w-[400px] bg-popover border border-border rounded-md shadow-lg z-50">
+          <ScrollArea className="max-h-[calc(100vh-180px)] sm:max-h-[520px]">
             {loadingContacts && filteredResults.length === 0 ? (
               <div className="p-3 space-y-2">
                 {[1, 2, 3].map((i) => (
