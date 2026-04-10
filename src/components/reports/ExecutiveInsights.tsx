@@ -232,7 +232,7 @@ export function ExecutiveInsights({ listings }: ExecutiveInsightsProps) {
                 ))
               ) : (
                 <div className="text-sm text-muted-foreground text-center py-4">
-                  All key metrics are within expected ranges. No immediate action required.
+                  All key metrics are within expected ranges. No action items identified — market observations are also clear.
                 </div>
               )}
             </div>
@@ -267,7 +267,7 @@ export function ExecutiveInsights({ listings }: ExecutiveInsightsProps) {
                 ))
               ) : (
                 <div className="text-sm text-muted-foreground text-center py-4">
-                  Market data is consistent with no notable anomalies detected across monitored suburbs.
+                  No anomalies detected — all metrics are consistent and no action items have been flagged.
                 </div>
               )}
             </div>
