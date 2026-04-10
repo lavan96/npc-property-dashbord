@@ -286,8 +286,20 @@ export default function ReportRequests() {
                           </div>
                           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                             <User className="h-3 w-3" />
-                            <span>{req.client_name}</span>
+                            <span className="capitalize">{req.client_name}</span>
                           </div>
+                          {req.client_email && (
+                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
+                              <Mail className="h-3 w-3" />
+                              <span>{req.client_email}</span>
+                            </div>
+                          )}
+                          {req.client_phone && (
+                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
+                              <Phone className="h-3 w-3" />
+                              <span>{req.client_phone}</span>
+                            </div>
+                          )}
                           {req.property_address && (
                             <p className="text-xs text-muted-foreground mt-1">📍 {req.property_address}</p>
                           )}
@@ -347,8 +359,29 @@ export default function ReportRequests() {
                     <div className="flex items-center gap-2">
                       <User className="h-3.5 w-3.5 text-muted-foreground" />
                       <span className="text-muted-foreground">Client:</span>
-                      <span className="font-medium text-foreground">{selectedRequest.client_name}</span>
+                      <span className="font-medium text-foreground capitalize">{selectedRequest.client_name}</span>
                     </div>
+                    {selectedRequest.client_email && (
+                      <div className="flex items-center gap-2">
+                        <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-muted-foreground">Email:</span>
+                        <span className="font-medium text-foreground">{selectedRequest.client_email}</span>
+                      </div>
+                    )}
+                    {selectedRequest.client_phone && (
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-muted-foreground">Phone:</span>
+                        <span className="font-medium text-foreground">{selectedRequest.client_phone}</span>
+                      </div>
+                    )}
+                    {selectedRequest.client_address && (
+                      <div className="flex items-start gap-2">
+                        <MapPin className="h-3.5 w-3.5 text-muted-foreground mt-0.5" />
+                        <span className="text-muted-foreground">Address:</span>
+                        <span className="font-medium text-foreground">{selectedRequest.client_address}</span>
+                      </div>
+                    )}
                     <div className="flex items-center gap-2">
                       <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                       <span className="text-muted-foreground">Requested:</span>
