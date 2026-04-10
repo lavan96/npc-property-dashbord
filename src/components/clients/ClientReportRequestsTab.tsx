@@ -172,32 +172,36 @@ export function ClientReportRequestsTab({ clientId, clientName }: Props) {
                   />
                 </div>
 
-                <div className="flex flex-wrap gap-2">
-                  {selected.status === 'pending' && (
-                    <>
-                      <Button size="sm" onClick={() => handleStatusUpdate(selected.id, 'in_progress')} disabled={updating} className="bg-blue-600 hover:bg-blue-700">
-                        <ArrowRight className="h-3.5 w-3.5 mr-1" /> In Progress
-                      </Button>
-                      <Button size="sm" variant="destructive" onClick={() => handleStatusUpdate(selected.id, 'declined')} disabled={updating}>
-                        <XCircle className="h-3.5 w-3.5 mr-1" /> Decline
-                      </Button>
-                    </>
-                  )}
-                  {selected.status === 'in_progress' && (
-                    <>
-                      <Button size="sm" onClick={() => handleStatusUpdate(selected.id, 'completed')} disabled={updating} className="bg-emerald-600 hover:bg-emerald-700">
-                        <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Complete
-                      </Button>
-                      <Button size="sm" variant="destructive" onClick={() => handleStatusUpdate(selected.id, 'declined')} disabled={updating}>
-                        <XCircle className="h-3.5 w-3.5 mr-1" /> Decline
-                      </Button>
-                    </>
-                  )}
-                  {(selected.status === 'completed' || selected.status === 'declined') && (
-                    <Button size="sm" variant="outline" onClick={() => handleStatusUpdate(selected.id, 'pending')} disabled={updating}>
-                      <Clock className="h-3.5 w-3.5 mr-1" /> Reopen
-                    </Button>
-                  )}
+                <div className="space-y-1.5">
+                  <Label className="text-sm">Update Status</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {(['pending', 'in_progress', 'completed', 'declined'] as const).map((status) => {
+                      const conf = statusConfig[status];
+                      const Icon = conf.icon;
+                      const isActive = selected.status === status;
+                      return (
+                        <Button
+                          key={status}
+                          size="sm"
+                          variant={isActive ? 'default' : 'outline'}
+                          disabled={updating || isActive}
+                          onClick={() => handleStatusUpdate(selected.id, status)}
+                          className={cn(
+                            'text-xs',
+                            isActive && conf.color,
+                            isActive && 'pointer-events-none'
+                          )}
+                        >
+                          {updating ? (
+                            <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                          ) : (
+                            <Icon className="h-3.5 w-3.5 mr-1" />
+                          )}
+                          {conf.label}
+                        </Button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             );

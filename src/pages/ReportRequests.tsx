@@ -417,62 +417,38 @@ export default function ReportRequests() {
                   />
                 </div>
 
-                {/* Action Buttons */}
-                <div className="flex flex-wrap gap-2 pt-2">
-                  {selectedRequest.status === 'pending' && (
-                    <>
-                      <Button
-                        size="sm"
-                        onClick={() => handleStatusUpdate(selectedRequest.id, 'in_progress')}
-                        disabled={updatingStatus}
-                        className="bg-blue-600 hover:bg-blue-700"
-                      >
-                        {updatingStatus ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <ArrowRight className="h-3.5 w-3.5 mr-1.5" />}
-                        Mark In Progress
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => handleStatusUpdate(selectedRequest.id, 'declined')}
-                        disabled={updatingStatus}
-                      >
-                        <XCircle className="h-3.5 w-3.5 mr-1.5" />
-                        Decline
-                      </Button>
-                    </>
-                  )}
-                  {selectedRequest.status === 'in_progress' && (
-                    <>
-                      <Button
-                        size="sm"
-                        onClick={() => handleStatusUpdate(selectedRequest.id, 'completed')}
-                        disabled={updatingStatus}
-                        className="bg-emerald-600 hover:bg-emerald-700"
-                      >
-                        {updatingStatus ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />}
-                        Mark Completed
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => handleStatusUpdate(selectedRequest.id, 'declined')}
-                        disabled={updatingStatus}
-                      >
-                        <XCircle className="h-3.5 w-3.5 mr-1.5" />
-                        Decline
-                      </Button>
-                    </>
-                  )}
-                  {(selectedRequest.status === 'completed' || selectedRequest.status === 'declined') && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleStatusUpdate(selectedRequest.id, 'pending')}
-                      disabled={updatingStatus}
-                    >
-                      <Clock className="h-3.5 w-3.5 mr-1.5" />
-                      Reopen
-                    </Button>
+                {/* Status Selector */}
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium">Update Status</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {(['pending', 'in_progress', 'completed', 'declined'] as const).map((status) => {
+                      const conf = statusConfig[status];
+                      const Icon = conf.icon;
+                      const isActive = selectedRequest.status === status;
+                      return (
+                        <Button
+                          key={status}
+                          size="sm"
+                          variant={isActive ? 'default' : 'outline'}
+                          disabled={updatingStatus || isActive}
+                          onClick={() => handleStatusUpdate(selectedRequest.id, status)}
+                          className={cn(
+                            'text-xs',
+                            isActive && conf.badgeVariant,
+                            isActive && 'pointer-events-none'
+                          )}
+                        >
+                          {updatingStatus ? (
+                            <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                          ) : (
+                            <Icon className="h-3.5 w-3.5 mr-1.5" />
+                          )}
+                          {conf.label}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                </div>
                   )}
                 </div>
               </div>
