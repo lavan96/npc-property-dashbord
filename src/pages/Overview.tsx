@@ -18,6 +18,7 @@ import { useAutoRefresh } from '@/hooks/use-auto-refresh';
 import { propertyDataService } from '@/services/propertyDataService';
 import { chartDataService } from '@/services/chartDataService';
 import { toast } from 'sonner';
+import { generateOverviewSnapshotPDF } from '@/components/overview/OverviewSnapshotPDF';
 import { 
   BarChart, 
   Bar, 
@@ -264,29 +265,22 @@ export default function Overview() {
     return () => { stopAutoRefresh(); };
   }, [fetchData]);
 
-  // ─── Export snapshot ───
-  const handleExportSnapshot = useCallback(() => {
+  // ─── Export snapshot PDF ───
+  const handleExportSnapshot = useCallback(async () => {
+    const toastId = toast.loading('Generating Overview Snapshot PDF...');
     try {
-      const snapshot = {
-        exportedAt: new Date().toISOString(),
-        summary: {
-          totalListings: allListings.length,
-          newThisWeek: kpis.newThisWeek,
-          withInspections: kpis.withInspections,
-          needsReview: kpis.needsReview,
-          averagePrice: kpis.averagePrice,
-          withImages: contentStats.withImages,
-          withFloorplans: contentStats.withFloorplans,
-          withPrices: contentStats.withPrices,
-        },
-        filters: filters,
-        topSuburbs: suburbData.slice(0, 10),
-        propertyTypes: propertyTypeData,
-        topAgencies: agencyData.slice(0, 10),
+      const snapshotData = {
+        kpis,
+        contentStats,
+        totalListings: allListings.length,
+        filters,
+        suburbData: suburbData.slice(0, 15),
+        propertyTypeData,
+        agencyData: agencyData.slice(0, 10),
         recentListings: recentListings.map(l => ({
           address: l.address,
           suburb: l.suburb,
-          postcode: l.zipCode || extractPostcode(l.address || ''),
+          postcode: l.zipCode || extractPostcode(l.address || '') || undefined,
           price: l.price,
           propertyType: l.propertyType,
           beds: l.beds,
@@ -294,17 +288,20 @@ export default function Overview() {
           source: l.source,
         })),
       };
-      
-      const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
+
+      const pdfBlob = await generateOverviewSnapshotPDF(snapshotData);
+      const url = URL.createObjectURL(pdfBlob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `overview-snapshot-${new Date().toISOString().split('T')[0]}.json`;
+      a.download = `Overview_Snapshot_${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      toast.success('Snapshot exported successfully');
-    } catch {
-      toast.error('Failed to export snapshot');
+      toast.success('Overview Snapshot PDF exported!', { id: toastId });
+    } catch (err) {
+      console.error('Snapshot PDF export failed:', err);
+      toast.error('Failed to export snapshot PDF', { id: toastId });
     }
   }, [allListings, kpis, contentStats, filters, suburbData, propertyTypeData, agencyData, recentListings, extractPostcode]);
 
