@@ -410,8 +410,12 @@ export function PhaseCard({ phase, milestones, kpis, notes, actions, mutations, 
                   <Input value={newMilestone} onChange={e => setNewMilestone(e.target.value)} placeholder="Milestone title..."
                     className="h-8 text-sm" onKeyDown={e => e.key === 'Enter' && addMilestone()} autoFocus />
                   <div className="flex flex-wrap gap-2">
-                    <Input value={newMilestoneOwner} onChange={e => setNewMilestoneOwner(e.target.value)}
-                      placeholder="Owner (optional)" className="h-8 text-sm flex-1 min-w-[120px]" />
+                    <UserSelectField
+                      value={newMilestoneOwner}
+                      onValueChange={setNewMilestoneOwner}
+                      placeholder="Owner (optional)"
+                      className="flex-1 min-w-[140px]"
+                    />
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
