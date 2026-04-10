@@ -41,7 +41,74 @@ const noteTypeColors: Record<string, string> = {
 
 const PHASE_ICONS = ['📌', '🔬', '🛠️', '🚀', '📦', '🎯', '📣', '🧪', '📋', '⚙️', '💡', '🏆', '🔥', '📈', '🗺️'];
 const PHASE_COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#3b82f6', '#64748b'];
-const KPI_ICONS = ['📊', '💰', '📈', '🎯', '⚡', '🏆', '📉', '💎', '🔥', '⭐', '🚀', '💵'];
+const UNASSIGNED = '__unassigned__';
+
+/** Reusable user select for Owner / Assign To fields */
+function UserSelectField({
+  value,
+  onValueChange,
+  placeholder,
+  label,
+  tooltip,
+  className,
+}: {
+  value: string;
+  onValueChange: (value: string) => void;
+  placeholder?: string;
+  label?: string;
+  tooltip?: string;
+  className?: string;
+}) {
+  const { data: users = [], isLoading } = useTeamUsers();
+
+  const selectEl = (
+    <Select value={value || UNASSIGNED} onValueChange={(v) => onValueChange(v === UNASSIGNED ? '' : v)}>
+      <SelectTrigger className={cn('h-8 text-sm', className)}>
+        <div className="flex items-center gap-1.5">
+          <UserCircle className="h-3 w-3 text-muted-foreground shrink-0" />
+          <SelectValue placeholder={isLoading ? 'Loading...' : placeholder || 'Select user...'} />
+        </div>
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value={UNASSIGNED}>
+          <span className="text-muted-foreground italic">Unassigned</span>
+        </SelectItem>
+        {users.map((user) => (
+          <SelectItem key={user.id} value={user.username}>
+            <div className="flex flex-col">
+              <span className="text-xs">{user.username}</span>
+              {user.email && <span className="text-[10px] text-muted-foreground">{user.email}</span>}
+            </div>
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+
+  if (tooltip && label) {
+    return (
+      <div className="space-y-0.5">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider cursor-help flex items-center gap-1">
+                {label}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-[200px] text-xs">
+              {tooltip}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        {selectEl}
+      </div>
+    );
+  }
+
+  return selectEl;
+}
+
+
 
 interface Props {
   phase: GamePlanPhase;
