@@ -134,7 +134,7 @@ export function CollapsibleSidebar({
           ) : (
             // Horizontal tabs with shortcuts
             <Tabs value={activeTab} onValueChange={(v) => onTabChange(v as SidebarTab)}>
-              <TabsList className="w-full grid grid-cols-11 h-8 gap-0">
+              <TabsList className="w-full flex flex-wrap h-auto gap-0.5 p-1">
                 {orderedTabs().map((tab) => (
                   <Tooltip key={tab.id}>
                     <TooltipTrigger asChild>
