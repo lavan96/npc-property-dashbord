@@ -47,6 +47,7 @@ export default function Overview() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [isLoading, setIsLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [allListings, setAllListings] = useState<PropertyListing[]>([]);
   const [kpis, setKpis] = useState<DashboardKPIs>({
