@@ -175,8 +175,8 @@ function StageActions({
                 className="h-5 px-1.5 text-[9px] gap-0.5"
                 onClick={() => {
                   const data: any = { status: a.status };
-                  if (a.status === 'in_progress') data.started_at = new Date().toISOString();
                   if (a.status === 'complete') data.completed_at = new Date().toISOString();
+                  if (a.status === 'pending' || a.status === 'skipped') data.completed_at = null;
                   onUpdateStage(stage.id, clientId, data);
                 }}
               >
@@ -443,7 +443,7 @@ function DealManageRow({
                       variant="outline"
                       size="sm"
                       className="h-5 px-1.5 text-[9px] gap-0.5"
-                      onClick={() => onUpdateStage?.(nextStage.id, deal.client_id, { status: 'in_progress', started_at: new Date().toISOString() })}
+                      onClick={() => onUpdateStage?.(nextStage.id, deal.client_id, { status: 'in_progress' })}
                     >
                       <Play className="h-2.5 w-2.5" />
                       Start
