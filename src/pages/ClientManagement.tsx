@@ -165,8 +165,10 @@ export default function ClientManagement() {
 
     // Handle reviews_due filter deep-link from Overview widget
     if (filterParam === 'reviews_due' && !isLoading) {
-      setFilters(prev => ({ ...prev, reviewStatus: 'overdue' as const }));
-      setSearchParams({}, { replace: true });
+      // Show all clients with any review due (overdue, due_soon, or upcoming) — not just overdue
+      setFilters(prev => ({ ...prev, reviewStatus: 'due_soon' as const }));
+      // Don't clear params immediately — let the filter visually apply first
+      setTimeout(() => setSearchParams({}, { replace: true }), 100);
       return;
     }
 
