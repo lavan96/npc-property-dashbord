@@ -9,6 +9,8 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Calculator, Home, DollarSign, TrendingUp, Settings2 } from 'lucide-react';
 import { STATE_MAPPING } from '@/lib/states';
 import { BuildType } from '@/types/overrideFields';
+import { getLocalityGrowthEstimate, getDerivedCpiGrowth } from '@/utils/localityGrowthEstimates';
+import { BuildType } from '@/types/overrideFields';
 
 import { PropertyTab, FinancialsTab, IncomeExpensesTab, AdvancedTab } from './manual-inputs';
 
