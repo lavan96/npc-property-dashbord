@@ -186,6 +186,7 @@ export default function ReportQA() {
   const [showEmailCopilotModal, setShowEmailCopilotModal] = useState(false);
   const [pendingPDFAttachment, setPendingPDFAttachment] = useState<PDFAttachment | null>(null);
   const [isValidatingPDF, setIsValidatingPDF] = useState(false);
+  const [isIndexing, setIsIndexing] = useState(false);
   const [pdfValidationError, setPdfValidationError] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState<ModelProvider>('openai');
   const [showInPlaceEmailCompose, setShowInPlaceEmailCompose] = useState(false);
@@ -557,22 +558,25 @@ export default function ReportQA() {
       setMessages([]);
       loadSavedConversations();
       
-      // Trigger RAG indexing in the background (non-blocking)
-      // This chunks reports, generates embeddings, and creates a structural summary
+      // Trigger RAG indexing (blocking until complete - prevents race condition)
       if (uploadedReports.length > 0) {
         console.log(`[ReportQA] Triggering RAG indexing for conversation ${newConversationId}...`);
-        invokeSecureFunction('report-qa', {
-          action: 'index-reports',
-          conversationId: newConversationId,
-        }).then(({ data: indexData, error: indexError }) => {
+        setIsIndexing(true);
+        try {
+          const { data: indexData, error: indexError } = await invokeSecureFunction('report-qa', {
+            action: 'index-reports',
+            conversationId: newConversationId,
+          });
           if (indexError) {
-            console.error('[ReportQA] RAG indexing failed (non-critical):', indexError);
+            console.error('[ReportQA] RAG indexing failed:', indexError);
           } else {
             console.log(`[ReportQA] RAG indexing complete:`, indexData);
           }
-        }).catch(err => {
-          console.error('[ReportQA] RAG indexing error (non-critical):', err);
-        });
+        } catch (err) {
+          console.error('[ReportQA] RAG indexing error:', err);
+        } finally {
+          setIsIndexing(false);
+        }
       }
       
       // Log conversation created
@@ -808,9 +812,8 @@ export default function ReportQA() {
         credentials: 'omit', // Avoid CORS issues with wildcard origins
         body: JSON.stringify({
           action: 'chat',
-          // RAG mode: Don't send full report contents - the backend retrieves relevant chunks
-          // Only send report names for context identification
-          reportContents: [],
+          // Send report contents as fallback in case RAG indexing hasn't completed
+          reportContents: reportsToUse.map(r => r.content),
           reportNames: reportsToUse.map(r => r.name),
           question: messageContent,
           chatHistory: chatHistoryForRequest,
@@ -2192,6 +2195,14 @@ export default function ReportQA() {
               </div>
             )}
 
+            {/* Indexing indicator */}
+            {isIndexing && (
+              <div className="flex items-center gap-2 px-3 py-2 bg-muted rounded-lg text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Indexing reports for intelligent retrieval… Chat will be available shortly.</span>
+              </div>
+            )}
+
             {/* Input */}
             <div className="space-y-1 pt-1.5 sm:pt-2 border-t flex-shrink-0">
               <div className="flex gap-1.5 sm:gap-2 items-end">
@@ -2216,7 +2227,7 @@ export default function ReportQA() {
                       handleSendMessage();
                     }
                   }}
-                  disabled={isProcessing || isRecording || isTranscribing}
+                  disabled={isProcessing || isRecording || isTranscribing || isIndexing}
                   className="flex-1 min-h-[40px] max-h-[300px] resize-none overflow-y-auto"
                   rows={1}
                 />
@@ -2285,7 +2296,7 @@ export default function ReportQA() {
               )}
                 <Button
                   onClick={() => handleSendMessage()}
-                  disabled={!inputMessage.trim() || isProcessing || isRecording || inputMessage.length > MAX_MESSAGE_LENGTH}
+                  disabled={!inputMessage.trim() || isProcessing || isRecording || isIndexing || inputMessage.length > MAX_MESSAGE_LENGTH}
                   className="h-10 flex-shrink-0"
                 >
                   <Send className="h-4 w-4" />
