@@ -384,9 +384,18 @@ export default function Overview() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleExportSnapshot}>
-            <Download className="h-4 w-4 mr-2" />
-            Export Snapshot
+          <Button variant="outline" size="sm" onClick={handleExportSnapshot} disabled={isExporting || isLoading}>
+            {isExporting ? (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                Exporting...
+              </>
+            ) : (
+              <>
+                <Download className="h-4 w-4 mr-2" />
+                Export Snapshot
+              </>
+            )}
           </Button>
           <OverviewFilters 
             filters={filters}
