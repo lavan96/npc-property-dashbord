@@ -236,16 +236,22 @@ export default function Overview() {
     const agencyChartData = chartDataService.generateAgencyData(filtered, 10);
     setAgencyData(agencyChartData.data.map(item => ({ agency: item.metadata?.fullName || item.label, count: item.value })));
 
-    // Content statistics — properly check for images/floorplans including attachment objects
+    // Content statistics — properly check for images/floorplans including attachment objects and alternate field names
     const withPrices = filtered.filter(l => l.price && l.price > 0).length;
     const withImages = filtered.filter(l => {
-      if (!l.images) return false;
-      if (Array.isArray(l.images) && l.images.length > 0) return true;
+      const raw = l as any;
+      const imgs = l.images || raw.Images || raw.Property_Images || raw.Attachments || raw.Photos;
+      if (!imgs) return false;
+      if (Array.isArray(imgs) && imgs.length > 0) return true;
+      if (typeof imgs === 'string' && imgs.trim().length > 0) return true;
       return false;
     }).length;
     const withFloorplans = filtered.filter(l => {
-      if (!l.floorplans) return false;
-      if (Array.isArray(l.floorplans) && l.floorplans.length > 0) return true;
+      const raw = l as any;
+      const fps = l.floorplans || raw.Floorplans || raw.Floor_Plans || raw.FloorPlan;
+      if (!fps) return false;
+      if (Array.isArray(fps) && fps.length > 0) return true;
+      if (typeof fps === 'string' && fps.trim().length > 0) return true;
       return false;
     }).length;
     const withKeyEntities = filtered.filter(l => l.keyEntities && l.keyEntities.trim() !== '').length;

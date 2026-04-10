@@ -133,6 +133,19 @@ class PropertyDataService {
    * Standardize listing data for consistent processing
    */
   private standardizeListing(listing: PropertyListing): PropertyListing {
+    // Cast to any to check alternate field names from raw API responses
+    const raw = listing as any;
+
+    // Resolve images from multiple possible field names (case-insensitive edge function responses)
+    const resolvedImages = listing.images 
+      || raw.Images || raw.Property_Images || raw.property_images 
+      || raw.Attachments || raw.attachments || raw.Photos || raw.photos || [];
+
+    // Resolve floorplans from multiple possible field names
+    const resolvedFloorplans = listing.floorplans 
+      || raw.Floorplans || raw.Floor_Plans || raw.floor_plans 
+      || raw.FloorPlan || raw.floorplan || [];
+
     return {
       ...listing,
       propertyType: this.standardizePropertyType(listing.propertyType),
@@ -142,8 +155,8 @@ class PropertyDataService {
       baths: this.standardizeBedBath(listing.baths || listing.bathrooms),
       receivedAt: listing.receivedAt || listing.createdAt || listing.createdTime,
       // Normalize images/floorplans - Airtable returns attachment objects or URL strings
-      images: this.normalizeAttachments(listing.images),
-      floorplans: this.normalizeAttachments(listing.floorplans),
+      images: this.normalizeAttachments(resolvedImages),
+      floorplans: this.normalizeAttachments(resolvedFloorplans),
       dataQuality: this.calculateDataQualityScore(listing),
       isValidPrice: this.isValidPrice(listing.price),
       isValidLocation: this.isValidLocation(listing.address || listing.location),
