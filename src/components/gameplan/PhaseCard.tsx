@@ -606,8 +606,8 @@ function MilestoneRow({ milestone: m, mutations }: { milestone: GamePlanMileston
       <div className="p-2 rounded-md border bg-muted/30 space-y-2">
         <Input value={editTitle} onChange={e => setEditTitle(e.target.value)} className="h-8 text-sm" autoFocus
           onKeyDown={e => e.key === 'Enter' && save()} />
-        <div className="flex gap-2">
-          <Input value={editOwner} onChange={e => setEditOwner(e.target.value)} placeholder="Owner" className="h-8 text-sm flex-1" />
+        <div className="flex gap-2 items-end">
+          <UserSelectField value={editOwner} onValueChange={setEditOwner} placeholder="Owner" className="flex-1" />
           <Button size="sm" className="h-8 text-xs" onClick={save}>Save</Button>
           <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => { setEditing(false); setEditTitle(m.title); setEditOwner(m.owner || ''); }}>
             <X className="h-3 w-3" />
@@ -651,7 +651,19 @@ function MilestoneRow({ milestone: m, mutations }: { milestone: GamePlanMileston
           {format(new Date(m.due_date), 'MMM d')}
         </span>
       )}
-      {m.owner && <Badge variant="outline" className="text-[10px] shrink-0">{m.owner}</Badge>}
+      {m.owner && (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="outline" className="text-[10px] shrink-0 gap-1">
+                <Users className="h-2.5 w-2.5" />
+                {m.owner}
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="text-xs">Owner — accountable for this milestone</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
       <div className="flex gap-0.5 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditing(true)}>
           <Pencil className="h-3 w-3 text-muted-foreground" />
