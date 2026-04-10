@@ -22,7 +22,8 @@ import {
   RefreshCw,
   Loader2,
   Star,
-  Target
+  Target,
+  Phone
 } from 'lucide-react';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { FollowUpFlag } from './FollowUpFlag';
