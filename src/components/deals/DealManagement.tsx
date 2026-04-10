@@ -206,7 +206,7 @@ function DealExpandedRow({
 }: {
   deal: DealWithClient;
   onUpdateDeal?: (dealId: string, clientId: string, data: any) => void;
-  onUpdateStage?: (stageId: string, clientId: string, data: any) => void;
+  onUpdateStage?: (stageId: string, clientId: string, data: any, dealId?: string, allStages?: any[]) => void;
 }) {
   const stages = deal.stages || [];
 
@@ -249,7 +249,7 @@ function DealExpandedRow({
                     {stage.completed_at && (
                       <span className="text-[9px] text-muted-foreground">{format(new Date(stage.completed_at), 'dd MMM')}</span>
                     )}
-                    <StageActions stage={stage} clientId={deal.client_id} onUpdateStage={onUpdateStage} />
+                    <StageActions stage={stage} clientId={deal.client_id} dealId={deal.id} allStages={stages} onUpdateStage={onUpdateStage} />
                   </div>
                 </div>
               ))}
