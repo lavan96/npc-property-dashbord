@@ -130,12 +130,13 @@ serve(async (req) => {
       const economics = (typeof report.economic_data === 'object' && report.economic_data !== null) ? report.economic_data : {};
       
       // Extract report text for analysis if structured data is missing
-      const reportText = report.report_content || '';
+      // IMPORTANT: Truncate to prevent payload size / token limit issues
+      const reportText = (report.report_content || '').substring(0, 4000);
 
       return {
         propertyNumber: index + 1,
         address: report.property_address,
-        reportText: reportText, // Full report content for comprehensive analysis
+        reportText: reportText, // Truncated report content for analysis
         
         // Investment Scoring
         overallScore: investmentScore.totalScore || null,
