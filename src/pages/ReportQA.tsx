@@ -186,6 +186,7 @@ export default function ReportQA() {
   const [showEmailCopilotModal, setShowEmailCopilotModal] = useState(false);
   const [pendingPDFAttachment, setPendingPDFAttachment] = useState<PDFAttachment | null>(null);
   const [isValidatingPDF, setIsValidatingPDF] = useState(false);
+  const [isIndexing, setIsIndexing] = useState(false);
   const [pdfValidationError, setPdfValidationError] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState<ModelProvider>('openai');
   const [showInPlaceEmailCompose, setShowInPlaceEmailCompose] = useState(false);
