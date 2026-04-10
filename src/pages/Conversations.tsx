@@ -279,18 +279,22 @@ export default function Conversations() {
       setEmailSubject('');
       toast.success('Message sent');
       // Optimistically add the sent message to the cache so it appears immediately
-      queryClient.setQueryData(['conversation-messages', selectedId], (old: any) => {
+      queryClient.setQueryData(['conversation-messages', selectedId], (old: Message[] | undefined) => {
         if (!old) return old;
-        const optimisticMsg = {
+        const optimisticMsg: Message = {
           id: `optimistic-${Date.now()}`,
-          conversation_id: selectedId,
+          ghl_message_id: `opt-${Date.now()}`,
           body: variables.message,
           direction: 'outbound',
           message_type: variables.type,
-          date_added: new Date().toISOString(),
-          status: 'sent',
+          channel_type: replyChannel,
+          content_type: null,
+          ghl_date_added: new Date().toISOString(),
+          message_status: 'sent',
+          attachment_urls: null,
+          sender_name: user?.name || user?.email || null,
         };
-        return { ...old, records: [...(old.records || []), optimisticMsg] };
+        return [...old, optimisticMsg];
       });
       // Also refetch to get the real server data
       queryClient.invalidateQueries({ queryKey: ['conversation-messages', selectedId] });
