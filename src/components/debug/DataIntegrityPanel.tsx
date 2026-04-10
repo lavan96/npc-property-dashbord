@@ -190,24 +190,59 @@ export function DataIntegrityPanel({
                 </TabsContent>
 
                 <TabsContent value="quality" className="space-y-4">
-                  {dashboardQuality && reportsQuality && (
-                    <div className="space-y-4">
-                      <div>
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-sm font-medium">Dashboard Quality</span>
-                          <span className="text-sm">{Math.round(dashboardQuality.score)}%</span>
+                  {(() => {
+                    // Use comparison quality scores (populated by the hook which fetches both datasets)
+                    const hasCmpScores = comparison.dataQualityScores &&
+                      (comparison.dataQualityScores.dashboard > 0 || comparison.dataQualityScores.reports > 0);
+                    // Fall back to prop-derived quality
+                    const dbScore = hasCmpScores ? comparison.dataQualityScores.dashboard : dashboardQuality?.score;
+                    const rpScore = hasCmpScores ? comparison.dataQualityScores.reports : reportsQuality?.score;
+
+                    if (dbScore == null && rpScore == null) {
+                      return (
+                        <div className="text-sm text-muted-foreground py-4 text-center">
+                          Run validation to generate data quality scores.
                         </div>
-                        <Progress value={dashboardQuality.score} />
-                      </div>
-                      <div>
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-sm font-medium">Reports Quality</span>
-                          <span className="text-sm">{Math.round(reportsQuality.score)}%</span>
+                      );
+                    }
+
+                    return (
+                      <div className="space-y-4">
+                        {dbScore != null && (
+                          <div>
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="text-sm font-medium">Dashboard Quality</span>
+                              <span className="text-sm">{Math.round(dbScore)}%</span>
+                            </div>
+                            <Progress value={dbScore} className="h-2" />
+                          </div>
+                        )}
+                        {rpScore != null && (
+                          <div>
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="text-sm font-medium">Reports Quality</span>
+                              <span className="text-sm">{Math.round(rpScore)}%</span>
+                            </div>
+                            <Progress value={rpScore} className="h-2" />
+                          </div>
+                        )}
+                        {dashboardQuality?.recommendations && dashboardQuality.recommendations.length > 0 && (
+                          <div className="space-y-2 mt-3">
+                            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Recommendations</span>
+                            {dashboardQuality.recommendations.map((rec, i) => (
+                              <div key={i} className="flex items-start gap-1.5 text-xs bg-amber-500/10 text-amber-700 dark:text-amber-400 rounded p-2">
+                                <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+                                <span>{rec}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <div className="text-xs text-muted-foreground mt-2">
+                          Quality is calculated based on field completeness, valid values, and data consistency.
                         </div>
-                        <Progress value={reportsQuality.score} />
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </TabsContent>
               </Tabs>
             )}
