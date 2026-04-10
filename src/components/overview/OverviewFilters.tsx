@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Filter, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
@@ -71,25 +71,16 @@ export function OverviewFilters({ filters, setFilters, uniqueValues }: OverviewF
             )}
           </div>
 
-          {/* State */}
+          {/* State — searchable */}
           <div className="space-y-2">
             <Label>State</Label>
-            <Select
+            <SearchableSelect
               value={filters.state}
               onValueChange={(value) => setFilters({ ...filters, state: value })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="All states" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All states</SelectItem>
-                {(uniqueValues.states.length > 0 ? uniqueValues.states : ['NSW', 'VIC', 'QLD', 'SA', 'WA', 'TAS', 'NT', 'ACT']).filter(state => state && state.trim() !== '').map((state) => (
-                  <SelectItem key={state} value={state}>
-                    {state} — {getFullStateName(state)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              options={(uniqueValues.states.length > 0 ? uniqueValues.states : ['NSW', 'VIC', 'QLD', 'SA', 'WA', 'TAS', 'NT', 'ACT']).filter(state => state && state.trim() !== '').map(s => s)}
+              placeholder="All states"
+              allLabel="All states"
+            />
           </div>
 
           {/* Postcode — searchable */}
@@ -116,25 +107,16 @@ export function OverviewFilters({ filters, setFilters, uniqueValues }: OverviewF
             />
           </div>
 
-          {/* Property Type */}
+          {/* Property Type — searchable */}
           <div className="space-y-2">
             <Label>Property Type</Label>
-            <Select
+            <SearchableSelect
               value={filters.propertyType}
               onValueChange={(value) => setFilters({ ...filters, propertyType: value })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="All types" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All types</SelectItem>
-                {uniqueValues.propertyTypes.filter(type => type && type.trim() !== '').map((type) => (
-                  <SelectItem key={type} value={type}>
-                    {type}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              options={uniqueValues.propertyTypes.filter(type => type && type.trim() !== '')}
+              placeholder="All types"
+              allLabel="All types"
+            />
           </div>
         </div>
       </PopoverContent>
