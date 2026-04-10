@@ -762,8 +762,8 @@ function ActionRow({ action: a, mutations }: { action: GamePlanAction; mutations
       <div className="p-2 rounded-md border bg-muted/30 space-y-2">
         <Input value={editLabel} onChange={e => setEditLabel(e.target.value)} className="h-8 text-sm" autoFocus
           onKeyDown={e => e.key === 'Enter' && save()} />
-        <div className="flex gap-2">
-          <Input value={editAssignee} onChange={e => setEditAssignee(e.target.value)} placeholder="Assigned to" className="h-8 text-sm flex-1" />
+        <div className="flex gap-2 items-end">
+          <UserSelectField value={editAssignee} onValueChange={setEditAssignee} placeholder="Assign to" className="flex-1" />
           <Button size="sm" className="h-8 text-xs" onClick={save}>Save</Button>
           <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => { setEditing(false); setEditLabel(a.label); setEditAssignee(a.assigned_to || ''); }}>
             <X className="h-3 w-3" />
