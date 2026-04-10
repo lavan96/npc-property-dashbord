@@ -869,8 +869,8 @@ serve(async (req) => {
         contextSection = parts.join('\n\n');
         console.log(`[report-qa] Using RAG context: ${contextSection.length} chars (summary: ${summaryContext.length}, chunks: ${ragContext.length})`);
       } else if (hasReports) {
-        // Fallback: Use raw report content (legacy behavior for non-indexed conversations)
-        console.log(`[report-qa] RAG not available, falling back to raw content injection`);
+        // Fallback: Use raw report content from request (legacy behavior for non-indexed conversations)
+        console.log(`[report-qa] RAG not available, falling back to raw content injection from request`);
         
         if (isMultiReport) {
           const perReportLimit = Math.floor(MAX_CONTEXT_CHARS / reportContents.length);
@@ -880,6 +880,33 @@ serve(async (req) => {
         } else {
           const raw = reportContents?.[0] || body.reportContent || "";
           contextSection = truncateContext(raw, MAX_CONTEXT_CHARS);
+        }
+      } else if (conversationId) {
+        // DB fallback: Load raw content from conversation record when nothing else is available
+        console.log(`[report-qa] No RAG or request content, loading raw content from DB for conversation ${conversationId}`);
+        try {
+          const { data: convFallback } = await supabase
+            .from("report_qa_conversations")
+            .select("report_contents, report_names")
+            .eq("id", conversationId)
+            .single();
+
+          if (convFallback?.report_contents && convFallback.report_contents.length > 0) {
+            const dbContents = convFallback.report_contents;
+            const dbNames = convFallback.report_names || [];
+            console.log(`[report-qa] DB fallback: loaded ${dbContents.length} reports from conversation`);
+
+            if (dbContents.length > 1) {
+              const perReportLimit = Math.floor(MAX_CONTEXT_CHARS / dbContents.length);
+              contextSection = dbContents.map((content: string, idx: number) =>
+                `--- REPORT ${idx + 1}: ${dbNames[idx] || `Report ${idx + 1}`} ---\n${truncateContext(content, perReportLimit)}\n`
+              ).join("\n\n");
+            } else {
+              contextSection = truncateContext(dbContents[0], MAX_CONTEXT_CHARS);
+            }
+          }
+        } catch (dbErr) {
+          console.error(`[report-qa] DB fallback failed:`, dbErr);
         }
       }
       
