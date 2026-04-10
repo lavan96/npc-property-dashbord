@@ -18,6 +18,7 @@ import { useAutoRefresh } from '@/hooks/use-auto-refresh';
 import { propertyDataService } from '@/services/propertyDataService';
 import { chartDataService } from '@/services/chartDataService';
 import { toast } from 'sonner';
+import { generateOverviewSnapshotPDF } from '@/components/overview/OverviewSnapshotPDF';
 import { 
   BarChart, 
   Bar, 
