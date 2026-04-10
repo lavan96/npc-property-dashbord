@@ -1618,7 +1618,9 @@ export default function Calendar() {
             const frequentlyUsedIds = new Set(frequentlyUsed.map(c => c.id));
             const otherCalendars = [...rankedActive.filter(c => !frequentlyUsedIds.has(c.id)), ...inactiveCalendars];
 
-            const renderCalendarCard = (calendar: typeof calendars[0]) => (
+            const renderCalendarCard = (calendar: typeof calendars[0]) => {
+              const calEventCount = eventCountByCalendar[calendar.id] || 0;
+              return (
               <button
                 key={calendar.id}
                 onClick={() => setSelectedCalendarId(calendar.id === selectedCalendarId ? 'all' : calendar.id)}
