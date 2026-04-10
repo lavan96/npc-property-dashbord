@@ -873,6 +873,8 @@ export function PreGenerationOverrides({
                   }
                 }}
                 purchasePrice={purchasePrice}
+                derivedCpiHint={derivedCpiHint}
+                capitalGrowthValue={capitalGrowth}
               />
             </TabsContent>
           </ScrollArea>
