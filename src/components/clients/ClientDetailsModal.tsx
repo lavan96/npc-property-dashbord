@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { smartCapitalize } from '@/lib/nameUtils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -799,7 +800,7 @@ NPC Team`
             <TabsContent value="report-requests" className={cn("mt-4", !isMobile && "max-w-3xl mx-auto w-full")}>
               <ClientReportRequestsTab
                 clientId={client.id}
-                clientName={`${client.primary_first_name} ${client.primary_surname}`}
+                clientName={smartCapitalize(`${client.primary_first_name || ''} ${client.primary_surname || ''}`.trim())}
               />
             </TabsContent>
 
