@@ -1594,13 +1594,33 @@ export default function Calendar() {
               ))}
             </div>
           ) : (() => {
-            // Sort calendars: active first, then by name. Top 4 active = "Frequently Used"
+            // Rank active calendars by how many events they have (descending), then alphabetically
+            const eventCountByCalendar: Record<string, number> = {};
+            events.forEach(e => {
+              if (e.calendarId) {
+                eventCountByCalendar[e.calendarId] = (eventCountByCalendar[e.calendarId] || 0) + 1;
+              }
+            });
+
             const activeCalendars = calendars.filter(c => c.isActive);
             const inactiveCalendars = calendars.filter(c => !c.isActive);
-            const frequentlyUsed = activeCalendars.slice(0, 4);
-            const otherCalendars = [...activeCalendars.slice(4), ...inactiveCalendars];
 
-            const renderCalendarCard = (calendar: typeof calendars[0]) => (
+            // Sort active calendars by event count (most used first), then by name
+            const rankedActive = [...activeCalendars].sort((a, b) => {
+              const countDiff = (eventCountByCalendar[b.id] || 0) - (eventCountByCalendar[a.id] || 0);
+              if (countDiff !== 0) return countDiff;
+              return a.name.localeCompare(b.name);
+            });
+
+            // Top 4 with at least 1 event are "Most Frequently Used"
+            const withEvents = rankedActive.filter(c => (eventCountByCalendar[c.id] || 0) > 0);
+            const frequentlyUsed = withEvents.slice(0, 4);
+            const frequentlyUsedIds = new Set(frequentlyUsed.map(c => c.id));
+            const otherCalendars = [...rankedActive.filter(c => !frequentlyUsedIds.has(c.id)), ...inactiveCalendars];
+
+            const renderCalendarCard = (calendar: typeof calendars[0]) => {
+              const calEventCount = eventCountByCalendar[calendar.id] || 0;
+              return (
               <button
                 key={calendar.id}
                 onClick={() => setSelectedCalendarId(calendar.id === selectedCalendarId ? 'all' : calendar.id)}
@@ -1629,6 +1649,11 @@ export default function Calendar() {
                           Active
                         </Badge>
                       )}
+                      {calEventCount > 0 && (
+                        <Badge variant="secondary" className="text-[10px]">
+                          {calEventCount} event{calEventCount !== 1 ? 's' : ''}
+                        </Badge>
+                      )}
                     </div>
                   </div>
                   {calendar.teamMembers && calendar.teamMembers.length > 0 && (
@@ -1640,6 +1665,7 @@ export default function Calendar() {
                 </div>
               </button>
             );
+            };
 
             return (
               <div className="space-y-6">
