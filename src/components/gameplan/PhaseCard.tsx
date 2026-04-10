@@ -792,7 +792,19 @@ function ActionRow({ action: a, mutations }: { action: GamePlanAction; mutations
           {format(new Date(a.due_date), 'MMM d')}
         </span>
       )}
-      {a.assigned_to && <Badge variant="outline" className="text-[10px] shrink-0">{a.assigned_to}</Badge>}
+      {a.assigned_to && (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="outline" className="text-[10px] shrink-0 gap-1">
+                <UserCircle className="h-2.5 w-2.5" />
+                {a.assigned_to}
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="text-xs">Assigned to — responsible for completing this action</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
       <div className="flex gap-0.5 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditing(true)}>
           <Pencil className="h-3 w-3 text-muted-foreground" />
