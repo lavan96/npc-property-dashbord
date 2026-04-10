@@ -10,11 +10,13 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { ChevronDown, Plus, Trash2, Target, StickyNote, CheckCircle2, CircleDot, AlertCircle, Clock, Pin, Pencil, X, Calendar as CalendarIcon, Copy, ChevronUp, ChevronDown as ChevronDownIcon, ListChecks } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { ChevronDown, Plus, Trash2, Target, StickyNote, CheckCircle2, CircleDot, AlertCircle, Clock, Pin, Pencil, X, Calendar as CalendarIcon, Copy, ChevronUp, ChevronDown as ChevronDownIcon, ListChecks, UserCircle, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { RichTextEditor } from './RichTextEditor';
 import { toast } from 'sonner';
+import { useTeamUsers } from '@/hooks/useTeamUsers';
 
 const phaseStatusMap: Record<string, { label: string; icon: typeof CircleDot; color: string }> = {
   not_started: { label: 'Not Started', icon: Clock, color: 'text-muted-foreground' },
