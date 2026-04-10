@@ -165,9 +165,8 @@ export default function ClientManagement() {
 
     // Handle reviews_due filter deep-link from Overview widget
     if (filterParam === 'reviews_due' && !isLoading) {
-      // Show all clients with any review due (overdue, due_soon, or upcoming) — not just overdue
-      setFilters(prev => ({ ...prev, reviewStatus: 'due_soon' as const }));
-      // Don't clear params immediately — let the filter visually apply first
+      // Show all clients with any review due (overdue + upcoming within 30 days)
+      setFilters(prev => ({ ...prev, reviewStatus: 'upcoming' as const }));
       setTimeout(() => setSearchParams({}, { replace: true }), 100);
       return;
     }
@@ -404,7 +403,8 @@ export default function ClientManagement() {
       if (filters.reviewStatus === 'upcoming') {
         if (!nextReview) return false;
         const monthFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-        if (nextReview < now || nextReview > monthFromNow) return false;
+        // Include overdue AND upcoming within 30 days — this is the "all reviews due" view
+        if (nextReview > monthFromNow) return false;
       }
       if (filters.reviewStatus === 'no_review' && nextReview) return false;
     }
