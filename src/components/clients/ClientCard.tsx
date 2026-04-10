@@ -186,6 +186,12 @@ export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComp
                   {client.primary_email}
                 </p>
               )}
+              {client.primary_mobile && (
+                <p className="text-xs text-muted-foreground truncate max-w-[200px] flex items-center gap-1">
+                  <Phone className="h-3 w-3 shrink-0" />
+                  {client.primary_mobile}
+                </p>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-1">
