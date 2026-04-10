@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -33,12 +33,16 @@ export function InvestmentReportModal({
   const [hasStartedGeneration, setHasStartedGeneration] = useState(false);
   const [enhancedData, setEnhancedData] = useState<any>(null);
   const [isBackgroundGeneration, setIsBackgroundGeneration] = useState(false);
+  const generationLockRef = useRef(false);
   const { toast } = useToast();
   const { addNotification } = useNotifications();
   const { user } = useAuth();
   const navigate = useNavigate();
 
   const generateReport = async (runInBackground = false) => {
+    // Guard against double-clicks and concurrent generation using both state and ref lock
+    if (isGenerating || generationLockRef.current) return;
+    generationLockRef.current = true;
     setIsGenerating(true);
     setHasStartedGeneration(true);
     
@@ -216,6 +220,7 @@ export function InvestmentReportModal({
       setIsBackgroundGeneration(false);
     } finally {
       setIsGenerating(false);
+      generationLockRef.current = false;
     }
   };
 
