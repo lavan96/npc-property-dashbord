@@ -640,15 +640,26 @@ export default function Overview() {
             </CardHeader>
             <CardContent className="px-2 md:px-6">
               <ResponsiveContainer width="100%" height={isMobile ? 250 : 300}>
-                <PieChart margin={isMobile ? { top: 10, right: 10, bottom: 50, left: 10 } : { top: 20, right: 20, bottom: 60, left: 20 }}>
+                <PieChart margin={isMobile ? { top: 20, right: 10, bottom: 60, left: 10 } : { top: 40, right: 20, bottom: 80, left: 20 }}>
                   <Pie
                     data={categoryData}
                     cx="50%"
                     cy="40%"
-                    labelLine={false}
-                    label={(props: any) => 
-                      props.percent > 0.05 ? `${props.count}` : ''
-                    }
+                    labelLine={!isMobile}
+                    label={(props: any) => {
+                      const total = categoryData.reduce((sum, item) => sum + item.count, 0);
+                      const percentage = total > 0 ? ((props.count / total) * 100).toFixed(1) : '0.0';
+                      if (parseFloat(percentage) < 5) return null;
+                      const RADIAN = Math.PI / 180;
+                      const radius = (props.outerRadius || 90) + (isMobile ? 14 : 22);
+                      const x = props.cx + radius * Math.cos(-props.midAngle * RADIAN);
+                      const y = props.cy + radius * Math.sin(-props.midAngle * RADIAN);
+                      return (
+                        <text x={x} y={y} fill="hsl(var(--foreground))" textAnchor={x > props.cx ? 'start' : 'end'} dominantBaseline="central" fontSize={isMobile ? 9 : 11} fontWeight="500">
+                          {props.status} ({percentage}%)
+                        </text>
+                      );
+                    }}
                     outerRadius={isMobile ? 65 : 90}
                     fill="#8884d8"
                     dataKey="count"
@@ -675,21 +686,25 @@ export default function Overview() {
                   />
                   <Legend 
                     verticalAlign="bottom" 
-                    height={isMobile ? 35 : 40}
+                    height={isMobile ? 50 : 60}
                     wrapperStyle={{ paddingTop: '10px', fontSize: isMobile ? '10px' : '12px' }}
                     content={() => (
                       <div className="flex flex-wrap justify-center gap-1.5 md:gap-2">
-                        {categoryData.map((entry, index) => (
-                          <div key={entry.status} className="flex items-center gap-1">
-                            <div 
-                              className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-sm" 
-                              style={{ backgroundColor: COLORS[index % COLORS.length] }}
-                            />
-                            <span className="text-[10px] md:text-xs text-muted-foreground">
-                              {entry.status} ({entry.count})
-                            </span>
-                          </div>
-                        ))}
+                        {categoryData.map((entry, index) => {
+                          const total = categoryData.reduce((sum, item) => sum + item.count, 0);
+                          const pct = total > 0 ? ((entry.count / total) * 100).toFixed(1) : '0.0';
+                          return (
+                            <div key={entry.status} className="flex items-center gap-1">
+                              <div 
+                                className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-sm" 
+                                style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                              />
+                              <span className="text-[10px] md:text-xs text-muted-foreground">
+                                {entry.status} ({entry.count} · {pct}%)
+                              </span>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   />
