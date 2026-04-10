@@ -449,9 +449,8 @@ export default function ReportRequests() {
                     })}
                   </div>
                 </div>
-                  )}
-                </div>
               </div>
+            );
             );
           })()}
         </DialogContent>
