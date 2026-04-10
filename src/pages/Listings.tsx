@@ -15,7 +15,7 @@ import { MobileFilterSheet } from '@/components/listings/MobileFilterSheet';
 import { PropertyCard } from '@/components/listings/PropertyCard';
 import { propertyDataService } from '@/services/propertyDataService';
 import { PropertyListing } from '@/lib/airtable';
-import { buildFullAddress } from '@/lib/addressUtils';
+import { buildFullAddress, extractAUState, extractPostcode } from '@/lib/addressUtils';
 import { getNearbySuburbs } from '@/lib/postcodeProximity';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
