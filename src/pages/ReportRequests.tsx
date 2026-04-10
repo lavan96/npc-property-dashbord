@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { smartCapitalize } from '@/lib/nameUtils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,7 +20,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Search, Loader2, Clock, ArrowRight, CheckCircle2, XCircle,
   BarChart3, PiggyBank, Building2, User, Send, Calendar,
-  MessageSquare, Filter, Inbox
+  MessageSquare, Filter, Inbox, Mail, Phone, MapPin
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
