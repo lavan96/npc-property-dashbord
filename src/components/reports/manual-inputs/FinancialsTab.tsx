@@ -332,12 +332,22 @@ export function FinancialsTab({
                   step="0.1"
                   value={capitalGrowth}
                   onChange={(e) => setCapitalGrowth(e.target.value)}
-                  placeholder="5"
+                  placeholder={localityGrowthEstimate ? localityGrowthEstimate.capitalGrowthPercent.toString() : "5"}
                   disabled={disabled}
                   className="pr-8"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
               </div>
+              {isNewBuild && localityGrowthEstimate && !capitalGrowth && (
+                <button 
+                  type="button"
+                  onClick={() => setCapitalGrowth(localityGrowthEstimate.capitalGrowthPercent.toString())}
+                  className="text-xs text-primary hover:underline cursor-pointer"
+                  disabled={disabled}
+                >
+                  Auto-fill {localityGrowthEstimate.capitalGrowthPercent}% ({localityGrowthEstimate.source})
+                </button>
+              )}
             </div>
           </div>
 
