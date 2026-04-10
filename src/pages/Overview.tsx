@@ -513,14 +513,14 @@ export default function Overview() {
                     label={(props: any) => {
                       const total = propertyTypeData.reduce((sum, item) => sum + item.count, 0);
                       const percentage = total > 0 ? ((props.count / total) * 100).toFixed(1) : '0.0';
-                      if (parseFloat(percentage) < 3) return null;
+                      if (parseFloat(percentage) < 5) return null;
                       const RADIAN = Math.PI / 180;
-                      const radius = (props.outerRadius || 100) + 18;
+                      const radius = (props.outerRadius || 100) + (isMobile ? 14 : 22);
                       const x = props.cx + radius * Math.cos(-props.midAngle * RADIAN);
                       const y = props.cy + radius * Math.sin(-props.midAngle * RADIAN);
                       return (
-                        <text x={x} y={y} fill="hsl(var(--foreground))" textAnchor={x > props.cx ? 'start' : 'end'} dominantBaseline="central" fontSize={isMobile ? 10 : 12}>
-                          {percentage}%
+                        <text x={x} y={y} fill="hsl(var(--foreground))" textAnchor={x > props.cx ? 'start' : 'end'} dominantBaseline="central" fontSize={isMobile ? 9 : 11} fontWeight="500">
+                          {props.type} ({percentage}%)
                         </text>
                       );
                     }}
