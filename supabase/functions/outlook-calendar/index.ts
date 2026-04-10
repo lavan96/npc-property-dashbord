@@ -279,8 +279,8 @@ async function listTeamAvailability(
         email: msEmail,
         events,
         busySlots: events
-          .filter((e: any) => e.showAs === 'busy' || e.showAs === 'tentative')
-          .map((e: any) => ({ start: e.startTime, end: e.endTime, title: e.title })),
+          .filter((e: any) => ['busy', 'tentative', 'oof', 'workingElsewhere'].includes(e.showAs))
+          .map((e: any) => ({ start: e.startTime, end: e.endTime, title: e.title, showAs: e.showAs })),
       });
     } catch (e) {
       console.error(`[outlook-calendar] Failed to fetch for ${msEmail}:`, (e as Error).message);
