@@ -2219,7 +2219,7 @@ export default function ReportQA() {
                       handleSendMessage();
                     }
                   }}
-                  disabled={isProcessing || isRecording || isTranscribing}
+                  disabled={isProcessing || isRecording || isTranscribing || isIndexing}
                   className="flex-1 min-h-[40px] max-h-[300px] resize-none overflow-y-auto"
                   rows={1}
                 />
