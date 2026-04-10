@@ -268,6 +268,8 @@ export default function Overview() {
 
   // ─── Export snapshot PDF ───
   const handleExportSnapshot = useCallback(async () => {
+    if (isExporting) return;
+    setIsExporting(true);
     const toastId = toast.loading('Generating Overview Snapshot PDF...');
     try {
       const snapshotData = {
@@ -302,9 +304,11 @@ export default function Overview() {
       toast.success('Overview Snapshot PDF exported!', { id: toastId });
     } catch (err) {
       console.error('Snapshot PDF export failed:', err);
-      toast.error('Failed to export snapshot PDF', { id: toastId });
+      toast.error('Failed to export snapshot PDF', { id: toastId, description: err instanceof Error ? err.message : 'An unexpected error occurred' });
+    } finally {
+      setIsExporting(false);
     }
-  }, [allListings, kpis, contentStats, filters, suburbData, propertyTypeData, agencyData, recentListings, extractPostcode]);
+  }, [isExporting, allListings, kpis, contentStats, filters, suburbData, propertyTypeData, agencyData, recentListings, extractPostcode]);
 
   // ─── Error state ───
   if (error) {
