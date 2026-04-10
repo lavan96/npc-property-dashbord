@@ -451,7 +451,6 @@ export default function ReportRequests() {
                 </div>
               </div>
             );
-            );
           })()}
         </DialogContent>
       </Dialog>
