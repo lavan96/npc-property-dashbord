@@ -76,7 +76,8 @@ function getAccessToken(): string | null {
  */
 export async function invokeSecureFunction<T = any>(
   functionName: string,
-  body?: Record<string, any>
+  body?: Record<string, any>,
+  options?: { timeoutMs?: number }
 ): Promise<InvokeResult<T>> {
   try {
     // Get session token as fallback for cross-origin cookie issues
@@ -91,24 +92,25 @@ export async function invokeSecureFunction<T = any>(
       ? { ...body, session_token: sessionToken }
       : { session_token: sessionToken };
     
+    // Optional abort controller for long-running functions
+    const controller = new AbortController();
+    const timeoutMs = options?.timeoutMs || 60000; // default 60s
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
     const response = await fetch(`${SUPABASE_URL}/functions/v1/${functionName}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'apikey': SUPABASE_ANON_KEY,
-        // Use real user token when available; fall back to anon for public functions.
         'Authorization': `Bearer ${bearerToken}`,
-        // Add session token as custom header for additional fallback
         ...(sessionToken ? { 'x-session-token': sessionToken } : {}),
       },
-      // Do NOT include cross-site cookies here.
-      // Using `credentials: 'include'` makes this a credentialed CORS request, which is
-      // incompatible with wildcard CORS (`Access-Control-Allow-Origin: *`) and surfaces as
-      // a browser-level "Failed to fetch".
-      // We authenticate via Bearer token instead.
       credentials: 'omit',
       body: JSON.stringify(requestBody),
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     const data = await response.json();
     
@@ -137,9 +139,10 @@ export async function invokeSecureFunction<T = any>(
 
     return { data: data as T, error: null };
   } catch (error: any) {
+    const isTimeout = error.name === 'AbortError';
     return { 
       data: null, 
-      error: { message: error.message || 'Network error' } 
+      error: { message: isTimeout ? 'Request timed out. Please try again.' : (error.message || 'Network error') } 
     };
   }
 }

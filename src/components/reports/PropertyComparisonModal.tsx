@@ -193,7 +193,7 @@ export function PropertyComparisonModal({
         requestBody.customWeights = customWeights;
       }
       
-      const { data, error } = await invokeSecureFunction('compare-investment-reports', requestBody);
+      const { data, error } = await invokeSecureFunction('compare-investment-reports', requestBody, { timeoutMs: 150000 });
 
       if (error) {
         // Extract more detailed error information
