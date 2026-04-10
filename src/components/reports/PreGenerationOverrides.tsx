@@ -777,6 +777,7 @@ export function PreGenerationOverrides({
                 setExtraRepaymentPerMonth={setExtraRepaymentPerMonth}
                 offsetBalance={offsetBalance}
                 setOffsetBalance={setOffsetBalance}
+                localityGrowthEstimate={localityGrowthEstimate}
               />
             </TabsContent>
 
