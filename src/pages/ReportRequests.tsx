@@ -89,7 +89,7 @@ export default function ReportRequests() {
 
       // Fetch client names for all unique client_ids
       const clientIds = [...new Set(requests.map((r: any) => r.client_id).filter(Boolean))];
-      const clientMap: Record<string, string> = {};
+      const clientMap: Record<string, { name: string; email: string | null; phone: string | null; address: string | null }> = {};
       
       if (clientIds.length > 0) {
         // Fetch clients using list mode with no filters to get all, then filter in memory
