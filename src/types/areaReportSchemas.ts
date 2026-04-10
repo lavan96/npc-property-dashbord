@@ -143,7 +143,7 @@ export const SUBURB_REPORT_SCHEMA: ReportSection[] = [
 ];
 
 // ============================================================================
-// POSTCODE / ZIP CODE COMPASS REPORT SCHEMA v1.0
+// POSTCODE COMPASS REPORT SCHEMA v1.0
 // ============================================================================
 export const POSTCODE_REPORT_SCHEMA: ReportSection[] = [
   {

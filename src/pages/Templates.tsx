@@ -63,7 +63,7 @@ const REPORT_FORMATS: ReportFormatConfig[] = [
 const FORMAT_GROUPS = [
   { key: 'investment', title: 'Investment Reports', description: 'Templates for individual property investment analysis reports', icon: Building2, columns: 3 as const },
   { key: 'suburb', title: 'Suburb Analysis', description: 'Templates for suburb-wide market and investment analysis reports', icon: MapPin, columns: 3 as const },
-  { key: 'postcode', title: 'Postcode / ZIP Code Analysis', description: 'Templates for postcode-zone market and investment analysis reports', icon: Hash, columns: 3 as const },
+  { key: 'postcode', title: 'Postcode Analysis', description: 'Templates for postcode-zone market and investment analysis reports', icon: Hash, columns: 3 as const },
   { key: 'statewide', title: 'Statewide Analysis', description: 'Templates for state-level macro market and investment analysis reports', icon: Map, columns: 3 as const },
   { key: 'comparison', title: 'Comparison Analysis', description: 'Templates for comparing multiple properties side-by-side', icon: BarChart3, columns: 2 as const },
   { key: 'cash_flow', title: 'Individual Cash Flow Analysis', description: 'Templates for detailed single property cash flow projections', icon: TrendingUp, columns: 2 as const },
