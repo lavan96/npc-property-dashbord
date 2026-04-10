@@ -60,6 +60,8 @@ interface FinancialsTabProps {
   setExtraRepaymentPerMonth?: (value: string) => void;
   offsetBalance?: string;
   setOffsetBalance?: (value: string) => void;
+  /** Locality-derived growth estimate for smart default */
+  localityGrowthEstimate?: { capitalGrowthPercent: number; source: string } | null;
 }
 
 export function FinancialsTab({
