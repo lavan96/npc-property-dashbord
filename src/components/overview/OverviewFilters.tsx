@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
+import { SearchableSelect } from '@/components/shared/SearchableSelect';
 import { getFullStateName } from '@/lib/states';
 
 interface OverviewFilterState {
@@ -82,7 +83,7 @@ export function OverviewFilters({ filters, setFilters, uniqueValues }: OverviewF
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All states</SelectItem>
-                {uniqueValues.states.filter(state => state && state.trim() !== '').map((state) => (
+                {(uniqueValues.states.length > 0 ? uniqueValues.states : ['NSW', 'VIC', 'QLD', 'SA', 'WA', 'TAS', 'NT', 'ACT']).filter(state => state && state.trim() !== '').map((state) => (
                   <SelectItem key={state} value={state}>
                     {state} — {getFullStateName(state)}
                   </SelectItem>
@@ -91,46 +92,28 @@ export function OverviewFilters({ filters, setFilters, uniqueValues }: OverviewF
             </Select>
           </div>
 
-          {/* Postcode */}
+          {/* Postcode — searchable */}
           <div className="space-y-2">
             <Label>Postcode</Label>
-            <Select
+            <SearchableSelect
               value={filters.postcode}
               onValueChange={(value) => setFilters({ ...filters, postcode: value })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="All postcodes" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All postcodes</SelectItem>
-                {uniqueValues.postcodes.filter(pc => pc && pc.trim() !== '').map((pc) => (
-                  <SelectItem key={pc} value={pc}>
-                    {pc}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              options={uniqueValues.postcodes.filter(pc => pc && pc.trim() !== '')}
+              placeholder="All postcodes"
+              allLabel="All postcodes"
+            />
           </div>
 
-          {/* Suburb */}
+          {/* Suburb — searchable type-to-filter */}
           <div className="space-y-2">
             <Label>Suburb</Label>
-            <Select
+            <SearchableSelect
               value={filters.suburb}
               onValueChange={(value) => setFilters({ ...filters, suburb: value })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="All suburbs" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All suburbs</SelectItem>
-                {uniqueValues.suburbs.filter(suburb => suburb && suburb.trim() !== '').map((suburb) => (
-                  <SelectItem key={suburb} value={suburb}>
-                    {suburb}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              options={uniqueValues.suburbs.filter(suburb => suburb && suburb.trim() !== '')}
+              placeholder="All suburbs"
+              allLabel="All suburbs"
+            />
           </div>
 
           {/* Property Type */}
