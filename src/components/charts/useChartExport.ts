@@ -126,7 +126,7 @@ async function chartToDataUrlWithAnalysis(chart: ChartData): Promise<string> {
       // Draw caption header
       ctx.font = `bold ${fontSize}px Arial, sans-serif`;
       ctx.fillStyle = '#b45309';
-      ctx.fillText('✨ AI Analysis', padding, img.height + padding + fontSize);
+      ctx.fillText('✨ Analysis', padding, img.height + padding + fontSize);
 
       // Draw caption text
       ctx.font = `${fontSize}px Arial, sans-serif`;
