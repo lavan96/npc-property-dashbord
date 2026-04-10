@@ -60,7 +60,7 @@ interface Props {
   isLoading: boolean;
   onDealClick?: (deal: DealWithClient) => void;
   onUpdateDeal?: (dealId: string, clientId: string, data: any) => void;
-  onUpdateStage?: (stageId: string, clientId: string, data: any) => void;
+  onUpdateStage?: (stageId: string, clientId: string, data: any, dealId?: string, allStages?: any[]) => void;
 }
 
 const formatCurrency = (val: number) =>
