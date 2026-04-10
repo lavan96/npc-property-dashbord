@@ -139,9 +139,10 @@ export async function invokeSecureFunction<T = any>(
 
     return { data: data as T, error: null };
   } catch (error: any) {
+    const isTimeout = error.name === 'AbortError';
     return { 
       data: null, 
-      error: { message: error.message || 'Network error' } 
+      error: { message: isTimeout ? 'Request timed out. Please try again.' : (error.message || 'Network error') } 
     };
   }
 }
