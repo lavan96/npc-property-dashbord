@@ -670,8 +670,8 @@ export default function Conversations() {
                                   switch (msgChannel) {
                                     case 'sms': return 'bg-blue-100 dark:bg-blue-900/40 text-foreground rounded-br-md';
                                     case 'whatsapp': return 'bg-green-100 dark:bg-green-900/40 text-foreground rounded-br-md';
-                                    case 'email': return 'bg-primary text-primary-foreground rounded-br-md';
-                                    default: return 'bg-primary text-primary-foreground rounded-br-md';
+                                    case 'email': return 'bg-amber-100 dark:bg-amber-900/40 text-foreground rounded-br-md';
+                                    default: return 'bg-blue-100 dark:bg-blue-900/40 text-foreground rounded-br-md';
                                   }
                                 };
                                 
@@ -680,7 +680,8 @@ export default function Conversations() {
                                   switch (msgChannel) {
                                     case 'sms': return 'text-blue-500 dark:text-blue-400';
                                     case 'whatsapp': return 'text-green-600 dark:text-green-400';
-                                    default: return 'text-primary-foreground/70';
+                                    case 'email': return 'text-amber-600 dark:text-amber-400';
+                                    default: return 'text-blue-500 dark:text-blue-400';
                                   }
                                 };
 
