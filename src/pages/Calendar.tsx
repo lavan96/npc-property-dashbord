@@ -1318,7 +1318,7 @@ export default function Calendar() {
 
                 <TooltipProvider delayDuration={100}>
                   <Tabs value={sidebarTab} onValueChange={(v) => setSidebarTab(v as any)}>
-                    <TabsList className="w-full grid grid-cols-11 h-8 gap-0">
+                    <TabsList className="w-full flex flex-wrap h-auto gap-0.5 p-1">
                       {SIDEBAR_TABS.map((tab) => {
                         const isPinned = pinnedTabs.includes(tab.id);
                         return (
