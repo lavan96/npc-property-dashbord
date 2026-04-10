@@ -126,7 +126,7 @@ export function usePipelineMutations() {
 
       return result;
     },
-    onSuccess: (_: any, variables: { stageId: string; clientId: string; data: any }) => {
+    onSuccess: (_: any, variables: { stageId: string; clientId: string; data: any; dealId?: string; allStages?: any[] }) => {
       invalidate();
       logActivityDirect({
         actionType: 'deal_stage_changed',
