@@ -143,11 +143,15 @@ function InlineEditField({
 function StageActions({
   stage,
   clientId,
+  dealId,
+  allStages,
   onUpdateStage,
 }: {
   stage: any;
   clientId: string;
-  onUpdateStage?: (stageId: string, clientId: string, data: any) => void;
+  dealId: string;
+  allStages: any[];
+  onUpdateStage?: (stageId: string, clientId: string, data: any, dealId?: string, allStages?: any[]) => void;
 }) {
   if (!onUpdateStage) return null;
 
@@ -177,7 +181,7 @@ function StageActions({
                   const data: any = { status: a.status };
                   if (a.status === 'complete') data.completed_at = new Date().toISOString();
                   if (a.status === 'pending' || a.status === 'skipped') data.completed_at = null;
-                  onUpdateStage(stage.id, clientId, data);
+                  onUpdateStage(stage.id, clientId, data, dealId, allStages);
                 }}
               >
                 {a.icon}
