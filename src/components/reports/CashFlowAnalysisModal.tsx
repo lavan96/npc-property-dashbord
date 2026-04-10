@@ -2935,7 +2935,191 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       yPos += summaryCardHeight;
 
       // ========== CHARTS PAGE ==========
-      const hasAnyChart = cashFlowChartImage || yieldChartImage || comparisonChartImage;
+      // Helper: draw a programmatic line chart using jsPDF when html2canvas fails
+      const drawProgrammaticTrendsChart = (
+        chartX: number, chartY: number, chartW: number, chartH: number,
+        data: YearlyProjection[]
+      ) => {
+        const years = data.filter(p => p.year >= 1);
+        if (years.length === 0) return;
+
+        const innerPadding = { top: 12, bottom: 16, left: 8, right: 8 };
+        const plotX = chartX + innerPadding.left;
+        const plotY = chartY + innerPadding.top;
+        const plotW = chartW - innerPadding.left - innerPadding.right;
+        const plotH = chartH - innerPadding.top - innerPadding.bottom;
+
+        // Background
+        pdf.setFillColor(255, 255, 255);
+        pdf.roundedRect(chartX, chartY, chartW, chartH, 2, 2, 'F');
+        pdf.setDrawColor(mediumGray.r, mediumGray.g, mediumGray.b);
+        pdf.setLineWidth(0.3);
+        pdf.roundedRect(chartX, chartY, chartW, chartH, 2, 2, 'S');
+
+        // Series definitions
+        const series = [
+          { label: 'Property Value', color: primaryColor, getData: (p: YearlyProjection) => p.propertyMarketValue },
+          { label: 'Equity', color: { r: 34, g: 197, b: 94 }, getData: (p: YearlyProjection) => p.equityInProperty },
+          { label: 'Loan Balance', color: { r: 239, g: 68, b: 68 }, getData: (p: YearlyProjection) => p.loanAmount },
+          { label: 'Cash Flow (p.a.)', color: { r: 139, g: 92, b: 246 }, getData: (p: YearlyProjection) => p.afterTaxCashFlowPA },
+        ];
+
+        // Calculate global min/max across all series
+        let globalMin = Infinity, globalMax = -Infinity;
+        for (const s of series) {
+          for (const p of years) {
+            const v = s.getData(p);
+            if (v < globalMin) globalMin = v;
+            if (v > globalMax) globalMax = v;
+          }
+        }
+        const range = globalMax - globalMin || 1;
+
+        // Draw horizontal grid lines
+        pdf.setDrawColor(240, 240, 240);
+        pdf.setLineWidth(0.15);
+        for (let i = 0; i <= 4; i++) {
+          const gy = plotY + plotH - (i / 4) * plotH;
+          pdf.line(plotX, gy, plotX + plotW, gy);
+          const val = globalMin + (i / 4) * range;
+          pdf.setFontSize(5);
+          pdf.setFont('helvetica', 'normal');
+          pdf.setTextColor(grayText.r, grayText.g, grayText.b);
+          const label = Math.abs(val) >= 1000000 ? `$${(val / 1000000).toFixed(1)}M` : Math.abs(val) >= 1000 ? `$${(val / 1000).toFixed(0)}K` : `$${val.toFixed(0)}`;
+          pdf.text(label, plotX - 1, gy + 1, { align: 'right' });
+        }
+
+        // Draw x-axis labels
+        const stepX = plotW / (years.length - 1 || 1);
+        years.forEach((p, i) => {
+          pdf.setFontSize(5);
+          pdf.setTextColor(grayText.r, grayText.g, grayText.b);
+          pdf.text(`Yr ${p.year}`, plotX + i * stepX, plotY + plotH + 5, { align: 'center' });
+        });
+
+        // Draw each series as a line
+        for (const s of series) {
+          pdf.setDrawColor(s.color.r, s.color.g, s.color.b);
+          pdf.setLineWidth(0.6);
+          for (let i = 1; i < years.length; i++) {
+            const x1 = plotX + (i - 1) * stepX;
+            const x2 = plotX + i * stepX;
+            const y1 = plotY + plotH - ((s.getData(years[i - 1]) - globalMin) / range) * plotH;
+            const y2 = plotY + plotH - ((s.getData(years[i]) - globalMin) / range) * plotH;
+            pdf.line(x1, y1, x2, y2);
+          }
+          // Draw dots
+          for (let i = 0; i < years.length; i++) {
+            const cx = plotX + i * stepX;
+            const cy = plotY + plotH - ((s.getData(years[i]) - globalMin) / range) * plotH;
+            pdf.setFillColor(s.color.r, s.color.g, s.color.b);
+            pdf.circle(cx, cy, 0.8, 'F');
+          }
+        }
+
+        // Legend at bottom
+        let legendX = plotX;
+        const legendY = chartY + chartH - 3;
+        pdf.setFontSize(5);
+        for (const s of series) {
+          pdf.setFillColor(s.color.r, s.color.g, s.color.b);
+          pdf.rect(legendX, legendY - 2, 4, 2, 'F');
+          pdf.setTextColor(darkText.r, darkText.g, darkText.b);
+          pdf.text(s.label, legendX + 5, legendY, { align: 'left' });
+          legendX += pdf.getTextWidth(s.label) + 10;
+        }
+      };
+
+      // Helper: draw a programmatic yield chart
+      const drawProgrammaticYieldChart = (
+        chartX: number, chartY: number, chartW: number, chartH: number,
+        data: YearlyProjection[]
+      ) => {
+        const years = data.filter(p => p.year >= 1);
+        if (years.length === 0) return;
+
+        const innerPadding = { top: 12, bottom: 16, left: 8, right: 8 };
+        const plotX = chartX + innerPadding.left;
+        const plotY = chartY + innerPadding.top;
+        const plotW = chartW - innerPadding.left - innerPadding.right;
+        const plotH = chartH - innerPadding.top - innerPadding.bottom;
+
+        pdf.setFillColor(255, 255, 255);
+        pdf.roundedRect(chartX, chartY, chartW, chartH, 2, 2, 'F');
+        pdf.setDrawColor(mediumGray.r, mediumGray.g, mediumGray.b);
+        pdf.setLineWidth(0.3);
+        pdf.roundedRect(chartX, chartY, chartW, chartH, 2, 2, 'S');
+
+        const yieldSeries = [
+          { label: 'Gross Yield %', color: { r: 34, g: 197, b: 94 }, getData: (p: YearlyProjection) => p.grossYield },
+          { label: 'Net Yield %', color: { r: 239, g: 68, b: 68 }, getData: (p: YearlyProjection) => p.netYield },
+        ];
+
+        let yMin = Infinity, yMax = -Infinity;
+        for (const s of yieldSeries) {
+          for (const p of years) {
+            const v = s.getData(p);
+            if (v < yMin) yMin = v;
+            if (v > yMax) yMax = v;
+          }
+        }
+        const yRange = yMax - yMin || 1;
+        const stepX = plotW / (years.length - 1 || 1);
+
+        // Grid
+        pdf.setDrawColor(240, 240, 240);
+        pdf.setLineWidth(0.15);
+        for (let i = 0; i <= 4; i++) {
+          const gy = plotY + plotH - (i / 4) * plotH;
+          pdf.line(plotX, gy, plotX + plotW, gy);
+          const val = yMin + (i / 4) * yRange;
+          pdf.setFontSize(5);
+          pdf.setFont('helvetica', 'normal');
+          pdf.setTextColor(grayText.r, grayText.g, grayText.b);
+          pdf.text(`${val.toFixed(1)}%`, plotX - 1, gy + 1, { align: 'right' });
+        }
+
+        years.forEach((p, i) => {
+          pdf.setFontSize(5);
+          pdf.setTextColor(grayText.r, grayText.g, grayText.b);
+          pdf.text(`Yr ${p.year}`, plotX + i * stepX, plotY + plotH + 5, { align: 'center' });
+        });
+
+        for (const s of yieldSeries) {
+          pdf.setDrawColor(s.color.r, s.color.g, s.color.b);
+          pdf.setLineWidth(0.6);
+          for (let i = 1; i < years.length; i++) {
+            const x1 = plotX + (i - 1) * stepX;
+            const x2 = plotX + i * stepX;
+            const y1 = plotY + plotH - ((s.getData(years[i - 1]) - yMin) / yRange) * plotH;
+            const y2 = plotY + plotH - ((s.getData(years[i]) - yMin) / yRange) * plotH;
+            pdf.line(x1, y1, x2, y2);
+          }
+          for (let i = 0; i < years.length; i++) {
+            const cx = plotX + i * stepX;
+            const cy = plotY + plotH - ((s.getData(years[i]) - yMin) / yRange) * plotH;
+            pdf.setFillColor(s.color.r, s.color.g, s.color.b);
+            pdf.circle(cx, cy, 0.8, 'F');
+          }
+        }
+
+        let legendX = plotX;
+        const legendY = chartY + chartH - 3;
+        pdf.setFontSize(5);
+        for (const s of yieldSeries) {
+          pdf.setFillColor(s.color.r, s.color.g, s.color.b);
+          pdf.rect(legendX, legendY - 2, 4, 2, 'F');
+          pdf.setTextColor(darkText.r, darkText.g, darkText.b);
+          pdf.text(s.label, legendX + 5, legendY, { align: 'left' });
+          legendX += pdf.getTextWidth(s.label) + 10;
+        }
+      };
+
+      // Determine if we should show charts (either captured or fallback)
+      const shouldShowTrends = activeChartToggles.cashFlowTrends;
+      const shouldShowYield = activeChartToggles.yieldChart;
+      const shouldShowComparison = activeChartToggles.comparisonChart && comparisonChartImage;
+      const hasAnyChart = shouldShowTrends || shouldShowYield || shouldShowComparison;
       
       if (hasAnyChart) {
         pdf.addPage();
@@ -2952,8 +3136,8 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         yPos = 18;
         const chartWidth = pageWidth - margin * 2;
         
-        // Cash Flow Trends Chart
-        if (cashFlowChartImage) {
+        // Cash Flow Trends Chart - use captured image or programmatic fallback
+        if (shouldShowTrends) {
           const chartHeight = 70;
           pdf.setFontSize(9);
           pdf.setFont('helvetica', 'bold');
@@ -2961,15 +3145,20 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
           pdf.text('10-Year Cash Flow Trends', margin, yPos);
           yPos += 4;
           
-          pdf.setDrawColor(mediumGray.r, mediumGray.g, mediumGray.b);
-          pdf.setLineWidth(0.5);
-          pdf.roundedRect(margin, yPos, chartWidth, chartHeight, 2, 2, 'S');
-          pdf.addImage(cashFlowChartImage, 'PNG', margin + 2, yPos + 2, chartWidth - 4, chartHeight - 4);
+          if (cashFlowChartImage) {
+            pdf.setDrawColor(mediumGray.r, mediumGray.g, mediumGray.b);
+            pdf.setLineWidth(0.5);
+            pdf.roundedRect(margin, yPos, chartWidth, chartHeight, 2, 2, 'S');
+            pdf.addImage(cashFlowChartImage, 'PNG', margin + 2, yPos + 2, chartWidth - 4, chartHeight - 4);
+          } else {
+            // Programmatic fallback - draws chart from projection data directly
+            drawProgrammaticTrendsChart(margin, yPos, chartWidth, chartHeight, projections);
+          }
           yPos += chartHeight + 8;
         }
         
-        // Yield Chart
-        if (yieldChartImage) {
+        // Yield Chart - use captured image or programmatic fallback
+        if (shouldShowYield) {
           const chartHeight = 60;
           pdf.setFontSize(9);
           pdf.setFont('helvetica', 'bold');
@@ -2977,16 +3166,19 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
           pdf.text('Yield Percentages', margin, yPos);
           yPos += 4;
           
-          pdf.setDrawColor(mediumGray.r, mediumGray.g, mediumGray.b);
-          pdf.setLineWidth(0.5);
-          pdf.roundedRect(margin, yPos, chartWidth, chartHeight, 2, 2, 'S');
-          pdf.addImage(yieldChartImage, 'PNG', margin + 2, yPos + 2, chartWidth - 4, chartHeight - 4);
+          if (yieldChartImage) {
+            pdf.setDrawColor(mediumGray.r, mediumGray.g, mediumGray.b);
+            pdf.setLineWidth(0.5);
+            pdf.roundedRect(margin, yPos, chartWidth, chartHeight, 2, 2, 'S');
+            pdf.addImage(yieldChartImage, 'PNG', margin + 2, yPos + 2, chartWidth - 4, chartHeight - 4);
+          } else {
+            drawProgrammaticYieldChart(margin, yPos, chartWidth, chartHeight, projections);
+          }
           yPos += chartHeight + 8;
         }
         
-        // Comparison Chart
-        if (comparisonChartImage) {
-          // Check if we need a new page
+        // Comparison Chart (only from captured image - no fallback since it needs comparison data)
+        if (shouldShowComparison && comparisonChartImage) {
           if (yPos > pageHeight - 80) {
             pdf.addPage();
             yPos = 18;
@@ -3072,7 +3264,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         variant: "destructive"
       });
     }
-  }, [report, baseFinancialData, projections, includeInputsSummaryInExport, includeConstructionScheduleInExport, constructionProgressSchedule, isNewBuild, chartExportToggles, toast]);
+  }, [report, baseFinancialData, projections, includeInputsSummaryInExport, includeConstructionScheduleInExport, constructionProgressSchedule, isNewBuild, chartExportToggles, excludeLandTaxFromCashFlow, toast]);
 
   // Generate PDF and upload to storage (for Send to Client)
   const generateAndUploadCashFlowPDF = useCallback(async (chartOverrides?: { cashFlowTrends: boolean; yieldChart: boolean; comparisonChart: boolean }): Promise<string | null> => {
