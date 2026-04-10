@@ -2195,6 +2195,14 @@ export default function ReportQA() {
               </div>
             )}
 
+            {/* Indexing indicator */}
+            {isIndexing && (
+              <div className="flex items-center gap-2 px-3 py-2 bg-muted rounded-lg text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Indexing reports for intelligent retrieval… Chat will be available shortly.</span>
+              </div>
+            )}
+
             {/* Input */}
             <div className="space-y-1 pt-1.5 sm:pt-2 border-t flex-shrink-0">
               <div className="flex gap-1.5 sm:gap-2 items-end">
