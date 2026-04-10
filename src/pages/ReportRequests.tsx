@@ -54,6 +54,9 @@ interface ReportRequest {
   updated_at: string;
   // Joined from client lookup
   client_name?: string;
+  client_email?: string;
+  client_phone?: string;
+  client_address?: string;
 }
 
 export default function ReportRequests() {
@@ -95,7 +98,7 @@ export default function ReportRequests() {
           listMode: true,
           listOptions: {
             table: 'clients',
-            select: 'id,primary_first_name,primary_surname',
+            select: 'id,primary_first_name,primary_surname,primary_email,primary_mobile,address_line_1,suburb,state,postcode',
             limit: 500,
           },
         });
@@ -103,15 +106,23 @@ export default function ReportRequests() {
         const clientRecords = (clientsData as any)?.records || (clientsData as any)?.clients || [];
         for (const c of clientRecords) {
           if (clientIds.includes(c.id)) {
-            const name = `${c.primary_first_name || ''} ${c.primary_surname || ''}`.trim();
-            clientMap[c.id] = name || 'Unnamed Client';
+            const name = smartCapitalize(`${c.primary_first_name || ''} ${c.primary_surname || ''}`.trim());
+            clientMap[c.id] = {
+              name: name || 'Unnamed Client',
+              email: c.primary_email || null,
+              phone: c.primary_mobile || null,
+              address: [c.address_line_1, c.suburb, c.state, c.postcode].filter(Boolean).join(', ') || null,
+            };
           }
         }
       }
       
       return requests.map((r: any) => ({
         ...r,
-        client_name: clientMap[r.client_id] || 'Unknown Client',
+        client_name: clientMap[r.client_id]?.name || 'Unknown Client',
+        client_email: clientMap[r.client_id]?.email || null,
+        client_phone: clientMap[r.client_id]?.phone || null,
+        client_address: clientMap[r.client_id]?.address || null,
       }));
     },
     staleTime: 15000,
