@@ -1801,7 +1801,8 @@ serve(async (req) => {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
+                  'Authorization': `Bearer ${supabaseServiceKey}`,
+                  ...(supabaseAnonKey ? { 'apikey': supabaseAnonKey } : {})
                 },
                 body: JSON.stringify({
                   propertyValue: effectivePurchasePrice,
@@ -2062,7 +2063,8 @@ serve(async (req) => {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
+              'Authorization': `Bearer ${supabaseServiceKey}`,
+              ...(supabaseAnonKey ? { 'apikey': supabaseAnonKey } : {})
             },
             body: JSON.stringify({ 
               suburb: suburb,
