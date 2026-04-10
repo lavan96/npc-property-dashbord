@@ -220,6 +220,7 @@ export function InvestmentReportModal({
       setIsBackgroundGeneration(false);
     } finally {
       setIsGenerating(false);
+      generationLockRef.current = false;
     }
   };
 
