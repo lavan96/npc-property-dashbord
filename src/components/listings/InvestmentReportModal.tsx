@@ -39,6 +39,8 @@ export function InvestmentReportModal({
   const navigate = useNavigate();
 
   const generateReport = async (runInBackground = false) => {
+    // Guard against double-clicks and concurrent generation
+    if (isGenerating) return;
     setIsGenerating(true);
     setHasStartedGeneration(true);
     
