@@ -60,6 +60,8 @@ interface FinancialsTabProps {
   setExtraRepaymentPerMonth?: (value: string) => void;
   offsetBalance?: string;
   setOffsetBalance?: (value: string) => void;
+  /** Locality-derived growth estimate for smart default */
+  localityGrowthEstimate?: { capitalGrowthPercent: number; source: string } | null;
 }
 
 export function FinancialsTab({
@@ -101,7 +103,8 @@ export function FinancialsTab({
   extraRepaymentPerMonth: propExtraRepaymentPerMonth,
   setExtraRepaymentPerMonth: propSetExtraRepaymentPerMonth,
   offsetBalance: propOffsetBalance,
-  setOffsetBalance: propSetOffsetBalance
+  setOffsetBalance: propSetOffsetBalance,
+  localityGrowthEstimate
 }: FinancialsTabProps) {
   const [showStampDutyModal, setShowStampDutyModal] = useState(false);
   const [showMortgageCalculator, setShowMortgageCalculator] = useState(false);
@@ -329,12 +332,22 @@ export function FinancialsTab({
                   step="0.1"
                   value={capitalGrowth}
                   onChange={(e) => setCapitalGrowth(e.target.value)}
-                  placeholder="5"
+                  placeholder={localityGrowthEstimate ? localityGrowthEstimate.capitalGrowthPercent.toString() : "5"}
                   disabled={disabled}
                   className="pr-8"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
               </div>
+              {isNewBuild && localityGrowthEstimate && !capitalGrowth && (
+                <button 
+                  type="button"
+                  onClick={() => setCapitalGrowth(localityGrowthEstimate.capitalGrowthPercent.toString())}
+                  className="text-xs text-primary hover:underline cursor-pointer"
+                  disabled={disabled}
+                >
+                  Auto-fill {localityGrowthEstimate.capitalGrowthPercent}% ({localityGrowthEstimate.source})
+                </button>
+              )}
             </div>
           </div>
 

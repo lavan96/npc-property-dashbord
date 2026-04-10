@@ -64,6 +64,10 @@ interface AdvancedTabProps {
   nearestCity?: string;
   // Callback for applying full 10-year depreciation schedule
   onApplyDepreciationSchedule?: (schedule: Record<number, number>, method: 'dv' | 'pc') => void;
+  /** Derived CPI hint from capital growth / locality data */
+  derivedCpiHint?: { cpiPercent: number; source: string } | null;
+  /** Current capital growth value for display context */
+  capitalGrowthValue?: string;
 }
 
 export function AdvancedTab({
@@ -109,7 +113,9 @@ export function AdvancedTab({
   disabled = false,
   purchasePrice,
   nearestCity,
-  onApplyDepreciationSchedule
+  onApplyDepreciationSchedule,
+  derivedCpiHint,
+  capitalGrowthValue
 }: AdvancedTabProps) {
   const isNewBuild = buildType === 'new_build';
 
@@ -192,12 +198,27 @@ export function AdvancedTab({
                   step="0.1"
                   value={cpiGrowthRate}
                   onChange={(e) => setCpiGrowthRate(e.target.value)}
-                  placeholder="3"
+                  placeholder={derivedCpiHint ? derivedCpiHint.cpiPercent.toString() : "3"}
                   disabled={disabled}
                   className="pr-8"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
               </div>
+              {isNewBuild && derivedCpiHint && !cpiGrowthRate && (
+                <button 
+                  type="button"
+                  onClick={() => setCpiGrowthRate(derivedCpiHint.cpiPercent.toString())}
+                  className="text-xs text-primary hover:underline cursor-pointer"
+                  disabled={disabled}
+                >
+                  Auto-fill {derivedCpiHint.cpiPercent}% ({derivedCpiHint.source})
+                </button>
+              )}
+              {!isNewBuild && !cpiGrowthRate && capitalGrowthValue && (
+                <span className="text-xs text-muted-foreground">
+                  Defaults to capital growth ({capitalGrowthValue}%) if empty
+                </span>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="depreciation" className="text-sm font-medium flex items-center gap-1">

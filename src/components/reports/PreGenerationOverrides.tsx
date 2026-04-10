@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -9,6 +9,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Calculator, Home, DollarSign, TrendingUp, Settings2 } from 'lucide-react';
 import { STATE_MAPPING } from '@/lib/states';
 import { BuildType } from '@/types/overrideFields';
+import { getLocalityGrowthEstimate, getDerivedCpiGrowth } from '@/utils/localityGrowthEstimates';
 
 import { PropertyTab, FinancialsTab, IncomeExpensesTab, AdvancedTab } from './manual-inputs';
 
@@ -241,6 +242,17 @@ export function PreGenerationOverrides({
   
   // Loading state for expense estimation
   const [isEstimatingExpenses, setIsEstimatingExpenses] = useState(false);
+
+  // Locality-derived growth estimates for New Build auto-fill
+  const localityGrowthEstimate = useMemo(() => {
+    if (!propertyAddress) return null;
+    return getLocalityGrowthEstimate(propertyAddress);
+  }, [propertyAddress]);
+
+  const derivedCpiHint = useMemo(() => {
+    const cgValue = capitalGrowth ? parseFloat(capitalGrowth) : null;
+    return getDerivedCpiGrowth(cgValue, propertyAddress);
+  }, [capitalGrowth, propertyAddress]);
 
 
   // Detect state from property address
@@ -765,6 +777,7 @@ export function PreGenerationOverrides({
                 setExtraRepaymentPerMonth={setExtraRepaymentPerMonth}
                 offsetBalance={offsetBalance}
                 setOffsetBalance={setOffsetBalance}
+                localityGrowthEstimate={localityGrowthEstimate}
               />
             </TabsContent>
 
@@ -860,6 +873,8 @@ export function PreGenerationOverrides({
                   }
                 }}
                 purchasePrice={purchasePrice}
+                derivedCpiHint={derivedCpiHint}
+                capitalGrowthValue={capitalGrowth}
               />
             </TabsContent>
           </ScrollArea>
