@@ -558,22 +558,25 @@ export default function ReportQA() {
       setMessages([]);
       loadSavedConversations();
       
-      // Trigger RAG indexing in the background (non-blocking)
-      // This chunks reports, generates embeddings, and creates a structural summary
+      // Trigger RAG indexing (blocking until complete - prevents race condition)
       if (uploadedReports.length > 0) {
         console.log(`[ReportQA] Triggering RAG indexing for conversation ${newConversationId}...`);
-        invokeSecureFunction('report-qa', {
-          action: 'index-reports',
-          conversationId: newConversationId,
-        }).then(({ data: indexData, error: indexError }) => {
+        setIsIndexing(true);
+        try {
+          const { data: indexData, error: indexError } = await invokeSecureFunction('report-qa', {
+            action: 'index-reports',
+            conversationId: newConversationId,
+          });
           if (indexError) {
-            console.error('[ReportQA] RAG indexing failed (non-critical):', indexError);
+            console.error('[ReportQA] RAG indexing failed:', indexError);
           } else {
             console.log(`[ReportQA] RAG indexing complete:`, indexData);
           }
-        }).catch(err => {
-          console.error('[ReportQA] RAG indexing error (non-critical):', err);
-        });
+        } catch (err) {
+          console.error('[ReportQA] RAG indexing error:', err);
+        } finally {
+          setIsIndexing(false);
+        }
       }
       
       // Log conversation created
