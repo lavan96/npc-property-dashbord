@@ -64,6 +64,10 @@ interface AdvancedTabProps {
   nearestCity?: string;
   // Callback for applying full 10-year depreciation schedule
   onApplyDepreciationSchedule?: (schedule: Record<number, number>, method: 'dv' | 'pc') => void;
+  /** Derived CPI hint from capital growth / locality data */
+  derivedCpiHint?: { cpiPercent: number; source: string } | null;
+  /** Current capital growth value for display context */
+  capitalGrowthValue?: string;
 }
 
 export function AdvancedTab({
