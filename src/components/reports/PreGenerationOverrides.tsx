@@ -243,6 +243,17 @@ export function PreGenerationOverrides({
   // Loading state for expense estimation
   const [isEstimatingExpenses, setIsEstimatingExpenses] = useState(false);
 
+  // Locality-derived growth estimates for New Build auto-fill
+  const localityGrowthEstimate = useMemo(() => {
+    if (!propertyAddress) return null;
+    return getLocalityGrowthEstimate(propertyAddress);
+  }, [propertyAddress]);
+
+  const derivedCpiHint = useMemo(() => {
+    const cgValue = capitalGrowth ? parseFloat(capitalGrowth) : null;
+    return getDerivedCpiGrowth(cgValue, propertyAddress);
+  }, [capitalGrowth, propertyAddress]);
+
 
   // Detect state from property address
   const detectStateFromAddress = useCallback((address: string): string => {
