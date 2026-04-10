@@ -322,7 +322,7 @@ export function DataQualityAnalysis({ listings }: DataQualityAnalysisProps) {
               Confidence Distribution
             </CardTitle>
             <CardDescription>
-              AI extraction confidence across all listings
+              Extraction confidence across all listings
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
