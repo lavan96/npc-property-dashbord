@@ -312,7 +312,7 @@ function DealManageRow({
   responsiblePersons: string[];
   onDealClick?: () => void;
   onUpdateDeal?: (dealId: string, clientId: string, data: any) => void;
-  onUpdateStage?: (stageId: string, clientId: string, data: any) => void;
+  onUpdateStage?: (stageId: string, clientId: string, data: any, dealId?: string, allStages?: any[]) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const riskCfg = RISK_STATUS_CONFIG[deal.risk_status];
@@ -429,7 +429,7 @@ function DealManageRow({
                       variant="default"
                       size="sm"
                       className="h-5 px-1.5 text-[9px] gap-0.5"
-                      onClick={() => onUpdateStage?.(nextStage.id, deal.client_id, { status: 'complete', completed_at: new Date().toISOString() })}
+                      onClick={() => onUpdateStage?.(nextStage.id, deal.client_id, { status: 'complete', completed_at: new Date().toISOString() }, deal.id, stages)}
                     >
                       <CheckCircle2 className="h-2.5 w-2.5" />
                       Done
@@ -447,7 +447,7 @@ function DealManageRow({
                       variant="outline"
                       size="sm"
                       className="h-5 px-1.5 text-[9px] gap-0.5"
-                      onClick={() => onUpdateStage?.(nextStage.id, deal.client_id, { status: 'in_progress' })}
+                      onClick={() => onUpdateStage?.(nextStage.id, deal.client_id, { status: 'in_progress' }, deal.id, stages)}
                     >
                       <Play className="h-2.5 w-2.5" />
                       Start
