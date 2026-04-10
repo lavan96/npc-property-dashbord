@@ -1084,7 +1084,7 @@ export default function Calendar() {
                           onDrop={handleEventDrop}
                           disabled={isUpdating}
                             className={cn(
-                            'min-h-[60px] md:min-h-[80px] p-0.5 md:p-1 rounded-md border text-left transition-colors cursor-pointer',
+                            'min-h-[72px] md:min-h-[100px] p-0.5 md:p-1.5 rounded-md border text-left transition-colors cursor-pointer',
                             isSelected ? 'border-primary bg-primary/10' : 'border-transparent hover:bg-muted/50',
                             !isCurrentMonth && 'opacity-40',
                             isToday(day) && 'ring-1 ring-primary'
