@@ -418,8 +418,8 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
                   </div>
                 </div>
 
-                {/* Investment Score Display - Compass reports */}
-                {report.investment_score && currentTier === 'compass' && (
+                {/* Investment Score Display - all tiers */}
+                {report.investment_score && (
                   <div className="mt-4 flex items-center justify-between p-4 rounded-lg bg-muted/50 border">
                     <div className="flex items-center gap-4">
                       <div className={`w-14 h-14 rounded-xl font-bold text-xl flex items-center justify-center shadow-sm ${
