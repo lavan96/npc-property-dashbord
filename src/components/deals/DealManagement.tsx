@@ -60,7 +60,7 @@ interface Props {
   isLoading: boolean;
   onDealClick?: (deal: DealWithClient) => void;
   onUpdateDeal?: (dealId: string, clientId: string, data: any) => void;
-  onUpdateStage?: (stageId: string, clientId: string, data: any) => void;
+  onUpdateStage?: (stageId: string, clientId: string, data: any, dealId?: string, allStages?: any[]) => void;
 }
 
 const formatCurrency = (val: number) =>
@@ -143,11 +143,15 @@ function InlineEditField({
 function StageActions({
   stage,
   clientId,
+  dealId,
+  allStages,
   onUpdateStage,
 }: {
   stage: any;
   clientId: string;
-  onUpdateStage?: (stageId: string, clientId: string, data: any) => void;
+  dealId: string;
+  allStages: any[];
+  onUpdateStage?: (stageId: string, clientId: string, data: any, dealId?: string, allStages?: any[]) => void;
 }) {
   if (!onUpdateStage) return null;
 
@@ -175,9 +179,9 @@ function StageActions({
                 className="h-5 px-1.5 text-[9px] gap-0.5"
                 onClick={() => {
                   const data: any = { status: a.status };
-                  if (a.status === 'in_progress') data.started_at = new Date().toISOString();
                   if (a.status === 'complete') data.completed_at = new Date().toISOString();
-                  onUpdateStage(stage.id, clientId, data);
+                  if (a.status === 'pending' || a.status === 'skipped') data.completed_at = null;
+                  onUpdateStage(stage.id, clientId, data, dealId, allStages);
                 }}
               >
                 {a.icon}
@@ -202,7 +206,7 @@ function DealExpandedRow({
 }: {
   deal: DealWithClient;
   onUpdateDeal?: (dealId: string, clientId: string, data: any) => void;
-  onUpdateStage?: (stageId: string, clientId: string, data: any) => void;
+  onUpdateStage?: (stageId: string, clientId: string, data: any, dealId?: string, allStages?: any[]) => void;
 }) {
   const stages = deal.stages || [];
 
@@ -245,7 +249,7 @@ function DealExpandedRow({
                     {stage.completed_at && (
                       <span className="text-[9px] text-muted-foreground">{format(new Date(stage.completed_at), 'dd MMM')}</span>
                     )}
-                    <StageActions stage={stage} clientId={deal.client_id} onUpdateStage={onUpdateStage} />
+                    <StageActions stage={stage} clientId={deal.client_id} dealId={deal.id} allStages={stages} onUpdateStage={onUpdateStage} />
                   </div>
                 </div>
               ))}
@@ -308,7 +312,7 @@ function DealManageRow({
   responsiblePersons: string[];
   onDealClick?: () => void;
   onUpdateDeal?: (dealId: string, clientId: string, data: any) => void;
-  onUpdateStage?: (stageId: string, clientId: string, data: any) => void;
+  onUpdateStage?: (stageId: string, clientId: string, data: any, dealId?: string, allStages?: any[]) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const riskCfg = RISK_STATUS_CONFIG[deal.risk_status];
@@ -425,7 +429,7 @@ function DealManageRow({
                       variant="default"
                       size="sm"
                       className="h-5 px-1.5 text-[9px] gap-0.5"
-                      onClick={() => onUpdateStage?.(nextStage.id, deal.client_id, { status: 'complete', completed_at: new Date().toISOString() })}
+                      onClick={() => onUpdateStage?.(nextStage.id, deal.client_id, { status: 'complete', completed_at: new Date().toISOString() }, deal.id, stages)}
                     >
                       <CheckCircle2 className="h-2.5 w-2.5" />
                       Done
@@ -443,7 +447,7 @@ function DealManageRow({
                       variant="outline"
                       size="sm"
                       className="h-5 px-1.5 text-[9px] gap-0.5"
-                      onClick={() => onUpdateStage?.(nextStage.id, deal.client_id, { status: 'in_progress', started_at: new Date().toISOString() })}
+                      onClick={() => onUpdateStage?.(nextStage.id, deal.client_id, { status: 'in_progress' }, deal.id, stages)}
                     >
                       <Play className="h-2.5 w-2.5" />
                       Start

@@ -75,16 +75,58 @@ export function usePipelineMutations() {
   });
 
   const updateDealStage = useMutation({
-    mutationFn: async ({ stageId, clientId, data }: { stageId: string; clientId: string; data: any }) => {
-      return manageDealData({
+    mutationFn: async ({ stageId, clientId, data, dealId, allStages }: { stageId: string; clientId: string; data: any; dealId?: string; allStages?: any[] }) => {
+      // Update the stage itself
+      const result = await manageDealData({
         operation: 'update',
         table: 'deal_stages',
         clientId,
         recordId: stageId,
         data,
       });
+
+      // After status change, advance the parent deal's current_stage
+      // to reflect the next actionable stage (in_progress or first pending)
+      if (data.status && dealId && allStages) {
+        const updatedStages = allStages.map(s =>
+          s.id === stageId ? { ...s, ...data } : s
+        ).sort((a: any, b: any) => a.display_order - b.display_order);
+
+        const nextActive = updatedStages.find((s: any) => s.status === 'in_progress')
+          || updatedStages.find((s: any) => s.status === 'pending');
+
+        if (nextActive) {
+          await manageDealData({
+            operation: 'update',
+            table: 'client_deals',
+            clientId,
+            recordId: dealId,
+            data: {
+              current_stage: nextActive.stage_name,
+              current_stage_number: nextActive.stage_number,
+            },
+          });
+        } else {
+          // All stages complete/skipped
+          const lastComplete = [...updatedStages].reverse().find((s: any) => s.status === 'complete');
+          if (lastComplete) {
+            await manageDealData({
+              operation: 'update',
+              table: 'client_deals',
+              clientId,
+              recordId: dealId,
+              data: {
+                current_stage: lastComplete.stage_name,
+                current_stage_number: lastComplete.stage_number,
+              },
+            });
+          }
+        }
+      }
+
+      return result;
     },
-    onSuccess: (_: any, variables: { stageId: string; clientId: string; data: any }) => {
+    onSuccess: (_: any, variables: { stageId: string; clientId: string; data: any; dealId?: string; allStages?: any[] }) => {
       invalidate();
       logActivityDirect({
         actionType: 'deal_stage_changed',

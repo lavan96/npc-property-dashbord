@@ -50,9 +50,9 @@ export default function DealPipeline() {
     updateDeal.mutate({ dealId, clientId, data });
   };
 
-  const handleUpdateStage = (stageId: string, clientId: string, data: any) => {
+  const handleUpdateStage = (stageId: string, clientId: string, data: any, dealId?: string, allStages?: any[]) => {
     if (!canEditDeals) { toast.error('You do not have edit permission for deals'); return; }
-    updateDealStage.mutate({ stageId, clientId, data });
+    updateDealStage.mutate({ stageId, clientId, data, dealId, allStages });
   };
 
   if (error) {
