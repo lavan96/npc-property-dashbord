@@ -123,11 +123,36 @@ export function ExecutiveInsights({ listings }: ExecutiveInsightsProps) {
       !l.price || !l.suburb || !l.propertyType || !l.beds
     ).length;
     
+    const completenessPercent = (incompleteListings / listings.length * 100);
     if (incompleteListings > listings.length * 0.2) {
       recommendations.push({
         priority: 'high',
         title: 'Address Data Completeness',
-        description: `${incompleteListings} listings (${(incompleteListings/listings.length*100).toFixed(1)}%) have missing critical fields.`,
+        description: `${incompleteListings} listings (${completenessPercent.toFixed(1)}%) have missing critical fields.`,
+      });
+      
+      anomalies.push({
+        severity: 'medium',
+        title: 'Incomplete Listing Data',
+        description: `${completenessPercent.toFixed(1)}% of listings are missing critical fields (price, suburb, type, or beds). This affects analysis accuracy.`,
+      });
+    }
+    
+    // Cross-link: if we have data quality recommendations, ensure a matching anomaly exists
+    if (lowConfidenceListings > 0 && avgConfidence < 60) {
+      anomalies.push({
+        severity: avgConfidence < 40 ? 'high' : 'medium',
+        title: 'Low Extraction Confidence',
+        description: `${lowConfidenceListings} listings have confidence scores below 50%. Average confidence: ${avgConfidence.toFixed(1)}%.`,
+      });
+    }
+    
+    // Cross-link: if anomalies exist but no recommendations, add a general one
+    if (anomalies.length > 0 && recommendations.length === 0) {
+      recommendations.push({
+        priority: 'low',
+        title: 'Review Flagged Observations',
+        description: `${anomalies.length} market observation(s) detected. Review the Market Observations panel for details and determine if action is needed.`,
       });
     }
     
