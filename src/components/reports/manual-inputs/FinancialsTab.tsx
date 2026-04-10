@@ -103,7 +103,8 @@ export function FinancialsTab({
   extraRepaymentPerMonth: propExtraRepaymentPerMonth,
   setExtraRepaymentPerMonth: propSetExtraRepaymentPerMonth,
   offsetBalance: propOffsetBalance,
-  setOffsetBalance: propSetOffsetBalance
+  setOffsetBalance: propSetOffsetBalance,
+  localityGrowthEstimate
 }: FinancialsTabProps) {
   const [showStampDutyModal, setShowStampDutyModal] = useState(false);
   const [showMortgageCalculator, setShowMortgageCalculator] = useState(false);
