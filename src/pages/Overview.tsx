@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useModulePermissions } from '@/hooks/useModulePermissions';
-import { Building2, Calendar, AlertTriangle, DollarSign, TrendingUp, Image, FileText, Tag, Ruler, Download, MapPin } from 'lucide-react';
+import { Building2, Calendar, AlertTriangle, DollarSign, TrendingUp, Image, FileText, Tag, Ruler, Download, MapPin, RefreshCw } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -47,6 +47,7 @@ export default function Overview() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [isLoading, setIsLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [allListings, setAllListings] = useState<PropertyListing[]>([]);
   const [kpis, setKpis] = useState<DashboardKPIs>({
@@ -267,6 +268,8 @@ export default function Overview() {
 
   // ─── Export snapshot PDF ───
   const handleExportSnapshot = useCallback(async () => {
+    if (isExporting) return;
+    setIsExporting(true);
     const toastId = toast.loading('Generating Overview Snapshot PDF...');
     try {
       const snapshotData = {
@@ -301,9 +304,11 @@ export default function Overview() {
       toast.success('Overview Snapshot PDF exported!', { id: toastId });
     } catch (err) {
       console.error('Snapshot PDF export failed:', err);
-      toast.error('Failed to export snapshot PDF', { id: toastId });
+      toast.error('Failed to export snapshot PDF', { id: toastId, description: err instanceof Error ? err.message : 'An unexpected error occurred' });
+    } finally {
+      setIsExporting(false);
     }
-  }, [allListings, kpis, contentStats, filters, suburbData, propertyTypeData, agencyData, recentListings, extractPostcode]);
+  }, [isExporting, allListings, kpis, contentStats, filters, suburbData, propertyTypeData, agencyData, recentListings, extractPostcode]);
 
   // ─── Error state ───
   if (error) {
@@ -379,9 +384,18 @@ export default function Overview() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleExportSnapshot}>
-            <Download className="h-4 w-4 mr-2" />
-            Export Snapshot
+          <Button variant="outline" size="sm" onClick={handleExportSnapshot} disabled={isExporting || isLoading}>
+            {isExporting ? (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                Exporting...
+              </>
+            ) : (
+              <>
+                <Download className="h-4 w-4 mr-2" />
+                Export Snapshot
+              </>
+            )}
           </Button>
           <OverviewFilters 
             filters={filters}
