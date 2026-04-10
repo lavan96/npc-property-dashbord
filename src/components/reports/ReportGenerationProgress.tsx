@@ -151,10 +151,12 @@ function ReportGenerationProgressInner() {
         }
       });
 
-      // Invoke the edge function to continue generation
+      // Use chunked single-section mode for resilience against platform timeouts
+      // This generates one section per call, avoiding the full-generation timeout risk
       const { error } = await invokeSecureFunction('generate-investment-report', {
         reportId: reportId,
-        continueFrom: true
+        continueFrom: true,
+        singleSection: true
       });
 
       if (error) {
@@ -356,7 +358,14 @@ function ReportGenerationProgressInner() {
       const isIncomplete = report.sectionsCompleted < report.totalSections;
       const isStuck = report.status === 'processing' && isTimedOut && hasPartialContent && isIncomplete;
       
-      if (isStuck && autoContinueSettings.enabled) {
+      // Also detect reports stuck in "processing" with no content at all for > 5 minutes
+      // This catches initial generation failures where the edge function crashed/timed out
+      const isInitiallyStuck = report.status === 'processing' && 
+        timeSinceUpdate > 300000 && // 5 minutes
+        report.contentLength < 100 && // No real content generated
+        report.sectionsCompleted === 0;
+      
+      if ((isStuck || isInitiallyStuck) && autoContinueSettings.enabled) {
         scheduleAutoRetry(report);
       }
     });
