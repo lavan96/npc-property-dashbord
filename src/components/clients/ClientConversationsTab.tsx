@@ -234,11 +234,28 @@ export function ClientConversationsTab({ clientId, clientName, clientEmail, ghlC
       if (data?.error) throw new Error(data.error);
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       setReplyText('');
       setEmailSubject('');
       toast.success('Message sent');
+      // Optimistically add the sent message so it appears immediately
       if (selectedConversation) {
+        queryClient.setQueryData(['ghl-messages', selectedConversation.id], (old: Message[] | undefined) => {
+          if (!old) return old;
+          const optimisticMsg: Message = {
+            id: `optimistic-${Date.now()}`,
+            ghl_message_id: `opt-${Date.now()}`,
+            body: variables.message,
+            direction: 'outbound',
+            channel_type: replyChannel,
+            message_type: variables.type,
+            ghl_date_added: new Date().toISOString(),
+            message_status: 'sent',
+            attachment_urls: null,
+          };
+          return [...old, optimisticMsg];
+        });
+        // Also refetch to get real server data
         queryClient.invalidateQueries({ queryKey: ['ghl-messages', selectedConversation.id] });
       }
       refetchConversations();
