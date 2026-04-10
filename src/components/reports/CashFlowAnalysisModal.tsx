@@ -3264,7 +3264,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         variant: "destructive"
       });
     }
-  }, [report, baseFinancialData, projections, includeInputsSummaryInExport, includeConstructionScheduleInExport, constructionProgressSchedule, isNewBuild, chartExportToggles, toast]);
+  }, [report, baseFinancialData, projections, includeInputsSummaryInExport, includeConstructionScheduleInExport, constructionProgressSchedule, isNewBuild, chartExportToggles, excludeLandTaxFromCashFlow, toast]);
 
   // Generate PDF and upload to storage (for Send to Client)
   const generateAndUploadCashFlowPDF = useCallback(async (chartOverrides?: { cashFlowTrends: boolean; yieldChart: boolean; comparisonChart: boolean }): Promise<string | null> => {
