@@ -167,7 +167,7 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
             <CollapsibleTrigger asChild>
               <button className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors w-full text-left">
                 <Sparkles className="h-3 w-3 text-amber-500 shrink-0" />
-                <span className="truncate">{showAnalysis ? 'Hide AI Analysis' : 'View AI Analysis'}</span>
+                <span className="truncate">{showAnalysis ? 'Hide Analysis' : 'View Analysis'}</span>
                 <ChevronDown className={`h-3 w-3 ml-auto transition-transform ${showAnalysis ? 'rotate-180' : ''}`} />
               </button>
             </CollapsibleTrigger>

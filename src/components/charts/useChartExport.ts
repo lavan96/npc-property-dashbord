@@ -11,22 +11,61 @@ function downloadDataUrl(dataUrl: string, filename: string) {
   document.body.removeChild(a);
 }
 
+function prepareSvgForExport(svgContent: string): string {
+  // Ensure SVG has explicit dimensions and inline font styles so text renders in <img>
+  let svg = svgContent;
+
+  // Inject a default font-family style if not already present
+  if (!svg.includes('font-family')) {
+    svg = svg.replace(
+      /<svg([^>]*)>/,
+      '<svg$1><style>text, tspan { font-family: Arial, Helvetica, sans-serif; }</style>'
+    );
+  }
+
+  // Ensure SVG has width/height attributes for proper canvas sizing
+  if (!svg.includes('width=') || !svg.includes('height=')) {
+    const viewBoxMatch = svg.match(/viewBox="([^"]+)"/);
+    if (viewBoxMatch) {
+      const [, , , w, h] = viewBoxMatch[1].split(/\s+/);
+      if (!svg.includes('width=')) svg = svg.replace('<svg', `<svg width="${w}"`);
+      if (!svg.includes('height=')) svg = svg.replace('<svg', `<svg height="${h}"`);
+    } else {
+      svg = svg.replace('<svg', '<svg width="800" height="600"');
+    }
+  }
+
+  // Set xmlns if missing (required for Blob rendering)
+  if (!svg.includes('xmlns=')) {
+    svg = svg.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
+  }
+
+  return svg;
+}
+
 function svgToCanvas(svgContent: string): Promise<HTMLCanvasElement> {
   return new Promise((resolve, reject) => {
+    const prepared = prepareSvgForExport(svgContent);
+
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     if (!ctx) return reject(new Error('Canvas not supported'));
 
     const img = new Image();
-    const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
+    const blob = new Blob([prepared], { type: 'image/svg+xml;charset=utf-8' });
     const url = URL.createObjectURL(blob);
 
     img.onload = () => {
-      canvas.width = img.naturalWidth || 800;
-      canvas.height = img.naturalHeight || 600;
+      // Use 2x scale for crisp text/labels
+      const scale = 2;
+      const w = img.naturalWidth || 800;
+      const h = img.naturalHeight || 600;
+      canvas.width = w * scale;
+      canvas.height = h * scale;
+      ctx.scale(scale, scale);
       ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0);
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
       URL.revokeObjectURL(url);
       resolve(canvas);
     };
@@ -126,7 +165,7 @@ async function chartToDataUrlWithAnalysis(chart: ChartData): Promise<string> {
       // Draw caption header
       ctx.font = `bold ${fontSize}px Arial, sans-serif`;
       ctx.fillStyle = '#b45309';
-      ctx.fillText('✨ AI Analysis', padding, img.height + padding + fontSize);
+      ctx.fillText('✨ Analysis', padding, img.height + padding + fontSize);
 
       // Draw caption text
       ctx.font = `${fontSize}px Arial, sans-serif`;

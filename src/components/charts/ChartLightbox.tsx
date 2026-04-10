@@ -100,7 +100,7 @@ export function ChartLightbox({ chart, onClose, onExport, onPrev, onNext, hasPre
           <div className="border border-amber-500/20 bg-amber-500/5 rounded-lg p-3">
             <div className="flex items-center gap-1.5 mb-1.5">
               <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-              <span className="text-xs font-medium">AI Analysis</span>
+              <span className="text-xs font-medium">Analysis</span>
             </div>
             <ScrollArea className="max-h-24">
               <p className="text-xs text-muted-foreground leading-relaxed">{chart.analysis_text}</p>
