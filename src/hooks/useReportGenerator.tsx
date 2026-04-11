@@ -7,7 +7,7 @@ import { chartDataService } from '@/services/chartDataService';
 import { ReportConfig } from '@/components/reports/ReportConfigModal';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { invokeSecureFunction, hasActiveSession } from '@/lib/secureInvoke';
 
 interface ChartData {
   type: 'bar' | 'pie' | 'line';
@@ -488,9 +488,8 @@ export function useReportGenerator() {
     setCurrentStep('Initializing report generation...');
     
     try {
-      // Check if user is authenticated
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      // Check if user is authenticated using custom auth system
+      if (!hasActiveSession()) {
         throw new Error('User not authenticated. Please log in to generate reports.');
       }
       
