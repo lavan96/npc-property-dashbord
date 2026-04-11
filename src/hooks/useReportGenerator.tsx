@@ -1005,7 +1005,7 @@ export function useReportGenerator() {
             insights: webhookPayload.report.insights,
             chart_urls: webhookPayload.report.charts,
             listing_count: totalListings,
-            generated_by: (await supabase.auth.getUser()).data.user?.id,
+            generated_by: (() => { try { const u = JSON.parse(sessionStorage.getItem('current_user') || '{}'); return u.id || null; } catch { return null; } })(),
             webhook_url: 'https://hook.eu2.make.com/rwayg51jnfmljlv1xgdndt4kps6rhw86',
             webhook_sent: false
           })
