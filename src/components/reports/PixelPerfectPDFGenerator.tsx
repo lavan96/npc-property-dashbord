@@ -1845,7 +1845,7 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
 
         // Calculate row height based on tallest cell
         const calculateRowHeight = (row: string[], isHeader: boolean): number => {
-          let maxHeight = lineHeight + 8; // Minimum height
+          let maxHeight = lineHeight + 10; // Minimum height with better padding
           
           for (let j = 0; j < row.length; j++) {
             const cellText = row[j];
