@@ -1265,10 +1265,10 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
       // ========================================
       const pageWidth = 595; // A4 width in points
       const pageHeight = 842; // A4 height in points
-      const margin = 60; // Left/right margin
-      const topMargin = 80; // Top margin (more space for template header)
-      const bottomMargin = 70; // Bottom margin
-      const lineHeight = 16;
+      const margin = 55; // Left/right margin — slightly wider content area
+      const topMargin = 75; // Top margin (space for template header)
+      const bottomMargin = 65; // Bottom margin
+      const lineHeight = 15; // Tighter line spacing for professional look
 
       // ─── Premium Design Tokens (Dark & Gold) ────────────────────────────
       const GOLD_RGB = rgb(191 / 255, 155 / 255, 80 / 255);     // #BF9B50
@@ -1284,19 +1284,19 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
       const TABLE_BORDER = rgb(210 / 255, 195 / 255, 160 / 255);  // Gold-tinted border
       const FOOTER_TEXT_RGB = rgb(128 / 255, 128 / 255, 128 / 255);
       const titleSize = 14;
-      const textSize = 10;
+      const textSize = 9.5; // Slightly smaller for more content per page
       
       // Smart page break thresholds
       const PAGE_BREAK_CONFIG = {
         // Minimum space required before starting a new element
-        MIN_SPACE_FOR_TABLE: 150, // If less than this, move entire table to new page
-        MIN_SPACE_FOR_SECTION: 100, // Minimum space for a new section title + some content
-        MIN_SPACE_FOR_PARAGRAPH: 60, // Minimum space for a paragraph
-        MIN_SPACE_FOR_HEADING: 80, // Minimum space for headings
+        MIN_SPACE_FOR_TABLE: 120, // Reduced — allow tables to start lower on page
+        MIN_SPACE_FOR_SECTION: 90, // Minimum space for a new section title + some content
+        MIN_SPACE_FOR_PARAGRAPH: 50, // Minimum space for a paragraph
+        MIN_SPACE_FOR_HEADING: 70, // Minimum space for headings
         // Table-specific settings
         TABLE_ORPHAN_ROWS: 3, // Minimum rows to keep together (avoid orphan rows)
         PREFER_FULL_TABLES: true, // If true, move entire table to new page rather than split
-        TABLE_SAFETY_MARGIN: 40, // Extra margin to ensure table fits
+        TABLE_SAFETY_MARGIN: 30, // Extra margin to ensure table fits
       };
       
       // Sections that MUST start on a new page (forced page breaks)
@@ -1647,12 +1647,12 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
         console.log('Normalized table rows:', normalizedRows);
 
         const columnCount = Math.max(...normalizedRows.map(r => r.length));
-        const cellPadding = 5;
-        const lineHeight = size + 4;
+        const cellPadding = 6; // Slightly more padding for readability
+        const lineHeight = size + 5; // Better line spacing within cells
         
         // Calculate dynamic column widths based on content
         const calculateColumnWidths = (): number[] => {
-          const minColWidth = 45; // Reduced minimum column width for better fit
+          const minColWidth = 50; // Better minimum column width
           const contentWidths: number[] = [];
           
           // Detect if this is a scenario table (Conservative/Base Case/Optimistic)
@@ -1845,7 +1845,7 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
 
         // Calculate row height based on tallest cell
         const calculateRowHeight = (row: string[], isHeader: boolean): number => {
-          let maxHeight = lineHeight + 8; // Minimum height
+          let maxHeight = lineHeight + 10; // Minimum height with better padding
           
           for (let j = 0; j < row.length; j++) {
             const cellText = row[j];
@@ -1986,12 +1986,13 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
             const cellX = x + columnWidths.slice(0, j).reduce((sum, w) => sum + w, 0);
             const cellText = row[j];
             const font = isHeader ? boldFont : normalFont;
+            const cellTextY = currentY - size - 6; // Better vertical centering within cell
             
             if (isHeader) {
               // Use drawCellText with white color and word-wrapping for headers
-              drawCellText(cellText, cellX, currentY - size - 4, columnWidths[j], boldFont, true, TABLE_HEADER_TEXT);
+              drawCellText(cellText, cellX, cellTextY, columnWidths[j], boldFont, true, TABLE_HEADER_TEXT);
             } else {
-              drawCellText(cellText, cellX, currentY - size - 4, columnWidths[j], font, isHeader);
+              drawCellText(cellText, cellX, cellTextY, columnWidths[j], font, isHeader);
             }
 
             // Draw vertical cell border (gold-tinted)
@@ -2026,7 +2027,7 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
           currentY -= rowHeight;
         }
 
-        return { lastY: currentY - 25, needsNewPage: false }; // Increased spacing after table
+        return { lastY: currentY - 18, needsNewPage: false }; // Clean spacing after table
       };
 
       // Helper to draw horizontal rule (gold accent)
@@ -2050,9 +2051,9 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
         const boxCount = Math.min(metrics.length, 4); // Max 4 boxes per row
         if (boxCount === 0) return startY;
         
-        const boxGap = 12;
+        const boxGap = 10;
         const boxWidth = (maxWidth - (boxCount - 1) * boxGap) / boxCount;
-        const boxHeight = 60;
+        const boxHeight = 72; // Increased for better spacing
         const cornerRadius = 4;
         
         for (let i = 0; i < boxCount; i++) {
@@ -2080,28 +2081,29 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
             color: GOLD_RGB,
           });
           
-          // Draw value (large, navy)
-          const valueText = stripEmojis(metric.value);
-          const valueSize = 16;
-          const valueWidth = helveticaBold.widthOfTextAtSize(valueText, valueSize);
-          page.drawText(valueText, {
-            x: boxX + (boxWidth - valueWidth) / 2,
-            y: boxY + boxHeight - 26,
-            size: valueSize,
-            font: helveticaBold,
-            color: NAVY_RGB,
-          });
-          
-          // Draw label (small, gray, centered)
+          // Draw label (small, gray, centered) — at top below gold strip
           const labelText = stripEmojis(metric.label).toUpperCase();
           const labelSize = 7;
-          const labelWidth = helveticaFont.widthOfTextAtSize(labelText, labelSize);
+          const labelWidth = helveticaBold.widthOfTextAtSize(labelText, labelSize);
           page.drawText(labelText, {
             x: boxX + (boxWidth - labelWidth) / 2,
-            y: boxY + 14,
+            y: boxY + boxHeight - 18,
             size: labelSize,
             font: helveticaBold,
             color: FOOTER_TEXT_RGB,
+          });
+          
+          // Draw value (large, navy, centered vertically)
+          const valueText = stripEmojis(metric.value);
+          const valueSize = metric.subtitle ? 15 : 16;
+          const valueWidth = helveticaBold.widthOfTextAtSize(valueText, valueSize);
+          const valueY = metric.subtitle ? boxY + 28 : boxY + 24;
+          page.drawText(valueText, {
+            x: boxX + (boxWidth - valueWidth) / 2,
+            y: valueY,
+            size: valueSize,
+            font: helveticaBold,
+            color: NAVY_RGB,
           });
           
           // Draw subtitle if present
@@ -2111,7 +2113,7 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
             const subWidth = helveticaFont.widthOfTextAtSize(subText, subSize);
             page.drawText(subText, {
               x: boxX + (boxWidth - subWidth) / 2,
-              y: boxY + 5,
+              y: boxY + 10,
               size: subSize,
               font: helveticaFont,
               color: FOOTER_TEXT_RGB,
@@ -2119,7 +2121,7 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
           }
         }
         
-        return startY - boxHeight - 20; // Return new Y position
+        return startY - boxHeight - 16; // Return new Y position
       };
 
       // ─── Premium Callout Panel (gold left border + warm background) ─────
@@ -3091,10 +3093,10 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
             }
           }
 
-          yPosition -= 8; // Space between paragraphs
+          yPosition -= 6; // Tighter spacing between paragraphs
         }
 
-        yPosition -= 15; // Space between sections
+        yPosition -= 10; // Reduced spacing between sections
       }
 
       // ========== SECOND PASS: DRAW TABLE OF CONTENTS WITH ACTUAL PAGE NUMBERS ==========
