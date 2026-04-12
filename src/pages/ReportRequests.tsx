@@ -98,7 +98,7 @@ export default function ReportRequests() {
           listMode: true,
           listOptions: {
             table: 'clients',
-            select: 'id,primary_first_name,primary_surname,primary_email,primary_mobile,address_line_1,suburb,state,postcode',
+            select: 'id,primary_first_name,primary_surname,primary_email,primary_mobile,primary_current_address',
             limit: 500,
           },
         });
@@ -111,7 +111,7 @@ export default function ReportRequests() {
               name: name || 'Unnamed Client',
               email: c.primary_email || null,
               phone: c.primary_mobile || null,
-              address: [c.address_line_1, c.suburb, c.state, c.postcode].filter(Boolean).join(', ') || null,
+              address: c.primary_current_address || null,
             };
           }
         }
