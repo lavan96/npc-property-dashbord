@@ -26,6 +26,7 @@ import { addBackgroundJob } from '@/components/BackgroundJobTracker';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { useAuth } from '@/hooks/useAuth';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
+import { ComparisonPDFGenerator } from './ComparisonPDFGenerator';
 
 interface PropertyComparisonModalProps {
   isOpen: boolean;
@@ -558,11 +559,25 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
     });
   };
 
-  const downloadPDF = () => {
-    toast({
-      title: "PDF Generation",
-      description: "PDF download functionality will be implemented in the final version",
-    });
+  // Build comparison data for PDF generator
+  const getComparisonDataForPDF = () => {
+    if (!analysis || !comparisonId) return null;
+    return {
+      id: comparisonId,
+      property_count: reportIds.length,
+      property_addresses: propertyAddresses,
+      property_states: [],
+      report_title: `Property Comparison Analysis - ${reportIds.length} Properties`,
+      executive_summary: analysis.executiveSummary,
+      rankings: analysis.rankings,
+      financial_comparison: analysis.financialComparison,
+      location_comparison: analysis.locationComparison,
+      risk_comparison: analysis.riskComparison,
+      recommendations: analysis.finalRecommendation,
+      red_flags: analysis.redFlags,
+      report_ids: reportIds,
+      created_at: new Date().toISOString(),
+    };
   };
 
   return (
@@ -864,10 +879,9 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
                     {isCopied ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
                     {isCopied ? 'Copied' : 'Copy'}
                   </Button>
-                  <Button variant="outline" size="sm" onClick={downloadPDF}>
-                    <Download className="h-4 w-4 mr-2" />
-                    Download PDF
-                  </Button>
+                  {getComparisonDataForPDF() && (
+                    <ComparisonPDFGenerator comparison={getComparisonDataForPDF()!} />
+                  )}
                   <Button 
                     variant="default" 
                     size="sm" 
