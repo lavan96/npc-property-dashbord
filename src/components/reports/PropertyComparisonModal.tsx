@@ -26,6 +26,7 @@ import { addBackgroundJob } from '@/components/BackgroundJobTracker';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { useAuth } from '@/hooks/useAuth';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
+import { ComparisonPDFGenerator } from './ComparisonPDFGenerator';
 
 interface PropertyComparisonModalProps {
   isOpen: boolean;
@@ -878,10 +879,9 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
                     {isCopied ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
                     {isCopied ? 'Copied' : 'Copy'}
                   </Button>
-                  <Button variant="outline" size="sm" onClick={downloadPDF}>
-                    <Download className="h-4 w-4 mr-2" />
-                    Download PDF
-                  </Button>
+                  {getComparisonDataForPDF() && (
+                    <ComparisonPDFGenerator comparison={getComparisonDataForPDF()!} />
+                  )}
                   <Button 
                     variant="default" 
                     size="sm" 
