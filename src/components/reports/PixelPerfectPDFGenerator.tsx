@@ -1986,12 +1986,13 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
             const cellX = x + columnWidths.slice(0, j).reduce((sum, w) => sum + w, 0);
             const cellText = row[j];
             const font = isHeader ? boldFont : normalFont;
+            const cellTextY = currentY - size - 6; // Better vertical centering within cell
             
             if (isHeader) {
               // Use drawCellText with white color and word-wrapping for headers
-              drawCellText(cellText, cellX, currentY - size - 4, columnWidths[j], boldFont, true, TABLE_HEADER_TEXT);
+              drawCellText(cellText, cellX, cellTextY, columnWidths[j], boldFont, true, TABLE_HEADER_TEXT);
             } else {
-              drawCellText(cellText, cellX, currentY - size - 4, columnWidths[j], font, isHeader);
+              drawCellText(cellText, cellX, cellTextY, columnWidths[j], font, isHeader);
             }
 
             // Draw vertical cell border (gold-tinted)
