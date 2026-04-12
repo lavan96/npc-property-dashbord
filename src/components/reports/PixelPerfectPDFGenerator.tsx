@@ -1647,12 +1647,12 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
         console.log('Normalized table rows:', normalizedRows);
 
         const columnCount = Math.max(...normalizedRows.map(r => r.length));
-        const cellPadding = 5;
-        const lineHeight = size + 4;
+        const cellPadding = 6; // Slightly more padding for readability
+        const lineHeight = size + 5; // Better line spacing within cells
         
         // Calculate dynamic column widths based on content
         const calculateColumnWidths = (): number[] => {
-          const minColWidth = 45; // Reduced minimum column width for better fit
+          const minColWidth = 50; // Better minimum column width
           const contentWidths: number[] = [];
           
           // Detect if this is a scenario table (Conservative/Base Case/Optimistic)
@@ -2026,7 +2026,7 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
           currentY -= rowHeight;
         }
 
-        return { lastY: currentY - 25, needsNewPage: false }; // Increased spacing after table
+        return { lastY: currentY - 18, needsNewPage: false }; // Clean spacing after table
       };
 
       // Helper to draw horizontal rule (gold accent)
@@ -3092,10 +3092,10 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
             }
           }
 
-          yPosition -= 8; // Space between paragraphs
+          yPosition -= 6; // Tighter spacing between paragraphs
         }
 
-        yPosition -= 15; // Space between sections
+        yPosition -= 10; // Reduced spacing between sections
       }
 
       // ========== SECOND PASS: DRAW TABLE OF CONTENTS WITH ACTUAL PAGE NUMBERS ==========
