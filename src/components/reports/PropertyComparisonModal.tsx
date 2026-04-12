@@ -558,11 +558,25 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
     });
   };
 
-  const downloadPDF = () => {
-    toast({
-      title: "PDF Generation",
-      description: "PDF download functionality will be implemented in the final version",
-    });
+  // Build comparison data for PDF generator
+  const getComparisonDataForPDF = () => {
+    if (!analysis || !comparisonId) return null;
+    return {
+      id: comparisonId,
+      property_count: reportIds.length,
+      property_addresses: propertyAddresses,
+      property_states: [],
+      report_title: `Property Comparison Analysis - ${reportIds.length} Properties`,
+      executive_summary: analysis.executiveSummary,
+      rankings: analysis.rankings,
+      financial_comparison: analysis.financialComparison,
+      location_comparison: analysis.locationComparison,
+      risk_comparison: analysis.riskComparison,
+      recommendations: analysis.finalRecommendation,
+      red_flags: analysis.redFlags,
+      report_ids: reportIds,
+      created_at: new Date().toISOString(),
+    };
   };
 
   return (
