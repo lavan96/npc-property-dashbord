@@ -511,34 +511,8 @@ Format your response as valid JSON with this structure:
 
     const processingTime = Date.now() - startTime;
 
-    // Get user ID for created_by field
-    const authHeader = req.headers.get('authorization');
-    const token = authHeader?.replace('Bearer ', '');
-    let userId = null;
-    
-    if (token) {
-      try {
-        const { data: { user } } = await supabase.auth.getUser(token);
-        const supabaseAuthUserId = user?.id;
-        
-        if (supabaseAuthUserId) {
-          // Look up the corresponding custom_users record
-          const { data: customUser } = await supabase
-            .from('custom_users')
-            .select('id')
-            .eq('id', supabaseAuthUserId)
-            .single();
-          
-          userId = customUser?.id || null;
-          
-          if (!customUser) {
-            console.warn(`No custom_users record found for Supabase Auth user ${supabaseAuthUserId}`);
-          }
-        }
-      } catch (error) {
-        console.warn('Could not decode user from token:', error);
-      }
-    }
+    // Get user ID for created_by field - reuse userId from verifyAuth above
+    let createdByUserId: string | null = userId || null;
 
     // Store comparison in database with metadata
     const { data: comparisonData, error: insertError } = await supabase
