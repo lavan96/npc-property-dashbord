@@ -555,11 +555,13 @@ export default function ReportViewer() {
       // Gold accent stripe
       setFill(gold); pdf.rect(0, 93, pageWidth, 2.5, 'F');
 
-      // Decorative corner elements
-      setFill({ r: 191, g: 155, b: 80 });
-      pdf.setGState(new (pdf as any).GState({ opacity: 0.2 }));
-      pdf.rect(0, 0, 6, 95, 'F');
-      pdf.setGState(new (pdf as any).GState({ opacity: 1 }));
+      // Decorative corner element
+      try {
+        setFill({ r: 191, g: 155, b: 80 });
+        pdf.setGState(new (pdf as any).GState({ opacity: 0.2 }));
+        pdf.rect(0, 0, 6, 95, 'F');
+        pdf.setGState(new (pdf as any).GState({ opacity: 1 }));
+      } catch { /* GState not supported, skip decorative element */ }
 
       // "QUANTITATIVE ANALYSIS" label
       pdf.setFontSize(8); pdf.setFont('helvetica', 'normal'); setColor(lightGold);
