@@ -205,6 +205,11 @@ export default function Templates() {
           )}
         </TabsContent>
 
+
+        <TabsContent value="cover-editor" className="space-y-4">
+          <CoverPageOverlayManager />
+        </TabsContent>
+
         <TabsContent value="pdf-layout" className="space-y-4">
           <Card>
             <CardHeader>
