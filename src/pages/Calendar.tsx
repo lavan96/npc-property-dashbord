@@ -923,31 +923,51 @@ export default function Calendar() {
       {isLoading ? (
         <StatsLoadingSkeleton />
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="pt-4">
-              <div className="text-2xl font-bold">{calendars.length}</div>
-              <p className="text-xs text-muted-foreground">Calendars</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-4">
-              <div className="text-2xl font-bold">{filteredEvents.length}</div>
-              <p className="text-xs text-muted-foreground">Total Events</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-4">
-              <div className="text-2xl font-bold text-green-400">
-                {filteredEvents.filter(e => e.appointmentStatus === 'confirmed' || e.appointmentStatus === 'showed').length}
+        <div className="grid grid-cols-4 gap-3">
+          <Card className="py-0">
+            <CardContent className="px-4 py-3 flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-muted shrink-0">
+                <CalendarIcon className="h-4 w-4 text-muted-foreground" />
               </div>
-              <p className="text-xs text-muted-foreground">Confirmed</p>
+              <div>
+                <div className="text-xl font-bold leading-tight">{calendars.length}</div>
+                <p className="text-xs text-muted-foreground">Calendars</p>
+              </div>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="pt-4">
-              <div className="text-2xl font-bold text-blue-400">{upcomingEvents.length}</div>
-              <p className="text-xs text-muted-foreground">Upcoming</p>
+          <Card className="py-0">
+            <CardContent className="px-4 py-3 flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-muted shrink-0">
+                <LayoutList className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <div>
+                <div className="text-xl font-bold leading-tight">{filteredEvents.length}</div>
+                <p className="text-xs text-muted-foreground">Total Events</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="py-0">
+            <CardContent className="px-4 py-3 flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-emerald-500/10 shrink-0">
+                <Users className="h-4 w-4 text-emerald-500" />
+              </div>
+              <div>
+                <div className="text-xl font-bold leading-tight text-emerald-500">
+                  {filteredEvents.filter(e => e.appointmentStatus === 'confirmed' || e.appointmentStatus === 'showed').length}
+                </div>
+                <p className="text-xs text-muted-foreground">Confirmed</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="py-0">
+            <CardContent className="px-4 py-3 flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-blue-500/10 shrink-0">
+                <Clock className="h-4 w-4 text-blue-500" />
+              </div>
+              <div>
+                <div className="text-xl font-bold leading-tight text-blue-500">{upcomingEvents.length}</div>
+                <p className="text-xs text-muted-foreground">Upcoming</p>
+              </div>
             </CardContent>
           </Card>
         </div>
