@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, Type, Image as ImageIcon, Trash2, Save, RotateCw, Copy, Eye, MoveUp, MoveDown } from 'lucide-react';
-import { v4 as uuidv4 } from 'crypto';
+
 import type { OverlayElement, CoverPageOverlay } from './types';
 import { FONT_FAMILIES, REPORT_TYPE_OPTIONS, DEFAULT_BACKGROUND_IMAGES } from './types';
 
