@@ -1,81 +1,98 @@
-// NPC Property Dashboard Service Worker
-// Basic offline support and caching
-
-const CACHE_NAME = 'npc-property-v1';
+const CACHE_NAME = 'npc-property-v2-2026-04-15';
 const OFFLINE_URL = '/offline.html';
-
-// Assets to cache on install
 const PRECACHE_ASSETS = [
-  '/',
+  OFFLINE_URL,
   '/manifest.json',
   '/images/npc-signature-logo.png',
-  '/favicon.ico'
+  '/favicon.ico',
 ];
 
-// Install event - precache essential assets
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(PRECACHE_ASSETS))
-      .then(() => self.skipWaiting())
-  );
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    await cache.addAll(PRECACHE_ASSETS);
+    await self.skipWaiting();
+  })());
 });
 
-// Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames
-          .filter((cacheName) => cacheName !== CACHE_NAME)
-          .map((cacheName) => caches.delete(cacheName))
-      );
-    }).then(() => self.clients.claim())
-  );
+  event.waitUntil((async () => {
+    const cacheNames = await caches.keys();
+    await Promise.all(
+      cacheNames
+        .filter((cacheName) => cacheName !== CACHE_NAME)
+        .map((cacheName) => caches.delete(cacheName))
+    );
+    await self.clients.claim();
+  })());
 });
 
-// Fetch event - network first, fallback to cache
-self.addEventListener('fetch', (event) => {
-  // Skip non-GET requests
-  if (event.request.method !== 'GET') return;
-  
-  // Skip API requests and external resources
+const isSameOrigin = (requestUrl) => new URL(requestUrl).origin === self.location.origin;
+
+const shouldBypassCache = (event) => {
   const url = new URL(event.request.url);
-  if (url.pathname.startsWith('/api') || 
-      url.pathname.startsWith('/supabase') ||
-      url.origin !== self.location.origin) {
+
+  return event.request.mode === 'navigate'
+    || event.request.destination === 'document'
+    || event.request.destination === 'script'
+    || event.request.destination === 'style'
+    || url.pathname.startsWith('/assets/');
+};
+
+const shouldCacheResponse = (request, url) => {
+  if (request.destination === 'image' || request.destination === 'font') {
+    return true;
+  }
+
+  return PRECACHE_ASSETS.includes(url.pathname);
+};
+
+self.addEventListener('fetch', (event) => {
+  if (event.request.method !== 'GET' || !isSameOrigin(event.request.url)) return;
+
+  const url = new URL(event.request.url);
+
+  if (url.pathname.startsWith('/api') || url.pathname.startsWith('/supabase')) {
+    return;
+  }
+
+  if (shouldBypassCache(event)) {
+    event.respondWith(
+      fetch(event.request, { cache: 'no-store' }).catch(async () => {
+        if (event.request.mode === 'navigate') {
+          return (await caches.match(OFFLINE_URL)) || new Response('Offline', { status: 503 });
+        }
+
+        const cached = await caches.match(event.request);
+        return cached || new Response('Offline', { status: 503 });
+      })
+    );
+    return;
+  }
+
+  if (!shouldCacheResponse(event.request, url)) {
     return;
   }
 
   event.respondWith(
     fetch(event.request)
-      .then((response) => {
-        // Clone the response before caching
-        const responseClone = response.clone();
-        
-        // Cache successful responses
-        if (response.status === 200) {
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseClone);
-          });
+      .then(async (response) => {
+        if (response.ok) {
+          const cache = await caches.open(CACHE_NAME);
+          await cache.put(event.request, response.clone());
         }
-        
+
         return response;
       })
-      .catch(() => {
-        // Return cached response if available
-        return caches.match(event.request).then((cachedResponse) => {
-          if (cachedResponse) {
-            return cachedResponse;
-          }
-          
-          // For navigation requests, return the offline page
-          if (event.request.mode === 'navigate') {
-            return caches.match(OFFLINE_URL);
-          }
-          
-          return new Response('Offline', { status: 503 });
-        });
+      .catch(async () => {
+        const cached = await caches.match(event.request);
+        return cached || new Response('Offline', { status: 503 });
       })
   );
 });
