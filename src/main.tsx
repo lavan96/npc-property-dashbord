@@ -2,17 +2,43 @@ import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
 
-// Register service worker for PWA offline support
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then((registration) => {
-        console.log('SW registered:', registration.scope);
+  let refreshing = false
+
+  window.addEventListener('load', async () => {
+    try {
+      const registration = await navigator.serviceWorker.register('/sw.js', {
+        updateViaCache: 'none',
       })
-      .catch((error) => {
-        console.log('SW registration failed:', error);
-      });
-  });
+
+      console.log('SW registered:', registration.scope)
+
+      await registration.update()
+
+      if (registration.waiting) {
+        registration.waiting.postMessage({ type: 'SKIP_WAITING' })
+      }
+
+      registration.addEventListener('updatefound', () => {
+        const installingWorker = registration.installing
+        if (!installingWorker) return
+
+        installingWorker.addEventListener('statechange', () => {
+          if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            installingWorker.postMessage({ type: 'SKIP_WAITING' })
+          }
+        })
+      })
+
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (refreshing) return
+        refreshing = true
+        window.location.reload()
+      })
+    } catch (error) {
+      console.log('SW registration failed:', error)
+    }
+  })
 }
 
 createRoot(document.getElementById("root")!).render(<App />)
