@@ -720,7 +720,23 @@ export function useReportGenerator() {
       if (config.companyName) { currentY += 6; pdf.text(`Company: ${config.companyName}`, margin, currentY); }
       currentY += 16;
 
-      // ========================
+      // Calculate metrics
+      const totalListings = allListings.length;
+      const avgPrice = allListings.length > 0 
+        ? Math.round(allListings.reduce((sum, listing) => sum + (listing.price || 0), 0) / allListings.length)
+        : 0;
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const recentListings = allListings.filter(listing => {
+        const receivedAt = listing.receivedAt;
+        return receivedAt && new Date(receivedAt) >= thirtyDaysAgo;
+      }).length;
+      const suburbData = allListings.reduce((acc, listing) => {
+        const suburb = listing.suburb || 'Unknown';
+        acc[suburb] = (acc[suburb] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
       // KPIs
       // ========================
       if (config.includeKPIs) {
