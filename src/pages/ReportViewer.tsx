@@ -882,7 +882,7 @@ export default function ReportViewer() {
 
       // Use chart data to infer suburb info if available
       const suburbChart = charts.find(c => c.title.toLowerCase().includes('suburb'));
-      if (suburbChart?.chart_config && typeof suburbChart.chart_config === 'object') {
+      if (suburbChart && (suburbChart as any).chart_config && typeof (suburbChart as any).chart_config === 'object') {
         // Try to parse from chart config
       }
 
