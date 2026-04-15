@@ -3808,6 +3808,56 @@ export type Database = {
           },
         ]
       }
+      cover_page_overlays: {
+        Row: {
+          background_image_url: string | null
+          canvas_height: number
+          canvas_width: number
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          name: string
+          overlay_elements: Json
+          report_type: string
+          updated_at: string
+        }
+        Insert: {
+          background_image_url?: string | null
+          canvas_height?: number
+          canvas_width?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          overlay_elements?: Json
+          report_type: string
+          updated_at?: string
+        }
+        Update: {
+          background_image_url?: string | null
+          canvas_height?: number
+          canvas_width?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          overlay_elements?: Json
+          report_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cover_page_overlays_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crime_statistics_cache: {
         Row: {
           created_at: string
