@@ -644,186 +644,158 @@ export function useReportGenerator() {
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
-      const margin = 20;
+      const margin = 18;
+      const contentWidth = pageWidth - 2 * margin;
       let currentY = margin;
 
-      // Helper function to add a new page if needed
-      const checkPageBreak = (neededHeight: number) => {
-        if (currentY + neededHeight > pageHeight - margin) {
-          pdf.addPage();
-          currentY = margin;
-        }
+      // Premium Dark & Gold palette
+      const navy = { r: 13, g: 38, b: 77 };
+      const gold = { r: 191, g: 155, b: 80 };
+      const darkBg = { r: 18, g: 25, b: 45 };
+      const cardBg = { r: 24, g: 34, b: 58 };
+      const white = { r: 255, g: 255, b: 255 };
+      const lightGold = { r: 220, g: 195, b: 140 };
+      const mutedText = { r: 160, g: 170, b: 190 };
+
+      let pageNum = 1;
+
+      const setColor = (c: { r: number; g: number; b: number }) => pdf.setTextColor(c.r, c.g, c.b);
+      const setFill = (c: { r: number; g: number; b: number }) => pdf.setFillColor(c.r, c.g, c.b);
+      const setDraw = (c: { r: number; g: number; b: number }) => pdf.setDrawColor(c.r, c.g, c.b);
+
+      const drawPageBg = () => { setFill(darkBg); pdf.rect(0, 0, pageWidth, pageHeight, 'F'); };
+      const drawFooter = (pn: number) => {
+        setDraw(gold); pdf.setLineWidth(0.4);
+        pdf.line(margin, pageHeight - 14, pageWidth - margin, pageHeight - 14);
+        pdf.setFontSize(7); setColor(mutedText); pdf.setFont('helvetica', 'normal');
+        pdf.text('Naidu Property Consulting Services', margin, pageHeight - 9);
+        pdf.text(`Page ${pn}`, pageWidth - margin, pageHeight - 9, { align: 'right' });
+        pdf.text('CONFIDENTIAL', pageWidth / 2, pageHeight - 9, { align: 'center' });
       };
 
-      setProgress(10);
-      setCurrentStep('Creating PDF structure...');
+      const addNewPage = () => { pdf.addPage(); pageNum++; drawPageBg(); drawFooter(pageNum); currentY = margin + 5; };
 
+      const checkPageBreak = (neededHeight: number) => {
+        if (currentY + neededHeight > pageHeight - 22) { addNewPage(); }
+      };
+
+      const drawSectionHeader = (title: string) => {
+        checkPageBreak(18);
+        setFill(gold); pdf.rect(margin, currentY, 3, 10, 'F');
+        pdf.setFontSize(13); pdf.setFont('helvetica', 'bold'); setColor(white);
+        pdf.text(title, margin + 8, currentY + 7);
+        currentY += 16;
+      };
+
+      const drawKPIBox = (x: number, y: number, w: number, h: number, label: string, value: string) => {
+        setFill(cardBg); pdf.roundedRect(x, y, w, h, 2, 2, 'F');
+        setFill(gold); pdf.rect(x, y, w, 1.5, 'F');
+        pdf.setFontSize(16); pdf.setFont('helvetica', 'bold'); setColor(gold);
+        pdf.text(value, x + w / 2, y + h / 2 - 1, { align: 'center' });
+        pdf.setFontSize(7.5); pdf.setFont('helvetica', 'normal'); setColor(mutedText);
+        pdf.text(label, x + w / 2, y + h / 2 + 8, { align: 'center' });
+      };
+
+      // ========================
       // Title Page
-      pdf.setFontSize(24);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text(config.title, pageWidth / 2, currentY + 20, { align: 'center' });
-      currentY += 40;
+      // ========================
+      drawPageBg();
+      setFill(navy); pdf.rect(0, 0, pageWidth, 90, 'F');
+      setFill(gold); pdf.rect(0, 88, pageWidth, 2, 'F');
+
+      pdf.setFontSize(22); pdf.setFont('helvetica', 'bold'); setColor(white);
+      const titleLines = pdf.splitTextToSize(config.title, contentWidth);
+      pdf.text(titleLines, pageWidth / 2, 35, { align: 'center' });
 
       if (config.description) {
-        pdf.setFontSize(12);
-        pdf.setFont('helvetica', 'normal');
-        const descLines = pdf.splitTextToSize(config.description, pageWidth - 2 * margin);
-        pdf.text(descLines, pageWidth / 2, currentY, { align: 'center' });
-        currentY += descLines.length * 6 + 10;
+        pdf.setFontSize(10); pdf.setFont('helvetica', 'normal'); setColor(lightGold);
+        const descLines = pdf.splitTextToSize(config.description, contentWidth - 20);
+        pdf.text(descLines, pageWidth / 2, 55 + (titleLines.length > 1 ? 8 : 0), { align: 'center' });
       }
 
-      // Report metadata
-      pdf.setFontSize(10);
-      pdf.text(`Generated on: ${new Date().toLocaleDateString()}`, margin, currentY);
-      currentY += 6;
-      
-      if (config.authorName) {
-        pdf.text(`Author: ${config.authorName}`, margin, currentY);
-        currentY += 6;
-      }
-      
-      if (config.companyName) {
-        pdf.text(`Company: ${config.companyName}`, margin, currentY);
-        currentY += 6;
-      }
+      currentY = 100;
+      pdf.setFontSize(9); pdf.setFont('helvetica', 'normal'); setColor(mutedText);
+      pdf.text(`Generated: ${new Date().toLocaleDateString()}`, margin, currentY);
+      if (config.authorName) { currentY += 6; pdf.text(`Author: ${config.authorName}`, margin, currentY); }
+      if (config.companyName) { currentY += 6; pdf.text(`Company: ${config.companyName}`, margin, currentY); }
+      currentY += 16;
 
-      currentY += 20;
-
-      // Calculate metrics
-      const totalListings = allListings.length;
-      const avgPrice = allListings.length > 0 
-        ? Math.round(allListings.reduce((sum, listing) => sum + (listing.price || 0), 0) / allListings.length)
-        : 0;
-
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      const recentListings = allListings.filter(listing => {
-        const receivedAt = listing.receivedAt;
-        return receivedAt && new Date(receivedAt) >= thirtyDaysAgo;
-      }).length;
-
-      const suburbData = allListings.reduce((acc, listing) => {
-        const suburb = listing.suburb || 'Unknown';
-        acc[suburb] = (acc[suburb] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-
-      // KPIs Section
+      // ========================
+      // KPIs
+      // ========================
       if (config.includeKPIs) {
-        checkPageBreak(60);
-        
-        pdf.setFontSize(16);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('Key Metrics', margin, currentY);
-        currentY += 15;
-
-        pdf.setFontSize(12);
-        pdf.setFont('helvetica', 'normal');
-        
-        const kpiData = [
-          [`Total Listings`, totalListings.toLocaleString()],
-          [`Average Price`, `$${avgPrice.toLocaleString()}`],
-          [`Recent Listings (30 days)`, recentListings.toLocaleString()],
-          [`Unique Suburbs`, Object.keys(suburbData).length.toLocaleString()]
+        drawSectionHeader('Key Performance Indicators');
+        const kpiW = (contentWidth - 9) / 4;
+        const kpiH = 28;
+        const kpis = [
+          { label: 'Total Listings', value: totalListings.toLocaleString() },
+          { label: 'Average Price', value: `$${avgPrice.toLocaleString()}` },
+          { label: 'Recent (30d)', value: recentListings.toLocaleString() },
+          { label: 'Unique Suburbs', value: Object.keys(suburbData).length.toLocaleString() },
         ];
-
-        kpiData.forEach(([label, value]) => {
-          pdf.text(`${label}: ${value}`, margin, currentY);
-          currentY += 8;
-        });
-        
-        currentY += 15;
+        kpis.forEach((kpi, i) => drawKPIBox(margin + i * (kpiW + 3), currentY, kpiW, kpiH, kpi.label, kpi.value));
+        currentY += kpiH + 12;
       }
 
-      // Helper function to capture and add chart
+      drawFooter(1);
+
+      // ========================
+      // Chart Captures from DOM refs
+      // ========================
       const addChartToPDF = async (chartRef: HTMLElement | null, title: string) => {
         if (!chartRef) return;
-        
-        checkPageBreak(80);
-        
-        pdf.setFontSize(14);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text(title, margin, currentY);
-        currentY += 15;
+        checkPageBreak(90);
+
+        // Section title with gold accent
+        setFill(gold); pdf.rect(margin, currentY, 3, 8, 'F');
+        pdf.setFontSize(11); pdf.setFont('helvetica', 'bold'); setColor(white);
+        pdf.text(title, margin + 8, currentY + 6);
+        currentY += 14;
 
         try {
-          const canvas = await html2canvas(chartRef, {
-            scale: 2,
-            backgroundColor: '#ffffff',
-            logging: false,
-          });
-
-          const imgWidth = pageWidth - 2 * margin;
-          const imgHeight = (canvas.height * imgWidth) / canvas.width;
-          
+          const canvas = await html2canvas(chartRef, { scale: 2.5, backgroundColor: '#ffffff', logging: false });
+          const imgWidth = contentWidth;
+          const imgHeight = Math.min((canvas.height * imgWidth) / canvas.width, 80);
           checkPageBreak(imgHeight + 10);
+          
+          // White card bg
+          setFill({ r: 255, g: 255, b: 255 });
+          pdf.roundedRect(margin - 2, currentY - 2, imgWidth + 4, imgHeight + 4, 2, 2, 'F');
           
           const imgData = canvas.toDataURL('image/png');
           pdf.addImage(imgData, 'PNG', margin, currentY, imgWidth, imgHeight);
-          currentY += imgHeight + 20;
+          currentY += imgHeight + 14;
         } catch (error) {
           console.error(`Error capturing ${title}:`, error);
-          pdf.setFontSize(10);
-          pdf.text(`Error capturing ${title} chart`, margin, currentY);
-          currentY += 15;
+          setFill(cardBg); pdf.roundedRect(margin, currentY, contentWidth, 20, 2, 2, 'F');
+          pdf.setFontSize(9); setColor(mutedText);
+          pdf.text(`Chart "${title}" — rendering unavailable`, margin + 6, currentY + 12);
+          currentY += 26;
         }
       };
 
-      // Add advanced analytics and insights
-      if (chartRefs.advancedAnalytics) {
-        await addChartToPDF(chartRefs.advancedAnalytics, 'Advanced Market Analytics');
-      }
+      if (chartRefs.advancedAnalytics) await addChartToPDF(chartRefs.advancedAnalytics, 'Advanced Market Analytics');
+      if (chartRefs.executiveInsights) await addChartToPDF(chartRefs.executiveInsights, 'Executive Insights & Recommendations');
+      if (chartRefs.temporalAnalysis) await addChartToPDF(chartRefs.temporalAnalysis, 'Temporal Analysis');
+      if (chartRefs.geographicAnalysis) await addChartToPDF(chartRefs.geographicAnalysis, 'Geographic Analysis');
+      if (chartRefs.agentPerformance) await addChartToPDF(chartRefs.agentPerformance, 'Agent & Agency Performance');
+      if (config.includeSuburbChart && chartRefs.suburbChart) await addChartToPDF(chartRefs.suburbChart, 'Listings by Suburb');
+      if (config.includePropertyTypeChart && chartRefs.propertyTypeChart) await addChartToPDF(chartRefs.propertyTypeChart, 'Property Type Distribution');
+      if (config.includePriceRangeChart && chartRefs.priceRangeChart) await addChartToPDF(chartRefs.priceRangeChart, 'Price Range Distribution');
+      if (config.includeBedroomChart && chartRefs.bedroomChart) await addChartToPDF(chartRefs.bedroomChart, 'Bedroom Distribution');
 
-      if (chartRefs.executiveInsights) {
-        await addChartToPDF(chartRefs.executiveInsights, 'Executive Insights & Recommendations');
-      }
-
-      if (chartRefs.temporalAnalysis) {
-        await addChartToPDF(chartRefs.temporalAnalysis, 'Temporal Analysis');
-      }
-
-      if (chartRefs.geographicAnalysis) {
-        await addChartToPDF(chartRefs.geographicAnalysis, 'Geographic Analysis');
-      }
-
-      if (chartRefs.agentPerformance) {
-        await addChartToPDF(chartRefs.agentPerformance, 'Agent & Agency Performance');
-      }
-
-      // Add original charts based on configuration
-      if (config.includeSuburbChart && chartRefs.suburbChart) {
-        await addChartToPDF(chartRefs.suburbChart, 'Listings by Suburb');
-      }
-
-      if (config.includePropertyTypeChart && chartRefs.propertyTypeChart) {
-        await addChartToPDF(chartRefs.propertyTypeChart, 'Property Type Distribution');
-      }
-
-      if (config.includePriceRangeChart && chartRefs.priceRangeChart) {
-        await addChartToPDF(chartRefs.priceRangeChart, 'Price Range Distribution');
-      }
-
-      if (config.includeBedroomChart && chartRefs.bedroomChart) {
-        await addChartToPDF(chartRefs.bedroomChart, 'Bedroom Distribution');
-      }
-
-      // Custom Notes Section
+      // Custom Notes
       if (config.customNotes && config.customNotes.trim()) {
-        checkPageBreak(40);
-        
-        pdf.setFontSize(14);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('Additional Notes', margin, currentY);
-        currentY += 15;
-
-        pdf.setFontSize(10);
-        pdf.setFont('helvetica', 'normal');
-        const noteLines = pdf.splitTextToSize(config.customNotes, pageWidth - 2 * margin);
-        noteLines.forEach((line: string) => {
-          checkPageBreak(6);
-          pdf.text(line, margin, currentY);
-          currentY += 6;
-        });
+        drawSectionHeader('Additional Notes');
+        setFill(cardBg);
+        const noteLines = pdf.splitTextToSize(config.customNotes, contentWidth - 16);
+        const notesH = noteLines.length * 5 + 12;
+        checkPageBreak(notesH);
+        pdf.roundedRect(margin, currentY, contentWidth, notesH, 2, 2, 'F');
+        pdf.setFontSize(9); pdf.setFont('helvetica', 'normal');
+        setColor({ r: 200, g: 210, b: 225 });
+        pdf.text(noteLines, margin + 8, currentY + 8);
+        currentY += notesH + 10;
       }
 
       setProgress(50);
