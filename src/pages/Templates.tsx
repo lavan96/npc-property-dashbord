@@ -14,7 +14,8 @@ import { QATemplateList } from '@/components/templates/QATemplateList';
 import { CashFlowTemplateUploader } from '@/components/templates/CashFlowTemplateUploader';
 import { CashFlowTemplateList } from '@/components/templates/CashFlowTemplateList';
 import { ReportFormatGroup } from '@/components/templates/ReportFormatGroup';
-import { FileText, Palette, Brain, BarChart3, TrendingUp, Building2, Settings, MessageSquare, Calculator, MapPin, Hash, Map } from 'lucide-react';
+import { CoverPageOverlayManager } from '@/components/templates/cover-editor/CoverPageOverlayManager';
+import { FileText, Palette, Brain, BarChart3, TrendingUp, Building2, Settings, MessageSquare, Calculator, MapPin, Hash, Map, Layers } from 'lucide-react';
 
 type ReportFormat =
   | 'investment_compass' 
