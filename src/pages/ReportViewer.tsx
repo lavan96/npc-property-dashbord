@@ -450,15 +450,16 @@ export default function ReportViewer() {
           y: startY + chartH - ((d.value - minVal) / range) * chartH
         }));
 
-        // Area fill (gradient effect)
-        setFill({ r: 191, g: 155, b: 80 });
-        pdf.setGState(new (pdf as any).GState({ opacity: 0.15 }));
-        const areaPath: number[][] = [];
-        points.forEach(p => areaPath.push([p.x, p.y]));
-        areaPath.push([points[points.length - 1].x, startY + chartH]);
-        areaPath.push([points[0].x, startY + chartH]);
-        // Simple triangle fills for area
-        pdf.setGState(new (pdf as any).GState({ opacity: 1 }));
+        // Area fill (subtle shading under the line)
+        try {
+          setFill({ r: 191, g: 155, b: 80 });
+          pdf.setGState(new (pdf as any).GState({ opacity: 0.12 }));
+          for (let i = 0; i < points.length - 1; i++) {
+            pdf.triangle(points[i].x, points[i].y, points[i + 1].x, points[i + 1].y, points[i].x, startY + chartH, 'F');
+            pdf.triangle(points[i + 1].x, points[i + 1].y, points[i + 1].x, startY + chartH, points[i].x, startY + chartH, 'F');
+          }
+          pdf.setGState(new (pdf as any).GState({ opacity: 1 }));
+        } catch { /* GState not supported, skip area fill */ }
 
         // Draw the line
         setDraw(gold); pdf.setLineWidth(0.8);
