@@ -658,6 +658,31 @@ export function useReportGenerator() {
         return acc;
       }, {} as Record<string, number>);
 
+      // Price analytics (quartiles)
+      const pricesWithData = allListings.filter(l => l.price && l.price > 0).map(l => l.price!);
+      const sortedPrices = [...pricesWithData].sort((a, b) => a - b);
+      const median = sortedPrices.length > 0 ? sortedPrices[Math.floor(sortedPrices.length / 2)] : 0;
+      const q1 = sortedPrices.length > 0 ? sortedPrices[Math.floor(sortedPrices.length * 0.25)] : 0;
+      const q3 = sortedPrices.length > 0 ? sortedPrices[Math.floor(sortedPrices.length * 0.75)] : 0;
+
+      // Confidence & velocity analytics
+      const withConfidence = allListings.filter(l => l.confidence && l.confidence > 0);
+      const avgConfidence = withConfidence.length > 0
+        ? withConfidence.reduce((sum, l) => sum + (l.confidence || 0), 0) / withConfidence.length
+        : 0;
+
+      const sixtyDaysAgo = new Date();
+      sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+      const previous30 = allListings.filter(listing => {
+        const receivedAt = listing.receivedAt;
+        if (!receivedAt) return false;
+        const d = new Date(receivedAt);
+        return d >= sixtyDaysAgo && d < thirtyDaysAgo;
+      }).length;
+      const velocityChange = previous30 > 0
+        ? ((recentListings - previous30) / previous30 * 100)
+        : 0;
+
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
