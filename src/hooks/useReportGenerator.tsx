@@ -677,90 +677,136 @@ export function useReportGenerator() {
       const dividerCol = { r: 40, g: 50, b: 75 };
 
       let pageNum = 1;
+      let sectionNum = 0;
 
       const setColor = (c: { r: number; g: number; b: number }) => pdf.setTextColor(c.r, c.g, c.b);
       const setFill = (c: { r: number; g: number; b: number }) => pdf.setFillColor(c.r, c.g, c.b);
       const setDraw = (c: { r: number; g: number; b: number }) => pdf.setDrawColor(c.r, c.g, c.b);
 
       const drawPageBg = () => { setFill(darkBg); pdf.rect(0, 0, pageWidth, pageHeight, 'F'); };
+
+      const drawHeader = (sectionTitle: string) => {
+        setFill(navy); pdf.rect(0, 0, pageWidth, 12, 'F');
+        setFill(gold); pdf.rect(0, 11.5, pageWidth, 0.5, 'F');
+        pdf.setFontSize(6); pdf.setFont('helvetica', 'normal'); setColor(lightGold);
+        pdf.text('NAIDU PROPERTY CONSULTING SERVICES', margin, 7);
+        pdf.text(sectionTitle.toUpperCase(), pageWidth - margin, 7, { align: 'right' });
+      };
+
       const drawFooter = (pn: number) => {
-        setDraw(gold); pdf.setLineWidth(0.3);
+        setDraw(dividerCol); pdf.setLineWidth(0.2);
         pdf.line(margin, pageHeight - 14, pageWidth - margin, pageHeight - 14);
-        pdf.setFontSize(6.5); setColor(mutedText); pdf.setFont('helvetica', 'normal');
-        pdf.text('Naidu Property Consulting Services', margin, pageHeight - 9);
+        pdf.setFontSize(6); setColor(mutedText); pdf.setFont('helvetica', 'normal');
+        pdf.text('Naidu Property Consulting Services  •  CONFIDENTIAL', margin, pageHeight - 9);
         pdf.text(`Page ${pn}`, pageWidth - margin, pageHeight - 9, { align: 'right' });
-        pdf.text('CONFIDENTIAL', pageWidth / 2, pageHeight - 9, { align: 'center' });
       };
 
-      const addNewPage = () => { pdf.addPage(); pageNum++; drawPageBg(); drawFooter(pageNum); currentY = margin + 4; };
-
-      const checkPageBreak = (neededHeight: number) => {
-        if (currentY + neededHeight > pageHeight - 20) { addNewPage(); }
+      const addNewPage = (sectionTitle = '') => {
+        pdf.addPage(); pageNum++;
+        drawPageBg();
+        if (sectionTitle) drawHeader(sectionTitle);
+        drawFooter(pageNum);
+        currentY = sectionTitle ? 18 : margin + 4;
       };
 
-      const drawSectionHeader = (title: string, subtitle?: string) => {
-        checkPageBreak(subtitle ? 22 : 16);
-        setFill(gold); pdf.rect(margin, currentY, 3, subtitle ? 14 : 10, 'F');
-        pdf.setFontSize(13); pdf.setFont('helvetica', 'bold'); setColor(white);
-        pdf.text(title, margin + 8, currentY + 7);
+      const checkPageBreak = (neededHeight: number, sectionTitle = '') => {
+        if (currentY + neededHeight > pageHeight - 20) { addNewPage(sectionTitle); }
+      };
+
+      const drawSectionHeader = (title: string, subtitle?: string, numbered = true) => {
+        checkPageBreak(subtitle ? 24 : 18);
+        if (numbered) sectionNum++;
+        setFill(gold); pdf.rect(margin, currentY, 3.5, subtitle ? 16 : 12, 'F');
+        if (numbered) {
+          pdf.setFontSize(9); pdf.setFont('helvetica', 'bold'); setColor(gold);
+          pdf.text(`${sectionNum}.0`, margin + 8, currentY + 7);
+          pdf.setFontSize(14); setColor(white);
+          pdf.text(title, margin + 20, currentY + 7);
+        } else {
+          pdf.setFontSize(14); pdf.setFont('helvetica', 'bold'); setColor(white);
+          pdf.text(title, margin + 8, currentY + 7);
+        }
         if (subtitle) {
           pdf.setFontSize(8); pdf.setFont('helvetica', 'normal'); setColor(mutedText);
-          pdf.text(subtitle, margin + 8, currentY + 13);
-          currentY += 20;
+          pdf.text(subtitle, margin + (numbered ? 20 : 8), currentY + 14);
+          currentY += 22;
         } else {
-          currentY += 14;
+          currentY += 16;
         }
       };
 
       const drawKPIBox = (x: number, y: number, w: number, h: number, label: string, value: string, sub?: string) => {
         setFill(cardBg); pdf.roundedRect(x, y, w, h, 2.5, 2.5, 'F');
-        setFill(gold); pdf.rect(x, y, w, 1.8, 'F');
-        pdf.setFontSize(18); pdf.setFont('helvetica', 'bold'); setColor(gold);
+        setFill(gold); pdf.rect(x, y, w, 2, 'F');
+        pdf.setFontSize(17); pdf.setFont('helvetica', 'bold'); setColor(gold);
         pdf.text(value, x + w / 2, y + h / 2 - (sub ? 2 : 0), { align: 'center' });
         pdf.setFontSize(7); pdf.setFont('helvetica', 'normal'); setColor(mutedText);
         pdf.text(label, x + w / 2, y + h / 2 + 8, { align: 'center' });
         if (sub) {
-          pdf.setFontSize(6); setColor({ r: 100, g: 115, b: 140 });
+          pdf.setFontSize(5.5); setColor({ r: 100, g: 115, b: 140 });
           pdf.text(sub, x + w / 2, y + h / 2 + 13, { align: 'center' });
         }
       };
 
       // ═══════════════ COVER PAGE ═══════════════
       drawPageBg();
-      setFill(navy); pdf.rect(0, 0, pageWidth, 95, 'F');
-      setFill(gold); pdf.rect(0, 93, pageWidth, 2.5, 'F');
+      setFill(navy); pdf.rect(0, 0, pageWidth, 120, 'F');
+      setFill(gold); pdf.rect(0, 118, pageWidth, 2.5, 'F');
+
+      try {
+        setFill({ r: 191, g: 155, b: 80 });
+        pdf.setGState(new (pdf as any).GState({ opacity: 0.15 }));
+        pdf.rect(0, 0, 5, 120, 'F');
+        pdf.rect(pageWidth - 5, 0, 5, 120, 'F');
+        pdf.setGState(new (pdf as any).GState({ opacity: 1 }));
+      } catch { /* GState not supported */ }
 
       pdf.setFontSize(8); pdf.setFont('helvetica', 'normal'); setColor(lightGold);
-      pdf.text('QUANTITATIVE MARKET ANALYSIS', pageWidth / 2, 20, { align: 'center' });
+      pdf.text('QUANTITATIVE MARKET ANALYSIS', pageWidth / 2, 22, { align: 'center' });
+      setDraw(gold); pdf.setLineWidth(0.3);
+      pdf.line(pageWidth / 2 - 30, 25, pageWidth / 2 + 30, 25);
 
-      pdf.setFontSize(24); pdf.setFont('helvetica', 'bold'); setColor(white);
-      const titleLines = pdf.splitTextToSize(config.title, contentWidth - 10);
-      pdf.text(titleLines, pageWidth / 2, 38, { align: 'center' });
+      pdf.setFontSize(26); pdf.setFont('helvetica', 'bold'); setColor(white);
+      const titleLines = pdf.splitTextToSize(config.title, contentWidth - 20);
+      pdf.text(titleLines, pageWidth / 2, 42, { align: 'center' });
 
       if (config.description) {
         pdf.setFontSize(10); pdf.setFont('helvetica', 'normal'); setColor(lightGold);
-        const descLines = pdf.splitTextToSize(config.description, contentWidth - 30);
-        pdf.text(descLines, pageWidth / 2, 58 + (titleLines.length > 1 ? 8 : 0), { align: 'center' });
+        const descLines = pdf.splitTextToSize(config.description, contentWidth - 40);
+        pdf.text(descLines, pageWidth / 2, 62 + (titleLines.length > 1 ? 10 : 0), { align: 'center' });
       }
 
       pdf.setFontSize(7); setColor({ r: 130, g: 140, b: 165 });
-      pdf.text('NAIDU PROPERTY CONSULTING SERVICES', pageWidth / 2, 82, { align: 'center' });
+      pdf.text('NAIDU PROPERTY CONSULTING SERVICES', pageWidth / 2, 100, { align: 'center' });
+      pdf.setFontSize(6); setColor({ r: 100, g: 110, b: 135 });
+      pdf.text('PROPERTY INTELLIGENCE  •  MARKET RESEARCH  •  ADVISORY', pageWidth / 2, 108, { align: 'center' });
 
-      // Metadata
-      currentY = 105;
-      setFill(cardBg); pdf.roundedRect(margin, currentY, contentWidth, 22, 2, 2, 'F');
-      pdf.setFontSize(8); pdf.setFont('helvetica', 'normal'); setColor(mutedText);
-      pdf.text(`Generated: ${new Date().toLocaleDateString()}`, margin + 8, currentY + 9);
-      pdf.text(`Listings: ${totalListings.toLocaleString()}`, margin + contentWidth * 0.4, currentY + 9);
-      if (config.authorName) pdf.text(`Author: ${config.authorName}`, margin + 8, currentY + 17);
-      if (config.companyName) { setColor(gold); pdf.setFont('helvetica', 'bold'); pdf.text(config.companyName, pageWidth - margin - 8, currentY + 9, { align: 'right' }); }
-      currentY += 32;
+      // Metadata card
+      currentY = 130;
+      setFill(cardBg); pdf.roundedRect(margin, currentY, contentWidth, 28, 3, 3, 'F');
+      setFill(gold); pdf.rect(margin, currentY, contentWidth, 2, 'F');
 
-      // ═══════════════ KPIs ═══════════════
+      const metaY = currentY + 12;
+      pdf.setFontSize(6); pdf.setFont('helvetica', 'normal'); setColor({ r: 100, g: 115, b: 140 });
+      pdf.text('GENERATED', margin + 10, metaY - 2);
+      pdf.text('LISTINGS', margin + contentWidth * 0.35, metaY - 2);
+      pdf.text('PREPARED BY', pageWidth - margin - 10, metaY - 2, { align: 'right' });
+
+      pdf.setFontSize(9); pdf.setFont('helvetica', 'bold'); setColor(white);
+      pdf.text(new Date().toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' }), margin + 10, metaY + 5);
+      pdf.text(totalListings.toLocaleString(), margin + contentWidth * 0.35, metaY + 5);
+      if (config.companyName) { setColor(gold); pdf.text(config.companyName, pageWidth - margin - 10, metaY + 5, { align: 'right' }); }
+      if (config.authorName) { pdf.setFontSize(7); pdf.setFont('helvetica', 'normal'); setColor(mutedText); pdf.text(`Author: ${config.authorName}`, margin + 10, metaY + 12); }
+
+      currentY += 38;
+      pdf.setFontSize(6); setColor({ r: 80, g: 90, b: 115 }); pdf.setFont('helvetica', 'normal');
+      pdf.text('This document contains proprietary market intelligence. Unauthorized distribution is prohibited.', pageWidth / 2, currentY, { align: 'center' });
+
+      // KPIs on cover
+      currentY += 14;
       if (config.includeKPIs) {
-        drawSectionHeader('Key Performance Indicators', 'Core metrics from analyzed property data');
         const kpiW = (contentWidth - 12) / 4;
-        const kpiH = 34;
+        const kpiH = 36;
         const kpis = [
           { label: 'Total Listings', value: totalListings.toLocaleString(), sub: 'Properties analyzed' },
           { label: 'Average Price', value: `$${avgPrice.toLocaleString()}`, sub: 'Market average' },
@@ -768,34 +814,118 @@ export function useReportGenerator() {
           { label: 'Unique Suburbs', value: Object.keys(suburbData).length.toLocaleString(), sub: 'Geographic spread' },
         ];
         kpis.forEach((kpi, i) => drawKPIBox(margin + i * (kpiW + 4), currentY, kpiW, kpiH, kpi.label, kpi.value, kpi.sub));
-        currentY += kpiH + 14;
+        currentY += kpiH + 10;
       }
 
       drawFooter(1);
 
-      // ========================
-      // Chart Captures from DOM refs
-      // ========================
+      // ═══════════════ TABLE OF CONTENTS ═══════════════
+      addNewPage('TABLE OF CONTENTS');
+      setFill(gold); pdf.rect(margin, currentY, 3.5, 12, 'F');
+      pdf.setFontSize(16); pdf.setFont('helvetica', 'bold'); setColor(white);
+      pdf.text('Table of Contents', margin + 8, currentY + 8);
+      currentY += 20;
+
+      const tocSections = [
+        'Executive Summary',
+        'Market Analytics',
+        'Data Visualizations',
+        'Suburb Deep-Dive',
+        'Disclaimer & Methodology'
+      ];
+      tocSections.forEach((title, i) => {
+        setFill(i % 2 === 0 ? cardBg : { r: 20, g: 28, b: 48 });
+        pdf.roundedRect(margin, currentY, contentWidth, 12, 1.5, 1.5, 'F');
+        pdf.setFontSize(8); pdf.setFont('helvetica', 'bold'); setColor(gold);
+        pdf.text(`${i + 1}.0`, margin + 6, currentY + 7.5);
+        pdf.setFontSize(9); pdf.setFont('helvetica', 'normal'); setColor(white);
+        pdf.text(title, margin + 22, currentY + 7.5);
+        setDraw(dividerCol); pdf.setLineWidth(0.2);
+        const textEndX = margin + 22 + pdf.getTextWidth(title) + 4;
+        for (let dx = textEndX; dx < pageWidth - margin - 16; dx += 2) {
+          pdf.line(dx, currentY + 7.5, dx + 0.5, currentY + 7.5);
+        }
+        pdf.setFontSize(8); setColor(mutedText);
+        pdf.text(`${i + 3}`, pageWidth - margin - 6, currentY + 7.5, { align: 'right' });
+        currentY += 14;
+      });
+
+      // ═══════════════ EXECUTIVE SUMMARY ═══════════════
+      addNewPage('EXECUTIVE SUMMARY');
+      sectionNum = 0;
+      drawSectionHeader('Executive Summary', 'High-level market overview and key performance indicators');
+
+      // Market snapshot narrative
+      checkPageBreak(50);
+      setFill({ r: 20, g: 30, b: 52 }); pdf.roundedRect(margin, currentY, contentWidth, 44, 3, 3, 'F');
+      setFill(gold); pdf.rect(margin, currentY, 3.5, 44, 'F');
+      pdf.setFontSize(9); pdf.setFont('helvetica', 'bold'); setColor(gold);
+      pdf.text('MARKET SNAPSHOT', margin + 10, currentY + 10);
+      pdf.setFontSize(8); pdf.setFont('helvetica', 'normal'); setColor(softWhite);
+      const snapshotText = `This quantitative analysis encompasses ${totalListings.toLocaleString()} property listings across ${Object.keys(suburbData).length} suburbs. The report provides a comprehensive view of market dynamics, pricing distribution, and data quality metrics for the analyzed period. Average listing price sits at $${avgPrice.toLocaleString()} with ${recentListings} new listings in the past 30 days.`;
+      const snapLines = pdf.splitTextToSize(snapshotText, contentWidth - 22);
+      pdf.text(snapLines, margin + 10, currentY + 18);
+      currentY += 52;
+
+      // Analytics table
+      drawSectionHeader('Market Analytics', 'Computed indicators and market intelligence');
+
+      const now = new Date();
+      const last30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const last60Days = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+      const recent30 = allListings.filter(l => l.receivedAt && new Date(l.receivedAt) >= last30Days);
+      const previous30 = allListings.filter(l => l.receivedAt && new Date(l.receivedAt) >= last60Days && new Date(l.receivedAt) < last30Days);
+      const velocityChange = previous30.length > 0 ? ((recent30.length - previous30.length) / previous30.length * 100) : 0;
+      const pricesWithData = allListings.filter(l => l.price && l.price > 0).map(l => l.price!);
+      const sortedPrices = pricesWithData.sort((a, b) => a - b);
+      const median = sortedPrices.length > 0 ? sortedPrices[Math.floor(sortedPrices.length / 2)] : 0;
+      const q1 = sortedPrices.length > 0 ? sortedPrices[Math.floor(sortedPrices.length * 0.25)] : 0;
+      const q3 = sortedPrices.length > 0 ? sortedPrices[Math.floor(sortedPrices.length * 0.75)] : 0;
+      const withConfidence = allListings.filter(l => l.confidence && l.confidence > 0);
+      const avgConfidence = withConfidence.length > 0 ? withConfidence.reduce((sum, l) => sum + l.confidence!, 0) / withConfidence.length : 0;
+
+      const analyticsRows = [
+        { label: 'Market Velocity', value: velocityChange > 0 ? 'Uptrend' : velocityChange < 0 ? 'Downtrend' : 'Stable', detail: `${velocityChange > 0 ? '+' : ''}${velocityChange.toFixed(1)}% vs prev 30d` },
+        { label: 'Price Distribution', value: `$${median.toLocaleString()}`, detail: `Median • IQR: $${(q3 - q1).toLocaleString()}` },
+        { label: 'Data Quality', value: `${(avgConfidence * 100).toFixed(1)}%`, detail: `${withConfidence.length} of ${totalListings} with confidence` },
+        { label: 'Market Coverage', value: `${Object.keys(suburbData).length} suburbs`, detail: `Avg ${(totalListings / Object.keys(suburbData).length).toFixed(1)} per suburb` },
+      ];
+
+      setFill(navy); pdf.roundedRect(margin, currentY, contentWidth, 10, 2, 2, 'F');
+      pdf.setFontSize(7); pdf.setFont('helvetica', 'bold'); setColor(lightGold);
+      pdf.text('METRIC', margin + 8, currentY + 6.5);
+      pdf.text('VALUE', margin + contentWidth / 2, currentY + 6.5, { align: 'center' });
+      pdf.text('DETAILS', pageWidth - margin - 8, currentY + 6.5, { align: 'right' });
+      currentY += 10;
+
+      analyticsRows.forEach((row, i) => {
+        setFill(i % 2 === 0 ? cardBg : { r: 20, g: 28, b: 48 });
+        pdf.rect(margin, currentY, contentWidth, 12, 'F');
+        pdf.setFontSize(9); pdf.setFont('helvetica', 'normal'); setColor(mutedText);
+        pdf.text(row.label, margin + 8, currentY + 8);
+        pdf.setFont('helvetica', 'bold'); setColor(gold);
+        pdf.text(row.value, margin + contentWidth / 2, currentY + 8, { align: 'center' });
+        pdf.setFont('helvetica', 'normal'); setColor(softWhite);
+        pdf.text(row.detail, pageWidth - margin - 8, currentY + 8, { align: 'right' });
+        currentY += 12;
+      });
+      currentY += 10;
+
+      // ═══════════════ CHART CAPTURES ═══════════════
       const addChartToPDF = async (chartRef: HTMLElement | null, title: string) => {
         if (!chartRef) return;
-        checkPageBreak(90);
-
-        // Section title with gold accent
+        checkPageBreak(90, 'DATA VISUALIZATIONS');
         setFill(gold); pdf.rect(margin, currentY, 3, 8, 'F');
         pdf.setFontSize(11); pdf.setFont('helvetica', 'bold'); setColor(white);
         pdf.text(title, margin + 8, currentY + 6);
         currentY += 14;
-
         try {
           const canvas = await html2canvas(chartRef, { scale: 2.5, backgroundColor: '#ffffff', logging: false });
           const imgWidth = contentWidth;
           const imgHeight = Math.min((canvas.height * imgWidth) / canvas.width, 80);
-          checkPageBreak(imgHeight + 10);
-          
-          // White card bg
+          checkPageBreak(imgHeight + 10, 'DATA VISUALIZATIONS');
           setFill({ r: 255, g: 255, b: 255 });
           pdf.roundedRect(margin - 2, currentY - 2, imgWidth + 4, imgHeight + 4, 2, 2, 'F');
-          
           const imgData = canvas.toDataURL('image/png');
           pdf.addImage(imgData, 'PNG', margin, currentY, imgWidth, imgHeight);
           currentY += imgHeight + 14;
@@ -808,6 +938,10 @@ export function useReportGenerator() {
         }
       };
 
+      // Add chart section header on first chart page
+      addNewPage('DATA VISUALIZATIONS');
+      drawSectionHeader('Data Visualizations', 'Charts generated from analyzed property data');
+
       if (chartRefs.advancedAnalytics) await addChartToPDF(chartRefs.advancedAnalytics, 'Advanced Market Analytics');
       if (chartRefs.executiveInsights) await addChartToPDF(chartRefs.executiveInsights, 'Executive Insights & Recommendations');
       if (chartRefs.temporalAnalysis) await addChartToPDF(chartRefs.temporalAnalysis, 'Temporal Analysis');
@@ -818,9 +952,49 @@ export function useReportGenerator() {
       if (config.includePriceRangeChart && chartRefs.priceRangeChart) await addChartToPDF(chartRefs.priceRangeChart, 'Price Range Distribution');
       if (config.includeBedroomChart && chartRefs.bedroomChart) await addChartToPDF(chartRefs.bedroomChart, 'Bedroom Distribution');
 
-      // Custom Notes
+      // ═══════════════ SUBURB DEEP-DIVE ═══════════════
+      addNewPage('SUBURB ANALYSIS');
+      drawSectionHeader('Suburb Deep-Dive', 'Top suburbs by listing volume with price and quality metrics');
+
+      const sortedSuburbs = Object.entries(suburbData).sort(([,a], [,b]) => b - a).slice(0, 15);
+      if (sortedSuburbs.length > 0) {
+        const colW = contentWidth / 4;
+        setFill(navy); pdf.roundedRect(margin, currentY, contentWidth, 10, 2, 2, 'F');
+        pdf.setFontSize(7); pdf.setFont('helvetica', 'bold'); setColor(lightGold);
+        pdf.text('SUBURB', margin + 6, currentY + 6.5);
+        pdf.text('LISTINGS', margin + colW + 6, currentY + 6.5);
+        pdf.text('MARKET SHARE', margin + colW * 2 + 6, currentY + 6.5);
+        pdf.text('ACTIVITY', margin + colW * 3 + 6, currentY + 6.5);
+        currentY += 10;
+
+        sortedSuburbs.forEach(([suburb, count], i) => {
+          checkPageBreak(11, 'SUBURB ANALYSIS');
+          setFill(i % 2 === 0 ? cardBg : { r: 20, g: 28, b: 48 });
+          pdf.rect(margin, currentY, contentWidth, 10, 'F');
+          pdf.setFontSize(8); pdf.setFont('helvetica', 'normal'); setColor(white);
+          pdf.text(suburb.length > 22 ? suburb.substring(0, 21) + '…' : suburb, margin + 6, currentY + 6.5);
+          setColor(gold); pdf.setFont('helvetica', 'bold');
+          pdf.text(count.toString(), margin + colW + 6, currentY + 6.5);
+          setColor(softWhite); pdf.setFont('helvetica', 'normal');
+          pdf.text(`${((count / totalListings) * 100).toFixed(1)}%`, margin + colW * 2 + 6, currentY + 6.5);
+          const activity = count > 10 ? 'High' : count > 5 ? 'Medium' : 'Low';
+          setColor(activity === 'High' ? { r: 16, g: 185, b: 129 } : activity === 'Medium' ? gold : mutedText);
+          pdf.text(activity, margin + colW * 3 + 6, currentY + 6.5);
+          currentY += 10;
+        });
+
+        currentY += 2;
+        setFill(navy); pdf.roundedRect(margin, currentY, contentWidth, 10, 1.5, 1.5, 'F');
+        pdf.setFontSize(7); pdf.setFont('helvetica', 'bold'); setColor(gold);
+        pdf.text('TOTAL', margin + 6, currentY + 6.5);
+        pdf.text(totalListings.toString(), margin + colW + 6, currentY + 6.5);
+        pdf.text('100%', margin + colW * 2 + 6, currentY + 6.5);
+        currentY += 16;
+      }
+
+      // ═══════════════ CUSTOM NOTES ═══════════════
       if (config.customNotes && config.customNotes.trim()) {
-        drawSectionHeader('Additional Notes');
+        drawSectionHeader('Additional Notes', undefined, false);
         setFill(cardBg);
         const noteLines = pdf.splitTextToSize(config.customNotes, contentWidth - 16);
         const notesH = noteLines.length * 5 + 12;
@@ -832,10 +1006,34 @@ export function useReportGenerator() {
         currentY += notesH + 10;
       }
 
-      setProgress(50);
-      setCurrentStep('Saving PDF report...');
-      
-      // Save the PDF
+      // ═══════════════ DISCLAIMER ═══════════════
+      addNewPage('DISCLAIMER');
+      drawSectionHeader('Disclaimer & Methodology');
+
+      const disclaimerLines = [
+        'This report has been prepared by Naidu Property Consulting Services for informational purposes only.',
+        '',
+        'While every effort has been made to ensure accuracy, no warranties or representations are made regarding the completeness or suitability of the information.',
+        '',
+        'This report does not constitute financial, legal, or investment advice. Recipients should seek independent professional counsel.',
+        '',
+        'Data Sources: Property listing aggregators, public records, and proprietary market intelligence systems.',
+        '',
+        '© Naidu Property Consulting Services. All rights reserved.'
+      ];
+
+      setFill(cardBg); pdf.roundedRect(margin, currentY, contentWidth, 90, 2, 2, 'F');
+      setFill(navy); pdf.rect(margin, currentY, contentWidth, 1.5, 'F');
+      let dY = currentY + 10;
+      disclaimerLines.forEach(line => {
+        if (line === '') { dY += 4; return; }
+        pdf.setFontSize(7.5); pdf.setFont('helvetica', 'normal'); setColor(mutedText);
+        const wrapped = pdf.splitTextToSize(line, contentWidth - 16);
+        pdf.text(wrapped, margin + 8, dY);
+        dY += wrapped.length * 4 + 2;
+      });
+
+      // Save PDF
       const fileName = `${config.title.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
       pdf.save(fileName);
 
