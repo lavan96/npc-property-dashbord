@@ -473,9 +473,9 @@ export default function Overview() {
         />
       </div>
 
-      {/* Reviews Due Widget & Data Integrity Panel */}
+      {/* Upcoming Reminders & Data Integrity Panel */}
       <div className="grid gap-4 lg:grid-cols-2 animate-fade-in">
-        <ReviewsDueWidget />
+        <UpcomingRemindersWidget />
         <DataIntegrityPanel 
           dashboardData={recentListings} 
         />
