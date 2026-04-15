@@ -11,7 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ConfidenceBadge } from '@/components/dashboard/ConfidenceBadge';
 import { OverviewFilters } from '@/components/overview/OverviewFilters';
 import { DataIntegrityPanel } from '@/components/debug/DataIntegrityPanel';
-import { ReviewsDueWidget } from '@/components/clients/ReviewsDueWidget';
+import { UpcomingRemindersWidget } from '@/components/overview/UpcomingRemindersWidget';
 import { PropertyListing } from '@/lib/airtable';
 import { DashboardKPIs } from '@/types/airtable';
 import { useAutoRefresh } from '@/hooks/use-auto-refresh';
