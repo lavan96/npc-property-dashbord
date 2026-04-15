@@ -641,85 +641,6 @@ export function useReportGenerator() {
         }
       };
       
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const margin = 18;
-      const contentWidth = pageWidth - 2 * margin;
-      let currentY = margin;
-
-      // Premium Dark & Gold palette
-      const navy = { r: 13, g: 38, b: 77 };
-      const gold = { r: 191, g: 155, b: 80 };
-      const darkBg = { r: 18, g: 25, b: 45 };
-      const cardBg = { r: 24, g: 34, b: 58 };
-      const white = { r: 255, g: 255, b: 255 };
-      const lightGold = { r: 220, g: 195, b: 140 };
-      const mutedText = { r: 160, g: 170, b: 190 };
-
-      let pageNum = 1;
-
-      const setColor = (c: { r: number; g: number; b: number }) => pdf.setTextColor(c.r, c.g, c.b);
-      const setFill = (c: { r: number; g: number; b: number }) => pdf.setFillColor(c.r, c.g, c.b);
-      const setDraw = (c: { r: number; g: number; b: number }) => pdf.setDrawColor(c.r, c.g, c.b);
-
-      const drawPageBg = () => { setFill(darkBg); pdf.rect(0, 0, pageWidth, pageHeight, 'F'); };
-      const drawFooter = (pn: number) => {
-        setDraw(gold); pdf.setLineWidth(0.4);
-        pdf.line(margin, pageHeight - 14, pageWidth - margin, pageHeight - 14);
-        pdf.setFontSize(7); setColor(mutedText); pdf.setFont('helvetica', 'normal');
-        pdf.text('Naidu Property Consulting Services', margin, pageHeight - 9);
-        pdf.text(`Page ${pn}`, pageWidth - margin, pageHeight - 9, { align: 'right' });
-        pdf.text('CONFIDENTIAL', pageWidth / 2, pageHeight - 9, { align: 'center' });
-      };
-
-      const addNewPage = () => { pdf.addPage(); pageNum++; drawPageBg(); drawFooter(pageNum); currentY = margin + 5; };
-
-      const checkPageBreak = (neededHeight: number) => {
-        if (currentY + neededHeight > pageHeight - 22) { addNewPage(); }
-      };
-
-      const drawSectionHeader = (title: string) => {
-        checkPageBreak(18);
-        setFill(gold); pdf.rect(margin, currentY, 3, 10, 'F');
-        pdf.setFontSize(13); pdf.setFont('helvetica', 'bold'); setColor(white);
-        pdf.text(title, margin + 8, currentY + 7);
-        currentY += 16;
-      };
-
-      const drawKPIBox = (x: number, y: number, w: number, h: number, label: string, value: string) => {
-        setFill(cardBg); pdf.roundedRect(x, y, w, h, 2, 2, 'F');
-        setFill(gold); pdf.rect(x, y, w, 1.5, 'F');
-        pdf.setFontSize(16); pdf.setFont('helvetica', 'bold'); setColor(gold);
-        pdf.text(value, x + w / 2, y + h / 2 - 1, { align: 'center' });
-        pdf.setFontSize(7.5); pdf.setFont('helvetica', 'normal'); setColor(mutedText);
-        pdf.text(label, x + w / 2, y + h / 2 + 8, { align: 'center' });
-      };
-
-      // ========================
-      // Title Page
-      // ========================
-      drawPageBg();
-      setFill(navy); pdf.rect(0, 0, pageWidth, 90, 'F');
-      setFill(gold); pdf.rect(0, 88, pageWidth, 2, 'F');
-
-      pdf.setFontSize(22); pdf.setFont('helvetica', 'bold'); setColor(white);
-      const titleLines = pdf.splitTextToSize(config.title, contentWidth);
-      pdf.text(titleLines, pageWidth / 2, 35, { align: 'center' });
-
-      if (config.description) {
-        pdf.setFontSize(10); pdf.setFont('helvetica', 'normal'); setColor(lightGold);
-        const descLines = pdf.splitTextToSize(config.description, contentWidth - 20);
-        pdf.text(descLines, pageWidth / 2, 55 + (titleLines.length > 1 ? 8 : 0), { align: 'center' });
-      }
-
-      currentY = 100;
-      pdf.setFontSize(9); pdf.setFont('helvetica', 'normal'); setColor(mutedText);
-      pdf.text(`Generated: ${new Date().toLocaleDateString()}`, margin, currentY);
-      if (config.authorName) { currentY += 6; pdf.text(`Author: ${config.authorName}`, margin, currentY); }
-      if (config.companyName) { currentY += 6; pdf.text(`Company: ${config.companyName}`, margin, currentY); }
-      currentY += 16;
-
       // Calculate metrics
       const totalListings = allListings.length;
       const avgPrice = allListings.length > 0 
@@ -731,26 +652,123 @@ export function useReportGenerator() {
         const receivedAt = listing.receivedAt;
         return receivedAt && new Date(receivedAt) >= thirtyDaysAgo;
       }).length;
-      const suburbData = allListings.reduce((acc, listing) => {
+      const suburbData: Record<string, number> = allListings.reduce((acc, listing) => {
         const suburb = listing.suburb || 'Unknown';
         acc[suburb] = (acc[suburb] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
 
-      // KPIs
-      // ========================
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 16;
+      const contentWidth = pageWidth - 2 * margin;
+      let currentY = margin;
+
+      // Premium Dark & Gold palette
+      const navy = { r: 13, g: 38, b: 77 };
+      const gold = { r: 191, g: 155, b: 80 };
+      const darkBg = { r: 18, g: 25, b: 45 };
+      const cardBg = { r: 24, g: 34, b: 58 };
+      const white = { r: 255, g: 255, b: 255 };
+      const lightGold = { r: 220, g: 195, b: 140 };
+      const mutedText = { r: 140, g: 150, b: 175 };
+      const softWhite = { r: 210, g: 218, b: 230 };
+      const dividerCol = { r: 40, g: 50, b: 75 };
+
+      let pageNum = 1;
+
+      const setColor = (c: { r: number; g: number; b: number }) => pdf.setTextColor(c.r, c.g, c.b);
+      const setFill = (c: { r: number; g: number; b: number }) => pdf.setFillColor(c.r, c.g, c.b);
+      const setDraw = (c: { r: number; g: number; b: number }) => pdf.setDrawColor(c.r, c.g, c.b);
+
+      const drawPageBg = () => { setFill(darkBg); pdf.rect(0, 0, pageWidth, pageHeight, 'F'); };
+      const drawFooter = (pn: number) => {
+        setDraw(gold); pdf.setLineWidth(0.3);
+        pdf.line(margin, pageHeight - 14, pageWidth - margin, pageHeight - 14);
+        pdf.setFontSize(6.5); setColor(mutedText); pdf.setFont('helvetica', 'normal');
+        pdf.text('Naidu Property Consulting Services', margin, pageHeight - 9);
+        pdf.text(`Page ${pn}`, pageWidth - margin, pageHeight - 9, { align: 'right' });
+        pdf.text('CONFIDENTIAL', pageWidth / 2, pageHeight - 9, { align: 'center' });
+      };
+
+      const addNewPage = () => { pdf.addPage(); pageNum++; drawPageBg(); drawFooter(pageNum); currentY = margin + 4; };
+
+      const checkPageBreak = (neededHeight: number) => {
+        if (currentY + neededHeight > pageHeight - 20) { addNewPage(); }
+      };
+
+      const drawSectionHeader = (title: string, subtitle?: string) => {
+        checkPageBreak(subtitle ? 22 : 16);
+        setFill(gold); pdf.rect(margin, currentY, 3, subtitle ? 14 : 10, 'F');
+        pdf.setFontSize(13); pdf.setFont('helvetica', 'bold'); setColor(white);
+        pdf.text(title, margin + 8, currentY + 7);
+        if (subtitle) {
+          pdf.setFontSize(8); pdf.setFont('helvetica', 'normal'); setColor(mutedText);
+          pdf.text(subtitle, margin + 8, currentY + 13);
+          currentY += 20;
+        } else {
+          currentY += 14;
+        }
+      };
+
+      const drawKPIBox = (x: number, y: number, w: number, h: number, label: string, value: string, sub?: string) => {
+        setFill(cardBg); pdf.roundedRect(x, y, w, h, 2.5, 2.5, 'F');
+        setFill(gold); pdf.rect(x, y, w, 1.8, 'F');
+        pdf.setFontSize(18); pdf.setFont('helvetica', 'bold'); setColor(gold);
+        pdf.text(value, x + w / 2, y + h / 2 - (sub ? 2 : 0), { align: 'center' });
+        pdf.setFontSize(7); pdf.setFont('helvetica', 'normal'); setColor(mutedText);
+        pdf.text(label, x + w / 2, y + h / 2 + 8, { align: 'center' });
+        if (sub) {
+          pdf.setFontSize(6); setColor({ r: 100, g: 115, b: 140 });
+          pdf.text(sub, x + w / 2, y + h / 2 + 13, { align: 'center' });
+        }
+      };
+
+      // ═══════════════ COVER PAGE ═══════════════
+      drawPageBg();
+      setFill(navy); pdf.rect(0, 0, pageWidth, 95, 'F');
+      setFill(gold); pdf.rect(0, 93, pageWidth, 2.5, 'F');
+
+      pdf.setFontSize(8); pdf.setFont('helvetica', 'normal'); setColor(lightGold);
+      pdf.text('QUANTITATIVE MARKET ANALYSIS', pageWidth / 2, 20, { align: 'center' });
+
+      pdf.setFontSize(24); pdf.setFont('helvetica', 'bold'); setColor(white);
+      const titleLines = pdf.splitTextToSize(config.title, contentWidth - 10);
+      pdf.text(titleLines, pageWidth / 2, 38, { align: 'center' });
+
+      if (config.description) {
+        pdf.setFontSize(10); pdf.setFont('helvetica', 'normal'); setColor(lightGold);
+        const descLines = pdf.splitTextToSize(config.description, contentWidth - 30);
+        pdf.text(descLines, pageWidth / 2, 58 + (titleLines.length > 1 ? 8 : 0), { align: 'center' });
+      }
+
+      pdf.setFontSize(7); setColor({ r: 130, g: 140, b: 165 });
+      pdf.text('NAIDU PROPERTY CONSULTING SERVICES', pageWidth / 2, 82, { align: 'center' });
+
+      // Metadata
+      currentY = 105;
+      setFill(cardBg); pdf.roundedRect(margin, currentY, contentWidth, 22, 2, 2, 'F');
+      pdf.setFontSize(8); pdf.setFont('helvetica', 'normal'); setColor(mutedText);
+      pdf.text(`Generated: ${new Date().toLocaleDateString()}`, margin + 8, currentY + 9);
+      pdf.text(`Listings: ${totalListings.toLocaleString()}`, margin + contentWidth * 0.4, currentY + 9);
+      if (config.authorName) pdf.text(`Author: ${config.authorName}`, margin + 8, currentY + 17);
+      if (config.companyName) { setColor(gold); pdf.setFont('helvetica', 'bold'); pdf.text(config.companyName, pageWidth - margin - 8, currentY + 9, { align: 'right' }); }
+      currentY += 32;
+
+      // ═══════════════ KPIs ═══════════════
       if (config.includeKPIs) {
-        drawSectionHeader('Key Performance Indicators');
-        const kpiW = (contentWidth - 9) / 4;
-        const kpiH = 28;
+        drawSectionHeader('Key Performance Indicators', 'Core metrics from analyzed property data');
+        const kpiW = (contentWidth - 12) / 4;
+        const kpiH = 34;
         const kpis = [
-          { label: 'Total Listings', value: totalListings.toLocaleString() },
-          { label: 'Average Price', value: `$${avgPrice.toLocaleString()}` },
-          { label: 'Recent (30d)', value: recentListings.toLocaleString() },
-          { label: 'Unique Suburbs', value: Object.keys(suburbData).length.toLocaleString() },
+          { label: 'Total Listings', value: totalListings.toLocaleString(), sub: 'Properties analyzed' },
+          { label: 'Average Price', value: `$${avgPrice.toLocaleString()}`, sub: 'Market average' },
+          { label: 'Recent (30d)', value: recentListings.toLocaleString(), sub: 'New to market' },
+          { label: 'Unique Suburbs', value: Object.keys(suburbData).length.toLocaleString(), sub: 'Geographic spread' },
         ];
-        kpis.forEach((kpi, i) => drawKPIBox(margin + i * (kpiW + 3), currentY, kpiW, kpiH, kpi.label, kpi.value));
-        currentY += kpiH + 12;
+        kpis.forEach((kpi, i) => drawKPIBox(margin + i * (kpiW + 4), currentY, kpiW, kpiH, kpi.label, kpi.value, kpi.sub));
+        currentY += kpiH + 14;
       }
 
       drawFooter(1);
