@@ -29,4 +29,5 @@ if ('caches' in window) {
   })
 }
 
+// v2.0 - Cache bypass deployed
 createRoot(document.getElementById("root")!).render(<App />)
