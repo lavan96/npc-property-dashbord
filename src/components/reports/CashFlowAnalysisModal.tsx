@@ -4103,7 +4103,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
 
                   return (
                     <>
-                      <div ref={cashFlowChartRef} className="h-[380px] w-full bg-background p-2">
+                      <div ref={cashFlowChartRef} className="h-[380px] w-full bg-white p-2" style={{ backgroundColor: '#ffffff' }}>
                         <ResponsiveContainer width="100%" height="100%">
                           <ComposedChart
                             data={chartData}
@@ -4392,7 +4392,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
 
                   return (
                     <>
-                      <div ref={yieldChartRef} className="h-[280px] w-full bg-background p-2">
+                      <div ref={yieldChartRef} className="h-[280px] w-full bg-white p-2" style={{ backgroundColor: '#ffffff' }}>
                         <ResponsiveContainer width="100%" height="100%">
                           <ComposedChart
                             data={yieldData}
@@ -4576,7 +4576,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div ref={comparisonChartRef} className="h-[380px] w-full bg-background p-2">
+                  <div ref={comparisonChartRef} className="h-[380px] w-full bg-white p-2" style={{ backgroundColor: '#ffffff' }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart
                         data={projections.filter(p => p.year >= 1).map((p, i) => {
