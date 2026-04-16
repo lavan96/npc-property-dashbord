@@ -35,7 +35,7 @@ const SESSION_TOKEN_KEY = 'session_token';
 // Bump this number whenever the auth flow changes in a way that invalidates old tokens.
 // On mount, if the stored version doesn't match, stale tokens are auto-cleared
 // so users don't need to manually clear browser data.
-const AUTH_VERSION = 2;
+const AUTH_VERSION = 3;
 const AUTH_VERSION_KEY = 'auth_version';
 
 const getStoredValue = (key: string): string | null => {

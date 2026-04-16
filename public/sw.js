@@ -1,11 +1,13 @@
-const CACHE_NAME = 'npc-property-v2-2026-04-15';
+/**
+ * Service Worker — Network-First strategy
+ * Vite's content-hashed filenames handle cache busting for JS/CSS.
+ * This SW only provides offline fallback and caches images/fonts.
+ */
+
+const CACHE_NAME = 'npc-property-v3';
 const OFFLINE_URL = '/offline.html';
-const PRECACHE_ASSETS = [
-  OFFLINE_URL,
-  '/manifest.json',
-  '/images/npc-signature-logo.png',
-  '/favicon.ico',
-];
+
+// ── Lifecycle ──
 
 self.addEventListener('message', (event) => {
   if (event.data?.type === 'SKIP_WAITING') {
@@ -16,83 +18,76 @@ self.addEventListener('message', (event) => {
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_NAME);
-    await cache.addAll(PRECACHE_ASSETS);
+    await cache.addAll([OFFLINE_URL]);
     await self.skipWaiting();
   })());
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
-    const cacheNames = await caches.keys();
-    await Promise.all(
-      cacheNames
-        .filter((cacheName) => cacheName !== CACHE_NAME)
-        .map((cacheName) => caches.delete(cacheName))
-    );
+    // Purge ALL old caches
+    const names = await caches.keys();
+    await Promise.all(names.filter(n => n !== CACHE_NAME).map(n => caches.delete(n)));
     await self.clients.claim();
   })());
 });
 
-const isSameOrigin = (requestUrl) => new URL(requestUrl).origin === self.location.origin;
-
-const shouldBypassCache = (event) => {
-  const url = new URL(event.request.url);
-
-  return event.request.mode === 'navigate'
-    || event.request.destination === 'document'
-    || event.request.destination === 'script'
-    || event.request.destination === 'style'
-    || url.pathname.startsWith('/assets/');
-};
-
-const shouldCacheResponse = (request, url) => {
-  if (request.destination === 'image' || request.destination === 'font') {
-    return true;
-  }
-
-  return PRECACHE_ASSETS.includes(url.pathname);
-};
+// ── Fetch handling ──
 
 self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET' || !isSameOrigin(event.request.url)) return;
+  const { request } = event;
+  if (request.method !== 'GET') return;
 
-  const url = new URL(event.request.url);
+  const url = new URL(request.url);
 
-  if (url.pathname.startsWith('/api') || url.pathname.startsWith('/supabase')) {
-    return;
-  }
+  // Never intercept cross-origin, API, or supabase requests
+  if (url.origin !== self.location.origin) return;
+  if (url.pathname.startsWith('/api') || url.pathname.startsWith('/supabase')) return;
 
-  if (shouldBypassCache(event)) {
+  // Navigation requests → network-first with offline fallback
+  if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request, { cache: 'no-store' }).catch(async () => {
-        if (event.request.mode === 'navigate') {
-          return (await caches.match(OFFLINE_URL)) || new Response('Offline', { status: 503 });
-        }
-
-        const cached = await caches.match(event.request);
+      fetch(request, { cache: 'no-store' }).catch(async () => {
+        const cached = await caches.match(OFFLINE_URL);
         return cached || new Response('Offline', { status: 503 });
       })
     );
     return;
   }
 
-  if (!shouldCacheResponse(event.request, url)) {
+  // JS, CSS, HTML → always network (Vite hashes handle caching)
+  const dest = request.destination;
+  if (dest === 'script' || dest === 'style' || dest === 'document' || url.pathname.startsWith('/assets/')) {
+    // Don't intercept — let the browser handle it normally
     return;
   }
 
-  event.respondWith(
-    fetch(event.request)
-      .then(async (response) => {
-        if (response.ok) {
-          const cache = await caches.open(CACHE_NAME);
-          await cache.put(event.request, response.clone());
-        }
+  // Images & fonts → stale-while-revalidate (cache but refresh in background)
+  if (dest === 'image' || dest === 'font') {
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE_NAME);
+      const cached = await cache.match(request);
 
+      const networkFetch = fetch(request).then(response => {
+        if (response.ok) {
+          cache.put(request, response.clone());
+        }
         return response;
-      })
-      .catch(async () => {
-        const cached = await caches.match(event.request);
-        return cached || new Response('Offline', { status: 503 });
-      })
-  );
+      }).catch(() => null);
+
+      // Return cached immediately, refresh in background
+      if (cached) {
+        // Fire-and-forget revalidation
+        networkFetch;
+        return cached;
+      }
+
+      // No cache — must wait for network
+      const networkResponse = await networkFetch;
+      return networkResponse || new Response('', { status: 404 });
+    })());
+    return;
+  }
+
+  // Everything else — don't intercept
 });
