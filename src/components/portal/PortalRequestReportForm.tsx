@@ -84,6 +84,60 @@ export function PortalRequestReportForm({ properties, onSubmitted, onCancel }: P
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submittedSummary, setSubmittedSummary] = useState<{ type: string; property?: string; notes?: string } | null>(null);
+  const [predictions, setPredictions] = useState<Prediction[]>([]);
+  const [showPredictions, setShowPredictions] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  // Close predictions on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setShowPredictions(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const searchPlaces = useCallback(async (input: string) => {
+    if (input.length < 3) { setPredictions([]); return; }
+    setSearchLoading(true);
+    try {
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/google-places-autocomplete`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+        credentials: 'omit',
+        body: JSON.stringify({ input }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setPredictions(data.predictions || []);
+        setShowPredictions(true);
+      }
+    } catch (err) {
+      console.error('Places search error:', err);
+    } finally {
+      setSearchLoading(false);
+    }
+  }, []);
+
+  const handleAddressChange = (newValue: string) => {
+    setExternalAddress(newValue);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => searchPlaces(newValue), 300);
+  };
+
+  const selectPrediction = (prediction: Prediction) => {
+    setExternalAddress(prediction.description);
+    setPredictions([]);
+    setShowPredictions(false);
+  };
 
   const formatPropertyAddress = (p: Property) => {
     return [p.address, p.suburb, p.state, p.postcode].filter(Boolean).join(', ');
