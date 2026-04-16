@@ -3236,8 +3236,20 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
           }
           yPos += chartHeight + 3;
           
-          // Insight annotation
-          const trendInsight = `Over the 10-year period, the property value is projected to grow by ${propertyGrowthPct}% (from ${formatCurrency(baseFinancialData.purchasePrice)} to ${formatCurrency(yr10Data.propertyMarketValue)}). Equity increases by ${equityGrowthPct}%, while the loan balance reduces by ${loanReductionPct}%. Year 10 after-tax cash flow: ${formatCurrency(yr10Data.afterTaxCashFlowPA)} p.a.`;
+          // Insight annotation — detailed financial narrative
+          const yr1CashFlow = yr1?.afterTaxCashFlowPA || 0;
+          const yr10CashFlow = yr10Data.afterTaxCashFlowPA;
+          const cashFlowImproved = yr10CashFlow > yr1CashFlow;
+          const cashFlowDelta = formatCurrency(Math.abs(yr10CashFlow - yr1CashFlow));
+          const breakEvenYr = projections.filter(p => p.year >= 1).find((p, i, arr) => i > 0 && arr[i - 1].afterTaxCashFlowPA < 0 && p.afterTaxCashFlowPA >= 0);
+          const crossoverYr = projections.filter(p => p.year >= 1).find(p => p.equityInProperty >= p.loanAmount);
+          
+          let trendInsight = `Property Value Growth: The property is projected to appreciate by ${propertyGrowthPct}% over the 10-year horizon, growing from ${formatCurrency(baseFinancialData.purchasePrice)} to ${formatCurrency(yr10Data.propertyMarketValue)}. This represents an average annual compound growth aligned with the configured capital growth assumptions.\n\n`;
+          trendInsight += `Equity Accumulation: Equity increases by ${equityGrowthPct}% (from ${formatCurrency(yr1?.equityInProperty || 0)} to ${formatCurrency(yr10Data.equityInProperty)}), driven by both capital appreciation and principal repayments reducing the outstanding loan balance by ${loanReductionPct}%.\n\n`;
+          trendInsight += `Cash Flow Trajectory: After-tax cash flow ${cashFlowImproved ? 'improves' : 'declines'} by ${cashFlowDelta} over the period (Year 1: ${formatCurrency(yr1CashFlow)} → Year 10: ${formatCurrency(yr10CashFlow)} p.a.).`;
+          if (breakEvenYr) trendInsight += ` The investment reaches cash-flow positive in Year ${breakEvenYr.year}, marking the transition from negatively-geared to self-sustaining.`;
+          if (crossoverYr) trendInsight += ` Equity surpasses the remaining loan balance in Year ${crossoverYr.year}, a key wealth-building milestone indicating the investor holds majority ownership of the asset.`;
+          
           drawInsightBox(trendInsight, margin, chartWidth);
         }
         
@@ -3269,8 +3281,15 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
           }
           yPos += chartHeight + 3;
           
-          // Yield insight
-          const yieldInsight = `Gross yield moves from ${yr1Gross}% (Yr 1) to ${yr10Gross}% (Yr 10), while net yield shifts from ${yr1Net}% to ${yr10Net}%. As the property value appreciates through capital growth, yields compress relative to market value — a typical pattern for growth-oriented assets.`;
+          // Yield insight — detailed
+          const grossDelta = (parseFloat(yr10Gross) - parseFloat(yr1Gross)).toFixed(2);
+          const netDelta = (parseFloat(yr10Net) - parseFloat(yr1Net)).toFixed(2);
+          const avgSpread = projections.filter(p => p.year >= 1).reduce((s, p) => s + (p.grossYield - p.netYield), 0) / 10;
+          
+          let yieldInsight = `Gross Yield: Moves from ${yr1Gross}% (Year 1) to ${yr10Gross}% (Year 10), a shift of ${grossDelta} percentage points. This compression occurs because property value appreciates faster than rental income, which is a hallmark of capital-growth-oriented investment properties.\n\n`;
+          yieldInsight += `Net Yield: Shifts from ${yr1Net}% to ${yr10Net}% (${netDelta}pp change). Net yield accounts for property expenses including council rates, insurance, maintenance, and management fees, providing a more accurate picture of actual return on asset value.\n\n`;
+          yieldInsight += `Expense Drag: The average spread between gross and net yield is ${avgSpread.toFixed(2)} percentage points, representing the proportion of rental income consumed by holding costs. A narrowing spread over time indicates improving operational efficiency as rental growth outpaces expense inflation.`;
+          
           drawInsightBox(yieldInsight, margin, chartWidth);
         }
         
@@ -3293,7 +3312,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
           pdf.addImage(comparisonChartImage, 'PNG', margin + 2, yPos + 2, chartWidth - 4, chartHeight - 4);
           yPos += chartHeight + 3;
           
-          drawInsightBox('This comparison chart highlights relative performance differences between the selected investment properties, enabling informed decision-making based on yield, cash flow, and growth potential.', margin, chartWidth);
+          drawInsightBox('Multi-Property Comparison: This chart presents a side-by-side analysis of property value trajectories across selected investment properties. By overlaying growth curves, investors can visually identify which assets offer superior capital appreciation potential, assess relative risk profiles, and make data-driven portfolio allocation decisions. Properties with steeper upward curves indicate stronger projected growth, while convergence or divergence patterns reveal market segment dynamics.', margin, chartWidth);
         }
       }
 
