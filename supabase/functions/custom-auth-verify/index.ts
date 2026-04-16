@@ -20,12 +20,18 @@ serve(async (req) => {
 
     // Try to get session token from body for backwards compatibility
     let sessionToken: string | null = null;
+    let parsedBody: any = {};
     try {
-      const body = await req.json();
-      sessionToken = extractSessionToken(req.headers, body);
+      parsedBody = await req.json();
+      sessionToken = extractSessionToken(req.headers, parsedBody);
     } catch {
       // If body parsing fails, try to extract from headers/cookies only
       sessionToken = extractSessionToken(req.headers);
+    }
+    
+    // Normalize: treat empty strings, "null", "undefined" as null
+    if (!sessionToken || sessionToken === 'null' || sessionToken === 'undefined') {
+      sessionToken = null;
     }
 
     if (!sessionToken) {

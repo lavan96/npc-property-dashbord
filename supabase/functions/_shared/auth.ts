@@ -229,14 +229,17 @@ export function parseCookies(cookieHeader: string | null): Record<string, string
  */
 export function extractSessionToken(
   headers: Headers,
-  body?: { session_token?: string }
+  body?: { session_token?: string | null }
 ): string | null {
+  // Helper: reject falsy, "null", "undefined", empty strings
+  const isValidToken = (t: any): t is string => 
+    typeof t === 'string' && t.length > 0 && t !== 'null' && t !== 'undefined';
   // Check Cookie header first (HttpOnly cookie - primary method)
   const cookieHeader = headers.get('cookie');
   if (cookieHeader) {
     const cookies = parseCookies(cookieHeader);
     console.log('[extractSessionToken] Cookie header found, parsed cookies:', Object.keys(cookies));
-    if (cookies['session_token']) {
+    if (isValidToken(cookies['session_token'])) {
       console.log('[extractSessionToken] Found session_token in cookie');
       return cookies['session_token'];
     }
@@ -246,19 +249,19 @@ export function extractSessionToken(
 
   // Check custom session header (reliable fallback for cross-origin)
   const sessionHeader = headers.get('x-session-token');
-  if (sessionHeader) {
+  if (isValidToken(sessionHeader)) {
     console.log('[extractSessionToken] Found session_token in x-session-token header');
     return sessionHeader;
   } else {
-    console.log('[extractSessionToken] No x-session-token header found');
+    console.log('[extractSessionToken] No valid x-session-token header found');
   }
 
   // Check body parameter (legacy support)
-  if (body?.session_token) {
+  if (isValidToken(body?.session_token)) {
     console.log('[extractSessionToken] Found session_token in body');
-    return body.session_token;
+    return body!.session_token!;
   } else {
-    console.log('[extractSessionToken] No session_token in body');
+    console.log('[extractSessionToken] No valid session_token in body');
   }
 
   // Check Authorization header LAST (only if it doesn't look like a JWT)
