@@ -31,13 +31,14 @@ interface PixelPerfectPDFGeneratorProps {
   includeSources?: boolean;
   includeScoring?: boolean;
   reportTier?: ReportTier;
+  skipDatabaseUpdate?: boolean;
 }
 
 export interface PixelPerfectPDFGeneratorHandle {
   generateAndUpload: () => Promise<string | null>;
 }
 
-export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandle, PixelPerfectPDFGeneratorProps>(({ report, includeSources = true, includeScoring = true, reportTier = 'compass' }, ref) => {
+export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandle, PixelPerfectPDFGeneratorProps>(({ report, includeSources = true, includeScoring = true, reportTier = 'compass', skipDatabaseUpdate = false }, ref) => {
   const [isGenerating, setIsGenerating] = React.useState(false);
 
   const extractSuburbState = (address: string | undefined | null): { suburb: string; state: string } => {
@@ -3333,18 +3334,23 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
       console.log('✓ Public URL:', publicUrl);
 
       // Update the investment_reports table with the PDF URL via secure function
-      console.log('💽 Step 9: Updating database...');
-      const { error: updateError } = await invokeSecureFunction('manage-investment-reports', {
-        action: 'update',
-        reportId: report.id,
-        data: { pdf_url: publicUrl }
-      });
+      // Skip for comparison reports which use a different table
+      if (!skipDatabaseUpdate) {
+        console.log('💽 Step 9: Updating database...');
+        const { error: updateError } = await invokeSecureFunction('manage-investment-reports', {
+          action: 'update',
+          reportId: report.id,
+          data: { pdf_url: publicUrl }
+        });
 
-      if (updateError) {
-        console.error('❌ Database update failed:', updateError);
-        throw new Error(updateError.message || 'Database update failed');
+        if (updateError) {
+          console.error('❌ Database update failed:', updateError);
+          throw new Error(updateError.message || 'Database update failed');
+        }
+        console.log('✓ Database updated');
+      } else {
+        console.log('⏭️ Step 9: Skipping database update (comparison report)');
       }
-      console.log('✓ Database updated');
 
       return { blob, publicUrl, suburb, state };
   };

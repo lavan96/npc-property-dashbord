@@ -151,5 +151,5 @@ export function ComparisonPDFGenerator({ comparison }: ComparisonPDFGeneratorPro
     }
   };
 
-  return <PixelPerfectPDFGenerator report={transformedReport} />;
+  return <PixelPerfectPDFGenerator report={transformedReport} skipDatabaseUpdate />;
 }
