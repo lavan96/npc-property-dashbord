@@ -350,13 +350,39 @@ export function PortalRequestReportForm({ properties, onSubmitted, onCancel }: P
                 </p>
               )
             ) : (
-              <div className="space-y-1">
-                <Input
-                  placeholder="Enter full property address..."
-                  value={externalAddress}
-                  onChange={(e) => setExternalAddress(e.target.value)}
-                />
-                <p className="text-[10px] text-muted-foreground">Include street, suburb, state and postcode</p>
+              <div className="space-y-1 relative" ref={wrapperRef}>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Start typing a property address..."
+                    value={externalAddress}
+                    onChange={(e) => handleAddressChange(e.target.value)}
+                    onFocus={() => predictions.length > 0 && setShowPredictions(true)}
+                    className="pl-9 pr-9"
+                  />
+                  {searchLoading && (
+                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                  )}
+                </div>
+                {showPredictions && predictions.length > 0 && (
+                  <div className="absolute z-50 left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden">
+                    {predictions.map((p) => (
+                      <button
+                        key={p.placeId}
+                        type="button"
+                        onClick={() => selectPrediction(p)}
+                        className="w-full text-left px-4 py-3 hover:bg-accent transition-colors flex items-start gap-3 border-b border-border/50 last:border-0"
+                      >
+                        <SearchIcon className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">{p.mainText}</p>
+                          <p className="text-xs text-muted-foreground truncate">{p.secondaryText}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <p className="text-[10px] text-muted-foreground">Search and select a validated address with suburb, state and postcode</p>
               </div>
             )}
           </div>
