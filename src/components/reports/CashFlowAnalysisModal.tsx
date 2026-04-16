@@ -2934,7 +2934,42 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       
       yPos += summaryCardHeight;
 
-      // ========== CHARTS PAGE ==========
+      // ========== CHARTS & VISUAL ANALYSIS PAGE ==========
+
+      // Helper: draw an annotation/insight box below a chart
+      const drawInsightBox = (text: string, xPos: number, boxWidth: number) => {
+        const insightPadding = 4;
+        const lines = pdf.splitTextToSize(text, boxWidth - insightPadding * 2);
+        const boxHeight = lines.length * 3.5 + insightPadding * 2;
+        
+        // Subtle background with left accent
+        pdf.setFillColor(254, 249, 235); // warm cream
+        pdf.roundedRect(xPos, yPos, boxWidth, boxHeight, 1.5, 1.5, 'F');
+        pdf.setFillColor(primaryColor.r, primaryColor.g, primaryColor.b);
+        pdf.rect(xPos, yPos + 1, 2, boxHeight - 2, 'F');
+        
+        pdf.setFontSize(6.5);
+        pdf.setFont('helvetica', 'italic');
+        pdf.setTextColor(80, 70, 50);
+        pdf.text(lines, xPos + insightPadding + 2, yPos + insightPadding + 2);
+        
+        yPos += boxHeight + 4;
+      };
+
+      // Helper: draw a chart section title with caption
+      const drawChartTitle = (title: string, caption: string) => {
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(darkText.r, darkText.g, darkText.b);
+        pdf.text(title, margin, yPos);
+        yPos += 4;
+        pdf.setFontSize(7);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(grayText.r, grayText.g, grayText.b);
+        pdf.text(caption, margin, yPos);
+        yPos += 5;
+      };
+
       // Helper: draw a programmatic line chart using jsPDF when html2canvas fails
       const drawProgrammaticTrendsChart = (
         chartX: number, chartY: number, chartW: number, chartH: number,
@@ -2943,23 +2978,23 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         const years = data.filter(p => p.year >= 1);
         if (years.length === 0) return;
 
-        const innerPadding = { top: 12, bottom: 16, left: 8, right: 8 };
+        const innerPadding = { top: 14, bottom: 20, left: 32, right: 10 };
         const plotX = chartX + innerPadding.left;
         const plotY = chartY + innerPadding.top;
         const plotW = chartW - innerPadding.left - innerPadding.right;
         const plotH = chartH - innerPadding.top - innerPadding.bottom;
 
-        // Background
-        pdf.setFillColor(255, 255, 255);
-        pdf.roundedRect(chartX, chartY, chartW, chartH, 2, 2, 'F');
-        pdf.setDrawColor(mediumGray.r, mediumGray.g, mediumGray.b);
-        pdf.setLineWidth(0.3);
-        pdf.roundedRect(chartX, chartY, chartW, chartH, 2, 2, 'S');
+        // Background with subtle shadow effect
+        pdf.setFillColor(252, 252, 253);
+        pdf.roundedRect(chartX, chartY, chartW, chartH, 3, 3, 'F');
+        pdf.setDrawColor(220, 220, 225);
+        pdf.setLineWidth(0.4);
+        pdf.roundedRect(chartX, chartY, chartW, chartH, 3, 3, 'S');
 
-        // Series definitions
+        // Series definitions with improved colors
         const series = [
-          { label: 'Property Value', color: primaryColor, getData: (p: YearlyProjection) => p.propertyMarketValue },
-          { label: 'Equity', color: { r: 34, g: 197, b: 94 }, getData: (p: YearlyProjection) => p.equityInProperty },
+          { label: 'Property Value', color: { r: 37, g: 99, b: 235 }, getData: (p: YearlyProjection) => p.propertyMarketValue },
+          { label: 'Equity', color: { r: 16, g: 185, b: 129 }, getData: (p: YearlyProjection) => p.equityInProperty },
           { label: 'Loan Balance', color: { r: 239, g: 68, b: 68 }, getData: (p: YearlyProjection) => p.loanAmount },
           { label: 'Cash Flow (p.a.)', color: { r: 139, g: 92, b: 246 }, getData: (p: YearlyProjection) => p.afterTaxCashFlowPA },
         ];
@@ -2973,34 +3008,38 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
             if (v > globalMax) globalMax = v;
           }
         }
-        const range = globalMax - globalMin || 1;
+        // Add 5% padding to range
+        const rawRange = globalMax - globalMin || 1;
+        globalMin -= rawRange * 0.05;
+        globalMax += rawRange * 0.05;
+        const range = globalMax - globalMin;
 
-        // Draw horizontal grid lines
-        pdf.setDrawColor(240, 240, 240);
+        // Draw horizontal grid lines with labels
+        pdf.setDrawColor(235, 235, 240);
         pdf.setLineWidth(0.15);
-        for (let i = 0; i <= 4; i++) {
-          const gy = plotY + plotH - (i / 4) * plotH;
+        for (let i = 0; i <= 5; i++) {
+          const gy = plotY + plotH - (i / 5) * plotH;
           pdf.line(plotX, gy, plotX + plotW, gy);
-          const val = globalMin + (i / 4) * range;
-          pdf.setFontSize(5);
+          const val = globalMin + (i / 5) * range;
+          pdf.setFontSize(5.5);
           pdf.setFont('helvetica', 'normal');
-          pdf.setTextColor(grayText.r, grayText.g, grayText.b);
+          pdf.setTextColor(130, 130, 140);
           const label = Math.abs(val) >= 1000000 ? `$${(val / 1000000).toFixed(1)}M` : Math.abs(val) >= 1000 ? `$${(val / 1000).toFixed(0)}K` : `$${val.toFixed(0)}`;
-          pdf.text(label, plotX - 1, gy + 1, { align: 'right' });
+          pdf.text(label, plotX - 3, gy + 1.5, { align: 'right' });
         }
 
         // Draw x-axis labels
         const stepX = plotW / (years.length - 1 || 1);
         years.forEach((p, i) => {
-          pdf.setFontSize(5);
-          pdf.setTextColor(grayText.r, grayText.g, grayText.b);
-          pdf.text(`Yr ${p.year}`, plotX + i * stepX, plotY + plotH + 5, { align: 'center' });
+          pdf.setFontSize(5.5);
+          pdf.setTextColor(130, 130, 140);
+          pdf.text(`Yr ${p.year}`, plotX + i * stepX, plotY + plotH + 6, { align: 'center' });
         });
 
-        // Draw each series as a line
+        // Draw each series as a line with thicker stroke
         for (const s of series) {
           pdf.setDrawColor(s.color.r, s.color.g, s.color.b);
-          pdf.setLineWidth(0.6);
+          pdf.setLineWidth(0.9);
           for (let i = 1; i < years.length; i++) {
             const x1 = plotX + (i - 1) * stepX;
             const x2 = plotX + i * stepX;
@@ -3008,25 +3047,39 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
             const y2 = plotY + plotH - ((s.getData(years[i]) - globalMin) / range) * plotH;
             pdf.line(x1, y1, x2, y2);
           }
-          // Draw dots
+          // Draw dots at each data point
           for (let i = 0; i < years.length; i++) {
             const cx = plotX + i * stepX;
             const cy = plotY + plotH - ((s.getData(years[i]) - globalMin) / range) * plotH;
+            pdf.setFillColor(255, 255, 255);
+            pdf.circle(cx, cy, 1.2, 'F');
             pdf.setFillColor(s.color.r, s.color.g, s.color.b);
-            pdf.circle(cx, cy, 0.8, 'F');
+            pdf.circle(cx, cy, 0.9, 'F');
           }
+          // End-point data label (Yr 10 value)
+          const lastYear = years[years.length - 1];
+          const lastVal = s.getData(lastYear);
+          const lastCx = plotX + (years.length - 1) * stepX;
+          const lastCy = plotY + plotH - ((lastVal - globalMin) / range) * plotH;
+          pdf.setFontSize(5);
+          pdf.setFont('helvetica', 'bold');
+          pdf.setTextColor(s.color.r, s.color.g, s.color.b);
+          const endLabel = Math.abs(lastVal) >= 1000000 ? `$${(lastVal / 1000000).toFixed(1)}M` : Math.abs(lastVal) >= 1000 ? `$${(lastVal / 1000).toFixed(0)}K` : `$${lastVal.toFixed(0)}`;
+          pdf.text(endLabel, lastCx + 2, lastCy - 2);
         }
 
-        // Legend at bottom
+        // Legend bar at bottom
         let legendX = plotX;
-        const legendY = chartY + chartH - 3;
-        pdf.setFontSize(5);
+        const legendY = chartY + chartH - 5;
+        pdf.setFontSize(5.5);
         for (const s of series) {
+          // Color circle instead of rectangle
           pdf.setFillColor(s.color.r, s.color.g, s.color.b);
-          pdf.rect(legendX, legendY - 2, 4, 2, 'F');
-          pdf.setTextColor(darkText.r, darkText.g, darkText.b);
-          pdf.text(s.label, legendX + 5, legendY, { align: 'left' });
-          legendX += pdf.getTextWidth(s.label) + 10;
+          pdf.circle(legendX + 1.5, legendY - 0.5, 1.5, 'F');
+          pdf.setTextColor(60, 60, 70);
+          pdf.setFont('helvetica', 'normal');
+          pdf.text(s.label, legendX + 4.5, legendY, { align: 'left' });
+          legendX += pdf.getTextWidth(s.label) + 12;
         }
       };
 
@@ -3038,20 +3091,20 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         const years = data.filter(p => p.year >= 1);
         if (years.length === 0) return;
 
-        const innerPadding = { top: 12, bottom: 16, left: 8, right: 8 };
+        const innerPadding = { top: 14, bottom: 20, left: 28, right: 10 };
         const plotX = chartX + innerPadding.left;
         const plotY = chartY + innerPadding.top;
         const plotW = chartW - innerPadding.left - innerPadding.right;
         const plotH = chartH - innerPadding.top - innerPadding.bottom;
 
-        pdf.setFillColor(255, 255, 255);
-        pdf.roundedRect(chartX, chartY, chartW, chartH, 2, 2, 'F');
-        pdf.setDrawColor(mediumGray.r, mediumGray.g, mediumGray.b);
-        pdf.setLineWidth(0.3);
-        pdf.roundedRect(chartX, chartY, chartW, chartH, 2, 2, 'S');
+        pdf.setFillColor(252, 252, 253);
+        pdf.roundedRect(chartX, chartY, chartW, chartH, 3, 3, 'F');
+        pdf.setDrawColor(220, 220, 225);
+        pdf.setLineWidth(0.4);
+        pdf.roundedRect(chartX, chartY, chartW, chartH, 3, 3, 'S');
 
         const yieldSeries = [
-          { label: 'Gross Yield %', color: { r: 34, g: 197, b: 94 }, getData: (p: YearlyProjection) => p.grossYield },
+          { label: 'Gross Yield %', color: { r: 16, g: 185, b: 129 }, getData: (p: YearlyProjection) => p.grossYield },
           { label: 'Net Yield %', color: { r: 239, g: 68, b: 68 }, getData: (p: YearlyProjection) => p.netYield },
         ];
 
@@ -3063,31 +3116,35 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
             if (v > yMax) yMax = v;
           }
         }
-        const yRange = yMax - yMin || 1;
+        // Add padding
+        const rawYRange = yMax - yMin || 1;
+        yMin -= rawYRange * 0.1;
+        yMax += rawYRange * 0.1;
+        const yRange = yMax - yMin;
         const stepX = plotW / (years.length - 1 || 1);
 
         // Grid
-        pdf.setDrawColor(240, 240, 240);
+        pdf.setDrawColor(235, 235, 240);
         pdf.setLineWidth(0.15);
         for (let i = 0; i <= 4; i++) {
           const gy = plotY + plotH - (i / 4) * plotH;
           pdf.line(plotX, gy, plotX + plotW, gy);
           const val = yMin + (i / 4) * yRange;
-          pdf.setFontSize(5);
+          pdf.setFontSize(5.5);
           pdf.setFont('helvetica', 'normal');
-          pdf.setTextColor(grayText.r, grayText.g, grayText.b);
-          pdf.text(`${val.toFixed(1)}%`, plotX - 1, gy + 1, { align: 'right' });
+          pdf.setTextColor(130, 130, 140);
+          pdf.text(`${val.toFixed(1)}%`, plotX - 3, gy + 1.5, { align: 'right' });
         }
 
         years.forEach((p, i) => {
-          pdf.setFontSize(5);
-          pdf.setTextColor(grayText.r, grayText.g, grayText.b);
-          pdf.text(`Yr ${p.year}`, plotX + i * stepX, plotY + plotH + 5, { align: 'center' });
+          pdf.setFontSize(5.5);
+          pdf.setTextColor(130, 130, 140);
+          pdf.text(`Yr ${p.year}`, plotX + i * stepX, plotY + plotH + 6, { align: 'center' });
         });
 
         for (const s of yieldSeries) {
           pdf.setDrawColor(s.color.r, s.color.g, s.color.b);
-          pdf.setLineWidth(0.6);
+          pdf.setLineWidth(0.9);
           for (let i = 1; i < years.length; i++) {
             const x1 = plotX + (i - 1) * stepX;
             const x2 = plotX + i * stepX;
@@ -3098,20 +3155,32 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
           for (let i = 0; i < years.length; i++) {
             const cx = plotX + i * stepX;
             const cy = plotY + plotH - ((s.getData(years[i]) - yMin) / yRange) * plotH;
+            pdf.setFillColor(255, 255, 255);
+            pdf.circle(cx, cy, 1.2, 'F');
             pdf.setFillColor(s.color.r, s.color.g, s.color.b);
-            pdf.circle(cx, cy, 0.8, 'F');
+            pdf.circle(cx, cy, 0.9, 'F');
           }
+          // End-point label
+          const lastYear = years[years.length - 1];
+          const lastVal = s.getData(lastYear);
+          const lastCx = plotX + (years.length - 1) * stepX;
+          const lastCy = plotY + plotH - ((lastVal - yMin) / yRange) * plotH;
+          pdf.setFontSize(5);
+          pdf.setFont('helvetica', 'bold');
+          pdf.setTextColor(s.color.r, s.color.g, s.color.b);
+          pdf.text(`${lastVal.toFixed(2)}%`, lastCx + 2, lastCy - 2);
         }
 
         let legendX = plotX;
-        const legendY = chartY + chartH - 3;
-        pdf.setFontSize(5);
+        const legendY = chartY + chartH - 5;
+        pdf.setFontSize(5.5);
         for (const s of yieldSeries) {
           pdf.setFillColor(s.color.r, s.color.g, s.color.b);
-          pdf.rect(legendX, legendY - 2, 4, 2, 'F');
-          pdf.setTextColor(darkText.r, darkText.g, darkText.b);
-          pdf.text(s.label, legendX + 5, legendY, { align: 'left' });
-          legendX += pdf.getTextWidth(s.label) + 10;
+          pdf.circle(legendX + 1.5, legendY - 0.5, 1.5, 'F');
+          pdf.setTextColor(60, 60, 70);
+          pdf.setFont('helvetica', 'normal');
+          pdf.text(s.label, legendX + 4.5, legendY, { align: 'left' });
+          legendX += pdf.getTextWidth(s.label) + 12;
         }
       };
 
@@ -3125,77 +3194,106 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         pdf.addPage();
         yPos = 0;
         
-        // Header bar on chart page
+        // Professional header bar
+        pdf.setFillColor(45, 55, 72); // Dark slate
+        pdf.rect(0, 0, pageWidth, 14, 'F');
         pdf.setFillColor(primaryColor.r, primaryColor.g, primaryColor.b);
-        pdf.rect(0, 0, pageWidth, 12, 'F');
-        pdf.setFontSize(10);
+        pdf.rect(0, 14, pageWidth, 1.5, 'F'); // Gold accent line
+        pdf.setFontSize(11);
         pdf.setFont('helvetica', 'bold');
         pdf.setTextColor(255, 255, 255);
-        pdf.text('Charts & Visual Analysis', margin, 8);
+        pdf.text('Visual & Technical Analysis', margin, 9);
+        pdf.setFontSize(7);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(200, 200, 210);
+        pdf.text('Projected trends and performance metrics over the 10-year investment horizon', margin, 13);
         
-        yPos = 18;
+        yPos = 22;
         const chartWidth = pageWidth - margin * 2;
         
-        // Cash Flow Trends Chart - use captured image or programmatic fallback
+        // Pre-compute insight data for annotations
+        const yr1 = projections[1];
+        const yr10Data = projections[10] || projections[projections.length - 1];
+        const propertyGrowthPct = ((yr10Data.propertyMarketValue - baseFinancialData.purchasePrice) / baseFinancialData.purchasePrice * 100).toFixed(1);
+        const equityGrowthPct = yr1?.equityInProperty > 0 ? ((yr10Data.equityInProperty - yr1.equityInProperty) / yr1.equityInProperty * 100).toFixed(1) : 'N/A';
+        const loanReductionPct = projections[0]?.loanAmount > 0 ? ((1 - yr10Data.loanAmount / projections[0].loanAmount) * 100).toFixed(1) : '0';
+        
+        // Cash Flow Trends Chart
         if (shouldShowTrends) {
-          const chartHeight = 70;
-          pdf.setFontSize(9);
-          pdf.setFont('helvetica', 'bold');
-          pdf.setTextColor(darkText.r, darkText.g, darkText.b);
-          pdf.text('10-Year Cash Flow Trends', margin, yPos);
-          yPos += 4;
+          const chartHeight = 75;
+          drawChartTitle(
+            '10-Year Cash Flow Trends',
+            'Tracks property value appreciation, equity growth, loan reduction, and annual after-tax cash flow over the projection period.'
+          );
           
           if (cashFlowChartImage) {
-            pdf.setDrawColor(mediumGray.r, mediumGray.g, mediumGray.b);
-            pdf.setLineWidth(0.5);
-            pdf.roundedRect(margin, yPos, chartWidth, chartHeight, 2, 2, 'S');
+            pdf.setDrawColor(220, 220, 225);
+            pdf.setLineWidth(0.4);
+            pdf.roundedRect(margin, yPos, chartWidth, chartHeight, 3, 3, 'S');
             pdf.addImage(cashFlowChartImage, 'PNG', margin + 2, yPos + 2, chartWidth - 4, chartHeight - 4);
           } else {
-            // Programmatic fallback - draws chart from projection data directly
             drawProgrammaticTrendsChart(margin, yPos, chartWidth, chartHeight, projections);
           }
-          yPos += chartHeight + 8;
+          yPos += chartHeight + 3;
+          
+          // Insight annotation
+          const trendInsight = `Over the 10-year period, the property value is projected to grow by ${propertyGrowthPct}% (from ${formatCurrency(baseFinancialData.purchasePrice)} to ${formatCurrency(yr10Data.propertyMarketValue)}). Equity increases by ${equityGrowthPct}%, while the loan balance reduces by ${loanReductionPct}%. Year 10 after-tax cash flow: ${formatCurrency(yr10Data.afterTaxCashFlowPA)} p.a.`;
+          drawInsightBox(trendInsight, margin, chartWidth);
         }
         
-        // Yield Chart - use captured image or programmatic fallback
+        // Yield Chart
         if (shouldShowYield) {
-          const chartHeight = 60;
-          pdf.setFontSize(9);
-          pdf.setFont('helvetica', 'bold');
-          pdf.setTextColor(darkText.r, darkText.g, darkText.b);
-          pdf.text('Yield Percentages', margin, yPos);
-          yPos += 4;
+          if (yPos > contentMaxY - 85) {
+            pdf.addPage();
+            yPos = margin + 5;
+          }
+          
+          const chartHeight = 65;
+          const yr1Gross = yr1?.grossYield?.toFixed(2) || '-';
+          const yr10Gross = yr10Data?.grossYield?.toFixed(2) || '-';
+          const yr1Net = yr1?.netYield?.toFixed(2) || '-';
+          const yr10Net = yr10Data?.netYield?.toFixed(2) || '-';
+          
+          drawChartTitle(
+            'Yield Analysis',
+            'Compares gross and net rental yield percentages relative to current market value, illustrating yield compression as property values grow.'
+          );
           
           if (yieldChartImage) {
-            pdf.setDrawColor(mediumGray.r, mediumGray.g, mediumGray.b);
-            pdf.setLineWidth(0.5);
-            pdf.roundedRect(margin, yPos, chartWidth, chartHeight, 2, 2, 'S');
+            pdf.setDrawColor(220, 220, 225);
+            pdf.setLineWidth(0.4);
+            pdf.roundedRect(margin, yPos, chartWidth, chartHeight, 3, 3, 'S');
             pdf.addImage(yieldChartImage, 'PNG', margin + 2, yPos + 2, chartWidth - 4, chartHeight - 4);
           } else {
             drawProgrammaticYieldChart(margin, yPos, chartWidth, chartHeight, projections);
           }
-          yPos += chartHeight + 8;
+          yPos += chartHeight + 3;
+          
+          // Yield insight
+          const yieldInsight = `Gross yield moves from ${yr1Gross}% (Yr 1) to ${yr10Gross}% (Yr 10), while net yield shifts from ${yr1Net}% to ${yr10Net}%. As the property value appreciates through capital growth, yields compress relative to market value — a typical pattern for growth-oriented assets.`;
+          drawInsightBox(yieldInsight, margin, chartWidth);
         }
         
-        // Comparison Chart (only from captured image - no fallback since it needs comparison data)
+        // Comparison Chart
         if (shouldShowComparison && comparisonChartImage) {
-          if (yPos > pageHeight - 80) {
+          if (yPos > contentMaxY - 80) {
             pdf.addPage();
-            yPos = 18;
+            yPos = margin + 5;
           }
           
-          const chartHeight = 60;
-          pdf.setFontSize(9);
-          pdf.setFont('helvetica', 'bold');
-          pdf.setTextColor(darkText.r, darkText.g, darkText.b);
-          pdf.text('Property Comparison', margin, yPos);
-          yPos += 4;
+          const chartHeight = 65;
+          drawChartTitle(
+            'Multi-Property Comparison',
+            'Side-by-side performance analysis of selected properties across key financial indicators for comparative assessment.'
+          );
           
-          pdf.setDrawColor(mediumGray.r, mediumGray.g, mediumGray.b);
-          pdf.setLineWidth(0.5);
-          pdf.roundedRect(margin, yPos, chartWidth, chartHeight, 2, 2, 'S');
+          pdf.setDrawColor(220, 220, 225);
+          pdf.setLineWidth(0.4);
+          pdf.roundedRect(margin, yPos, chartWidth, chartHeight, 3, 3, 'S');
           pdf.addImage(comparisonChartImage, 'PNG', margin + 2, yPos + 2, chartWidth - 4, chartHeight - 4);
-          yPos += chartHeight + 8;
+          yPos += chartHeight + 3;
+          
+          drawInsightBox('This comparison chart highlights relative performance differences between the selected investment properties, enabling informed decision-making based on yield, cash flow, and growth potential.', margin, chartWidth);
         }
       }
 
