@@ -4588,7 +4588,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                           </div>
                         );
                       })()}
-                      {/* Yield Insight — visible in dashboard modal */}
+                      {/* Yield Insight — collapsible in dashboard modal */}
                       {projections.length > 1 && (() => {
                         const yr1y = projections.find(p => p.year === 1);
                         const yr10y = projections.find(p => p.year === 10);
@@ -4598,17 +4598,29 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                         const vals = projections.filter(p => p.year >= 1);
                         const avgSprd = (vals.reduce((s, p) => s + (p.grossYield - p.netYield), 0) / vals.length).toFixed(2);
                         return (
-                          <div className="mt-3 p-3 bg-cyan-50 dark:bg-cyan-950/30 border border-cyan-200 dark:border-cyan-800/40 rounded-lg space-y-2">
-                            <p className="text-xs font-semibold text-cyan-800 dark:text-cyan-300 flex items-center gap-1.5">
-                              <Percent className="h-3.5 w-3.5" />
-                              Yield Analysis Insight
-                            </p>
-                            <div className="text-xs text-cyan-900/80 dark:text-cyan-200/70 space-y-1.5 leading-relaxed">
-                              <p><strong>Gross Yield:</strong> Moves from {yr1y.grossYield.toFixed(2)}% (Year 1) to {yr10y.grossYield.toFixed(2)}% (Year 10), a shift of {grossDelta}pp. This compression occurs because property value appreciates faster than rental income — a hallmark of growth-oriented assets.</p>
-                              <p><strong>Net Yield:</strong> Shifts from {yr1y.netYield.toFixed(2)}% to {yr10y.netYield.toFixed(2)}% ({netDelta}pp change). Net yield accounts for holding costs including council rates, insurance, maintenance, and management fees.</p>
-                              <p><strong>Expense Drag:</strong> Average spread between gross and net yield is {avgSprd}pp, representing the proportion of rental income consumed by holding costs. A narrowing spread indicates improving operational efficiency.</p>
-                            </div>
-                          </div>
+                          <Collapsible open={showYieldInsight} onOpenChange={setShowYieldInsight}>
+                            <CollapsibleTrigger asChild>
+                              <button className="mt-3 w-full flex items-center justify-between p-2.5 bg-cyan-50 dark:bg-cyan-950/30 border border-cyan-200 dark:border-cyan-800/40 rounded-lg hover:bg-cyan-100 dark:hover:bg-cyan-950/50 transition-colors text-xs font-semibold text-cyan-800 dark:text-cyan-300">
+                                <span className="flex items-center gap-1.5">
+                                  <Percent className="h-3.5 w-3.5" />
+                                  Yield Analysis Insight
+                                </span>
+                                <span className="flex items-center gap-1 text-[10px] font-normal text-cyan-600 dark:text-cyan-400">
+                                  {showYieldInsight ? 'Hide' : 'View'} Analysis
+                                  {showYieldInsight ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                                </span>
+                              </button>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                              <div className="p-3 bg-cyan-50 dark:bg-cyan-950/30 border border-t-0 border-cyan-200 dark:border-cyan-800/40 rounded-b-lg -mt-[1px]">
+                                <div className="text-xs text-cyan-900/80 dark:text-cyan-200/70 space-y-2 leading-relaxed">
+                                  <p><strong>Gross Yield:</strong> Moves from {yr1y.grossYield.toFixed(2)}% (Year 1) to {yr10y.grossYield.toFixed(2)}% (Year 10), a shift of {grossDelta}pp. This compression occurs because property value appreciates faster than rental income — a hallmark of growth-oriented assets.</p>
+                                  <p><strong>Net Yield:</strong> Shifts from {yr1y.netYield.toFixed(2)}% to {yr10y.netYield.toFixed(2)}% ({netDelta}pp change). Net yield accounts for holding costs including council rates, insurance, maintenance, and management fees.</p>
+                                  <p><strong>Expense Drag:</strong> Average spread between gross and net yield is {avgSprd}pp, representing the proportion of rental income consumed by holding costs. A narrowing spread indicates improving operational efficiency.</p>
+                                </div>
+                              </div>
+                            </CollapsibleContent>
+                          </Collapsible>
                         );
                       })()}
                     </>
