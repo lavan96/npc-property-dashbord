@@ -243,6 +243,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
   const [constructionScheduleOpen, setConstructionScheduleOpen] = useState(false);
   const [includeConstructionScheduleInExport, setIncludeConstructionScheduleInExport] = useState(true);
   
+  // Chart insight visibility toggles
+  const [showCashFlowInsight, setShowCashFlowInsight] = useState(false);
+  const [showYieldInsight, setShowYieldInsight] = useState(false);
+
   // Chart export toggles - individual and global
   const [includeAllChartsInExport, setIncludeAllChartsInExport] = useState(true);
   const [chartExportToggles, setChartExportToggles] = useState({
