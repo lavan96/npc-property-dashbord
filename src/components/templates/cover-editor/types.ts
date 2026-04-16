@@ -59,10 +59,18 @@ export const FONT_FAMILIES = [
   'Roboto',
 ] as const;
 
+// Use the same primary cover page for all report types by default
+const PRIMARY_COVER = '/templates/npc-portfolio-cover-new.jpg';
+
 export const DEFAULT_BACKGROUND_IMAGES: Record<string, string> = {
-  investment: '/templates/npc_template.pdf',
-  qa: '/templates/npc-qa-cover.jpg',
-  cashflow: '/templates/npc-cashflow-cover.jpg',
-  portfolio: '/templates/npc-portfolio-cover-new.jpg',
-  vownet: '/templates/npc-vownet-cover.jpg',
+  investment: PRIMARY_COVER,
+  qa: PRIMARY_COVER,
+  cashflow: PRIMARY_COVER,
+  portfolio: PRIMARY_COVER,
+  borrowing_capacity: PRIMARY_COVER,
+  vownet: PRIMARY_COVER,
+  suburb: PRIMARY_COVER,
+  postcode: PRIMARY_COVER,
+  statewide: PRIMARY_COVER,
+  comparison: PRIMARY_COVER,
 };

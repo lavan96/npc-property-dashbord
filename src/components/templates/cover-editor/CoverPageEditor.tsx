@@ -1,12 +1,12 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Type, Image as ImageIcon, Trash2, Save, RotateCw, Copy, Eye, MoveUp, MoveDown } from 'lucide-react';
+import { Plus, Type, Image as ImageIcon, Trash2, Save, Copy, MoveUp, MoveDown } from 'lucide-react';
 
 import type { OverlayElement, CoverPageOverlay } from './types';
 import { FONT_FAMILIES, REPORT_TYPE_OPTIONS, DEFAULT_BACKGROUND_IMAGES } from './types';
@@ -26,14 +26,12 @@ export function CoverPageEditor({ overlay, onSave, onCancel, isSaving }: CoverPa
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const [isResizing, setIsResizing] = useState(false);
   const canvasRef = useRef<HTMLDivElement>(null);
+  const clickedOnElementRef = useRef(false);
 
   const selectedElement = elements.find(e => e.id === selectedElementId);
 
   const effectiveBgImage = backgroundImageUrl || DEFAULT_BACKGROUND_IMAGES[reportType] || '';
-  // Only use .jpg/.png backgrounds for preview (skip PDF files)
-  const previewBgImage = effectiveBgImage.match(/\.(jpg|jpeg|png|webp)$/i) ? effectiveBgImage : '';
 
   const addTextElement = useCallback(() => {
     const id = crypto.randomUUID();
@@ -106,9 +104,10 @@ export function CoverPageEditor({ overlay, onSave, onCancel, isSaving }: CoverPa
   }, []);
 
   // Drag handlers
-  const handleCanvasMouseDown = useCallback((e: React.MouseEvent, elementId: string) => {
+  const handleElementMouseDown = useCallback((e: React.MouseEvent, elementId: string) => {
     e.stopPropagation();
     e.preventDefault();
+    clickedOnElementRef.current = true;
     setSelectedElementId(elementId);
     setIsDragging(true);
     const canvas = canvasRef.current;
@@ -135,7 +134,15 @@ export function CoverPageEditor({ overlay, onSave, onCancel, isSaving }: CoverPa
 
   const handleCanvasMouseUp = useCallback(() => {
     setIsDragging(false);
-    setIsResizing(false);
+  }, []);
+
+  const handleCanvasClick = useCallback((e: React.MouseEvent) => {
+    // Only deselect if the click was on the canvas background, not on an element
+    if (clickedOnElementRef.current) {
+      clickedOnElementRef.current = false;
+      return;
+    }
+    setSelectedElementId(null);
   }, []);
 
   const handleSave = () => {
@@ -185,26 +192,28 @@ export function CoverPageEditor({ overlay, onSave, onCancel, isSaving }: CoverPa
           style={{
             aspectRatio: '595 / 842',
             maxHeight: '600px',
-            backgroundImage: previewBgImage ? `url(${previewBgImage})` : undefined,
+            backgroundImage: effectiveBgImage ? `url(${effectiveBgImage})` : undefined,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
-            backgroundColor: previewBgImage ? undefined : 'hsl(var(--muted))',
+            backgroundColor: effectiveBgImage ? undefined : 'hsl(var(--muted))',
           }}
           onMouseMove={handleCanvasMouseMove}
           onMouseUp={handleCanvasMouseUp}
           onMouseLeave={handleCanvasMouseUp}
-          onClick={() => { if (!isDragging) setSelectedElementId(null); }}
+          onClick={handleCanvasClick}
         >
-          {!previewBgImage && (
+          {!effectiveBgImage && (
             <div className="absolute inset-0 flex items-center justify-center text-muted-foreground text-sm">
-              No preview available (PDF background)
+              No background configured
             </div>
           )}
-          {elements.map(el => (
+          {elements.map((el, idx) => (
             <div
               key={el.id}
-              className={`absolute cursor-move transition-shadow ${
-                selectedElementId === el.id ? 'ring-2 ring-primary shadow-lg' : 'hover:ring-1 hover:ring-primary/50'
+              className={`absolute transition-shadow ${
+                selectedElementId === el.id
+                  ? 'ring-2 ring-primary shadow-lg cursor-move'
+                  : 'hover:ring-1 hover:ring-primary/50 cursor-pointer'
               }`}
               style={{
                 left: `${el.x}%`,
@@ -213,12 +222,19 @@ export function CoverPageEditor({ overlay, onSave, onCancel, isSaving }: CoverPa
                 height: `${el.height}%`,
                 transform: el.rotation ? `rotate(${el.rotation}deg)` : undefined,
                 opacity: el.opacity,
+                zIndex: idx + 1,
+                pointerEvents: 'auto',
               }}
-              onMouseDown={e => handleCanvasMouseDown(e, el.id)}
+              onMouseDown={e => handleElementMouseDown(e, el.id)}
+              onClick={e => {
+                e.stopPropagation();
+                clickedOnElementRef.current = true;
+                setSelectedElementId(el.id);
+              }}
             >
               {el.type === 'text' ? (
                 <div
-                  className="w-full h-full flex items-center overflow-hidden"
+                  className="w-full h-full flex items-center overflow-hidden pointer-events-none"
                   style={{
                     fontFamily: el.fontFamily,
                     fontSize: `${Math.max(8, (el.fontSize || 24) * 0.5)}px`,
@@ -231,7 +247,7 @@ export function CoverPageEditor({ overlay, onSave, onCancel, isSaving }: CoverPa
                   {el.content || 'Text'}
                 </div>
               ) : (
-                <div className="w-full h-full bg-muted/30 border border-dashed border-muted-foreground/50 flex items-center justify-center text-xs text-muted-foreground">
+                <div className="w-full h-full bg-muted/30 border border-dashed border-muted-foreground/50 flex items-center justify-center text-xs text-muted-foreground pointer-events-none">
                   {el.imageUrl ? (
                     <img src={el.imageUrl} alt="" className="w-full h-full" style={{ objectFit: el.objectFit || 'contain' }} />
                   ) : (
@@ -245,7 +261,7 @@ export function CoverPageEditor({ overlay, onSave, onCancel, isSaving }: CoverPa
                   className="absolute bottom-0 right-0 w-3 h-3 bg-primary rounded-tl cursor-se-resize"
                   onMouseDown={e => {
                     e.stopPropagation();
-                    setIsResizing(true);
+                    clickedOnElementRef.current = true;
                     const canvas = canvasRef.current;
                     if (!canvas) return;
                     const rect = canvas.getBoundingClientRect();
@@ -258,7 +274,6 @@ export function CoverPageEditor({ overlay, onSave, onCancel, isSaving }: CoverPa
                       });
                     };
                     const onUp = () => {
-                      setIsResizing(false);
                       window.removeEventListener('mousemove', onMove);
                       window.removeEventListener('mouseup', onUp);
                     };
@@ -495,7 +510,7 @@ export function CoverPageEditor({ overlay, onSave, onCancel, isSaving }: CoverPa
             {elements.length === 0 ? (
               <p className="text-xs text-muted-foreground">No elements yet</p>
             ) : (
-              elements.map((el, i) => (
+              elements.map((el) => (
                 <div
                   key={el.id}
                   className={`flex items-center gap-2 text-xs p-1.5 rounded cursor-pointer ${
