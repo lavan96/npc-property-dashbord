@@ -38,6 +38,10 @@
 
   <body>
     <div id="root"></div>
+    <script>
+      // Clear deployment-pinning cookie to always serve latest version
+      (function(){try{document.cookie='__dpl=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;';document.cookie='__dpl=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain='+location.hostname;document.cookie='__dpl=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=.'+location.hostname.split('.').slice(-2).join('.');}catch(e){}})();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
