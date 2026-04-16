@@ -29,5 +29,5 @@ if ('caches' in window) {
   })
 }
 
-// v2.0 - Cache bypass deployed
+// v2.1 - Force republish for DNS propagation
 createRoot(document.getElementById("root")!).render(<App />)
