@@ -4356,7 +4356,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                           </div>
                         );
                       })()}
-                      {/* Chart Insight — visible in dashboard modal */}
+                      {/* Chart Insight — collapsible in dashboard modal */}
                       {projections.length > 1 && (() => {
                         const yr1d = projections.find(p => p.year === 1);
                         const yr10d = projections.find(p => p.year === 10);
@@ -4367,20 +4367,32 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                         const bey = projections.filter(p => p.year >= 1).find((p, i, arr) => i > 0 && arr[i - 1].afterTaxCashFlowPA < 0 && p.afterTaxCashFlowPA >= 0);
                         const coy = projections.filter(p => p.year >= 1).find(p => p.equityInProperty >= p.loanAmount);
                         return (
-                          <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 rounded-lg space-y-2">
-                            <p className="text-xs font-semibold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
-                              <TrendingUp className="h-3.5 w-3.5" />
-                              Cash Flow Trend Analysis
-                            </p>
-                            <div className="text-xs text-amber-900/80 dark:text-amber-200/70 space-y-1.5 leading-relaxed">
-                              <p><strong>Property Value Growth:</strong> Projected to appreciate by {propGrowth}% over 10 years (from ${baseFinancialData.purchasePrice.toLocaleString()} to ${yr10d.propertyMarketValue.toLocaleString()}), reflecting configured capital growth assumptions.</p>
-                              <p><strong>Equity Accumulation:</strong> Equity increases by {eqGrowth}% (${yr1d.equityInProperty.toLocaleString()} → ${yr10d.equityInProperty.toLocaleString()}), driven by capital appreciation and principal repayments reducing the loan by {loanRed}%.</p>
-                              <p><strong>Cash Flow:</strong> After-tax cash flow moves from ${yr1d.afterTaxCashFlowPA.toLocaleString()}/yr (Year 1) to ${yr10d.afterTaxCashFlowPA.toLocaleString()}/yr (Year 10).
-                                {bey && ` The investment becomes cash-flow positive in Year ${bey.year}.`}
-                                {coy && ` Equity exceeds remaining debt in Year ${coy.year} — a key wealth milestone.`}
-                              </p>
-                            </div>
-                          </div>
+                          <Collapsible open={showCashFlowInsight} onOpenChange={setShowCashFlowInsight}>
+                            <CollapsibleTrigger asChild>
+                              <button className="mt-3 w-full flex items-center justify-between p-2.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-950/50 transition-colors text-xs font-semibold text-amber-800 dark:text-amber-300">
+                                <span className="flex items-center gap-1.5">
+                                  <TrendingUp className="h-3.5 w-3.5" />
+                                  Cash Flow Trend Analysis
+                                </span>
+                                <span className="flex items-center gap-1 text-[10px] font-normal text-amber-600 dark:text-amber-400">
+                                  {showCashFlowInsight ? 'Hide' : 'View'} Analysis
+                                  {showCashFlowInsight ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                                </span>
+                              </button>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                              <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-t-0 border-amber-200 dark:border-amber-800/40 rounded-b-lg -mt-[1px]">
+                                <div className="text-xs text-amber-900/80 dark:text-amber-200/70 space-y-2 leading-relaxed">
+                                  <p><strong>Property Value Growth:</strong> Projected to appreciate by {propGrowth}% over 10 years (from ${baseFinancialData.purchasePrice.toLocaleString()} to ${yr10d.propertyMarketValue.toLocaleString()}), reflecting configured capital growth assumptions.</p>
+                                  <p><strong>Equity Accumulation:</strong> Equity increases by {eqGrowth}% (${yr1d.equityInProperty.toLocaleString()} → ${yr10d.equityInProperty.toLocaleString()}), driven by capital appreciation and principal repayments reducing the loan by {loanRed}%.</p>
+                                  <p><strong>Cash Flow:</strong> After-tax cash flow moves from ${yr1d.afterTaxCashFlowPA.toLocaleString()}/yr (Year 1) to ${yr10d.afterTaxCashFlowPA.toLocaleString()}/yr (Year 10).
+                                    {bey && ` The investment becomes cash-flow positive in Year ${bey.year}.`}
+                                    {coy && ` Equity exceeds remaining debt in Year ${coy.year} — a key wealth milestone.`}
+                                  </p>
+                                </div>
+                              </div>
+                            </CollapsibleContent>
+                          </Collapsible>
                         );
                       })()}
                     </>
