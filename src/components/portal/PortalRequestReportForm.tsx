@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +9,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/components/ui/select';
 import {
-  BarChart3, PiggyBank, Building2, Send, X, Loader2, CheckCircle2, MapPin
+  BarChart3, PiggyBank, Building2, Send, X, Loader2, CheckCircle2, MapPin, Search as SearchIcon
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -17,6 +17,13 @@ import { cn } from '@/lib/utils';
 const SUPABASE_URL = "https://dduzbchuswwbefdunfct.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkdXpiY2h1c3d3YmVmZHVuZmN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0NDM4NzksImV4cCI6MjA3MTAxOTg3OX0.eSYU6fxIc3tBQuGLsdBRff0alBMkNfvv7OpW0efNjxk";
 const PORTAL_SESSION_KEY = 'portal_session_token';
+
+interface Prediction {
+  placeId: string;
+  description: string;
+  mainText: string;
+  secondaryText: string;
+}
 
 function getSessionToken(): string | null {
   try { return sessionStorage.getItem(PORTAL_SESSION_KEY) || localStorage.getItem(PORTAL_SESSION_KEY); }
@@ -77,6 +84,60 @@ export function PortalRequestReportForm({ properties, onSubmitted, onCancel }: P
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submittedSummary, setSubmittedSummary] = useState<{ type: string; property?: string; notes?: string } | null>(null);
+  const [predictions, setPredictions] = useState<Prediction[]>([]);
+  const [showPredictions, setShowPredictions] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  // Close predictions on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setShowPredictions(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const searchPlaces = useCallback(async (input: string) => {
+    if (input.length < 3) { setPredictions([]); return; }
+    setSearchLoading(true);
+    try {
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/google-places-autocomplete`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+        credentials: 'omit',
+        body: JSON.stringify({ input }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setPredictions(data.predictions || []);
+        setShowPredictions(true);
+      }
+    } catch (err) {
+      console.error('Places search error:', err);
+    } finally {
+      setSearchLoading(false);
+    }
+  }, []);
+
+  const handleAddressChange = (newValue: string) => {
+    setExternalAddress(newValue);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => searchPlaces(newValue), 300);
+  };
+
+  const selectPrediction = (prediction: Prediction) => {
+    setExternalAddress(prediction.description);
+    setPredictions([]);
+    setShowPredictions(false);
+  };
 
   const formatPropertyAddress = (p: Property) => {
     return [p.address, p.suburb, p.state, p.postcode].filter(Boolean).join(', ');
@@ -289,13 +350,39 @@ export function PortalRequestReportForm({ properties, onSubmitted, onCancel }: P
                 </p>
               )
             ) : (
-              <div className="space-y-1">
-                <Input
-                  placeholder="Enter full property address..."
-                  value={externalAddress}
-                  onChange={(e) => setExternalAddress(e.target.value)}
-                />
-                <p className="text-[10px] text-muted-foreground">Include street, suburb, state and postcode</p>
+              <div className="space-y-1 relative" ref={wrapperRef}>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Start typing a property address..."
+                    value={externalAddress}
+                    onChange={(e) => handleAddressChange(e.target.value)}
+                    onFocus={() => predictions.length > 0 && setShowPredictions(true)}
+                    className="pl-9 pr-9"
+                  />
+                  {searchLoading && (
+                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                  )}
+                </div>
+                {showPredictions && predictions.length > 0 && (
+                  <div className="absolute z-50 left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden">
+                    {predictions.map((p) => (
+                      <button
+                        key={p.placeId}
+                        type="button"
+                        onClick={() => selectPrediction(p)}
+                        className="w-full text-left px-4 py-3 hover:bg-accent transition-colors flex items-start gap-3 border-b border-border/50 last:border-0"
+                      >
+                        <SearchIcon className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">{p.mainText}</p>
+                          <p className="text-xs text-muted-foreground truncate">{p.secondaryText}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <p className="text-[10px] text-muted-foreground">Search and select a validated address with suburb, state and postcode</p>
               </div>
             )}
           </div>

@@ -87,34 +87,33 @@ export default function ReportRequests() {
       if (error) throw error;
       const requests = (data as any)?.records || (data as any)?.data || [];
 
-      // Fetch client names for all unique client_ids
+      // Fetch client names for all unique client_ids — fetch them individually to avoid 500-limit issue
       const clientIds = [...new Set(requests.map((r: any) => r.client_id).filter(Boolean))];
       const clientMap: Record<string, { name: string; email: string | null; phone: string | null; address: string | null }> = {};
       
       if (clientIds.length > 0) {
-        // Fetch clients using list mode with no filters to get all, then filter in memory
-        // This avoids the per-client fetch overhead
-        const { data: clientsData } = await invokeSecureFunction('get-client-data', {
-          listMode: true,
-          listOptions: {
-            table: 'clients',
-            select: 'id,primary_first_name,primary_surname,primary_email,primary_mobile,primary_current_address',
-            limit: 500,
-          },
-        });
-        
-        const clientRecords = (clientsData as any)?.records || (clientsData as any)?.clients || [];
-        for (const c of clientRecords) {
-          if (clientIds.includes(c.id)) {
-            const name = smartCapitalize(`${c.primary_first_name || ''} ${c.primary_surname || ''}`.trim());
-            clientMap[c.id] = {
-              name: name || 'Unnamed Client',
-              email: c.primary_email || null,
-              phone: c.primary_mobile || null,
-              address: c.primary_current_address || null,
-            };
+        // Fetch each client by ID directly to avoid pagination limits
+        const clientFetches = clientIds.map(async (cid: string) => {
+          try {
+            const { data: clientData } = await invokeSecureFunction('get-client-data', {
+              clientId: cid,
+              include: { properties: false, employment: false, income: false, expenses: false, assets: false, liabilities: false, deals: false, files: false, reminders: false, notes: false },
+            });
+            const c = (clientData as any)?.client;
+            if (c) {
+              const name = smartCapitalize(`${c.primary_first_name || ''} ${c.primary_surname || ''}`.trim());
+              clientMap[cid] = {
+                name: name || 'Unnamed Client',
+                email: c.primary_email || null,
+                phone: c.primary_mobile || null,
+                address: c.primary_current_address || null,
+              };
+            }
+          } catch (e) {
+            console.error(`Failed to fetch client ${cid}:`, e);
           }
-        }
+        });
+        await Promise.all(clientFetches);
       }
       
       return requests.map((r: any) => ({
