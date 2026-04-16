@@ -4119,15 +4119,15 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                                 <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
                               </linearGradient>
                             </defs>
-                            <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
+                            <CartesianGrid strokeDasharray="3 3" opacity={0.15} stroke="#d1d5db" />
                             <XAxis 
                               dataKey="year" 
-                              tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
-                              axisLine={{ stroke: 'hsl(var(--border))' }}
+                              tick={{ fontSize: 11, fill: '#6b7280' }}
+                              axisLine={{ stroke: '#e5e7eb' }}
                               tickLine={false}
                             />
                             <YAxis 
-                              tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} 
+                              tick={{ fontSize: 11, fill: '#6b7280' }} 
                               tickFormatter={(value) => {
                                 if (Math.abs(value) >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
                                 if (Math.abs(value) >= 1000) return `$${(value / 1000).toFixed(0)}K`;
@@ -4404,15 +4404,15 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                                 <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.03}/>
                               </linearGradient>
                             </defs>
-                            <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
+                            <CartesianGrid strokeDasharray="3 3" opacity={0.15} stroke="#d1d5db" />
                             <XAxis 
                               dataKey="year" 
-                              tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
-                              axisLine={{ stroke: 'hsl(var(--border))' }}
+                              tick={{ fontSize: 11, fill: '#6b7280' }}
+                              axisLine={{ stroke: '#e5e7eb' }}
                               tickLine={false}
                             />
                             <YAxis 
-                              tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} 
+                              tick={{ fontSize: 11, fill: '#6b7280' }} 
                               tickFormatter={(value) => `${value}%`}
                               domain={['auto', 'auto']}
                               axisLine={false}
