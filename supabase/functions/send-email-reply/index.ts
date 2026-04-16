@@ -313,7 +313,7 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { to, subject, body: emailBody, cc, bcc, originalEmailId, attachments, mailboxSource, source }: SendEmailRequest = body;
+    const { to, subject, body: emailBody, cc, bcc, originalEmailId, attachments, mailboxSource, source, ghlConversationId }: SendEmailRequest = body;
     
     // SECURITY: Verify authentication
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
