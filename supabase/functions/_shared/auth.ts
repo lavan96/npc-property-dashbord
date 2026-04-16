@@ -229,8 +229,11 @@ export function parseCookies(cookieHeader: string | null): Record<string, string
  */
 export function extractSessionToken(
   headers: Headers,
-  body?: { session_token?: string }
+  body?: { session_token?: string | null }
 ): string | null {
+  // Helper: reject falsy, "null", "undefined", empty strings
+  const isValidToken = (t: any): t is string => 
+    typeof t === 'string' && t.length > 0 && t !== 'null' && t !== 'undefined';
   // Check Cookie header first (HttpOnly cookie - primary method)
   const cookieHeader = headers.get('cookie');
   if (cookieHeader) {
