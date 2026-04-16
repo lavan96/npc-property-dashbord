@@ -1,20 +1,29 @@
 import { useState } from 'react';
 import { useGamePlans, useGamePlanMutations, type GamePlan as GamePlanType } from '@/hooks/useGamePlans';
+import { useAssignedTasks } from '@/hooks/useAssignedTasks';
 import { GamePlanList } from '@/components/gameplan/GamePlanList';
 import { GamePlanDetail } from '@/components/gameplan/GamePlanDetail';
 import { CreatePlanDialog } from '@/components/gameplan/CreatePlanDialog';
+import { AssignedTasksTab } from '@/components/gameplan/AssignedTasksTab';
 import { Button } from '@/components/ui/button';
-import { Plus, Map } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Plus, Map, ListChecks } from 'lucide-react';
 import { useModulePermissions } from '@/hooks/useModulePermissions';
 
 export default function GamePlan() {
   const { data: plans = [], isLoading } = useGamePlans();
+  const { data: assignedTasks = [] } = useAssignedTasks();
   const { plans: planMut } = useGamePlanMutations();
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [activeTab, setActiveTab] = useState('plans');
   const { canEdit, canDelete } = useModulePermissions('game_plans');
 
   const selectedPlan = plans.find(p => p.id === selectedPlanId);
+
+  // Count outstanding (non-completed) assigned tasks for badge
+  const outstandingCount = assignedTasks.filter(t => t.status !== 'completed').length;
 
   if (selectedPlan) {
     return <GamePlanDetail plan={selectedPlan} onBack={() => setSelectedPlanId(null)} />;
@@ -33,20 +42,47 @@ export default function GamePlan() {
             <p className="text-sm text-muted-foreground">Strategic playbooks for your team</p>
           </div>
         </div>
-        {canEdit && (
+        {canEdit && activeTab === 'plans' && (
           <Button onClick={() => setShowCreate(true)} className="gap-2">
             <Plus className="h-4 w-4" /> New Game Plan
           </Button>
         )}
       </div>
 
-      {/* Plans Grid */}
-      <GamePlanList
-        plans={plans}
-        isLoading={isLoading}
-        onSelect={setSelectedPlanId}
-        onDelete={canDelete ? (id) => planMut.remove.mutateAsync(id) : undefined}
-      />
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="plans" className="gap-1.5">
+            <Map className="h-4 w-4" />
+            Game Plans
+          </TabsTrigger>
+          <TabsTrigger value="assigned" className="gap-1.5">
+            <ListChecks className="h-4 w-4" />
+            Assigned Tasks
+            {outstandingCount > 0 && (
+              <Badge
+                variant="destructive"
+                className="ml-1 h-5 min-w-[20px] px-1.5 text-[10px] font-bold rounded-full"
+              >
+                {outstandingCount}
+              </Badge>
+            )}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="plans" className="mt-4">
+          <GamePlanList
+            plans={plans}
+            isLoading={isLoading}
+            onSelect={setSelectedPlanId}
+            onDelete={canDelete ? (id) => planMut.remove.mutateAsync(id) : undefined}
+          />
+        </TabsContent>
+
+        <TabsContent value="assigned" className="mt-4">
+          <AssignedTasksTab />
+        </TabsContent>
+      </Tabs>
 
       {canEdit && (
         <CreatePlanDialog
