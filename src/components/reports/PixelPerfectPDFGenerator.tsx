@@ -3334,18 +3334,23 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
       console.log('✓ Public URL:', publicUrl);
 
       // Update the investment_reports table with the PDF URL via secure function
-      console.log('💽 Step 9: Updating database...');
-      const { error: updateError } = await invokeSecureFunction('manage-investment-reports', {
-        action: 'update',
-        reportId: report.id,
-        data: { pdf_url: publicUrl }
-      });
+      // Skip for comparison reports which use a different table
+      if (!skipDatabaseUpdate) {
+        console.log('💽 Step 9: Updating database...');
+        const { error: updateError } = await invokeSecureFunction('manage-investment-reports', {
+          action: 'update',
+          reportId: report.id,
+          data: { pdf_url: publicUrl }
+        });
 
-      if (updateError) {
-        console.error('❌ Database update failed:', updateError);
-        throw new Error(updateError.message || 'Database update failed');
+        if (updateError) {
+          console.error('❌ Database update failed:', updateError);
+          throw new Error(updateError.message || 'Database update failed');
+        }
+        console.log('✓ Database updated');
+      } else {
+        console.log('⏭️ Step 9: Skipping database update (comparison report)');
       }
-      console.log('✓ Database updated');
 
       return { blob, publicUrl, suburb, state };
   };
