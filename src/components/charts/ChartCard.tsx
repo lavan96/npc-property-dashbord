@@ -173,7 +173,7 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
             </CollapsibleTrigger>
             <CollapsibleContent>
               <div className="mt-1.5 p-2 bg-amber-500/5 border border-amber-500/15 rounded-md">
-                <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-4">{chart.analysis_text}</p>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">{chart.analysis_text}</p>
               </div>
             </CollapsibleContent>
           </Collapsible>
