@@ -3997,25 +3997,46 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                         })}
                       </div>
                     )}
-                    <Select
-                      value=""
-                      onValueChange={(value) => handleToggleComparisonReport(value)}
-                    >
-                      <SelectTrigger className="w-[280px]">
-                        <SelectValue placeholder={loadingReports ? "Loading..." : `Add property (${selectedComparisonReportIds.length}/4)`} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableReports
-                          .filter(r => !selectedComparisonReportIds.includes(r.id))
-                          .map((r) => (
-                            <SelectItem key={r.id} value={r.id}>
-                              {r.property_address.length > 40 
-                                ? r.property_address.substring(0, 40) + '...' 
-                                : r.property_address}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          className="w-[300px] justify-between text-sm font-normal"
+                          disabled={loadingReports || selectedComparisonReportIds.length >= 4}
+                        >
+                          {loadingReports ? "Loading..." : `Add property (${selectedComparisonReportIds.length}/4)`}
+                          <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[350px] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Search properties..." />
+                          <CommandList>
+                            <CommandEmpty>No properties found.</CommandEmpty>
+                            <CommandGroup>
+                              {availableReports
+                                .filter(r => !selectedComparisonReportIds.includes(r.id))
+                                .map((r) => (
+                                  <CommandItem
+                                    key={r.id}
+                                    value={r.property_address}
+                                    onSelect={() => handleToggleComparisonReport(r.id)}
+                                    className="cursor-pointer"
+                                  >
+                                    <Building className="mr-2 h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                    <span className="truncate">
+                                      {r.property_address.length > 50
+                                        ? r.property_address.substring(0, 50) + '...'
+                                        : r.property_address}
+                                    </span>
+                                  </CommandItem>
+                                ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   </div>
                 )}
               </div>
