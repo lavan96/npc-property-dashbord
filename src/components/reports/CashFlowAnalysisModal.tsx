@@ -3236,8 +3236,20 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
           }
           yPos += chartHeight + 3;
           
-          // Insight annotation
-          const trendInsight = `Over the 10-year period, the property value is projected to grow by ${propertyGrowthPct}% (from ${formatCurrency(baseFinancialData.purchasePrice)} to ${formatCurrency(yr10Data.propertyMarketValue)}). Equity increases by ${equityGrowthPct}%, while the loan balance reduces by ${loanReductionPct}%. Year 10 after-tax cash flow: ${formatCurrency(yr10Data.afterTaxCashFlowPA)} p.a.`;
+          // Insight annotation — detailed financial narrative
+          const yr1CashFlow = yr1?.afterTaxCashFlowPA || 0;
+          const yr10CashFlow = yr10Data.afterTaxCashFlowPA;
+          const cashFlowImproved = yr10CashFlow > yr1CashFlow;
+          const cashFlowDelta = formatCurrency(Math.abs(yr10CashFlow - yr1CashFlow));
+          const breakEvenYr = projections.filter(p => p.year >= 1).find((p, i, arr) => i > 0 && arr[i - 1].afterTaxCashFlowPA < 0 && p.afterTaxCashFlowPA >= 0);
+          const crossoverYr = projections.filter(p => p.year >= 1).find(p => p.equityInProperty >= p.loanAmount);
+          
+          let trendInsight = `Property Value Growth: The property is projected to appreciate by ${propertyGrowthPct}% over the 10-year horizon, growing from ${formatCurrency(baseFinancialData.purchasePrice)} to ${formatCurrency(yr10Data.propertyMarketValue)}. This represents an average annual compound growth aligned with the configured capital growth assumptions.\n\n`;
+          trendInsight += `Equity Accumulation: Equity increases by ${equityGrowthPct}% (from ${formatCurrency(yr1?.equityInProperty || 0)} to ${formatCurrency(yr10Data.equityInProperty)}), driven by both capital appreciation and principal repayments reducing the outstanding loan balance by ${loanReductionPct}%.\n\n`;
+          trendInsight += `Cash Flow Trajectory: After-tax cash flow ${cashFlowImproved ? 'improves' : 'declines'} by ${cashFlowDelta} over the period (Year 1: ${formatCurrency(yr1CashFlow)} → Year 10: ${formatCurrency(yr10CashFlow)} p.a.).`;
+          if (breakEvenYr) trendInsight += ` The investment reaches cash-flow positive in Year ${breakEvenYr.year}, marking the transition from negatively-geared to self-sustaining.`;
+          if (crossoverYr) trendInsight += ` Equity surpasses the remaining loan balance in Year ${crossoverYr.year}, a key wealth-building milestone indicating the investor holds majority ownership of the asset.`;
+          
           drawInsightBox(trendInsight, margin, chartWidth);
         }
         
@@ -3269,8 +3281,15 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
           }
           yPos += chartHeight + 3;
           
-          // Yield insight
-          const yieldInsight = `Gross yield moves from ${yr1Gross}% (Yr 1) to ${yr10Gross}% (Yr 10), while net yield shifts from ${yr1Net}% to ${yr10Net}%. As the property value appreciates through capital growth, yields compress relative to market value — a typical pattern for growth-oriented assets.`;
+          // Yield insight — detailed
+          const grossDelta = (parseFloat(yr10Gross) - parseFloat(yr1Gross)).toFixed(2);
+          const netDelta = (parseFloat(yr10Net) - parseFloat(yr1Net)).toFixed(2);
+          const avgSpread = projections.filter(p => p.year >= 1).reduce((s, p) => s + (p.grossYield - p.netYield), 0) / 10;
+          
+          let yieldInsight = `Gross Yield: Moves from ${yr1Gross}% (Year 1) to ${yr10Gross}% (Year 10), a shift of ${grossDelta} percentage points. This compression occurs because property value appreciates faster than rental income, which is a hallmark of capital-growth-oriented investment properties.\n\n`;
+          yieldInsight += `Net Yield: Shifts from ${yr1Net}% to ${yr10Net}% (${netDelta}pp change). Net yield accounts for property expenses including council rates, insurance, maintenance, and management fees, providing a more accurate picture of actual return on asset value.\n\n`;
+          yieldInsight += `Expense Drag: The average spread between gross and net yield is ${avgSpread.toFixed(2)} percentage points, representing the proportion of rental income consumed by holding costs. A narrowing spread over time indicates improving operational efficiency as rental growth outpaces expense inflation.`;
+          
           drawInsightBox(yieldInsight, margin, chartWidth);
         }
         
@@ -3293,7 +3312,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
           pdf.addImage(comparisonChartImage, 'PNG', margin + 2, yPos + 2, chartWidth - 4, chartHeight - 4);
           yPos += chartHeight + 3;
           
-          drawInsightBox('This comparison chart highlights relative performance differences between the selected investment properties, enabling informed decision-making based on yield, cash flow, and growth potential.', margin, chartWidth);
+          drawInsightBox('Multi-Property Comparison: This chart presents a side-by-side analysis of property value trajectories across selected investment properties. By overlaying growth curves, investors can visually identify which assets offer superior capital appreciation potential, assess relative risk profiles, and make data-driven portfolio allocation decisions. Properties with steeper upward curves indicate stronger projected growth, while convergence or divergence patterns reveal market segment dynamics.', margin, chartWidth);
         }
       }
 
@@ -4084,7 +4103,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
 
                   return (
                     <>
-                      <div ref={cashFlowChartRef} className="h-[380px] w-full bg-background p-2">
+                      <div ref={cashFlowChartRef} className="h-[380px] w-full bg-white p-2" style={{ backgroundColor: '#ffffff' }}>
                         <ResponsiveContainer width="100%" height="100%">
                           <ComposedChart
                             data={chartData}
@@ -4100,15 +4119,15 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                                 <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
                               </linearGradient>
                             </defs>
-                            <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
+                            <CartesianGrid strokeDasharray="3 3" opacity={0.15} stroke="#d1d5db" />
                             <XAxis 
                               dataKey="year" 
-                              tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
-                              axisLine={{ stroke: 'hsl(var(--border))' }}
+                              tick={{ fontSize: 11, fill: '#6b7280' }}
+                              axisLine={{ stroke: '#e5e7eb' }}
                               tickLine={false}
                             />
                             <YAxis 
-                              tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} 
+                              tick={{ fontSize: 11, fill: '#6b7280' }} 
                               tickFormatter={(value) => {
                                 if (Math.abs(value) >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
                                 if (Math.abs(value) >= 1000) return `$${(value / 1000).toFixed(0)}K`;
@@ -4333,6 +4352,33 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                           </div>
                         );
                       })()}
+                      {/* Chart Insight — visible in dashboard modal */}
+                      {projections.length > 1 && (() => {
+                        const yr1d = projections.find(p => p.year === 1);
+                        const yr10d = projections.find(p => p.year === 10);
+                        if (!yr1d || !yr10d || !baseFinancialData) return null;
+                        const propGrowth = ((yr10d.propertyMarketValue - baseFinancialData.purchasePrice) / baseFinancialData.purchasePrice * 100).toFixed(1);
+                        const eqGrowth = yr1d.equityInProperty > 0 ? ((yr10d.equityInProperty - yr1d.equityInProperty) / yr1d.equityInProperty * 100).toFixed(1) : 'N/A';
+                        const loanRed = projections[0]?.loanAmount > 0 ? ((1 - yr10d.loanAmount / projections[0].loanAmount) * 100).toFixed(1) : '0';
+                        const bey = projections.filter(p => p.year >= 1).find((p, i, arr) => i > 0 && arr[i - 1].afterTaxCashFlowPA < 0 && p.afterTaxCashFlowPA >= 0);
+                        const coy = projections.filter(p => p.year >= 1).find(p => p.equityInProperty >= p.loanAmount);
+                        return (
+                          <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 rounded-lg space-y-2">
+                            <p className="text-xs font-semibold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                              <TrendingUp className="h-3.5 w-3.5" />
+                              Cash Flow Trend Analysis
+                            </p>
+                            <div className="text-xs text-amber-900/80 dark:text-amber-200/70 space-y-1.5 leading-relaxed">
+                              <p><strong>Property Value Growth:</strong> Projected to appreciate by {propGrowth}% over 10 years (from ${baseFinancialData.purchasePrice.toLocaleString()} to ${yr10d.propertyMarketValue.toLocaleString()}), reflecting configured capital growth assumptions.</p>
+                              <p><strong>Equity Accumulation:</strong> Equity increases by {eqGrowth}% (${yr1d.equityInProperty.toLocaleString()} → ${yr10d.equityInProperty.toLocaleString()}), driven by capital appreciation and principal repayments reducing the loan by {loanRed}%.</p>
+                              <p><strong>Cash Flow:</strong> After-tax cash flow moves from ${yr1d.afterTaxCashFlowPA.toLocaleString()}/yr (Year 1) to ${yr10d.afterTaxCashFlowPA.toLocaleString()}/yr (Year 10).
+                                {bey && ` The investment becomes cash-flow positive in Year ${bey.year}.`}
+                                {coy && ` Equity exceeds remaining debt in Year ${coy.year} — a key wealth milestone.`}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </>
                   );
                 })()}
@@ -4373,7 +4419,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
 
                   return (
                     <>
-                      <div ref={yieldChartRef} className="h-[280px] w-full bg-background p-2">
+                      <div ref={yieldChartRef} className="h-[280px] w-full bg-white p-2" style={{ backgroundColor: '#ffffff' }}>
                         <ResponsiveContainer width="100%" height="100%">
                           <ComposedChart
                             data={yieldData}
@@ -4385,15 +4431,15 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                                 <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.03}/>
                               </linearGradient>
                             </defs>
-                            <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
+                            <CartesianGrid strokeDasharray="3 3" opacity={0.15} stroke="#d1d5db" />
                             <XAxis 
                               dataKey="year" 
-                              tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
-                              axisLine={{ stroke: 'hsl(var(--border))' }}
+                              tick={{ fontSize: 11, fill: '#6b7280' }}
+                              axisLine={{ stroke: '#e5e7eb' }}
                               tickLine={false}
                             />
                             <YAxis 
-                              tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} 
+                              tick={{ fontSize: 11, fill: '#6b7280' }} 
                               tickFormatter={(value) => `${value}%`}
                               domain={['auto', 'auto']}
                               axisLine={false}
@@ -4526,6 +4572,29 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                           </div>
                         );
                       })()}
+                      {/* Yield Insight — visible in dashboard modal */}
+                      {projections.length > 1 && (() => {
+                        const yr1y = projections.find(p => p.year === 1);
+                        const yr10y = projections.find(p => p.year === 10);
+                        if (!yr1y || !yr10y) return null;
+                        const grossDelta = (yr10y.grossYield - yr1y.grossYield).toFixed(2);
+                        const netDelta = (yr10y.netYield - yr1y.netYield).toFixed(2);
+                        const vals = projections.filter(p => p.year >= 1);
+                        const avgSprd = (vals.reduce((s, p) => s + (p.grossYield - p.netYield), 0) / vals.length).toFixed(2);
+                        return (
+                          <div className="mt-3 p-3 bg-cyan-50 dark:bg-cyan-950/30 border border-cyan-200 dark:border-cyan-800/40 rounded-lg space-y-2">
+                            <p className="text-xs font-semibold text-cyan-800 dark:text-cyan-300 flex items-center gap-1.5">
+                              <Percent className="h-3.5 w-3.5" />
+                              Yield Analysis Insight
+                            </p>
+                            <div className="text-xs text-cyan-900/80 dark:text-cyan-200/70 space-y-1.5 leading-relaxed">
+                              <p><strong>Gross Yield:</strong> Moves from {yr1y.grossYield.toFixed(2)}% (Year 1) to {yr10y.grossYield.toFixed(2)}% (Year 10), a shift of {grossDelta}pp. This compression occurs because property value appreciates faster than rental income — a hallmark of growth-oriented assets.</p>
+                              <p><strong>Net Yield:</strong> Shifts from {yr1y.netYield.toFixed(2)}% to {yr10y.netYield.toFixed(2)}% ({netDelta}pp change). Net yield accounts for holding costs including council rates, insurance, maintenance, and management fees.</p>
+                              <p><strong>Expense Drag:</strong> Average spread between gross and net yield is {avgSprd}pp, representing the proportion of rental income consumed by holding costs. A narrowing spread indicates improving operational efficiency.</p>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </>
                   );
                 })()}
@@ -4557,7 +4626,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div ref={comparisonChartRef} className="h-[380px] w-full bg-background p-2">
+                  <div ref={comparisonChartRef} className="h-[380px] w-full bg-white p-2" style={{ backgroundColor: '#ffffff' }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart
                         data={projections.filter(p => p.year >= 1).map((p, i) => {
