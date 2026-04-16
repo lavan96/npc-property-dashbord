@@ -44,6 +44,7 @@ interface SendEmailRequest {
   attachments?: EmailAttachment[];
   mailboxSource?: 'admin' | 'personal';
   source?: 'agent' | 'user'; // 'agent' triggers branded HTML template
+  ghlConversationId?: string; // Internal conversation ID for persisting in thread
 }
 
 // ─── Agent Email HTML Template System ───────────────────────────────────────
@@ -312,7 +313,7 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { to, subject, body: emailBody, cc, bcc, originalEmailId, attachments, mailboxSource, source }: SendEmailRequest = body;
+    const { to, subject, body: emailBody, cc, bcc, originalEmailId, attachments, mailboxSource, source, ghlConversationId }: SendEmailRequest = body;
     
     // SECURITY: Verify authentication
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -527,6 +528,42 @@ serve(async (req) => {
           entity_id: sentReply?.id || null,
           read: false
         });
+    }
+
+    // ─── Persist outbound email in GHL conversation thread ───
+    if (ghlConversationId) {
+      try {
+        const messageRecord = {
+          ghl_message_id: `email-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`,
+          conversation_id: ghlConversationId,
+          direction: 'outbound',
+          body: emailBody,
+          channel_type: 'email',
+          message_type: 'email',
+          message_status: 'delivered',
+          ghl_date_added: new Date().toISOString(),
+        };
+
+        await supabase.from('ghl_conversation_messages').upsert(messageRecord, {
+          onConflict: 'ghl_message_id',
+        });
+
+        // Update conversation metadata
+        await supabase
+          .from('ghl_conversations')
+          .update({
+            last_message_date: new Date().toISOString(),
+            last_message_body: emailBody.substring(0, 500),
+            last_message_direction: 'outbound',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', ghlConversationId);
+
+        console.log('[Send Email] Persisted outbound email in conversation thread:', ghlConversationId);
+      } catch (convErr) {
+        console.error('[Send Email] Failed to persist in conversation thread:', convErr);
+        // Don't throw - email was still sent successfully
+      }
     }
 
     return new Response(

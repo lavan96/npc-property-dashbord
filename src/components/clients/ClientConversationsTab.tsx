@@ -217,6 +217,7 @@ export function ClientConversationsTab({ clientId, clientName, clientEmail, ghlC
           subject: subject || `Message from NPC Services`,
           body: message,
           mailboxSource: selectedMailbox,
+          ghlConversationId: selectedConversation?.id || undefined,
         });
         if (error) throw new Error(error.message);
         if (data?.error) throw new Error(data.error);
