@@ -12,11 +12,22 @@ export interface OverlayElement {
   fontFamily?: string;
   fontSize?: number;
   fontColor?: string;
-  fontWeight?: 'normal' | 'bold';
+  fontWeight?: 'normal' | 'bold' | '100' | '200' | '300' | '400' | '500' | '600' | '700' | '800' | '900';
+  fontStyle?: 'normal' | 'italic';
+  textDecoration?: 'none' | 'underline' | 'line-through';
   textAlign?: 'left' | 'center' | 'right';
+  letterSpacing?: number; // px
+  lineHeight?: number; // multiplier e.g. 1.2
+  textTransform?: 'none' | 'uppercase' | 'lowercase' | 'capitalize';
+  textShadow?: string;
+  backgroundColor?: string;
+  borderRadius?: number;
+  padding?: number;
   // Image props
   imageUrl?: string;
   objectFit?: 'cover' | 'contain' | 'fill';
+  borderWidth?: number;
+  borderColor?: string;
 }
 
 export interface CoverPageOverlay {
@@ -46,12 +57,29 @@ export const REPORT_TYPE_OPTIONS = [
   { value: 'comparison', label: 'Comparison Report' },
 ] as const;
 
-export const FONT_FAMILIES = [
+export const BUILTIN_FONTS = [
   'Helvetica',
   'Times New Roman',
   'Georgia',
   'Arial',
   'Courier New',
+] as const;
+
+export const FONT_WEIGHT_OPTIONS = [
+  { value: '100', label: 'Thin (100)' },
+  { value: '200', label: 'Extra Light (200)' },
+  { value: '300', label: 'Light (300)' },
+  { value: 'normal', label: 'Regular (400)' },
+  { value: '500', label: 'Medium (500)' },
+  { value: '600', label: 'Semi Bold (600)' },
+  { value: 'bold', label: 'Bold (700)' },
+  { value: '800', label: 'Extra Bold (800)' },
+  { value: '900', label: 'Black (900)' },
+] as const;
+
+// Keep FONT_FAMILIES for backward compatibility
+export const FONT_FAMILIES = [
+  ...BUILTIN_FONTS,
   'Playfair Display',
   'Cinzel',
   'Montserrat',
