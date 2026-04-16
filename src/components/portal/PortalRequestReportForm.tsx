@@ -24,7 +24,6 @@ interface Prediction {
   mainText: string;
   secondaryText: string;
 }
-const PORTAL_SESSION_KEY = 'portal_session_token';
 
 function getSessionToken(): string | null {
   try { return sessionStorage.getItem(PORTAL_SESSION_KEY) || localStorage.getItem(PORTAL_SESSION_KEY); }
