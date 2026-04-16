@@ -8,8 +8,6 @@ const SUPABASE_URL = "https://dduzbchuswwbefdunfct.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkdXpiY2h1c3d3YmVmZHVuZmN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0NDM4NzksImV4cCI6MjA3MTAxOTg3OX0.eSYU6fxIc3tBQuGLsdBRff0alBMkNfvv7OpW0efNjxk";
 
 // ── Global auth-failure circuit breaker ──
-// Module-level flag that survives component re-mounts.
-// Once set, ALL polling/secure calls skip until a successful auth restores it.
 let _globalAuthExhausted = false;
 const GLOBAL_AUTH_FAIL_LIMIT = 5;
 let _globalAuthFailCount = 0;
@@ -52,27 +50,21 @@ function getStoredToken(key: string): string | null {
   }
 }
 
-/**
- * Get session token fallback for custom auth flow
- */
+function clearStoredToken(key: string): void {
+  try { sessionStorage.removeItem(key); } catch { /* ignore */ }
+  try { localStorage.removeItem(key); } catch { /* ignore */ }
+}
+
 function getSessionToken(): string | null {
   return getStoredToken(SESSION_TOKEN_KEY);
 }
 
-/**
- * Get access token from storage (sessionStorage first, localStorage fallback)
- */
 function getAccessToken(): string | null {
   return getStoredToken(ACCESS_TOKEN_KEY);
 }
 
 /**
  * Invoke an edge function with HttpOnly cookie support
- * This replaces supabase.functions.invoke for authenticated requests
- * 
- * @param functionName - The name of the edge function to invoke
- * @param body - Optional request body
- * @returns Promise with data and error properties
  */
 export async function invokeSecureFunction<T = any>(
   functionName: string,
@@ -80,21 +72,16 @@ export async function invokeSecureFunction<T = any>(
   options?: { timeoutMs?: number }
 ): Promise<InvokeResult<T>> {
   try {
-    // Get session token as fallback for cross-origin cookie issues
     const sessionToken = getSessionToken();
-
-    // Prefer bearer access token when available (avoids cross-site cookie issues)
     const accessToken = getAccessToken();
     const bearerToken = accessToken || SUPABASE_ANON_KEY;
     
-    // Include session token in body as fallback if cookies fail
     const requestBody = body 
       ? { ...body, session_token: sessionToken }
       : { session_token: sessionToken };
     
-    // Optional abort controller for long-running functions
     const controller = new AbortController();
-    const timeoutMs = options?.timeoutMs || 60000; // default 60s
+    const timeoutMs = options?.timeoutMs || 60000;
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     const response = await fetch(`${SUPABASE_URL}/functions/v1/${functionName}`, {
@@ -123,9 +110,18 @@ export async function invokeSecureFunction<T = any>(
         hasSessionToken: Boolean(sessionToken),
       });
 
-      // Track auth failures globally
-      if (response.status === 401) {
+      // On definitive auth failures (400 = bad request / missing token, 401 = expired/invalid)
+      // clear stale tokens to prevent infinite retry loops
+      if (response.status === 401 || response.status === 400) {
         markAuthFailure();
+        
+        // If circuit breaker trips, proactively clear stale tokens
+        // so the next page load starts clean and shows the login screen
+        if (isAuthExhausted()) {
+          console.warn('[secureInvoke] Clearing stale tokens after repeated auth failures');
+          clearStoredToken(ACCESS_TOKEN_KEY);
+          clearStoredToken(SESSION_TOKEN_KEY);
+        }
       }
 
       return { 
@@ -149,7 +145,6 @@ export async function invokeSecureFunction<T = any>(
 
 /**
  * Check if the user has an active session token or access token stored.
- * Lightweight client-side check — the server still validates.
  */
 export function hasActiveSession(): boolean {
   return Boolean(getSessionToken() || getAccessToken());

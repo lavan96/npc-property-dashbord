@@ -31,6 +31,13 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const ACCESS_TOKEN_KEY = 'supabase_access_token';
 const SESSION_TOKEN_KEY = 'session_token';
 
+// ── Auth version epoch ──
+// Bump this number whenever the auth flow changes in a way that invalidates old tokens.
+// On mount, if the stored version doesn't match, stale tokens are auto-cleared
+// so users don't need to manually clear browser data.
+const AUTH_VERSION = 2;
+const AUTH_VERSION_KEY = 'auth_version';
+
 const getStoredValue = (key: string): string | null => {
   try {
     return sessionStorage.getItem(key) || localStorage.getItem(key);
@@ -70,6 +77,38 @@ const clearStoredValue = (key: string) => {
 };
 
 /**
+ * Check if stored auth version matches current. If not, purge stale tokens.
+ * This prevents the "clear browser data" requirement after deployments.
+ */
+function enforceAuthVersion(): void {
+  try {
+    const stored = localStorage.getItem(AUTH_VERSION_KEY);
+    const storedVersion = stored ? parseInt(stored, 10) : 0;
+    
+    if (storedVersion !== AUTH_VERSION) {
+      console.log(`[Auth] Version mismatch (stored=${storedVersion}, current=${AUTH_VERSION}). Clearing stale tokens.`);
+      // Clear all auth-related storage
+      clearStoredValue(ACCESS_TOKEN_KEY);
+      clearStoredValue(SESSION_TOKEN_KEY);
+      try { sessionStorage.removeItem('current_user'); } catch { /* ignore */ }
+      
+      // Stamp the new version
+      localStorage.setItem(AUTH_VERSION_KEY, String(AUTH_VERSION));
+      
+      // Also clear any stale service worker caches to ensure fresh assets
+      if ('caches' in window) {
+        caches.keys().then(names => {
+          names.forEach(name => caches.delete(name));
+        });
+      }
+    }
+  } catch (e) {
+    // Storage unavailable — continue without version check
+    console.warn('[Auth] Version check failed:', e);
+  }
+}
+
+/**
  * Invoke edge function with credentials for HttpOnly cookies
  */
 async function invokeEdgeFunction(
@@ -81,7 +120,6 @@ async function invokeEdgeFunction(
     const sessionToken = getStoredValue(SESSION_TOKEN_KEY);
     
     // Prefer stored access token (real user JWT) over anon key
-    // This ensures JWT-based auth works even if session token is stale
     const accessToken = getStoredValue(ACCESS_TOKEN_KEY);
     const bearerToken = accessToken || SUPABASE_ANON_KEY;
     
@@ -95,15 +133,9 @@ async function invokeEdgeFunction(
       headers: {
         'Content-Type': 'application/json',
         'apikey': SUPABASE_ANON_KEY,
-        // Use real user token when available; fall back to anon for unauthenticated calls.
         'Authorization': `Bearer ${bearerToken}`,
-        // Add session token as custom header for additional fallback
         ...(sessionToken ? { 'x-session-token': sessionToken } : {}),
       },
-      // Do NOT include cross-site cookies here.
-      // Using credentials: 'include' makes this a credentialed CORS request which is
-      // incompatible with wildcard CORS and surfaces as browser-level "Failed to fetch".
-      // We authenticate via Bearer token + x-session-token header instead.
       credentials: 'omit',
       body: JSON.stringify(requestBody),
     });
@@ -111,7 +143,7 @@ async function invokeEdgeFunction(
     const data = await response.json();
     
     if (!response.ok) {
-      return { data, error: { message: data.error || `HTTP ${response.status}` } };
+      return { data, error: { message: data.error || `HTTP ${response.status}`, status: response.status } };
     }
     
     return { data, error: null };
@@ -125,11 +157,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [roles, setRoles] = useState<string[]>([]);
   const [accessToken, setAccessToken] = useState<string | null>(() => {
-    // Initialize from storage on mount
+    // Enforce version BEFORE reading tokens — purges stale ones
+    enforceAuthVersion();
     return getStoredValue(ACCESS_TOKEN_KEY);
   });
 
-  // Super admin check: either has superadmin role in user_roles OR has super_admin in custom_users.role
+  // Super admin check
   const isSuperadmin = roles.includes('superadmin') || user?.role === 'super_admin';
   const isAdmin = roles.includes('admin') || isSuperadmin || user?.role === 'sub_admin';
 
@@ -140,43 +173,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const checkSession = async () => {
     try {
-      // Session token is now in HttpOnly cookie, sent automatically with credentials: 'include'
+      const sessionToken = getStoredValue(SESSION_TOKEN_KEY);
+      const storedAccessToken = getStoredValue(ACCESS_TOKEN_KEY);
+      
+      // If we have no tokens at all, skip the verify call entirely
+      // This prevents the 400 "Session token is required" errors on fresh/cleared sessions
+      if (!sessionToken && !storedAccessToken) {
+        console.log('[Auth] No stored tokens, skipping session check');
+        clearAuthState();
+        return;
+      }
+
       const { data, error } = await invokeEdgeFunction('custom-auth-verify');
 
       if (error) {
-        // Session expired or invalid - this is expected behavior
-        if (!error.message?.includes('401')) {
-          console.warn('Session verification error:', error.message);
+        if (error.status === 400 || error.status === 401) {
+          // Definitive auth failure — clear stale tokens so we don't keep retrying
+          console.log('[Auth] Session verify failed (status:', error.status, '), clearing stale tokens');
+          clearAuthState();
+        } else {
+          // Network/server error — don't clear tokens, might be transient
+          console.warn('[Auth] Session verification error (transient):', error.message);
+          clearAuthState();
         }
-        clearAuthState();
       } else if (!data?.valid) {
-        // Invalid session response
         clearAuthState();
       } else {
-        // Valid session - set user and roles
+        // Valid session
         setUser(data.user);
         setRoles(data.roles || []);
-        resetAuthFailures(); // Reset global auth circuit breaker on valid session
+        resetAuthFailures();
         
-        // Store access token for Supabase client
         if (data.access_token) {
           persistStoredValue(ACCESS_TOKEN_KEY, data.access_token);
           setAccessToken(data.access_token);
         }
 
-        // Persist session token from verify response as fallback for secure edge calls
         if (data.session_token) {
           persistStoredValue(SESSION_TOKEN_KEY, data.session_token);
         }
         
-        // Cache user data in sessionStorage for activity logging
         sessionStorage.setItem('current_user', JSON.stringify({
           id: data.user.id,
           username: data.user.username
         }));
       }
     } catch (error: any) {
-      // Network or other errors
       console.warn('Session check failed:', error?.message || 'Unknown error');
       clearAuthState();
     } finally {
@@ -195,7 +237,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (username: string, password: string, turnstileToken?: string) => {
     try {
-      // Clear any stale tokens BEFORE login to prevent old tokens from lingering
+      // Clear any stale tokens BEFORE login
       clearStoredValue(ACCESS_TOKEN_KEY);
       clearStoredValue(SESSION_TOKEN_KEY);
       
@@ -209,20 +251,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error: data?.error || 'Login failed' };
       }
 
-      // Session cookie is set automatically by the server response
-      // Store access token for Supabase client
+      // Store fresh tokens
       if (data.access_token) {
         persistStoredValue(ACCESS_TOKEN_KEY, data.access_token);
         setAccessToken(data.access_token);
       }
       
-      // Store session token as fallback for cross-origin cookie issues
-      // This is needed because HttpOnly cookies may not be sent cross-origin in some browsers
       if (data.session_token) {
         persistStoredValue(SESSION_TOKEN_KEY, data.session_token);
       }
       
-      // Cache user data in sessionStorage for activity logging
+      // Stamp current auth version on successful login
+      try { localStorage.setItem(AUTH_VERSION_KEY, String(AUTH_VERSION)); } catch { /* ignore */ }
+      
       sessionStorage.setItem('current_user', JSON.stringify({
         id: data.user.id,
         username: data.user.username
@@ -230,10 +271,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       setUser(data.user);
       setRoles(data.roles || []);
-      // Reset global auth circuit breaker on successful login
       resetAuthFailures();
       
-      // Log successful login activity
       logActivity({
         userId: data.user.id,
         username: data.user.username,
@@ -251,16 +290,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    const currentUser = user; // Capture before clearing
+    const currentUser = user;
     
     try {
-      // Call logout endpoint - it will clear the cookie
       await invokeEdgeFunction('custom-auth-logout');
     } catch (error) {
       console.error('Logout error:', error);
     }
 
-    // Log logout activity before clearing user
     if (currentUser) {
       logActivity({
         userId: currentUser.id,
