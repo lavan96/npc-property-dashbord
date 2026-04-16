@@ -44,6 +44,7 @@ interface SendEmailRequest {
   attachments?: EmailAttachment[];
   mailboxSource?: 'admin' | 'personal';
   source?: 'agent' | 'user'; // 'agent' triggers branded HTML template
+  ghlConversationId?: string; // Internal conversation ID for persisting in thread
 }
 
 // ─── Agent Email HTML Template System ───────────────────────────────────────
