@@ -530,6 +530,42 @@ serve(async (req) => {
         });
     }
 
+    // ─── Persist outbound email in GHL conversation thread ───
+    if (ghlConversationId) {
+      try {
+        const messageRecord = {
+          ghl_message_id: `email-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`,
+          conversation_id: ghlConversationId,
+          direction: 'outbound',
+          body: emailBody,
+          channel_type: 'email',
+          message_type: 'email',
+          message_status: 'delivered',
+          ghl_date_added: new Date().toISOString(),
+        };
+
+        await supabase.from('ghl_conversation_messages').upsert(messageRecord, {
+          onConflict: 'ghl_message_id',
+        });
+
+        // Update conversation metadata
+        await supabase
+          .from('ghl_conversations')
+          .update({
+            last_message_date: new Date().toISOString(),
+            last_message_body: emailBody.substring(0, 500),
+            last_message_direction: 'outbound',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', ghlConversationId);
+
+        console.log('[Send Email] Persisted outbound email in conversation thread:', ghlConversationId);
+      } catch (convErr) {
+        console.error('[Send Email] Failed to persist in conversation thread:', convErr);
+        // Don't throw - email was still sent successfully
+      }
+    }
+
     return new Response(
       JSON.stringify({ success: true, message: 'Email sent successfully' }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
