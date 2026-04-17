@@ -514,13 +514,12 @@ function assessPropertyContribution(
 
   const assessedMonthlyRent = rawMonthlyRent * policy.rentalShadingRate * (1 - policy.vacancyRate);
 
+  // Fix #1 — APRA-aligned existing debt assessment (replaces blanket 9.5%/30y P&I)
   let assessedMonthlyDebt = 0;
   if (rawLoanBalance > 0) {
-    const monthlyRate = policy.loanAssessmentRate / 12;
-    const piRepayment = rawLoanBalance *
-      (monthlyRate * Math.pow(1 + monthlyRate, policy.loanTermMonths)) /
-      (Math.pow(1 + monthlyRate, policy.loanTermMonths) - 1);
-    assessedMonthlyDebt = Math.max(piRepayment, rawMonthlyRepayment);
+    const loanAssessment = assessExistingPropertyLoan(property, policy);
+    assessedMonthlyDebt = loanAssessment.assessedMonthlyDebt;
+    auditNotes.push(`Loan: ${loanAssessment.auditNote} → $${assessedMonthlyDebt.toFixed(2)}/mo`);
   }
 
   const assessedMonthlyHoldingCosts = 0;
