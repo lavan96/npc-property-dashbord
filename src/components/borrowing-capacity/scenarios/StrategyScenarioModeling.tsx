@@ -584,6 +584,7 @@ export function StrategyScenarioModeling({
     strategy.refinancedToIO.size > 0 ||
     strategy.equityReleaseEnabled ||
     strategy.rateAdjustment !== 0 ||
+    strategy.propertyRateOverrides.size > 0 ||
     strategy.additional.incomeGrowthPercent !== 0 ||
     strategy.additional.expenseReductionPercent !== 0 ||
     strategy.additional.loanTermAdjustment !== 0 ||
@@ -597,6 +598,7 @@ export function StrategyScenarioModeling({
       refinancedToIO: new Set(),
       equityReleasePropertyIds: new Set(),
       equityReleaseTargetLVRs: new Map(),
+      propertyRateOverrides: new Map(),
       additional: { ...DEFAULT_ADDITIONAL_STRATEGY, portfolioSellPropertyIds: new Set() },
     });
   }, []);
