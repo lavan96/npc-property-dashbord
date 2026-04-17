@@ -170,18 +170,37 @@ export function CapacityMathInspector({
 
             <div className="h-2" />
 
-            <Row
-              label="Displayed capacity (engine)"
-              base={formatCurrency(baseDisplayedCapacity)}
-              scenario={formatCurrency(scenarioDisplayedCapacity)}
-              isResult
-              note={
-                Math.abs(baseDelta) > 1 || Math.abs(scenarioDelta) > 1
-                  ? 'Differs from theoretical due to $0 floor, DTI cap, or LVR/policy clamp'
-                  : 'Matches theoretical — no clamp active'
-              }
-            />
-
+            {(() => {
+              const baseFloored = baseDisplayedCapacity === 0 && baseTheoreticalCapacity < 0;
+              const scenarioFloored = scenarioDisplayedCapacity === 0 && scenarioTheoreticalCapacity < 0;
+              const baseTrue = baseFloored ? baseTheoreticalCapacity : baseDisplayedCapacity;
+              const scenarioTrue = scenarioFloored ? scenarioTheoreticalCapacity : scenarioDisplayedCapacity;
+              return (
+                <>
+                  <Row
+                    label={baseFloored || scenarioFloored ? 'True capacity (unfloored)' : 'Displayed capacity (engine)'}
+                    base={formatCurrency(baseTrue)}
+                    scenario={formatCurrency(scenarioTrue)}
+                    isResult
+                    note={
+                      baseFloored || scenarioFloored
+                        ? 'Showing the true (negative) serviceability position. Engine clamps the lendable figure at $0 — see row below.'
+                        : (Math.abs(baseDelta) > 1 || Math.abs(scenarioDelta) > 1
+                            ? 'Differs from theoretical due to DTI cap or LVR/policy clamp'
+                            : 'Matches theoretical — no clamp active')
+                    }
+                  />
+                  {(baseFloored || scenarioFloored) && (
+                    <Row
+                      label="Engine displayed (lendable, floored at $0)"
+                      base={formatCurrency(baseDisplayedCapacity)}
+                      scenario={formatCurrency(scenarioDisplayedCapacity)}
+                      note="What the bank-side engine reports — used by APRA-aligned outputs"
+                    />
+                  )}
+                </>
+              );
+            })()}
             <p className="text-[10px] text-muted-foreground/80 mt-3 leading-relaxed">
               <strong>How to read this:</strong> The engine reports the displayed capacity after applying floors
               (capacity ≥ $0) and policy caps (DTI, LVR). The theoretical capacity ignores those clamps so you can

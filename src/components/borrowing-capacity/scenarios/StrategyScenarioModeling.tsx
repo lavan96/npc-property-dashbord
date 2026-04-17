@@ -2270,69 +2270,95 @@ export function StrategyScenarioModeling({
             </div>
           )}
 
-          {/* Before → After comparison */}
-          <div className="grid grid-cols-3 gap-3 items-start pt-2">
-            <div className="text-center p-3 rounded-lg bg-secondary/30 space-y-2">
-              <p className="text-xs text-muted-foreground mb-1">CURRENT</p>
-              <p className="text-lg font-bold">{formatCapacity(baseResult.borrowingCapacity)}</p>
-              <Badge className="text-xs" style={{ backgroundColor: baseBand.bg === 'bg-emerald-500/10' ? '#10b981' : baseBand.bg === 'bg-amber-500/10' ? '#f59e0b' : '#ef4444', color: 'white' }}>
-                {baseBand.label}
-              </Badge>
-              <BindingConstraintBadge
-                inputs={baseInputs}
-                result={baseResult}
-                analysis={baseBinding}
-                variant="compact"
-                className="w-full justify-center"
-              />
-            </div>
+          {/* Before → After comparison
+              When the engine is clamped at the $0 servicing floor we show the
+              true (negative) theoretical capacity so the team isn't misled by
+              the displayed $0. */}
+          {(() => {
+            const baseShowTrue = floorActive && baseTheoreticalCapacity < baseResult.borrowingCapacity;
+            const scenarioShowTrue = floorActive && scenarioTheoreticalCapacity < scenarioResult.borrowingCapacity;
+            const baseDisplayValue = baseShowTrue ? baseTheoreticalCapacity : baseResult.borrowingCapacity;
+            const scenarioDisplayValue = scenarioShowTrue ? scenarioTheoreticalCapacity : scenarioResult.borrowingCapacity;
+            const trueCapacityChange = scenarioDisplayValue - baseDisplayValue;
+            return (
+              <div className="grid grid-cols-3 gap-3 items-start pt-2">
+                <div className="text-center p-3 rounded-lg bg-secondary/30 space-y-2">
+                  <p className="text-xs text-muted-foreground mb-1">CURRENT</p>
+                  <p className={`text-lg font-bold ${baseShowTrue ? 'text-destructive' : ''}`}>
+                    {baseShowTrue ? formatCapacity(baseDisplayValue) : formatCapacity(baseResult.borrowingCapacity)}
+                  </p>
+                  {baseShowTrue && (
+                    <p className="text-[10px] text-muted-foreground -mt-1">
+                      true position · engine shows {formatCapacity(baseResult.borrowingCapacity)}
+                    </p>
+                  )}
+                  <Badge className="text-xs" style={{ backgroundColor: baseBand.bg === 'bg-emerald-500/10' ? '#10b981' : baseBand.bg === 'bg-amber-500/10' ? '#f59e0b' : '#ef4444', color: 'white' }}>
+                    {baseBand.label}
+                  </Badge>
+                  <BindingConstraintBadge
+                    inputs={baseInputs}
+                    result={baseResult}
+                    analysis={baseBinding}
+                    variant="compact"
+                    className="w-full justify-center"
+                  />
+                </div>
 
-            <div className="text-center pt-3">
-              <div className="flex items-center justify-center mb-1">
-                {capacityChange > 0 && <TrendingUp className="h-5 w-5 text-emerald-600" />}
-                {capacityChange < 0 && <TrendingDown className="h-5 w-5 text-destructive" />}
-                {capacityChange === 0 && <Minus className="h-5 w-5 text-muted-foreground" />}
+                <div className="text-center pt-3">
+                  <div className="flex items-center justify-center mb-1">
+                    {trueCapacityChange > 0 && <TrendingUp className="h-5 w-5 text-emerald-600" />}
+                    {trueCapacityChange < 0 && <TrendingDown className="h-5 w-5 text-destructive" />}
+                    {trueCapacityChange === 0 && <Minus className="h-5 w-5 text-muted-foreground" />}
+                  </div>
+                  <p className={`text-lg font-bold ${
+                    trueCapacityChange > 0 ? 'text-emerald-600' : trueCapacityChange < 0 ? 'text-destructive' : 'text-muted-foreground'
+                  }`}>
+                    {trueCapacityChange !== 0 ? (
+                      <>{trueCapacityChange > 0 ? '+' : ''}{formatCapacity(trueCapacityChange)}</>
+                    ) : 'No Change'}
+                  </p>
+                  {trueCapacityChange !== 0 && Math.abs(baseDisplayValue) > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      ({((trueCapacityChange / Math.abs(baseDisplayValue)) * 100).toFixed(1)}%)
+                    </p>
+                  )}
+                  {/* Wall-shift indicator: did the binding constraint change? */}
+                  {baseBinding.binding !== scenarioBinding.binding && (
+                    <p className="text-[10px] text-primary mt-1 leading-tight">
+                      Wall shifted:<br />
+                      {baseBinding.bindingLabel} → {scenarioBinding.bindingLabel}
+                    </p>
+                  )}
+                </div>
+
+                <div className={`text-center p-3 rounded-lg border-2 space-y-2 ${
+                  trueCapacityChange > 0 ? 'bg-emerald-500/10 border-emerald-500/30' :
+                  trueCapacityChange < 0 ? 'bg-destructive/10 border-destructive/30' :
+                  'bg-secondary/30 border-secondary'
+                }`}>
+                  <p className="text-xs text-muted-foreground mb-1">SCENARIO</p>
+                  <p className={`text-lg font-bold ${scenarioShowTrue ? 'text-destructive' : ''}`}>
+                    {scenarioShowTrue ? formatCapacity(scenarioDisplayValue) : formatCapacity(scenarioResult.borrowingCapacity)}
+                  </p>
+                  {scenarioShowTrue && (
+                    <p className="text-[10px] text-muted-foreground -mt-1">
+                      true position · engine shows {formatCapacity(scenarioResult.borrowingCapacity)}
+                    </p>
+                  )}
+                  <Badge className="text-xs" style={{ backgroundColor: scenarioBand.bg === 'bg-emerald-500/10' ? '#10b981' : scenarioBand.bg === 'bg-amber-500/10' ? '#f59e0b' : '#ef4444', color: 'white' }}>
+                    {scenarioBand.label}
+                  </Badge>
+                  <BindingConstraintBadge
+                    inputs={scenarioInputs}
+                    result={scenarioResult}
+                    analysis={scenarioBinding}
+                    variant="compact"
+                    className="w-full justify-center"
+                  />
+                </div>
               </div>
-              <p className={`text-lg font-bold ${
-                capacityChange > 0 ? 'text-emerald-600' : capacityChange < 0 ? 'text-destructive' : 'text-muted-foreground'
-              }`}>
-                {capacityChange !== 0 ? (
-                  <>{capacityChange > 0 ? '+' : ''}{formatCapacity(capacityChange)}</>
-                ) : 'No Change'}
-              </p>
-              {capacityChange !== 0 && baseResult.borrowingCapacity > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  ({((capacityChange / baseResult.borrowingCapacity) * 100).toFixed(1)}%)
-                </p>
-              )}
-              {/* Wall-shift indicator: did the binding constraint change? */}
-              {baseBinding.binding !== scenarioBinding.binding && (
-                <p className="text-[10px] text-primary mt-1 leading-tight">
-                  Wall shifted:<br />
-                  {baseBinding.bindingLabel} → {scenarioBinding.bindingLabel}
-                </p>
-              )}
-            </div>
-
-            <div className={`text-center p-3 rounded-lg border-2 space-y-2 ${
-              capacityChange > 0 ? 'bg-emerald-500/10 border-emerald-500/30' :
-              capacityChange < 0 ? 'bg-destructive/10 border-destructive/30' :
-              'bg-secondary/30 border-secondary'
-            }`}>
-              <p className="text-xs text-muted-foreground mb-1">SCENARIO</p>
-              <p className="text-lg font-bold">{formatCapacity(scenarioResult.borrowingCapacity)}</p>
-              <Badge className="text-xs" style={{ backgroundColor: scenarioBand.bg === 'bg-emerald-500/10' ? '#10b981' : scenarioBand.bg === 'bg-amber-500/10' ? '#f59e0b' : '#ef4444', color: 'white' }}>
-                {scenarioBand.label}
-              </Badge>
-              <BindingConstraintBadge
-                inputs={scenarioInputs}
-                result={scenarioResult}
-                analysis={scenarioBinding}
-                variant="compact"
-                className="w-full justify-center"
-              />
-            </div>
-          </div>
+            );
+          })()}
 
           {/* Binding-constraint breakdown — explains WHY the lever moved (or didn't) */}
           <BindingConstraintBadge
