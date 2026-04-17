@@ -433,23 +433,30 @@ function assessExistingPropertyLoan(
 
   const isIO = repaymentType.includes('interest') && repaymentType.includes('only');
   const isPI = repaymentType === 'principal_and_interest' || repaymentType === 'p&i' || repaymentType === 'pi';
-  const ioRemainingMonths = Math.max(0, ioPeriodYears * 12 - elapsedMonths);
+  // If IO period is unknown (NULL/0), default to "still in IO" — bank-aligned conservative
+  // assumption: when origination data is missing, honour the loan's stated current state.
+  const ioPeriodKnown = ioPeriodYears > 0;
+  const ioRemainingMonths = ioPeriodKnown ? Math.max(0, ioPeriodYears * 12 - elapsedMonths) : Infinity;
+  const ioStillActive = isIO && (ioPeriodKnown ? ioRemainingMonths > 0 : true);
 
-  // ── Branch 1: Interest-Only, still in IO period ──
-  if (isIO && ioRemainingMonths > 0 && actualRatePct > 0) {
+  // ── Branch 1: Interest-Only, still in IO period (or IO period unknown → assume active) ──
+  if (ioStillActive && actualRatePct > 0) {
     const ioMonthlyCost = (balance * (actualRatePct / 100)) / 12;
     const assessed = Math.max(ioMonthlyCost, actualRepayment);
+    const ioNote = ioPeriodKnown
+      ? `IO remaining: ${ioRemainingMonths}mo`
+      : `IO period not specified — assumed currently active`;
     return {
       assessedMonthlyDebt: assessed,
       method: 'io_actual',
       effectiveRatePct: actualRatePct,
       termMonthsUsed: 0,
-      auditNote: `I/O assessed at actual rate ${actualRatePct.toFixed(2)}% (IO remaining: ${ioRemainingMonths}mo)`,
+      auditNote: `I/O assessed at actual rate ${actualRatePct.toFixed(2)}% (${ioNote})`,
     };
   }
 
   // ── Branch 2: P&I (or IO that has expired) with a known rate ──
-  if ((isPI || (isIO && ioRemainingMonths === 0)) && actualRatePct > 0) {
+  if ((isPI || (isIO && ioPeriodKnown && ioRemainingMonths === 0)) && actualRatePct > 0) {
     const originalTermMonths = 30 * 12; // assume 30y origination if not stored
     const remainingTermMonths = Math.max(MIN_REMAINING_TERM_MONTHS, originalTermMonths - elapsedMonths);
     const assessmentRatePct = actualRatePct + EXISTING_DEBT_BUFFER_PCT * 100;
