@@ -606,3 +606,77 @@ export function isClarificationMessage(content: string): boolean {
   ];
   return clarificationCues.some(cue => lower.includes(cue));
 }
+
+// ── Phase J2: structured acquisition hint extraction ───────────────────
+
+export interface AcquisitionHints {
+  state?: 'NSW' | 'VIC' | 'QLD' | 'WA' | 'SA' | 'TAS' | 'NT' | 'ACT';
+  intent?: 'owner_occupier' | 'investor';
+  category?: 'established' | 'new' | 'vacant_land';
+  isFirstHomeBuyer?: boolean;
+  cashOnHand?: number;
+}
+
+const STATE_PATTERNS: Array<{ state: AcquisitionHints['state']; re: RegExp }> = [
+  { state: 'NSW', re: /\b(nsw|new south wales|sydney|newcastle|wollongong|parramatta|central coast)\b/i },
+  { state: 'VIC', re: /\b(vic|victoria|melbourne|geelong|ballarat|bendigo)\b/i },
+  { state: 'QLD', re: /\b(qld|queensland|brisbane|gold coast|sunshine coast|cairns|townsville)\b/i },
+  { state: 'WA',  re: /\b(wa|western australia|perth|fremantle)\b/i },
+  { state: 'SA',  re: /\b(sa|south australia|adelaide)\b/i },
+  { state: 'TAS', re: /\b(tas|tasmania|hobart|launceston)\b/i },
+  { state: 'NT',  re: /\b(nt|northern territory|darwin)\b/i },
+  { state: 'ACT', re: /\b(act|canberra)\b/i },
+];
+
+const CASH_PATTERNS: RegExp[] = [
+  // "$50k cash", "60k deposit", "$100,000 cash on hand"
+  /(?:cash|deposit|savings|on hand|saved up)[^\d$]{0,30}\$?\s*([0-9]+(?:[.,][0-9]+)?)\s*([kKmM])?/g,
+  /\$\s*([0-9]+(?:[.,][0-9]+)?)\s*([kKmM])?\s*(?:cash|deposit|savings|on hand|saved)/g,
+];
+
+/**
+ * Pull structured acquisition hints out of the conversation prose.
+ * The model sees these as authoritative defaults so it stops guessing
+ * 'NSW investor' for every client. Recency wins on conflicts.
+ */
+export function extractAcquisitionHints(messages: Array<{ role: string; content: string }>): AcquisitionHints {
+  const hints: AcquisitionHints = {};
+  const userText = messages.filter(m => m.role === 'user').map(m => m.content || '').join('\n').toLowerCase();
+  if (!userText) return hints;
+
+  // State — last mention wins
+  for (const { state, re } of STATE_PATTERNS) {
+    if (re.test(userText)) hints.state = state;
+  }
+
+  // Intent
+  if (/\b(invest(ment|or)?|rental property|ip|portfolio expansion)\b/.test(userText)) hints.intent = 'investor';
+  if (/\b(owner[-\s]?occup(ier|ied)?|to live in|primary residence|home for (us|me)|ppor)\b/.test(userText)) hints.intent = 'owner_occupier';
+
+  // Category
+  if (/\b(off[-\s]?the[-\s]?plan|new build|brand new|h&l|house and land|construction)\b/.test(userText)) hints.category = 'new';
+  else if (/\b(vacant land|land only|raw land|block of land)\b/.test(userText)) hints.category = 'vacant_land';
+  else if (/\b(established|existing|secondhand)\b/.test(userText)) hints.category = 'established';
+
+  // First home buyer
+  if (/\b(first[-\s]?home[-\s]?buyer|fhb|never owned|never bought)\b/.test(userText)) hints.isFirstHomeBuyer = true;
+
+  // Cash on hand — take the LARGEST mentioned value in a sensible range
+  let bestCash = 0;
+  for (const re of CASH_PATTERNS) {
+    re.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(userText)) !== null) {
+      let v = parseFloat((m[1] || '').replace(/,/g, ''));
+      if (!Number.isFinite(v) || v <= 0) continue;
+      const suffix = (m[2] || '').toLowerCase();
+      if (suffix === 'k') v *= 1_000;
+      else if (suffix === 'm') v *= 1_000_000;
+      // Sensible deposit range: $5k – $5m
+      if (v >= 5_000 && v <= 5_000_000 && v > bestCash) bestCash = v;
+    }
+  }
+  if (bestCash > 0) hints.cashOnHand = Math.round(bestCash);
+
+  return hints;
+}
