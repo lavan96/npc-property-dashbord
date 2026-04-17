@@ -431,17 +431,24 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
       }
     },
     onSuccess: () => {
+      // Same broad invalidation as the update path so the BC calculator
+      // and other downstream surfaces never serve stale post-deletion data.
       queryClient.invalidateQueries({ queryKey: ['client-properties', property.client_id] });
       queryClient.invalidateQueries({ queryKey: ['secure-client-data', property.client_id] });
+      queryClient.invalidateQueries({ queryKey: ['secure-client-properties', property.client_id] });
+      queryClient.invalidateQueries({ queryKey: ['borrowing-capacity-client-data', property.client_id] });
+      queryClient.invalidateQueries({ queryKey: ['client-data', property.client_id] });
+      queryClient.invalidateQueries({ queryKey: ['borrowing-capacity-history', property.client_id] });
+      queryClient.invalidateQueries({ queryKey: ['get-client-data'] });
       toast.success('Property deleted successfully');
-      
+
       addNotification({
         type: 'portfolio_updated',
         title: 'Property Deleted',
         message: `Property at ${property.address} has been removed`,
         entityId: property.client_id
       });
-      
+
       onOpenChange(false);
       onComplete();
     },
