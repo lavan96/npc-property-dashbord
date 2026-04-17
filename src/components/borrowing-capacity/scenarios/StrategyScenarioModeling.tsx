@@ -93,6 +93,12 @@ interface StrategyState {
   equityReleaseEnabled: boolean;
   equityReleasePropertyIds: Set<string>;
   equityReleaseTargetLVRs: Map<string, number>; // per-property target LVR
+  /** Phase 2 — per-property deployment % of gross release (0..1, default 1.0) */
+  equityReleaseDeploymentPercents: Map<string, number>;
+  /** Phase 2 — per-property repayment structure on the new slice */
+  equityReleaseRepaymentTypes: Map<string, 'interest_only' | 'principal_and_interest'>;
+  /** Phase 2 — per-property manual $/mo override on the new slice (undefined = auto) */
+  equityReleaseManualRepayments: Map<string, number>;
   rateAdjustment: number;
   /** Phase F1 — per-property contracted-rate overrides (propertyId → new rate %) */
   propertyRateOverrides: Map<string, number>;
@@ -122,6 +128,9 @@ const DEFAULT_STRATEGY: StrategyState = {
   equityReleaseEnabled: false,
   equityReleasePropertyIds: new Set(),
   equityReleaseTargetLVRs: new Map(),
+  equityReleaseDeploymentPercents: new Map(),
+  equityReleaseRepaymentTypes: new Map(),
+  equityReleaseManualRepayments: new Map(),
   rateAdjustment: 0,
   propertyRateOverrides: new Map(),
   additional: { ...DEFAULT_ADDITIONAL_STRATEGY },
@@ -429,9 +438,13 @@ export function StrategyScenarioModeling({
         const prop = equityReleaseProperties.find(p => p.id === propId);
         if (!prop) return;
         const targetLVR = strategy.equityReleaseTargetLVRs.get(propId) ?? DEFAULT_EQUITY_LVR;
+        // Phase 2 — granular controls
+        const deploymentPercent = strategy.equityReleaseDeploymentPercents.get(propId) ?? 1;
+        const repaymentType = strategy.equityReleaseRepaymentTypes.get(propId) ?? 'interest_only';
+        const manualRepayment = strategy.equityReleaseManualRepayments.get(propId);
         deltas.push({
           id: prop.id,
-          label: `Equity release ${prop.address?.slice(0, 25) || 'property'} → ${(targetLVR * 100).toFixed(0)}% LVR`,
+          label: `Equity release ${prop.address?.slice(0, 25) || 'property'} → ${(targetLVR * 100).toFixed(0)}% LVR (deploy ${(deploymentPercent * 100).toFixed(0)}%, ${repaymentType === 'interest_only' ? 'IO' : 'P&I'})`,
           type: 'equity_release',
           value: targetLVR,
           unit: 'percent',
@@ -439,24 +452,40 @@ export function StrategyScenarioModeling({
             targetLVR,
             // honour per-property contracted rate if present, otherwise let engine fall back
             releaseRate: prop.interest_rate ?? null,
+            deploymentPercent,
+            repaymentType,
+            ...(Number.isFinite(manualRepayment as number) ? { manualRepayment } : {}),
           },
         });
-        // Track shadow IO cost on the new slice for the impact summary
+        // Track shadow servicing cost on the deployed slice for the impact summary
         const ratePct = prop.interest_rate ?? baseInputs.interestRate;
+        const assessRatePct = ratePct + (baseInputs.bufferRate ?? 3);
         const newLoan = prop.current_value * targetLVR;
         const grossRelease = Math.max(0, newLoan - prop.loan_remaining);
-        const monthlyServicing = grossRelease * (ratePct / 100 / 12);
+        const deployedGross = grossRelease * deploymentPercent;
+        let monthlyServicing = 0;
+        if (Number.isFinite(manualRepayment as number) && (manualRepayment as number) >= 0) {
+          monthlyServicing = manualRepayment as number;
+        } else if (repaymentType === 'principal_and_interest') {
+          const r = assessRatePct / 100 / 12;
+          const n = (baseInputs.loanTermYears || 30) * 12;
+          monthlyServicing = r > 0 && deployedGross > 0
+            ? deployedGross * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1)
+            : 0;
+        } else {
+          monthlyServicing = deployedGross * (assessRatePct / 100 / 12);
+        }
         equityReleaseMonthlyCost += monthlyServicing;
-        if (grossRelease > 0) {
+        if (deployedGross > 0) {
           leverCashflowNotes.set(
             `equity_release-${prop.id}`,
-            `+${formatCurrency(grossRelease)} cash · −${formatCurrency(monthlyServicing)}/mo IO`,
+            `+${formatCurrency(deployedGross)} cash · −${formatCurrency(monthlyServicing)}/mo ${repaymentType === 'interest_only' ? 'IO' : 'P&I'}`,
           );
         }
       });
       if (equityReleaseMonthlyCost > 0) {
         impacts.push({
-          label: `Equity release servicing on ${strategy.equityReleasePropertyIds.size} property(s) (IO)`,
+          label: `Equity release servicing on ${strategy.equityReleasePropertyIds.size} property(s)`,
           monthlySaving: equityReleaseMonthlyCost,
           type: 'cost',
         });
@@ -618,35 +647,56 @@ export function StrategyScenarioModeling({
       const r = (annualRatePct / 100) / 12;
       const n = termYears * 12;
       if (r <= 0 || n <= 0) return 0;
-      return (1 - Math.pow(1 + r, -n)) / r;
+      const f = (1 - Math.pow(1 + r, -n)) / r;
+      // Safety clamp — annuity factor for plausible (rate, term) combos sits
+      // between ~50 (15% rate, 30y) and ~280 (1% rate, 30y). Anything outside
+      // that band is a sign the inputs collapsed (rate ~ 0) and would balloon
+      // theoretical capacity into the millions. Clamp to a sane ceiling.
+      return Number.isFinite(f) ? Math.min(Math.max(f, 0), 280) : 0;
     };
     /** Compute the unfloored raw monthly surplus directly from the engine's
      *  decomposed result. Bypasses conservative-mode floors and the
-     *  Math.max(0,…) clamp on `monthlySurplus`. */
-    const rawSurplusFrom = (r: any): number => {
+     *  Math.max(0,…) clamp on `monthlySurplus`. The engine has already
+     *  aggregated commitments (incl. any new equity-release servicing) so
+     *  this is the *true* post-aggregation surplus before the floor kicks in. */
+    const rawSurplusFrom = (r: any, inputs: any): number => {
+      // Income: prefer engine-computed `monthlyAfterTaxIncome` (already shaded + taxed)
       const income = r?.monthlyAfterTaxIncome ?? 0;
-      const expenses = r?.totalLivingExpenses ?? r?.livingExpensesMonthly ?? 0;
-      const commitments = r?.existingCommitmentsMonthly ?? 0;
+      // Expenses & commitments from the *inputs* the engine actually consumed
+      const expenses = inputs?.monthlyLivingExpenses ?? r?.totalLivingExpenses ?? 0;
+      const commitments = inputs?.monthlyCommitments ?? r?.existingCommitmentsMonthly ?? 0;
       return income - expenses - commitments;
     };
+    /** Engine-truth assessment rate. The engine returns `assessmentRate`
+     *  directly on the result — use it instead of recomputing from inputs
+     *  where `bufferRate` may be 0/undefined and produce a doubled annuity
+     *  factor (the source of the "millions" bug). */
+    const safeAssessmentRate = (r: any, inputs: any): number => {
+      const fromResult = r?.assessmentRate;
+      if (Number.isFinite(fromResult) && fromResult > 0) return fromResult;
+      const ir = inputs?.interestRate ?? 0;
+      const buf = inputs?.bufferRate ?? 3; // default APRA buffer
+      const computed = ir + buf;
+      return computed > 0 ? computed : 0;
+    };
 
-    const baseAssessmentRate = (baseInputs.interestRate ?? 0) + (baseInputs.bufferRate ?? 0);
     const baseTerm = baseInputs.loanTermYears ?? 30;
-    const baseRawSurplus = rawSurplusFrom(baseResult);
+    const baseAssessmentRate = safeAssessmentRate(baseResult, baseInputs);
+    const baseRawSurplus = rawSurplusFrom(baseResult, baseInputs);
     const baseAnnuity = annuityFactor(baseAssessmentRate, baseTerm);
     const baseTheoreticalCapacity = Math.round(baseRawSurplus * baseAnnuity);
 
-    const scenarioAssessmentRate = (inputs.interestRate ?? baseAssessmentRate) + (inputs.bufferRate ?? 0);
     const scenarioTerm = inputs.loanTermYears ?? baseTerm;
-    const scenarioRawSurplus = rawSurplusFrom(result);
+    const scenarioAssessmentRate = safeAssessmentRate(result, inputs);
+    const scenarioRawSurplus = rawSurplusFrom(result, inputs);
     const scenarioAnnuity = annuityFactor(scenarioAssessmentRate, scenarioTerm);
     const scenarioTheoreticalCapacity = Math.round(scenarioRawSurplus * scenarioAnnuity);
 
     const leverAttribution: LeverAttribution[] = deltas.map(d => {
       const isolated = runScenarioWithInputs(`Isolated: ${d.label}`, [d], ctx);
-      const isoAssessRate = (isolated.inputs.interestRate ?? baseAssessmentRate) + (isolated.inputs.bufferRate ?? 0);
       const isoTerm = isolated.inputs.loanTermYears ?? baseTerm;
-      const isoRawSurplus = rawSurplusFrom(isolated.result);
+      const isoAssessRate = safeAssessmentRate(isolated.result, isolated.inputs);
+      const isoRawSurplus = rawSurplusFrom(isolated.result, isolated.inputs);
       const isoTheoretical = Math.round(isoRawSurplus * annuityFactor(isoAssessRate, isoTerm));
       return {
         id: `${d.type}-${d.id}`,
@@ -687,7 +737,7 @@ export function StrategyScenarioModeling({
   }, [strategy, acquisition, baseInputs, baseResult, consolidatableDebts, investmentProperties, equityReleaseProperties, properties, liabilities]);
 
 
-  // Equity release calculation — now supports multiple properties
+  // Equity release calculation — supports multiple properties + Phase 2 deployment %
   interface EquityReleaseItem {
     property: PropertyItem;
     currentLVR: number;
@@ -695,6 +745,12 @@ export function StrategyScenarioModeling({
     targetLVR: number;
     grossAccessibleEquity: number;
     accessibleEquity: number;
+    deployedGross: number;
+    deployedNet: number;
+    deploymentPercent: number;
+    repaymentType: 'interest_only' | 'principal_and_interest';
+    autoMonthlyServicing: number;
+    manualRepayment?: number;
     maxLoan: number;
     lmiEstimate: any;
     lmiAmount: number;
@@ -706,6 +762,9 @@ export function StrategyScenarioModeling({
       const prop = equityReleaseProperties.find(p => p.id === propId);
       if (!prop) return null;
       const targetLVR = strategy.equityReleaseTargetLVRs.get(propId) ?? DEFAULT_EQUITY_LVR;
+      const deploymentPercent = strategy.equityReleaseDeploymentPercents.get(propId) ?? 1;
+      const repaymentType = strategy.equityReleaseRepaymentTypes.get(propId) ?? 'interest_only';
+      const manualRepayment = strategy.equityReleaseManualRepayments.get(propId);
       const maxLoan = prop.current_value * targetLVR;
       const grossAccessibleEquity = Math.max(0, maxLoan - prop.loan_remaining);
       const currentLVR = prop.current_value > 0 ? (prop.loan_remaining / prop.current_value) * 100 : 0;
@@ -725,11 +784,49 @@ export function StrategyScenarioModeling({
       }
 
       const accessibleEquity = Math.max(0, grossAccessibleEquity - lmiAmount);
-      return { property: prop, currentLVR, currentEquity, targetLVR: targetLVRPercent, grossAccessibleEquity, accessibleEquity, maxLoan, lmiEstimate, lmiAmount };
-    }).filter(Boolean) as EquityReleaseItem[];
-  }, [strategy.equityReleaseEnabled, strategy.equityReleasePropertyIds, strategy.equityReleaseTargetLVRs, equityReleaseProperties]);
+      const deployedGross = grossAccessibleEquity * deploymentPercent;
+      const deployedLmi = lmiAmount * deploymentPercent;
+      const deployedNet = Math.max(0, deployedGross - deployedLmi);
 
-  const totalAccessibleEquity = useMemo(() => equityReleaseItems.reduce((sum, item) => sum + item.accessibleEquity, 0), [equityReleaseItems]);
+      const ratePct = prop.interest_rate ?? baseInputs.interestRate;
+      const assessRatePct = ratePct + (baseInputs.bufferRate ?? 3);
+      let autoMonthlyServicing = 0;
+      if (repaymentType === 'principal_and_interest') {
+        const r = assessRatePct / 100 / 12;
+        const n = (baseInputs.loanTermYears || 30) * 12;
+        autoMonthlyServicing = r > 0 && deployedGross > 0
+          ? deployedGross * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1)
+          : 0;
+      } else {
+        autoMonthlyServicing = deployedGross * (assessRatePct / 100 / 12);
+      }
+
+      return {
+        property: prop, currentLVR, currentEquity,
+        targetLVR: targetLVRPercent, grossAccessibleEquity, accessibleEquity,
+        deployedGross, deployedNet, deploymentPercent, repaymentType,
+        autoMonthlyServicing,
+        manualRepayment: Number.isFinite(manualRepayment as number) ? manualRepayment : undefined,
+        maxLoan, lmiEstimate, lmiAmount,
+      };
+    }).filter(Boolean) as EquityReleaseItem[];
+  }, [
+    strategy.equityReleaseEnabled,
+    strategy.equityReleasePropertyIds,
+    strategy.equityReleaseTargetLVRs,
+    strategy.equityReleaseDeploymentPercents,
+    strategy.equityReleaseRepaymentTypes,
+    strategy.equityReleaseManualRepayments,
+    equityReleaseProperties,
+    baseInputs.interestRate,
+    baseInputs.bufferRate,
+    baseInputs.loanTermYears,
+  ]);
+
+  const totalAccessibleEquity = useMemo(
+    () => equityReleaseItems.reduce((sum, item) => sum + item.deployedNet, 0),
+    [equityReleaseItems]
+  );
 
   const capacityChange = scenarioResult.borrowingCapacity - baseResult.borrowingCapacity;
   const surplusChange = scenarioResult.monthlySurplus - baseResult.monthlySurplus;
@@ -768,6 +865,9 @@ export function StrategyScenarioModeling({
       refinancedToIO: new Set(),
       equityReleasePropertyIds: new Set(),
       equityReleaseTargetLVRs: new Map(),
+      equityReleaseDeploymentPercents: new Map(),
+      equityReleaseRepaymentTypes: new Map(),
+      equityReleaseManualRepayments: new Map(),
       propertyRateOverrides: new Map(),
       additional: { ...DEFAULT_ADDITIONAL_STRATEGY, portfolioSellPropertyIds: new Set() },
     });

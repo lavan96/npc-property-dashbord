@@ -506,20 +506,31 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
     }
 
     case 'equity_release': {
-      // Phase C + F2: Equity-release lever closes the loop between cash freed,
-      // the new shadow debt, and the source property's actual contracted rate.
+      // Phase C + F2 + Phase 2 (granular controls): Equity-release lever
+      // closes the loop between cash freed, the new shadow debt, and the
+      // source property's actual contracted rate.
       //
       // Inputs interpreted from the delta:
       //   value: target LVR as a ratio (0.80) OR % (80) OR absolute release amount
       //   meta.targetLVR: optional explicit target LVR (0–1 ratio)
       //   meta.releaseRate: optional override rate for the release loan (% p.a.)
       //   meta.lenderMaxLVR: optional lender ceiling per security (default 0.95)
+      //   meta.deploymentPercent: 0–1 ratio of the gross release the broker
+      //     actually intends to deploy (default 1.0 = full release). Lower
+      //     values reduce both the new debt slice AND the servicing cost
+      //     proportionally — broker can flex the tradeoff between capital
+      //     unlocked and serviceability hit.
+      //   meta.repaymentType: 'interest_only' (default) | 'principal_and_interest'
+      //     — drives whether the new slice is serviced as IO @ assessment rate
+      //     or amortised P&I over the policy term.
+      //   meta.manualRepayment: optional explicit $/mo override on the new
+      //     slice. When provided, bypasses both auto-IO and auto-P&I math.
       //   unit: 'ratio' = LVR ratio, 'percent' = LVR %, 'absolute' = direct $ amount
       //
       // Output:
-      //   - releasedCapital ≈ new equity loan − LMI on that loan (cash to settlement)
-      //   - commitmentAdjustment += monthly IO repayment on the NEW slice only
-      //   - debtBalanceAdjustment += new equity loan principal (DTI honest)
+      //   - releasedCapital ≈ deployed equity loan − LMI on that loan (cash to settlement)
+      //   - commitmentAdjustment += monthly repayment on the NEW deployed slice only
+      //   - debtBalanceAdjustment += deployed equity loan principal (DTI honest)
       const property = context.properties?.find(p => p.id === delta.id);
       if (!property || property.currentValue <= 0) break;
 
@@ -585,25 +596,54 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
         lmiOnRelease = est.lmiAmount;
       }
 
-      // Net usable cash (after LMI on the release loan)
-      const netRelease = Math.max(0, grossRelease - lmiOnRelease);
+      // Phase 2 (granular controls): apply deployment % BEFORE servicing &
+      // released-capital calcs. A 50% deployment halves both the cash freed
+      // AND the new debt slice (and therefore the servicing hit).
+      const rawDeployPct = delta.meta?.deploymentPercent;
+      const deploymentPercent = Number.isFinite(rawDeployPct as number)
+        ? Math.max(0, Math.min(1, rawDeployPct as number))
+        : 1;
+      const deployedGross = grossRelease * deploymentPercent;
+      const deployedLmi = lmiOnRelease * deploymentPercent;
+      const netRelease = Math.max(0, deployedGross - deployedLmi);
 
-      // F2 fix — servicing impact is the IO cost on the NEW slice only.
+      // Phase 2: repayment type & manual override on the new slice.
+      const repaymentType = (delta.meta?.repaymentType as string | undefined) === 'principal_and_interest'
+        ? 'principal_and_interest'
+        : 'interest_only';
+      const manualRepayment = delta.meta?.manualRepayment as number | undefined;
+
+      // F2 fix — servicing impact is the cost on the deployed NEW slice only.
       // Phase I3 — APRA requires servicing be assessed at the BUFFERED rate
-      // (contracted + buffer, typically +3.00%). Using the contracted rate
-      // here understated commitments and inflated capacity. Borrowers will
-      // be tested at the assessment rate by the lender, so the engine must
-      // mirror that to stay honest.
+      // (contracted + buffer, typically +3.00%). Borrowers will be tested at
+      // the assessment rate by the lender, so the engine mirrors that.
       const assessmentRatePct = ratePct + (context.baseInputs.bufferRate ?? 3);
       const assessmentMonthlyRate = (assessmentRatePct / 100) / 12;
-      const ioRepaymentNewSlice = grossRelease * assessmentMonthlyRate;
-      effect.commitmentAdjustment = Math.max(0, ioRepaymentNewSlice);
-      // Phase I4 — debt balance includes the new equity slice so DTI sees it.
-      effect.debtBalanceAdjustment = grossRelease;
+      const termYears = context.baseInputs.loanTermYears || 30;
+      const periods = termYears * 12;
+
+      let newSliceRepayment: number;
+      if (Number.isFinite(manualRepayment as number) && (manualRepayment as number) >= 0) {
+        newSliceRepayment = manualRepayment as number;
+      } else if (repaymentType === 'principal_and_interest' && assessmentMonthlyRate > 0) {
+        newSliceRepayment = deployedGross * (assessmentMonthlyRate * Math.pow(1 + assessmentMonthlyRate, periods)) /
+          (Math.pow(1 + assessmentMonthlyRate, periods) - 1);
+      } else {
+        // IO at the buffered assessment rate
+        newSliceRepayment = deployedGross * assessmentMonthlyRate;
+      }
+      effect.commitmentAdjustment = Math.max(0, newSliceRepayment);
+      // Phase I4 — debt balance includes the deployed equity slice so DTI sees it.
+      effect.debtBalanceAdjustment = deployedGross;
 
       effect.releasedCapital = netRelease;
+      const repayLabel = Number.isFinite(manualRepayment as number)
+        ? `manual $${Math.round(manualRepayment as number).toLocaleString()}/mo`
+        : repaymentType === 'principal_and_interest'
+          ? `P&I @ ${assessmentRatePct.toFixed(2)}% over ${termYears}y`
+          : `IO @ ${assessmentRatePct.toFixed(2)}% (buffered)`;
       effect.acquisitionNotes.push(
-        `Equity release on ${property.address?.slice(0, 30) || 'property'} @ ${ratePct.toFixed(2)}% (assessed @ ${assessmentRatePct.toFixed(2)}%): gross $${Math.round(grossRelease).toLocaleString()} − LMI $${Math.round(lmiOnRelease).toLocaleString()} = $${Math.round(netRelease).toLocaleString()} usable. New LVR ${newLvr.toFixed(1)}% (cap: ${lvrResult.reason}). Servicing +$${Math.round(ioRepaymentNewSlice).toLocaleString()}/mo (IO @ buffered rate).`
+        `Equity release on ${property.address?.slice(0, 30) || 'property'} @ ${ratePct.toFixed(2)}%: gross $${Math.round(grossRelease).toLocaleString()} × deploy ${(deploymentPercent * 100).toFixed(0)}% = $${Math.round(deployedGross).toLocaleString()} − LMI $${Math.round(deployedLmi).toLocaleString()} = $${Math.round(netRelease).toLocaleString()} usable. New LVR ${newLvr.toFixed(1)}% (cap: ${lvrResult.reason}). Servicing +$${Math.round(newSliceRepayment).toLocaleString()}/mo (${repayLabel}).`
       );
       effect.description = `Release equity from ${property.address?.slice(0, 30) || 'property'}`;
       break;
