@@ -62,6 +62,7 @@ import { PurchasePowerHeadline, type LeverAttribution } from './PurchasePowerHea
 import { StrategyRationalePanel } from './StrategyRationalePanel';
 import { buildStrategyRationale } from '@/utils/strategyRationaleEngine';
 import { CapacityMathInspector } from './CapacityMathInspector';
+import { CapitalFlowCanvas, type CapitalAllocation } from './CapitalFlowCanvas';
 
 // ── Types ──────────────────────────────────────────────
 
@@ -238,6 +239,7 @@ export function StrategyScenarioModeling({
 }: StrategyScenarioModelingProps) {
   const [strategy, setStrategy] = useState<StrategyState>(DEFAULT_STRATEGY);
   const [acquisition, setAcquisition] = useState<AcquisitionState>(DEFAULT_ACQUISITION);
+  const [capitalAllocations, setCapitalAllocations] = useState<CapitalAllocation[]>([]);
   const [presets, setPresets] = useState<ScenarioPreset[]>(externalPresets || []);
   const [scenarioName, setScenarioName] = useState('');
   const [showSaveInput, setShowSaveInput] = useState(false);
