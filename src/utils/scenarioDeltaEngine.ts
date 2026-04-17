@@ -1037,8 +1037,8 @@ export function runScenarioWithInputs(
   const orderedSafe = orderDeltas(safeDeltas);
 
   const total = emptyEffect(scenarioName);
-  for (const d of safeDeltas) {
-    const e = applyDelta(d, context);
+  for (const d of orderedSafe) {
+    const e = applyDelta(d, ctx);
     total.incomeAdjustment += e.incomeAdjustment;
     total.shadedIncomeAdjustment += e.shadedIncomeAdjustment;
     total.expenseAdjustment += e.expenseAdjustment;
@@ -1053,30 +1053,30 @@ export function runScenarioWithInputs(
   }
 
   // Phase E (M3): rescale HEM-derived expenses for the new income tier
-  const newGross2 = Math.max(0, context.baseInputs.grossAnnualIncome + total.incomeAdjustment);
+  const newGross2 = Math.max(0, ctx.baseInputs.grossAnnualIncome + total.incomeAdjustment);
   const hemDelta2 = computeHemTierDelta(
-    context.baseInputs.grossAnnualIncome,
+    ctx.baseInputs.grossAnnualIncome,
     newGross2,
-    context.baseInputs.monthlyLivingExpenses,
+    ctx.baseInputs.monthlyLivingExpenses,
   );
 
   const inputs: BorrowingCapacityInput = {
-    ...context.baseInputs,
+    ...ctx.baseInputs,
     grossAnnualIncome: newGross2,
-    shadedAnnualIncome: Math.max(0, context.baseInputs.shadedAnnualIncome + total.shadedIncomeAdjustment),
-    monthlyLivingExpenses: Math.max(0, context.baseInputs.monthlyLivingExpenses + total.expenseAdjustment + hemDelta2),
-    monthlyCommitments: Math.max(0, context.baseInputs.monthlyCommitments + total.commitmentAdjustment),
-    interestRate: Math.max(0.5, context.baseInputs.interestRate + total.rateAdjustment),
-    loanTermYears: Math.max(5, context.baseInputs.loanTermYears + total.loanTermAdjustment),
-    totalDebtBalances: Math.max(0, (context.baseInputs.totalDebtBalances || 0) + total.debtBalanceAdjustment),
-    dtiCapEnabled: total.dtiCapEnabled ?? context.baseInputs.dtiCapEnabled,
-    dtiCapLimit: total.dtiCapLimit ?? context.baseInputs.dtiCapLimit,
+    shadedAnnualIncome: Math.max(0, ctx.baseInputs.shadedAnnualIncome + total.shadedIncomeAdjustment),
+    monthlyLivingExpenses: Math.max(0, ctx.baseInputs.monthlyLivingExpenses + total.expenseAdjustment + hemDelta2),
+    monthlyCommitments: Math.max(0, ctx.baseInputs.monthlyCommitments + total.commitmentAdjustment),
+    interestRate: Math.max(0.5, ctx.baseInputs.interestRate + total.rateAdjustment),
+    loanTermYears: Math.max(5, ctx.baseInputs.loanTermYears + total.loanTermAdjustment),
+    totalDebtBalances: Math.max(0, (ctx.baseInputs.totalDebtBalances || 0) + total.debtBalanceAdjustment),
+    dtiCapEnabled: total.dtiCapEnabled ?? ctx.baseInputs.dtiCapEnabled,
+    dtiCapLimit: total.dtiCapLimit ?? ctx.baseInputs.dtiCapLimit,
   };
 
   const calc = calculateBorrowingCapacity(inputs);
-  const capacityChange = buildScenarioChange(context.baseResult.borrowingCapacity, calc.borrowingCapacity);
-  const acquisitionCapacity = context.acquisition
-    ? computeAcquisitionCapacity(calc.borrowingCapacity, context, total)
+  const capacityChange = buildScenarioChange(ctx.baseResult.borrowingCapacity, calc.borrowingCapacity);
+  const acquisitionCapacity = ctx.acquisition
+    ? computeAcquisitionCapacity(calc.borrowingCapacity, ctx, total)
     : null;
 
   return {
