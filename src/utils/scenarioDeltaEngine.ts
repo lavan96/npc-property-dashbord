@@ -538,9 +538,3 @@ export function createMaximumStrategyScenario(
     ],
   };
 }
-
-// ============================================
-// EXPORTS
-// ============================================
-
-export type { DeltaEffect };
