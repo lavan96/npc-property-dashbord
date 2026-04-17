@@ -509,14 +509,15 @@ ${(properties || []).map((p: any) => `- [${p.id}] ${p.address} (${p.property_typ
 
     // Phase J2 → Sanity fix (LLM upgrade): the previous default
     // 'google/gemini-3-pro-preview' is no longer routable through the
-    // Lovable AI Gateway and was causing silent failures (no completion,
-    // hung stream). Fall back to the current platform default with an
-    // explicit fallback chain. BC_AGENT_MODEL still wins if set.
-    const PRIMARY_MODEL = Deno.env.get('BC_AGENT_MODEL') || 'google/gemini-3-flash-preview';
+    // Lovable AI Gateway. Upgraded to Gemini 3.1 Pro (latest reasoning model)
+    // with a Flash + 2.5 fallback chain so model availability changes never
+    // break the agent. BC_AGENT_MODEL secret still wins if set.
+    const PRIMARY_MODEL = Deno.env.get('BC_AGENT_MODEL') || 'google/gemini-3.1-pro-preview';
     const MODEL_FALLBACKS = [
       PRIMARY_MODEL,
-      'google/gemini-2.5-flash',
+      'google/gemini-3-flash-preview',
       'google/gemini-2.5-pro',
+      'google/gemini-2.5-flash',
     ];
     // De-dup while preserving order
     const MODEL_CHAIN = Array.from(new Set(MODEL_FALLBACKS));
