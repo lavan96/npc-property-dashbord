@@ -591,6 +591,8 @@ export function runScenarioWithInputs(
     total.rateAdjustment += e.rateAdjustment;
     total.loanTermAdjustment += e.loanTermAdjustment;
     total.debtBalanceAdjustment += e.debtBalanceAdjustment;
+    total.releasedCapital += e.releasedCapital;
+    if (e.acquisitionNotes.length) total.acquisitionNotes.push(...e.acquisitionNotes);
     if (e.dtiCapEnabled !== undefined) total.dtiCapEnabled = e.dtiCapEnabled;
     if (e.dtiCapLimit !== undefined) total.dtiCapLimit = e.dtiCapLimit;
   }
@@ -610,6 +612,9 @@ export function runScenarioWithInputs(
 
   const calc = calculateBorrowingCapacity(inputs);
   const capacityChange = buildScenarioChange(context.baseResult.borrowingCapacity, calc.borrowingCapacity);
+  const acquisitionCapacity = context.acquisition
+    ? computeAcquisitionCapacity(calc.borrowingCapacity, context, total)
+    : null;
 
   return {
     result: {
@@ -620,6 +625,8 @@ export function runScenarioWithInputs(
       serviceabilityBand: calc.serviceabilityBand,
       dtiRatio: calc.dtiRatio,
       capacityChange,
+      acquisitionCapacity,
+      validationIssues: issues.map(i => ({ deltaId: i.deltaId, deltaType: i.deltaType, severity: i.severity, message: i.message })),
     },
     inputs,
     effect: total,
