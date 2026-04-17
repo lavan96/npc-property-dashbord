@@ -90,6 +90,19 @@ interface StrategyState {
   additional: AdditionalStrategyState;
 }
 
+/** Phase C: Acquisition context driving stamp duty + LMI math.
+ *  Defaults to a NSW investor purchase of an established dwelling. */
+interface AcquisitionState {
+  enabled: boolean;
+  state: AustralianState;
+  intent: PurchaseIntent;
+  category: PropertyCategory;
+  isFirstHomeBuyer: boolean;
+  isForeignBuyer: boolean;
+  lmiMode: 'none' | 'display_deduction' | 'debt_capitalised';
+  cashOnHand: number;
+}
+
 const DEFAULT_EQUITY_LVR = 0.80;
 
 const DEFAULT_STRATEGY: StrategyState = {
@@ -100,6 +113,17 @@ const DEFAULT_STRATEGY: StrategyState = {
   equityReleaseTargetLVRs: new Map(),
   rateAdjustment: 0,
   additional: { ...DEFAULT_ADDITIONAL_STRATEGY },
+};
+
+const DEFAULT_ACQUISITION: AcquisitionState = {
+  enabled: false,
+  state: 'NSW',
+  intent: 'investor',
+  category: 'established',
+  isFirstHomeBuyer: false,
+  isForeignBuyer: false,
+  lmiMode: 'display_deduction',
+  cashOnHand: 0,
 };
 
 // ── Scenario Preset Types ──────────────────────────────
