@@ -778,6 +778,31 @@ export function StrategyScenarioModeling({
                 }
               });
 
+              // Phase G1 — map valuation overrides
+              const valOverrides = new Map<string, import('./AdditionalStrategyLevers').ValuationOverride>();
+              (scenario.adjustments.valuationOverrides || []).forEach((vo) => {
+                if (vo.propertyId && Number.isFinite(vo.newValue) && vo.newValue > 0) {
+                  valOverrides.set(vo.propertyId, {
+                    propertyId: vo.propertyId,
+                    newValue: vo.newValue,
+                    basis: vo.basis,
+                    source: vo.source || '',
+                  });
+                }
+              });
+
+              // Phase G2 — map cross-collateralised pool
+              const aiPool = scenario.adjustments.crossCollatPool;
+              const poolState = aiPool && aiPool.enabled
+                ? {
+                    enabled: true,
+                    propertyIds: new Set<string>(aiPool.propertyIds || []),
+                    blendedTargetLVR: aiPool.blendedTargetLVR ?? 0.80,
+                    lenderMaxLVR: aiPool.lenderMaxLVR ?? 0.95,
+                    allocationStrategy: (aiPool.allocationStrategy ?? 'highest_equity_first') as 'highest_equity_first' | 'pro_rata',
+                  }
+                : prev.additional.crossCollatPool;
+
               return {
                 ...prev,
                 consolidatedLiabilities: new Set(scenario.adjustments.consolidatedLiabilityIds || []),
@@ -796,6 +821,8 @@ export function StrategyScenarioModeling({
                   portfolioSellReinvest: false,
                   dtiCapEnabled: dtiOverride?.enabled || false,
                   dtiCapValue: dtiOverride?.value || 6,
+                  valuationOverrides: valOverrides,
+                  crossCollatPool: poolState,
                 },
               };
             });
