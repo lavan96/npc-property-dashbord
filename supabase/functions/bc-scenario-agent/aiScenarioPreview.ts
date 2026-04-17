@@ -459,6 +459,23 @@ export function validateAIScenarios(
       const deltas = adjustmentsToDeltas(scenario.adjustments);
       const { inputs, effect, issues } = aggregateDeltas(scenario.name, deltas, ctx);
 
+      // Phase J1: detect soft-cap clamps and surface as validation notes so
+      // the broker sees inline that the model overshot a guardrail.
+      const clampIssues: typeof issues = [];
+      const a = scenario.adjustments || ({} as AIAdjustments);
+      if (typeof a.incomeGrowthPercent === 'number' && a.incomeGrowthPercent > 25) {
+        clampIssues.push({ deltaId: 'income_change', deltaType: 'income_change', severity: 'warn', message: `Income growth clamped to 25% (model proposed ${a.incomeGrowthPercent}%) — needs payslip evidence to defend higher.` });
+      }
+      if (typeof a.expenseReductionPercent === 'number' && a.expenseReductionPercent > 30) {
+        clampIssues.push({ deltaId: 'expense_change', deltaType: 'expense_change', severity: 'warn', message: `Expense reduction clamped to 30% (model proposed ${a.expenseReductionPercent}%) — HEM floor will likely bite anyway.` });
+      }
+      if (a.equityRelease && typeof a.equityRelease.targetLVR === 'number' && a.equityRelease.targetLVR > 0.90) {
+        clampIssues.push({ deltaId: 'equity_release', deltaType: 'equity_release', severity: 'warn', message: `Equity release LVR clamped to 90% (model proposed ${(a.equityRelease.targetLVR * 100).toFixed(0)}%) — most lenders cap below this without LMI.` });
+      }
+      if (a.crossCollatPool && typeof a.crossCollatPool.blendedTargetLVR === 'number' && a.crossCollatPool.blendedTargetLVR > 0.90) {
+        clampIssues.push({ deltaId: 'portfolio_lvr_release', deltaType: 'portfolio_lvr_release', severity: 'warn', message: `Cross-collat blended LVR clamped to 90% (model proposed ${(a.crossCollatPool.blendedTargetLVR * 100).toFixed(0)}%).` });
+      }
+
       const result = calculateBorrowingCapacity({
         grossAnnualIncome: inputs.grossAnnualIncome,
         shadedAnnualIncome: inputs.shadedAnnualIncome,
@@ -483,6 +500,22 @@ export function validateAIScenarios(
         scenario.adjustments.acquisition = acq;
       }
 
+      // Phase J1: Persist clamped values back so the front-end Apply flow
+      // pushes the SAME numbers into the strategy levers (no drift between
+      // preview and post-Apply state).
+      if (typeof a.incomeGrowthPercent === 'number' && a.incomeGrowthPercent > 25) {
+        scenario.adjustments.incomeGrowthPercent = 25;
+      }
+      if (typeof a.expenseReductionPercent === 'number' && a.expenseReductionPercent > 30) {
+        scenario.adjustments.expenseReductionPercent = 30;
+      }
+      if (a.equityRelease && typeof a.equityRelease.targetLVR === 'number' && a.equityRelease.targetLVR > 0.90) {
+        scenario.adjustments.equityRelease = { ...a.equityRelease, targetLVR: 0.90 };
+      }
+      if (a.crossCollatPool && typeof a.crossCollatPool.blendedTargetLVR === 'number' && a.crossCollatPool.blendedTargetLVR > 0.90) {
+        scenario.adjustments.crossCollatPool = { ...a.crossCollatPool, blendedTargetLVR: 0.90 };
+      }
+
       const validation: EngineValidation = {
         borrowingCapacity: Math.round(result.borrowingCapacity),
         capacityChange: Math.round(result.borrowingCapacity - ctx.baseResult.borrowingCapacity),
@@ -496,7 +529,7 @@ export function validateAIScenarios(
         netCashAfterSettlement: acquisitionCapacity?.netCashAfterSettlement,
         releasedCapital: acquisitionCapacity?.releasedCapital,
         targetPurchasePrice: acquisitionCapacity?.targetPurchasePrice,
-        validationIssues: issues,
+        validationIssues: [...issues, ...clampIssues],
       };
 
       scenario.engineValidation = validation;
