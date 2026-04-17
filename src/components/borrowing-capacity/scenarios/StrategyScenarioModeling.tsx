@@ -1524,6 +1524,20 @@ export function StrategyScenarioModeling({
             formatCurrency={formatCurrency}
           />
 
+          {/* F5 — Strategy rationale: what / why / how / sequence (finance-ready) */}
+          <StrategyRationalePanel
+            report={buildStrategyRationale({
+              baseCapacity: baseResult.borrowingCapacity,
+              scenarioCapacity: scenarioResult.borrowingCapacity,
+              baseMonthlyCommitments: baseResult.existingCommitmentsMonthly,
+              deltas: scenarioInputs?.appliedDeltas ?? [],
+              leverAttribution,
+              acquisitionCapacity: acquisition.enabled ? acquisitionCapacity : null,
+              formatCurrency,
+            })}
+            formatCurrency={formatCurrency}
+          />
+
           {impactBreakdown.length > 0 && (
             <div className="space-y-2">
               {impactBreakdown.map((impact, i) => (
