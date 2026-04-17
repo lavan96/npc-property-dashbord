@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { FINANCE_TABLE_CONFIGS, FINANCE_TABLE_KEYS, FinanceTableKey } from '@/components/finance-portal/financeTableConfig';
 import { FinanceRecordList } from '@/components/finance-portal/FinanceRecordList';
 import { DocumentVaultPanel } from '@/components/finance-portal/DocumentVaultPanel';
+import { BorrowingCapacityPanel } from '@/components/finance-portal/BorrowingCapacityPanel';
 
 export default function FinancePortalClientProfile() {
   const { clientId } = useParams<{ clientId: string }>();
@@ -36,7 +37,8 @@ export default function FinancePortalClientProfile() {
   // Documents permission defaults to true (view+edit) when assignment exists but key is missing,
   // matching the edge function default. Hide only if explicitly { view: false }.
   const docsVisible = permissions.documents ? !!permissions.documents.view : true;
-  const defaultTab = visibleTabs[0] || (docsVisible ? 'documents' : 'properties');
+  const bcVisible = permissions.borrowing_capacity ? !!permissions.borrowing_capacity.view : true;
+  const defaultTab = visibleTabs[0] || (docsVisible ? 'documents' : (bcVisible ? 'borrowing_capacity' : 'properties'));
 
   if (isLoading) {
     return (
