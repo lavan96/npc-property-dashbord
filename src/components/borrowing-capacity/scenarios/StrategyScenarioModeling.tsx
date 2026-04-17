@@ -137,6 +137,8 @@ export interface ScenarioPreset {
   result: BorrowingCapacityResult;
   /** Accessible equity from equity release lever (informational capital, not serviceability) */
   accessibleEquity?: number;
+  /** Phase D: Acquisition Capacity snapshot (max purchase price + costs) for PDF / persistence */
+  acquisitionCapacity?: AcquisitionCapacity | null;
 }
 
 interface StrategyScenarioModelingProps {
@@ -529,13 +531,14 @@ export function StrategyScenarioModeling({
       adjustedInputs: { ...scenarioInputs },
       result: scenarioResult,
       accessibleEquity: totalAccessibleEquity,
+      acquisitionCapacity: acquisitionCapacity ?? null,
     };
     const updated = [...presets, newPreset];
     setPresets(updated);
     onPresetsChange?.(updated);
     setScenarioName('');
     setShowSaveInput(false);
-  }, [scenarioName, scenarioInputs, scenarioResult, presets, onPresetsChange]);
+  }, [scenarioName, scenarioInputs, scenarioResult, presets, onPresetsChange, totalAccessibleEquity, acquisitionCapacity]);
 
   const handleDeletePreset = useCallback((id: string) => {
     const updated = presets.filter(p => p.id !== id);
@@ -619,6 +622,23 @@ export function StrategyScenarioModeling({
                 },
               };
             });
+
+          // Phase D: also map AI acquisition block into the acquisition state
+          const acq = scenario.adjustments.acquisition;
+          if (acq) {
+            setAcquisition(prev => ({
+              ...prev,
+              enabled: true,
+              state: acq.state,
+              intent: acq.intent,
+              category: acq.category ?? prev.category,
+              isFirstHomeBuyer: acq.isFirstHomeBuyer ?? prev.isFirstHomeBuyer,
+              isForeignBuyer: prev.isForeignBuyer,
+              lmiMode: acq.lmiMode ?? prev.lmiMode,
+              cashOnHand: acq.cashOnHand ?? prev.cashOnHand,
+            }));
+          }
+
           // Open relevant sections based on which levers the AI activated
           setOpenSections(prev => ({
             ...prev,
@@ -631,6 +651,7 @@ export function StrategyScenarioModeling({
             loanTerm: (scenario.adjustments.loanTermAdjustment || 0) !== 0,
             portfolioPlay: (scenario.adjustments.portfolioSellPropertyIds?.length || 0) > 0,
             dtiCap: !!scenario.adjustments.dtiCapOverride?.enabled,
+            acquisition: !!acq,
           }));
         }}
       />

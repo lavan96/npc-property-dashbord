@@ -37,6 +37,17 @@ You can recommend combinations of these adjustments:
 7. **loanTermAdjustment** — Years to add or subtract from base loan term (e.g., 5 for extending 5 years, -5 for shortening)
 8. **portfolioSellPropertyIds** — IDs of properties to sell (removes their loan servicing from commitments)
 9. **dtiCapOverride** — { enabled, value } to model a different DTI cap (e.g., switching to a lender with 8x DTI vs 6x)
+10. **acquisition** — { state, intent, category, isFirstHomeBuyer, lmiMode, cashOnHand } — When the user is targeting a NEW PURCHASE, set this so the engine can derive a maximum purchase price (net of stamp duty, LMI, and acquisition costs). Omit/null for pure capacity-improvement scenarios.
+
+## Acquisition Awareness
+If the user mentions buying a property, a deposit goal, or a specific budget, ALWAYS set the acquisition block in at least one scenario.
+Stamp duty + LMI vary heavily by state and buyer profile — make sensible defaults:
+- state: infer from the client's primary residence (default 'NSW')
+- intent: 'investor' unless they say it's their home
+- category: 'established' unless they mention new build / off-the-plan / land
+- isFirstHomeBuyer: true if the client has no existing properties
+- lmiMode: 'display_deduction' (most common bank treatment)
+- cashOnHand: from the conversation, or estimate from savings
 
 ## Conversation Guidelines
 - Be conversational and ask clarifying questions if the user's request is vague
@@ -122,6 +133,39 @@ const SCENARIO_TOOL = {
                     },
                     required: ["enabled", "value"],
                     description: "Override DTI cap to model different lender policies. Set enabled=false if not applicable.",
+                    nullable: true,
+                  },
+                  acquisition: {
+                    type: "object",
+                    properties: {
+                      state: {
+                        type: "string",
+                        enum: ["NSW", "VIC", "QLD", "WA", "SA", "TAS", "NT", "ACT"],
+                        description: "Australian state where the property will be purchased",
+                      },
+                      intent: {
+                        type: "string",
+                        enum: ["owner_occupier", "investor"],
+                        description: "Purchase intent — investor uses harsher stamp duty in some states",
+                      },
+                      category: {
+                        type: "string",
+                        enum: ["established", "new", "vacant_land"],
+                        description: "Property type — affects FHB concessions",
+                      },
+                      isFirstHomeBuyer: { type: "boolean" },
+                      lmiMode: {
+                        type: "string",
+                        enum: ["none", "display_deduction", "debt_capitalised"],
+                        description: "How LMI premium is applied",
+                      },
+                      cashOnHand: {
+                        type: "number",
+                        description: "Cash deposit available beyond any equity release (AUD)",
+                      },
+                    },
+                    required: ["state", "intent"],
+                    description: "Acquisition context for max purchase price math. ONLY include when the user is targeting a new property purchase. Omit otherwise.",
                     nullable: true,
                   },
                 },
