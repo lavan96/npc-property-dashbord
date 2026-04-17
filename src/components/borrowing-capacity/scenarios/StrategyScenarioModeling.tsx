@@ -618,27 +618,48 @@ export function StrategyScenarioModeling({
       const r = (annualRatePct / 100) / 12;
       const n = termYears * 12;
       if (r <= 0 || n <= 0) return 0;
-      return (1 - Math.pow(1 + r, -n)) / r;
+      const f = (1 - Math.pow(1 + r, -n)) / r;
+      // Safety clamp — annuity factor for plausible (rate, term) combos sits
+      // between ~50 (15% rate, 30y) and ~280 (1% rate, 30y). Anything outside
+      // that band is a sign the inputs collapsed (rate ~ 0) and would balloon
+      // theoretical capacity into the millions. Clamp to a sane ceiling.
+      return Number.isFinite(f) ? Math.min(Math.max(f, 0), 280) : 0;
     };
     /** Compute the unfloored raw monthly surplus directly from the engine's
      *  decomposed result. Bypasses conservative-mode floors and the
-     *  Math.max(0,…) clamp on `monthlySurplus`. */
-    const rawSurplusFrom = (r: any): number => {
+     *  Math.max(0,…) clamp on `monthlySurplus`. The engine has already
+     *  aggregated commitments (incl. any new equity-release servicing) so
+     *  this is the *true* post-aggregation surplus before the floor kicks in. */
+    const rawSurplusFrom = (r: any, inputs: any): number => {
+      // Income: prefer engine-computed `monthlyAfterTaxIncome` (already shaded + taxed)
       const income = r?.monthlyAfterTaxIncome ?? 0;
-      const expenses = r?.totalLivingExpenses ?? r?.livingExpensesMonthly ?? 0;
-      const commitments = r?.existingCommitmentsMonthly ?? 0;
+      // Expenses & commitments from the *inputs* the engine actually consumed
+      const expenses = inputs?.monthlyLivingExpenses ?? r?.totalLivingExpenses ?? 0;
+      const commitments = inputs?.monthlyCommitments ?? r?.existingCommitmentsMonthly ?? 0;
       return income - expenses - commitments;
     };
+    /** Engine-truth assessment rate. The engine returns `assessmentRate`
+     *  directly on the result — use it instead of recomputing from inputs
+     *  where `bufferRate` may be 0/undefined and produce a doubled annuity
+     *  factor (the source of the "millions" bug). */
+    const safeAssessmentRate = (r: any, inputs: any): number => {
+      const fromResult = r?.assessmentRate;
+      if (Number.isFinite(fromResult) && fromResult > 0) return fromResult;
+      const ir = inputs?.interestRate ?? 0;
+      const buf = inputs?.bufferRate ?? 3; // default APRA buffer
+      const computed = ir + buf;
+      return computed > 0 ? computed : 0;
+    };
 
-    const baseAssessmentRate = (baseInputs.interestRate ?? 0) + (baseInputs.bufferRate ?? 0);
     const baseTerm = baseInputs.loanTermYears ?? 30;
-    const baseRawSurplus = rawSurplusFrom(baseResult);
+    const baseAssessmentRate = safeAssessmentRate(baseResult, baseInputs);
+    const baseRawSurplus = rawSurplusFrom(baseResult, baseInputs);
     const baseAnnuity = annuityFactor(baseAssessmentRate, baseTerm);
     const baseTheoreticalCapacity = Math.round(baseRawSurplus * baseAnnuity);
 
-    const scenarioAssessmentRate = (inputs.interestRate ?? baseAssessmentRate) + (inputs.bufferRate ?? 0);
     const scenarioTerm = inputs.loanTermYears ?? baseTerm;
-    const scenarioRawSurplus = rawSurplusFrom(result);
+    const scenarioAssessmentRate = safeAssessmentRate(result, inputs);
+    const scenarioRawSurplus = rawSurplusFrom(result, inputs);
     const scenarioAnnuity = annuityFactor(scenarioAssessmentRate, scenarioTerm);
     const scenarioTheoreticalCapacity = Math.round(scenarioRawSurplus * scenarioAnnuity);
 
