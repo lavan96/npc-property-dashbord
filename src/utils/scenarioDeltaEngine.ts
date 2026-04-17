@@ -433,13 +433,27 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
         // Phase F1 — use the property's own contracted rate (fallback to global)
         const propertyRatePct = property.interestRate ?? context.baseInputs.interestRate;
         const ioMonthlyRate = propertyRatePct / 100 / 12;
-        const ioRepayment = property.loanRemaining * ioMonthlyRate;
-        const saving = Math.max(0, currentRepayment - ioRepayment);
+        const autoIoRepayment = property.loanRemaining * ioMonthlyRate;
+        // Phase 3 — granular controls:
+        //   meta.manualRepayment: explicit $/mo override on the refinanced loan
+        //   meta.ioPeriodYears: informational (3/5/10) — surfaced in the audit note
+        const manualRepayment = delta.meta?.manualRepayment as number | undefined;
+        const ioPeriodYears = delta.meta?.ioPeriodYears as number | undefined;
+        const newRepayment = Number.isFinite(manualRepayment as number) && (manualRepayment as number) >= 0
+          ? (manualRepayment as number)
+          : autoIoRepayment;
+        const saving = Math.max(0, currentRepayment - newRepayment);
         if (saving > 0) effect.commitmentAdjustment = -saving;
+        const repayLabel = Number.isFinite(manualRepayment as number)
+          ? `manual $${Math.round(manualRepayment as number).toLocaleString()}/mo`
+          : `IO @ ${propertyRatePct.toFixed(2)}%`;
+        const periodLabel = Number.isFinite(ioPeriodYears as number) && (ioPeriodYears as number) > 0
+          ? ` (${ioPeriodYears}yr IO period)`
+          : '';
         effect.acquisitionNotes.push(
-          `Refinance ${property.address?.slice(0, 30) || 'property'} P&I→IO @ ${propertyRatePct.toFixed(2)}%: monthly servicing −$${Math.round(saving).toLocaleString()}`
+          `Refinance ${property.address?.slice(0, 30) || 'property'} → ${repayLabel}${periodLabel}: monthly servicing −$${Math.round(saving).toLocaleString()}`
         );
-        effect.description = `Refinance ${property.address?.slice(0, 30) || 'property'} to IO`;
+        effect.description = `Refinance ${property.address?.slice(0, 30) || 'property'} to IO${periodLabel}`;
       }
       break;
     }
