@@ -32,14 +32,20 @@ import {
   ArrowRight,
   Scale,
   Sparkles,
+  FileDown,
+  Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { RationaleReport, RationaleSeverity } from '@/utils/strategyRationaleEngine';
+import { generateStrategyRationalePDF, type RationalePDFContext } from './StrategyRationalePDF';
 
 interface StrategyRationalePanelProps {
   report: RationaleReport;
   /** Same currency formatter the parent uses. */
   formatCurrency: (n: number) => string;
+  /** Context required to render a finance-ready PDF brief. When omitted the
+   *  PDF download button is hidden (e.g. preview surfaces without client info). */
+  pdfContext?: RationalePDFContext;
 }
 
 // Map severity → semantic-token-aware Tailwind classes (no raw colors)
