@@ -270,9 +270,15 @@ export function StrategyScenarioModeling({
   // selections into ScenarioDelta[] and delegates to the same engine that the
   // edge function uses. This eliminates client/server drift entirely.
 
-  const { scenarioResult, scenarioInputs, impactBreakdown, acquisitionCapacity, validationIssues } = useMemo(() => {
+  const { scenarioResult, scenarioInputs, impactBreakdown, acquisitionCapacity, validationIssues, leverAttribution } = useMemo(() => {
     const deltas: ScenarioDelta[] = [];
     const impacts: { label: string; monthlySaving: number; type: 'saving' | 'cost' | 'info' }[] = [];
+    /** F4 — short labels keyed by delta id, used to render the per-lever waterfall.
+     *  We capture the label at delta-creation time rather than re-deriving it
+     *  during the isolated replay, so the headline matches what the user toggled. */
+    const leverLabels = new Map<string, string>();
+    /** Optional cash-flow side-note ("+$420/mo" etc.) to enrich the waterfall row. */
+    const leverCashflowNotes = new Map<string, string>();
 
     // 1. Debt Consolidation → liability_payoff deltas
     let consolidationSaving = 0;
