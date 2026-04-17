@@ -1,5 +1,15 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { buildResimacRates, RESIMAC_LENDER } from './resimacRates.ts';
+
+// ============================================
+// MANUAL (non-CDR) lender registry
+// Resimac, Pepper, Liberty, etc. don't expose CDR APIs — rates are
+// hardcoded from the broker rate cards and refreshed manually.
+// ============================================
+const MANUAL_LENDERS: Record<string, { name: string; logo?: string; build: () => any[] }> = {
+  resimac: { name: RESIMAC_LENDER.name, logo: RESIMAC_LENDER.logo, build: buildResimacRates },
+};
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
