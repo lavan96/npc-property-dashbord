@@ -17,6 +17,13 @@ import {
   type PurchaseIntent,
   type PropertyCategory,
 } from './stampDutyCalculator.ts';
+import {
+  resolveLenderProfile,
+  reshadeIncome,
+  BANK_STANDARD_PROFILE,
+  type ScenarioIncomeComponent,
+  type LenderShadingProfile,
+} from './lenderShadingProfiles.ts';
 
 // ============================================
 // TYPES (mirrored from src/utils/borrowingCapacityTypes.ts)
