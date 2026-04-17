@@ -34,9 +34,10 @@ import {
   Sparkles,
   FileDown,
   Loader2,
+  Wallet,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import type { RationaleReport, RationaleSeverity } from '@/utils/strategyRationaleEngine';
+import type { RationaleReport, RationaleSeverity, RationaleCapitalFlowEntry } from '@/utils/strategyRationaleEngine';
 import { generateStrategyRationalePDF, type RationalePDFContext } from './StrategyRationalePDF';
 
 interface StrategyRationalePanelProps {
