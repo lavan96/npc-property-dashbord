@@ -221,8 +221,27 @@ export function calculateStampDuty(input: StampDutyInput): StampDutyBreakdown {
     };
   }
 
-  const baseDuty = Math.round(STATE_CALCULATORS[state](value));
-  const fhbSaving = isFhb ? Math.round(fhbConcession(value, state, category)) : 0;
+  // Phase I5 — VIC off-the-plan dutiable-value reduction (PPR / FHB only).
+  // Construction-fraction × price is exempt from duty up to the eligibility
+  // threshold. Investor purchasers cannot use OTP concessions since 2017.
+  let dutiableValue = value;
+  let otpReductionApplied = 0;
+  const otpFrac = Math.max(0, Math.min(1, input.offThePlanConstructionFraction ?? 0));
+  if (state === 'VIC' && otpFrac > 0 && intent === 'owner_occupier' && category === 'new') {
+    const otpEligibilityCap = isFhb ? 750000 : 550000;
+    if (value <= otpEligibilityCap) {
+      dutiableValue = value * (1 - otpFrac);
+      otpReductionApplied = value - dutiableValue;
+    }
+  }
+
+  // Phase I5 — VIC PPR uses preferential brackets <$550k.
+  const calc = (state === 'VIC' && intent === 'owner_occupier')
+    ? calcVICppr
+    : STATE_CALCULATORS[state];
+
+  const baseDuty = Math.round(calc(dutiableValue));
+  const fhbSaving = isFhb ? Math.round(fhbConcession(dutiableValue, state, category)) : 0;
   const foreign = isForeign ? Math.round(foreignSurcharge(value, state)) : 0;
   const investor = intent === 'investor' ? Math.round(investorSurcharge(value, state)) : 0;
 
@@ -230,6 +249,8 @@ export function calculateStampDuty(input: StampDutyInput): StampDutyBreakdown {
   const effectiveRate = value > 0 ? (totalDuty / value) * 100 : 0;
 
   const notes: string[] = [];
+  if (otpReductionApplied > 0) notes.push(`VIC off-the-plan: dutiable value reduced by $${Math.round(otpReductionApplied).toLocaleString()} (${(otpFrac * 100).toFixed(0)}% construction)`);
+  if (state === 'VIC' && intent === 'owner_occupier' && value <= 550000) notes.push(`VIC PPR brackets applied (preferential <$550k)`);
   if (fhbSaving > 0) notes.push(`FHB concession: −$${fhbSaving.toLocaleString()} (${state} ${category})`);
   if (foreign > 0) notes.push(`Foreign buyer surcharge: +$${foreign.toLocaleString()}`);
   if (investor > 0) notes.push(`Investor surcharge: +$${investor.toLocaleString()}`);
