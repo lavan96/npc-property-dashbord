@@ -482,15 +482,36 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
         const est = estimateLmi({ propertyValue: property.currentValue, loanAmount: newLoan, isFirstHomeBuyer: fhb });
         lmiOnRelease = est.lmiAmount;
       }
-      const netRelease = Math.max(0, grossRelease - lmiOnRelease);
+      // Phase 2 (granular controls): deployment %, repayment type, manual override
+      const rawDeployPct = delta.meta?.deploymentPercent;
+      const deploymentPercent = Number.isFinite(rawDeployPct as number)
+        ? Math.max(0, Math.min(1, rawDeployPct as number))
+        : 1;
+      const deployedGross = grossRelease * deploymentPercent;
+      const deployedLmi = lmiOnRelease * deploymentPercent;
+      const netRelease = Math.max(0, deployedGross - deployedLmi);
+      const repaymentType = (delta.meta?.repaymentType as string | undefined) === 'principal_and_interest'
+        ? 'principal_and_interest'
+        : 'interest_only';
+      const manualRepayment = delta.meta?.manualRepayment as number | undefined;
       // Phase I3 — APRA: assess servicing at buffered rate.
       const assessRatePct = ratePct + (context.baseInputs.bufferRate ?? 3);
       const assessMonthlyRate = (assessRatePct / 100) / 12;
-      const ioRepayment = grossRelease * assessMonthlyRate;
-      effect.commitmentAdjustment = Math.max(0, ioRepayment);
-      effect.debtBalanceAdjustment = grossRelease;
+      const termYears = context.baseInputs.loanTermYears || 30;
+      const periods = termYears * 12;
+      let newSliceRepayment: number;
+      if (Number.isFinite(manualRepayment as number) && (manualRepayment as number) >= 0) {
+        newSliceRepayment = manualRepayment as number;
+      } else if (repaymentType === 'principal_and_interest' && assessMonthlyRate > 0) {
+        newSliceRepayment = deployedGross * (assessMonthlyRate * Math.pow(1 + assessMonthlyRate, periods)) /
+          (Math.pow(1 + assessMonthlyRate, periods) - 1);
+      } else {
+        newSliceRepayment = deployedGross * assessMonthlyRate;
+      }
+      effect.commitmentAdjustment = Math.max(0, newSliceRepayment);
+      effect.debtBalanceAdjustment = deployedGross;
       effect.releasedCapital = netRelease;
-      effect.acquisitionNotes.push(`Equity release on ${property.address?.slice(0, 30) || 'property'} @ ${ratePct.toFixed(2)}% (assessed @ ${assessRatePct.toFixed(2)}%): $${Math.round(netRelease).toLocaleString()} usable (LVR ${newLvr.toFixed(1)}%, cap: ${lvrResult.reason}), +$${Math.round(ioRepayment).toLocaleString()}/mo IO @ buffered rate`);
+      effect.acquisitionNotes.push(`Equity release on ${property.address?.slice(0, 30) || 'property'} @ ${ratePct.toFixed(2)}%: gross $${Math.round(grossRelease).toLocaleString()} × deploy ${(deploymentPercent * 100).toFixed(0)}% = $${Math.round(deployedGross).toLocaleString()} − LMI $${Math.round(deployedLmi).toLocaleString()} = $${Math.round(netRelease).toLocaleString()} usable (LVR ${newLvr.toFixed(1)}%, cap: ${lvrResult.reason}), +$${Math.round(newSliceRepayment).toLocaleString()}/mo ${repaymentType === 'principal_and_interest' ? 'P&I' : 'IO'} @ ${assessRatePct.toFixed(2)}% buffered`);
       effect.description = `Release equity from ${property.address?.slice(0, 30) || 'property'}`;
       break;
     }
