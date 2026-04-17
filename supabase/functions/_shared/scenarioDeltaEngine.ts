@@ -35,6 +35,7 @@ import {
 } from './lenderLvrCaps.ts';
 import {
   computeDtiDenominator,
+  computeDti,
 } from './dtiDenominator.ts';
 
 // ============================================

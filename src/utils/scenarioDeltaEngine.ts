@@ -58,6 +58,7 @@ import {
 } from './lenderLvrCaps';
 import {
   computeDtiDenominator,
+  computeDti,
 } from './dtiDenominator';
 
 // ============================================
