@@ -51,6 +51,14 @@ import {
   computeNegativeGearingAddBack,
   marginalTaxRateFor,
 } from './negativeGearingAddBack';
+import {
+  resolveLvrCap,
+  inferPropertyKind,
+  inferPropertyIntent,
+} from './lenderLvrCaps';
+import {
+  computeDtiDenominator,
+} from './dtiDenominator';
 
 // ============================================
 // CONTEXT TYPES

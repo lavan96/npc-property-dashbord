@@ -28,6 +28,14 @@ import {
   computeNegativeGearingAddBack,
   marginalTaxRateFor,
 } from './negativeGearingAddBack.ts';
+import {
+  resolveLvrCap,
+  inferPropertyKind,
+  inferPropertyIntent,
+} from './lenderLvrCaps.ts';
+import {
+  computeDtiDenominator,
+} from './dtiDenominator.ts';
 
 // ============================================
 // TYPES (mirrored from src/utils/borrowingCapacityTypes.ts)
