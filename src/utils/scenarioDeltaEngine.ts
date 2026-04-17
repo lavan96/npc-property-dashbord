@@ -387,6 +387,10 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
       const enabled = (delta.meta?.enabled as boolean | undefined) ?? true;
       effect.dtiCapEnabled = enabled;
       if (enabled) effect.dtiCapLimit = delta.value;
+      // Phase I1 — accept lender profile flip via meta.lenderProfile so the
+      // engine can re-shade rental / bonus / commission per that lender.
+      const lp = delta.meta?.lenderProfile as string | undefined;
+      if (lp) effect.lenderProfileOverride = lp;
       break;
     }
 
