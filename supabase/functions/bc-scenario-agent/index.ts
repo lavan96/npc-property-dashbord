@@ -30,14 +30,15 @@ You analyse a client's financial snapshot (income, expenses, liabilities, proper
 You can recommend combinations of these adjustments:
 1. **consolidatedLiabilityIds** — Pay off specific liabilities (provide their IDs)
 2. **refinancedToIOPropertyIds** — Switch specific investment property loans to Interest-Only
-3. **rateAdjustment** — Rate change in percentage points (e.g., -0.5 for a 0.5% rate reduction)
+3. **rateAdjustment** — Global rate change in percentage points (e.g., -0.5 for a 0.5% rate reduction)
 4. **incomeGrowthPercent** — Percentage increase in gross income (e.g., 10 for 10% growth)
 5. **expenseReductionPercent** — Percentage decrease in living expenses (e.g., 15 for 15% cut)
-6. **equityRelease** — { propertyId, targetLVR } to release equity from a property
+6. **equityRelease** — { propertyId, targetLVR } to release equity from a property (cash freed = (currentValue × targetLVR) − loanRemaining; engine layers shadow IO servicing using that property's contracted rate)
 7. **loanTermAdjustment** — Years to add or subtract from base loan term (e.g., 5 for extending 5 years, -5 for shortening)
 8. **portfolioSellPropertyIds** — IDs of properties to sell (removes their loan servicing from commitments)
 9. **dtiCapOverride** — { enabled, value } to model a different DTI cap (e.g., switching to a lender with 8x DTI vs 6x)
-10. **acquisition** — { state, intent, category, isFirstHomeBuyer, lmiMode, cashOnHand } — When the user is targeting a NEW PURCHASE, set this so the engine can derive a maximum purchase price (net of stamp duty, LMI, and acquisition costs). Omit/null for pure capacity-improvement scenarios.
+10. **propertyRateChanges** — Array of { propertyId, newRate } to reprice INDIVIDUAL property loans (e.g., refinancing one property to a sharper investor rate). Use this when only some properties refinance — leave the global rateAdjustment at 0 in that case.
+11. **acquisition** — { state, intent, category, isFirstHomeBuyer, lmiMode, cashOnHand, targetPurchasePrice } — When the user is targeting a NEW PURCHASE, set this so the engine can derive a maximum purchase price (net of stamp duty, LMI, and acquisition costs). Set targetPurchasePrice when the user gives a budget (e.g. $700k) so the engine reports whether the strategy ACTUALLY hits it. Omit/null for pure capacity-improvement scenarios.
 
 ## Acquisition Awareness
 If the user mentions buying a property, a deposit goal, or a specific budget, ALWAYS set the acquisition block in at least one scenario.
@@ -135,6 +136,18 @@ const SCENARIO_TOOL = {
                     description: "Override DTI cap to model different lender policies. Set enabled=false if not applicable.",
                     nullable: true,
                   },
+                  propertyRateChanges: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        propertyId: { type: "string" },
+                        newRate: { type: "number", description: "New contracted annual rate in % (e.g. 5.89)" },
+                      },
+                      required: ["propertyId", "newRate"],
+                    },
+                    description: "Per-property rate changes for partial portfolio refinances. Use empty array if not applicable.",
+                  },
                   acquisition: {
                     type: "object",
                     properties: {
@@ -162,6 +175,10 @@ const SCENARIO_TOOL = {
                       cashOnHand: {
                         type: "number",
                         description: "Cash deposit available beyond any equity release (AUD)",
+                      },
+                      targetPurchasePrice: {
+                        type: "number",
+                        description: "Target purchase price the strategy is solving for (AUD). Set when the user provides a budget so the engine reports meetsTarget / shortfall.",
                       },
                     },
                     required: ["state", "intent"],

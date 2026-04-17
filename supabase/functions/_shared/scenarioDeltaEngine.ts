@@ -434,6 +434,16 @@ export interface AcquisitionCapacityResult {
   maxPurchasePrice: number;
   loanAvailableForPurchase: number;
   cashAvailable: number;
+  /** Phase F2 — actual loan required to settle the target purchase price. */
+  loanRequiredForPurchase?: number;
+  /** Phase F2 — net cash position after settlement (negative = shortfall). */
+  netCashAfterSettlement?: number;
+  /** Phase F2 — target the strategy is solving for (echoed for the UI). */
+  targetPurchasePrice?: number;
+  /** Phase F2 — true when maxPurchasePrice ≥ targetPurchasePrice and cash is sufficient. */
+  meetsTarget?: boolean;
+  /** Phase F2 — shortfall to target = max(0, target − maxPurchasePrice). */
+  shortfallToTarget?: number;
   notes: string[];
 }
 
@@ -574,6 +584,51 @@ export function computeAcquisitionCapacity(
   if (stampDuty > 0) notes.push(`${state} stamp duty: $${Math.round(stampDuty).toLocaleString()} (${intent}${isFhb ? ', FHB' : ''})`);
   if (otherCosts > 0) notes.push(`Acquisition costs: $${Math.round(otherCosts).toLocaleString()}`);
 
+  // Phase F2 — target-solving
+  const target = acq.targetPurchasePrice && acq.targetPurchasePrice > 0 ? acq.targetPurchasePrice : undefined;
+  let loanRequiredForPurchase: number | undefined;
+  let netCashAfterSettlement: number | undefined;
+  let meetsTarget: boolean | undefined;
+  let shortfallToTarget: number | undefined;
+
+  if (target !== undefined) {
+    const sdT = calculateStampDuty({
+      propertyValue: target, state, intent, category,
+      isFirstHomeBuyer: isFhb, isForeignBuyer: isForeign,
+    });
+    const otherT = estimateOtherAcquisitionCosts(target).total;
+    const requiredLoanRaw = Math.max(0, target - cashAvailable);
+    let lmiAtTarget = 0;
+    if (lmiMode !== 'none') {
+      const estT = estimateLmi({ propertyValue: target, loanAmount: requiredLoanRaw, isFirstHomeBuyer: isFhb });
+      lmiAtTarget = estT.lmiAmount;
+    }
+    const lmiCashAtTarget = lmiMode === 'display_deduction' ? lmiAtTarget : 0;
+    loanRequiredForPurchase = lmiMode === 'debt_capitalised'
+      ? requiredLoanRaw + lmiAtTarget
+      : requiredLoanRaw;
+    netCashAfterSettlement = cashAvailable
+      - Math.max(0, target - (loanRequiredForPurchase ?? 0))
+      - lmiCashAtTarget - sdT.totalDuty - otherT;
+    meetsTarget = (loanRequiredForPurchase ?? 0) <= borrowingCapacity && netCashAfterSettlement >= 0;
+    shortfallToTarget = Math.max(0, target - Math.max(0, purchasePrice));
+
+    if (meetsTarget) {
+      notes.push(
+        `✅ Target $${Math.round(target).toLocaleString()} achievable: needs loan $${Math.round(loanRequiredForPurchase!).toLocaleString()} (capacity $${Math.round(borrowingCapacity).toLocaleString()}); net cash post-settlement $${Math.round(netCashAfterSettlement).toLocaleString()}.`
+      );
+    } else {
+      const loanShort = Math.max(0, (loanRequiredForPurchase ?? 0) - borrowingCapacity);
+      const cashShort = Math.max(0, -(netCashAfterSettlement ?? 0));
+      notes.push(
+        `⚠️ Target $${Math.round(target).toLocaleString()} short: ${loanShort > 0 ? `loan short $${Math.round(loanShort).toLocaleString()}` : ''}${loanShort > 0 && cashShort > 0 ? ', ' : ''}${cashShort > 0 ? `cash short $${Math.round(cashShort).toLocaleString()}` : ''}.`
+      );
+    }
+  } else {
+    loanRequiredForPurchase = Math.max(0, Math.max(0, purchasePrice) - cashAvailable);
+    netCashAfterSettlement = 0;
+  }
+
   return {
     releasedCapital: Math.round(effect.releasedCapital),
     lmi: Math.round(lmi),
@@ -582,7 +637,12 @@ export function computeAcquisitionCapacity(
     otherAcquisitionCosts: Math.round(otherCosts),
     maxPurchasePrice: Math.round(Math.max(0, purchasePrice)),
     loanAvailableForPurchase: Math.round(loanAvail),
+    loanRequiredForPurchase: loanRequiredForPurchase !== undefined ? Math.round(loanRequiredForPurchase) : undefined,
+    netCashAfterSettlement: netCashAfterSettlement !== undefined ? Math.round(netCashAfterSettlement) : undefined,
     cashAvailable: Math.round(cashAvailable),
+    targetPurchasePrice: target !== undefined ? Math.round(target) : undefined,
+    meetsTarget,
+    shortfallToTarget: shortfallToTarget !== undefined ? Math.round(shortfallToTarget) : undefined,
     notes,
   };
 }
