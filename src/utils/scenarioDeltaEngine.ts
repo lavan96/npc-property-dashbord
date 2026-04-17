@@ -533,11 +533,19 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
         : (property.interestRate ?? context.baseInputs.interestRate ?? 6.5);
       const monthlyRate = (ratePct / 100) / 12;
 
-      // Phase G3 — lender max LVR is now externalised so finance can test 90/95/97.5
-      const lenderCap = (delta.meta?.lenderMaxLVR as number | undefined);
-      const safeLenderCap = (Number.isFinite(lenderCap) && (lenderCap as number) > 0 && (lenderCap as number) <= 0.99)
-        ? (lenderCap as number)
-        : 0.95;
+      // Phase I7 — per-security LVR cap: lender × intent × kind, with FHB/foreign adjustments.
+      const intentForCap = inferPropertyIntent(property.propertyType, 'investment');
+      const kindForCap = inferPropertyKind(property.propertyType);
+      const lenderCapInput = (delta.meta?.lenderMaxLVR as number | undefined);
+      const lvrResult = resolveLvrCap({
+        lenderId: context.currentLenderProfileId,
+        intent: intentForCap,
+        kind: kindForCap,
+        isFirstHomeBuyer: !!context.acquisition?.isFirstHomeBuyer,
+        isForeignBuyer: !!context.acquisition?.isForeignBuyer,
+        explicitCap: lenderCapInput,
+      });
+      const safeLenderCap = lvrResult.cap;
 
       // Resolve the new max loan size on this property
       let newLoan = 0;
@@ -550,7 +558,7 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
         const safeTarget = Math.max(0, Math.min(safeLenderCap, targetLVR || 0.8));
         newLoan = property.currentValue * safeTarget;
       }
-      // Phase G3 — never exceed lender cap regardless of input mode
+      // Phase I7 — never exceed lender × intent × kind cap regardless of input
       newLoan = Math.min(newLoan, property.currentValue * safeLenderCap);
       const grossRelease = Math.max(0, newLoan - property.loanRemaining);
       if (grossRelease <= 0) {
