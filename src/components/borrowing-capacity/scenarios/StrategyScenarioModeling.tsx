@@ -59,6 +59,8 @@ import {
 import { BindingConstraintBadge } from '../BindingConstraintBadge';
 import { computeBindingConstraint } from '@/utils/bindingConstraint';
 import { PurchasePowerHeadline, type LeverAttribution } from './PurchasePowerHeadline';
+import { StrategyRationalePanel } from './StrategyRationalePanel';
+import { buildStrategyRationale } from '@/utils/strategyRationaleEngine';
 
 // ── Types ──────────────────────────────────────────────
 
