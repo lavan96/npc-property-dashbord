@@ -10,14 +10,7 @@ import { toast } from 'sonner';
 
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
 
-declare global {
-  interface Window {
-    turnstile?: {
-      render: (el: HTMLElement, opts: { sitekey: string; callback: (t: string) => void; theme?: string }) => string;
-      reset: (id?: string) => void;
-    };
-  }
-}
+// Turnstile global is declared elsewhere in the project
 
 export default function FinancePortalLogin() {
   const { user, signIn, requestPasswordReset, verifyOTP, resetPassword, loading } = useFinancePortalAuth();
@@ -85,7 +78,7 @@ export default function FinancePortalLogin() {
       const { error } = await signIn(email, password, turnstileToken || undefined);
       if (error) {
         toast.error(error);
-        if (window.turnstile) try { window.turnstile.reset(); } catch {}
+        if (window.turnstile && turnstileRef.current) try { window.turnstile.reset(turnstileRef.current.id || ''); } catch {}
         setTurnstileToken(null);
       } else {
         navigate('/finance', { replace: true });
