@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   Building2, User, Home as HomeIcon, Briefcase,
   FileText, LogOut, Menu, X, Shield, Bell, TrendingUp,
-  MessageSquare, BarChart3, CalendarDays
+  MessageSquare, BarChart3, CalendarDays, Landmark
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
@@ -27,6 +27,7 @@ const portalNavItems = [
   { to: '/client/employment', icon: Briefcase, label: 'Finances', end: true, tourId: 'finances' },
   { to: '/client/documents', icon: FileText, label: 'Documents', end: true, tourId: 'documents' },
   { to: '/client/reports', icon: FileText, label: 'Reports', end: true, tourId: 'reports' },
+  { to: '/client/lenders', icon: Landmark, label: 'Lenders', end: true, tourId: 'lenders' },
   { to: '/client/messages', icon: MessageSquare, label: 'Messages', end: true, tourId: 'messages' },
   { to: '/client/notifications', icon: Bell, label: 'Notifications', end: true, tourId: 'notifications' },
   { to: '/client/appointments', icon: CalendarDays, label: 'My Appointments', end: true },
