@@ -122,6 +122,10 @@ export interface AIScenario {
   rejectedLevers?: Array<{ lever: string; reason: string }>;
   /** Phase J1 — execution risk profile so brokers can triage at a glance. */
   executionRisk?: 'low' | 'medium' | 'high';
+  /** Phase J2 — concrete evidence the broker must collect to defend the scenario
+   *  to the finance team (e.g. "2 most recent payslips", "Tenancy ledger 12mo",
+   *  "Discharge confirmation from Latitude"). 1–5 items, ordered by criticality. */
+  evidenceRequired?: string[];
   engineValidation?: EngineValidation;
 }
 
