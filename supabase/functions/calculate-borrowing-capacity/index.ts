@@ -1,5 +1,12 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
+import {
+  aggregateDeltas,
+  type ScenarioDelta,
+  type ScenarioContext as SharedScenarioContext,
+  type ScenarioProperty as SharedScenarioProperty,
+  type ScenarioLiability as SharedScenarioLiability,
+} from '../_shared/scenarioDeltaEngine.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
