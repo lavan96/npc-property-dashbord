@@ -146,9 +146,8 @@ export function MonthlyRepaymentField({
               </TooltipTrigger>
               <TooltipContent side="top" className="max-w-xs">
                 <p className="text-xs">
-                  <strong>Interest Only:</strong> Loan × Rate ÷ 12.<br />
-                  <strong>P&amp;I:</strong> Standard amortization over {loanTermYears}-year term.<br />
-                  Switch to Manual to override.
+                  <strong>Auto:</strong> repayment is computed from rate.<br />
+                  <strong>Manual:</strong> type a repayment and the interest rate is reverse-derived (IO closed-form, P&amp;I via Newton-Raphson over {loanTermYears}y).
                 </p>
               </TooltipContent>
             </Tooltip>
