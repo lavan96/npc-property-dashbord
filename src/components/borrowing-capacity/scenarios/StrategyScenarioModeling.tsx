@@ -692,6 +692,14 @@ export function StrategyScenarioModeling({
     const scenarioAnnuity = annuityFactor(scenarioAssessmentRate, scenarioTerm);
     const scenarioTheoreticalCapacity = Math.round(scenarioRawSurplus * scenarioAnnuity);
 
+    // Phase 4 — math-inspector breakdown values (decomposed components used in the waterfall)
+    const baseAfterTaxIncome = (baseResult as any)?.monthlyAfterTaxIncome ?? 0;
+    const baseLivingExpenses = (baseInputs as any)?.monthlyLivingExpenses ?? (baseResult as any)?.totalLivingExpenses ?? 0;
+    const baseCommitments = (baseInputs as any)?.monthlyCommitments ?? (baseResult as any)?.existingCommitmentsMonthly ?? 0;
+    const scenarioAfterTaxIncome = (result as any)?.monthlyAfterTaxIncome ?? 0;
+    const scenarioLivingExpenses = (inputs as any)?.monthlyLivingExpenses ?? (result as any)?.totalLivingExpenses ?? 0;
+    const scenarioCommitments = (inputs as any)?.monthlyCommitments ?? (result as any)?.existingCommitmentsMonthly ?? 0;
+
     const leverAttribution: LeverAttribution[] = deltas.map(d => {
       const isolated = runScenarioWithInputs(`Isolated: ${d.label}`, [d], ctx);
       const isoTerm = isolated.inputs.loanTermYears ?? baseTerm;
@@ -707,14 +715,6 @@ export function StrategyScenarioModeling({
       };
     });
 
-    // Floor is "active" when the actual displayed capacity is clamped to $0
-    // for both base and scenario but the theoretical math says there IS
-    // movement happening underneath. This is the trigger for the explainer
-    // banner + the "if floor lifted" attribution column.
-    //
-    // We also flag floorActive when the base raw surplus is negative (true
-    // underwater state) — in that case the engine's reported capacity may
-    // be technically positive but the diagnostic view is still useful.
     const floorActive =
       (baseResult.borrowingCapacity <= 0 || baseRawSurplus < 0) &&
       (Math.abs(scenarioTheoreticalCapacity - baseTheoreticalCapacity) > 0 ||
@@ -733,6 +733,19 @@ export function StrategyScenarioModeling({
       baseRawSurplus,
       scenarioRawSurplus,
       floorActive,
+      // Phase 4 — math-inspector decomposition
+      baseAfterTaxIncome,
+      baseLivingExpenses,
+      baseCommitments,
+      baseAssessmentRate,
+      baseTerm,
+      baseAnnuity,
+      scenarioAfterTaxIncome,
+      scenarioLivingExpenses,
+      scenarioCommitments,
+      scenarioAssessmentRate,
+      scenarioTerm,
+      scenarioAnnuity,
     };
   }, [strategy, acquisition, baseInputs, baseResult, consolidatableDebts, investmentProperties, equityReleaseProperties, properties, liabilities]);
 
