@@ -668,6 +668,10 @@ export interface AcquisitionCapacityResult {
   meetsTarget?: boolean;
   /** Phase F2 — shortfall to target = max(0, target − maxPurchasePrice). */
   shortfallToTarget?: number;
+  /** Phase I9 — per-security LVR cap applied to the acquisition loan. */
+  acquisitionLvrCap?: number;
+  /** Phase I9 — true when the acquisition loan was clamped by the LVR cap. */
+  loanCappedByLvr?: boolean;
   notes: string[];
 }
 

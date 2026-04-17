@@ -249,6 +249,15 @@ export interface AcquisitionCapacity {
   meetsTarget?: boolean;
   /** Phase F2 — shortfall to target = max(0, targetPurchasePrice − maxPurchasePrice). */
   shortfallToTarget?: number;
+  /** Phase I9 — per-security LVR cap applied to the acquisition loan
+   *  (lender × intent × kind, with FHB / foreign adjustments). 0–1 ratio.
+   *  Acts as the binding ceiling — loanAvailableForPurchase is clamped to
+   *  `maxPurchasePrice * acquisitionLvrCap`. */
+  acquisitionLvrCap?: number;
+  /** Phase I9 — true when the acquisition loan would have exceeded the LVR
+   *  cap and was reduced. Used by the PDF rationale + UI to surface the
+   *  binding constraint. */
+  loanCappedByLvr?: boolean;
   /** Detailed audit trail */
   notes: string[];
 }
