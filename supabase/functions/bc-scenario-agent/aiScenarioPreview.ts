@@ -111,6 +111,24 @@ interface AIAdjustments {
     allocationStrategy?: 'highest_equity_first' | 'pro_rata';
   } | null;
   acquisition?: AcquisitionContext | null;
+  /** Phase K3 — explicit capital allocations routed via the K1 ledger.
+   *  Each entry consumes from the default capital pool (equity release +
+   *  cash-on-hand) and routes into a typed sink. */
+  capitalAllocations?: Array<{
+    amount: number;
+    sinkType:
+      | 'liability_payoff'
+      | 'offset_deposit'
+      | 'rate_buydown'
+      | 'debt_recycle'
+      | 'acquisition_deposit'
+      | 'holding_reserve'
+      | 'repayment_reduction';
+    sinkTargetId?: string;
+    offsetRatePoints?: number;
+    rateBuydownPoints?: number;
+    repaymentReductionMonthly?: number;
+  }>;
 }
 
 export interface AIScenario {
@@ -343,6 +361,27 @@ export function adjustmentsToDeltas(adj: AIAdjustments): ScenarioDelta[] {
     });
   }
 
+  // 13. Phase K3 — Capital allocations (route pool $ into typed sinks)
+  for (let i = 0; i < (adjUsed.capitalAllocations || []).length; i++) {
+    const alloc = adjUsed.capitalAllocations![i];
+    if (!alloc || !Number.isFinite(alloc.amount) || alloc.amount <= 0 || !alloc.sinkType) continue;
+    deltas.push({
+      id: `cap-alloc-${i}-${alloc.sinkType}`,
+      label: `Allocate $${Math.round(alloc.amount).toLocaleString()} → ${alloc.sinkType.replace(/_/g, ' ')}`,
+      type: 'capital_allocation',
+      value: alloc.amount,
+      unit: 'absolute',
+      meta: {
+        sinkType: alloc.sinkType,
+        sinkTargetId: alloc.sinkTargetId,
+        sourcePool: 'pool-default',
+        offsetRatePoints: alloc.offsetRatePoints,
+        rateBuydownPoints: alloc.rateBuydownPoints,
+        repaymentReductionMonthly: alloc.repaymentReductionMonthly,
+      },
+    });
+  }
+
   return deltas;
 }
 
@@ -478,6 +517,49 @@ export function validateAIScenarios(
       }
       if (a.crossCollatPool && typeof a.crossCollatPool.blendedTargetLVR === 'number' && a.crossCollatPool.blendedTargetLVR > 0.90) {
         clampIssues.push({ deltaId: 'portfolio_lvr_release', deltaType: 'portfolio_lvr_release', severity: 'warn', message: `Cross-collat blended LVR clamped to 90% (model proposed ${(a.crossCollatPool.blendedTargetLVR * 100).toFixed(0)}%).` });
+      }
+
+      // Phase K4 — guardrails on capital allocations
+      if (Array.isArray(a.capitalAllocations) && a.capitalAllocations.length > 0) {
+        const totalAlloc = a.capitalAllocations.reduce((s, x) => s + Math.max(0, Number(x?.amount) || 0), 0);
+        // Estimate the source pool: equity release + cross-collat release + cash on hand
+        let estPool = 0;
+        if (a.equityRelease && a.equityRelease.propertyId) {
+          const prop = client.properties?.find(p => p.id === a.equityRelease!.propertyId);
+          if (prop) estPool += Math.max(0, (prop.current_value || 0) * a.equityRelease.targetLVR - (prop.loan_remaining || 0));
+        }
+        if (a.crossCollatPool?.enabled && a.crossCollatPool.propertyIds?.length) {
+          const memberValue = a.crossCollatPool.propertyIds.reduce((s, pid) => {
+            const p = client.properties?.find(pp => pp.id === pid);
+            return s + (p?.current_value || 0);
+          }, 0);
+          const memberLoan = a.crossCollatPool.propertyIds.reduce((s, pid) => {
+            const p = client.properties?.find(pp => pp.id === pid);
+            return s + (p?.loan_remaining || 0);
+          }, 0);
+          estPool += Math.max(0, memberValue * a.crossCollatPool.blendedTargetLVR - memberLoan);
+        }
+        if (a.acquisition?.cashOnHand) estPool += Math.max(0, a.acquisition.cashOnHand);
+        if (estPool > 0 && totalAlloc > estPool * 1.01) {
+          clampIssues.push({
+            deltaId: 'capital_allocation',
+            deltaType: 'capital_allocation',
+            severity: 'error',
+            message: `Capital allocations $${Math.round(totalAlloc).toLocaleString()} exceed estimated pool $${Math.round(estPool).toLocaleString()}. Engine will clamp each sink at its share of remainder.`,
+          });
+        }
+        // Validate sink targets exist
+        for (const alloc of a.capitalAllocations) {
+          if (!alloc?.sinkType) continue;
+          const needsLiab = alloc.sinkType === 'liability_payoff';
+          const needsProp = ['offset_deposit', 'rate_buydown', 'debt_recycle', 'repayment_reduction'].includes(alloc.sinkType);
+          if (needsLiab && (!alloc.sinkTargetId || !client.liabilities?.some(l => l.id === alloc.sinkTargetId))) {
+            clampIssues.push({ deltaId: 'capital_allocation', deltaType: 'capital_allocation', severity: 'warn', message: `liability_payoff allocation missing or invalid sinkTargetId — engine will skip the servicing reduction.` });
+          }
+          if (needsProp && (!alloc.sinkTargetId || !client.properties?.some(p => p.id === alloc.sinkTargetId))) {
+            clampIssues.push({ deltaId: 'capital_allocation', deltaType: 'capital_allocation', severity: 'warn', message: `${alloc.sinkType} allocation missing or invalid sinkTargetId — engine will skip the effect.` });
+          }
+        }
       }
 
       const result = calculateBorrowingCapacity({
