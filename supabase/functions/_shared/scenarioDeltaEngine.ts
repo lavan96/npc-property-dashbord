@@ -34,7 +34,11 @@ export type ScenarioDeltaType =
   | 'loan_term_change'
   | 'dti_cap_change'
   | 'equity_release'
-  | 'property_rate_change';
+  | 'property_rate_change'
+  /** Phase G1 — Valuation override (manual/AVM/desktop/comp sales). */
+  | 'property_value_change'
+  /** Phase G2 — Cross-collateralised pool release across multiple securities. */
+  | 'portfolio_lvr_release';
 
 export type ScenarioDeltaUnit = 'percent' | 'absolute' | 'rate_points' | 'years' | 'ratio';
 
@@ -44,7 +48,7 @@ export interface ScenarioDelta {
   type: ScenarioDeltaType;
   value: number;
   unit: ScenarioDeltaUnit;
-  meta?: Record<string, number | string | boolean | null>;
+  meta?: Record<string, number | string | boolean | string[] | null>;
 }
 
 export interface ScenarioBaseInputs {
