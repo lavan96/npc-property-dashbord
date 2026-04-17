@@ -392,6 +392,27 @@ serve(async (req) => {
       result.reportRequests = reportRequests || [];
     }
 
+    // Fetch lender submissions (read-only, with limited fields)
+    if (include.lenderSubmissions) {
+      const { data: subs } = await supabase
+        .from('lender_submissions')
+        .select('id, lender_name, product_name, loan_amount, interest_rate, comparison_rate, loan_purpose, repayment_type, status, submitted_at, approved_at, settled_at, created_at, updated_at')
+        .eq('client_id', clientId)
+        .order('updated_at', { ascending: false });
+      result.lenderSubmissions = subs || [];
+    }
+
+    // Fetch comparison sheets shared with the client
+    if (include.lenderComparisons) {
+      const { data: sheets } = await supabase
+        .from('lender_comparison_sheets')
+        .select('id, name, lender_ids, rate_snapshot, notes, created_at')
+        .eq('client_id', clientId)
+        .eq('shared_with_client', true)
+        .order('created_at', { ascending: false });
+      result.lenderComparisons = sheets || [];
+    }
+
     console.log('[get-portal-client-data] Success. Keys returned:', Object.keys(result));
 
     return new Response(

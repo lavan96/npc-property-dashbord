@@ -85,6 +85,7 @@ import PortalDocuments from "./pages/portal/PortalDocuments";
 import PortalAcceptInvite from "./pages/portal/PortalAcceptInvite";
 import PortalNotifications from "./pages/portal/PortalNotifications";
 import PortalDealProgress from "./pages/portal/PortalDealProgress";
+import PortalLenders from "./pages/portal/PortalLenders";
 import PortalMessages from "./pages/portal/PortalMessages";
 import PortalPropertyInsights from "./pages/portal/PortalPropertyInsights";
 import PortalBooking from "./pages/portal/PortalBooking";
@@ -189,6 +190,7 @@ const App = () => (
                           <Route path="documents" element={<PortalDocuments />} />
                           <Route path="notifications" element={<PortalNotifications />} />
                           <Route path="deal-progress" element={<PortalDealProgress />} />
+                          <Route path="lenders" element={<PortalLenders />} />
                           <Route path="messages" element={<PortalMessages />} />
                           <Route path="property-insights" element={<PortalPropertyInsights />} />
                           <Route path="booking" element={<PortalBooking />} />
@@ -279,6 +281,7 @@ const App = () => (
                 <Route path="portal-config" element={<ModuleGuard moduleKey="portal_config"><PortalConfig /></ModuleGuard>} />
                 <Route path="marketing-analytics" element={<ModuleGuard moduleKey="marketing_analytics"><MarketingAnalytics /></ModuleGuard>} />
                 <Route path="conversations" element={<ModuleGuard moduleKey="conversations"><Conversations /></ModuleGuard>} />
+                <Route path="lenders" element={<ModuleGuard moduleKey="lenders"><Lenders /></ModuleGuard>} />
                         </Route>
                         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                         <Route path="*" element={<NotFound />} />

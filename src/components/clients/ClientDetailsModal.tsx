@@ -89,6 +89,8 @@ import { SendAgreementDialog } from '../agreements/SendAgreementDialog';
 import { SendPortalInviteDialog } from '../portal/SendPortalInviteDialog';
 import { LeadSourceCard } from './LeadSourceCard';
 import { ClientConversationsTab } from './ClientConversationsTab';
+import { LenderSubmissionsPanel } from '@/components/lenders/LenderSubmissionsPanel';
+import { LenderComparisonSheets } from '@/components/lenders/LenderComparisonSheets';
 import { toast } from 'sonner';
 interface ClientDetailsModalProps {
   client: {
@@ -389,6 +391,7 @@ NPC Team`
             <TabsTrigger value="files" className="text-xs sm:text-sm">Files</TabsTrigger>
             <TabsTrigger value="activity" className="text-xs sm:text-sm">Activity</TabsTrigger>
             <TabsTrigger value="borrowing" className="text-xs sm:text-sm">Borrowing Capacity</TabsTrigger>
+            <TabsTrigger value="lenders" className="text-xs sm:text-sm">Lenders</TabsTrigger>
             <TabsTrigger value="insights" className="text-xs sm:text-sm">AI</TabsTrigger>
           </TabsList>
         </div>
@@ -868,6 +871,11 @@ NPC Team`
                 clientName={`${client.primary_first_name || ''} ${client.primary_surname || ''}`.trim()}
                 onOpenCalculator={() => setShowBorrowingCalculator(true)}
               />
+            </TabsContent>
+
+            <TabsContent value="lenders" className="mt-4 space-y-4">
+              <LenderSubmissionsPanel clientId={client.id} />
+              <LenderComparisonSheets clientId={client.id} />
             </TabsContent>
 
             <TabsContent value="insights" className="mt-4 space-y-4">
