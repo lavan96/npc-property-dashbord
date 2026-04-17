@@ -2,10 +2,12 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 import {
   aggregateDeltas,
+  computeAcquisitionCapacity,
   type ScenarioDelta,
   type ScenarioContext as SharedScenarioContext,
   type ScenarioProperty as SharedScenarioProperty,
   type ScenarioLiability as SharedScenarioLiability,
+  type AcquisitionContext as SharedAcquisitionContext,
 } from '../_shared/scenarioDeltaEngine.ts';
 
 const corsHeaders = {
@@ -1022,15 +1024,34 @@ interface ServerScenarioContext extends SharedScenarioContext {
 function runServerScenarios(
   scenarioDeltas: { name: string; deltas: ScenarioDelta[] }[] | undefined | null,
   ctx: ServerScenarioContext,
+  strictValidation = false,
 ): any[] {
   if (!scenarioDeltas || !Array.isArray(scenarioDeltas) || scenarioDeltas.length === 0) return [];
 
   const results: any[] = [];
   for (const scenario of scenarioDeltas) {
-    const { inputs, safeDeltas, issues } = aggregateDeltas(scenario.name, scenario.deltas || [], ctx);
+    const { inputs, effect, safeDeltas, issues } = aggregateDeltas(scenario.name, scenario.deltas || [], ctx);
 
     if (issues.length > 0) {
       console.warn(`[calculate-borrowing-capacity] Scenario "${scenario.name}" produced ${issues.length} validation issue(s):`, issues);
+    }
+
+    // Phase C5: strict mode rejects scenarios with hard errors (non-finite values, etc.)
+    const hasErrors = issues.some(i => i.severity === 'error');
+    if (strictValidation && hasErrors) {
+      results.push({
+        scenarioName: scenario.name,
+        deltas: safeDeltas,
+        borrowingCapacity: ctx.baseResult.borrowingCapacity,
+        monthlySurplus: ctx.baseResult.monthlySurplus,
+        serviceabilityBand: ctx.baseResult.serviceabilityBand,
+        dtiRatio: ctx.baseResult.dtiRatio,
+        capacityChange: { absolute: 0, percent: 0, direction: 'unchanged' },
+        validationIssues: issues,
+        rejected: true,
+        rejectionReason: 'Strict validation: scenario contains errors',
+      });
+      continue;
     }
 
     const scenarioResult = calculateBorrowingCapacity({
@@ -1052,6 +1073,11 @@ function runServerScenarios(
       ? Math.round((abs / ctx.baseResult.borrowingCapacity) * 1000) / 10
       : 0;
 
+    // Phase C: derive Acquisition Capacity if an acquisition context was supplied
+    const acquisitionCapacity = ctx.acquisition
+      ? computeAcquisitionCapacity(scenarioResult.borrowingCapacity, ctx, effect)
+      : null;
+
     results.push({
       scenarioName: scenario.name,
       deltas: safeDeltas,
@@ -1064,11 +1090,12 @@ function runServerScenarios(
         percent: pct,
         direction: abs > 0 ? 'increase' : abs < 0 ? 'decrease' : 'unchanged',
       },
+      acquisitionCapacity,
       validationIssues: issues,
     });
   }
 
-  console.log(`[calculate-borrowing-capacity] Phase B: Ran ${results.length} scenario(s) via shared engine`);
+  console.log(`[calculate-borrowing-capacity] Phase C: Ran ${results.length} scenario(s) via shared engine (strict=${strictValidation})`);
   return results;
 }
 
@@ -1088,7 +1115,7 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const body = await req.json();
-    const { clientId, overrides, saveResult = true, scenarioDeltas } = body;
+    const { clientId, overrides, saveResult = true, scenarioDeltas, acquisition, strictScenarioValidation } = body;
 
     // SECURITY: Verify authentication (enforced - TODO removed)
     const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
@@ -1573,7 +1600,17 @@ Deno.serve(async (req) => {
           limit: l.limit,
           monthlyServicing: l.monthlyServicing,
         })),
-      }),
+        // Phase C: optional acquisition context for max-purchase-price math
+        acquisition: acquisition ? {
+          state: acquisition.state,
+          intent: acquisition.intent,
+          category: acquisition.category,
+          isFirstHomeBuyer: acquisition.isFirstHomeBuyer ?? overrides?.isFirstHomeBuyer ?? false,
+          isForeignBuyer: acquisition.isForeignBuyer ?? false,
+          lmiMode: acquisition.lmiMode ?? overrides?.lmiMode ?? 'display_deduction',
+          cashOnHand: acquisition.cashOnHand ?? 0,
+        } : undefined,
+      }, !!strictScenarioValidation),
       proposedLoanCheck,
       // ── Phase 5: Audit Trail & Explanation ──
       auditTrail,

@@ -9,6 +9,15 @@
  * If you change one, change the other and update the parity test.
  */
 
+import { estimateLmi, type LmiMode } from './lmiCalculations.ts';
+import {
+  calculateStampDuty,
+  estimateOtherAcquisitionCosts,
+  type AustralianState,
+  type PurchaseIntent,
+  type PropertyCategory,
+} from './stampDutyCalculator.ts';
+
 // ============================================
 // TYPES (mirrored from src/utils/borrowingCapacityTypes.ts)
 // ============================================
@@ -345,6 +354,18 @@ export interface AggregatedScenarioInputs {
   dtiCapLimit?: number;
 }
 
+export interface AcquisitionCapacityResult {
+  releasedCapital: number;
+  lmi: number;
+  lmiMode: LmiMode;
+  stampDuty: number;
+  otherAcquisitionCosts: number;
+  maxPurchasePrice: number;
+  loanAvailableForPurchase: number;
+  cashAvailable: number;
+  notes: string[];
+}
+
 export interface AggregateResult {
   inputs: AggregatedScenarioInputs;
   effect: DeltaEffect;
@@ -376,6 +397,8 @@ export function aggregateDeltas(
     total.rateAdjustment += e.rateAdjustment;
     total.loanTermAdjustment += e.loanTermAdjustment;
     total.debtBalanceAdjustment += e.debtBalanceAdjustment;
+    total.releasedCapital += e.releasedCapital;
+    if (e.acquisitionNotes.length) total.acquisitionNotes.push(...e.acquisitionNotes);
     if (e.dtiCapEnabled !== undefined) total.dtiCapEnabled = e.dtiCapEnabled;
     if (e.dtiCapLimit !== undefined) total.dtiCapLimit = e.dtiCapLimit;
   }
@@ -395,4 +418,92 @@ export function aggregateDeltas(
   };
 
   return { inputs, effect: total, safeDeltas, issues };
+}
+
+/** Phase C: iteratively solve for the maximum purchase price.
+ *  Mirrors `src/utils/scenarioDeltaEngine.ts::computeAcquisitionCapacity`. */
+export function computeAcquisitionCapacity(
+  borrowingCapacity: number,
+  context: ScenarioContext,
+  effect: DeltaEffect,
+): AcquisitionCapacityResult {
+  const acq = context.acquisition || {};
+  const lmiMode: LmiMode = acq.lmiMode ?? 'display_deduction';
+  const state: AustralianState = (acq.state ?? 'NSW') as AustralianState;
+  const intent: PurchaseIntent = (acq.intent ?? 'investor') as PurchaseIntent;
+  const category: PropertyCategory = (acq.category ?? 'established') as PropertyCategory;
+  const isFhb = !!acq.isFirstHomeBuyer;
+  const isForeign = !!acq.isForeignBuyer;
+  const cashOnHand = Math.max(0, acq.cashOnHand ?? 0);
+
+  const cashAvailable = cashOnHand + Math.max(0, effect.releasedCapital);
+  const notes = [...effect.acquisitionNotes];
+
+  if (borrowingCapacity <= 0 && cashAvailable <= 0) {
+    return {
+      releasedCapital: effect.releasedCapital,
+      lmi: 0, lmiMode, stampDuty: 0, otherAcquisitionCosts: 0,
+      maxPurchasePrice: 0, loanAvailableForPurchase: 0, cashAvailable, notes,
+    };
+  }
+
+  let purchasePrice = borrowingCapacity + cashAvailable;
+  let lmi = 0;
+  let stampDuty = 0;
+  let otherCosts = 0;
+  let loanAvail = borrowingCapacity;
+
+  for (let i = 0; i < 6; i++) {
+    const sd = calculateStampDuty({
+      propertyValue: purchasePrice,
+      state, intent, category,
+      isFirstHomeBuyer: isFhb,
+      isForeignBuyer: isForeign,
+    });
+    stampDuty = sd.totalDuty;
+    otherCosts = estimateOtherAcquisitionCosts(purchasePrice).total;
+
+    const requiredLoan = Math.max(0, purchasePrice - cashAvailable);
+    const cappedLoan = Math.min(borrowingCapacity, requiredLoan);
+
+    if (lmiMode !== 'none') {
+      const est = estimateLmi({
+        propertyValue: purchasePrice,
+        loanAmount: cappedLoan,
+        isFirstHomeBuyer: isFhb,
+      });
+      lmi = est.lmiAmount;
+    } else {
+      lmi = 0;
+    }
+
+    loanAvail = lmiMode === 'debt_capitalised'
+      ? Math.max(0, borrowingCapacity - lmi)
+      : borrowingCapacity;
+
+    const lmiCashDeduction = lmiMode === 'display_deduction' ? lmi : 0;
+    const newPrice = Math.max(0, loanAvail + cashAvailable - lmiCashDeduction - stampDuty - otherCosts);
+
+    if (Math.abs(newPrice - purchasePrice) < 1000) {
+      purchasePrice = newPrice;
+      break;
+    }
+    purchasePrice = newPrice;
+  }
+
+  if (lmi > 0) notes.push(`LMI ${lmiMode === 'debt_capitalised' ? 'capitalised onto loan' : 'deducted from settlement cash'}: $${Math.round(lmi).toLocaleString()}`);
+  if (stampDuty > 0) notes.push(`${state} stamp duty: $${Math.round(stampDuty).toLocaleString()} (${intent}${isFhb ? ', FHB' : ''})`);
+  if (otherCosts > 0) notes.push(`Acquisition costs: $${Math.round(otherCosts).toLocaleString()}`);
+
+  return {
+    releasedCapital: Math.round(effect.releasedCapital),
+    lmi: Math.round(lmi),
+    lmiMode,
+    stampDuty: Math.round(stampDuty),
+    otherAcquisitionCosts: Math.round(otherCosts),
+    maxPurchasePrice: Math.round(Math.max(0, purchasePrice)),
+    loanAvailableForPurchase: Math.round(loanAvail),
+    cashAvailable: Math.round(cashAvailable),
+    notes,
+  };
 }
