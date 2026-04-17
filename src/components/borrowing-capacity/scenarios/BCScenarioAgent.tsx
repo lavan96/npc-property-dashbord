@@ -26,6 +26,17 @@ interface ScenarioAdjustments {
   loanTermAdjustment?: number;
   portfolioSellPropertyIds?: string[];
   dtiCapOverride?: { enabled: boolean; value: number } | null;
+  /** Phase D: Acquisition context driving stamp duty + LMI math.
+   *  When set, the engine derives a maximum purchase price for the scenario. */
+  acquisition?: {
+    state: 'NSW' | 'VIC' | 'QLD' | 'WA' | 'SA' | 'TAS' | 'NT' | 'ACT';
+    intent: 'owner_occupier' | 'investor';
+    category?: 'established' | 'new' | 'vacant_land';
+    isFirstHomeBuyer?: boolean;
+    isForeignBuyer?: boolean;
+    lmiMode?: 'none' | 'display_deduction' | 'debt_capitalised';
+    cashOnHand?: number;
+  } | null;
 }
 
 export interface AIScenario {
