@@ -383,6 +383,9 @@ export interface ScenarioCapacityResult {
   acquisitionCapacity?: AcquisitionCapacity | null;
   /** Phase C: validation issues from delta resolution (hallucination guard) */
   validationIssues?: ScenarioValidationIssue[];
+  /** Phase K1: capital allocation ledger — tracks every $ flowing from sources
+   *  (equity_release / pool / sells / cash) to sinks (payoff / offset / etc.). */
+  capitalLedger?: CapitalLedger | null;
 }
 
 // ============================================
