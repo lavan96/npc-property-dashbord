@@ -429,7 +429,9 @@ async function analyzeTranscriptWithAI(transcript: string, summary: string | nul
     recoveryPriority: null,
   };
   
-  if (!openaiApiKey || !transcript || transcript.length < 50) {
+  // Skip only when transcript is too short. Router may succeed without OPENAI_API_KEY
+  // (using LOVABLE_API_KEY via the AI Gateway). Direct-OpenAI fallback still requires the key.
+  if (!transcript || transcript.length < 50) {
     return defaultResult;
   }
 
