@@ -58,6 +58,7 @@ import {
 } from './lenderLvrCaps';
 import {
   computeDtiDenominator,
+  computeDti,
 } from './dtiDenominator';
 
 // ============================================
@@ -815,11 +816,30 @@ export function computeAcquisitionCapacity(
   const cashAvailable = cashOnHand + Math.max(0, effect.releasedCapital);
   const notes = [...effect.acquisitionNotes];
 
+  // ── Phase I9 — Wire I7 LVR cap matrix into the acquisition ceiling.
+  // The acquisition loan must respect the lender's per-security cap for
+  // intent (OO vs INV) and property kind (established / OTP / land /
+  // construction etc.). Previously implicit via the LMI estimator; now
+  // binds explicitly so investors aren't approved for OO-only LVRs.
+  const acqIntent = intent === 'owner_occupier' ? 'owner_occupier' : 'investment';
+  const acqKind = category === 'vacant_land' ? 'vacant_land'
+    : category === 'new' ? 'new_build'
+    : 'established';
+  const lvrCapResult = resolveLvrCap({
+    lenderId: context.currentLenderProfileId,
+    intent: acqIntent,
+    kind: acqKind,
+    isFirstHomeBuyer: isFhb,
+    isForeignBuyer: isForeign,
+  });
+  const acquisitionLvrCap = lvrCapResult.cap;
+
   if (borrowingCapacity <= 0 && cashAvailable <= 0) {
     return {
       releasedCapital: effect.releasedCapital,
       lmi: 0, lmiMode, stampDuty: 0, otherAcquisitionCosts: 0,
       maxPurchasePrice: 0, loanAvailableForPurchase: 0, cashAvailable, notes,
+      acquisitionLvrCap, loanCappedByLvr: false,
     };
   }
 
@@ -830,6 +850,7 @@ export function computeAcquisitionCapacity(
   let stampDuty = 0;
   let otherCosts = 0;
   let loanAvail = borrowingCapacity;
+  let loanCappedByLvr = false;
 
   for (let i = 0; i < 6; i++) {
     // Stamp duty + other costs on the current candidate price
@@ -844,7 +865,14 @@ export function computeAcquisitionCapacity(
 
     // Loan size required for this purchase = price − cashAvailable
     const requiredLoan = Math.max(0, purchasePrice - cashAvailable);
-    const cappedLoan = Math.min(borrowingCapacity, requiredLoan);
+    // Phase I9 — bind required loan to (a) serviceable capacity AND
+    // (b) the per-security LVR cap (loan ≤ price × cap). The lender
+    // will never advance more than its policy cap on this security.
+    const lvrCapDollar = Math.max(0, purchasePrice * acquisitionLvrCap);
+    const cappedLoan = Math.min(borrowingCapacity, requiredLoan, lvrCapDollar);
+    if (lvrCapDollar < Math.min(borrowingCapacity, requiredLoan)) {
+      loanCappedByLvr = true;
+    }
 
     // LMI on the acquisition loan (LVR = loan / price)
     if (lmiMode !== 'none') {
@@ -861,9 +889,9 @@ export function computeAcquisitionCapacity(
 
     // Recompute loan-available-for-purchase based on LMI mode
     if (lmiMode === 'debt_capitalised') {
-      loanAvail = Math.max(0, borrowingCapacity - lmi);
+      loanAvail = Math.max(0, Math.min(borrowingCapacity, lvrCapDollar) - lmi);
     } else {
-      loanAvail = borrowingCapacity;
+      loanAvail = Math.min(borrowingCapacity, lvrCapDollar);
     }
 
     // New purchase ceiling = loan + cash − LMI (display) − stamp duty − other
@@ -880,6 +908,12 @@ export function computeAcquisitionCapacity(
   if (lmi > 0) notes.push(`LMI ${lmiMode === 'debt_capitalised' ? 'capitalised onto loan' : 'deducted from settlement cash'}: $${Math.round(lmi).toLocaleString()}`);
   if (stampDuty > 0) notes.push(`${state} stamp duty: $${Math.round(stampDuty).toLocaleString()} (${intent}${isFhb ? ', FHB' : ''})`);
   if (otherCosts > 0) notes.push(`Acquisition costs (legals, inspections, registrations): $${Math.round(otherCosts).toLocaleString()}`);
+  // Phase I9 — surface the binding LVR cap so the PDF + UI can show
+  // "max LVR for this security: 90%" alongside the dollar release.
+  notes.push(`Acquisition LVR cap (${lvrCapResult.matrix.lenderId}, ${acqIntent}, ${acqKind}): ${(acquisitionLvrCap * 100).toFixed(0)}% — ${lvrCapResult.reason}`);
+  if (loanCappedByLvr) {
+    notes.push(`⚠ Acquisition loan clamped by LVR cap — serviceable capacity exceeded the ${(acquisitionLvrCap * 100).toFixed(0)}% per-security ceiling.`);
+  }
 
   // ── Phase F2 — Target solving + actual loan-required + net cash ──
   // The Strategy Builder needs a clear "achievable / short by $X" answer
@@ -906,24 +940,33 @@ export function computeAcquisitionCapacity(
     const otherTarget = estimateOtherAcquisitionCosts(target).total;
 
     const requiredLoanRaw = Math.max(0, target - cashAvailable);
+    // Phase I9 — clamp the target loan by the LVR cap on the target price
+    const lvrCapDollarTarget = Math.max(0, target * acquisitionLvrCap);
+    const cappedRequiredLoan = Math.min(requiredLoanRaw, lvrCapDollarTarget);
     let lmiAtTarget = 0;
     if (lmiMode !== 'none') {
       lmiAtTarget = estimateLMI({
         propertyValue: target,
         depositAmount: cashAvailable,
-        loanAmount: requiredLoanRaw,
+        loanAmount: cappedRequiredLoan,
         isFirstHomeBuyer: isFhb,
       }).lmiAmount;
     }
     const lmiCashAtTarget = lmiMode === 'display_deduction' ? lmiAtTarget : 0;
     loanRequiredForPurchase = lmiMode === 'debt_capitalised'
-      ? requiredLoanRaw + lmiAtTarget
-      : requiredLoanRaw;
+      ? cappedRequiredLoan + lmiAtTarget
+      : cappedRequiredLoan;
 
     netCashAfterSettlement = cashAvailable - Math.max(0, target - (loanRequiredForPurchase ?? 0)) - lmiCashAtTarget - sdTarget - otherTarget;
-    meetsTarget = (loanRequiredForPurchase ?? 0) <= borrowingCapacity && netCashAfterSettlement >= 0;
+    meetsTarget = (loanRequiredForPurchase ?? 0) <= borrowingCapacity
+      && cappedRequiredLoan >= requiredLoanRaw  // LVR cap doesn't bind
+      && netCashAfterSettlement >= 0;
     shortfallToTarget = Math.max(0, target - Math.max(0, purchasePrice));
 
+    if (cappedRequiredLoan < requiredLoanRaw) {
+      loanCappedByLvr = true;
+      notes.push(`⚠ Target $${Math.round(target).toLocaleString()} requires loan > LVR cap (${(acquisitionLvrCap * 100).toFixed(0)}% × $${Math.round(target).toLocaleString()} = $${Math.round(lvrCapDollarTarget).toLocaleString()}). Increase deposit by $${Math.round(requiredLoanRaw - cappedRequiredLoan).toLocaleString()} to settle.`);
+    }
     if (meetsTarget) {
       notes.push(
         `✅ Target $${Math.round(target).toLocaleString()} achievable: needs loan $${Math.round(loanRequiredForPurchase).toLocaleString()} (capacity $${Math.round(borrowingCapacity).toLocaleString()}); net cash post-settlement $${Math.round(netCashAfterSettlement).toLocaleString()}.`
@@ -956,6 +999,8 @@ export function computeAcquisitionCapacity(
     targetPurchasePrice: target !== undefined ? Math.round(target) : undefined,
     meetsTarget,
     shortfallToTarget: shortfallToTarget !== undefined ? Math.round(shortfallToTarget) : undefined,
+    acquisitionLvrCap,
+    loanCappedByLvr,
     notes,
   };
 }
@@ -987,6 +1032,63 @@ function cloneContextForRun(context: ScenarioContext): ScenarioContext {
     ...context,
     properties: (context.properties || []).map(p => ({ ...p })),
   };
+}
+
+/** Phase I10 — Split scenario debt-balance moves into:
+ *    - releasedCapitalDebt: NEW debt added by equity-release / pool-release
+ *    - debtRemovedByScenario: EXISTING debt removed by sells / liability payoffs
+ *  Used to power `computeDtiNumerator` so the engine reports an honest DTI
+ *  ratio that includes new shadow-debt and credits sells/payoffs (rather
+ *  than netting them inside `debtBalanceAdjustment` and losing the audit
+ *  trail). Does NOT alter `debtBalanceAdjustment` math itself. */
+function splitDebtMoves(
+  safeDeltas: ScenarioDelta[],
+  context: ScenarioContext,
+): { releasedCapitalDebt: number; debtRemovedByScenario: number } {
+  let released = 0;
+  let removed = 0;
+  for (const d of safeDeltas) {
+    if (d.type === 'equity_release') {
+      const property = context.properties?.find(p => p.id === d.id);
+      if (!property || property.currentValue <= 0) continue;
+      // Best-effort: re-derive the gross release using the same target rule
+      // as `applyDelta`. Conservative — uses the resolved cap, not the raw
+      // value, so it never overstates the new debt.
+      const intentForCap = inferPropertyIntent(property.propertyType, 'investment');
+      const kindForCap = inferPropertyKind(property.propertyType);
+      const lvr = resolveLvrCap({
+        lenderId: context.currentLenderProfileId,
+        intent: intentForCap,
+        kind: kindForCap,
+        isFirstHomeBuyer: !!context.acquisition?.isFirstHomeBuyer,
+        isForeignBuyer: !!context.acquisition?.isForeignBuyer,
+        explicitCap: d.meta?.lenderMaxLVR as number | undefined,
+      });
+      const targetLvr = d.unit === 'absolute'
+        ? Math.min(lvr.cap, (property.loanRemaining + Math.max(0, d.value)) / property.currentValue)
+        : (d.unit === 'percent' ? d.value / 100 : d.value);
+      const grossRelease = Math.max(0, (Math.min(targetLvr, lvr.cap) * property.currentValue) - property.loanRemaining);
+      released += grossRelease;
+    } else if (d.type === 'portfolio_lvr_release') {
+      // Pool release adds the gross pool to total debt — already
+      // captured in debtBalanceAdjustment. Conservative attribution:
+      // treat the absolute-positive delta as released debt.
+      const target = d.unit === 'percent' ? d.value / 100 : d.value;
+      const ids = (d.meta?.propertyIds as string[] | undefined) || [];
+      const members = (context.properties || []).filter(p => ids.includes(p.id));
+      const totalValue = members.reduce((s, p) => s + (p.currentValue || 0), 0);
+      const totalDebt = members.reduce((s, p) => s + (p.loanRemaining || 0), 0);
+      const grossPool = Math.max(0, target * totalValue - totalDebt);
+      released += grossPool;
+    } else if (d.type === 'property_sell') {
+      const p = context.properties?.find(x => x.id === d.id);
+      if (p && p.loanRemaining > 0) removed += p.loanRemaining;
+    } else if (d.type === 'liability_payoff') {
+      const l = context.liabilities?.find(x => x.id === d.id);
+      if (l) removed += Math.max(0, l.balance || 0);
+    }
+  }
+  return { releasedCapitalDebt: released, debtRemovedByScenario: removed };
 }
 
 export function runScenario(
@@ -1109,6 +1211,45 @@ export function runScenario(
   const acquisitionCapacity = ctx.acquisition
     ? computeAcquisitionCapacity(scenarioResult.borrowingCapacity, ctx, total)
     : null;
+
+  // Phase I10 — Honest DTI: split scenario debt moves into NEW debt
+  // (equity-release / pool-release) and REMOVED debt (sells / payoffs),
+  // then call computeDti with the post-delta gross income for clarity.
+  // The legacy `scenarioResult.dtiRatio` continues to drive any DTI cap
+  // logic in `calculateBorrowingCapacity`; this is the broker-facing
+  // honest number with explicit accounting.
+  const debtMoves = splitDebtMoves(deltas, ctx);
+  // Add the proposed acquisition loan to the numerator so the DTI
+  // reflects the FULL post-strategy commitment (including the new
+  // purchase). When no acquisition context exists we pass 0.
+  const proposedAcqLoan = acquisitionCapacity?.loanRequiredForPurchase ?? 0;
+  const refinedDti = computeDti(
+    {
+      existingDebtBalances: Math.max(0, ctx.baseInputs.totalDebtBalances || 0),
+      proposedLoanAmount: proposedAcqLoan,
+      releasedCapitalDebt: debtMoves.releasedCapitalDebt,
+      debtRemovedByScenario: debtMoves.debtRemovedByScenario,
+    },
+    {
+      incomeComponents: Array.isArray(ctx.incomeComponents) && ctx.incomeComponents.length > 0
+        ? ctx.incomeComponents.map(c => ({
+            ...c,
+            grossAnnual: Math.max(0, c.grossAnnual * (ctx.baseInputs.grossAnnualIncome > 0 ? newGross / ctx.baseInputs.grossAnnualIncome : 1)),
+          }))
+        : undefined,
+      fallbackGrossAnnual: newGross,
+    },
+    ctx.baseInputs.dtiCapLimit,
+  );
+  if (refinedDti.exceedsApraTrigger || refinedDti.exceedsLenderCap) {
+    total.acquisitionNotes.push(
+      `⚠ Honest DTI ${refinedDti.dtiRatio.toFixed(2)}× (${refinedDti.exceedsApraTrigger ? 'exceeds APRA 6× review trigger' : ''}${refinedDti.exceedsApraTrigger && refinedDti.exceedsLenderCap ? '; ' : ''}${refinedDti.exceedsLenderCap ? `exceeds lender cap ${ctx.baseInputs.dtiCapLimit}×` : ''}). Numerator $${Math.round(refinedDti.numerator).toLocaleString()} = existing $${Math.round(ctx.baseInputs.totalDebtBalances || 0).toLocaleString()} + proposed $${Math.round(proposedAcqLoan).toLocaleString()} + released $${Math.round(debtMoves.releasedCapitalDebt).toLocaleString()} − removed $${Math.round(debtMoves.debtRemovedByScenario).toLocaleString()}. Denominator $${Math.round(refinedDti.denominator).toLocaleString()}.`
+    );
+  } else if (debtMoves.debtRemovedByScenario > 0 || debtMoves.releasedCapitalDebt > 0) {
+    total.acquisitionNotes.push(
+      `Honest DTI ${refinedDti.dtiRatio.toFixed(2)}× — numerator $${Math.round(refinedDti.numerator).toLocaleString()} (released $${Math.round(debtMoves.releasedCapitalDebt).toLocaleString()}, removed $${Math.round(debtMoves.debtRemovedByScenario).toLocaleString()}).`
+    );
+  }
 
   return {
     scenarioName,
@@ -1281,6 +1422,36 @@ export function runScenarioWithInputs(
   const acquisitionCapacity = ctx.acquisition
     ? computeAcquisitionCapacity(calc.borrowingCapacity, ctx, total)
     : null;
+
+  // Phase I10 — Honest DTI parity with runScenario
+  const debtMoves2 = splitDebtMoves(safeDeltas, ctx);
+  const proposedAcqLoan2 = acquisitionCapacity?.loanRequiredForPurchase ?? 0;
+  const refinedDti2 = computeDti(
+    {
+      existingDebtBalances: Math.max(0, ctx.baseInputs.totalDebtBalances || 0),
+      proposedLoanAmount: proposedAcqLoan2,
+      releasedCapitalDebt: debtMoves2.releasedCapitalDebt,
+      debtRemovedByScenario: debtMoves2.debtRemovedByScenario,
+    },
+    {
+      incomeComponents: Array.isArray(ctx.incomeComponents) && ctx.incomeComponents.length > 0
+        ? ctx.incomeComponents.map(c => ({
+            ...c,
+            grossAnnual: Math.max(0, c.grossAnnual * (ctx.baseInputs.grossAnnualIncome > 0 ? newGross2 / ctx.baseInputs.grossAnnualIncome : 1)),
+          }))
+        : undefined,
+      fallbackGrossAnnual: newGross2,
+    },
+    ctx.baseInputs.dtiCapLimit,
+  );
+  if (refinedDti2.exceedsApraTrigger || refinedDti2.exceedsLenderCap) {
+    issues.push({
+      deltaId: 'dti-honest',
+      deltaType: 'dti_cap_change',
+      severity: 'warning',
+      message: `Honest DTI ${refinedDti2.dtiRatio.toFixed(2)}× ${refinedDti2.exceedsApraTrigger ? '(>6× APRA trigger)' : ''}${refinedDti2.exceedsLenderCap ? ` (>lender cap ${ctx.baseInputs.dtiCapLimit}×)` : ''}. Numerator $${Math.round(refinedDti2.numerator).toLocaleString()} (existing+proposed+released−removed).`,
+    });
+  }
 
   return {
     result: {
