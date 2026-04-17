@@ -87,6 +87,10 @@ export interface AIScenario {
   reconciledImpact?: string;
   /** Phase H: pre-Apply engine validation from the server preview. */
   engineValidation?: AIScenarioEngineValidation;
+  /** Phase J1: Levers the model considered but discarded, with reasons. */
+  rejectedLevers?: Array<{ lever: string; reason: string }>;
+  /** Phase J1: Execution risk profile (low / medium / high). */
+  executionRisk?: 'low' | 'medium' | 'high';
 }
 
 interface ChatMessage {
@@ -232,6 +236,16 @@ export function BCScenarioAgent({
               currentLenderProfileId,
               hemBenchmark,
             },
+            // Phase J1 — give the model an explicit memory of the prior run
+            // so refinement requests reference real numbers, not re-derived ones.
+            priorScenarios: scenarios.length > 0
+              ? scenarios.slice(0, 3).map(s => ({
+                  name: s.name,
+                  adjustments: s.adjustments,
+                  engineValidation: s.engineValidation,
+                  executionRisk: s.executionRisk,
+                }))
+              : undefined,
           }),
         }
       );
@@ -331,7 +345,7 @@ export function BCScenarioAgent({
     } finally {
       setIsLoading(false);
     }
-  }, [input, isLoading, messages, baseInputs, baseResult, liabilities, properties]);
+  }, [input, isLoading, messages, baseInputs, baseResult, liabilities, properties, scenarios, incomeComponents, currentLenderProfileId, hemBenchmark]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -501,7 +515,23 @@ export function BCScenarioAgent({
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2 mb-2">
-                    <h4 className="text-sm font-semibold leading-tight">{scenario.name}</h4>
+                    <div className="min-w-0 flex-1">
+                      <h4 className="text-sm font-semibold leading-tight">{scenario.name}</h4>
+                      {scenario.executionRisk && (
+                        <Badge
+                          variant="outline"
+                          className={`mt-1 text-[9px] h-4 px-1.5 ${
+                            scenario.executionRisk === 'low'
+                              ? 'border-emerald-500/40 text-emerald-600 dark:text-emerald-400'
+                              : scenario.executionRisk === 'medium'
+                                ? 'border-amber-500/40 text-amber-600 dark:text-amber-400'
+                                : 'border-destructive/40 text-destructive'
+                          }`}
+                        >
+                          {scenario.executionRisk.toUpperCase()} RISK
+                        </Badge>
+                      )}
+                    </div>
                     <Badge
                       variant={scenario.reconciledImpact || scenario.engineValidation ? "default" : "outline"}
                       className="shrink-0 text-xs"
@@ -523,6 +553,22 @@ export function BCScenarioAgent({
                     {scenario.reasoning}
                   </p>
 
+                  {/* Phase J1: Rejected levers — defends the recommendation */}
+                  {scenario.rejectedLevers && scenario.rejectedLevers.length > 0 && (
+                    <details className="mb-3 rounded-md border border-border/60 bg-muted/30 p-2">
+                      <summary className="text-[10px] uppercase tracking-wide text-muted-foreground cursor-pointer hover:text-foreground">
+                        Considered & Rejected ({scenario.rejectedLevers.length})
+                      </summary>
+                      <ul className="mt-1.5 space-y-1 text-[11px]">
+                        {scenario.rejectedLevers.map((rl, idx) => (
+                          <li key={idx} className="flex gap-1.5">
+                            <span className="text-muted-foreground shrink-0">×</span>
+                            <span><span className="font-medium">{rl.lever}:</span> <span className="text-muted-foreground">{rl.reason}</span></span>
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  )}
                   {/* Phase H: Engine-validated truth panel (pre-Apply) */}
                   {scenario.engineValidation && (() => {
                     const v = scenario.engineValidation!;

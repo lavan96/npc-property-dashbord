@@ -81,12 +81,22 @@ If the user mentions buying a property, a deposit goal, or a specific budget:
 - **Always reference specific numbers from the client's data** — name the actual liability, the actual property, the actual rate. Generic advice is rejected.
 - **Call out caveats inline in the reasoning** — HEM floors, DTI exception requirements, valuation risk, CGT, IO term limits, payslip evidence requirements.
 
+## Binding Constraint Discipline (Phase J1)
+The system pre-computes the BINDING CONSTRAINT (the actual ceiling on this client's capacity) and surfaces it in the snapshot below. You MUST honour it:
+- **Scenario 1 MUST directly attack the binding constraint.** If DTI is binding → debt payoff or dtiCapOverride. If surplus is binding → liability payoff, IO refinance, expense reduction. If LVR/deposit is binding → equity release, cross-collat pool, sell-down.
+- **Scenarios 2–3 may explore alternates** (different lever mix, different risk profile) but must still meaningfully move the needle.
+- If you propose a lever that does NOT relieve the binding constraint, justify in \`reasoning\` why the secondary effect (e.g. reducing risk, freeing cash) still matters.
+
+## Rejected Levers (Phase J1)
+For EACH scenario, populate \`rejectedLevers\` with 2–4 levers you considered but discarded, each with a one-line reason grounded in the client's data (e.g. "Sell IP at 12 King St — only 6% equity, would crystallise a loss"). This makes your recommendation defensible to the broker — they will be asked "why didn't you propose X?" by clients and the finance team.
+
 ## Conversation Guidelines
 - Be conversational and ask clarifying questions if the request is vague (especially: target budget, timeframe, risk appetite, owner-occupier vs investment intent).
 - Always reference specific numbers from the client's data — name the liability, the property address, the contracted rate.
 - Explain WHY each strategy works, not just what to do.
 - Anticipate the rationale brief: write \`reasoning\` for each scenario as if it will be quoted directly into a finance handoff (because it will).
 - When you're ready to recommend scenarios, call the generate_scenarios tool.
+- When the broker asks to refine a previously-generated scenario (e.g. "make scenario 2 more conservative"), reference the PRIOR SCENARIOS block in context — do not re-derive from scratch.
 - Keep prose tight — this is for professional mortgage brokers, not retail clients.`;
 
 const SCENARIO_TOOL = {
@@ -289,8 +299,33 @@ const SCENARIO_TOOL = {
                 description:
                   "Estimated capacity change e.g. '+$85,000' or '+12%'",
               },
+              rejectedLevers: {
+                type: "array",
+                minItems: 2,
+                maxItems: 4,
+                items: {
+                  type: "object",
+                  properties: {
+                    lever: {
+                      type: "string",
+                      description: "Short name of the lever you considered (e.g. 'Sell 12 King St', 'Refinance to IO', 'DTI exception to 8x')",
+                    },
+                    reason: {
+                      type: "string",
+                      description: "One-line justification for rejecting this lever, grounded in the client's data",
+                    },
+                  },
+                  required: ["lever", "reason"],
+                },
+                description: "Phase J1 — 2-4 levers you considered but rejected, each with a data-grounded reason. Surfaced to the broker so they can defend the recommendation.",
+              },
+              executionRisk: {
+                type: "string",
+                enum: ["low", "medium", "high"],
+                description: "Phase J1 — execution risk profile. low = standard policy, medium = needs evidence, high = needs lender exception or material trade-off.",
+              },
             },
-            required: ["name", "reasoning", "adjustments", "estimatedImpact"],
+            required: ["name", "reasoning", "adjustments", "estimatedImpact", "rejectedLevers", "executionRisk"],
           },
         },
       },
@@ -311,7 +346,7 @@ serve(async (req) => {
     );
 
     const body = await req.json();
-    const { messages, clientContext } = body;
+    const { messages, clientContext, priorScenarios } = body;
 
     // Auth check
     const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
@@ -403,7 +438,7 @@ ${(properties || []).map((p: any) => `- [${p.id}] ${p.address} (${p.property_typ
     }
 
     const aiMessages = [
-      { role: "system", content: SYSTEM_PROMPT + contextBlock + directives },
+      { role: "system", content: SYSTEM_PROMPT + contextBlock + priorScenariosBlock + directives },
       ...cappedMessages.map((m: any) => ({ role: m.role, content: m.content })),
     ];
 

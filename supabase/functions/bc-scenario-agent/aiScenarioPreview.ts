@@ -118,6 +118,10 @@ export interface AIScenario {
   reasoning: string;
   adjustments: AIAdjustments;
   estimatedImpact: string;
+  /** Phase J1 — levers the model considered but discarded, with reasons. */
+  rejectedLevers?: Array<{ lever: string; reason: string }>;
+  /** Phase J1 — execution risk profile so brokers can triage at a glance. */
+  executionRisk?: 'low' | 'medium' | 'high';
   engineValidation?: EngineValidation;
 }
 
@@ -146,10 +150,39 @@ export interface EngineValidation {
  * the numbers will match exactly.
  */
 export function adjustmentsToDeltas(adj: AIAdjustments): ScenarioDelta[] {
+  // Phase J1: Hard clamps + soft-cap warnings (mutated onto the scenario by
+  // the caller after aggregation; collected here for downstream surfacing).
+  const SOFT_CAPS = {
+    incomeGrowthPercent: 25,
+    expenseReductionPercent: 30,
+    equityReleaseLVR: 0.90,
+  };
+
+  // Defensive clamp helper — never mutate the caller's object directly.
+  const clampedAdj: AIAdjustments = JSON.parse(JSON.stringify(adj || {}));
+
+  if (typeof clampedAdj.incomeGrowthPercent === 'number' && clampedAdj.incomeGrowthPercent > SOFT_CAPS.incomeGrowthPercent) {
+    console.warn(`[adjustmentsToDeltas] Clamped incomeGrowthPercent ${clampedAdj.incomeGrowthPercent} → ${SOFT_CAPS.incomeGrowthPercent}`);
+    clampedAdj.incomeGrowthPercent = SOFT_CAPS.incomeGrowthPercent;
+  }
+  if (typeof clampedAdj.expenseReductionPercent === 'number' && clampedAdj.expenseReductionPercent > SOFT_CAPS.expenseReductionPercent) {
+    console.warn(`[adjustmentsToDeltas] Clamped expenseReductionPercent ${clampedAdj.expenseReductionPercent} → ${SOFT_CAPS.expenseReductionPercent}`);
+    clampedAdj.expenseReductionPercent = SOFT_CAPS.expenseReductionPercent;
+  }
+  if (clampedAdj.equityRelease && typeof clampedAdj.equityRelease.targetLVR === 'number' && clampedAdj.equityRelease.targetLVR > SOFT_CAPS.equityReleaseLVR) {
+    console.warn(`[adjustmentsToDeltas] Clamped equityRelease.targetLVR ${clampedAdj.equityRelease.targetLVR} → ${SOFT_CAPS.equityReleaseLVR}`);
+    clampedAdj.equityRelease = { ...clampedAdj.equityRelease, targetLVR: SOFT_CAPS.equityReleaseLVR };
+  }
+  if (clampedAdj.crossCollatPool && typeof clampedAdj.crossCollatPool.blendedTargetLVR === 'number' && clampedAdj.crossCollatPool.blendedTargetLVR > SOFT_CAPS.equityReleaseLVR) {
+    console.warn(`[adjustmentsToDeltas] Clamped crossCollatPool.blendedTargetLVR ${clampedAdj.crossCollatPool.blendedTargetLVR} → ${SOFT_CAPS.equityReleaseLVR}`);
+    clampedAdj.crossCollatPool = { ...clampedAdj.crossCollatPool, blendedTargetLVR: SOFT_CAPS.equityReleaseLVR };
+  }
+
+  const adjUsed = clampedAdj;
   const deltas: ScenarioDelta[] = [];
 
   // 1. Liability payoffs
-  for (const id of adj.consolidatedLiabilityIds || []) {
+  for (const id of adjUsed.consolidatedLiabilityIds || []) {
     deltas.push({
       id,
       label: `Pay off liability ${id}`,
@@ -160,7 +193,7 @@ export function adjustmentsToDeltas(adj: AIAdjustments): ScenarioDelta[] {
   }
 
   // 2. Property → IO refinance
-  for (const id of adj.refinancedToIOPropertyIds || []) {
+  for (const id of adjUsed.refinancedToIOPropertyIds || []) {
     deltas.push({
       id,
       label: `Refinance ${id} to IO`,
@@ -171,7 +204,7 @@ export function adjustmentsToDeltas(adj: AIAdjustments): ScenarioDelta[] {
   }
 
   // 3. Portfolio sell
-  for (const id of adj.portfolioSellPropertyIds || []) {
+  for (const id of adjUsed.portfolioSellPropertyIds || []) {
     deltas.push({
       id,
       label: `Sell ${id}`,
@@ -182,51 +215,51 @@ export function adjustmentsToDeltas(adj: AIAdjustments): ScenarioDelta[] {
   }
 
   // 4. Income change
-  if (adj.incomeGrowthPercent && Math.abs(adj.incomeGrowthPercent) > 0.001) {
+  if (adjUsed.incomeGrowthPercent && Math.abs(adjUsed.incomeGrowthPercent) > 0.001) {
     deltas.push({
-      id: `income-${adj.incomeGrowthPercent}`,
-      label: `Income ${adj.incomeGrowthPercent > 0 ? '+' : ''}${adj.incomeGrowthPercent}%`,
+      id: `income-${adjUsed.incomeGrowthPercent}`,
+      label: `Income ${adjUsed.incomeGrowthPercent > 0 ? '+' : ''}${adjUsed.incomeGrowthPercent}%`,
       type: 'income_change',
-      value: adj.incomeGrowthPercent,
+      value: adjUsed.incomeGrowthPercent,
       unit: 'percent',
     });
   }
 
   // 5. Expense reduction
-  if (adj.expenseReductionPercent && adj.expenseReductionPercent > 0.001) {
+  if (adjUsed.expenseReductionPercent && adjUsed.expenseReductionPercent > 0.001) {
     deltas.push({
-      id: `expense-${adj.expenseReductionPercent}`,
-      label: `Reduce expenses ${adj.expenseReductionPercent}%`,
+      id: `expense-${adjUsed.expenseReductionPercent}`,
+      label: `Reduce expenses ${adjUsed.expenseReductionPercent}%`,
       type: 'expense_change',
-      value: -adj.expenseReductionPercent,
+      value: -adjUsed.expenseReductionPercent,
       unit: 'percent',
     });
   }
 
   // 6. Loan term
-  if (adj.loanTermAdjustment && Math.abs(adj.loanTermAdjustment) > 0) {
+  if (adjUsed.loanTermAdjustment && Math.abs(adjUsed.loanTermAdjustment) > 0) {
     deltas.push({
-      id: `loan-term-${adj.loanTermAdjustment}`,
-      label: `Loan term ${adj.loanTermAdjustment > 0 ? '+' : ''}${adj.loanTermAdjustment}yr`,
+      id: `loan-term-${adjUsed.loanTermAdjustment}`,
+      label: `Loan term ${adjUsed.loanTermAdjustment > 0 ? '+' : ''}${adjUsed.loanTermAdjustment}yr`,
       type: 'loan_term_change',
-      value: adj.loanTermAdjustment,
+      value: adjUsed.loanTermAdjustment,
       unit: 'years',
     });
   }
 
   // 7. Global rate adjustment
-  if (adj.rateAdjustment && Math.abs(adj.rateAdjustment) > 0.001) {
+  if (adjUsed.rateAdjustment && Math.abs(adjUsed.rateAdjustment) > 0.001) {
     deltas.push({
-      id: `rate-${adj.rateAdjustment}`,
-      label: `Rates ${adj.rateAdjustment >= 0 ? '+' : ''}${adj.rateAdjustment}%`,
+      id: `rate-${adjUsed.rateAdjustment}`,
+      label: `Rates ${adjUsed.rateAdjustment >= 0 ? '+' : ''}${adjUsed.rateAdjustment}%`,
       type: 'rate_change',
-      value: adj.rateAdjustment,
+      value: adjUsed.rateAdjustment,
       unit: 'rate_points',
     });
   }
 
   // 8. Per-property rate changes (Phase F1)
-  for (const change of adj.propertyRateChanges || []) {
+  for (const change of adjUsed.propertyRateChanges || []) {
     if (Number.isFinite(change.newRate) && change.newRate > 0) {
       deltas.push({
         id: change.propertyId,
@@ -239,7 +272,7 @@ export function adjustmentsToDeltas(adj: AIAdjustments): ScenarioDelta[] {
   }
 
   // 9. Valuation overrides (Phase G1) — must resolve before equity release
-  for (const vo of adj.valuationOverrides || []) {
+  for (const vo of adjUsed.valuationOverrides || []) {
     if (Number.isFinite(vo.newValue) && vo.newValue > 0) {
       deltas.push({
         id: vo.propertyId,
@@ -253,41 +286,41 @@ export function adjustmentsToDeltas(adj: AIAdjustments): ScenarioDelta[] {
   }
 
   // 10. Single-property equity release
-  if (adj.equityRelease && adj.equityRelease.propertyId && Number.isFinite(adj.equityRelease.targetLVR)) {
+  if (adjUsed.equityRelease && adjUsed.equityRelease.propertyId && Number.isFinite(adjUsed.equityRelease.targetLVR)) {
     deltas.push({
-      id: adj.equityRelease.propertyId,
-      label: `Equity release ${adj.equityRelease.propertyId} → ${(adj.equityRelease.targetLVR * 100).toFixed(0)}% LVR`,
+      id: adjUsed.equityRelease.propertyId,
+      label: `Equity release ${adjUsed.equityRelease.propertyId} → ${(adjUsed.equityRelease.targetLVR * 100).toFixed(0)}% LVR`,
       type: 'equity_release',
-      value: adj.equityRelease.targetLVR,
+      value: adjUsed.equityRelease.targetLVR,
       unit: 'percent',
-      meta: { targetLVR: adj.equityRelease.targetLVR },
+      meta: { targetLVR: adjUsed.equityRelease.targetLVR },
     });
   }
 
   // 11. Cross-collat pool (Phase G2)
-  if (adj.crossCollatPool && adj.crossCollatPool.enabled && adj.crossCollatPool.propertyIds?.length > 0) {
+  if (adjUsed.crossCollatPool && adjUsed.crossCollatPool.enabled && adjUsed.crossCollatPool.propertyIds?.length > 0) {
     deltas.push({
       id: 'pool-default',
-      label: `Cross-collat pool → ${(adj.crossCollatPool.blendedTargetLVR * 100).toFixed(0)}% blended LVR`,
+      label: `Cross-collat pool → ${(adjUsed.crossCollatPool.blendedTargetLVR * 100).toFixed(0)}% blended LVR`,
       type: 'portfolio_lvr_release',
-      value: adj.crossCollatPool.blendedTargetLVR,
+      value: adjUsed.crossCollatPool.blendedTargetLVR,
       unit: 'ratio',
       meta: {
-        propertyIds: adj.crossCollatPool.propertyIds,
-        lenderMaxLVR: adj.crossCollatPool.lenderMaxLVR ?? null,
-        allocationStrategy: adj.crossCollatPool.allocationStrategy ?? 'highest_equity_first',
+        propertyIds: adjUsed.crossCollatPool.propertyIds,
+        lenderMaxLVR: adjUsed.crossCollatPool.lenderMaxLVR ?? null,
+        allocationStrategy: adjUsed.crossCollatPool.allocationStrategy ?? 'highest_equity_first',
       },
     });
   }
 
   // 12. DTI cap override + lender profile flip (Phase I1)
-  const lenderProfile = adj.lenderProfile ?? adj.dtiCapOverride?.lenderProfile;
-  if (adj.dtiCapOverride && adj.dtiCapOverride.enabled && Number.isFinite(adj.dtiCapOverride.value)) {
+  const lenderProfile = adjUsed.lenderProfile ?? adjUsed.dtiCapOverride?.lenderProfile;
+  if (adjUsed.dtiCapOverride && adjUsed.dtiCapOverride.enabled && Number.isFinite(adjUsed.dtiCapOverride.value)) {
     deltas.push({
       id: 'dti-cap',
-      label: `DTI cap ${adj.dtiCapOverride.value}x${lenderProfile ? ` (${lenderProfile})` : ''}`,
+      label: `DTI cap ${adjUsed.dtiCapOverride.value}x${lenderProfile ? ` (${lenderProfile})` : ''}`,
       type: 'dti_cap_change',
-      value: adj.dtiCapOverride.value,
+      value: adjUsed.dtiCapOverride.value,
       unit: 'ratio',
       meta: lenderProfile
         ? { enabled: true, lenderProfile }
@@ -426,6 +459,23 @@ export function validateAIScenarios(
       const deltas = adjustmentsToDeltas(scenario.adjustments);
       const { inputs, effect, issues } = aggregateDeltas(scenario.name, deltas, ctx);
 
+      // Phase J1: detect soft-cap clamps and surface as validation notes so
+      // the broker sees inline that the model overshot a guardrail.
+      const clampIssues: typeof issues = [];
+      const a = scenario.adjustments || ({} as AIAdjustments);
+      if (typeof a.incomeGrowthPercent === 'number' && a.incomeGrowthPercent > 25) {
+        clampIssues.push({ deltaId: 'income_change', deltaType: 'income_change', severity: 'warn', message: `Income growth clamped to 25% (model proposed ${a.incomeGrowthPercent}%) — needs payslip evidence to defend higher.` });
+      }
+      if (typeof a.expenseReductionPercent === 'number' && a.expenseReductionPercent > 30) {
+        clampIssues.push({ deltaId: 'expense_change', deltaType: 'expense_change', severity: 'warn', message: `Expense reduction clamped to 30% (model proposed ${a.expenseReductionPercent}%) — HEM floor will likely bite anyway.` });
+      }
+      if (a.equityRelease && typeof a.equityRelease.targetLVR === 'number' && a.equityRelease.targetLVR > 0.90) {
+        clampIssues.push({ deltaId: 'equity_release', deltaType: 'equity_release', severity: 'warn', message: `Equity release LVR clamped to 90% (model proposed ${(a.equityRelease.targetLVR * 100).toFixed(0)}%) — most lenders cap below this without LMI.` });
+      }
+      if (a.crossCollatPool && typeof a.crossCollatPool.blendedTargetLVR === 'number' && a.crossCollatPool.blendedTargetLVR > 0.90) {
+        clampIssues.push({ deltaId: 'portfolio_lvr_release', deltaType: 'portfolio_lvr_release', severity: 'warn', message: `Cross-collat blended LVR clamped to 90% (model proposed ${(a.crossCollatPool.blendedTargetLVR * 100).toFixed(0)}%).` });
+      }
+
       const result = calculateBorrowingCapacity({
         grossAnnualIncome: inputs.grossAnnualIncome,
         shadedAnnualIncome: inputs.shadedAnnualIncome,
@@ -450,6 +500,22 @@ export function validateAIScenarios(
         scenario.adjustments.acquisition = acq;
       }
 
+      // Phase J1: Persist clamped values back so the front-end Apply flow
+      // pushes the SAME numbers into the strategy levers (no drift between
+      // preview and post-Apply state).
+      if (typeof a.incomeGrowthPercent === 'number' && a.incomeGrowthPercent > 25) {
+        scenario.adjustments.incomeGrowthPercent = 25;
+      }
+      if (typeof a.expenseReductionPercent === 'number' && a.expenseReductionPercent > 30) {
+        scenario.adjustments.expenseReductionPercent = 30;
+      }
+      if (a.equityRelease && typeof a.equityRelease.targetLVR === 'number' && a.equityRelease.targetLVR > 0.90) {
+        scenario.adjustments.equityRelease = { ...a.equityRelease, targetLVR: 0.90 };
+      }
+      if (a.crossCollatPool && typeof a.crossCollatPool.blendedTargetLVR === 'number' && a.crossCollatPool.blendedTargetLVR > 0.90) {
+        scenario.adjustments.crossCollatPool = { ...a.crossCollatPool, blendedTargetLVR: 0.90 };
+      }
+
       const validation: EngineValidation = {
         borrowingCapacity: Math.round(result.borrowingCapacity),
         capacityChange: Math.round(result.borrowingCapacity - ctx.baseResult.borrowingCapacity),
@@ -463,7 +529,7 @@ export function validateAIScenarios(
         netCashAfterSettlement: acquisitionCapacity?.netCashAfterSettlement,
         releasedCapital: acquisitionCapacity?.releasedCapital,
         targetPurchasePrice: acquisitionCapacity?.targetPurchasePrice,
-        validationIssues: issues,
+        validationIssues: [...issues, ...clampIssues],
       };
 
       scenario.engineValidation = validation;
