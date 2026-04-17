@@ -54,6 +54,28 @@ interface ImportSummary {
   portfolioUpdated: boolean;
 }
 
+/**
+ * Normalize legacy file_path values. Some older records stored the entire
+ * upload-response JSON (e.g. '{"success":true,"path":"vownet-forms/...","fullPath":"..."}')
+ * as the file_path. Storage requires just the in-bucket path string.
+ */
+function normalizeFilePath(raw: string): string {
+  if (!raw) return raw;
+  const trimmed = raw.trim();
+  if (trimmed.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      const candidate = parsed?.path || parsed?.fullPath || '';
+      return String(candidate)
+        .replace(/^client-files\//, '')
+        .replace(/^vownet-forms\//, '');
+    } catch {
+      return raw;
+    }
+  }
+  return raw.replace(/^client-files\//, '').replace(/^vownet-forms\//, '');
+}
+
 export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsProps) {
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>('idle');
   const [progress, setProgress] = useState(0);
@@ -458,7 +480,7 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
       });
 
       // 3. Delete file from storage via secure Edge Function
-      const deleteResult = await secureStorageDelete('vownet-forms', file.file_path);
+      const deleteResult = await secureStorageDelete('vownet-forms', normalizeFilePath(file.file_path));
 
       if (!deleteResult.success) console.warn('Storage delete failed:', deleteResult.error);
 
@@ -512,7 +534,8 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
   });
 
   const downloadFile = async (file: { file_path: string; file_name: string }) => {
-    const result = await secureStorageDownload('vownet-forms', file.file_path);
+    const cleanPath = normalizeFilePath(file.file_path);
+    const result = await secureStorageDownload('vownet-forms', cleanPath);
 
     if (!result.success || !result.blob) {
       toast.error('Failed to download file: ' + (result.error || 'Unknown error'));
