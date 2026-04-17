@@ -1,84 +1,111 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+// Batch 7E.2 — Generated documents (loan/cover/etc) + DocuSign envelope tracking
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
+import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from '../_shared/auth.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
+interface Body {
+  action: 'list' | 'get' | 'create' | 'update' | 'update_status' | 'append_audit' | 'list_signature_events' | 'delete';
+  id?: string;
+  data?: Record<string, any>;
+  filters?: Record<string, any>;
+  session_token?: string;
+}
 
-const supabase = createClient(
-  Deno.env.get('SUPABASE_URL')!,
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-);
-
-Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
+serve(async (req) => {
+  const cors = createCorsHeaders(req.headers.get('origin'));
+  if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
 
   try {
-    const { action, payload } = await req.json();
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    );
+    const body: Body = await req.json();
+    const auth = await verifyAuth(supabase, req.headers, body);
+    if (auth.error || !auth.userId) return createUnauthorizedResponse(auth.error || 'Auth required', cors);
 
-    if (action === 'list') {
-      let q = supabase.from('generated_documents').select('*').order('created_at', { ascending: false });
-      if (payload?.client_id) q = q.eq('client_id', payload.client_id);
-      if (payload?.deal_id) q = q.eq('deal_id', payload.deal_id);
-      if (payload?.submission_id) q = q.eq('submission_id', payload.submission_id);
-      if (payload?.status) q = q.eq('status', payload.status);
-      const { data, error } = await q;
-      if (error) throw error;
-      return json({ documents: data });
+    const j = (data: any, status = 200) =>
+      new Response(JSON.stringify(data), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
+
+    switch (body.action) {
+      case 'list': {
+        let q = supabase.from('generated_documents').select('*').order('created_at', { ascending: false }).limit(500);
+        const f = body.filters || {};
+        if (f.client_id) q = q.eq('client_id', f.client_id);
+        if (f.deal_id) q = q.eq('deal_id', f.deal_id);
+        if (f.submission_id) q = q.eq('submission_id', f.submission_id);
+        if (f.status) q = q.eq('status', f.status);
+        if (f.template_type) q = q.eq('template_type', f.template_type);
+        const { data, error } = await q;
+        if (error) return j({ success: false, error: error.message }, 500);
+        return j({ success: true, data });
+      }
+
+      case 'get': {
+        const { data, error } = await supabase.from('generated_documents').select('*').eq('id', body.id!).maybeSingle();
+        if (error) return j({ success: false, error: error.message }, 500);
+        return j({ success: true, data });
+      }
+
+      case 'create': {
+        const insertRow = { ...(body.data || {}), generated_by: auth.userId };
+        const { data, error } = await supabase.from('generated_documents').insert(insertRow).select().single();
+        if (error) return j({ success: false, error: error.message }, 500);
+        return j({ success: true, data });
+      }
+
+      case 'update': {
+        const { data, error } = await supabase.from('generated_documents').update(body.data || {}).eq('id', body.id!).select().single();
+        if (error) return j({ success: false, error: error.message }, 500);
+        return j({ success: true, data });
+      }
+
+      case 'update_status': {
+        const updates: Record<string, any> = { status: body.data?.status, ...(body.data || {}) };
+        delete updates.id;
+        const status = body.data?.status;
+        if (status === 'sent') updates.sent_at = new Date().toISOString();
+        if (status === 'viewed') updates.viewed_at = new Date().toISOString();
+        if (status === 'signed') updates.signed_at = new Date().toISOString();
+        if (status === 'voided') updates.voided_at = new Date().toISOString();
+        const { data, error } = await supabase.from('generated_documents').update(updates).eq('id', body.id!).select().single();
+        if (error) return j({ success: false, error: error.message }, 500);
+        return j({ success: true, data });
+      }
+
+      case 'append_audit': {
+        const { data: existing } = await supabase.from('generated_documents').select('audit').eq('id', body.id!).single();
+        const audit = Array.isArray((existing as any)?.audit) ? (existing as any).audit : [];
+        audit.push({ ...(body.data?.event || {}), ts: new Date().toISOString(), user_id: auth.userId });
+        const { data, error } = await supabase.from('generated_documents').update({ audit }).eq('id', body.id!).select().single();
+        if (error) return j({ success: false, error: error.message }, 500);
+        return j({ success: true, data });
+      }
+
+      case 'delete': {
+        const { error } = await supabase.from('generated_documents').delete().eq('id', body.id!);
+        if (error) return j({ success: false, error: error.message }, 500);
+        return j({ success: true, data: { ok: true } });
+      }
+
+      case 'list_signature_events': {
+        const f = body.filters || {};
+        let q = supabase.from('document_signature_events').select('*').order('occurred_at', { ascending: false }).limit(200);
+        if (f.document_id) q = q.eq('document_id', f.document_id);
+        else if (f.compliance_record_id) q = q.eq('compliance_record_id', f.compliance_record_id);
+        else if (f.envelope_id) q = q.eq('docusign_envelope_id', f.envelope_id);
+        const { data, error } = await q;
+        if (error) return j({ success: false, error: error.message }, 500);
+        return j({ success: true, data });
+      }
     }
 
-    if (action === 'create') {
-      const { data, error } = await supabase.from('generated_documents').insert(payload).select().single();
-      if (error) throw error;
-      return json({ document: data });
-    }
-
-    if (action === 'update_status') {
-      const { id, status, ...rest } = payload;
-      const updates: Record<string, unknown> = { status, ...rest };
-      if (status === 'sent') updates.sent_at = new Date().toISOString();
-      if (status === 'viewed') updates.viewed_at = new Date().toISOString();
-      if (status === 'signed') updates.signed_at = new Date().toISOString();
-      if (status === 'voided') updates.voided_at = new Date().toISOString();
-      const { data, error } = await supabase.from('generated_documents').update(updates).eq('id', id).select().single();
-      if (error) throw error;
-      return json({ document: data });
-    }
-
-    if (action === 'append_audit') {
-      const { id, event } = payload;
-      const { data: existing } = await supabase.from('generated_documents').select('audit').eq('id', id).single();
-      const audit = Array.isArray(existing?.audit) ? existing.audit : [];
-      audit.push({ ...event, ts: new Date().toISOString() });
-      const { data, error } = await supabase.from('generated_documents').update({ audit }).eq('id', id).select().single();
-      if (error) throw error;
-      return json({ document: data });
-    }
-
-    if (action === 'delete') {
-      const { error } = await supabase.from('generated_documents').delete().eq('id', payload.id);
-      if (error) throw error;
-      return json({ ok: true });
-    }
-
-    if (action === 'list_signature_events') {
-      const { data, error } = await supabase
-        .from('document_signature_events')
-        .select('*')
-        .or(`document_id.eq.${payload.document_id},compliance_record_id.eq.${payload.compliance_record_id || '00000000-0000-0000-0000-000000000000'}`)
-        .order('occurred_at', { ascending: false });
-      if (error) throw error;
-      return json({ events: data });
-    }
-
-    return json({ error: 'Unknown action' }, 400);
+    return j({ success: false, error: 'Unknown action' }, 400);
   } catch (e) {
     console.error('[manage-generated-documents]', e);
-    return json({ error: (e as Error).message }, 500);
+    return new Response(JSON.stringify({ success: false, error: (e as Error).message }), {
+      status: 500,
+      headers: { ...cors, 'Content-Type': 'application/json' },
+    });
   }
 });
-
-function json(b: unknown, status = 200) {
-  return new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-}

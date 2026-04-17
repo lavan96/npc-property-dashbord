@@ -1,34 +1,40 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+// Batch 7E.2 — Analytics query proxy over read-only views
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
+import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from '../_shared/auth.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
+interface Body {
+  view: 'vw_pipeline_funnel' | 'vw_lender_mix' | 'vw_broker_scorecard' | 'vw_revenue_dashboard';
+  session_token?: string;
+}
 
-const supabase = createClient(
-  Deno.env.get('SUPABASE_URL')!,
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-);
+const ALLOWED_VIEWS = ['vw_pipeline_funnel', 'vw_lender_mix', 'vw_broker_scorecard', 'vw_revenue_dashboard'];
 
-Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
+serve(async (req) => {
+  const cors = createCorsHeaders(req.headers.get('origin'));
+  if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
 
   try {
-    const { view } = await req.json();
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    );
+    const body: Body = await req.json();
+    const auth = await verifyAuth(supabase, req.headers, body);
+    if (auth.error || !auth.userId) return createUnauthorizedResponse(auth.error || 'Auth required', cors);
 
-    const allowed = ['vw_pipeline_funnel', 'vw_lender_mix', 'vw_broker_scorecard', 'vw_revenue_dashboard'];
-    if (!allowed.includes(view)) return json({ error: 'Unknown view' }, 400);
+    const j = (data: any, status = 200) =>
+      new Response(JSON.stringify(data), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 
-    const { data, error } = await supabase.from(view).select('*');
-    if (error) throw error;
-    return json({ rows: data });
+    if (!ALLOWED_VIEWS.includes(body.view)) return j({ success: false, error: 'Unknown view' }, 400);
+    const { data, error } = await supabase.from(body.view).select('*');
+    if (error) return j({ success: false, error: error.message }, 500);
+    return j({ success: true, data });
   } catch (e) {
     console.error('[analytics-query]', e);
-    return json({ error: (e as Error).message }, 500);
+    return new Response(JSON.stringify({ success: false, error: (e as Error).message }), {
+      status: 500,
+      headers: { ...cors, 'Content-Type': 'application/json' },
+    });
   }
 });
-
-function json(b: unknown, status = 200) {
-  return new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-}
