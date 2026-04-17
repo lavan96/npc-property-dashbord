@@ -1,0 +1,349 @@
+/**
+ * Universal LLM router for all edge functions.
+ *
+ * Reads the model assignment for a given `agent_key` from `agent_model_assignments`
+ * and dispatches the call to the correct route (gateway / native / openrouter)
+ * with an automatic fallback chain on retryable errors (404 / 410 / 5xx / model-not-found).
+ *
+ * Edge function usage:
+ *   import { callLLM } from "../_shared/llmRouter.ts";
+ *   const { content, modelUsed, route } = await callLLM({
+ *     agentKey: 'bc_scenario_agent',
+ *     messages: [{ role: 'user', content: 'Hello' }],
+ *   });
+ */
+
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+
+export type LLMRoute = 'gateway' | 'native' | 'openrouter';
+export type LLMMessage = { role: 'system' | 'user' | 'assistant' | 'tool'; content: any; tool_call_id?: string; name?: string };
+
+export interface CallLLMArgs {
+  agentKey: string;
+  messages: LLMMessage[];
+  /** Override the assignment's temperature */
+  temperature?: number;
+  /** Override the assignment's max_tokens */
+  maxTokens?: number;
+  /** Optional tool definitions (OpenAI-compatible) */
+  tools?: any[];
+  toolChoice?: any;
+  /** Optional reasoning effort hint (gateway / openrouter) */
+  reasoningEffort?: 'minimal' | 'low' | 'medium' | 'high' | 'xhigh';
+  /** If true, returns the raw response body instead of parsed content (for streaming). */
+  raw?: boolean;
+  /** Hard override: skip DB lookup and use this model+route directly */
+  forceRoute?: LLMRoute;
+  forceModelId?: string;
+  /** Per-call response_format */
+  responseFormat?: any;
+}
+
+export interface CallLLMResult {
+  content: string;
+  rawResponse: any;
+  modelUsed: string;
+  routeUsed: LLMRoute;
+  toolCalls?: any[];
+  attempts: Array<{ route: LLMRoute; model_id: string; ok: boolean; status?: number; error?: string }>;
+}
+
+interface AgentAssignment {
+  agent_key: string;
+  route: LLMRoute;
+  model_id: string;
+  fallback_chain: Array<{ route: LLMRoute; model_id: string }>;
+  temperature: number | null;
+  max_tokens: number | null;
+  reasoning_effort: string | null;
+}
+
+const RETRYABLE_STATUSES = new Set([404, 410, 500, 502, 503, 504]);
+const NON_RETRYABLE_STATUSES = new Set([401, 402, 403, 429]);
+
+function getAdminClient() {
+  const url = Deno.env.get('SUPABASE_URL')!;
+  const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  return createClient(url, key, { auth: { persistSession: false } });
+}
+
+/** Fetch the assignment for an agent_key, falling back to 'default' if missing. */
+async function loadAssignment(agentKey: string): Promise<AgentAssignment> {
+  const admin = getAdminClient();
+  const { data, error } = await admin
+    .from('agent_model_assignments')
+    .select('agent_key, route, model_id, fallback_chain, temperature, max_tokens, reasoning_effort')
+    .in('agent_key', [agentKey, 'default'])
+    .order('agent_key', { ascending: agentKey === 'default' });
+
+  if (error) throw new Error(`[llmRouter] Failed to load assignment: ${error.message}`);
+
+  const row = data?.find((r) => r.agent_key === agentKey) ?? data?.find((r) => r.agent_key === 'default');
+  if (!row) {
+    // Hardcoded ultimate fallback if even 'default' is missing
+    return {
+      agent_key: agentKey,
+      route: 'gateway',
+      model_id: 'google/gemini-3-flash-preview',
+      fallback_chain: [{ route: 'gateway', model_id: 'google/gemini-2.5-flash' }],
+      temperature: null,
+      max_tokens: null,
+      reasoning_effort: null,
+    };
+  }
+  return row as AgentAssignment;
+}
+
+/** Build the call chain: primary → fallbacks. */
+function buildChain(a: AgentAssignment): Array<{ route: LLMRoute; model_id: string }> {
+  const chain = [{ route: a.route, model_id: a.model_id }, ...(a.fallback_chain ?? [])];
+  // de-dupe
+  const seen = new Set<string>();
+  return chain.filter((c) => {
+    const k = `${c.route}::${c.model_id}`;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
+
+/** Dispatcher per route. */
+async function callRoute(
+  route: LLMRoute,
+  modelId: string,
+  args: CallLLMArgs,
+  assignment: AgentAssignment
+): Promise<{ ok: boolean; status?: number; data?: any; error?: string }> {
+  const temperature = args.temperature ?? assignment.temperature ?? undefined;
+  const max_tokens = args.maxTokens ?? assignment.max_tokens ?? undefined;
+  const reasoning_effort = args.reasoningEffort ?? assignment.reasoning_effort ?? undefined;
+
+  try {
+    if (route === 'gateway') {
+      return await callGateway(modelId, args.messages, { temperature, max_tokens, reasoning_effort, tools: args.tools, tool_choice: args.toolChoice, response_format: args.responseFormat });
+    }
+    if (route === 'openrouter') {
+      return await callOpenRouter(modelId, args.messages, { temperature, max_tokens, tools: args.tools, tool_choice: args.toolChoice, response_format: args.responseFormat });
+    }
+    // native
+    if (modelId.startsWith('gpt-') || modelId.startsWith('o') || modelId.startsWith('chatgpt')) {
+      return await callOpenAINative(modelId, args.messages, { temperature, max_tokens, tools: args.tools, tool_choice: args.toolChoice, response_format: args.responseFormat });
+    }
+    if (modelId.startsWith('claude-')) {
+      return await callAnthropicNative(modelId, args.messages, { temperature, max_tokens });
+    }
+    if (modelId.startsWith('gemini-')) {
+      return await callGeminiNative(modelId, args.messages, { temperature, max_tokens });
+    }
+    if (modelId.startsWith('sonar')) {
+      return await callPerplexityNative(modelId, args.messages, { temperature, max_tokens });
+    }
+    return { ok: false, error: `[llmRouter] Unknown native model family: ${modelId}` };
+  } catch (e: any) {
+    return { ok: false, error: e?.message ?? String(e) };
+  }
+}
+
+// ----- Provider callers (all OpenAI-compatible chat/completions where possible) -----
+
+async function callGateway(model: string, messages: LLMMessage[], opts: any) {
+  const apiKey = Deno.env.get('LOVABLE_API_KEY');
+  if (!apiKey) return { ok: false, error: 'LOVABLE_API_KEY not configured' };
+  const body: any = { model, messages };
+  if (opts.temperature !== undefined) body.temperature = opts.temperature;
+  if (opts.max_tokens !== undefined) body.max_tokens = opts.max_tokens;
+  if (opts.tools) body.tools = opts.tools;
+  if (opts.tool_choice) body.tool_choice = opts.tool_choice;
+  if (opts.response_format) body.response_format = opts.response_format;
+  if (opts.reasoning_effort) body.reasoning = { effort: opts.reasoning_effort };
+
+  const r = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) return { ok: false, status: r.status, error: await r.text() };
+  return { ok: true, status: 200, data: await r.json() };
+}
+
+async function callOpenRouter(model: string, messages: LLMMessage[], opts: any) {
+  const apiKey = Deno.env.get('OPENROUTER_API_KEY');
+  if (!apiKey) return { ok: false, error: 'OPENROUTER_API_KEY not configured' };
+  const body: any = { model, messages };
+  if (opts.temperature !== undefined) body.temperature = opts.temperature;
+  if (opts.max_tokens !== undefined) body.max_tokens = opts.max_tokens;
+  if (opts.tools) body.tools = opts.tools;
+  if (opts.tool_choice) body.tool_choice = opts.tool_choice;
+  if (opts.response_format) body.response_format = opts.response_format;
+
+  const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': Deno.env.get('APP_URL') ?? 'https://lovable.dev',
+      'X-Title': 'NPC Property Dashboard',
+    },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) return { ok: false, status: r.status, error: await r.text() };
+  return { ok: true, status: 200, data: await r.json() };
+}
+
+async function callOpenAINative(model: string, messages: LLMMessage[], opts: any) {
+  const apiKey = Deno.env.get('OPENAI_API_KEY');
+  if (!apiKey) return { ok: false, error: 'OPENAI_API_KEY not configured' };
+  const body: any = { model, messages };
+  if (opts.temperature !== undefined) body.temperature = opts.temperature;
+  if (opts.max_tokens !== undefined) body.max_tokens = opts.max_tokens;
+  if (opts.tools) body.tools = opts.tools;
+  if (opts.tool_choice) body.tool_choice = opts.tool_choice;
+  if (opts.response_format) body.response_format = opts.response_format;
+
+  const r = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) return { ok: false, status: r.status, error: await r.text() };
+  return { ok: true, status: 200, data: await r.json() };
+}
+
+async function callPerplexityNative(model: string, messages: LLMMessage[], opts: any) {
+  const apiKey = Deno.env.get('PERPLEXITY_API_KEY');
+  if (!apiKey) return { ok: false, error: 'PERPLEXITY_API_KEY not configured' };
+  const body: any = { model, messages };
+  if (opts.temperature !== undefined) body.temperature = opts.temperature;
+  if (opts.max_tokens !== undefined) body.max_tokens = opts.max_tokens;
+
+  const r = await fetch('https://api.perplexity.ai/chat/completions', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) return { ok: false, status: r.status, error: await r.text() };
+  return { ok: true, status: 200, data: await r.json() };
+}
+
+async function callAnthropicNative(model: string, messages: LLMMessage[], opts: any) {
+  const apiKey = Deno.env.get('ANTHROPIC_API_KEY');
+  if (!apiKey) return { ok: false, error: 'ANTHROPIC_API_KEY not configured' };
+  // Anthropic API takes system separately
+  const systemMsg = messages.filter((m) => m.role === 'system').map((m) => (typeof m.content === 'string' ? m.content : JSON.stringify(m.content))).join('\n\n');
+  const userMsgs = messages.filter((m) => m.role !== 'system').map((m) => ({
+    role: m.role === 'assistant' ? 'assistant' : 'user',
+    content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
+  }));
+
+  const body: any = {
+    model,
+    max_tokens: opts.max_tokens ?? 4096,
+    messages: userMsgs,
+  };
+  if (systemMsg) body.system = systemMsg;
+  if (opts.temperature !== undefined) body.temperature = opts.temperature;
+
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) return { ok: false, status: r.status, error: await r.text() };
+  const data = await r.json();
+  // Re-shape to OpenAI-compatible structure
+  const content = data?.content?.map((c: any) => c.text).filter(Boolean).join('\n') ?? '';
+  return {
+    ok: true,
+    status: 200,
+    data: { choices: [{ message: { role: 'assistant', content } }], _native: data },
+  };
+}
+
+async function callGeminiNative(model: string, messages: LLMMessage[], opts: any) {
+  const apiKey = Deno.env.get('GEMINI_API_KEY') ?? Deno.env.get('GOOGLE_API_KEY');
+  if (!apiKey) return { ok: false, error: 'GEMINI_API_KEY not configured' };
+  const contents = messages
+    .filter((m) => m.role !== 'system')
+    .map((m) => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: typeof m.content === 'string' ? m.content : JSON.stringify(m.content) }] }));
+  const systemInstruction = messages.find((m) => m.role === 'system')?.content;
+  const body: any = { contents };
+  if (systemInstruction) body.systemInstruction = { parts: [{ text: typeof systemInstruction === 'string' ? systemInstruction : JSON.stringify(systemInstruction) }] };
+  if (opts.temperature !== undefined || opts.max_tokens !== undefined) {
+    body.generationConfig = {};
+    if (opts.temperature !== undefined) body.generationConfig.temperature = opts.temperature;
+    if (opts.max_tokens !== undefined) body.generationConfig.maxOutputTokens = opts.max_tokens;
+  }
+
+  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) return { ok: false, status: r.status, error: await r.text() };
+  const data = await r.json();
+  const text = data?.candidates?.[0]?.content?.parts?.map((p: any) => p.text).filter(Boolean).join('\n') ?? '';
+  return { ok: true, status: 200, data: { choices: [{ message: { role: 'assistant', content: text } }], _native: data } };
+}
+
+// ----- Public entry point -----
+
+export async function callLLM(args: CallLLMArgs): Promise<CallLLMResult> {
+  const assignment = await loadAssignment(args.agentKey);
+  const chain = args.forceRoute && args.forceModelId
+    ? [{ route: args.forceRoute, model_id: args.forceModelId }]
+    : buildChain(assignment);
+
+  const attempts: CallLLMResult['attempts'] = [];
+
+  for (const step of chain) {
+    const res = await callRoute(step.route, step.model_id, args, assignment);
+    attempts.push({ route: step.route, model_id: step.model_id, ok: res.ok, status: res.status, error: res.error?.slice(0, 240) });
+
+    if (res.ok && res.data) {
+      // Best-effort: log usage on success
+      try {
+        const admin = getAdminClient();
+        await admin.from('agent_model_assignments').update({ last_used_at: new Date().toISOString(), last_error: null }).eq('agent_key', args.agentKey);
+      } catch { /* swallow */ }
+
+      const choice = res.data.choices?.[0];
+      const content = choice?.message?.content ?? '';
+      const toolCalls = choice?.message?.tool_calls;
+      return {
+        content: typeof content === 'string' ? content : JSON.stringify(content),
+        rawResponse: res.data,
+        modelUsed: step.model_id,
+        routeUsed: step.route,
+        toolCalls,
+        attempts,
+      };
+    }
+
+    // If non-retryable, stop the chain
+    if (res.status && NON_RETRYABLE_STATUSES.has(res.status)) {
+      throw new LLMError(`[llmRouter] Non-retryable error from ${step.route}/${step.model_id}: ${res.status}`, res.status, attempts);
+    }
+    // Otherwise continue to next fallback (retryable or unknown error)
+  }
+
+  // All chain steps failed → record + throw
+  try {
+    const admin = getAdminClient();
+    await admin.from('agent_model_assignments').update({ last_error: JSON.stringify(attempts).slice(0, 500) }).eq('agent_key', args.agentKey);
+  } catch { /* swallow */ }
+  throw new LLMError(`[llmRouter] All ${chain.length} models failed for agent_key=${args.agentKey}`, 503, attempts);
+}
+
+export class LLMError extends Error {
+  status: number;
+  attempts: CallLLMResult['attempts'];
+  constructor(message: string, status: number, attempts: CallLLMResult['attempts']) {
+    super(message);
+    this.status = status;
+    this.attempts = attempts;
+  }
+}

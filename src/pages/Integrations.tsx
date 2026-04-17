@@ -102,6 +102,36 @@ const integrations: IntegrationConfig[] = [
     ],
   },
   {
+    id: 'anthropic',
+    name: 'Anthropic Claude',
+    description: 'Native Claude models (Sonnet, Opus, Haiku) for reasoning-heavy agents. Unlocks Claude in the Model Hub.',
+    icon: <Brain className="h-6 w-6" />,
+    docsUrl: 'https://docs.anthropic.com/en/api/getting-started',
+    fields: [
+      { key: 'ANTHROPIC_API_KEY', label: 'API Key', placeholder: 'sk-ant-...', type: 'password', required: true },
+    ],
+  },
+  {
+    id: 'gemini',
+    name: 'Google Gemini (Native)',
+    description: 'Direct Gemini API access. Use this for native Gemini calls outside the Lovable Gateway.',
+    icon: <Brain className="h-6 w-6" />,
+    docsUrl: 'https://ai.google.dev/gemini-api/docs',
+    fields: [
+      { key: 'GEMINI_API_KEY', label: 'API Key', placeholder: 'AIza...', type: 'password', required: true },
+    ],
+  },
+  {
+    id: 'openrouter',
+    name: 'OpenRouter',
+    description: 'Unified gateway to 300+ models (Claude, GPT, Llama, Mistral, DeepSeek, Qwen, etc.). Enabling this unlocks an OpenRouter section in the Model Hub.',
+    icon: <Brain className="h-6 w-6" />,
+    docsUrl: 'https://openrouter.ai/docs',
+    fields: [
+      { key: 'OPENROUTER_API_KEY', label: 'API Key', placeholder: 'sk-or-v1-...', type: 'password', required: true },
+    ],
+  },
+  {
     id: 'twilio',
     name: 'Twilio',
     description: 'SMS and voice communication services',
