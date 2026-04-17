@@ -562,3 +562,18 @@ request_timeout = 60
 
 [functions.get-vapid-public-key]
 verify_jwt = false
+
+[functions.manage-commission-ledger]
+verify_jwt = false
+
+[functions.generate-commission-payout]
+verify_jwt = false
+
+[functions.manage-compliance-records]
+verify_jwt = false
+
+[functions.manage-generated-documents]
+verify_jwt = false
+
+[functions.analytics-query]
+verify_jwt = false
