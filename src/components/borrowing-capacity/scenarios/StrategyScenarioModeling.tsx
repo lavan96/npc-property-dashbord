@@ -721,13 +721,18 @@ export function StrategyScenarioModeling({
       result: scenarioResult,
       accessibleEquity: totalAccessibleEquity,
       acquisitionCapacity: acquisitionCapacity ?? null,
+      // Phase I (parity) — capture lender-aware context at save time so a
+      // future load reproduces the same shading + HEM floor decisions.
+      incomeComponents,
+      currentLenderProfileId,
+      hemBenchmark,
     };
     const updated = [...presets, newPreset];
     setPresets(updated);
     onPresetsChange?.(updated);
     setScenarioName('');
     setShowSaveInput(false);
-  }, [scenarioName, scenarioInputs, scenarioResult, presets, onPresetsChange, totalAccessibleEquity, acquisitionCapacity]);
+  }, [scenarioName, scenarioInputs, scenarioResult, presets, onPresetsChange, totalAccessibleEquity, acquisitionCapacity, incomeComponents, currentLenderProfileId, hemBenchmark]);
 
   const handleDeletePreset = useCallback((id: string) => {
     const updated = presets.filter(p => p.id !== id);
