@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { DollarSign, TrendingUp, Clock, CheckCircle2, FileText } from 'lucide-react';
-import { DashboardLayout } from '@/components/layout/DashboardLayout';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -55,8 +55,7 @@ export default function Commissions() {
   );
 
   return (
-    <DashboardLayout>
-      <div className="container mx-auto p-4 sm:p-6 space-y-6 max-w-[1600px]">
+    <div className="container mx-auto p-4 sm:p-6 space-y-6 max-w-[1600px]">
         <header className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Commissions</h1>
@@ -295,6 +294,5 @@ export default function Commissions() {
           </DialogContent>
         </Dialog>
       </div>
-    </DashboardLayout>
   );
 }
