@@ -1486,19 +1486,21 @@ Deno.serve(async (req) => {
     
     const assumptionItems = [
       { key: "Policy Profile", value: activePolicy.name },
-      { key: "Serviceability Basis", value: "After-Tax Income" },
+      { key: "Serviceability Basis", value: "After-Tax of SHADED (assessable) income" },
       { key: "Buffer Rate", value: `${bufferRate}%` },
       { key: "Assessment Rate", value: `${result.assessmentRate}%` },
       { key: "Loan Term", value: `${loanTermYears} years` },
       { key: "HEM Benchmark", value: `$${hemBenchmark.toLocaleString()}/mo (income-scaled)` },
       { key: "Repayment Type", value: "Principal & Interest" },
       { key: "Rental Expense Ratio", value: `${activePolicy.propertyPolicy.rentalExpenseRatio * 100}%` },
-      { key: "Existing Loan Assessment", value: `P&I at ${(activePolicy.propertyPolicy.loanAssessmentRate * 100).toFixed(1)}%` },
+      { key: "Existing Loan Stress Rate", value: `P&I at ${(effectiveLoanAssessmentRate * 100).toFixed(2)}% (max of policy ${(activePolicy.propertyPolicy.loanAssessmentRate * 100).toFixed(1)}% and assessment rate ${(userAssessmentRateDecimal * 100).toFixed(2)}%)` },
       { key: "Tax Year", value: `${activePolicy.tax.taxYear} (incl. ${(activePolicy.tax.medicareLevyRate * 100).toFixed(0)}% Medicare Levy)` },
-      { key: "After-Tax Income Used", value: `$${taxBreakdown.afterTaxIncome.toLocaleString()}/yr` },
+      { key: "Assessable Income (Shaded)", value: `$${effectiveShadedIncome.toLocaleString()}/yr` },
+      { key: "After-Tax Income Used", value: `$${taxBreakdown.afterTaxIncome.toLocaleString()}/yr (on shaded income)` },
       { key: "Marginal Tax Rate", value: `${(taxBreakdown.marginalTaxRate * 100).toFixed(0)}%` },
       { key: "Stress Test Increment", value: `+${activePolicy.loanDefaults.stressTestIncrement}%` },
       { key: "Credit Card Servicing", value: `${(activePolicy.liabilityRules.creditCardLimitRate * 100).toFixed(1)}% of limit` },
+      { key: "Conservative Surplus Floor", value: `$${activePolicy.conservativeMode.minimumSurplusFloor}/mo (zeroed below)` },
     ];
 
     const propertyContributionData = {
