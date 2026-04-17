@@ -455,7 +455,7 @@ export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', 
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Gross Income:</span>
+                    <span className="text-muted-foreground">Assessable Income (shaded):</span>
                     <span className="font-medium">{formatCurrency(taxBreakdown.grossIncome)}</span>
                   </div>
                   <div className="flex justify-between">
