@@ -209,6 +209,9 @@ export function StrategyScenarioModeling({
   onPresetsChange,
   clientId,
   clientName,
+  incomeComponents,
+  currentLenderProfileId,
+  hemBenchmark,
 }: StrategyScenarioModelingProps) {
   const [strategy, setStrategy] = useState<StrategyState>(DEFAULT_STRATEGY);
   const [acquisition, setAcquisition] = useState<AcquisitionState>(DEFAULT_ACQUISITION);
