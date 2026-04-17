@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { PortalOnboardingTour } from './PortalOnboardingTour';
 import { PortalNotificationBell } from './PortalNotificationBell';
 import { PortalNotificationProvider } from '@/contexts/PortalNotificationContext';
+import { PortalImpersonationBanner } from './PortalImpersonationBanner';
 
 const portalNavItems = [
   { to: '/client', icon: HomeIcon, label: 'Dashboard', end: true, tourId: 'dashboard' },
@@ -234,6 +235,7 @@ export function PortalLayout() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-auto md:pt-0 pt-14">
+        <PortalImpersonationBanner />
         <div className="p-4 md:p-8 lg:p-10 max-w-6xl mx-auto">
           <Outlet />
         </div>
