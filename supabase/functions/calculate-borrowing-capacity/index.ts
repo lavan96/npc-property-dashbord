@@ -861,8 +861,11 @@ function calculateBorrowingCapacity(params: {
   const assessmentRate = interestRate + bufferRate;
   const monthlyRate = (assessmentRate / 100) / 12;
   
-  // Calculate after-tax income for serviceability
-  const taxBreakdown = getTaxBreakdown(grossAnnualIncome);
+  // *** Phase A1/A4 FIX: Tax must be applied to SHADED (assessable) income ***
+  // Banks assess serviceability on income they actually count — not raw gross.
+  // Using gross overstated take-home for variable-income clients (bonus/commission/casual).
+  const assessableIncome = shadedAnnualIncome > 0 ? shadedAnnualIncome : grossAnnualIncome;
+  const taxBreakdown = getTaxBreakdown(assessableIncome);
   const afterTaxAnnualIncome = taxBreakdown.afterTaxIncome;
   const monthlyAfterTaxIncome = afterTaxAnnualIncome / 12;
   
@@ -873,13 +876,15 @@ function calculateBorrowingCapacity(params: {
   if (isConservative) {
     monthlySurplus = monthlySurplus * conservativeConfig.surplusBufferMultiplier;
     
+    // *** Phase A2 FIX: Enforce real minimum surplus floor (was a no-op clamp) ***
     if (monthlySurplus < conservativeConfig.minimumSurplusFloor) {
-      monthlySurplus = Math.max(0, monthlySurplus);
+      monthlySurplus = 0;
     }
     
     const residualIncome = monthlyIncome - monthlyCommitments;
     if (residualIncome < conservativeConfig.residualIncomeFloor) {
-      monthlySurplus = Math.max(0, monthlySurplus - (conservativeConfig.residualIncomeFloor - residualIncome));
+      const shortfall = conservativeConfig.residualIncomeFloor - residualIncome;
+      monthlySurplus = Math.max(0, monthlySurplus - shortfall);
     }
   }
   
