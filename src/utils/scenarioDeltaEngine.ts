@@ -136,6 +136,42 @@ function blendedShadingRatio(ctx: ScenarioContext): number {
   return Math.max(0, Math.min(1, shaded / gross));
 }
 
+// ── Phase E (M3 fix): HEM tier-aware expense recompute ─────────────────
+// Mirrors `policyEngine.DEFAULT_HEM_CONFIG.incomeScaling`. When an
+// income-growth or portfolio-sell delta moves the client into a new HEM
+// tier, the assumed monthly living-expense floor must scale with it —
+// otherwise high-income scenarios under-estimate expenses and overstate
+// borrowing capacity.
+const HEM_TIER_MULTIPLIERS: Array<{ maxIncome: number; multiplier: number }> = [
+  { maxIncome: 80000,  multiplier: 1.00 },
+  { maxIncome: 120000, multiplier: 1.15 },
+  { maxIncome: 180000, multiplier: 1.30 },
+  { maxIncome: 250000, multiplier: 1.50 },
+  { maxIncome: Infinity, multiplier: 1.75 },
+];
+
+function hemMultiplierFor(grossAnnualIncome: number): number {
+  for (const tier of HEM_TIER_MULTIPLIERS) {
+    if (grossAnnualIncome <= tier.maxIncome) return tier.multiplier;
+  }
+  return HEM_TIER_MULTIPLIERS[HEM_TIER_MULTIPLIERS.length - 1].multiplier;
+}
+
+function computeHemTierDelta(
+  baseGrossAnnualIncome: number,
+  newGrossAnnualIncome: number,
+  baseMonthlyExpenses: number,
+): number {
+  if (baseMonthlyExpenses <= 0) return 0;
+  const baseMult = hemMultiplierFor(Math.max(0, baseGrossAnnualIncome));
+  const newMult = hemMultiplierFor(Math.max(0, newGrossAnnualIncome));
+  if (baseMult === newMult) return 0;
+  const rescaled = baseMonthlyExpenses * (newMult / baseMult);
+  const delta = rescaled - baseMonthlyExpenses;
+  const cap = baseMonthlyExpenses * 0.30;
+  return Math.max(-cap, Math.min(cap, delta));
+}
+
 // ============================================
 // VALIDATION (Phase B safety net)
 // ============================================
