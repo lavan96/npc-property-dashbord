@@ -41,6 +41,12 @@ import {
   type PurchaseIntent,
   type PropertyCategory,
 } from './stampDutyCalculator';
+import {
+  resolveLenderProfile,
+  reshadeIncome,
+  BANK_STANDARD_PROFILE,
+  type ScenarioIncomeComponent,
+} from './lenderShadingProfiles';
 
 // ============================================
 // CONTEXT TYPES
