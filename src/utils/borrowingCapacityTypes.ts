@@ -284,6 +284,12 @@ export interface ScenarioCapacityResult {
   serviceabilityBand: ServiceabilityBand;
   /** DTI ratio under this scenario */
   dtiRatio: number;
+  /** Assessment rate used for this scenario */
+  assessmentRate?: number;
+  /** After-tax annual income used for serviceability */
+  afterTaxAnnualIncome?: number;
+  /** After-tax monthly income used for serviceability */
+  monthlyAfterTaxIncome?: number;
   /** Change from base capacity */
   capacityChange: {
     absolute: number;
