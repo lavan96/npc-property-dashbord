@@ -14,7 +14,7 @@ const SYSTEM_PROMPT = `You are an expert Australian mortgage & borrowing capacit
 You analyse a client's full financial snapshot (income, expenses, liabilities, properties, contracted rates, target acquisition) and recommend **exactly 3** actionable what-if scenarios that maximise borrowing capacity AND/OR solve for a specific purchase target. Every scenario you propose is replayed by a deterministic engine on both the client and the server, so the numbers you reference must be defensible and policy-aligned.
 
 ## How the Engine Reads Your Output
-Each scenario you generate is converted into a list of typed deltas (liability_payoff, property_refinance, property_rate_change, equity_release, rate_change, income_change, expense_change, loan_term_change, dti_cap_change, property_sell, property_add). The engine:
+Each scenario you generate is converted into a list of typed deltas (liability_payoff, property_refinance, property_rate_change, equity_release, rate_change, income_change, expense_change, loan_term_change, dti_cap_change, property_sell, property_add, property_value_change, portfolio_lvr_release). The engine:
 1. Computes a compounded scenario capacity (all levers applied together)
 2. Replays each delta IN ISOLATION to attribute capacity uplift per lever (waterfall)
 3. Reports the residual "compounding interaction" so the math reconciles
@@ -36,6 +36,8 @@ Your scenarios will be presented to a professional mortgage broker who will pick
 - Loan term extension: extending from 25yr to 30yr reduces assessed P&I and increases capacity, but extending past 30 years requires lender exception
 - Portfolio restructuring: selling underperforming or negatively-geared properties removes the loan from the schedule entirely; releases equity to cash but triggers CGT
 - Per-property repricing: when only one or two properties are materially out of market vs the rest of the portfolio, propose \`propertyRateChanges\` for those properties only — DO NOT use the global \`rateAdjustment\` lever for partial refinances
+- **Cross-collateralisation (Phase G2)**: When a client has multiple investment securities and the standalone per-property equity release is producing $0 or trivial cash on individual properties (because their LVR is already at 80%), POOL them. The blended LVR across the portfolio is usually more generous than any one security in isolation — equity-rich properties subsidise equity-poor ones. Use \`crossCollatPool\` when (a) the client has 2+ investment properties AND (b) finance has indicated cross-collat appetite OR the standalone release produces materially less than the broker's quoted target.
+- **Valuation uplift (Phase G1)**: If the client's recorded property values are stale (older than 12 months) or if the broker has an updated AVM/desktop/comparable sales figure, propose \`valuationOverrides\` BEFORE running an equity release scenario. The new valuation flows through to LVR, max loan, and cross-collat math. Always state the basis (\`avm\`, \`desktop\`, \`comparable_sales\`, \`manual\`) and a \`source\` (e.g. agent name, comp address) so the finance team can verify.
 
 ## Strategy Levers (your full toolkit)
 You can recommend any combination of these adjustments per scenario:
@@ -50,6 +52,8 @@ You can recommend any combination of these adjustments per scenario:
 9. **portfolioSellPropertyIds** — IDs of properties to sell. Removes the loan entirely from commitments and converts equity to cash. Trigger CGT — call this out.
 10. **dtiCapOverride** — { enabled, value } e.g. { enabled: true, value: 8 } to model an 8x DTI lender. Treat as a policy-exception lever; only propose when a 6x cap is the BINDING constraint.
 11. **acquisition** — { state, intent, category, isFirstHomeBuyer, lmiMode, cashOnHand, targetPurchasePrice }. When the user mentions a budget, deposit goal, or new purchase, ALWAYS set this and ALWAYS pass \`targetPurchasePrice\` so the engine reports meetsTarget / shortfallToTarget.
+12. **valuationOverrides** — Array of { propertyId, newValue, basis, source }. Use BEFORE equity release scenarios when valuations are stale or finance has supplied updated figures. \`basis\` ∈ ('manual' | 'desktop' | 'avm' | 'comparable_sales'). The override resolves before any other property-bound delta.
+13. **crossCollatPool** — { enabled, propertyIds, blendedTargetLVR, lenderMaxLVR?, allocationStrategy? }. Pools 2+ securities into a blended-LVR release; \`allocationStrategy\` defaults to 'highest_equity_first' (pulls from healthiest properties first), 'pro_rata' spreads pulldown evenly. Use when standalone per-property release returns $0 or materially less than what finance has quoted.
 
 ## Acquisition Awareness
 If the user mentions buying a property, a deposit goal, or a specific budget:
@@ -169,6 +173,51 @@ const SCENARIO_TOOL = {
                       required: ["propertyId", "newRate"],
                     },
                     description: "Per-property rate changes for partial portfolio refinances. Use empty array if not applicable.",
+                  },
+                  valuationOverrides: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        propertyId: { type: "string" },
+                        newValue: { type: "number", description: "New AUD valuation for this property" },
+                        basis: {
+                          type: "string",
+                          enum: ["manual", "desktop", "avm", "comparable_sales"],
+                          description: "Methodology basis — drives PDF audit watermark",
+                        },
+                        source: { type: "string", description: "Free-text justification (agent name, comp address, AVM provider)" },
+                      },
+                      required: ["propertyId", "newValue", "basis"],
+                    },
+                    description: "Phase G1 — valuation uplifts. Apply BEFORE equity release scenarios when valuations are stale. Use empty array if not applicable.",
+                  },
+                  crossCollatPool: {
+                    type: "object",
+                    properties: {
+                      enabled: { type: "boolean" },
+                      propertyIds: {
+                        type: "array",
+                        items: { type: "string" },
+                        description: "Property IDs to pool into the cross-collat release",
+                      },
+                      blendedTargetLVR: {
+                        type: "number",
+                        description: "Target blended LVR across the pool (e.g. 0.80 for 80%)",
+                      },
+                      lenderMaxLVR: {
+                        type: "number",
+                        description: "Per-security lender ceiling (default 0.95)",
+                      },
+                      allocationStrategy: {
+                        type: "string",
+                        enum: ["highest_equity_first", "pro_rata"],
+                        description: "How to distribute the pool pulldown across securities",
+                      },
+                    },
+                    required: ["enabled", "propertyIds", "blendedTargetLVR"],
+                    description: "Phase G2 — cross-collateralised pool release. Set enabled=false when not applicable.",
+                    nullable: true,
                   },
                   acquisition: {
                     type: "object",
