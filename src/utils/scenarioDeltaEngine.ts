@@ -1061,6 +1061,24 @@ export function runScenario(
     total.acquisitionNotes.push(...ngResult.notes);
   }
 
+  // Phase I8 — DTI denominator refinement: when typed components are present,
+  // compute an APRA-aligned DTI-adjusted income (rental at 75%, FTB at 50%, etc.).
+  // We surface this on `acquisitionNotes` for transparency. The DTI cap path
+  // inside `calculateBorrowingCapacity` continues to use grossAnnualIncome,
+  // but for high-DTI scenarios the broker now sees the conservative number
+  // they would be reviewed against under APRA APS 220.
+  if (Array.isArray(ctx.incomeComponents) && ctx.incomeComponents.length > 0) {
+    const grossScale = ctx.baseInputs.grossAnnualIncome > 0
+      ? newGross / ctx.baseInputs.grossAnnualIncome : 1;
+    const scaledForDti = ctx.incomeComponents.map(c => ({ ...c, grossAnnual: Math.max(0, c.grossAnnual * grossScale) }));
+    const dtiDen = computeDtiDenominator({ incomeComponents: scaledForDti, fallbackGrossAnnual: newGross });
+    if (dtiDen.dtiAdjustedAnnualIncome < newGross * 0.95 && dtiDen.dtiAdjustedAnnualIncome > 0) {
+      total.acquisitionNotes.push(
+        `DTI denominator (APS 220-aligned): $${Math.round(dtiDen.dtiAdjustedAnnualIncome).toLocaleString()}/yr (${((dtiDen.dtiAdjustedAnnualIncome / newGross) * 100).toFixed(0)}% of gross). Lender DTI review uses this — not the headline gross.`
+      );
+    }
+  }
+
   // Phase I2 — HEM hard floor
   const requestedExpenses = ctx.baseInputs.monthlyLivingExpenses + total.expenseAdjustment + hemDelta;
   const targetProfile = resolveLenderProfile(targetProfileId);
