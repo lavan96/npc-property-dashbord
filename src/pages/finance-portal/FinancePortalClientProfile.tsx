@@ -94,14 +94,14 @@ export default function FinancePortalClientProfile() {
               </div>
               <div className="flex flex-wrap gap-2">
                 {client.status && <Badge variant="secondary">{client.status}</Badge>}
-                <Badge variant="outline">{visibleTabs.length} of 8 sections accessible</Badge>
+                <Badge variant="outline">{visibleTabs.length + (docsVisible ? 1 : 0) + (bcVisible ? 1 : 0)} of 10 sections accessible</Badge>
               </div>
             </div>
           </CardHeader>
         </Card>
       </div>
 
-      {visibleTabs.length === 0 && !docsVisible ? (
+      {visibleTabs.length === 0 && !docsVisible && !bcVisible ? (
         <Card>
           <CardContent className="py-12 text-center">
             <Lock className="h-10 w-10 mx-auto text-muted-foreground opacity-50 mb-3" />
@@ -121,6 +121,9 @@ export default function FinancePortalClientProfile() {
             {docsVisible && (
               <TabsTrigger value="documents" className="text-xs">Documents</TabsTrigger>
             )}
+            {bcVisible && (
+              <TabsTrigger value="borrowing_capacity" className="text-xs">Borrowing Capacity</TabsTrigger>
+            )}
           </TabsList>
           {visibleTabs.map(k => (
             <TabsContent key={k} value={k} className="mt-4">
@@ -130,6 +133,11 @@ export default function FinancePortalClientProfile() {
           {docsVisible && (
             <TabsContent value="documents" className="mt-4">
               <DocumentVaultPanel clientId={clientId!} />
+            </TabsContent>
+          )}
+          {bcVisible && (
+            <TabsContent value="borrowing_capacity" className="mt-4">
+              <BorrowingCapacityPanel clientId={clientId!} />
             </TabsContent>
           )}
         </Tabs>
