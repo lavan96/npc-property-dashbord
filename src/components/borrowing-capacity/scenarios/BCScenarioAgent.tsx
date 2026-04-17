@@ -44,6 +44,8 @@ export interface AIScenario {
   reasoning: string;
   adjustments: ScenarioAdjustments;
   estimatedImpact: string;
+  /** Phase E (L1): Engine-reconciled impact, populated by parent after applying. */
+  reconciledImpact?: string;
 }
 
 interface ChatMessage {
@@ -56,7 +58,7 @@ interface BCScenarioAgentProps {
   baseResult: BorrowingCapacityResult;
   liabilities: LiabilityItem[];
   properties: PropertyItem[];
-  onApplyScenario: (scenario: AIScenario) => void;
+  onApplyScenario: (scenario: AIScenario) => void | string | Promise<string | void>;
   /** Optional client identifier — used to scope persisted chat history per client. */
   clientId?: string;
 }
@@ -274,7 +276,14 @@ export function BCScenarioAgent({
 
   const handleApply = (scenario: AIScenario, index: number) => {
     setAppliedIndex(index);
-    onApplyScenario(scenario);
+    // Phase E (L1): callback may return engine-reconciled impact string —
+    // update the badge so users see verified math, not just AI estimate.
+    const maybe = onApplyScenario(scenario) as unknown;
+    Promise.resolve(maybe as Promise<string | void> | string | void).then((reconciled) => {
+      if (typeof reconciled === 'string' && reconciled.length > 0) {
+        setScenarios(prev => prev.map((s, i) => i === index ? { ...s, reconciledImpact: reconciled } : s));
+      }
+    }).catch(() => {/* non-fatal */});
     toast.success(`"${scenario.name}" applied to strategy levers`);
   };
 
@@ -427,9 +436,13 @@ export function BCScenarioAgent({
                 >
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <h4 className="text-sm font-semibold leading-tight">{scenario.name}</h4>
-                    <Badge variant="outline" className="shrink-0 text-xs">
+                    <Badge
+                      variant={scenario.reconciledImpact ? "default" : "outline"}
+                      className="shrink-0 text-xs"
+                      title={scenario.reconciledImpact ? "Engine-verified" : "AI estimate (not yet verified)"}
+                    >
                       <TrendingUp className="h-3 w-3 mr-1" />
-                      {scenario.estimatedImpact}
+                      {scenario.reconciledImpact || scenario.estimatedImpact}
                     </Badge>
                   </div>
 

@@ -21,6 +21,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useBorrowingCapacity } from '@/hooks/useBorrowingCapacity';
 import { getHemBenchmark, getHemBreakdown, getHecsRepayment, DEFAULT_DTI_CAP } from '@/utils/borrowingCapacityCalculations';
+import { DEFAULT_LOAN_PARAMS } from '@/utils/policyEngine';
 import type { FullAssessmentResult, BorrowingCapacityInput, CalculationMode, HemBreakdown } from '@/utils/borrowingCapacityCalculations';
 import type { LmiMode, LmiEstimate } from '@/utils/lmiCalculations';
 import { calculateLmiImpact } from '@/utils/lmiCalculations';
@@ -427,9 +428,14 @@ export function BorrowingCapacityModal({
       };
     });
 
-    // Add existing property loans
-    const LOAN_ASSESSMENT_RATE = 0.095;
-    const LOAN_TERM_MONTHS = 30 * 12;
+    // Phase E (H2 fix): Stress rate is now sourced from policy + user buffer instead
+    // of a hard-coded 9.5%. Falls back to product rate (6.5%) + buffer (3%) when missing.
+    const productRatePct = Number((clientData as any)?.borrowingCapacity?.[0]?.interest_rate_used)
+      || DEFAULT_LOAN_PARAMS.interestRate;
+    const bufferPct = Number((clientData as any)?.borrowingCapacity?.[0]?.buffer_rate)
+      || DEFAULT_LOAN_PARAMS.bufferRate;
+    const LOAN_ASSESSMENT_RATE = (productRatePct + bufferPct) / 100;
+    const LOAN_TERM_MONTHS = (DEFAULT_LOAN_PARAMS.loanTermYears || 30) * 12;
     
     clientData?.properties.forEach(prop => {
       const propertyType = prop.property_type?.toLowerCase() || '';
@@ -459,7 +465,7 @@ export function BorrowingCapacityModal({
           label: `Loan: ${prop.address?.slice(0, 25)}...`,
           balance: loanBalance,
           monthlyServicing: Math.round(monthlyServicing * 100) / 100,
-          calculationNote: piRepayment > actualRepayment ? 'Stress-tested P&I @ 9.5%' : 'Actual repayment',
+          calculationNote: piRepayment > actualRepayment ? `Stress-tested P&I @ ${(LOAN_ASSESSMENT_RATE * 100).toFixed(2)}%` : 'Actual repayment',
         });
       }
     });

@@ -653,6 +653,16 @@ export function StrategyScenarioModeling({
             dtiCap: !!scenario.adjustments.dtiCapOverride?.enabled,
             acquisition: !!acq,
           }));
+
+          // Phase E (L1): Reconcile AI's estimatedImpact against the engine's actual
+          // computed delta. The result string is sent back to the agent so users see
+          // engine-verified numbers in the scenario badge instead of LLM free-text.
+          const baseCap = baseResult.borrowingCapacity || 0;
+          const newCap = scenarioResult?.borrowingCapacity ?? baseCap;
+          const delta = newCap - baseCap;
+          const sign = delta >= 0 ? '+' : '−';
+          const absK = Math.round(Math.abs(delta) / 1000);
+          return `${sign}$${absK}K (engine)`;
         }}
       />
 

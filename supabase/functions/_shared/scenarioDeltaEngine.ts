@@ -154,6 +154,39 @@ function blendedShadingRatio(ctx: ScenarioContext): number {
   return Math.max(0, Math.min(1, shaded / gross));
 }
 
+// ── Phase E (M3 fix): HEM tier-aware expense recompute ─────────────────
+// Deno mirror of `src/utils/scenarioDeltaEngine.ts` HEM helpers. Keep
+// multiplier table in sync with `policyEngine.DEFAULT_HEM_CONFIG.incomeScaling`.
+const HEM_TIER_MULTIPLIERS: Array<{ maxIncome: number; multiplier: number }> = [
+  { maxIncome: 80000,  multiplier: 1.00 },
+  { maxIncome: 120000, multiplier: 1.15 },
+  { maxIncome: 180000, multiplier: 1.30 },
+  { maxIncome: 250000, multiplier: 1.50 },
+  { maxIncome: Infinity, multiplier: 1.75 },
+];
+
+function hemMultiplierFor(grossAnnualIncome: number): number {
+  for (const tier of HEM_TIER_MULTIPLIERS) {
+    if (grossAnnualIncome <= tier.maxIncome) return tier.multiplier;
+  }
+  return HEM_TIER_MULTIPLIERS[HEM_TIER_MULTIPLIERS.length - 1].multiplier;
+}
+
+function computeHemTierDelta(
+  baseGrossAnnualIncome: number,
+  newGrossAnnualIncome: number,
+  baseMonthlyExpenses: number,
+): number {
+  if (baseMonthlyExpenses <= 0) return 0;
+  const baseMult = hemMultiplierFor(Math.max(0, baseGrossAnnualIncome));
+  const newMult = hemMultiplierFor(Math.max(0, newGrossAnnualIncome));
+  if (baseMult === newMult) return 0;
+  const rescaled = baseMonthlyExpenses * (newMult / baseMult);
+  const delta = rescaled - baseMonthlyExpenses;
+  const cap = baseMonthlyExpenses * 0.30;
+  return Math.max(-cap, Math.min(cap, delta));
+}
+
 // ============================================
 // VALIDATION
 // ============================================
@@ -403,10 +436,18 @@ export function aggregateDeltas(
     if (e.dtiCapLimit !== undefined) total.dtiCapLimit = e.dtiCapLimit;
   }
 
+  // Phase E (M3): rescale HEM-derived expenses if income tier changed
+  const newGross = Math.max(0, context.baseInputs.grossAnnualIncome + total.incomeAdjustment);
+  const hemDelta = computeHemTierDelta(
+    context.baseInputs.grossAnnualIncome,
+    newGross,
+    context.baseInputs.monthlyLivingExpenses,
+  );
+
   const inputs: AggregatedScenarioInputs = {
-    grossAnnualIncome: Math.max(0, context.baseInputs.grossAnnualIncome + total.incomeAdjustment),
+    grossAnnualIncome: newGross,
     shadedAnnualIncome: Math.max(0, context.baseInputs.shadedAnnualIncome + total.shadedIncomeAdjustment),
-    monthlyLivingExpenses: Math.max(0, context.baseInputs.monthlyLivingExpenses + total.expenseAdjustment),
+    monthlyLivingExpenses: Math.max(0, context.baseInputs.monthlyLivingExpenses + total.expenseAdjustment + hemDelta),
     monthlyCommitments: Math.max(0, context.baseInputs.monthlyCommitments + total.commitmentAdjustment),
     interestRate: Math.max(0.5, context.baseInputs.interestRate + total.rateAdjustment),
     bufferRate: context.baseInputs.bufferRate,
