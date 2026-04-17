@@ -40,6 +40,7 @@ import { CapacityHistoryChart } from './CapacityHistoryChart';
 import { BankRateSelector } from './BankRateSelector';
 import { BankRateComparisonModal } from './BankRateComparisonModal';
 import { LmiSection } from './sections/LmiSection';
+import { classifyIncomeLabel } from '@/utils/incomeComponentMapping';
 
 // Secure data fetching via HttpOnly cookies
 async function fetchBorrowingCapacityData(clientId: string) {
