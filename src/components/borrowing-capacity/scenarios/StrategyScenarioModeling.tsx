@@ -2256,6 +2256,7 @@ export function StrategyScenarioModeling({
               leverAttribution,
               acquisitionCapacity: acquisition.enabled ? acquisitionCapacity : null,
               formatCurrency,
+              capitalLedger,
             })}
             formatCurrency={formatCurrency}
             pdfContext={clientName ? {

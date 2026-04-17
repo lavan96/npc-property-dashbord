@@ -16,6 +16,8 @@
 import type {
   ScenarioDelta,
   AcquisitionCapacity,
+  CapitalLedger,
+  CapitalSinkType,
 } from './borrowingCapacityTypes';
 import type { LeverAttribution } from '@/components/borrowing-capacity/scenarios/PurchasePowerHeadline';
 
@@ -48,6 +50,41 @@ export interface RationaleSequenceStep {
   owner: 'broker' | 'finance' | 'client';
 }
 
+/** Phase K5 — explainable capital routing block (sources → sinks). */
+export interface RationaleCapitalFlowEntry {
+  /** Source bucket (e.g. "Equity release · 28 King St", "Cash on hand"). */
+  sourceLabel: string;
+  /** Sink bucket (e.g. "Pay down ANZ Visa", "Offset deposit · 12 Smith St"). */
+  sinkLabel: string;
+  /** Sink type for badge / colour. */
+  sinkType: CapitalSinkType | 'unallocated';
+  /** Dollars routed through this leg. */
+  amount: number;
+  /** Engine-derived monthly servicing delta (negative = saving). */
+  monthlyServicingDelta: number;
+  /** Engine-derived debt balance delta (negative = paid down). */
+  debtBalanceDelta: number;
+  /** One-line audit note from the K1 ledger. */
+  note?: string;
+}
+
+export interface RationaleCapitalFlow {
+  /** Total $ routed through the ledger (sum of sinks). */
+  totalRouted: number;
+  /** Total $ available before allocation (sum of sources). */
+  totalAvailable: number;
+  /** Net monthly servicing impact across all sinks (negative = saving). */
+  monthlyServicingDelta: number;
+  /** Net debt balance impact (negative = paid down). */
+  debtBalanceDelta: number;
+  /** True if any pool is overcommitted. */
+  overcommitted: boolean;
+  /** Residual (un-routed) pool $ — heads to the acquisition deposit pool. */
+  remainder: number;
+  /** Per-leg explanations. */
+  legs: RationaleCapitalFlowEntry[];
+}
+
 export interface RationaleReport {
   /** Headline sentence summarising the scenario outcome */
   headline: string;
@@ -61,6 +98,8 @@ export interface RationaleReport {
   sequence: RationaleSequenceStep[];
   /** Caveats / assumptions the finance team must validate */
   caveats: string[];
+  /** Phase K5 — optional capital allocation flow narrative. */
+  capitalFlow?: RationaleCapitalFlow;
   /** ISO timestamp */
   generatedAt: string;
 }
@@ -78,6 +117,8 @@ export interface RationaleInput {
   acquisitionCapacity: AcquisitionCapacity | null;
   /** Currency formatter — passed in so locale stays consistent with the parent */
   formatCurrency: (n: number) => string;
+  /** Phase K5 — capital allocation ledger from the K1 engine. */
+  capitalLedger?: CapitalLedger | null;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
@@ -231,6 +272,83 @@ function priorityForDelta(d: ScenarioDelta): number {
   }
 }
 
+// ─── Phase K5 — capital flow narrative ────────────────────────────────────
+
+const SINK_TYPE_LABEL: Record<CapitalSinkType, string> = {
+  liability_payoff: 'Liability payoff',
+  offset_deposit: 'Offset deposit',
+  rate_buydown: 'Rate buy-down',
+  debt_recycle: 'Debt recycling',
+  acquisition_deposit: 'Acquisition deposit',
+  holding_reserve: 'Cash buffer',
+  repayment_reduction: 'Repayment reduction',
+};
+
+function buildCapitalFlow(ledger: CapitalLedger | null | undefined): RationaleCapitalFlow | undefined {
+  if (!ledger) return undefined;
+  const pools = Object.values(ledger.pools || {});
+  if (pools.length === 0) return undefined;
+
+  const legs: RationaleCapitalFlowEntry[] = [];
+  let totalAvailable = 0;
+  let totalRouted = 0;
+  let monthlyServicingDelta = 0;
+  let debtBalanceDelta = 0;
+  let overcommitted = false;
+  let remainder = 0;
+
+  for (const pool of pools) {
+    totalAvailable += pool.totalIn || 0;
+    totalRouted += pool.totalOut || 0;
+    remainder += pool.remainder || 0;
+    if (pool.overcommitted) overcommitted = true;
+
+    // Source label is collapsed: the K1 ledger doesn't link sink→source directly,
+    // so we build a single source descriptor per pool and pair it to each sink.
+    const sourceLabel = pool.sources.length > 0
+      ? pool.sources.map(s => s.label).join(' + ')
+      : 'Pool';
+
+    for (const sink of pool.sinks) {
+      monthlyServicingDelta += sink.monthlyServicingDelta || 0;
+      debtBalanceDelta += sink.debtBalanceDelta || 0;
+      legs.push({
+        sourceLabel,
+        sinkLabel: sink.label,
+        sinkType: sink.sinkType,
+        amount: sink.amount,
+        monthlyServicingDelta: sink.monthlyServicingDelta || 0,
+        debtBalanceDelta: sink.debtBalanceDelta || 0,
+        note: sink.notes && sink.notes.length > 0 ? sink.notes.join(' · ') : undefined,
+      });
+    }
+
+    if ((pool.remainder || 0) > 1) {
+      legs.push({
+        sourceLabel,
+        sinkLabel: 'Acquisition deposit pool (residual)',
+        sinkType: 'unallocated',
+        amount: pool.remainder,
+        monthlyServicingDelta: 0,
+        debtBalanceDelta: 0,
+        note: 'Un-routed pool capital — defaults to the next-purchase deposit headroom.',
+      });
+    }
+  }
+
+  if (legs.length === 0 && totalAvailable === 0) return undefined;
+
+  return {
+    totalRouted,
+    totalAvailable,
+    monthlyServicingDelta,
+    debtBalanceDelta,
+    overcommitted,
+    remainder,
+    legs,
+  };
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────
 
 export function buildStrategyRationale(input: RationaleInput): RationaleReport {
@@ -241,7 +359,11 @@ export function buildStrategyRationale(input: RationaleInput): RationaleReport {
     leverAttribution,
     acquisitionCapacity,
     formatCurrency: fmt,
+    capitalLedger,
   } = input;
+
+  // Phase K5 — capital flow narrative
+  const capitalFlow = buildCapitalFlow(capitalLedger);
 
   const capacityChange = scenarioCapacity - baseCapacity;
   const noLevers = deltas.length === 0;
@@ -385,6 +507,9 @@ export function buildStrategyRationale(input: RationaleInput): RationaleReport {
   if (acquisitionCapacity && acquisitionCapacity.targetPurchasePrice && !acquisitionCapacity.meetsTarget) {
     caveats.push('Target purchase price is currently NOT ACHIEVABLE under this scenario — either revise the target, layer in additional levers, or increase cash on hand.');
   }
+  if (capitalFlow?.overcommitted) {
+    caveats.push('Capital allocation pool is overcommitted — one or more sinks have been clamped to the available pool. Reduce allocation amounts or release more equity before relying on this scenario.');
+  }
   if (caveats.length === 0) {
     caveats.push('Standard lender verification applies — payslips, bureau check, valuations, and contract review must all be completed before unconditional approval.');
   }
@@ -396,6 +521,7 @@ export function buildStrategyRationale(input: RationaleInput): RationaleReport {
     reconciliation,
     sequence,
     caveats,
+    capitalFlow,
     generatedAt: new Date().toISOString(),
   };
 }

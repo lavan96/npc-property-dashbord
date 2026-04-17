@@ -34,9 +34,10 @@ import {
   Sparkles,
   FileDown,
   Loader2,
+  Wallet,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import type { RationaleReport, RationaleSeverity } from '@/utils/strategyRationaleEngine';
+import type { RationaleReport, RationaleSeverity, RationaleCapitalFlowEntry } from '@/utils/strategyRationaleEngine';
 import { generateStrategyRationalePDF, type RationalePDFContext } from './StrategyRationalePDF';
 
 interface StrategyRationalePanelProps {
@@ -123,6 +124,27 @@ function buildPlainTextBrief(report: RationaleReport, fmt: (n: number) => string
       lines.push(`${s.step}. [${OWNER_LABEL[s.owner]}] ${s.action}`);
       if (s.detail) lines.push(`   ${s.detail}`);
     });
+  }
+  if (report.capitalFlow && report.capitalFlow.legs.length > 0) {
+    const cf = report.capitalFlow;
+    lines.push('');
+    lines.push('CAPITAL FLOW (sources → sinks)');
+    lines.push('─'.repeat(60));
+    lines.push(`Pool: ${fmt(cf.totalAvailable)} available · ${fmt(cf.totalRouted)} routed · ${fmt(cf.remainder)} residual`);
+    if (cf.overcommitted) lines.push('⚠ POOL OVERCOMMITTED — sinks were clamped.');
+    cf.legs.forEach((leg) => {
+      const svc = leg.monthlyServicingDelta;
+      const svcLabel = svc !== 0
+        ? ` · ${svc < 0 ? '−' : '+'}${fmt(Math.abs(svc))}/mo servicing`
+        : '';
+      const debt = leg.debtBalanceDelta;
+      const debtLabel = debt !== 0
+        ? ` · ${debt < 0 ? '−' : '+'}${fmt(Math.abs(debt))} debt`
+        : '';
+      lines.push(`• ${leg.sourceLabel} → ${leg.sinkLabel}: ${fmt(leg.amount)}${svcLabel}${debtLabel}`);
+      if (leg.note) lines.push(`   ${leg.note}`);
+    });
+    lines.push(`Net servicing impact: ${cf.monthlyServicingDelta < 0 ? '−' : '+'}${fmt(Math.abs(cf.monthlyServicingDelta))}/mo · Net debt impact: ${cf.debtBalanceDelta < 0 ? '−' : '+'}${fmt(Math.abs(cf.debtBalanceDelta))}`);
   }
   lines.push('');
   lines.push('CAVEATS & ASSUMPTIONS');
@@ -301,6 +323,75 @@ export function StrategyRationalePanel({ report, formatCurrency, pdfContext }: S
             {report.reconciliation}
           </p>
         </section>
+
+        {/* ── K5: Capital Flow ───────────────────────────────────── */}
+        {report.capitalFlow && report.capitalFlow.legs.length > 0 && (
+          <>
+            <Separator />
+            <section className="space-y-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Wallet className="h-4 w-4 text-primary" />
+                <h4 className="text-sm font-semibold">Capital flow (sources → sinks)</h4>
+                {report.capitalFlow.overcommitted && (
+                  <Badge variant="outline" className="text-[10px] bg-destructive/10 text-destructive border-destructive/30">
+                    Pool overcommitted
+                  </Badge>
+                )}
+              </div>
+              <div className="rounded-md border bg-muted/30 p-3 space-y-2">
+                <div className="grid grid-cols-3 gap-2 text-[10px] uppercase tracking-wide text-muted-foreground">
+                  <div>Available <span className="block text-sm font-semibold text-foreground normal-case tracking-normal">{formatCurrency(report.capitalFlow.totalAvailable)}</span></div>
+                  <div>Routed <span className="block text-sm font-semibold text-foreground normal-case tracking-normal">{formatCurrency(report.capitalFlow.totalRouted)}</span></div>
+                  <div>Residual <span className="block text-sm font-semibold text-foreground normal-case tracking-normal">{formatCurrency(report.capitalFlow.remainder)}</span></div>
+                </div>
+                <Separator />
+                <ul className="space-y-2">
+                  {report.capitalFlow.legs.map((leg, i) => {
+                    const svc = leg.monthlyServicingDelta;
+                    const debt = leg.debtBalanceDelta;
+                    const isUnallocated = leg.sinkType === 'unallocated';
+                    return (
+                      <li key={i} className={`border-l-2 pl-3 py-1 ${isUnallocated ? 'border-l-muted-foreground/40' : 'border-l-primary'}`}>
+                        <div className="flex items-start justify-between gap-2 flex-wrap">
+                          <p className="text-xs font-medium leading-snug">
+                            <span className="text-muted-foreground">{leg.sourceLabel}</span>
+                            <ArrowRight className="inline h-3 w-3 mx-1 text-muted-foreground" />
+                            <span>{leg.sinkLabel}</span>
+                          </p>
+                          <div className="flex items-center gap-1.5">
+                            <Badge variant="outline" className="text-[10px]">
+                              {formatCurrency(leg.amount)}
+                            </Badge>
+                            {svc !== 0 && (
+                              <Badge variant="outline" className={`text-[10px] ${svc < 0 ? 'bg-emerald-500/10 text-emerald-700 border-emerald-500/30 dark:text-emerald-400' : 'bg-destructive/10 text-destructive border-destructive/30'}`}>
+                                {svc < 0 ? '−' : '+'}{formatCurrency(Math.abs(svc))}/mo
+                              </Badge>
+                            )}
+                            {debt !== 0 && (
+                              <Badge variant="outline" className="text-[10px]">
+                                {debt < 0 ? '−' : '+'}{formatCurrency(Math.abs(debt))} debt
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        {leg.note && (
+                          <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">{leg.note}</p>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+                <Separator />
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                  <span>Net capital impact</span>
+                  <span className="font-medium text-foreground">
+                    {report.capitalFlow.monthlyServicingDelta < 0 ? '−' : '+'}{formatCurrency(Math.abs(report.capitalFlow.monthlyServicingDelta))}/mo · {report.capitalFlow.debtBalanceDelta < 0 ? '−' : '+'}{formatCurrency(Math.abs(report.capitalFlow.debtBalanceDelta))} debt
+                  </span>
+                </div>
+              </div>
+            </section>
+          </>
+        )}
 
         <Separator />
 
