@@ -176,7 +176,27 @@ export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', 
 
   const bandConfig = getBandConfig(result.serviceabilityBand);
   const BandIcon = bandConfig.icon;
-  const capacityProgress = Math.min(100, (result.borrowingCapacity / 1500000) * 100);
+  const capacityProgress = Math.min(100, (Math.max(0, result.borrowingCapacity) / 1500000) * 100);
+
+  // ── True (unfloored) capacity ─────────────────────────────────────────
+  // The engine clamps `borrowingCapacity` at $0 when surplus is negative
+  // (APRA-aligned lendable figure). For internal transparency we surface the
+  // *theoretical* position derived from the actual (signed) monthly surplus
+  // using the same annuity formula the scenario inspector uses.
+  const theoreticalCapacity = useMemo(() => {
+    if (!result) return 0;
+    const rate = result.assessmentRate ?? ((interestRate ?? 6.5) + (bufferRate ?? 3));
+    const term = loanTermYears ?? 30;
+    const r = (rate / 100) / 12;
+    const n = term * 12;
+    if (r <= 0 || n <= 0) return result.borrowingCapacity;
+    const factor = (1 - Math.pow(1 + r, -n)) / r;
+    return Math.round(result.monthlySurplus * factor);
+  }, [result, interestRate, bufferRate, loanTermYears]);
+
+  // Engine has floored a negative true position to $0 — surface the truth.
+  const floorActive = result.borrowingCapacity <= 0 && result.monthlySurplus < 0;
+  const displayedCapacity = floorActive ? theoreticalCapacity : result.borrowingCapacity;
 
   return (
     <Card className="h-full">
