@@ -45,6 +45,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { MonthlyRepaymentField, computeMonthlyRepayment, type RepaymentType } from '@/components/shared/MonthlyRepaymentField';
 
 type SourcedByType = 'npc' | 'self_sourced' | 'other_agency' | 'unknown';
 
@@ -83,6 +84,8 @@ interface PropertyData {
   loan_repayment_amount?: number | null;
   loan_repayment_frequency?: string | null;
   lender_name?: string | null;
+  repayment_type?: string | null;
+  interest_only_period_years?: number | null;
 }
 
 interface PropertyEditSheetProps {
@@ -110,6 +113,8 @@ interface PropertyFormData {
   interest_rate: number;
   ownership_percentage: number;
   monthly_interest_repayment: number;
+  repayment_type: RepaymentType;
+  interest_only_period_years: number;
   autoCalculateInterest: boolean;
   body_corporate: ExpenseField;
   council_rates: ExpenseField;
@@ -128,7 +133,6 @@ interface PropertyFormData {
   sourced_by: SourcedByType;
   deal_closed_at: string;
   sourced_notes: string;
-  loan_repayment: ExpenseField;
   lender_name: string;
 }
 
@@ -166,6 +170,8 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
     interest_rate: 5.90,
     ownership_percentage: 100,
     monthly_interest_repayment: 0,
+    repayment_type: 'principal_and_interest',
+    interest_only_period_years: 0,
     autoCalculateInterest: false,
     body_corporate: createExpenseField(),
     council_rates: createExpenseField(),
@@ -184,7 +190,6 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
     sourced_by: 'unknown',
     deal_closed_at: '',
     sourced_notes: '',
-    loan_repayment: createExpenseField(),
     lender_name: '',
   });
 
@@ -201,6 +206,8 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
         interest_rate: Number(property.interest_rate) || 5.90,
         ownership_percentage: Number(property.ownership_percentage) || 100,
         monthly_interest_repayment: Number(property.monthly_interest_repayment) || 0,
+        repayment_type: (property.repayment_type as RepaymentType) || 'principal_and_interest',
+        interest_only_period_years: Number(property.interest_only_period_years) || 0,
         autoCalculateInterest: false,
         body_corporate: createExpenseField(Number(property.monthly_body_corporate) || 0),
         council_rates: createExpenseField(Number(property.monthly_council_rates) || 0),
@@ -222,27 +229,22 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
         sourced_by: (property.sourced_by as SourcedByType) || 'unknown',
         deal_closed_at: property.deal_closed_at ? property.deal_closed_at.split('T')[0] : '',
         sourced_notes: property.sourced_notes || '',
-        loan_repayment: {
-          value: Number(property.loan_repayment_amount) || 0,
-          frequency: (property.loan_repayment_frequency as FrequencyType) || 'monthly',
-          monthlyValue: convertToMonthly(
-            Number(property.loan_repayment_amount) || 0,
-            (property.loan_repayment_frequency as FrequencyType) || 'monthly'
-          ),
-        },
         lender_name: property.lender_name || '',
       });
     }
   }, [open, property]);
 
-  // Auto-calculate monthly interest repayment when loan or rate changes
+  // Auto-calculate monthly repayment based on type (P&I = amortization, IO = loan × rate ÷ 12)
   useEffect(() => {
     if (formData.autoCalculateInterest && formData.loan_remaining > 0 && formData.interest_rate > 0) {
-      const annualInterest = formData.loan_remaining * (formData.interest_rate / 100);
-      const monthlyInterest = annualInterest / 12;
-      setFormData(prev => ({ ...prev, monthly_interest_repayment: Math.round(monthlyInterest * 100) / 100 }));
+      const monthly = computeMonthlyRepayment(
+        formData.loan_remaining,
+        formData.interest_rate,
+        formData.repayment_type,
+      );
+      setFormData(prev => ({ ...prev, monthly_interest_repayment: monthly }));
     }
-  }, [formData.loan_remaining, formData.interest_rate, formData.autoCalculateInterest]);
+  }, [formData.loan_remaining, formData.interest_rate, formData.autoCalculateInterest, formData.repayment_type]);
 
   const updateField = <K extends keyof PropertyFormData>(field: K, value: PropertyFormData[K]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -254,7 +256,7 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
   };
 
   const updateExpenseField = (
-    field: keyof Pick<PropertyFormData, 'body_corporate' | 'council_rates' | 'water_rates' | 'repairs_maintenance' | 'landlord_insurance' | 'building_insurance' | 'rental_income' | 'loan_repayment'>,
+    field: keyof Pick<PropertyFormData, 'body_corporate' | 'council_rates' | 'water_rates' | 'repairs_maintenance' | 'landlord_insurance' | 'building_insurance' | 'rental_income'>,
     key: 'value' | 'frequency',
     newValue: number | FrequencyType
   ) => {
@@ -279,8 +281,8 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
   const monthlyRentalIncome = formData.rental_income.monthlyValue;
   const monthlyPropertyManagement = (formData.property_management_percent / 100) * monthlyRentalIncome;
 
-  const totalMonthlyExpenditure = 
-    formData.loan_repayment.monthlyValue +
+  const totalMonthlyExpenditure =
+    formData.monthly_interest_repayment +
     formData.body_corporate.monthlyValue +
     formData.council_rates.monthlyValue +
     formData.water_rates.monthlyValue +
@@ -325,8 +327,10 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
         sourced_by: formData.sourced_by,
         deal_closed_at: formData.sourced_by === 'npc' && formData.deal_closed_at ? formData.deal_closed_at : null,
         sourced_notes: formData.sourced_notes || null,
-        loan_repayment_amount: isRental ? null : (formData.loan_repayment.value ?? null),
-        loan_repayment_frequency: isRental ? null : (formData.loan_repayment.frequency || 'monthly'),
+        loan_repayment_amount: null, // deprecated — superseded by monthly_interest_repayment + repayment_type
+        loan_repayment_frequency: null,
+        repayment_type: isRental ? null : formData.repayment_type,
+        interest_only_period_years: isRental ? null : (formData.repayment_type === 'interest_only' ? formData.interest_only_period_years || null : null),
         lender_name: isRental ? null : (formData.lender_name || null),
       };
 
@@ -436,7 +440,7 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
 
   const renderExpenseInput = (
     label: string,
-    field: keyof Pick<PropertyFormData, 'body_corporate' | 'council_rates' | 'water_rates' | 'repairs_maintenance' | 'landlord_insurance' | 'building_insurance' | 'rental_income' | 'loan_repayment'>,
+    field: keyof Pick<PropertyFormData, 'body_corporate' | 'council_rates' | 'water_rates' | 'repairs_maintenance' | 'landlord_insurance' | 'building_insurance' | 'rental_income'>,
     showMonthlyEquivalent = true,
   ) => {
     const expense = formData[field];
@@ -815,57 +819,23 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
                 </div>
               </div>
 
-              {/* Monthly Interest Repayment */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="flex items-center gap-2">
-                    Monthly Interest Repayment ($)
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger>
-                          <Info className="h-3 w-3 text-muted-foreground" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Auto-calculated from Loan × Interest Rate ÷ 12</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </Label>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 text-xs"
-                    onClick={() => updateField('autoCalculateInterest', !formData.autoCalculateInterest)}
-                  >
-                    <Calculator className="h-3 w-3 mr-1" />
-                    {formData.autoCalculateInterest ? 'Manual' : 'Auto'}
-                  </Button>
-                </div>
-                <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    type="number"
-                    value={formData.monthly_interest_repayment || ''}
-                    onChange={(e) => {
-                      updateField('autoCalculateInterest', false);
-                      updateNumberField('monthly_interest_repayment', e.target.value);
-                    }}
-                    className="pl-9"
-                    placeholder="0"
-                    disabled={formData.autoCalculateInterest}
-                  />
-                </div>
-                </div>
+              {/* Unified Monthly Loan Repayment with P&I / IO toggle */}
+              <MonthlyRepaymentField
+                monthlyAmount={formData.monthly_interest_repayment}
+                repaymentType={formData.repayment_type}
+                interestOnlyYears={formData.interest_only_period_years}
+                autoCalculate={formData.autoCalculateInterest}
+                loanBalance={formData.loan_remaining}
+                interestRate={formData.interest_rate}
+                onChange={(next) => setFormData(prev => ({
+                  ...prev,
+                  monthly_interest_repayment: next.monthlyAmount,
+                  repayment_type: next.repaymentType,
+                  interest_only_period_years: next.interestOnlyYears,
+                  autoCalculateInterest: next.autoCalculate,
+                }))}
+              />
 
-              {/* Loan Repayment */}
-              <Separator className="my-2" />
-              <h4 className="text-sm font-medium flex items-center gap-2">
-                <Building2 className="h-4 w-4" />
-                Loan Repayment
-              </h4>
-              {renderExpenseInput("Loan Repayment Amount", "loan_repayment")}
-              
               <div className="space-y-2">
                 <Label className="text-xs">Lender / Bank</Label>
                 <LenderCombobox

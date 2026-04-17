@@ -454,18 +454,27 @@ export function BorrowingCapacityModal({
       } else if (prop.loan_remaining && prop.loan_remaining > 0) {
         const loanBalance = Number(prop.loan_remaining);
         const monthlyRate = LOAN_ASSESSMENT_RATE / 12;
-        const piRepayment = loanBalance * (monthlyRate * Math.pow(1 + monthlyRate, LOAN_TERM_MONTHS)) 
+        const piRepayment = loanBalance * (monthlyRate * Math.pow(1 + monthlyRate, LOAN_TERM_MONTHS))
                             / (Math.pow(1 + monthlyRate, LOAN_TERM_MONTHS) - 1);
         const actualRepayment = Number(prop.monthly_interest_repayment) || 0;
-        const monthlyServicing = Math.max(piRepayment, actualRepayment);
-        
+        const repaymentType = (prop as any).repayment_type as string | null;
+        // P&I loans (user-supplied amortized) → trust stored value; IO/legacy → stress-floor at P&I
+        const monthlyServicing = repaymentType === 'principal_and_interest' && actualRepayment > 0
+          ? actualRepayment
+          : Math.max(piRepayment, actualRepayment);
+        const note = repaymentType === 'principal_and_interest' && actualRepayment > 0
+          ? `P&I (user-supplied)`
+          : (piRepayment > actualRepayment
+              ? `Stress-tested P&I @ ${(LOAN_ASSESSMENT_RATE * 100).toFixed(2)}%${repaymentType === 'interest_only' ? ' (IO → P&I)' : ''}`
+              : 'Actual repayment');
+
         items.push({
           id: `prop-${prop.id}-loan`,
           type: prop.property_type === 'owner_occupied' ? 'home_loan' : 'investment_loan',
           label: `Loan: ${prop.address?.slice(0, 25)}...`,
           balance: loanBalance,
           monthlyServicing: Math.round(monthlyServicing * 100) / 100,
-          calculationNote: piRepayment > actualRepayment ? `Stress-tested P&I @ ${(LOAN_ASSESSMENT_RATE * 100).toFixed(2)}%` : 'Actual repayment',
+          calculationNote: note,
         });
       }
     });

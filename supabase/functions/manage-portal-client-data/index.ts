@@ -280,6 +280,8 @@ serve(async (req) => {
           net_monthly_cashflow: payload.net_monthly_cashflow != null ? Number(payload.net_monthly_cashflow) : null,
           loan_repayment_amount: payload.loan_repayment_amount ? Number(payload.loan_repayment_amount) : null,
           loan_repayment_frequency: payload.loan_repayment_frequency || null,
+          repayment_type: isRental ? null : (payload.repayment_type || null),
+          interest_only_period_years: isRental ? null : (payload.interest_only_period_years ? Number(payload.interest_only_period_years) : null),
           sourced_by: 'client',
           sourced_notes: 'Submitted via client portal',
           created_at: new Date().toISOString(),

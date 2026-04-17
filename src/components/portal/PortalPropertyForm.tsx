@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePortalUpdateData } from '@/hooks/usePortalData';
+import { MonthlyRepaymentField, computeMonthlyRepayment, type RepaymentType } from '@/components/shared/MonthlyRepaymentField';
 
 const SUPABASE_URL = "https://dduzbchuswwbefdunfct.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkdXpiY2h1c3d3YmVmZHVuZmN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0NDM4NzksImV4cCI6MjA3MTAxOTg3OX0.eSYU6fxIc3tBQuGLsdBRff0alBMkNfvv7OpW0efNjxk";
@@ -54,6 +55,8 @@ interface PropertyFormData {
   interest_rate: number;
   ownership_percentage: number;
   monthly_interest_repayment: number;
+  repayment_type: RepaymentType;
+  interest_only_period_years: number;
   autoCalculateInterest: boolean;
   body_corporate: ExpenseField;
   council_rates: ExpenseField;
@@ -63,8 +66,6 @@ interface PropertyFormData {
   landlord_insurance: ExpenseField;
   building_insurance: ExpenseField;
   rental_income: ExpenseField;
-  loan_repayment_amount: number;
-  loan_repayment_frequency: FrequencyType;
 }
 
 const defaultFormData: PropertyFormData = {
@@ -76,6 +77,8 @@ const defaultFormData: PropertyFormData = {
   interest_rate: 5.90,
   ownership_percentage: 100,
   monthly_interest_repayment: 0,
+  repayment_type: 'principal_and_interest',
+  interest_only_period_years: 0,
   autoCalculateInterest: true,
   body_corporate: createExpenseField(0, 'quarterly'),
   council_rates: createExpenseField(0, 'quarterly'),
@@ -85,8 +88,6 @@ const defaultFormData: PropertyFormData = {
   landlord_insurance: createExpenseField(0, 'annually'),
   building_insurance: createExpenseField(0, 'annually'),
   rental_income: createExpenseField(0, 'weekly'),
-  loan_repayment_amount: 0,
-  loan_repayment_frequency: 'monthly',
 };
 
 const formatCurrency = (value: number) =>
@@ -113,6 +114,8 @@ export function PortalPropertyForm({ existingProperty, onComplete, onCancel }: P
         interest_rate: Number(existingProperty.interest_rate) || 5.90,
         ownership_percentage: Number(existingProperty.ownership_percentage) || 100,
         monthly_interest_repayment: Number(existingProperty.monthly_interest_repayment) || 0,
+        repayment_type: (existingProperty.repayment_type as RepaymentType) || 'principal_and_interest',
+        interest_only_period_years: Number(existingProperty.interest_only_period_years) || 0,
         autoCalculateInterest: false,
         body_corporate: createExpenseField(Number(existingProperty.monthly_body_corporate) || 0),
         council_rates: createExpenseField(Number(existingProperty.monthly_council_rates) || 0),
@@ -122,8 +125,6 @@ export function PortalPropertyForm({ existingProperty, onComplete, onCancel }: P
         landlord_insurance: createExpenseField(Number(existingProperty.monthly_landlord_insurance) || 0),
         building_insurance: createExpenseField(Number(existingProperty.monthly_building_insurance) || 0),
         rental_income: createExpenseField(Number(existingProperty.monthly_rental_income) || 0),
-        loan_repayment_amount: Number(existingProperty.loan_repayment_amount) || 0,
-        loan_repayment_frequency: (existingProperty.loan_repayment_frequency as FrequencyType) || 'monthly',
       };
     }
     return { ...defaultFormData };
@@ -145,13 +146,17 @@ export function PortalPropertyForm({ existingProperty, onComplete, onCancel }: P
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Auto-calculate interest
+  // Auto-calculate repayment based on type (P&I = amortization, IO = loan × rate ÷ 12)
   useEffect(() => {
     if (formData.autoCalculateInterest && formData.loan_remaining > 0 && formData.interest_rate > 0) {
-      const monthly = (formData.loan_remaining * (formData.interest_rate / 100)) / 12;
-      setFormData(prev => ({ ...prev, monthly_interest_repayment: Math.round(monthly * 100) / 100 }));
+      const monthly = computeMonthlyRepayment(
+        formData.loan_remaining,
+        formData.interest_rate,
+        formData.repayment_type,
+      );
+      setFormData(prev => ({ ...prev, monthly_interest_repayment: monthly }));
     }
-  }, [formData.loan_remaining, formData.interest_rate, formData.autoCalculateInterest]);
+  }, [formData.loan_remaining, formData.interest_rate, formData.autoCalculateInterest, formData.repayment_type]);
 
   const updateField = <K extends keyof PropertyFormData>(field: K, value: PropertyFormData[K]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -204,10 +209,9 @@ export function PortalPropertyForm({ existingProperty, onComplete, onCancel }: P
 
   const isRental = formData.property_type === 'rental';
   const monthlyRentalIncome = formData.rental_income.monthlyValue;
-  const loanRepaymentMonthly = convertToMonthly(formData.loan_repayment_amount, formData.loan_repayment_frequency);
 
   const totalMonthlyExpenditure =
-    loanRepaymentMonthly +
+    formData.monthly_interest_repayment +
     formData.body_corporate.monthlyValue +
     formData.council_rates.monthlyValue +
     formData.water_rates.monthlyValue +
@@ -244,8 +248,8 @@ export function PortalPropertyForm({ existingProperty, onComplete, onCancel }: P
         : monthlyRentalIncome * (12 / 52),
       total_monthly_expenditure: isRental ? monthlyRentalIncome : totalMonthlyExpenditure,
       net_monthly_cashflow: isRental ? -monthlyRentalIncome : netMonthlyCashflow,
-      loan_repayment_amount: isRental ? null : (formData.loan_repayment_amount || null),
-      loan_repayment_frequency: isRental ? null : (formData.loan_repayment_frequency || 'monthly'),
+      repayment_type: isRental ? null : formData.repayment_type,
+      interest_only_period_years: isRental ? null : (formData.repayment_type === 'interest_only' ? formData.interest_only_period_years || null : null),
     };
 
     try {
@@ -421,50 +425,25 @@ export function PortalPropertyForm({ existingProperty, onComplete, onCancel }: P
                   <Input type="number" value={formData.ownership_percentage || ''} onChange={(e) => updateNumber('ownership_percentage', e.target.value)} className="pl-7 h-9" placeholder="100" />
                 </div>
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Monthly Interest Repayment</Label>
-                <div className="relative">
-                  <DollarSign className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    type="number"
-                    value={formData.monthly_interest_repayment || ''}
-                    onChange={(e) => { updateField('autoCalculateInterest', false); updateNumber('monthly_interest_repayment', e.target.value); }}
-                    className="pl-7 h-9"
-                    placeholder="0"
-                    disabled={formData.autoCalculateInterest}
-                  />
-                </div>
-                {formData.autoCalculateInterest && formData.loan_remaining > 0 && (
-                  <p className="text-[10px] text-muted-foreground">Auto-calculated from loan × rate</p>
-                )}
+              <div className="space-y-1.5 col-span-2 sm:col-span-1">
+                {/* Unified Monthly Loan Repayment */}
+                <MonthlyRepaymentField
+                  monthlyAmount={formData.monthly_interest_repayment}
+                  repaymentType={formData.repayment_type}
+                  interestOnlyYears={formData.interest_only_period_years}
+                  autoCalculate={formData.autoCalculateInterest}
+                  loanBalance={formData.loan_remaining}
+                  interestRate={formData.interest_rate}
+                  onChange={(next) => setFormData(prev => ({
+                    ...prev,
+                    monthly_interest_repayment: next.monthlyAmount,
+                    repayment_type: next.repaymentType,
+                    interest_only_period_years: next.interestOnlyYears,
+                    autoCalculateInterest: next.autoCalculate,
+                  }))}
+                  compact
+                />
               </div>
-            </div>
-
-            {/* Loan Repayment */}
-            <div className="space-y-1.5">
-              <Label className="text-xs">Loan Repayment (P&I)</Label>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <DollarSign className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    type="number"
-                    value={formData.loan_repayment_amount || ''}
-                    onChange={(e) => updateNumber('loan_repayment_amount', e.target.value)}
-                    className="pl-7 h-9 text-sm"
-                    placeholder="0"
-                  />
-                </div>
-                <Select value={formData.loan_repayment_frequency} onValueChange={(v) => updateField('loan_repayment_frequency', v as FrequencyType)}>
-                  <SelectTrigger className="w-[100px] h-9 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="weekly">Weekly</SelectItem>
-                    <SelectItem value="monthly">Monthly</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {formData.loan_repayment_frequency !== 'monthly' && formData.loan_repayment_amount > 0 && (
-                <p className="text-[10px] text-muted-foreground">= {formatCurrency(loanRepaymentMonthly)}/month</p>
-              )}
             </div>
           </CardContent>
         </Card>
@@ -524,7 +503,7 @@ export function PortalPropertyForm({ existingProperty, onComplete, onCancel }: P
           {formData.property_type === 'owner_occupied' && (
             <div className="flex justify-between text-sm font-medium">
               <span>Monthly Repayment</span>
-              <span className="text-destructive">-{formatCurrency(loanRepaymentMonthly || formData.monthly_interest_repayment)}</span>
+              <span className="text-destructive">-{formatCurrency(formData.monthly_interest_repayment)}</span>
             </div>
           )}
           {isRental && (

@@ -149,15 +149,23 @@ export function assessPropertyContribution(
   auditNotes.push(`Raw rent: $${rawMonthlyRent}/mo → Assessed: $${assessedMonthlyRent.toFixed(2)}/mo (${policy.rentalShadingRate * 100}% shading, ${policy.vacancyRate * 100}% vacancy)`);
 
   // --- Assessed Debt (Loan Servicing) ---
+  // For P&I loans: stored repayment is already amortized → use directly (no double-stress)
+  // For IO / unknown legacy: stress-test against P&I at assessment rate (Math.max floor)
   let assessedMonthlyDebt = 0;
   if (rawLoanBalance > 0) {
+    const repaymentType = property.repayment_type || null;
     const monthlyRate = policy.loanAssessmentRate / 12;
-    const piRepayment = rawLoanBalance * 
+    const piRepayment = rawLoanBalance *
       (monthlyRate * Math.pow(1 + monthlyRate, policy.loanTermMonths)) /
       (Math.pow(1 + monthlyRate, policy.loanTermMonths) - 1);
-    
-    assessedMonthlyDebt = Math.max(piRepayment, rawMonthlyRepayment);
-    auditNotes.push(`Loan: $${rawLoanBalance.toLocaleString()} → P&I at ${(policy.loanAssessmentRate * 100).toFixed(1)}%: $${piRepayment.toFixed(2)}/mo, actual: $${rawMonthlyRepayment}/mo → Using: $${assessedMonthlyDebt.toFixed(2)}/mo`);
+
+    if (repaymentType === 'principal_and_interest' && rawMonthlyRepayment > 0) {
+      assessedMonthlyDebt = rawMonthlyRepayment;
+      auditNotes.push(`Loan: $${rawLoanBalance.toLocaleString()} P&I (user-supplied) → Using: $${assessedMonthlyDebt.toFixed(2)}/mo`);
+    } else {
+      assessedMonthlyDebt = Math.max(piRepayment, rawMonthlyRepayment);
+      auditNotes.push(`Loan: $${rawLoanBalance.toLocaleString()} → P&I @ ${(policy.loanAssessmentRate * 100).toFixed(1)}%: $${piRepayment.toFixed(2)}/mo, actual: $${rawMonthlyRepayment}/mo → Using: $${assessedMonthlyDebt.toFixed(2)}/mo${repaymentType === 'interest_only' ? ' (IO stress-tested to P&I)' : ''}`);
+    }
   }
 
   // --- Assessed Holding Costs (Phase 2+ will itemize land tax, strata, insurance, etc.) ---

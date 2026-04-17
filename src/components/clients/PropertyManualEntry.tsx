@@ -38,6 +38,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { MonthlyRepaymentField, computeMonthlyRepayment, type RepaymentType } from '@/components/shared/MonthlyRepaymentField';
 
 interface PropertyManualEntryProps {
   clientId: string;
@@ -62,6 +63,8 @@ interface PropertyFormData {
   interest_rate: number;
   ownership_percentage: number;
   monthly_interest_repayment: number;
+  repayment_type: RepaymentType;
+  interest_only_period_years: number;
   autoCalculateInterest: boolean;
   // Expenses with frequency
   body_corporate: ExpenseField;
@@ -114,6 +117,8 @@ const defaultFormData: PropertyFormData = {
   interest_rate: 5.90,
   ownership_percentage: 100,
   monthly_interest_repayment: 0,
+  repayment_type: 'principal_and_interest',
+  interest_only_period_years: 0,
   autoCalculateInterest: true,
   body_corporate: createExpenseField(0, 'quarterly'),
   council_rates: createExpenseField(0, 'quarterly'),
@@ -142,14 +147,17 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
   const queryClient = useQueryClient();
   const { addNotification } = useNotifications();
 
-  // Auto-calculate monthly interest repayment when loan or rate changes
+  // Auto-calculate monthly repayment based on type (P&I = amortization, IO = loan × rate ÷ 12)
   useEffect(() => {
     if (formData.autoCalculateInterest && formData.loan_remaining > 0 && formData.interest_rate > 0) {
-      const annualInterest = formData.loan_remaining * (formData.interest_rate / 100);
-      const monthlyInterest = annualInterest / 12;
-      setFormData(prev => ({ ...prev, monthly_interest_repayment: Math.round(monthlyInterest * 100) / 100 }));
+      const monthly = computeMonthlyRepayment(
+        formData.loan_remaining,
+        formData.interest_rate,
+        formData.repayment_type,
+      );
+      setFormData(prev => ({ ...prev, monthly_interest_repayment: monthly }));
     }
-  }, [formData.loan_remaining, formData.interest_rate, formData.autoCalculateInterest]);
+  }, [formData.loan_remaining, formData.interest_rate, formData.autoCalculateInterest, formData.repayment_type]);
 
   const updateField = <K extends keyof PropertyFormData>(field: K, value: PropertyFormData[K]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -214,6 +222,8 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
         interest_rate: isRental ? 0 : formData.interest_rate,
         ownership_percentage: isRental ? 0 : formData.ownership_percentage,
         monthly_interest_repayment: isRental ? 0 : formData.monthly_interest_repayment,
+        repayment_type: isRental ? null : formData.repayment_type,
+        interest_only_period_years: isRental ? null : (formData.repayment_type === 'interest_only' ? formData.interest_only_period_years || null : null),
         monthly_body_corporate: isRental ? 0 : formData.body_corporate.monthlyValue,
         monthly_council_rates: isRental ? 0 : formData.council_rates.monthlyValue,
         monthly_water_rates: isRental ? 0 : formData.water_rates.monthlyValue,
@@ -704,53 +714,22 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
                 </div>
               </div>
 
-              {/* Monthly Interest Repayment */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="flex items-center gap-2">
-                    Monthly Interest Repayment ($)
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger>
-                          <Info className="h-3 w-3 text-muted-foreground" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Auto-calculated from Loan × Interest Rate ÷ 12</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </Label>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 text-xs"
-                    onClick={() => updateField('autoCalculateInterest', !formData.autoCalculateInterest)}
-                  >
-                    <Calculator className="h-3 w-3 mr-1" />
-                    {formData.autoCalculateInterest ? 'Manual' : 'Auto'}
-                  </Button>
-                </div>
-                <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    type="number"
-                    value={formData.monthly_interest_repayment || ''}
-                    onChange={(e) => {
-                      updateField('autoCalculateInterest', false);
-                      updateNumberField('monthly_interest_repayment', e.target.value);
-                    }}
-                    className="pl-9"
-                    placeholder="0"
-                    disabled={formData.autoCalculateInterest}
-                  />
-                </div>
-                {formData.autoCalculateInterest && formData.loan_remaining > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    Calculated: {formatCurrency(formData.loan_remaining)} × {formData.interest_rate}% ÷ 12
-                  </p>
-                )}
-              </div>
+              {/* Unified Monthly Loan Repayment with P&I / IO toggle */}
+              <MonthlyRepaymentField
+                monthlyAmount={formData.monthly_interest_repayment}
+                repaymentType={formData.repayment_type}
+                interestOnlyYears={formData.interest_only_period_years}
+                autoCalculate={formData.autoCalculateInterest}
+                loanBalance={formData.loan_remaining}
+                interestRate={formData.interest_rate}
+                onChange={(next) => setFormData(prev => ({
+                  ...prev,
+                  monthly_interest_repayment: next.monthlyAmount,
+                  repayment_type: next.repaymentType,
+                  interest_only_period_years: next.interestOnlyYears,
+                  autoCalculateInterest: next.autoCalculate,
+                }))}
+              />
             </div>
             )}
 
