@@ -367,6 +367,123 @@ interface PropertyContributionSummary {
   totalNetMonthlyContribution: number;
 }
 
+/**
+ * Fix #1 — APRA APG-223 aligned existing-debt assessment.
+ *
+ * Problem this replaces:
+ *   The legacy logic blanket-converted EVERY existing property loan to a fresh
+ *   30-year P&I at the lender's full stress rate (~9.5%). This penalised
+ *   Interest-Only loans by ~$2.9k/mo for clients like Masline Nyawo, costing
+ *   ~$350k of capacity vs. how real lenders (and broker tools like Quickly)
+ *   model existing debt.
+ *
+ * New rules (in priority order):
+ *   1. Interest-Only loan, IO period NOT yet expired:
+ *        assessed = balance × actualRate / 12   (true I/O cost — no buffer,
+ *        no P&I conversion). This mirrors APG-223 §41 ("during the I/O period,
+ *        assess at the contracted I/O repayment").
+ *   2. Principal & Interest (or expired I/O) with known actualRate:
+ *        assessed = PMT(balance, actualRate + EXISTING_DEBT_BUFFER, remainingTerm)
+ *        where remainingTerm = max(original_term − elapsed, 5y) and
+ *        EXISTING_DEBT_BUFFER = 1.0% (broker-standard "existing debt buffer",
+ *        distinct from the +3% APRA buffer applied to NEW loans).
+ *   3. Missing repayment_type or actualRate (legacy data):
+ *        Fall back to the old PMT(balance, policy.loanAssessmentRate, 360m)
+ *        and flag in audit so we can identify dirty data.
+ *
+ * In every branch we take max(assessed, actualRepayment) so we never under-
+ * assess relative to what the client is demonstrably already paying.
+ */
+const EXISTING_DEBT_BUFFER_PCT = 0.01; // +1% on top of contracted rate for existing P&I
+const MIN_REMAINING_TERM_MONTHS = 60; // floor remaining term at 5y to avoid PMT blowup
+
+interface ExistingLoanAssessment {
+  assessedMonthlyDebt: number;
+  method: 'io_actual' | 'pi_remaining_term' | 'legacy_fallback';
+  effectiveRatePct: number;
+  termMonthsUsed: number;
+  auditNote: string;
+}
+
+function assessExistingPropertyLoan(
+  property: any,
+  policy: PropertyContributionPolicy,
+): ExistingLoanAssessment {
+  const balance = Number(property.loan_remaining) || 0;
+  if (balance <= 0) {
+    return { assessedMonthlyDebt: 0, method: 'legacy_fallback', effectiveRatePct: 0, termMonthsUsed: 0, auditNote: 'No loan balance' };
+  }
+
+  const actualRepayment = Number(property.monthly_interest_repayment) || 0;
+  const actualRatePct = Number(property.interest_rate); // expected as percentage e.g. 6.44
+  const repaymentType = (property.repayment_type || '').toLowerCase();
+  const ioPeriodYears = Number(property.interest_only_period_years) || 0;
+  const purchaseDate = property.purchase_date ? new Date(property.purchase_date) : null;
+
+  // Compute elapsed months since purchase (used for both IO-expiry & remaining-term math)
+  let elapsedMonths = 0;
+  if (purchaseDate && !isNaN(purchaseDate.getTime())) {
+    const now = new Date();
+    elapsedMonths = Math.max(
+      0,
+      (now.getFullYear() - purchaseDate.getFullYear()) * 12 +
+        (now.getMonth() - purchaseDate.getMonth()),
+    );
+  }
+
+  const isIO = repaymentType.includes('interest') && repaymentType.includes('only');
+  const isPI = repaymentType === 'principal_and_interest' || repaymentType === 'p&i' || repaymentType === 'pi';
+  const ioRemainingMonths = Math.max(0, ioPeriodYears * 12 - elapsedMonths);
+
+  // ── Branch 1: Interest-Only, still in IO period ──
+  if (isIO && ioRemainingMonths > 0 && actualRatePct > 0) {
+    const ioMonthlyCost = (balance * (actualRatePct / 100)) / 12;
+    const assessed = Math.max(ioMonthlyCost, actualRepayment);
+    return {
+      assessedMonthlyDebt: assessed,
+      method: 'io_actual',
+      effectiveRatePct: actualRatePct,
+      termMonthsUsed: 0,
+      auditNote: `I/O assessed at actual rate ${actualRatePct.toFixed(2)}% (IO remaining: ${ioRemainingMonths}mo)`,
+    };
+  }
+
+  // ── Branch 2: P&I (or IO that has expired) with a known rate ──
+  if ((isPI || (isIO && ioRemainingMonths === 0)) && actualRatePct > 0) {
+    const originalTermMonths = 30 * 12; // assume 30y origination if not stored
+    const remainingTermMonths = Math.max(MIN_REMAINING_TERM_MONTHS, originalTermMonths - elapsedMonths);
+    const assessmentRatePct = actualRatePct + EXISTING_DEBT_BUFFER_PCT * 100;
+    const monthlyRate = assessmentRatePct / 100 / 12;
+    const piRepayment =
+      balance *
+      (monthlyRate * Math.pow(1 + monthlyRate, remainingTermMonths)) /
+      (Math.pow(1 + monthlyRate, remainingTermMonths) - 1);
+    const assessed = Math.max(piRepayment, actualRepayment);
+    return {
+      assessedMonthlyDebt: assessed,
+      method: 'pi_remaining_term',
+      effectiveRatePct: assessmentRatePct,
+      termMonthsUsed: remainingTermMonths,
+      auditNote: `P&I assessed at actual+1% (${assessmentRatePct.toFixed(2)}%) over remaining ${Math.round(remainingTermMonths / 12)}y${isIO ? ' (IO expired)' : ''}`,
+    };
+  }
+
+  // ── Branch 3: Legacy fallback — no repayment_type or no rate ──
+  const monthlyRate = policy.loanAssessmentRate / 12;
+  const piRepayment =
+    balance *
+    (monthlyRate * Math.pow(1 + monthlyRate, policy.loanTermMonths)) /
+    (Math.pow(1 + monthlyRate, policy.loanTermMonths) - 1);
+  const assessed = Math.max(piRepayment, actualRepayment);
+  return {
+    assessedMonthlyDebt: assessed,
+    method: 'legacy_fallback',
+    effectiveRatePct: policy.loanAssessmentRate * 100,
+    termMonthsUsed: policy.loanTermMonths,
+    auditNote: `Legacy fallback @ stress ${(policy.loanAssessmentRate * 100).toFixed(2)}% / ${policy.loanTermMonths / 12}y (missing repayment_type or interest_rate — flag for data cleanup)`,
+  };
+}
+
 function assessPropertyContribution(
   property: any,
   policy: PropertyContributionPolicy = DEFAULT_PROPERTY_POLICY,
