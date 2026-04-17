@@ -578,6 +578,11 @@ export function StrategyScenarioModeling({
       properties: engineProperties,
       liabilities: engineLiabilities,
       acquisition: acquisitionCtx,
+      // Phase I1/I2 — propagate lender awareness + HEM floor so re-shading
+      // and HEM clamps fire when the broker uses a `dti_cap_change` lender flip.
+      incomeComponents,
+      currentLenderProfileId,
+      hemBenchmark,
     };
 
     // Delegate ALL scenario math to the unified engine
