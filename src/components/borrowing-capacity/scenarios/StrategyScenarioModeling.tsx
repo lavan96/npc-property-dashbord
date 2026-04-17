@@ -43,8 +43,10 @@ import {
   type ScenarioContext,
   type ScenarioProperty as EngineProperty,
   type ScenarioLiability as EngineLiability,
+  type AcquisitionContext as EngineAcquisitionContext,
 } from '@/utils/scenarioDeltaEngine';
-import type { ScenarioDelta } from '@/utils/borrowingCapacityTypes';
+import type { ScenarioDelta, AcquisitionCapacity } from '@/utils/borrowingCapacityTypes';
+import type { AustralianState, PurchaseIntent, PropertyCategory } from '@/utils/stampDutyCalculator';
 import {
   estimateLMI,
   calculateLVR,
