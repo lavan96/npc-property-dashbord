@@ -164,6 +164,8 @@ interface StrategyScenarioModelingProps {
   onPresetsChange?: (presets: ScenarioPreset[]) => void;
   /** Optional client identifier — propagated to BCScenarioAgent so chat history persists per client. */
   clientId?: string;
+  /** Optional client display name — used in PDF exports (F6 Finance Hand-off). */
+  clientName?: string;
 }
 
 // ── Helpers ────────────────────────────────────────────
@@ -200,6 +202,7 @@ export function StrategyScenarioModeling({
   savedPresets: externalPresets,
   onPresetsChange,
   clientId,
+  clientName,
 }: StrategyScenarioModelingProps) {
   const [strategy, setStrategy] = useState<StrategyState>(DEFAULT_STRATEGY);
   const [acquisition, setAcquisition] = useState<AcquisitionState>(DEFAULT_ACQUISITION);
