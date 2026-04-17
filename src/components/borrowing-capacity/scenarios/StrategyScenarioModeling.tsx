@@ -187,6 +187,7 @@ export function StrategyScenarioModeling({
   clientId,
 }: StrategyScenarioModelingProps) {
   const [strategy, setStrategy] = useState<StrategyState>(DEFAULT_STRATEGY);
+  const [acquisition, setAcquisition] = useState<AcquisitionState>(DEFAULT_ACQUISITION);
   const [presets, setPresets] = useState<ScenarioPreset[]>(externalPresets || []);
   const [scenarioName, setScenarioName] = useState('');
   const [showSaveInput, setShowSaveInput] = useState(false);
@@ -201,6 +202,7 @@ export function StrategyScenarioModeling({
     dtiCap: false,
     stampDuty: false,
     portfolioPlay: false,
+    acquisition: false,
   });
 
   // Auto-save base preset on first render
