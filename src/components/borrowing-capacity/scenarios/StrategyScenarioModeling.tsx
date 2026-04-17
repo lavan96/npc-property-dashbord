@@ -481,6 +481,55 @@ export function StrategyScenarioModeling({
         });
       });
     }
+
+    // 10. Phase G1 — Valuation Uplift → property_value_change deltas (resolve FIRST in engine)
+    if (strategy.additional.valuationOverrides.size > 0) {
+      strategy.additional.valuationOverrides.forEach((override, propId) => {
+        const prop = properties.find(p => p.id === propId);
+        if (!prop || !Number.isFinite(override.newValue) || override.newValue <= 0) return;
+        if (Math.abs(override.newValue - (prop.current_value || 0)) < 1) return;
+        deltas.push({
+          id: prop.id,
+          label: `Revalue ${prop.address?.slice(0, 25) || 'property'} → ${formatCurrency(override.newValue)}`,
+          type: 'property_value_change',
+          value: override.newValue,
+          unit: 'absolute',
+          meta: {
+            basis: override.basis,
+            source: override.source || '',
+          },
+        });
+        impacts.push({
+          label: `Revalue ${prop.address?.slice(0, 25) || 'property'}: ${formatCurrency(prop.current_value || 0)} → ${formatCurrency(override.newValue)} (${override.basis})`,
+          monthlySaving: 0,
+          type: 'info',
+        });
+      });
+    }
+
+    // 11. Phase G2 — Cross-Collateralised Pool → portfolio_lvr_release delta
+    if (strategy.additional.crossCollatPool.enabled && strategy.additional.crossCollatPool.propertyIds.size > 0) {
+      const pool = strategy.additional.crossCollatPool;
+      const memberIds = Array.from(pool.propertyIds);
+      deltas.push({
+        id: 'pool-default',
+        label: `Cross-collat pool → ${(pool.blendedTargetLVR * 100).toFixed(0)}% blended LVR (${memberIds.length} security)`,
+        type: 'portfolio_lvr_release',
+        value: pool.blendedTargetLVR,
+        unit: 'ratio',
+        meta: {
+          propertyIds: memberIds,
+          lenderMaxLVR: pool.lenderMaxLVR,
+          allocationStrategy: pool.allocationStrategy,
+        },
+      });
+      impacts.push({
+        label: `Pool ${memberIds.length} securities @ ${(pool.blendedTargetLVR * 100).toFixed(0)}% blended LVR (${pool.allocationStrategy.replace(/_/g, ' ')})`,
+        monthlySaving: 0,
+        type: 'info',
+      });
+    }
+
     const engineProperties: EngineProperty[] = properties.map(p => ({
       id: p.id,
       address: p.address,
@@ -624,7 +673,9 @@ export function StrategyScenarioModeling({
     strategy.additional.expenseReductionPercent !== 0 ||
     strategy.additional.loanTermAdjustment !== 0 ||
     strategy.additional.dtiCapEnabled ||
-    strategy.additional.portfolioSellPropertyIds.size > 0;
+    strategy.additional.portfolioSellPropertyIds.size > 0 ||
+    strategy.additional.valuationOverrides.size > 0 ||
+    strategy.additional.crossCollatPool.enabled;
 
   const handleReset = useCallback(() => {
     setStrategy({
@@ -727,6 +778,31 @@ export function StrategyScenarioModeling({
                 }
               });
 
+              // Phase G1 — map valuation overrides
+              const valOverrides = new Map<string, import('./AdditionalStrategyLevers').ValuationOverride>();
+              (scenario.adjustments.valuationOverrides || []).forEach((vo) => {
+                if (vo.propertyId && Number.isFinite(vo.newValue) && vo.newValue > 0) {
+                  valOverrides.set(vo.propertyId, {
+                    propertyId: vo.propertyId,
+                    newValue: vo.newValue,
+                    basis: vo.basis,
+                    source: vo.source || '',
+                  });
+                }
+              });
+
+              // Phase G2 — map cross-collateralised pool
+              const aiPool = scenario.adjustments.crossCollatPool;
+              const poolState = aiPool && aiPool.enabled
+                ? {
+                    enabled: true,
+                    propertyIds: new Set<string>(aiPool.propertyIds || []),
+                    blendedTargetLVR: aiPool.blendedTargetLVR ?? 0.80,
+                    lenderMaxLVR: aiPool.lenderMaxLVR ?? 0.95,
+                    allocationStrategy: (aiPool.allocationStrategy ?? 'highest_equity_first') as 'highest_equity_first' | 'pro_rata',
+                  }
+                : prev.additional.crossCollatPool;
+
               return {
                 ...prev,
                 consolidatedLiabilities: new Set(scenario.adjustments.consolidatedLiabilityIds || []),
@@ -745,6 +821,8 @@ export function StrategyScenarioModeling({
                   portfolioSellReinvest: false,
                   dtiCapEnabled: dtiOverride?.enabled || false,
                   dtiCapValue: dtiOverride?.value || 6,
+                  valuationOverrides: valOverrides,
+                  crossCollatPool: poolState,
                 },
               };
             });
@@ -1546,6 +1624,39 @@ export function StrategyScenarioModeling({
               effectivePurchasePower: acquisition.enabled && acquisitionCapacity ? acquisitionCapacity.maxPurchasePrice : null,
               targetPurchasePrice: acquisition.enabled && acquisitionCapacity?.targetPurchasePrice ? acquisitionCapacity.targetPurchasePrice : null,
               meetsTarget: acquisition.enabled && acquisitionCapacity ? (acquisitionCapacity.meetsTarget ?? null) : null,
+              valuationAssumptions: strategy.additional.valuationOverrides.size > 0
+                ? Array.from(strategy.additional.valuationOverrides.values()).map(v => {
+                    const prop = properties.find(p => p.id === v.propertyId);
+                    return {
+                      address: prop?.address || v.propertyId,
+                      originalValue: prop?.current_value || 0,
+                      newValue: v.newValue,
+                      basis: v.basis,
+                      source: v.source,
+                    };
+                  })
+                : undefined,
+              crossCollatPool: strategy.additional.crossCollatPool.enabled && strategy.additional.crossCollatPool.propertyIds.size > 0
+                ? (() => {
+                    const memberIds = Array.from(strategy.additional.crossCollatPool.propertyIds);
+                    const members = memberIds.map(id => properties.find(p => p.id === id)).filter(Boolean) as PropertyItem[];
+                    const overrides = strategy.additional.valuationOverrides;
+                    const totalPoolValue = members.reduce((s, m) => s + (overrides.get(m.id)?.newValue ?? m.current_value), 0);
+                    const totalPoolDebt = members.reduce((s, m) => s + (m.loan_remaining || 0), 0);
+                    const targetTotalDebt = totalPoolValue * strategy.additional.crossCollatPool.blendedTargetLVR;
+                    const poolReleaseAmount = Math.max(0, targetTotalDebt - totalPoolDebt);
+                    return {
+                      enabled: true,
+                      propertyAddresses: members.map(m => m.address || m.id),
+                      blendedTargetLVR: strategy.additional.crossCollatPool.blendedTargetLVR,
+                      lenderMaxLVR: strategy.additional.crossCollatPool.lenderMaxLVR,
+                      allocationStrategy: strategy.additional.crossCollatPool.allocationStrategy,
+                      totalPoolValue,
+                      totalPoolDebt,
+                      poolReleaseAmount,
+                    };
+                  })()
+                : null,
             } : undefined}
           />
 

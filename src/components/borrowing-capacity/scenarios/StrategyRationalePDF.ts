@@ -153,6 +153,25 @@ export interface RationalePDFContext {
   meetsTarget?: boolean | null;
   /** Optional scenario name (preset label). */
   scenarioName?: string;
+  /** Phase G1 — Valuation assumptions to publish for finance audit. */
+  valuationAssumptions?: Array<{
+    address: string;
+    originalValue: number;
+    newValue: number;
+    basis: 'manual' | 'desktop' | 'avm' | 'comparable_sales';
+    source?: string;
+  }>;
+  /** Phase G2 — Cross-collateralised pool methodology disclosure. */
+  crossCollatPool?: {
+    enabled: boolean;
+    propertyAddresses: string[];
+    blendedTargetLVR: number;
+    lenderMaxLVR: number;
+    allocationStrategy: 'highest_equity_first' | 'pro_rata';
+    totalPoolValue: number;
+    totalPoolDebt: number;
+    poolReleaseAmount: number;
+  } | null;
 }
 
 export async function generateStrategyRationalePDF(
@@ -492,6 +511,68 @@ export async function generateStrategyRationalePDF(
     y += lineH;
   }
   y += 4;
+
+  // ════════════════════════════════════════════════════════════════════════
+  // PHASE G1 — VALUATION ASSUMPTIONS (audit watermark)
+  // ════════════════════════════════════════════════════════════════════════
+  if (context.valuationAssumptions && context.valuationAssumptions.length > 0) {
+    y = ensureSpace(doc, y, 22, pageNum);
+    y = drawSectionHeader(doc, `Valuation assumptions  (${context.valuationAssumptions.length} override${context.valuationAssumptions.length === 1 ? '' : 's'})`, y);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'italic');
+    setColor(doc, GRAY);
+    doc.text('Finance must validate each basis before submission. AVM/desktop figures are advisory only.', MARGIN, y);
+    y += 6;
+    for (const v of context.valuationAssumptions) {
+      const basisLabel = v.basis === 'avm' ? 'AVM' : v.basis === 'desktop' ? 'Desktop val' : v.basis === 'comparable_sales' ? 'Comp sales' : 'Manual';
+      const delta = v.newValue - v.originalValue;
+      const lines: string[] = doc.splitTextToSize(
+        `${v.address}: ${fmtAud(v.originalValue)} → ${fmtAud(v.newValue)} (${fmtSigned(delta)}) — basis: ${basisLabel}${v.source ? ` · source: ${v.source}` : ''}`,
+        CONTENT_W - 8,
+      );
+      const blockH = lines.length * 4 + 3;
+      y = ensureSpace(doc, y, blockH + 1, pageNum);
+      setFill(doc, GOLD);
+      doc.rect(MARGIN, y + 1, 1.2, blockH - 2, 'F');
+      doc.setFontSize(8.5);
+      doc.setFont('helvetica', 'normal');
+      setColor(doc, BODY_TEXT);
+      doc.text(lines, MARGIN + 5, y + 4);
+      y += blockH;
+    }
+    y += 4;
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // PHASE G2 — CROSS-COLLAT METHODOLOGY DISCLOSURE
+  // ════════════════════════════════════════════════════════════════════════
+  if (context.crossCollatPool && context.crossCollatPool.enabled) {
+    const pool = context.crossCollatPool;
+    y = ensureSpace(doc, y, 30, pageNum);
+    y = drawSectionHeader(doc, 'Equity release methodology — cross-collateralised', y);
+    const blendedActual = pool.totalPoolValue > 0
+      ? ((pool.totalPoolDebt + pool.poolReleaseAmount) / pool.totalPoolValue) * 100
+      : 0;
+    const lines: string[] = doc.splitTextToSize(
+      `Pool of ${pool.propertyAddresses.length} security${pool.propertyAddresses.length === 1 ? '' : 'ies'} (${pool.propertyAddresses.join('; ')}). ` +
+      `Total pool value: ${fmtAud(pool.totalPoolValue)}. Existing pool debt: ${fmtAud(pool.totalPoolDebt)}. ` +
+      `Target blended LVR: ${(pool.blendedTargetLVR * 100).toFixed(0)}% (achieved ${blendedActual.toFixed(1)}%). ` +
+      `Per-security cap: ${(pool.lenderMaxLVR * 100).toFixed(0)}%. Allocation: ${pool.allocationStrategy.replace(/_/g, ' ')}. ` +
+      `Pool release: ${fmtAud(pool.poolReleaseAmount)}.`,
+      CONTENT_W - 8,
+    );
+    const blockH = lines.length * 4 + 5;
+    y = ensureSpace(doc, y, blockH + 2, pageNum);
+    setFill(doc, MUTED_BG);
+    doc.roundedRect(MARGIN, y, CONTENT_W, blockH, 2, 2, 'F');
+    setFill(doc, NAVY);
+    doc.rect(MARGIN, y + 2, 2.5, blockH - 4, 'F');
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'normal');
+    setColor(doc, BODY_TEXT);
+    doc.text(lines, MARGIN + 6, y + 5);
+    y += blockH + 6;
+  }
 
   // ════════════════════════════════════════════════════════════════════════
   // DISCLAIMER PAGE
