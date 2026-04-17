@@ -59,6 +59,25 @@ interface ScenarioAdjustments {
   } | null;
 }
 
+/** Phase H: Engine-validated metrics returned by the server preview.
+ *  Populated BEFORE the user clicks Apply so the cards display engine truth
+ *  (capacity, meetsTarget, shortfall, loanRequired) instead of LLM estimates. */
+export interface AIScenarioEngineValidation {
+  borrowingCapacity: number;
+  capacityChange: number;
+  monthlySurplus: number;
+  serviceabilityBand: 'green' | 'amber' | 'red';
+  dtiRatio: number;
+  meetsTarget?: boolean;
+  shortfallToTarget?: number;
+  maxPurchasePrice?: number;
+  loanRequiredForPurchase?: number;
+  netCashAfterSettlement?: number;
+  releasedCapital?: number;
+  targetPurchasePrice?: number;
+  validationIssues?: Array<{ deltaId: string; deltaType: string; severity: string; message: string }>;
+}
+
 export interface AIScenario {
   name: string;
   reasoning: string;
@@ -66,6 +85,8 @@ export interface AIScenario {
   estimatedImpact: string;
   /** Phase E (L1): Engine-reconciled impact, populated by parent after applying. */
   reconciledImpact?: string;
+  /** Phase H: pre-Apply engine validation from the server preview. */
+  engineValidation?: AIScenarioEngineValidation;
 }
 
 interface ChatMessage {
@@ -268,9 +289,15 @@ export function BCScenarioAgent({
           if (parsed.scenarios && Array.isArray(parsed.scenarios)) {
             setScenarios(parsed.scenarios);
             setAppliedIndex(null);
-            // Add a summary message if the assistant didn't say anything
-            if (!assistantText.trim()) {
-              const summaryText = `I've generated **3 scenarios** based on your requirements. Review them below and click **"Apply"** on any scenario to load it into the strategy modelling section.`;
+            // Phase H: only emit the generic fallback when the model returned
+            // ZERO prose AND the user message wasn't a clarifying question.
+            // Otherwise the assistant's own answer (or the server's
+            // clarification-mode prose) is preserved.
+            const lower = trimmed.toLowerCase();
+            const looksLikeClarification = lower.includes('?') &&
+              !/(generate|create|build|run|propose|recommend|show me|give me)/.test(lower);
+            if (!assistantText.trim() && !looksLikeClarification) {
+              const summaryText = `I've generated **3 scenarios** based on your requirements. Each card below shows the **engine-validated** capacity and (when a target price was detected) whether the strategy actually clears the budget. Click **"Apply"** to load it into the strategy modelling section.`;
               updateAssistant(summaryText);
             }
           }
@@ -457,18 +484,105 @@ export function BCScenarioAgent({
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <h4 className="text-sm font-semibold leading-tight">{scenario.name}</h4>
                     <Badge
-                      variant={scenario.reconciledImpact ? "default" : "outline"}
+                      variant={scenario.reconciledImpact || scenario.engineValidation ? "default" : "outline"}
                       className="shrink-0 text-xs"
-                      title={scenario.reconciledImpact ? "Engine-verified" : "AI estimate (not yet verified)"}
+                      title={
+                        scenario.reconciledImpact ? "Engine-verified (post-Apply)"
+                        : scenario.engineValidation ? "Engine-validated (pre-Apply preview)"
+                        : "AI estimate (not yet verified)"
+                      }
                     >
                       <TrendingUp className="h-3 w-3 mr-1" />
-                      {scenario.reconciledImpact || scenario.estimatedImpact}
+                      {scenario.reconciledImpact
+                        || (scenario.engineValidation
+                          ? `${scenario.engineValidation.capacityChange >= 0 ? '+' : ''}$${Math.round(scenario.engineValidation.capacityChange).toLocaleString()}`
+                          : scenario.estimatedImpact)}
                     </Badge>
                   </div>
 
                   <p className="text-xs text-muted-foreground mb-3 whitespace-pre-wrap break-words">
                     {scenario.reasoning}
                   </p>
+
+                  {/* Phase H: Engine-validated truth panel (pre-Apply) */}
+                  {scenario.engineValidation && (() => {
+                    const v = scenario.engineValidation!;
+                    const fmt = (n?: number) => typeof n === 'number'
+                      ? `$${Math.round(n).toLocaleString()}`
+                      : '—';
+                    const hasTarget = typeof v.targetPurchasePrice === 'number' && v.targetPurchasePrice > 0;
+                    const meets = v.meetsTarget === true;
+                    const bandClass = v.serviceabilityBand === 'green'
+                      ? 'text-emerald-600 dark:text-emerald-400'
+                      : v.serviceabilityBand === 'amber'
+                        ? 'text-amber-600 dark:text-amber-400'
+                        : 'text-destructive';
+                    return (
+                      <div className="mb-3 rounded-md border border-border/60 bg-muted/40 p-2 space-y-1.5">
+                        <div className="flex items-center justify-between text-[10px] uppercase tracking-wide text-muted-foreground">
+                          <span>Engine Truth</span>
+                          {hasTarget && (
+                            <Badge
+                              variant={meets ? 'default' : 'destructive'}
+                              className="h-4 px-1.5 text-[9px]"
+                            >
+                              {meets ? 'Achievable' : `Short ${fmt(v.shortfallToTarget)}`}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[11px]">
+                          <span className="text-muted-foreground">Capacity</span>
+                          <span className="text-right font-medium">
+                            {fmt(v.borrowingCapacity)}
+                            {v.capacityChange !== 0 && (
+                              <span className={v.capacityChange > 0 ? 'text-emerald-600 dark:text-emerald-400 ml-1' : 'text-destructive ml-1'}>
+                                ({v.capacityChange > 0 ? '+' : ''}{fmt(v.capacityChange)})
+                              </span>
+                            )}
+                          </span>
+                          <span className="text-muted-foreground">Surplus / mo</span>
+                          <span className="text-right font-medium">{fmt(v.monthlySurplus)}</span>
+                          <span className="text-muted-foreground">Band / DTI</span>
+                          <span className={`text-right font-medium ${bandClass}`}>
+                            {v.serviceabilityBand.toUpperCase()} • {v.dtiRatio.toFixed(2)}x
+                          </span>
+                          {hasTarget && (
+                            <>
+                              <span className="text-muted-foreground">Target / Max</span>
+                              <span className="text-right font-medium">
+                                {fmt(v.targetPurchasePrice)} / {fmt(v.maxPurchasePrice)}
+                              </span>
+                              {typeof v.loanRequiredForPurchase === 'number' && (
+                                <>
+                                  <span className="text-muted-foreground">Loan req'd</span>
+                                  <span className="text-right font-medium">{fmt(v.loanRequiredForPurchase)}</span>
+                                </>
+                              )}
+                              {typeof v.netCashAfterSettlement === 'number' && (
+                                <>
+                                  <span className="text-muted-foreground">Net cash</span>
+                                  <span className={`text-right font-medium ${v.netCashAfterSettlement < 0 ? 'text-destructive' : ''}`}>
+                                    {fmt(v.netCashAfterSettlement)}
+                                  </span>
+                                </>
+                              )}
+                              {typeof v.releasedCapital === 'number' && v.releasedCapital > 0 && (
+                                <>
+                                  <span className="text-muted-foreground">Released</span>
+                                  <span className="text-right font-medium">{fmt(v.releasedCapital)}</span>
+                                </>
+                              )}
+                            </>
+                          )}
+                        </div>
+                        {v.validationIssues && v.validationIssues.length > 0 && (
+                          <div className="text-[10px] text-amber-600 dark:text-amber-400 pt-1 border-t border-border/40">
+                            ⚠ {v.validationIssues.length} validation note{v.validationIssues.length > 1 ? 's' : ''} — verify with finance.
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   {/* Adjustment badges */}
                   <div className="flex flex-wrap gap-1 mb-3">
