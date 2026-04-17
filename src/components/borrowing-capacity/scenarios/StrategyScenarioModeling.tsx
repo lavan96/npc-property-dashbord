@@ -1528,7 +1528,7 @@ export function StrategyScenarioModeling({
             formatCurrency={formatCurrency}
           />
 
-          {/* F5 — Strategy rationale: what / why / how / sequence (finance-ready) */}
+          {/* F5 + F6 — Strategy rationale (finance-ready) with PDF export */}
           <StrategyRationalePanel
             report={buildStrategyRationale({
               baseCapacity: baseResult.borrowingCapacity,
@@ -1539,6 +1539,14 @@ export function StrategyScenarioModeling({
               formatCurrency,
             })}
             formatCurrency={formatCurrency}
+            pdfContext={clientName ? {
+              clientName,
+              baseCapacity: baseResult.borrowingCapacity,
+              scenarioCapacity: scenarioResult.borrowingCapacity,
+              effectivePurchasePower: acquisition.enabled && acquisitionCapacity ? acquisitionCapacity.maxPurchasePrice : null,
+              targetPurchasePrice: acquisition.enabled && acquisitionCapacity?.targetPurchasePrice ? acquisitionCapacity.targetPurchasePrice : null,
+              meetsTarget: acquisition.enabled && acquisitionCapacity ? (acquisitionCapacity.meetsTarget ?? null) : null,
+            } : undefined}
           />
 
           {impactBreakdown.length > 0 && (
