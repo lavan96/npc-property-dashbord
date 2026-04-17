@@ -1217,6 +1217,27 @@ Deno.serve(async (req) => {
     const activePolicy = resolvePolicy(overrides?.selectedLenderName);
     console.log(`[calculate-borrowing-capacity] Active policy: ${activePolicy.name}`);
 
+    // ── PHASE A3: Build effective policy with dynamic stress rate ──
+    // Existing property loans should be stress-tested at the HIGHER of:
+    //   (a) the lender/policy assessment rate (default 9.5%)
+    //   (b) the user-configured assessment rate = interestRate + bufferRate
+    // This ensures user/lender overrides flow through to ALL stress calcs.
+    const earlyInterestRate = overrides?.interestRate ?? activePolicy.loanDefaults.interestRate;
+    const earlyBufferRate = overrides?.bufferRate ?? activePolicy.loanDefaults.bufferRate;
+    const userAssessmentRateDecimal = (earlyInterestRate + earlyBufferRate) / 100;
+    const effectiveLoanAssessmentRate = Math.max(
+      activePolicy.propertyPolicy.loanAssessmentRate,
+      userAssessmentRateDecimal,
+    );
+    const effectivePolicy: PolicyConfig = {
+      ...activePolicy,
+      propertyPolicy: {
+        ...activePolicy.propertyPolicy,
+        loanAssessmentRate: effectiveLoanAssessmentRate,
+      },
+    };
+    console.log(`[calculate-borrowing-capacity] Effective loan stress rate: ${(effectiveLoanAssessmentRate * 100).toFixed(2)}% (policy=${(activePolicy.propertyPolicy.loanAssessmentRate * 100).toFixed(2)}%, user=${(userAssessmentRateDecimal * 100).toFixed(2)}%)`);
+
     console.log(`[calculate-borrowing-capacity] Processing client: ${clientId}`);
 
     // Fetch client data
