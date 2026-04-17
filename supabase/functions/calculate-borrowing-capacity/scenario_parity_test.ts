@@ -95,7 +95,10 @@ Deno.test('aggregateDeltas: empty deltas yields zero-effect & base inputs unchan
   const ctx = buildContext();
   const { inputs, effect, issues } = aggregateDeltas('Empty', [], ctx);
 
-  assertEquals(issues.length, 0, 'no validation issues for empty deltas');
+  // Filter informational engine notes (DTI denominator, NG add-back, LVR cap)
+  // from delta-validation count — they are surfaced regardless of deltas.
+  const deltaIssues = issues.filter(i => !['dti-denominator', 'negative-gearing', 'dti-honest'].includes(i.deltaId));
+  assertEquals(deltaIssues.length, 0, 'no validation issues for empty deltas');
   assertEquals(effect.incomeAdjustment, 0);
   assertEquals(effect.expenseAdjustment, 0);
   assertEquals(effect.commitmentAdjustment, 0);
@@ -132,8 +135,9 @@ Deno.test('aggregateDeltas: rejects unknown property/liability IDs as warnings',
     { id: 'lia-XYZ', label: 'Pay phantom', type: 'liability_payoff', value: 5000, unit: 'absolute' },
   ];
   const { issues, safeDeltas } = aggregateDeltas('Hallucination', deltas, ctx);
-  assertEquals(issues.length, 2);
-  assertEquals(issues[0].severity, 'warning');
+  const deltaIssues = issues.filter(i => !['dti-denominator', 'negative-gearing', 'dti-honest'].includes(i.deltaId));
+  assertEquals(deltaIssues.length, 2);
+  assertEquals(deltaIssues[0].severity, 'warning');
   assertEquals(safeDeltas.length, 0, 'unknown-target deltas dropped from execution');
 });
 
@@ -233,8 +237,9 @@ Deno.test('validateDeltas: rate change > 10pp surfaces warning', () => {
     { id: 'rate-extreme', label: '+15%', type: 'rate_change', value: 15, unit: 'rate_points' },
   ];
   const { issues } = aggregateDeltas('Extreme Rate', deltas, ctx);
-  assertEquals(issues.length, 1);
-  assertEquals(issues[0].severity, 'warning');
+  const deltaIssues = issues.filter(i => !['dti-denominator', 'negative-gearing', 'dti-honest'].includes(i.deltaId));
+  assertEquals(deltaIssues.length, 1);
+  assertEquals(deltaIssues[0].severity, 'warning');
 });
 
 Deno.test('aggregateDeltas: non-finite value is flagged as error', () => {
@@ -243,8 +248,9 @@ Deno.test('aggregateDeltas: non-finite value is flagged as error', () => {
     { id: 'bogus', label: 'NaN', type: 'income_change', value: NaN, unit: 'percent' },
   ];
   const { issues } = aggregateDeltas('NaN', deltas, ctx);
-  assertEquals(issues.length, 1);
-  assertEquals(issues[0].severity, 'error');
+  const deltaIssues = issues.filter(i => !['dti-denominator', 'negative-gearing', 'dti-honest'].includes(i.deltaId));
+  assertEquals(deltaIssues.length, 1);
+  assertEquals(deltaIssues[0].severity, 'error');
 });
 
 // ─────────────────────────────────────────────────────────
