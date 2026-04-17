@@ -194,7 +194,27 @@ export type ScenarioDeltaType =
    *  `meta.lenderMaxLVR`  = absolute lender ceiling per security (default 0.95).
    *  Closes the methodology gap where standalone per-property mode floors a
    *  release at $0 even when equity-rich properties could subsidise the pool. */
-  | 'portfolio_lvr_release';
+  | 'portfolio_lvr_release'
+  /** Phase K1 — Capital Allocation. Routes a $-amount of cash from the
+   *  Capital Allocation Pool (sourced by equity_release / portfolio_lvr_release
+   *  / property_sell / cashOnHand) to a typed sink that emits a serviceability
+   *  effect. Enables hyper-granular flows like "$80k of the $222k release →
+   *  pay down Liability A; $50k → offset Property B; remainder → deposit".
+   *
+   *  - `id`     = unique allocation id (e.g. 'alloc-1')
+   *  - `value`  = dollars routed
+   *  - `unit`   = 'absolute'
+   *  - `meta`:
+   *      sourcePool: string  (default 'pool-default')
+   *      sinkType: 'liability_payoff' | 'offset_deposit' | 'rate_buydown'
+   *              | 'debt_recycle' | 'acquisition_deposit'
+   *              | 'holding_reserve' | 'repayment_reduction'
+   *      sinkTargetId?: string   (liability or property id, where applicable)
+   *      offsetRatePoints?: number    (annual % rate the offset cancels)
+   *      rateBuydownPoints?: number   (basis points bought down)
+   *      repaymentReductionMonthly?: number  (direct $/mo servicing cut)
+   */
+  | 'capital_allocation';
 
 export type ScenarioDeltaUnit = 'percent' | 'absolute' | 'rate_points' | 'years' | 'ratio';
 
@@ -210,9 +230,72 @@ export interface ScenarioDelta {
   /** Unit hint */
   unit: ScenarioDeltaUnit;
   /** Optional payload for richer deltas (e.g. equity_release target LVR, dti cap toggle,
-   *  pool propertyIds for portfolio_lvr_release, basis/source for property_value_change) */
+   *  pool propertyIds for portfolio_lvr_release, basis/source for property_value_change,
+   *  sinkType/sinkTargetId for capital_allocation) */
   meta?: Record<string, number | string | boolean | string[] | null>;
 }
+
+// ============================================
+// PHASE K1 — CAPITAL ALLOCATION POOL
+// ============================================
+
+/** Sink categories that capital_allocation deltas can route cash into. */
+export type CapitalSinkType =
+  | 'liability_payoff'      // Pay down a debt → reduces commitment + balance
+  | 'offset_deposit'        // Park cash in offset → cancels interest on $X
+  | 'rate_buydown'          // Pay points to lower a property's rate
+  | 'debt_recycle'          // Pay OO loan, redraw as IP → tax deductible
+  | 'acquisition_deposit'   // Reserve cash as new-purchase deposit (default)
+  | 'holding_reserve'       // Park as cash buffer (no servicing effect)
+  | 'repayment_reduction';  // Direct $/mo servicing cut on a target loan
+
+/** Source categories that emit cash into the pool. */
+export type CapitalSourceType =
+  | 'equity_release'
+  | 'portfolio_lvr_release'
+  | 'property_sell'
+  | 'cash_on_hand'
+  | 'surplus_redirect';
+
+/** A single source contribution to a pool. */
+export interface CapitalSourceEntry {
+  deltaId: string;
+  sourceType: CapitalSourceType;
+  label: string;
+  amount: number;
+}
+
+/** A single allocation routed from the pool to a sink. */
+export interface CapitalSinkEntry {
+  deltaId: string;
+  sinkType: CapitalSinkType;
+  label: string;
+  amount: number;
+  /** $/mo servicing change attributable to this sink (negative = saving). */
+  monthlyServicingDelta: number;
+  /** Annual debt-balance change attributable to this sink (negative = paydown). */
+  debtBalanceDelta: number;
+  /** Notes shown in the audit trail / per-card chip. */
+  notes: string[];
+}
+
+/** A single capital pool tracked by the ledger. */
+export interface CapitalPoolLedger {
+  poolId: string;
+  sources: CapitalSourceEntry[];
+  sinks: CapitalSinkEntry[];
+  totalIn: number;
+  totalOut: number;
+  remainder: number;
+  overcommitted: boolean;
+}
+
+/** Engine output: full ledger keyed by pool id. */
+export interface CapitalLedger {
+  pools: Record<string, CapitalPoolLedger>;
+}
+
+
 
 /** Phase C: Acquisition Capacity — what the client can ACTUALLY purchase
  *  once equity, LMI, stamp duty and other acquisition costs are netted out.
@@ -300,6 +383,9 @@ export interface ScenarioCapacityResult {
   acquisitionCapacity?: AcquisitionCapacity | null;
   /** Phase C: validation issues from delta resolution (hallucination guard) */
   validationIssues?: ScenarioValidationIssue[];
+  /** Phase K1: capital allocation ledger — tracks every $ flowing from sources
+   *  (equity_release / pool / sells / cash) to sinks (payoff / offset / etc.). */
+  capitalLedger?: CapitalLedger | null;
 }
 
 // ============================================

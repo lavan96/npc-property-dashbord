@@ -99,6 +99,8 @@ const TYPE_TO_VERB: Record<ScenarioDelta['type'], string> = {
   property_value_change: 'Revalue property',
   /** Phase G2 — cross-collateralised pool release */
   portfolio_lvr_release: 'Release pooled equity',
+  /** Phase K1 — capital allocation routing */
+  capital_allocation: 'Allocate capital',
 };
 
 function severityForDelta(d: ScenarioDelta, capacityImpact: number): RationaleSeverity {
