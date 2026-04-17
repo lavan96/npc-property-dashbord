@@ -513,6 +513,112 @@ export async function generateStrategyRationalePDF(
   y += 4;
 
   // ════════════════════════════════════════════════════════════════════════
+  // PHASE K5 — CAPITAL FLOW (sources → sinks)
+  // ════════════════════════════════════════════════════════════════════════
+  if (report.capitalFlow && report.capitalFlow.legs.length > 0) {
+    const cf = report.capitalFlow;
+    y = ensureSpace(doc, y, 30, pageNum);
+    y = drawSectionHeader(doc, `Capital allocation flow  (${cf.legs.length} leg${cf.legs.length === 1 ? '' : 's'})`, y);
+
+    // Pool summary strip
+    setFill(doc, MUTED_BG);
+    doc.roundedRect(MARGIN, y, CONTENT_W, 14, 2, 2, 'F');
+    doc.setFontSize(7);
+    setColor(doc, GRAY);
+    doc.setFont('helvetica', 'normal');
+    doc.text('AVAILABLE', MARGIN + 4, y + 5);
+    doc.text('ROUTED', MARGIN + CONTENT_W / 3 + 4, y + 5);
+    doc.text('RESIDUAL', MARGIN + (CONTENT_W * 2) / 3 + 4, y + 5);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    setColor(doc, NAVY);
+    doc.text(fmtAud(cf.totalAvailable), MARGIN + 4, y + 11);
+    doc.text(fmtAud(cf.totalRouted), MARGIN + CONTENT_W / 3 + 4, y + 11);
+    doc.text(fmtAud(cf.remainder), MARGIN + (CONTENT_W * 2) / 3 + 4, y + 11);
+    y += 17;
+
+    if (cf.overcommitted) {
+      setFill(doc, RED);
+      doc.roundedRect(MARGIN, y, CONTENT_W, 6, 1, 1, 'F');
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      setColor(doc, WHITE);
+      doc.text('POOL OVERCOMMITTED — sinks were clamped to available pool.', MARGIN + 3, y + 4);
+      y += 9;
+    }
+
+    for (const leg of cf.legs) {
+      const isUnallocated = leg.sinkType === 'unallocated';
+      doc.setFontSize(8.5);
+      doc.setFont('helvetica', 'bold');
+      const headerLine = `${leg.sourceLabel}  →  ${leg.sinkLabel}`;
+      const headerLines: string[] = doc.splitTextToSize(headerLine, CONTENT_W - 50);
+      doc.setFontSize(7.5);
+      doc.setFont('helvetica', 'normal');
+      const noteLines: string[] = leg.note ? doc.splitTextToSize(leg.note, CONTENT_W - 8) : [];
+      const blockH = headerLines.length * 4 + noteLines.length * 3.5 + 7;
+
+      y = ensureSpace(doc, y, blockH + 2, pageNum);
+
+      // Severity bar
+      setFill(doc, isUnallocated ? GRAY : GOLD);
+      doc.rect(MARGIN, y, 1.2, blockH, 'F');
+
+      // Header
+      doc.setFontSize(8.5);
+      doc.setFont('helvetica', 'bold');
+      setColor(doc, NAVY);
+      doc.text(headerLines, MARGIN + 5, y + 4);
+
+      // Right-side metrics: amount + servicing + debt pills
+      const pillsY = y + 1;
+      let pillX = MARGIN + CONTENT_W;
+      const drawPill = (text: string, fillColor: RGB) => {
+        const w = doc.getTextWidth(text) + 4;
+        pillX -= w + 2;
+        setFill(doc, fillColor);
+        doc.roundedRect(pillX, pillsY, w, 5, 1, 1, 'F');
+        doc.setFontSize(6.5);
+        doc.setFont('helvetica', 'bold');
+        setColor(doc, WHITE);
+        doc.text(text, pillX + w / 2, pillsY + 3.6, { align: 'center' });
+      };
+      if (leg.debtBalanceDelta !== 0) {
+        drawPill(`${leg.debtBalanceDelta < 0 ? '−' : '+'}${fmtAud(Math.abs(leg.debtBalanceDelta))} debt`, GRAY);
+      }
+      if (leg.monthlyServicingDelta !== 0) {
+        drawPill(
+          `${leg.monthlyServicingDelta < 0 ? '−' : '+'}${fmtAud(Math.abs(leg.monthlyServicingDelta))}/mo`,
+          leg.monthlyServicingDelta < 0 ? GREEN : RED,
+        );
+      }
+      drawPill(fmtAud(leg.amount), NAVY);
+
+      // Note
+      if (noteLines.length > 0) {
+        doc.setFontSize(7.5);
+        doc.setFont('helvetica', 'normal');
+        setColor(doc, BODY_TEXT);
+        doc.text(noteLines, MARGIN + 5, y + 4 + headerLines.length * 4 + 1);
+      }
+      y += blockH + 1;
+    }
+
+    // Net impact summary
+    y = ensureSpace(doc, y, 10, pageNum);
+    setFill(doc, MUTED_BG);
+    doc.roundedRect(MARGIN, y, CONTENT_W, 8, 1, 1, 'F');
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    setColor(doc, NAVY);
+    doc.text(
+      `Net capital impact: ${cf.monthlyServicingDelta < 0 ? '−' : '+'}${fmtAud(Math.abs(cf.monthlyServicingDelta))}/mo servicing  ·  ${cf.debtBalanceDelta < 0 ? '−' : '+'}${fmtAud(Math.abs(cf.debtBalanceDelta))} debt balance`,
+      MARGIN + 3, y + 5.2,
+    );
+    y += 12;
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
   // PHASE G1 — VALUATION ASSUMPTIONS (audit watermark)
   // ════════════════════════════════════════════════════════════════════════
   if (context.valuationAssumptions && context.valuationAssumptions.length > 0) {
