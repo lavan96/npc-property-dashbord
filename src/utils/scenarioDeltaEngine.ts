@@ -74,6 +74,12 @@ export interface ScenarioContext {
   properties?: ScenarioProperty[];
   liabilities?: ScenarioLiability[];
   acquisition?: AcquisitionContext;
+  /** Phase I1 — typed income components for lender-aware re-shading. */
+  incomeComponents?: ScenarioIncomeComponent[];
+  /** Phase I1 — current lender profile id (defaults to bank_standard). */
+  currentLenderProfileId?: string;
+  /** Phase I2 — monthly HEM benchmark; engine floors expenses here. */
+  hemBenchmark?: number;
 }
 
 export interface ScenarioProperty {
