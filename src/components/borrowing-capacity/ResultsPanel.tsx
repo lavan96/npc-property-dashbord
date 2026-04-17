@@ -160,6 +160,22 @@ export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', 
     }
   };
 
+  // ── True (unfloored) capacity ─────────────────────────────────────────
+  // The engine clamps `borrowingCapacity` at $0 when surplus is negative
+  // (APRA-aligned lendable figure). For internal transparency we surface the
+  // *theoretical* position derived from the actual (signed) monthly surplus
+  // using the same annuity formula the scenario inspector uses.
+  const theoreticalCapacity = useMemo(() => {
+    if (!result) return 0;
+    const rate = result.assessmentRate ?? ((interestRate ?? 6.5) + (bufferRate ?? 3));
+    const term = loanTermYears ?? 30;
+    const r = (rate / 100) / 12;
+    const n = term * 12;
+    if (r <= 0 || n <= 0) return result.borrowingCapacity;
+    const factor = (1 - Math.pow(1 + r, -n)) / r;
+    return Math.round(result.monthlySurplus * factor);
+  }, [result, interestRate, bufferRate, loanTermYears]);
+
   if (!result) {
     return (
       <Card className="h-full">
@@ -176,7 +192,11 @@ export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', 
 
   const bandConfig = getBandConfig(result.serviceabilityBand);
   const BandIcon = bandConfig.icon;
-  const capacityProgress = Math.min(100, (result.borrowingCapacity / 1500000) * 100);
+  const capacityProgress = Math.min(100, (Math.max(0, result.borrowingCapacity) / 1500000) * 100);
+
+  // Engine has floored a negative true position to $0 — surface the truth.
+  const floorActive = result.borrowingCapacity <= 0 && result.monthlySurplus < 0;
+  const displayedCapacity = floorActive ? theoreticalCapacity : result.borrowingCapacity;
 
   return (
     <Card className="h-full">
@@ -278,20 +298,42 @@ export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', 
         )}
 
         {/* Main Borrowing Capacity */}
-        <div className={`p-4 rounded-lg border-2 ${bandConfig.borderColor} ${bandConfig.bgLight}`}>
-          <p className="text-sm font-medium text-muted-foreground mb-1">BORROWING CAPACITY</p>
-          <div className="text-4xl font-bold text-foreground">
-            {formatCurrency(result.borrowingCapacity)}
+        <div className={`p-4 rounded-lg border-2 ${floorActive ? 'border-destructive/40 bg-destructive/5' : `${bandConfig.borderColor} ${bandConfig.bgLight}`}`}>
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-sm font-medium text-muted-foreground">
+              BORROWING CAPACITY
+              {floorActive && (
+                <span className="ml-2 text-[10px] uppercase tracking-wide text-destructive">
+                  True position (unfloored)
+                </span>
+              )}
+            </p>
+          </div>
+          <div className={`text-4xl font-bold ${floorActive ? 'text-destructive' : 'text-foreground'}`}>
+            {formatCurrency(displayedCapacity)}
           </div>
           <div className="mt-3">
-            <Progress 
-              value={capacityProgress} 
+            <Progress
+              value={capacityProgress}
               className="h-3"
             />
           </div>
           <div className="flex items-center justify-between mt-2 text-sm text-muted-foreground">
             <span>Stress-tested: {formatCurrency(result.stressTestedCapacity)}</span>
+            {floorActive && (
+              <span className="text-xs">Engine lendable: {formatCurrency(result.borrowingCapacity)}</span>
+            )}
           </div>
+          {floorActive && (
+            <p className="text-[11px] text-muted-foreground/80 mt-2 leading-relaxed flex items-start gap-1">
+              <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
+              <span>
+                Surplus is negative ({formatCurrency(result.monthlySurplus)}/mo) so the lendable figure is clamped at $0
+                for APRA compliance. The headline above shows the <strong>true serviceability gap</strong> — the
+                amount the client is "underwater" against the assessment rate.
+              </span>
+            </p>
+          )}
         </div>
 
         {/* Total Purchasing Power — shown when equity release contributes capital */}
