@@ -436,10 +436,18 @@ export function aggregateDeltas(
     if (e.dtiCapLimit !== undefined) total.dtiCapLimit = e.dtiCapLimit;
   }
 
+  // Phase E (M3): rescale HEM-derived expenses if income tier changed
+  const newGross = Math.max(0, context.baseInputs.grossAnnualIncome + total.incomeAdjustment);
+  const hemDelta = computeHemTierDelta(
+    context.baseInputs.grossAnnualIncome,
+    newGross,
+    context.baseInputs.monthlyLivingExpenses,
+  );
+
   const inputs: AggregatedScenarioInputs = {
-    grossAnnualIncome: Math.max(0, context.baseInputs.grossAnnualIncome + total.incomeAdjustment),
+    grossAnnualIncome: newGross,
     shadedAnnualIncome: Math.max(0, context.baseInputs.shadedAnnualIncome + total.shadedIncomeAdjustment),
-    monthlyLivingExpenses: Math.max(0, context.baseInputs.monthlyLivingExpenses + total.expenseAdjustment),
+    monthlyLivingExpenses: Math.max(0, context.baseInputs.monthlyLivingExpenses + total.expenseAdjustment + hemDelta),
     monthlyCommitments: Math.max(0, context.baseInputs.monthlyCommitments + total.commitmentAdjustment),
     interestRate: Math.max(0.5, context.baseInputs.interestRate + total.rateAdjustment),
     bufferRate: context.baseInputs.bufferRate,
