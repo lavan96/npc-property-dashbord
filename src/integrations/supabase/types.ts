@@ -4758,6 +4758,82 @@ export type Database = {
         }
         Relationships: []
       }
+      finance_portal_documents: {
+        Row: {
+          category: string
+          client_id: string
+          created_at: string
+          deleted_at: string | null
+          description: string | null
+          file_size: number
+          id: string
+          mime_type: string
+          original_filename: string
+          storage_path: string
+          updated_at: string
+          uploaded_by_finance_user_id: string | null
+          uploaded_by_internal_user_id: string | null
+          uploader_type: string
+          visible_to_client: boolean
+        }
+        Insert: {
+          category?: string
+          client_id: string
+          created_at?: string
+          deleted_at?: string | null
+          description?: string | null
+          file_size?: number
+          id?: string
+          mime_type?: string
+          original_filename: string
+          storage_path: string
+          updated_at?: string
+          uploaded_by_finance_user_id?: string | null
+          uploaded_by_internal_user_id?: string | null
+          uploader_type?: string
+          visible_to_client?: boolean
+        }
+        Update: {
+          category?: string
+          client_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          description?: string | null
+          file_size?: number
+          id?: string
+          mime_type?: string
+          original_filename?: string
+          storage_path?: string
+          updated_at?: string
+          uploaded_by_finance_user_id?: string | null
+          uploaded_by_internal_user_id?: string | null
+          uploader_type?: string
+          visible_to_client?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_portal_documents_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_portal_documents_uploaded_by_finance_user_id_fkey"
+            columns: ["uploaded_by_finance_user_id"]
+            isOneToOne: false
+            referencedRelation: "finance_portal_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_portal_documents_uploaded_by_internal_user_id_fkey"
+            columns: ["uploaded_by_internal_user_id"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       finance_portal_users: {
         Row: {
           created_at: string
