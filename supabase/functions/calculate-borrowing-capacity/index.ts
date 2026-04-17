@@ -1060,6 +1060,13 @@ function applyServerDelta(
 ): { income: number; shadedIncome: number; expense: number; commitment: number; rate: number; debt: number } {
   const e = { income: 0, shadedIncome: 0, expense: 0, commitment: 0, rate: 0, debt: 0 };
 
+  // *** Phase A4 FIX: Use the client's actual shaded/gross ratio instead of hard-coded 0.8 ***
+  // For absolute income deltas where we don't know the shading category, fall back to the
+  // client's blended ratio so scenarios stay aligned with their existing income profile.
+  const shadingRatio = ctx.baseInputs.grossAnnualIncome > 0
+    ? Math.max(0, Math.min(1, ctx.baseInputs.shadedAnnualIncome / ctx.baseInputs.grossAnnualIncome))
+    : 0.8;
+
   switch (delta.type) {
     case 'income_change':
       if (delta.unit === 'percent') {
@@ -1067,7 +1074,7 @@ function applyServerDelta(
         e.shadedIncome = ctx.baseInputs.shadedAnnualIncome * (delta.value / 100);
       } else {
         e.income = delta.value;
-        e.shadedIncome = delta.value * 0.8;
+        e.shadedIncome = delta.value * shadingRatio;
       }
       break;
     case 'expense_change':
@@ -1095,7 +1102,7 @@ function applyServerDelta(
         if (svc > 0) e.commitment = -svc;
         if (p.loanRemaining > 0) e.debt = -p.loanRemaining;
         const cf = p.netMonthlyCashflow || 0;
-        if (cf > 0) { e.income = -(cf * 12); e.shadedIncome = -(cf * 12 * 0.8); }
+        if (cf > 0) { e.income = -(cf * 12); e.shadedIncome = -(cf * 12 * shadingRatio); }
         else if (cf < 0) { e.expense = cf; }
       }
       break;
@@ -1121,7 +1128,7 @@ function applyServerDelta(
     }
     case 'property_add':
       if (delta.unit === 'absolute') {
-        if (delta.value > 0) { e.income = delta.value * 12; e.shadedIncome = delta.value * 12 * 0.8; }
+        if (delta.value > 0) { e.income = delta.value * 12; e.shadedIncome = delta.value * 12 * shadingRatio; }
         else { e.expense = Math.abs(delta.value); }
       }
       break;
