@@ -327,22 +327,31 @@ export function StrategyScenarioModeling({
       impacts.push({ label: `Consolidate ${strategy.consolidatedLiabilities.size} debt(s)`, monthlySaving: consolidationSaving, type: 'saving' });
     }
 
-    // 2. Refinance P&I → IO → property_refinance deltas
+    // 2. Refinance P&I → IO → property_refinance deltas (Phase 3 — granular)
     let refinanceSaving = 0;
     strategy.refinancedToIO.forEach(propId => {
       const prop = investmentProperties.find(p => p.id === propId);
       if (prop) {
         const currentRepayment = prop.monthly_interest_repayment ||
           calculatePIRepayment(prop.loan_remaining, baseInputs.interestRate, baseInputs.loanTermYears);
-        const ioRepayment = calculateIORepayment(prop.loan_remaining, baseInputs.interestRate);
-        const saving = Math.max(0, currentRepayment - ioRepayment);
+        const autoIo = calculateIORepayment(prop.loan_remaining, baseInputs.interestRate);
+        const manualRepayment = strategy.refinanceManualRepayments.get(propId);
+        const ioPeriodYears = strategy.refinanceIoPeriodYears.get(propId);
+        const newRepayment = Number.isFinite(manualRepayment as number) && (manualRepayment as number) >= 0
+          ? (manualRepayment as number)
+          : autoIo;
+        const saving = Math.max(0, currentRepayment - newRepayment);
         if (saving > 0) refinanceSaving += saving;
         deltas.push({
           id: prop.id,
-          label: `Refinance ${prop.address?.slice(0, 25) || 'property'} to IO`,
+          label: `Refinance ${prop.address?.slice(0, 25) || 'property'} to IO${Number.isFinite(ioPeriodYears as number) && (ioPeriodYears as number) > 0 ? ` (${ioPeriodYears}yr IO)` : ''}`,
           type: 'property_refinance',
           value: 0,
           unit: 'absolute',
+          meta: {
+            ...(Number.isFinite(manualRepayment as number) ? { manualRepayment } : {}),
+            ...(Number.isFinite(ioPeriodYears as number) && (ioPeriodYears as number) > 0 ? { ioPeriodYears } : {}),
+          },
         });
         if (saving > 0) leverCashflowNotes.set(`property_refinance-${prop.id}`, `+${formatCurrency(saving)}/mo`);
       }
