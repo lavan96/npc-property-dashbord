@@ -423,19 +423,439 @@ serve(async (req) => {
 
     // ── get_activity_log ──
     if (operation === 'get_activity_log') {
-      const { finance_user_id, limit } = body;
+      const { finance_user_id, limit, action_filter, search, since } = body;
       let q = supabase
         .from('finance_portal_activity_log')
         .select('id, finance_user_id, client_id, actor_user_id, actor_type, action, entity_type, entity_id, metadata, ip_address, created_at')
         .order('created_at', { ascending: false })
-        .limit(Math.min(limit || 100, 500));
+        .limit(Math.min(limit || 100, 1000));
 
       if (finance_user_id) q = q.eq('finance_user_id', finance_user_id);
+      if (action_filter) q = q.eq('action', action_filter);
+      if (since) q = q.gte('created_at', since);
 
       const { data, error } = await q;
       if (error) throw error;
+
+      let filtered = data || [];
+      if (search && typeof search === 'string' && search.trim()) {
+        const s = search.trim().toLowerCase();
+        filtered = filtered.filter((r: any) =>
+          (r.action || '').toLowerCase().includes(s) ||
+          (r.entity_type || '').toLowerCase().includes(s) ||
+          JSON.stringify(r.metadata || {}).toLowerCase().includes(s)
+        );
+      }
+
       return new Response(
-        JSON.stringify({ success: true, records: data || [] }),
+        JSON.stringify({ success: true, records: filtered }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ── get_analytics: aggregated metrics for the admin dashboard ──
+    if (operation === 'get_analytics') {
+      const days = Math.max(1, Math.min(parseInt(body.days || '30', 10) || 30, 180));
+      const sinceDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
+      const [usersRes, assignmentsRes, activityRes, threadsRes, docsRes] = await Promise.all([
+        supabase.from('finance_portal_users').select('id, is_active, invite_accepted_at, last_login_at, revoked_at'),
+        supabase.from('finance_portal_client_assignments').select('id, finance_user_id, client_id, auto_linked, auto_link_source'),
+        supabase
+          .from('finance_portal_activity_log')
+          .select('id, finance_user_id, action, actor_type, created_at')
+          .gte('created_at', sinceDate)
+          .order('created_at', { ascending: false })
+          .limit(5000),
+        supabase
+          .from('finance_portal_threads')
+          .select('id, finance_user_id, client_id, last_message_at, unread_count_partner, unread_count_staff, is_archived')
+          .order('last_message_at', { ascending: false, nullsFirst: false })
+          .limit(2000),
+        supabase
+          .from('finance_portal_documents')
+          .select('id, finance_user_id, client_id, file_size, created_at')
+          .gte('created_at', sinceDate)
+          .limit(5000),
+      ]);
+
+      const portalUsers = usersRes.data || [];
+      const assignments = assignmentsRes.data || [];
+      const activity = activityRes.data || [];
+      const threads = threadsRes.data || [];
+      const docs = docsRes.data || [];
+
+      // KPIs
+      const activeUsers = portalUsers.filter((u: any) => u.is_active && !u.revoked_at && u.invite_accepted_at).length;
+      const invitedUsers = portalUsers.filter((u: any) => !u.invite_accepted_at && !u.revoked_at).length;
+      const revokedUsers = portalUsers.filter((u: any) => u.revoked_at).length;
+
+      // Daily activity for chart
+      const dayMap = new Map<string, { date: string; logins: number; doc_uploads: number; messages: number; bc_views: number; total: number }>();
+      for (let i = days - 1; i >= 0; i--) {
+        const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        dayMap.set(d, { date: d, logins: 0, doc_uploads: 0, messages: 0, bc_views: 0, total: 0 });
+      }
+      for (const log of activity) {
+        const d = (log.created_at || '').slice(0, 10);
+        const bucket = dayMap.get(d);
+        if (!bucket) continue;
+        bucket.total++;
+        if (log.action === 'login_success') bucket.logins++;
+        else if (log.action === 'document_uploaded') bucket.doc_uploads++;
+        else if (log.action === 'message_sent') bucket.messages++;
+        else if (log.action === 'bc_viewed' || log.action === 'borrowing_capacity_viewed') bucket.bc_views++;
+      }
+      const daily = Array.from(dayMap.values());
+
+      // Action breakdown
+      const actionCounts: Record<string, number> = {};
+      for (const log of activity) {
+        actionCounts[log.action] = (actionCounts[log.action] || 0) + 1;
+      }
+
+      // Per-user activity
+      const userActivity = new Map<string, { finance_user_id: string; events: number; last_activity: string | null }>();
+      for (const log of activity) {
+        if (!log.finance_user_id) continue;
+        const existing = userActivity.get(log.finance_user_id) || { finance_user_id: log.finance_user_id, events: 0, last_activity: null };
+        existing.events++;
+        if (!existing.last_activity || (log.created_at && log.created_at > existing.last_activity)) {
+          existing.last_activity = log.created_at;
+        }
+        userActivity.set(log.finance_user_id, existing);
+      }
+
+      // Resolve names
+      const userIds = Array.from(userActivity.keys());
+      let userNames = new Map<string, { name: string; email: string }>();
+      if (userIds.length) {
+        const { data: pus } = await supabase
+          .from('finance_portal_users')
+          .select('id, finance_contact_id, email')
+          .in('id', userIds);
+        const contactIds = (pus || []).map((p: any) => p.finance_contact_id).filter(Boolean);
+        let contactMap = new Map<string, string>();
+        if (contactIds.length) {
+          const { data: cts } = await supabase
+            .from('finance_agent_contacts')
+            .select('id, name')
+            .in('id', contactIds);
+          contactMap = new Map((cts || []).map((c: any) => [c.id, c.name]));
+        }
+        userNames = new Map(
+          (pus || []).map((p: any) => [p.id, { name: contactMap.get(p.finance_contact_id) || p.email, email: p.email }])
+        );
+      }
+
+      const topUsers = Array.from(userActivity.values())
+        .map(u => ({ ...u, ...userNames.get(u.finance_user_id) }))
+        .sort((a, b) => b.events - a.events)
+        .slice(0, 10);
+
+      // Messaging KPIs
+      const unreadStaff = threads.reduce((sum: number, t: any) => sum + (t.unread_count_staff || 0), 0);
+      const activeThreads = threads.filter((t: any) => !t.is_archived).length;
+
+      // Document stats
+      const totalDocSize = docs.reduce((sum: number, d: any) => sum + (d.file_size || 0), 0);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          kpis: {
+            active_users: activeUsers,
+            invited_users: invitedUsers,
+            revoked_users: revokedUsers,
+            total_users: portalUsers.length,
+            total_assignments: assignments.length,
+            auto_linked_assignments: assignments.filter((a: any) => a.auto_linked).length,
+            active_threads: activeThreads,
+            unread_messages_staff: unreadStaff,
+            total_events_period: activity.length,
+            doc_uploads_period: docs.length,
+            doc_total_bytes_period: totalDocSize,
+          },
+          daily,
+          action_counts: actionCounts,
+          top_users: topUsers,
+          window_days: days,
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ── bulk_import_assignments: CSV-based bulk client→partner assignment ──
+    if (operation === 'bulk_import_assignments') {
+      const { rows, dry_run } = body;
+      if (!Array.isArray(rows)) {
+        return new Response(
+          JSON.stringify({ error: 'rows[] is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Get default permissions for fallback
+      const { data: defaults } = await supabase
+        .from('finance_portal_default_permissions')
+        .select('permissions')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const defaultPerms = normalizePermissions(defaults?.permissions);
+
+      // Pre-fetch all portal users by email and clients by email
+      const partnerEmails = Array.from(new Set(
+        rows.map((r: any) => (r.partner_email || '').toString().trim().toLowerCase()).filter(Boolean)
+      ));
+      const clientEmails = Array.from(new Set(
+        rows.map((r: any) => (r.client_email || '').toString().trim().toLowerCase()).filter(Boolean)
+      ));
+      const clientNames = Array.from(new Set(
+        rows.map((r: any) => (r.client_name || '').toString().trim()).filter(Boolean)
+      ));
+
+      const [puRes, cByEmailRes, cByNameRes] = await Promise.all([
+        partnerEmails.length
+          ? supabase.from('finance_portal_users').select('id, email, finance_contact_id, is_active, revoked_at').in('email', partnerEmails)
+          : Promise.resolve({ data: [] }),
+        clientEmails.length
+          ? supabase.from('clients').select('id, primary_contact_email, primary_contact_name').in('primary_contact_email', clientEmails)
+          : Promise.resolve({ data: [] }),
+        clientNames.length
+          ? supabase.from('clients').select('id, primary_contact_email, primary_contact_name').in('primary_contact_name', clientNames)
+          : Promise.resolve({ data: [] }),
+      ]);
+
+      const partnerByEmail = new Map<string, any>(
+        ((puRes as any).data || []).map((u: any) => [u.email.toLowerCase(), u])
+      );
+      const clientByEmail = new Map<string, any>(
+        ((cByEmailRes as any).data || []).map((c: any) => [(c.primary_contact_email || '').toLowerCase(), c])
+      );
+      const clientByName = new Map<string, any>(
+        ((cByNameRes as any).data || []).map((c: any) => [c.primary_contact_name, c])
+      );
+
+      const results: any[] = [];
+      let createdCount = 0;
+      let updatedCount = 0;
+      let skippedCount = 0;
+      let errorCount = 0;
+
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const partnerEmail = (row.partner_email || '').toString().trim().toLowerCase();
+        const clientEmail = (row.client_email || '').toString().trim().toLowerCase();
+        const clientName = (row.client_name || '').toString().trim();
+        const permTemplate = (row.permission_template || 'default').toString().trim().toLowerCase();
+
+        if (!partnerEmail) {
+          results.push({ row: i + 1, status: 'error', message: 'Missing partner_email' });
+          errorCount++;
+          continue;
+        }
+
+        const partner = partnerByEmail.get(partnerEmail);
+        if (!partner) {
+          results.push({ row: i + 1, status: 'error', message: `Partner not found: ${partnerEmail}` });
+          errorCount++;
+          continue;
+        }
+        if (partner.revoked_at || !partner.is_active) {
+          results.push({ row: i + 1, status: 'error', message: `Partner inactive: ${partnerEmail}` });
+          errorCount++;
+          continue;
+        }
+
+        const client = (clientEmail && clientByEmail.get(clientEmail)) || (clientName && clientByName.get(clientName));
+        if (!client) {
+          results.push({ row: i + 1, status: 'error', message: `Client not found: ${clientEmail || clientName}` });
+          errorCount++;
+          continue;
+        }
+
+        // Permission template
+        let perms = defaultPerms;
+        if (permTemplate === 'view_only') {
+          perms = PERMISSION_TABLES.reduce((acc, t) => {
+            acc[t] = { view: true, edit: false, delete: false };
+            return acc;
+          }, {} as Record<string, { view: boolean; edit: boolean; delete: boolean }>);
+        } else if (permTemplate === 'full_access') {
+          perms = PERMISSION_TABLES.reduce((acc, t) => {
+            acc[t] = { view: true, edit: true, delete: true };
+            return acc;
+          }, {} as Record<string, { view: boolean; edit: boolean; delete: boolean }>);
+        } else if (permTemplate === 'view_edit') {
+          perms = PERMISSION_TABLES.reduce((acc, t) => {
+            acc[t] = { view: true, edit: true, delete: false };
+            return acc;
+          }, {} as Record<string, { view: boolean; edit: boolean; delete: boolean }>);
+        }
+
+        if (dry_run) {
+          // Check if exists
+          const { data: existing } = await supabase
+            .from('finance_portal_client_assignments')
+            .select('id')
+            .eq('finance_user_id', partner.id)
+            .eq('client_id', client.id)
+            .maybeSingle();
+          results.push({
+            row: i + 1,
+            status: existing ? 'would_update' : 'would_create',
+            partner: partnerEmail,
+            client: client.primary_contact_name,
+            template: permTemplate,
+          });
+          if (existing) updatedCount++;
+          else createdCount++;
+          continue;
+        }
+
+        const { data: existing } = await supabase
+          .from('finance_portal_client_assignments')
+          .select('id')
+          .eq('finance_user_id', partner.id)
+          .eq('client_id', client.id)
+          .maybeSingle();
+
+        const { error: upErr } = await supabase
+          .from('finance_portal_client_assignments')
+          .upsert(
+            {
+              finance_user_id: partner.id,
+              client_id: client.id,
+              permissions: perms,
+              auto_linked: true,
+              auto_link_source: 'csv_import',
+              assigned_by: adminUserId,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: 'finance_user_id,client_id' }
+          );
+
+        if (upErr) {
+          results.push({ row: i + 1, status: 'error', message: upErr.message });
+          errorCount++;
+          continue;
+        }
+
+        if (existing) {
+          updatedCount++;
+          results.push({ row: i + 1, status: 'updated', partner: partnerEmail, client: client.primary_contact_name });
+        } else {
+          createdCount++;
+          results.push({ row: i + 1, status: 'created', partner: partnerEmail, client: client.primary_contact_name });
+        }
+      }
+
+      if (!dry_run) {
+        await supabase.from('finance_portal_activity_log').insert({
+          actor_user_id: adminUserId,
+          actor_type: 'admin',
+          action: 'bulk_csv_import',
+          entity_type: 'finance_portal_client_assignment',
+          metadata: {
+            created: createdCount,
+            updated: updatedCount,
+            skipped: skippedCount,
+            errors: errorCount,
+            total_rows: rows.length,
+          },
+        });
+      }
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          dry_run: !!dry_run,
+          summary: {
+            total: rows.length,
+            created: createdCount,
+            updated: updatedCount,
+            skipped: skippedCount,
+            errors: errorCount,
+          },
+          results,
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ── compliance_export: audit-grade per-partner activity report ──
+    if (operation === 'compliance_export') {
+      const { finance_user_id, since, until } = body;
+      const sinceISO = since || new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+      const untilISO = until || new Date().toISOString();
+
+      let logQ = supabase
+        .from('finance_portal_activity_log')
+        .select('id, finance_user_id, client_id, actor_user_id, actor_type, action, entity_type, entity_id, metadata, ip_address, created_at')
+        .gte('created_at', sinceISO)
+        .lte('created_at', untilISO)
+        .order('created_at', { ascending: false })
+        .limit(10000);
+
+      if (finance_user_id) logQ = logQ.eq('finance_user_id', finance_user_id);
+
+      const { data: logs, error: lErr } = await logQ;
+      if (lErr) throw lErr;
+
+      // Resolve partner & client names
+      const partnerIds = Array.from(new Set((logs || []).map((l: any) => l.finance_user_id).filter(Boolean)));
+      const clientIds = Array.from(new Set((logs || []).map((l: any) => l.client_id).filter(Boolean)));
+
+      const [pRes, cRes] = await Promise.all([
+        partnerIds.length
+          ? supabase.from('finance_portal_users').select('id, email, finance_contact_id').in('id', partnerIds)
+          : Promise.resolve({ data: [] }),
+        clientIds.length
+          ? supabase.from('clients').select('id, primary_contact_name, primary_contact_email').in('id', clientIds)
+          : Promise.resolve({ data: [] }),
+      ]);
+
+      const contactIds = ((pRes as any).data || []).map((p: any) => p.finance_contact_id).filter(Boolean);
+      let contactMap = new Map<string, string>();
+      if (contactIds.length) {
+        const { data: cts } = await supabase.from('finance_agent_contacts').select('id, name').in('id', contactIds);
+        contactMap = new Map((cts || []).map((c: any) => [c.id, c.name]));
+      }
+      const partnerMap = new Map(
+        ((pRes as any).data || []).map((p: any) => [p.id, { email: p.email, name: contactMap.get(p.finance_contact_id) || p.email }])
+      );
+      const clientMap = new Map(
+        ((cRes as any).data || []).map((c: any) => [c.id, { name: c.primary_contact_name, email: c.primary_contact_email }])
+      );
+
+      const enriched = (logs || []).map((l: any) => ({
+        timestamp: l.created_at,
+        partner_name: l.finance_user_id ? (partnerMap.get(l.finance_user_id) as any)?.name : null,
+        partner_email: l.finance_user_id ? (partnerMap.get(l.finance_user_id) as any)?.email : null,
+        client_name: l.client_id ? (clientMap.get(l.client_id) as any)?.name : null,
+        client_email: l.client_id ? (clientMap.get(l.client_id) as any)?.email : null,
+        actor_type: l.actor_type,
+        action: l.action,
+        entity_type: l.entity_type,
+        entity_id: l.entity_id,
+        ip_address: l.ip_address,
+        metadata: l.metadata,
+      }));
+
+      // Per-action summary
+      const summary: Record<string, number> = {};
+      for (const e of enriched) summary[e.action] = (summary[e.action] || 0) + 1;
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          period: { since: sinceISO, until: untilISO },
+          partner: finance_user_id ? partnerMap.get(finance_user_id) : null,
+          summary,
+          total: enriched.length,
+          rows: enriched,
+        }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
