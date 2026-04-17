@@ -91,6 +91,8 @@ export interface AIScenario {
   rejectedLevers?: Array<{ lever: string; reason: string }>;
   /** Phase J1: Execution risk profile (low / medium / high). */
   executionRisk?: 'low' | 'medium' | 'high';
+  /** Phase J2: Concrete evidence the broker must collect before submission. */
+  evidenceRequired?: string[];
 }
 
 interface ChatMessage {
@@ -564,6 +566,23 @@ export function BCScenarioAgent({
                           <li key={idx} className="flex gap-1.5">
                             <span className="text-muted-foreground shrink-0">×</span>
                             <span><span className="font-medium">{rl.lever}:</span> <span className="text-muted-foreground">{rl.reason}</span></span>
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  )}
+
+                  {/* Phase J2: Evidence the broker must collect — defensible handoff */}
+                  {scenario.evidenceRequired && scenario.evidenceRequired.length > 0 && (
+                    <details className="mb-3 rounded-md border border-primary/30 bg-primary/5 p-2" open>
+                      <summary className="text-[10px] uppercase tracking-wide text-primary cursor-pointer">
+                        Evidence Required ({scenario.evidenceRequired.length})
+                      </summary>
+                      <ul className="mt-1.5 space-y-1 text-[11px]">
+                        {scenario.evidenceRequired.map((ev, idx) => (
+                          <li key={idx} className="flex gap-1.5">
+                            <span className="text-primary shrink-0">▸</span>
+                            <span className="text-foreground">{ev}</span>
                           </li>
                         ))}
                       </ul>
