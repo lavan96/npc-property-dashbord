@@ -61,6 +61,7 @@ import { computeBindingConstraint } from '@/utils/bindingConstraint';
 import { PurchasePowerHeadline, type LeverAttribution } from './PurchasePowerHeadline';
 import { StrategyRationalePanel } from './StrategyRationalePanel';
 import { buildStrategyRationale } from '@/utils/strategyRationaleEngine';
+import { CapacityMathInspector } from './CapacityMathInspector';
 
 // ── Types ──────────────────────────────────────────────
 
@@ -90,6 +91,10 @@ export interface PropertyItem {
 interface StrategyState {
   consolidatedLiabilities: Set<string>;
   refinancedToIO: Set<string>;
+  /** Phase 3 — per-property manual $/mo override on refinanced loan (undefined = auto IO) */
+  refinanceManualRepayments: Map<string, number>;
+  /** Phase 3 — per-property informational IO period (3/5/10yr) */
+  refinanceIoPeriodYears: Map<string, number>;
   equityReleaseEnabled: boolean;
   equityReleasePropertyIds: Set<string>;
   equityReleaseTargetLVRs: Map<string, number>; // per-property target LVR
@@ -125,6 +130,8 @@ const DEFAULT_EQUITY_LVR = 0.80;
 const DEFAULT_STRATEGY: StrategyState = {
   consolidatedLiabilities: new Set(),
   refinancedToIO: new Set(),
+  refinanceManualRepayments: new Map(),
+  refinanceIoPeriodYears: new Map(),
   equityReleaseEnabled: false,
   equityReleasePropertyIds: new Set(),
   equityReleaseTargetLVRs: new Map(),
@@ -300,7 +307,7 @@ export function StrategyScenarioModeling({
   // selections into ScenarioDelta[] and delegates to the same engine that the
   // edge function uses. This eliminates client/server drift entirely.
 
-  const { scenarioResult, scenarioInputs, impactBreakdown, acquisitionCapacity, validationIssues, leverAttribution, appliedDeltas, baseTheoreticalCapacity, scenarioTheoreticalCapacity, baseRawSurplus, scenarioRawSurplus, floorActive } = useMemo(() => {
+  const { scenarioResult, scenarioInputs, impactBreakdown, acquisitionCapacity, validationIssues, leverAttribution, appliedDeltas, baseTheoreticalCapacity, scenarioTheoreticalCapacity, baseRawSurplus, scenarioRawSurplus, floorActive, baseAfterTaxIncome, baseLivingExpenses, baseCommitments, baseAssessmentRate, baseTerm, baseAnnuity, scenarioAfterTaxIncome, scenarioLivingExpenses, scenarioCommitments, scenarioAssessmentRate, scenarioTerm, scenarioAnnuity } = useMemo(() => {
     const deltas: ScenarioDelta[] = [];
     const impacts: { label: string; monthlySaving: number; type: 'saving' | 'cost' | 'info' }[] = [];
     /** F4 — short cash-flow side-notes per delta id, used to enrich the
@@ -327,22 +334,31 @@ export function StrategyScenarioModeling({
       impacts.push({ label: `Consolidate ${strategy.consolidatedLiabilities.size} debt(s)`, monthlySaving: consolidationSaving, type: 'saving' });
     }
 
-    // 2. Refinance P&I → IO → property_refinance deltas
+    // 2. Refinance P&I → IO → property_refinance deltas (Phase 3 — granular)
     let refinanceSaving = 0;
     strategy.refinancedToIO.forEach(propId => {
       const prop = investmentProperties.find(p => p.id === propId);
       if (prop) {
         const currentRepayment = prop.monthly_interest_repayment ||
           calculatePIRepayment(prop.loan_remaining, baseInputs.interestRate, baseInputs.loanTermYears);
-        const ioRepayment = calculateIORepayment(prop.loan_remaining, baseInputs.interestRate);
-        const saving = Math.max(0, currentRepayment - ioRepayment);
+        const autoIo = calculateIORepayment(prop.loan_remaining, baseInputs.interestRate);
+        const manualRepayment = strategy.refinanceManualRepayments.get(propId);
+        const ioPeriodYears = strategy.refinanceIoPeriodYears.get(propId);
+        const newRepayment = Number.isFinite(manualRepayment as number) && (manualRepayment as number) >= 0
+          ? (manualRepayment as number)
+          : autoIo;
+        const saving = Math.max(0, currentRepayment - newRepayment);
         if (saving > 0) refinanceSaving += saving;
         deltas.push({
           id: prop.id,
-          label: `Refinance ${prop.address?.slice(0, 25) || 'property'} to IO`,
+          label: `Refinance ${prop.address?.slice(0, 25) || 'property'} to IO${Number.isFinite(ioPeriodYears as number) && (ioPeriodYears as number) > 0 ? ` (${ioPeriodYears}yr IO)` : ''}`,
           type: 'property_refinance',
           value: 0,
           unit: 'absolute',
+          meta: {
+            ...(Number.isFinite(manualRepayment as number) ? { manualRepayment } : {}),
+            ...(Number.isFinite(ioPeriodYears as number) && (ioPeriodYears as number) > 0 ? { ioPeriodYears } : {}),
+          },
         });
         if (saving > 0) leverCashflowNotes.set(`property_refinance-${prop.id}`, `+${formatCurrency(saving)}/mo`);
       }
@@ -692,6 +708,14 @@ export function StrategyScenarioModeling({
     const scenarioAnnuity = annuityFactor(scenarioAssessmentRate, scenarioTerm);
     const scenarioTheoreticalCapacity = Math.round(scenarioRawSurplus * scenarioAnnuity);
 
+    // Phase 4 — math-inspector breakdown values (decomposed components used in the waterfall)
+    const baseAfterTaxIncome = (baseResult as any)?.monthlyAfterTaxIncome ?? 0;
+    const baseLivingExpenses = (baseInputs as any)?.monthlyLivingExpenses ?? (baseResult as any)?.totalLivingExpenses ?? 0;
+    const baseCommitments = (baseInputs as any)?.monthlyCommitments ?? (baseResult as any)?.existingCommitmentsMonthly ?? 0;
+    const scenarioAfterTaxIncome = (result as any)?.monthlyAfterTaxIncome ?? 0;
+    const scenarioLivingExpenses = (inputs as any)?.monthlyLivingExpenses ?? (result as any)?.totalLivingExpenses ?? 0;
+    const scenarioCommitments = (inputs as any)?.monthlyCommitments ?? (result as any)?.existingCommitmentsMonthly ?? 0;
+
     const leverAttribution: LeverAttribution[] = deltas.map(d => {
       const isolated = runScenarioWithInputs(`Isolated: ${d.label}`, [d], ctx);
       const isoTerm = isolated.inputs.loanTermYears ?? baseTerm;
@@ -707,14 +731,6 @@ export function StrategyScenarioModeling({
       };
     });
 
-    // Floor is "active" when the actual displayed capacity is clamped to $0
-    // for both base and scenario but the theoretical math says there IS
-    // movement happening underneath. This is the trigger for the explainer
-    // banner + the "if floor lifted" attribution column.
-    //
-    // We also flag floorActive when the base raw surplus is negative (true
-    // underwater state) — in that case the engine's reported capacity may
-    // be technically positive but the diagnostic view is still useful.
     const floorActive =
       (baseResult.borrowingCapacity <= 0 || baseRawSurplus < 0) &&
       (Math.abs(scenarioTheoreticalCapacity - baseTheoreticalCapacity) > 0 ||
@@ -733,6 +749,19 @@ export function StrategyScenarioModeling({
       baseRawSurplus,
       scenarioRawSurplus,
       floorActive,
+      // Phase 4 — math-inspector decomposition
+      baseAfterTaxIncome,
+      baseLivingExpenses,
+      baseCommitments,
+      baseAssessmentRate,
+      baseTerm,
+      baseAnnuity,
+      scenarioAfterTaxIncome,
+      scenarioLivingExpenses,
+      scenarioCommitments,
+      scenarioAssessmentRate,
+      scenarioTerm,
+      scenarioAnnuity,
     };
   }, [strategy, acquisition, baseInputs, baseResult, consolidatableDebts, investmentProperties, equityReleaseProperties, properties, liabilities]);
 
@@ -863,6 +892,8 @@ export function StrategyScenarioModeling({
       ...DEFAULT_STRATEGY,
       consolidatedLiabilities: new Set(),
       refinancedToIO: new Set(),
+      refinanceManualRepayments: new Map(),
+      refinanceIoPeriodYears: new Map(),
       equityReleasePropertyIds: new Set(),
       equityReleaseTargetLVRs: new Map(),
       equityReleaseDeploymentPercents: new Map(),
@@ -1190,36 +1221,122 @@ export function StrategyScenarioModeling({
                     const currentRepayment = prop.monthly_interest_repayment ||
                       calculatePIRepayment(prop.loan_remaining, baseInputs.interestRate, baseInputs.loanTermYears);
                     const ioRepayment = calculateIORepayment(prop.loan_remaining, baseInputs.interestRate);
-                    const saving = Math.max(0, currentRepayment - ioRepayment);
                     const isSelected = strategy.refinancedToIO.has(prop.id);
+                    const manualRepayment = strategy.refinanceManualRepayments.get(prop.id);
+                    const ioPeriodYears = strategy.refinanceIoPeriodYears.get(prop.id) ?? 5;
+                    const effectiveRepayment = Number.isFinite(manualRepayment as number) && (manualRepayment as number) >= 0
+                      ? (manualRepayment as number)
+                      : ioRepayment;
+                    const saving = Math.max(0, currentRepayment - effectiveRepayment);
 
                     return (
                       <div
                         key={prop.id}
-                        className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors ${
+                        className={`rounded-lg border transition-colors ${
                           isSelected ? 'bg-primary/10 border-primary/30' : 'hover:bg-muted/50'
                         }`}
-                        onClick={() => toggleRefinance(prop.id)}
                       >
-                        <div className="flex items-center gap-3">
-                          <Switch
-                            checked={isSelected}
-                            onCheckedChange={() => toggleRefinance(prop.id)}
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                          <div>
-                            <p className="text-sm font-medium">{prop.address?.slice(0, 35) || 'Investment Property'}</p>
+                        <div
+                          className="flex items-center justify-between p-3 cursor-pointer"
+                          onClick={() => toggleRefinance(prop.id)}
+                        >
+                          <div className="flex items-center gap-3">
+                            <Switch
+                              checked={isSelected}
+                              onCheckedChange={() => toggleRefinance(prop.id)}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                            <div>
+                              <p className="text-sm font-medium">{prop.address?.slice(0, 35) || 'Investment Property'}</p>
+                              <p className="text-xs text-muted-foreground">
+                                Loan: {formatCurrency(prop.loan_remaining)} · P&I: {formatCurrency(currentRepayment)}/mo
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right">
                             <p className="text-xs text-muted-foreground">
-                              Loan: {formatCurrency(prop.loan_remaining)} · P&I: {formatCurrency(currentRepayment)}/mo
+                              {Number.isFinite(manualRepayment as number) ? `Manual: ${formatCurrency(effectiveRepayment)}/mo` : `IO: ${formatCurrency(ioRepayment)}/mo`}
+                            </p>
+                            <p className="text-sm font-semibold text-emerald-600">
+                              Save {formatCurrency(saving)}/mo
                             </p>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-xs text-muted-foreground">IO: {formatCurrency(ioRepayment)}/mo</p>
-                          <p className="text-sm font-semibold text-emerald-600">
-                            Save {formatCurrency(saving)}/mo
-                          </p>
-                        </div>
+
+                        {/* Phase 3 — Granular refinance controls (per-property) */}
+                        {isSelected && (
+                          <div className="px-3 pb-3 pt-2 border-t border-border/50 space-y-3" onClick={(e) => e.stopPropagation()}>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs text-muted-foreground">IO Period</Label>
+                              <div className="flex gap-1.5">
+                                {[3, 5, 10].map(yrs => (
+                                  <button
+                                    key={yrs}
+                                    type="button"
+                                    onClick={() => setStrategy(prev => {
+                                      const next = new Map(prev.refinanceIoPeriodYears);
+                                      next.set(prop.id, yrs);
+                                      return { ...prev, refinanceIoPeriodYears: next };
+                                    })}
+                                    className={`flex-1 py-1.5 px-2 rounded text-xs font-medium transition-colors ${
+                                      ioPeriodYears === yrs
+                                        ? 'bg-primary text-primary-foreground'
+                                        : 'bg-secondary hover:bg-secondary/80 text-secondary-foreground'
+                                    }`}
+                                  >
+                                    {yrs} yrs
+                                  </button>
+                                ))}
+                              </div>
+                              <p className="text-[10px] text-muted-foreground/70">
+                                Informational — engine uses IO servicing for the assessment period.
+                              </p>
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <div className="flex items-center justify-between">
+                                <Label className="text-xs text-muted-foreground">
+                                  Manual Repayment Override
+                                </Label>
+                                {Number.isFinite(manualRepayment as number) && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setStrategy(prev => {
+                                      const next = new Map(prev.refinanceManualRepayments);
+                                      next.delete(prop.id);
+                                      return { ...prev, refinanceManualRepayments: next };
+                                    })}
+                                    className="text-[10px] text-muted-foreground hover:text-foreground underline"
+                                  >
+                                    Reset to auto
+                                  </button>
+                                )}
+                              </div>
+                              <Input
+                                type="number"
+                                inputMode="decimal"
+                                value={Number.isFinite(manualRepayment as number) ? String(manualRepayment) : ''}
+                                placeholder={`Auto: ${formatCurrency(ioRepayment)}/mo`}
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  setStrategy(prev => {
+                                    const next = new Map(prev.refinanceManualRepayments);
+                                    if (v === '') next.delete(prop.id);
+                                    else {
+                                      const num = Number(v);
+                                      if (Number.isFinite(num) && num >= 0) next.set(prop.id, num);
+                                    }
+                                    return { ...prev, refinanceManualRepayments: next };
+                                  });
+                                }}
+                                className="h-8 text-sm"
+                              />
+                              <p className="text-[10px] text-muted-foreground/70">
+                                Override $/mo if you've negotiated a specific repayment with the lender.
+                              </p>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -1439,6 +1556,134 @@ export function StrategyScenarioModeling({
                             ⚠ LVR of {item.targetLVR}% triggers LMI of {formatCurrency(item.lmiAmount)}, reducing usable equity.
                           </div>
                         )}
+                      </div>
+
+                      {/* ── Phase 2: Granular Deployment Controls ── */}
+                      <div className="pt-3 mt-2 border-t border-border/50 space-y-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Deployment Controls
+                        </p>
+
+                        {/* Deployment % slider */}
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs text-muted-foreground">
+                              Deploy {(item.deploymentPercent * 100).toFixed(0)}% of accessible equity
+                            </Label>
+                            <span className="text-xs font-medium tabular-nums">
+                              {formatCurrency(item.deployedNet)}
+                            </span>
+                          </div>
+                          <Slider
+                            value={[item.deploymentPercent * 100]}
+                            min={0}
+                            max={100}
+                            step={5}
+                            onValueChange={([val]) => setStrategy(prev => {
+                              const next = new Map(prev.equityReleaseDeploymentPercents);
+                              next.set(item.property.id, val / 100);
+                              return { ...prev, equityReleaseDeploymentPercents: next };
+                            })}
+                            className="py-1"
+                          />
+                          <div className="flex justify-between text-[10px] text-muted-foreground">
+                            <span>0%</span>
+                            <span>50%</span>
+                            <span>100%</span>
+                          </div>
+                        </div>
+
+                        {/* Repayment structure toggle */}
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground">Repayment Structure (new slice)</Label>
+                          <div className="flex gap-1.5">
+                            {([
+                              { id: 'interest_only' as const, label: 'Interest Only' },
+                              { id: 'principal_and_interest' as const, label: 'P&I' },
+                            ]).map(opt => (
+                              <button
+                                key={opt.id}
+                                type="button"
+                                onClick={() => setStrategy(prev => {
+                                  const next = new Map(prev.equityReleaseRepaymentTypes);
+                                  next.set(item.property.id, opt.id);
+                                  return { ...prev, equityReleaseRepaymentTypes: next };
+                                })}
+                                className={`flex-1 py-1.5 px-2 rounded text-xs font-medium transition-colors ${
+                                  item.repaymentType === opt.id
+                                    ? 'bg-primary text-primary-foreground'
+                                    : 'bg-secondary hover:bg-secondary/80 text-secondary-foreground'
+                                }`}
+                              >
+                                {opt.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Manual repayment override */}
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs text-muted-foreground">
+                              Manual Repayment Override
+                            </Label>
+                            {Number.isFinite(item.manualRepayment as number) && (
+                              <button
+                                type="button"
+                                onClick={() => setStrategy(prev => {
+                                  const next = new Map(prev.equityReleaseManualRepayments);
+                                  next.delete(item.property.id);
+                                  return { ...prev, equityReleaseManualRepayments: next };
+                                })}
+                                className="text-[10px] text-muted-foreground hover:text-foreground underline"
+                              >
+                                Reset to auto
+                              </button>
+                            )}
+                          </div>
+                          <Input
+                            type="number"
+                            inputMode="decimal"
+                            value={Number.isFinite(item.manualRepayment as number) ? String(item.manualRepayment) : ''}
+                            placeholder={`Auto: ${formatCurrency(item.autoMonthlyServicing)}/mo`}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setStrategy(prev => {
+                                const next = new Map(prev.equityReleaseManualRepayments);
+                                if (v === '') next.delete(item.property.id);
+                                else {
+                                  const num = Number(v);
+                                  if (Number.isFinite(num) && num >= 0) next.set(item.property.id, num);
+                                }
+                                return { ...prev, equityReleaseManualRepayments: next };
+                              });
+                            }}
+                            className="h-8 text-sm"
+                          />
+                          <p className="text-[10px] text-muted-foreground/70">
+                            Auto uses assessment-rate {item.repaymentType === 'interest_only' ? 'IO' : 'P&I'} servicing on the deployed amount.
+                          </p>
+                        </div>
+
+                        {/* Servicing summary card */}
+                        <div className="p-2.5 rounded bg-muted/50 border space-y-1 text-xs">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Deployed (net)</span>
+                            <span className="font-medium tabular-nums text-emerald-600">
+                              +{formatCurrency(item.deployedNet)} cash
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Monthly servicing impact</span>
+                            <span className="font-medium tabular-nums text-destructive">
+                              −{formatCurrency(
+                                Number.isFinite(item.manualRepayment as number)
+                                  ? (item.manualRepayment as number)
+                                  : item.autoMonthlyServicing
+                              )}/mo
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -1801,6 +2046,29 @@ export function StrategyScenarioModeling({
             baseRawSurplus={baseRawSurplus}
             scenarioRawSurplus={scenarioRawSurplus}
             floorActive={floorActive}
+          />
+
+          {/* Phase 4 — Live Math Inspector (capacity waterfall audit trail) */}
+          <CapacityMathInspector
+            baseAfterTaxIncome={baseAfterTaxIncome}
+            baseLivingExpenses={baseLivingExpenses}
+            baseCommitments={baseCommitments}
+            baseRawSurplus={baseRawSurplus}
+            baseAssessmentRate={baseAssessmentRate}
+            baseTermYears={baseTerm}
+            baseAnnuityFactor={baseAnnuity}
+            baseTheoreticalCapacity={baseTheoreticalCapacity}
+            baseDisplayedCapacity={baseResult.borrowingCapacity}
+            scenarioAfterTaxIncome={scenarioAfterTaxIncome}
+            scenarioLivingExpenses={scenarioLivingExpenses}
+            scenarioCommitments={scenarioCommitments}
+            scenarioRawSurplus={scenarioRawSurplus}
+            scenarioAssessmentRate={scenarioAssessmentRate}
+            scenarioTermYears={scenarioTerm}
+            scenarioAnnuityFactor={scenarioAnnuity}
+            scenarioTheoreticalCapacity={scenarioTheoreticalCapacity}
+            scenarioDisplayedCapacity={scenarioResult.borrowingCapacity}
+            formatCurrency={formatCurrency}
           />
 
           {/* F5 + F6 — Strategy rationale (finance-ready) with PDF export */}
