@@ -190,6 +190,39 @@ export interface ScenarioDelta {
   meta?: Record<string, number | string | boolean | null>;
 }
 
+/** Phase C: Acquisition Capacity — what the client can ACTUALLY purchase
+ *  once equity, LMI, stamp duty and other acquisition costs are netted out.
+ *  Distinct from `borrowingCapacity`, which is the raw serviceable loan size.
+ */
+export interface AcquisitionCapacity {
+  /** Cash freed by equity-release lever (sum across released properties, post-LMI on the release loan) */
+  releasedCapital: number;
+  /** Lender's Mortgage Insurance estimated for the new acquisition loan */
+  lmi: number;
+  /** Mode used to apply LMI (`display_deduction` or `debt_capitalised`) */
+  lmiMode: 'none' | 'display_deduction' | 'debt_capitalised';
+  /** Estimated state stamp duty on the maximum purchase the client can afford */
+  stampDuty: number;
+  /** Conveyancing, inspections, registration fees, etc. */
+  otherAcquisitionCosts: number;
+  /** Maximum purchase price = (loan available + cash) − (LMI + stamp duty + other costs) */
+  maxPurchasePrice: number;
+  /** Maximum loan after LMI is taken from it (display_deduction) or absorbed (debt_capitalised) */
+  loanAvailableForPurchase: number;
+  /** Cash deposit available (released equity + assumed cash on hand) */
+  cashAvailable: number;
+  /** Detailed audit trail */
+  notes: string[];
+}
+
+/** A validation issue surfaced from the delta engine. */
+export interface ScenarioValidationIssue {
+  deltaId: string;
+  deltaType: string;
+  severity: 'warning' | 'error';
+  message: string;
+}
+
 /** Result of a scenario calculation */
 export interface ScenarioCapacityResult {
   /** Name of the scenario */
@@ -210,6 +243,10 @@ export interface ScenarioCapacityResult {
     percent: number;
     direction: 'increase' | 'decrease' | 'unchanged';
   };
+  /** Phase C: separate acquisition capacity (purchase ceiling). Null if not modelled. */
+  acquisitionCapacity?: AcquisitionCapacity | null;
+  /** Phase C: validation issues from delta resolution (hallucination guard) */
+  validationIssues?: ScenarioValidationIssue[];
 }
 
 // ============================================
