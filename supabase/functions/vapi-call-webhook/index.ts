@@ -429,7 +429,9 @@ async function analyzeTranscriptWithAI(transcript: string, summary: string | nul
     recoveryPriority: null,
   };
   
-  if (!openaiApiKey || !transcript || transcript.length < 50) {
+  // Skip only when transcript is too short. Router may succeed without OPENAI_API_KEY
+  // (using LOVABLE_API_KEY via the AI Gateway). Direct-OpenAI fallback still requires the key.
+  if (!transcript || transcript.length < 50) {
     return defaultResult;
   }
 
@@ -443,19 +445,8 @@ async function analyzeTranscriptWithAI(transcript: string, summary: string | nul
     const intentFormat = isSquadCall 
       ? `,\n  "callIntent": "intent_type or null"`
       : '';
-    
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: `You are an expert call analyst specializing in customer sentiment and issue resolution. Analyze the following call transcript and extract:
+
+    const systemPrompt = `You are an expert call analyst specializing in customer sentiment and issue resolution. Analyze the following call transcript and extract:
 
 1. Customer name (if mentioned by the user or asked for) - return null if not found
 2. Overall sentiment (positive, negative, neutral, mixed)
@@ -484,25 +475,65 @@ Respond ONLY with valid JSON in this exact format:
     "transcriptSegment": "short excerpt where negativity started",
     "triggerPhrase": "specific phrase that triggered negative sentiment"
   } or null
-}`
-          },
-          {
-            role: 'user',
-            content: `Transcript:\n${transcript.substring(0, 8000)}${summary ? `\n\nSummary:\n${summary}` : ''}`
-          }
-        ],
-        max_tokens: 800,
-        temperature: 0.3,
-      }),
-    });
+}`;
 
-    if (!response.ok) {
-      console.error('[Vapi Webhook] OpenAI API error:', response.status);
-      return defaultResult;
+    const userPrompt = `Transcript:\n${transcript.substring(0, 8000)}${summary ? `\n\nSummary:\n${summary}` : ''}`;
+
+    // Primary: route through Model Hub (vapi_call_analysis agent)
+    // Fallback: direct OpenAI call with original gpt-4o-mini (preserves legacy behavior)
+    let content: string | null = null;
+    let usedRouter = false;
+
+    try {
+      const { callLLMRaw } = await import('../_shared/llmRouter.ts');
+      const routerRes = await callLLMRaw({
+        agentKey: 'vapi_call_analysis',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        maxTokens: 800,
+        temperature: 0.3,
+      });
+      content = routerRes?.choices?.[0]?.message?.content ?? null;
+      usedRouter = true;
+      console.log('[Vapi Webhook] AI analysis via Model Hub router');
+    } catch (routerErr) {
+      console.warn('[Vapi Webhook] Router failed, falling back to direct OpenAI:', routerErr instanceof Error ? routerErr.message : String(routerErr));
     }
 
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content;
+    if (!content) {
+      if (!openaiApiKey) {
+        console.warn('[Vapi Webhook] Router returned no content and no OPENAI_API_KEY for fallback; returning defaults.');
+        return defaultResult;
+      }
+      // Legacy fallback path — preserves original behavior exactly
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openaiApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+          max_tokens: 800,
+          temperature: 0.3,
+        }),
+      });
+
+      if (!response.ok) {
+        console.error('[Vapi Webhook] OpenAI API error:', response.status);
+        return defaultResult;
+      }
+
+      const data = await response.json();
+      content = data.choices?.[0]?.message?.content ?? null;
+    }
+    console.log(`[Vapi Webhook] Analysis source: ${usedRouter ? 'router' : 'direct-openai'}`);
     
     if (content) {
       // Parse JSON response
