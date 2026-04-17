@@ -481,6 +481,55 @@ export function StrategyScenarioModeling({
         });
       });
     }
+
+    // 10. Phase G1 — Valuation Uplift → property_value_change deltas (resolve FIRST in engine)
+    if (strategy.additional.valuationOverrides.size > 0) {
+      strategy.additional.valuationOverrides.forEach((override, propId) => {
+        const prop = properties.find(p => p.id === propId);
+        if (!prop || !Number.isFinite(override.newValue) || override.newValue <= 0) return;
+        if (Math.abs(override.newValue - (prop.current_value || 0)) < 1) return;
+        deltas.push({
+          id: prop.id,
+          label: `Revalue ${prop.address?.slice(0, 25) || 'property'} → ${formatCurrency(override.newValue)}`,
+          type: 'property_value_change',
+          value: override.newValue,
+          unit: 'absolute',
+          meta: {
+            basis: override.basis,
+            source: override.source || '',
+          },
+        });
+        impacts.push({
+          label: `Revalue ${prop.address?.slice(0, 25) || 'property'}: ${formatCurrency(prop.current_value || 0)} → ${formatCurrency(override.newValue)} (${override.basis})`,
+          monthlySaving: 0,
+          type: 'info',
+        });
+      });
+    }
+
+    // 11. Phase G2 — Cross-Collateralised Pool → portfolio_lvr_release delta
+    if (strategy.additional.crossCollatPool.enabled && strategy.additional.crossCollatPool.propertyIds.size > 0) {
+      const pool = strategy.additional.crossCollatPool;
+      const memberIds = Array.from(pool.propertyIds);
+      deltas.push({
+        id: 'pool-default',
+        label: `Cross-collat pool → ${(pool.blendedTargetLVR * 100).toFixed(0)}% blended LVR (${memberIds.length} security)`,
+        type: 'portfolio_lvr_release',
+        value: pool.blendedTargetLVR,
+        unit: 'ratio',
+        meta: {
+          propertyIds: memberIds,
+          lenderMaxLVR: pool.lenderMaxLVR,
+          allocationStrategy: pool.allocationStrategy,
+        },
+      });
+      impacts.push({
+        label: `Pool ${memberIds.length} securities @ ${(pool.blendedTargetLVR * 100).toFixed(0)}% blended LVR (${pool.allocationStrategy.replace(/_/g, ' ')})`,
+        monthlySaving: 0,
+        type: 'info',
+      });
+    }
+
     const engineProperties: EngineProperty[] = properties.map(p => ({
       id: p.id,
       address: p.address,
