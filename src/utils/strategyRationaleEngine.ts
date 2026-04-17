@@ -507,6 +507,9 @@ export function buildStrategyRationale(input: RationaleInput): RationaleReport {
   if (acquisitionCapacity && acquisitionCapacity.targetPurchasePrice && !acquisitionCapacity.meetsTarget) {
     caveats.push('Target purchase price is currently NOT ACHIEVABLE under this scenario — either revise the target, layer in additional levers, or increase cash on hand.');
   }
+  if (capitalFlow?.overcommitted) {
+    caveats.push('Capital allocation pool is overcommitted — one or more sinks have been clamped to the available pool. Reduce allocation amounts or release more equity before relying on this scenario.');
+  }
   if (caveats.length === 0) {
     caveats.push('Standard lender verification applies — payslips, bureau check, valuations, and contract review must all be completed before unconditional approval.');
   }
@@ -518,6 +521,7 @@ export function buildStrategyRationale(input: RationaleInput): RationaleReport {
     reconciliation,
     sequence,
     caveats,
+    capitalFlow,
     generatedAt: new Date().toISOString(),
   };
 }
