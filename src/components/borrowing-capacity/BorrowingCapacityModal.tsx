@@ -1139,6 +1139,7 @@ export function BorrowingCapacityModal({
             {result ? (
               <StrategyScenarioModeling
                 clientId={clientId}
+                clientName={clientData?.client ? `${clientData.client.primary_first_name || ''} ${clientData.client.primary_surname || ''}`.trim() : undefined}
                 baseInputs={{
                   grossAnnualIncome: totalGrossIncome,
                   shadedAnnualIncome: totalShadedIncome,
