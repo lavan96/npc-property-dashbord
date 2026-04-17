@@ -91,6 +91,8 @@ export interface AIScenario {
   rejectedLevers?: Array<{ lever: string; reason: string }>;
   /** Phase J1: Execution risk profile (low / medium / high). */
   executionRisk?: 'low' | 'medium' | 'high';
+  /** Phase J2: Concrete evidence the broker must collect before submission. */
+  evidenceRequired?: string[];
 }
 
 interface ChatMessage {
