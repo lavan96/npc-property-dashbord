@@ -665,9 +665,9 @@ export function StrategyScenarioModeling({
 
     const leverAttribution: LeverAttribution[] = deltas.map(d => {
       const isolated = runScenarioWithInputs(`Isolated: ${d.label}`, [d], ctx);
-      const isoAssessRate = (isolated.inputs.interestRate ?? baseAssessmentRate) + (isolated.inputs.bufferRate ?? 0);
       const isoTerm = isolated.inputs.loanTermYears ?? baseTerm;
-      const isoRawSurplus = rawSurplusFrom(isolated.result);
+      const isoAssessRate = safeAssessmentRate(isolated.result, isolated.inputs);
+      const isoRawSurplus = rawSurplusFrom(isolated.result, isolated.inputs);
       const isoTheoretical = Math.round(isoRawSurplus * annuityFactor(isoAssessRate, isoTerm));
       return {
         id: `${d.type}-${d.id}`,
