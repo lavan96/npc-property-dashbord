@@ -91,6 +91,8 @@ interface StrategyState {
   equityReleasePropertyIds: Set<string>;
   equityReleaseTargetLVRs: Map<string, number>; // per-property target LVR
   rateAdjustment: number;
+  /** Phase F1 — per-property contracted-rate overrides (propertyId → new rate %) */
+  propertyRateOverrides: Map<string, number>;
   additional: AdditionalStrategyState;
 }
 
@@ -105,6 +107,8 @@ interface AcquisitionState {
   isForeignBuyer: boolean;
   lmiMode: 'none' | 'display_deduction' | 'debt_capitalised';
   cashOnHand: number;
+  /** Phase F2 — target purchase price the strategy is solving for (0 = no target). */
+  targetPurchasePrice: number;
 }
 
 const DEFAULT_EQUITY_LVR = 0.80;
@@ -116,6 +120,7 @@ const DEFAULT_STRATEGY: StrategyState = {
   equityReleasePropertyIds: new Set(),
   equityReleaseTargetLVRs: new Map(),
   rateAdjustment: 0,
+  propertyRateOverrides: new Map(),
   additional: { ...DEFAULT_ADDITIONAL_STRATEGY },
 };
 
@@ -128,6 +133,7 @@ const DEFAULT_ACQUISITION: AcquisitionState = {
   isForeignBuyer: false,
   lmiMode: 'display_deduction',
   cashOnHand: 0,
+  targetPurchasePrice: 0,
 };
 
 // ── Scenario Preset Types ──────────────────────────────
@@ -389,6 +395,40 @@ export function StrategyScenarioModeling({
       });
     }
 
+    // 7b. Equity Release → equity_release deltas (Phase F2 — wire releases into engine)
+    let equityReleaseMonthlyCost = 0;
+    if (strategy.equityReleaseEnabled && strategy.equityReleasePropertyIds.size > 0) {
+      strategy.equityReleasePropertyIds.forEach(propId => {
+        const prop = equityReleaseProperties.find(p => p.id === propId);
+        if (!prop) return;
+        const targetLVR = strategy.equityReleaseTargetLVRs.get(propId) ?? DEFAULT_EQUITY_LVR;
+        deltas.push({
+          id: prop.id,
+          label: `Equity release ${prop.address?.slice(0, 25) || 'property'} → ${(targetLVR * 100).toFixed(0)}% LVR`,
+          type: 'equity_release',
+          value: targetLVR,
+          unit: 'percent',
+          meta: {
+            targetLVR,
+            // honour per-property contracted rate if present, otherwise let engine fall back
+            releaseRate: prop.interest_rate ?? null,
+          },
+        });
+        // Track shadow IO cost on the new slice for the impact summary
+        const ratePct = prop.interest_rate ?? baseInputs.interestRate;
+        const newLoan = prop.current_value * targetLVR;
+        const grossRelease = Math.max(0, newLoan - prop.loan_remaining);
+        equityReleaseMonthlyCost += grossRelease * (ratePct / 100 / 12);
+      });
+      if (equityReleaseMonthlyCost > 0) {
+        impacts.push({
+          label: `Equity release servicing on ${strategy.equityReleasePropertyIds.size} property(s) (IO)`,
+          monthlySaving: equityReleaseMonthlyCost,
+          type: 'cost',
+        });
+      }
+    }
+
     // 8. DTI Cap Override → dti_cap_change
     if (strategy.additional.dtiCapEnabled) {
       deltas.push({
@@ -402,7 +442,27 @@ export function StrategyScenarioModeling({
       impacts.push({ label: `DTI cap applied at ${strategy.additional.dtiCapValue}x`, monthlySaving: 0, type: 'info' });
     }
 
-    // Build engine context — convert UI types to engine types
+    // 9. Per-Property Rate Repricing → property_rate_change deltas (Phase F1)
+    if (strategy.propertyRateOverrides.size > 0) {
+      strategy.propertyRateOverrides.forEach((newRate, propId) => {
+        const prop = properties.find(p => p.id === propId);
+        if (!prop || !Number.isFinite(newRate) || newRate <= 0) return;
+        const oldRate = prop.interest_rate ?? baseInputs.interestRate;
+        if (Math.abs(newRate - oldRate) < 0.01) return;
+        deltas.push({
+          id: prop.id,
+          label: `Reprice ${prop.address?.slice(0, 25) || 'property'} → ${newRate.toFixed(2)}%`,
+          type: 'property_rate_change',
+          value: newRate,
+          unit: 'rate_points',
+        });
+        impacts.push({
+          label: `Reprice ${prop.address?.slice(0, 25) || 'property'}: ${oldRate.toFixed(2)}% → ${newRate.toFixed(2)}%`,
+          monthlySaving: 0,
+          type: 'info',
+        });
+      });
+    }
     const engineProperties: EngineProperty[] = properties.map(p => ({
       id: p.id,
       address: p.address,
@@ -432,6 +492,8 @@ export function StrategyScenarioModeling({
       isForeignBuyer: acquisition.isForeignBuyer,
       lmiMode: acquisition.lmiMode,
       cashOnHand: acquisition.cashOnHand,
+      // Phase F2 — surface the target so the engine reports meetsTarget / shortfall
+      targetPurchasePrice: acquisition.targetPurchasePrice > 0 ? acquisition.targetPurchasePrice : undefined,
     } : undefined;
 
     const ctx: ScenarioContext = {
@@ -454,7 +516,7 @@ export function StrategyScenarioModeling({
       acquisitionCapacity,
       validationIssues,
     };
-  }, [strategy, acquisition, baseInputs, baseResult, consolidatableDebts, investmentProperties, properties, liabilities]);
+  }, [strategy, acquisition, baseInputs, baseResult, consolidatableDebts, investmentProperties, equityReleaseProperties, properties, liabilities]);
 
 
   // Equity release calculation — now supports multiple properties
@@ -522,6 +584,7 @@ export function StrategyScenarioModeling({
     strategy.refinancedToIO.size > 0 ||
     strategy.equityReleaseEnabled ||
     strategy.rateAdjustment !== 0 ||
+    strategy.propertyRateOverrides.size > 0 ||
     strategy.additional.incomeGrowthPercent !== 0 ||
     strategy.additional.expenseReductionPercent !== 0 ||
     strategy.additional.loanTermAdjustment !== 0 ||
@@ -535,6 +598,7 @@ export function StrategyScenarioModeling({
       refinancedToIO: new Set(),
       equityReleasePropertyIds: new Set(),
       equityReleaseTargetLVRs: new Map(),
+      propertyRateOverrides: new Map(),
       additional: { ...DEFAULT_ADDITIONAL_STRATEGY, portfolioSellPropertyIds: new Set() },
     });
   }, []);
@@ -620,11 +684,20 @@ export function StrategyScenarioModeling({
               // Map DTI cap override
               const dtiOverride = scenario.adjustments.dtiCapOverride;
 
+              // Phase F1 — map per-property rate changes
+              const rateOverrides = new Map<string, number>();
+              (scenario.adjustments.propertyRateChanges || []).forEach(({ propertyId, newRate }) => {
+                if (propertyId && Number.isFinite(newRate) && newRate > 0) {
+                  rateOverrides.set(propertyId, newRate);
+                }
+              });
+
               return {
                 ...prev,
                 consolidatedLiabilities: new Set(scenario.adjustments.consolidatedLiabilityIds || []),
                 refinancedToIO: new Set(scenario.adjustments.refinancedToIOPropertyIds || []),
                 rateAdjustment: scenario.adjustments.rateAdjustment || 0,
+                propertyRateOverrides: rateOverrides,
                 equityReleaseEnabled: !!eqRelease,
                 equityReleasePropertyIds: newPropertyIds,
                 equityReleaseTargetLVRs: newTargetLVRs,
@@ -641,7 +714,7 @@ export function StrategyScenarioModeling({
               };
             });
 
-          // Phase D: also map AI acquisition block into the acquisition state
+          // Phase D + F2: also map AI acquisition block into the acquisition state
           const acq = scenario.adjustments.acquisition;
           if (acq) {
             setAcquisition(prev => ({
@@ -654,6 +727,7 @@ export function StrategyScenarioModeling({
               isForeignBuyer: prev.isForeignBuyer,
               lmiMode: acq.lmiMode ?? prev.lmiMode,
               cashOnHand: acq.cashOnHand ?? prev.cashOnHand,
+              targetPurchasePrice: acq.targetPurchasePrice ?? prev.targetPurchasePrice,
             }));
           }
 
