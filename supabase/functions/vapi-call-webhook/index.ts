@@ -503,6 +503,10 @@ Respond ONLY with valid JSON in this exact format:
     }
 
     if (!content) {
+      if (!openaiApiKey) {
+        console.warn('[Vapi Webhook] Router returned no content and no OPENAI_API_KEY for fallback; returning defaults.');
+        return defaultResult;
+      }
       // Legacy fallback path — preserves original behavior exactly
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
