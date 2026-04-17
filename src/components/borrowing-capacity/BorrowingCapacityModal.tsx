@@ -465,7 +465,7 @@ export function BorrowingCapacityModal({
           label: `Loan: ${prop.address?.slice(0, 25)}...`,
           balance: loanBalance,
           monthlyServicing: Math.round(monthlyServicing * 100) / 100,
-          calculationNote: piRepayment > actualRepayment ? 'Stress-tested P&I @ 9.5%' : 'Actual repayment',
+          calculationNote: piRepayment > actualRepayment ? `Stress-tested P&I @ ${(LOAN_ASSESSMENT_RATE * 100).toFixed(2)}%` : 'Actual repayment',
         });
       }
     });
