@@ -382,10 +382,29 @@ ${(properties || []).map((p: any) => `- [${p.id}] ${p.address} (${p.property_typ
       });
     }
 
+    // ── Phase H: inject inferred target + clarification directive ───────
+    let directives = '';
+    if (inferredTargetPrice) {
+      directives += `\n\n## 🎯 DETECTED TARGET PURCHASE PRICE: $${inferredTargetPrice.toLocaleString()}\nThe broker has mentioned a target purchase price of $${inferredTargetPrice.toLocaleString()}. You MUST set \`acquisition.targetPurchasePrice = ${inferredTargetPrice}\` on EVERY scenario you generate so the engine returns a binary "Achievable / Short by $X" verdict. Do not omit this field.`;
+    }
+    if (clarificationMode) {
+      directives += `\n\n## ⚠️ CLARIFICATION MODE\nThe broker is asking a clarifying question about a previously-generated scenario, NOT requesting new scenarios. DO NOT call the generate_scenarios tool. Respond in natural-language prose only. Reference the engine-validated numbers from the prior scenarios (capacity, meetsTarget, shortfall, loanRequired) directly in your answer.`;
+    }
+
     const aiMessages = [
-      { role: "system", content: SYSTEM_PROMPT + contextBlock },
+      { role: "system", content: SYSTEM_PROMPT + contextBlock + directives },
       ...cappedMessages.map((m: any) => ({ role: m.role, content: m.content })),
     ];
+
+    // In clarification mode, omit the tool entirely so the model can't generate scenarios.
+    const aiPayload: any = {
+      model: "google/gemini-3-flash-preview",
+      messages: aiMessages,
+      stream: false, // switched to non-streaming so we can post-process the tool call
+    };
+    if (!clarificationMode) {
+      aiPayload.tools = [SCENARIO_TOOL];
+    }
 
     const response = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
@@ -395,12 +414,7 @@ ${(properties || []).map((p: any) => `- [${p.id}] ${p.address} (${p.property_typ
           Authorization: `Bearer ${LOVABLE_API_KEY}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          model: "google/gemini-3-flash-preview",
-          messages: aiMessages,
-          tools: [SCENARIO_TOOL],
-          stream: true,
-        }),
+        body: JSON.stringify(aiPayload),
       }
     );
 
@@ -425,8 +439,62 @@ ${(properties || []).map((p: any) => `- [${p.id}] ${p.address} (${p.property_typ
       });
     }
 
-    // Stream the response back
-    return new Response(response.body, {
+    // Parse the non-streaming AI response, post-process scenarios with the
+    // unified engine, and emit a synthetic SSE stream so the existing client
+    // parser keeps working unchanged.
+    const aiData = await response.json();
+    const choice = aiData?.choices?.[0];
+    const messageObj = choice?.message ?? {};
+    const assistantText: string = messageObj?.content ?? '';
+    const toolCalls = Array.isArray(messageObj?.tool_calls) ? messageObj.tool_calls : [];
+
+    let validatedScenarios: AIScenario[] | null = null;
+    let toolCallArgsString: string | undefined;
+
+    if (toolCalls.length > 0 && clientContext) {
+      try {
+        const rawArgs = toolCalls[0]?.function?.arguments ?? '{}';
+        const parsed = typeof rawArgs === 'string' ? JSON.parse(rawArgs) : rawArgs;
+        if (parsed?.scenarios && Array.isArray(parsed.scenarios)) {
+          validatedScenarios = validateAIScenarios(parsed.scenarios as AIScenario[], clientContext, inferredTargetPrice);
+          toolCallArgsString = JSON.stringify({ scenarios: validatedScenarios });
+          console.log('[bc-scenario-agent] Validated', validatedScenarios.length, 'scenarios via engine');
+        }
+      } catch (err) {
+        console.error('[bc-scenario-agent] Failed to validate scenarios:', err);
+      }
+    }
+
+    // Build a synthetic SSE stream that the existing front-end SSE parser
+    // already understands (text deltas + tool_calls deltas + [DONE]).
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      start(controller) {
+        const send = (obj: unknown) => controller.enqueue(encoder.encode(`data: ${JSON.stringify(obj)}\n\n`));
+
+        if (assistantText) {
+          send({ choices: [{ delta: { content: assistantText } }] });
+        }
+
+        if (toolCallArgsString) {
+          send({
+            choices: [{
+              delta: {
+                tool_calls: [{
+                  index: 0,
+                  function: { name: 'generate_scenarios', arguments: toolCallArgsString },
+                }],
+              },
+            }],
+          });
+        }
+
+        controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+        controller.close();
+      },
+    });
+
+    return new Response(stream, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
   } catch (e) {
