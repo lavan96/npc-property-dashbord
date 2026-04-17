@@ -2048,6 +2048,29 @@ export function StrategyScenarioModeling({
             floorActive={floorActive}
           />
 
+          {/* Phase 4 — Live Math Inspector (capacity waterfall audit trail) */}
+          <CapacityMathInspector
+            baseAfterTaxIncome={baseAfterTaxIncome}
+            baseLivingExpenses={baseLivingExpenses}
+            baseCommitments={baseCommitments}
+            baseRawSurplus={baseRawSurplus}
+            baseAssessmentRate={baseAssessmentRate}
+            baseTermYears={baseTerm}
+            baseAnnuityFactor={baseAnnuity}
+            baseTheoreticalCapacity={baseTheoreticalCapacity}
+            baseDisplayedCapacity={baseResult.borrowingCapacity}
+            scenarioAfterTaxIncome={scenarioAfterTaxIncome}
+            scenarioLivingExpenses={scenarioLivingExpenses}
+            scenarioCommitments={scenarioCommitments}
+            scenarioRawSurplus={scenarioRawSurplus}
+            scenarioAssessmentRate={scenarioAssessmentRate}
+            scenarioTermYears={scenarioTerm}
+            scenarioAnnuityFactor={scenarioAnnuity}
+            scenarioTheoreticalCapacity={scenarioTheoreticalCapacity}
+            scenarioDisplayedCapacity={scenarioResult.borrowingCapacity}
+            formatCurrency={formatCurrency}
+          />
+
           {/* F5 + F6 — Strategy rationale (finance-ready) with PDF export */}
           <StrategyRationalePanel
             report={buildStrategyRationale({
