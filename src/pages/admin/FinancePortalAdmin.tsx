@@ -192,6 +192,9 @@ export default function FinancePortalAdmin() {
           <Button variant="outline" asChild className="gap-2">
             <Link to="/admin/finance-portal/compliance"><FileText className="h-4 w-4" />Compliance</Link>
           </Button>
+          <Button variant="outline" asChild className="gap-2">
+            <Link to="/admin/finance-portal/commissions"><DollarSign className="h-4 w-4" />Commissions</Link>
+          </Button>
           <Button variant="outline" onClick={() => { setActivityForUser(null); setActivityOpen(true); }} className="gap-2">
             <History className="h-4 w-4" />
             Activity Log
