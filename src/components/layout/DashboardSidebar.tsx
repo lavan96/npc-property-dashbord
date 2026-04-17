@@ -90,6 +90,7 @@ const adminItems = [
   { title: 'Activity Logs', url: '/admin/activity-logs', icon: History, moduleKey: 'activity_logs' },
   { title: 'Settings', url: '/settings', icon: Settings, moduleKey: 'settings' },
   { title: 'User Management', url: '/admin/users', icon: Users, moduleKey: 'user_management' },
+  { title: 'Finance Portal', url: '/admin/finance-portal', icon: ShieldCheck, moduleKey: 'finance_portal_admin' },
   { title: 'Portal Config', url: '/portal-config', icon: Globe, moduleKey: 'portal_config' },
 ];
 

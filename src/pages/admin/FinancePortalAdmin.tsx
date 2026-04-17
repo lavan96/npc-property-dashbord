@@ -1,0 +1,435 @@
+import { useEffect, useMemo, useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { toast } from 'sonner';
+import {
+  Loader2, Search, MoreHorizontal, Mail, Shield, RefreshCw,
+  Ban, CheckCircle2, History, Settings, Users, Copy,
+} from 'lucide-react';
+import { format } from 'date-fns';
+import { ClientAssignmentsDialog } from '@/components/admin/finance-portal/ClientAssignmentsDialog';
+import { DefaultPermissionsDialog } from '@/components/admin/finance-portal/DefaultPermissionsDialog';
+import { ActivityLogDialog } from '@/components/admin/finance-portal/ActivityLogDialog';
+import { EMPTY_MATRIX, normalizeMatrix, type FinancePermissionMatrix } from '@/components/admin/finance-portal/FinancePermissionMatrix';
+
+interface FinanceUserRow {
+  id: string;                  // finance_agent_contacts.id
+  name: string;
+  email: string;
+  company: string | null;
+  contact_type: string;
+  is_default: boolean;
+  is_active: boolean;
+  status: 'no_access' | 'invited' | 'invite_expired' | 'active' | 'inactive' | 'revoked';
+  portal_user: null | {
+    id: string;
+    invite_sent_at: string | null;
+    invite_accepted_at: string | null;
+    invite_token_expires_at: string | null;
+    last_login_at: string | null;
+    has_accepted_terms: boolean;
+    revoked_at: string | null;
+  };
+}
+
+const STATUS_BADGE: Record<FinanceUserRow['status'], { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+  no_access:        { label: 'No Access',        variant: 'outline' },
+  invited:          { label: 'Invited',          variant: 'secondary' },
+  invite_expired:   { label: 'Invite Expired',   variant: 'destructive' },
+  active:           { label: 'Active',           variant: 'default' },
+  inactive:         { label: 'Inactive',         variant: 'outline' },
+  revoked:          { label: 'Revoked',          variant: 'destructive' },
+};
+
+export default function FinancePortalAdmin() {
+  const [loading, setLoading] = useState(true);
+  const [users, setUsers] = useState<FinanceUserRow[]>([]);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | FinanceUserRow['status']>('all');
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const [defaultPermissions, setDefaultPermissions] = useState<FinancePermissionMatrix>(EMPTY_MATRIX);
+  const [defaultsOpen, setDefaultsOpen] = useState(false);
+  const [activityOpen, setActivityOpen] = useState(false);
+  const [activityForUser, setActivityForUser] = useState<FinanceUserRow | null>(null);
+  const [assignmentsForUser, setAssignmentsForUser] = useState<FinanceUserRow | null>(null);
+
+  const loadAll = async () => {
+    setLoading(true);
+    try {
+      const [uRes, dRes] = await Promise.all([
+        invokeSecureFunction('finance-portal-admin', { operation: 'list_users' }),
+        invokeSecureFunction('finance-portal-admin', { operation: 'get_default_permissions' }),
+      ]);
+      if (uRes.error) throw new Error(uRes.error.message);
+      if (dRes.error) throw new Error(dRes.error.message);
+      setUsers(uRes.data?.records || []);
+      setDefaultPermissions(normalizeMatrix(dRes.data?.record?.permissions));
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to load finance portal users');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { void loadAll(); }, []);
+
+  const filtered = useMemo(() => {
+    const s = search.trim().toLowerCase();
+    return users.filter(u => {
+      if (statusFilter !== 'all' && u.status !== statusFilter) return false;
+      if (!s) return true;
+      return (
+        u.name.toLowerCase().includes(s) ||
+        u.email.toLowerCase().includes(s) ||
+        (u.company || '').toLowerCase().includes(s)
+      );
+    });
+  }, [users, search, statusFilter]);
+
+  const counts = useMemo(() => {
+    const c = { total: users.length, active: 0, invited: 0, revoked: 0, no_access: 0 };
+    for (const u of users) {
+      if (u.status === 'active') c.active++;
+      else if (u.status === 'invited') c.invited++;
+      else if (u.status === 'revoked') c.revoked++;
+      else if (u.status === 'no_access') c.no_access++;
+    }
+    return c;
+  }, [users]);
+
+  const inviteUser = async (u: FinanceUserRow, isResend = false) => {
+    setBusyId(u.id);
+    try {
+      const { data, error } = await invokeSecureFunction('finance-portal-invite', {
+        action: 'invite',
+        finance_contact_id: u.id,
+        resend_invite: isResend,
+      });
+      if (error) throw new Error(error.message);
+      toast.success(data?.message || 'Invite sent');
+      if (data?.invite_link) {
+        try {
+          await navigator.clipboard.writeText(data.invite_link);
+          toast.success('Invite link copied to clipboard');
+        } catch { /* ignore */ }
+      }
+      await loadAll();
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to send invite');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const revokeUser = async (u: FinanceUserRow) => {
+    setBusyId(u.id);
+    try {
+      const { error } = await invokeSecureFunction('finance-portal-invite', {
+        action: 'revoke',
+        finance_contact_id: u.id,
+      });
+      if (error) throw new Error(error.message);
+      toast.success('Portal access revoked');
+      await loadAll();
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to revoke');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const reinstateUser = async (u: FinanceUserRow) => {
+    setBusyId(u.id);
+    try {
+      const { error } = await invokeSecureFunction('finance-portal-invite', {
+        action: 'reinstate',
+        finance_contact_id: u.id,
+      });
+      if (error) throw new Error(error.message);
+      toast.success('Portal access reinstated');
+      await loadAll();
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to reinstate');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  return (
+    <div className="p-6 space-y-6">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Shield className="h-6 w-6 text-primary" />
+            Finance Portal Admin
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Manage portal access, per-client assignments, and CRUD permission matrices for finance contacts.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => { setActivityForUser(null); setActivityOpen(true); }} className="gap-2">
+            <History className="h-4 w-4" />
+            Activity Log
+          </Button>
+          <Button variant="outline" onClick={() => setDefaultsOpen(true)} className="gap-2">
+            <Settings className="h-4 w-4" />
+            Default Permissions
+          </Button>
+          <Button variant="outline" onClick={loadAll} className="gap-2" disabled={loading}>
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <StatCard label="Total Contacts" value={counts.total} />
+        <StatCard label="Active" value={counts.active} tone="success" />
+        <StatCard label="Invited" value={counts.invited} tone="info" />
+        <StatCard label="No Access" value={counts.no_access} tone="muted" />
+        <StatCard label="Revoked" value={counts.revoked} tone="destructive" />
+      </div>
+
+      <Card>
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Finance Contacts
+            </CardTitle>
+            <CardDescription>
+              Each row links a finance contact to portal access and per-client permissions.
+            </CardDescription>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search name or email..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="pl-8 h-9 w-64"
+              />
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {(['all', 'active', 'invited', 'no_access', 'revoked'] as const).map(s => (
+                <Button
+                  key={s}
+                  size="sm"
+                  variant={statusFilter === s ? 'default' : 'outline'}
+                  className="h-8 text-xs"
+                  onClick={() => setStatusFilter(s)}
+                >
+                  {s === 'all' ? 'All' : STATUS_BADGE[s as FinanceUserRow['status']]?.label || s}
+                </Button>
+              ))}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <div className="border rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Contact</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Last Login</TableHead>
+                    <TableHead>Invite</TableHead>
+                    <TableHead className="w-12"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filtered.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-8">
+                        No matching finance contacts.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {filtered.map(u => {
+                    const badge = STATUS_BADGE[u.status];
+                    const portalUser = u.portal_user;
+                    const canManageAssignments = !!portalUser;
+                    return (
+                      <TableRow key={u.id}>
+                        <TableCell>
+                          <div className="font-medium">{u.name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {u.company || u.contact_type}
+                            {u.is_default && <span className="ml-2 text-primary">★ default</span>}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-sm">{u.email}</TableCell>
+                        <TableCell>
+                          <Badge variant={badge.variant}>{badge.label}</Badge>
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {portalUser?.last_login_at
+                            ? format(new Date(portalUser.last_login_at), 'MMM d, yyyy HH:mm')
+                            : '—'}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {portalUser?.invite_sent_at
+                            ? format(new Date(portalUser.invite_sent_at), 'MMM d, yyyy')
+                            : '—'}
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" disabled={busyId === u.id}>
+                                {busyId === u.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <MoreHorizontal className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-56">
+                              {(u.status === 'no_access' || u.status === 'invite_expired') && (
+                                <DropdownMenuItem onClick={() => inviteUser(u, false)}>
+                                  <Mail className="h-4 w-4 mr-2" />
+                                  Send Invite
+                                </DropdownMenuItem>
+                              )}
+                              {(u.status === 'invited' || u.status === 'invite_expired' || u.status === 'active') && (
+                                <DropdownMenuItem onClick={() => inviteUser(u, true)}>
+                                  <RefreshCw className="h-4 w-4 mr-2" />
+                                  Resend / Reset Invite
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuItem
+                                disabled={!canManageAssignments}
+                                onClick={() => setAssignmentsForUser(u)}
+                              >
+                                <Users className="h-4 w-4 mr-2" />
+                                Manage Client Assignments
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                disabled={!canManageAssignments}
+                                onClick={() => { setActivityForUser(u); setActivityOpen(true); }}
+                              >
+                                <History className="h-4 w-4 mr-2" />
+                                View Activity
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              {u.status === 'revoked' ? (
+                                <DropdownMenuItem onClick={() => reinstateUser(u)}>
+                                  <CheckCircle2 className="h-4 w-4 mr-2 text-success" />
+                                  Reinstate Access
+                                </DropdownMenuItem>
+                              ) : (
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <DropdownMenuItem
+                                      onSelect={e => e.preventDefault()}
+                                      disabled={!portalUser}
+                                      className="text-destructive focus:text-destructive"
+                                    >
+                                      <Ban className="h-4 w-4 mr-2" />
+                                      Revoke Access
+                                    </DropdownMenuItem>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Revoke portal access?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        {u.name} will be signed out and unable to log in to the Finance Portal until access is reinstated. Client assignments are preserved.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                        onClick={() => revokeUser(u)}
+                                      >
+                                        Revoke
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <ClientAssignmentsDialog
+        open={!!assignmentsForUser}
+        onOpenChange={(o) => { if (!o) setAssignmentsForUser(null); }}
+        financeUser={
+          assignmentsForUser?.portal_user
+            ? {
+                portal_user_id: assignmentsForUser.portal_user.id,
+                contact_name: assignmentsForUser.name,
+                contact_email: assignmentsForUser.email,
+              }
+            : null
+        }
+        defaultPermissions={defaultPermissions}
+      />
+
+      <DefaultPermissionsDialog
+        open={defaultsOpen}
+        onOpenChange={setDefaultsOpen}
+        onSaved={(m) => setDefaultPermissions(m)}
+      />
+
+      <ActivityLogDialog
+        open={activityOpen}
+        onOpenChange={setActivityOpen}
+        financeUserId={activityForUser?.portal_user?.id || null}
+        title={activityForUser ? `Activity: ${activityForUser.name}` : 'Finance Portal Activity'}
+      />
+    </div>
+  );
+}
+
+function StatCard({
+  label, value, tone = 'default',
+}: {
+  label: string; value: number; tone?: 'default' | 'success' | 'info' | 'muted' | 'destructive';
+}) {
+  const toneCls = {
+    default:     'text-foreground',
+    success:     'text-success',
+    info:        'text-primary',
+    muted:       'text-muted-foreground',
+    destructive: 'text-destructive',
+  }[tone];
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
+        <div className={`text-2xl font-bold mt-1 ${toneCls}`}>{value}</div>
+      </CardContent>
+    </Card>
+  );
+}
