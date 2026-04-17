@@ -422,7 +422,7 @@ export function BCScenarioAgent({
                     </Badge>
                   </div>
 
-                  <p className="text-xs text-muted-foreground mb-3 line-clamp-3">
+                  <p className="text-xs text-muted-foreground mb-3 whitespace-pre-wrap break-words">
                     {scenario.reasoning}
                   </p>
 
