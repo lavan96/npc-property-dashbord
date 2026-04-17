@@ -123,6 +123,8 @@ export interface DeltaEffect {
   debtBalanceAdjustment: number;
   dtiCapEnabled?: boolean;
   dtiCapLimit?: number;
+  /** Phase I1 — lender profile id to apply during aggregation. */
+  lenderProfileOverride?: string;
   /** Phase C: cash freed from equity-release deltas (post-LMI on the release loan) */
   releasedCapital: number;
   /** Phase C: notes from equity-release / acquisition levers (audit trail) */
