@@ -541,3 +541,11 @@ request_timeout = 60
 [functions.finance-portal-commissions]
 verify_jwt = false
 request_timeout = 60
+
+[functions.finance-portal-handoff-create]
+verify_jwt = false
+request_timeout = 30
+
+[functions.finance-portal-handoff-redeem]
+verify_jwt = false
+request_timeout = 30
