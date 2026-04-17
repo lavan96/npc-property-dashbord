@@ -737,7 +737,7 @@ export function StrategyScenarioModeling({
   }, [strategy, acquisition, baseInputs, baseResult, consolidatableDebts, investmentProperties, equityReleaseProperties, properties, liabilities]);
 
 
-  // Equity release calculation — now supports multiple properties
+  // Equity release calculation — supports multiple properties + Phase 2 deployment %
   interface EquityReleaseItem {
     property: PropertyItem;
     currentLVR: number;
@@ -745,6 +745,12 @@ export function StrategyScenarioModeling({
     targetLVR: number;
     grossAccessibleEquity: number;
     accessibleEquity: number;
+    deployedGross: number;
+    deployedNet: number;
+    deploymentPercent: number;
+    repaymentType: 'interest_only' | 'principal_and_interest';
+    autoMonthlyServicing: number;
+    manualRepayment?: number;
     maxLoan: number;
     lmiEstimate: any;
     lmiAmount: number;
@@ -756,6 +762,9 @@ export function StrategyScenarioModeling({
       const prop = equityReleaseProperties.find(p => p.id === propId);
       if (!prop) return null;
       const targetLVR = strategy.equityReleaseTargetLVRs.get(propId) ?? DEFAULT_EQUITY_LVR;
+      const deploymentPercent = strategy.equityReleaseDeploymentPercents.get(propId) ?? 1;
+      const repaymentType = strategy.equityReleaseRepaymentTypes.get(propId) ?? 'interest_only';
+      const manualRepayment = strategy.equityReleaseManualRepayments.get(propId);
       const maxLoan = prop.current_value * targetLVR;
       const grossAccessibleEquity = Math.max(0, maxLoan - prop.loan_remaining);
       const currentLVR = prop.current_value > 0 ? (prop.loan_remaining / prop.current_value) * 100 : 0;
@@ -775,11 +784,49 @@ export function StrategyScenarioModeling({
       }
 
       const accessibleEquity = Math.max(0, grossAccessibleEquity - lmiAmount);
-      return { property: prop, currentLVR, currentEquity, targetLVR: targetLVRPercent, grossAccessibleEquity, accessibleEquity, maxLoan, lmiEstimate, lmiAmount };
-    }).filter(Boolean) as EquityReleaseItem[];
-  }, [strategy.equityReleaseEnabled, strategy.equityReleasePropertyIds, strategy.equityReleaseTargetLVRs, equityReleaseProperties]);
+      const deployedGross = grossAccessibleEquity * deploymentPercent;
+      const deployedLmi = lmiAmount * deploymentPercent;
+      const deployedNet = Math.max(0, deployedGross - deployedLmi);
 
-  const totalAccessibleEquity = useMemo(() => equityReleaseItems.reduce((sum, item) => sum + item.accessibleEquity, 0), [equityReleaseItems]);
+      const ratePct = prop.interest_rate ?? baseInputs.interestRate;
+      const assessRatePct = ratePct + (baseInputs.bufferRate ?? 3);
+      let autoMonthlyServicing = 0;
+      if (repaymentType === 'principal_and_interest') {
+        const r = assessRatePct / 100 / 12;
+        const n = (baseInputs.loanTermYears || 30) * 12;
+        autoMonthlyServicing = r > 0 && deployedGross > 0
+          ? deployedGross * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1)
+          : 0;
+      } else {
+        autoMonthlyServicing = deployedGross * (assessRatePct / 100 / 12);
+      }
+
+      return {
+        property: prop, currentLVR, currentEquity,
+        targetLVR: targetLVRPercent, grossAccessibleEquity, accessibleEquity,
+        deployedGross, deployedNet, deploymentPercent, repaymentType,
+        autoMonthlyServicing,
+        manualRepayment: Number.isFinite(manualRepayment as number) ? manualRepayment : undefined,
+        maxLoan, lmiEstimate, lmiAmount,
+      };
+    }).filter(Boolean) as EquityReleaseItem[];
+  }, [
+    strategy.equityReleaseEnabled,
+    strategy.equityReleasePropertyIds,
+    strategy.equityReleaseTargetLVRs,
+    strategy.equityReleaseDeploymentPercents,
+    strategy.equityReleaseRepaymentTypes,
+    strategy.equityReleaseManualRepayments,
+    equityReleaseProperties,
+    baseInputs.interestRate,
+    baseInputs.bufferRate,
+    baseInputs.loanTermYears,
+  ]);
+
+  const totalAccessibleEquity = useMemo(
+    () => equityReleaseItems.reduce((sum, item) => sum + item.deployedNet, 0),
+    [equityReleaseItems]
+  );
 
   const capacityChange = scenarioResult.borrowingCapacity - baseResult.borrowingCapacity;
   const surplusChange = scenarioResult.monthlySurplus - baseResult.monthlySurplus;
