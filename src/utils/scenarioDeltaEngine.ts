@@ -1163,6 +1163,27 @@ export function runScenarioWithInputs(
     computedShadedAnnual2 = Math.max(0, ctx.baseInputs.shadedAnnualIncome + total.shadedIncomeAdjustment);
   }
 
+  // Phase I6 — Negative-gearing add-back (parity with runScenario)
+  const investmentProps2 = (ctx.properties || []).filter(p => {
+    const t = (p.propertyType || '').toLowerCase();
+    return t.includes('invest') || t.includes('rental') || t === 'investment';
+  });
+  const ng2 = computeNegativeGearingAddBack({
+    investmentProperties: investmentProps2,
+    marginalTaxRate: marginalTaxRateFor(newGross2),
+    addBackShading: 1.0,
+  });
+  if (ng2.annualAddBack > 0) {
+    computedShadedAnnual2 += ng2.annualAddBack;
+    total.acquisitionNotes.push(...ng2.notes);
+    issues.push({
+      deltaId: 'negative-gearing',
+      deltaType: 'income_change',
+      severity: 'warning',
+      message: ng2.notes[0] ?? 'Negative-gearing add-back applied',
+    });
+  }
+
   // Phase I2 — HEM hard floor parity
   const requestedExp2 = ctx.baseInputs.monthlyLivingExpenses + total.expenseAdjustment + hemDelta2;
   const targetProfile2b = resolveLenderProfile(targetProfileId2);
