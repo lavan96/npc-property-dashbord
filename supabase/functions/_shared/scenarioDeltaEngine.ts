@@ -70,6 +70,16 @@ export interface ScenarioBaseInputs {
   calculationMode?: 'bank' | 'conservative';
   dtiCapEnabled?: boolean;
   dtiCapLimit?: number;
+  /** Phase I1 — typed income components for lender-aware re-shading.
+   *  When omitted the engine falls back to the legacy blended ratio. */
+  incomeComponents?: ScenarioIncomeComponent[];
+  /** Phase I1 — id of the lender profile applied when computing
+   *  `shadedAnnualIncome`. Used to decide whether re-shading is needed
+   *  when a `dti_cap_change` delta flips lenders. */
+  currentLenderProfileId?: string;
+  /** Phase I2 — monthly HEM benchmark for this household. The engine
+   *  floors `monthlyLivingExpenses` here after `expense_change` deltas. */
+  hemBenchmark?: number;
 }
 
 export interface ScenarioBaseResult {
