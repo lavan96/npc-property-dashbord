@@ -448,15 +448,6 @@ export function StrategyScenarioModeling({
     };
   }, [strategy, acquisition, baseInputs, baseResult, consolidatableDebts, investmentProperties, properties, liabilities]);
 
-    return {
-      scenarioResult: result as unknown as BorrowingCapacityResult,
-      scenarioInputs: inputs,
-      impactBreakdown: impacts,
-      acquisitionCapacity,
-      validationIssues,
-    };
-  }, [strategy, acquisition, baseInputs, baseResult, consolidatableDebts, investmentProperties, properties, liabilities]);
-
 
   // Equity release calculation — now supports multiple properties
   interface EquityReleaseItem {
