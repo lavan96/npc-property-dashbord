@@ -869,7 +869,23 @@ export function aggregateDeltas(
       });
     }
   }
-...
+
+  // Phase I2 — HEM floor enforcement (mirror of client-side logic).
+  const requestedExpenses = ctx.baseInputs.monthlyLivingExpenses + total.expenseAdjustment + hemDelta;
+  const hemBenchmark = ctx.baseInputs.hemBenchmark ?? 0;
+  const targetProfile = resolveLenderProfile(targetProfileId);
+  let finalExpenses = Math.max(0, requestedExpenses);
+  if (hemBenchmark > 0 && targetProfile.enforcesHemFloor && finalExpenses < hemBenchmark) {
+    const expenseChangeDelta = ordered.find(d => d.type === 'expense_change');
+    issues.push({
+      deltaId: expenseChangeDelta?.id ?? 'expense_change',
+      deltaType: 'expense_change',
+      severity: 'warning',
+      message: `Expense reduction floored at HEM benchmark $${Math.round(hemBenchmark).toLocaleString()}/mo (requested $${Math.round(requestedExpenses).toLocaleString()}). Banks use MAX(declared, HEM) — additional cuts below HEM do not improve capacity.`,
+    });
+    finalExpenses = hemBenchmark;
+  }
+
   const inputs: AggregatedScenarioInputs = {
     grossAnnualIncome: newGross,
     shadedAnnualIncome: computedShadedAnnual,
