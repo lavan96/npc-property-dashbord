@@ -490,7 +490,8 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
       });
 
       // 3. Delete file from storage via secure Edge Function
-      const deleteResult = await secureStorageDelete('vownet-forms', normalizeFilePath(file.file_path));
+      const loc = resolveStorageLocation(file.file_path);
+      const deleteResult = await secureStorageDelete(loc.bucket, loc.key);
 
       if (!deleteResult.success) console.warn('Storage delete failed:', deleteResult.error);
 
@@ -544,8 +545,8 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
   });
 
   const downloadFile = async (file: { file_path: string; file_name: string }) => {
-    const cleanPath = normalizeFilePath(file.file_path);
-    const result = await secureStorageDownload('vownet-forms', cleanPath);
+    const loc = resolveStorageLocation(file.file_path);
+    const result = await secureStorageDownload(loc.bucket, loc.key);
 
     if (!result.success || !result.blob) {
       toast.error('Failed to download file: ' + (result.error || 'Unknown error'));
