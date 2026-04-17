@@ -549,3 +549,16 @@ request_timeout = 30
 [functions.finance-portal-handoff-redeem]
 verify_jwt = false
 request_timeout = 30
+
+[functions.push-subscribe]
+verify_jwt = false
+
+[functions.push-unsubscribe]
+verify_jwt = false
+
+[functions.send-web-push]
+verify_jwt = false
+request_timeout = 60
+
+[functions.get-vapid-public-key]
+verify_jwt = false

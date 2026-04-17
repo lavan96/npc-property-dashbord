@@ -19,6 +19,7 @@ import { BackgroundJobTracker } from "./components/BackgroundJobTracker";
 import { ReportGenerationProgress } from "./components/reports/ReportGenerationProgress";
 import { CallNotificationListener } from "./components/CallNotificationListener";
 import { Phase1NotificationListeners } from "./components/Phase1NotificationListeners";
+import { PushNotificationPrompt } from "./components/PushNotificationPrompt";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { HarveyCountdown } from "@/components/HarveyCountdown";
 import { Button } from "@/components/ui/button";
@@ -146,6 +147,7 @@ const App = () => (
                   <ReportGenerationProgress />
                   <CallNotificationListener />
                   <Phase1NotificationListeners />
+                  <PushNotificationPrompt />
                   <ComparisonProvider>
                     <SearchProvider>
                       <Toaster />
