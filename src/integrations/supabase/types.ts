@@ -4834,6 +4834,95 @@ export type Database = {
           },
         ]
       }
+      finance_portal_messages: {
+        Row: {
+          attachment_filename: string | null
+          attachment_mime: string | null
+          attachment_path: string | null
+          attachment_size_bytes: number | null
+          body: string
+          client_id: string
+          created_at: string
+          finance_user_id: string | null
+          id: string
+          is_read_by_partner: boolean
+          is_read_by_staff: boolean
+          read_by_partner_at: string | null
+          read_by_staff_at: string | null
+          sender_name: string | null
+          sender_type: string
+          staff_user_id: string | null
+          thread_id: string
+        }
+        Insert: {
+          attachment_filename?: string | null
+          attachment_mime?: string | null
+          attachment_path?: string | null
+          attachment_size_bytes?: number | null
+          body: string
+          client_id: string
+          created_at?: string
+          finance_user_id?: string | null
+          id?: string
+          is_read_by_partner?: boolean
+          is_read_by_staff?: boolean
+          read_by_partner_at?: string | null
+          read_by_staff_at?: string | null
+          sender_name?: string | null
+          sender_type: string
+          staff_user_id?: string | null
+          thread_id: string
+        }
+        Update: {
+          attachment_filename?: string | null
+          attachment_mime?: string | null
+          attachment_path?: string | null
+          attachment_size_bytes?: number | null
+          body?: string
+          client_id?: string
+          created_at?: string
+          finance_user_id?: string | null
+          id?: string
+          is_read_by_partner?: boolean
+          is_read_by_staff?: boolean
+          read_by_partner_at?: string | null
+          read_by_staff_at?: string | null
+          sender_name?: string | null
+          sender_type?: string
+          staff_user_id?: string | null
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_portal_messages_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_portal_messages_finance_user_id_fkey"
+            columns: ["finance_user_id"]
+            isOneToOne: false
+            referencedRelation: "finance_portal_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_portal_messages_staff_user_id_fkey"
+            columns: ["staff_user_id"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_portal_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "finance_portal_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       finance_portal_notifications: {
         Row: {
           body: string | null
@@ -4885,6 +4974,63 @@ export type Database = {
           {
             foreignKeyName: "finance_portal_notifications_portal_user_id_fkey"
             columns: ["portal_user_id"]
+            isOneToOne: false
+            referencedRelation: "finance_portal_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_portal_threads: {
+        Row: {
+          client_id: string
+          created_at: string
+          finance_user_id: string
+          id: string
+          is_archived: boolean
+          last_message_at: string | null
+          last_message_preview: string | null
+          subject: string | null
+          unread_count_partner: number
+          unread_count_staff: number
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          finance_user_id: string
+          id?: string
+          is_archived?: boolean
+          last_message_at?: string | null
+          last_message_preview?: string | null
+          subject?: string | null
+          unread_count_partner?: number
+          unread_count_staff?: number
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          finance_user_id?: string
+          id?: string
+          is_archived?: boolean
+          last_message_at?: string | null
+          last_message_preview?: string | null
+          subject?: string | null
+          unread_count_partner?: number
+          unread_count_staff?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_portal_threads_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_portal_threads_finance_user_id_fkey"
+            columns: ["finance_user_id"]
             isOneToOne: false
             referencedRelation: "finance_portal_users"
             referencedColumns: ["id"]

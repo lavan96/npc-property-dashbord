@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,9 +11,12 @@ import { FINANCE_TABLE_CONFIGS, FINANCE_TABLE_KEYS, FinanceTableKey } from '@/co
 import { FinanceRecordList } from '@/components/finance-portal/FinanceRecordList';
 import { DocumentVaultPanel } from '@/components/finance-portal/DocumentVaultPanel';
 import { BorrowingCapacityPanel } from '@/components/finance-portal/BorrowingCapacityPanel';
+import { FinancePortalMessagesPanel } from '@/components/finance-portal/FinancePortalMessagesPanel';
 
 export default function FinancePortalClientProfile() {
   const { clientId } = useParams<{ clientId: string }>();
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab');
   const { invokeFinanceFunction } = useFinancePortalAuth();
 
   const { data, isLoading, error } = useQuery({
@@ -38,7 +41,7 @@ export default function FinancePortalClientProfile() {
   // matching the edge function default. Hide only if explicitly { view: false }.
   const docsVisible = permissions.documents ? !!permissions.documents.view : true;
   const bcVisible = permissions.borrowing_capacity ? !!permissions.borrowing_capacity.view : true;
-  const defaultTab = visibleTabs[0] || (docsVisible ? 'documents' : (bcVisible ? 'borrowing_capacity' : 'properties'));
+  const defaultTab = initialTab || visibleTabs[0] || (docsVisible ? 'documents' : (bcVisible ? 'borrowing_capacity' : 'messages'));
 
   if (isLoading) {
     return (
@@ -124,6 +127,7 @@ export default function FinancePortalClientProfile() {
             {bcVisible && (
               <TabsTrigger value="borrowing_capacity" className="text-xs">Borrowing Capacity</TabsTrigger>
             )}
+            <TabsTrigger value="messages" className="text-xs">Messages</TabsTrigger>
           </TabsList>
           {visibleTabs.map(k => (
             <TabsContent key={k} value={k} className="mt-4">
@@ -140,6 +144,9 @@ export default function FinancePortalClientProfile() {
               <BorrowingCapacityPanel clientId={clientId!} />
             </TabsContent>
           )}
+          <TabsContent value="messages" className="mt-4">
+            <FinancePortalMessagesPanel clientId={clientId!} />
+          </TabsContent>
         </Tabs>
       )}
     </div>
