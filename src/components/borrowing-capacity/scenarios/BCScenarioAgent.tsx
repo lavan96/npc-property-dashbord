@@ -497,6 +497,86 @@ export function BCScenarioAgent({
                     {scenario.reasoning}
                   </p>
 
+                  {/* Phase H: Engine-validated truth panel (pre-Apply) */}
+                  {scenario.engineValidation && (() => {
+                    const v = scenario.engineValidation!;
+                    const fmt = (n?: number) => typeof n === 'number'
+                      ? `$${Math.round(n).toLocaleString()}`
+                      : '—';
+                    const hasTarget = typeof v.targetPurchasePrice === 'number' && v.targetPurchasePrice > 0;
+                    const meets = v.meetsTarget === true;
+                    const bandClass = v.serviceabilityBand === 'green'
+                      ? 'text-emerald-600 dark:text-emerald-400'
+                      : v.serviceabilityBand === 'amber'
+                        ? 'text-amber-600 dark:text-amber-400'
+                        : 'text-destructive';
+                    return (
+                      <div className="mb-3 rounded-md border border-border/60 bg-muted/40 p-2 space-y-1.5">
+                        <div className="flex items-center justify-between text-[10px] uppercase tracking-wide text-muted-foreground">
+                          <span>Engine Truth</span>
+                          {hasTarget && (
+                            <Badge
+                              variant={meets ? 'default' : 'destructive'}
+                              className="h-4 px-1.5 text-[9px]"
+                            >
+                              {meets ? 'Achievable' : `Short ${fmt(v.shortfallToTarget)}`}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[11px]">
+                          <span className="text-muted-foreground">Capacity</span>
+                          <span className="text-right font-medium">
+                            {fmt(v.borrowingCapacity)}
+                            {v.capacityChange !== 0 && (
+                              <span className={v.capacityChange > 0 ? 'text-emerald-600 dark:text-emerald-400 ml-1' : 'text-destructive ml-1'}>
+                                ({v.capacityChange > 0 ? '+' : ''}{fmt(v.capacityChange)})
+                              </span>
+                            )}
+                          </span>
+                          <span className="text-muted-foreground">Surplus / mo</span>
+                          <span className="text-right font-medium">{fmt(v.monthlySurplus)}</span>
+                          <span className="text-muted-foreground">Band / DTI</span>
+                          <span className={`text-right font-medium ${bandClass}`}>
+                            {v.serviceabilityBand.toUpperCase()} • {v.dtiRatio.toFixed(2)}x
+                          </span>
+                          {hasTarget && (
+                            <>
+                              <span className="text-muted-foreground">Target / Max</span>
+                              <span className="text-right font-medium">
+                                {fmt(v.targetPurchasePrice)} / {fmt(v.maxPurchasePrice)}
+                              </span>
+                              {typeof v.loanRequiredForPurchase === 'number' && (
+                                <>
+                                  <span className="text-muted-foreground">Loan req'd</span>
+                                  <span className="text-right font-medium">{fmt(v.loanRequiredForPurchase)}</span>
+                                </>
+                              )}
+                              {typeof v.netCashAfterSettlement === 'number' && (
+                                <>
+                                  <span className="text-muted-foreground">Net cash</span>
+                                  <span className={`text-right font-medium ${v.netCashAfterSettlement < 0 ? 'text-destructive' : ''}`}>
+                                    {fmt(v.netCashAfterSettlement)}
+                                  </span>
+                                </>
+                              )}
+                              {typeof v.releasedCapital === 'number' && v.releasedCapital > 0 && (
+                                <>
+                                  <span className="text-muted-foreground">Released</span>
+                                  <span className="text-right font-medium">{fmt(v.releasedCapital)}</span>
+                                </>
+                              )}
+                            </>
+                          )}
+                        </div>
+                        {v.validationIssues && v.validationIssues.length > 0 && (
+                          <div className="text-[10px] text-amber-600 dark:text-amber-400 pt-1 border-t border-border/40">
+                            ⚠ {v.validationIssues.length} validation note{v.validationIssues.length > 1 ? 's' : ''} — verify with finance.
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
                   {/* Adjustment badges */}
                   <div className="flex flex-wrap gap-1 mb-3">
                     {scenario.adjustments.consolidatedLiabilityIds?.length > 0 && (
