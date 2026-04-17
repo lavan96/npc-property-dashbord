@@ -891,6 +891,8 @@ export function StrategyScenarioModeling({
       ...DEFAULT_STRATEGY,
       consolidatedLiabilities: new Set(),
       refinancedToIO: new Set(),
+      refinanceManualRepayments: new Map(),
+      refinanceIoPeriodYears: new Map(),
       equityReleasePropertyIds: new Set(),
       equityReleaseTargetLVRs: new Map(),
       equityReleaseDeploymentPercents: new Map(),
