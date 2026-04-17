@@ -204,6 +204,32 @@ serve(async (req) => {
       return jsonResponse({ success: true, record: data });
     }
 
+    // ── get_borrowing_capacity ──
+    // Read-only view of latest BC assessment + history. Gated by a virtual `borrowing_capacity` permission key
+    // (defaults to view=true if assignment exists and key is missing, mirroring `documents`).
+    if (operation === 'get_borrowing_capacity') {
+      const bcPerm = permissions.borrowing_capacity;
+      const canView = bcPerm ? !!bcPerm.view : true;
+      if (!canView) return jsonResponse({ error: 'No view permission for borrowing_capacity' }, 403);
+
+      const { data: assessments, error: bcErr } = await supabase
+        .from('borrowing_capacity_assessments')
+        .select('id, borrowing_capacity, serviceability_band, monthly_surplus, dti_ratio, stress_tested_capacity, gross_annual_income, shaded_annual_income, living_expenses_monthly, existing_commitments_monthly, interest_rate_used, buffer_rate, assessment_rate, loan_term_years, proposed_loan_amount, proposed_lvr, lmi_amount, net_purchase_capacity, recommendations, warnings, created_at')
+        .eq('client_id', client_id)
+        .order('created_at', { ascending: false })
+        .limit(12);
+      if (bcErr) throw bcErr;
+
+      const list = assessments || [];
+      await audit('view_borrowing_capacity', null, client_id, { count: list.length });
+      return jsonResponse({
+        success: true,
+        latest: list[0] || null,
+        history: list,
+        permission: { view: canView, edit: false, delete: false },
+      });
+    }
+
     // ── delete_record ──
     if (operation === 'delete_record') {
       const { table_key, record_id } = body;
