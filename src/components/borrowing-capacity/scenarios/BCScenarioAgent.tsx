@@ -345,7 +345,7 @@ export function BCScenarioAgent({
     } finally {
       setIsLoading(false);
     }
-  }, [input, isLoading, messages, baseInputs, baseResult, liabilities, properties]);
+  }, [input, isLoading, messages, baseInputs, baseResult, liabilities, properties, scenarios, incomeComponents, currentLenderProfileId, hemBenchmark]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -515,7 +515,23 @@ export function BCScenarioAgent({
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2 mb-2">
-                    <h4 className="text-sm font-semibold leading-tight">{scenario.name}</h4>
+                    <div className="min-w-0 flex-1">
+                      <h4 className="text-sm font-semibold leading-tight">{scenario.name}</h4>
+                      {scenario.executionRisk && (
+                        <Badge
+                          variant="outline"
+                          className={`mt-1 text-[9px] h-4 px-1.5 ${
+                            scenario.executionRisk === 'low'
+                              ? 'border-emerald-500/40 text-emerald-600 dark:text-emerald-400'
+                              : scenario.executionRisk === 'medium'
+                                ? 'border-amber-500/40 text-amber-600 dark:text-amber-400'
+                                : 'border-destructive/40 text-destructive'
+                          }`}
+                        >
+                          {scenario.executionRisk.toUpperCase()} RISK
+                        </Badge>
+                      )}
+                    </div>
                     <Badge
                       variant={scenario.reconciledImpact || scenario.engineValidation ? "default" : "outline"}
                       className="shrink-0 text-xs"
