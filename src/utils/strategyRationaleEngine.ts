@@ -272,6 +272,83 @@ function priorityForDelta(d: ScenarioDelta): number {
   }
 }
 
+// ─── Phase K5 — capital flow narrative ────────────────────────────────────
+
+const SINK_TYPE_LABEL: Record<CapitalSinkType, string> = {
+  liability_payoff: 'Liability payoff',
+  offset_deposit: 'Offset deposit',
+  rate_buydown: 'Rate buy-down',
+  debt_recycle: 'Debt recycling',
+  acquisition_deposit: 'Acquisition deposit',
+  holding_reserve: 'Cash buffer',
+  repayment_reduction: 'Repayment reduction',
+};
+
+function buildCapitalFlow(ledger: CapitalLedger | null | undefined): RationaleCapitalFlow | undefined {
+  if (!ledger) return undefined;
+  const pools = Object.values(ledger.pools || {});
+  if (pools.length === 0) return undefined;
+
+  const legs: RationaleCapitalFlowEntry[] = [];
+  let totalAvailable = 0;
+  let totalRouted = 0;
+  let monthlyServicingDelta = 0;
+  let debtBalanceDelta = 0;
+  let overcommitted = false;
+  let remainder = 0;
+
+  for (const pool of pools) {
+    totalAvailable += pool.totalIn || 0;
+    totalRouted += pool.totalOut || 0;
+    remainder += pool.remainder || 0;
+    if (pool.overcommitted) overcommitted = true;
+
+    // Source label is collapsed: the K1 ledger doesn't link sink→source directly,
+    // so we build a single source descriptor per pool and pair it to each sink.
+    const sourceLabel = pool.sources.length > 0
+      ? pool.sources.map(s => s.label).join(' + ')
+      : 'Pool';
+
+    for (const sink of pool.sinks) {
+      monthlyServicingDelta += sink.monthlyServicingDelta || 0;
+      debtBalanceDelta += sink.debtBalanceDelta || 0;
+      legs.push({
+        sourceLabel,
+        sinkLabel: sink.label,
+        sinkType: sink.sinkType,
+        amount: sink.amount,
+        monthlyServicingDelta: sink.monthlyServicingDelta || 0,
+        debtBalanceDelta: sink.debtBalanceDelta || 0,
+        note: sink.notes && sink.notes.length > 0 ? sink.notes.join(' · ') : undefined,
+      });
+    }
+
+    if ((pool.remainder || 0) > 1) {
+      legs.push({
+        sourceLabel,
+        sinkLabel: 'Acquisition deposit pool (residual)',
+        sinkType: 'unallocated',
+        amount: pool.remainder,
+        monthlyServicingDelta: 0,
+        debtBalanceDelta: 0,
+        note: 'Un-routed pool capital — defaults to the next-purchase deposit headroom.',
+      });
+    }
+  }
+
+  if (legs.length === 0 && totalAvailable === 0) return undefined;
+
+  return {
+    totalRouted,
+    totalAvailable,
+    monthlyServicingDelta,
+    debtBalanceDelta,
+    overcommitted,
+    remainder,
+    legs,
+  };
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────
 
 export function buildStrategyRationale(input: RationaleInput): RationaleReport {
