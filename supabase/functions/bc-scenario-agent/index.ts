@@ -491,17 +491,29 @@ ${(properties || []).map((p: any) => `- [${p.id}] ${p.address} (${p.property_typ
       aiPayload.tools = [SCENARIO_TOOL];
     }
 
-    const response = await fetch(
-      "https://ai.gateway.lovable.dev/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(aiPayload),
-      }
-    );
+    // Helper: call the AI gateway and return { assistantText, toolCallsRaw, status }.
+    const callAI = async (msgs: any[]) => {
+      const payload: any = {
+        model: MODEL_ID,
+        messages: msgs,
+        stream: false,
+      };
+      if (!clarificationMode) payload.tools = [SCENARIO_TOOL];
+      const resp = await fetch(
+        "https://ai.gateway.lovable.dev/v1/chat/completions",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        }
+      );
+      return resp;
+    };
+
+    const response = await callAI(aiMessages);
 
     if (!response.ok) {
       if (response.status === 429) {
@@ -530,11 +542,12 @@ ${(properties || []).map((p: any) => `- [${p.id}] ${p.address} (${p.property_typ
     const aiData = await response.json();
     const choice = aiData?.choices?.[0];
     const messageObj = choice?.message ?? {};
-    const assistantText: string = messageObj?.content ?? '';
+    let assistantText: string = messageObj?.content ?? '';
     const toolCalls = Array.isArray(messageObj?.tool_calls) ? messageObj.tool_calls : [];
 
     let validatedScenarios: AIScenario[] | null = null;
     let toolCallArgsString: string | undefined;
+    let revisionAttempts = 0;
 
     if (toolCalls.length > 0 && clientContext) {
       try {
@@ -542,8 +555,79 @@ ${(properties || []).map((p: any) => `- [${p.id}] ${p.address} (${p.property_typ
         const parsed = typeof rawArgs === 'string' ? JSON.parse(rawArgs) : rawArgs;
         if (parsed?.scenarios && Array.isArray(parsed.scenarios)) {
           validatedScenarios = validateAIScenarios(parsed.scenarios as AIScenario[], clientContext, inferredTargetPrice);
-          toolCallArgsString = JSON.stringify({ scenarios: validatedScenarios });
-          console.log('[bc-scenario-agent] Validated', validatedScenarios.length, 'scenarios via engine');
+          console.log('[bc-scenario-agent] Validated', validatedScenarios.length, 'scenarios via engine (pass 1)');
+
+          // ── Phase J2: validation feedback loop ──────────────────────
+          // If the engine flagged structural problems (no positive uplift,
+          // hard errors, or every scenario fails the target), re-prompt the
+          // model ONCE with explicit corrective guidance. This is the cheapest
+          // way to lift "first-shot" quality without adding manual cleanup.
+          const baseCapacity = Number(clientContext?.baseResult?.borrowingCapacity || 0);
+          const failures: string[] = [];
+          validatedScenarios.forEach((s, i) => {
+            const v = s.engineValidation;
+            if (!v) return;
+            const reasons: string[] = [];
+            if (v.capacityChange <= 0 && baseCapacity > 0) reasons.push(`zero/negative capacity uplift (${v.capacityChange})`);
+            const errIssues = (v.validationIssues || []).filter((x: any) => x.severity === 'error');
+            if (errIssues.length > 0) reasons.push(`${errIssues.length} engine error(s): ${errIssues.map((x: any) => x.message).slice(0, 2).join('; ')}`);
+            if (typeof v.targetPurchasePrice === 'number' && v.targetPurchasePrice > 0 && v.meetsTarget === false && (v.shortfallToTarget || 0) > v.targetPurchasePrice * 0.15) {
+              reasons.push(`misses target by ${Math.round(((v.shortfallToTarget || 0) / v.targetPurchasePrice) * 100)}% (>15% gap)`);
+            }
+            if (reasons.length > 0) failures.push(`Scenario ${i + 1} "${s.name}": ${reasons.join(' | ')}`);
+          });
+
+          // Trigger re-prompt only when ≥2 of 3 are weak (single weak scenario
+          // can be a deliberate "stretch" option — don't punish that).
+          const SHOULD_REVISE = failures.length >= 2 && !clarificationMode;
+
+          if (SHOULD_REVISE) {
+            revisionAttempts = 1;
+            console.log('[bc-scenario-agent] Triggering revision pass — failures:', failures);
+            const revisionInstruction = `\n\n## ⚠️ ENGINE FEEDBACK — REVISE\nYour previous tool call produced scenarios that did NOT pass engine validation:\n${failures.map(f => `- ${f}`).join('\n')}\n\nRegenerate exactly 3 scenarios that EACH:\n1. Produce a strictly POSITIVE \`capacityChange\` (the engine will recompute — be defensible).\n2. Avoid the listed engine errors.\n3. Either CLEAR the target purchase price or shrink the shortfall to <15% of the target. If neither is achievable for this client given current data, say so explicitly in \`reasoning\` and recommend a smaller target.\n4. Each scenario must address the binding constraint (see snapshot above) — do not propose dead levers.\n\nRespond ONLY by calling generate_scenarios with the corrected payload.`;
+            const revisedMessages = [
+              ...aiMessages,
+              { role: 'assistant', content: assistantText || '', tool_calls: toolCalls },
+              { role: 'tool', tool_call_id: toolCalls[0]?.id || 'call_0', content: JSON.stringify({ status: 'engine_validation_failed', failures }) },
+              { role: 'user', content: revisionInstruction },
+            ];
+            const revResp = await callAI(revisedMessages);
+            if (revResp.ok) {
+              const revData = await revResp.json();
+              const revMessage = revData?.choices?.[0]?.message ?? {};
+              const revToolCalls = Array.isArray(revMessage?.tool_calls) ? revMessage.tool_calls : [];
+              if (revToolCalls.length > 0) {
+                try {
+                  const rArgs = revToolCalls[0]?.function?.arguments ?? '{}';
+                  const rParsed = typeof rArgs === 'string' ? JSON.parse(rArgs) : rArgs;
+                  if (rParsed?.scenarios && Array.isArray(rParsed.scenarios)) {
+                    const revised = validateAIScenarios(rParsed.scenarios as AIScenario[], clientContext, inferredTargetPrice);
+                    // Pick the better set: revised wins if it has fewer failing scenarios
+                    const countFails = (set: AIScenario[]) => set.reduce((acc, s) => {
+                      const v = s.engineValidation;
+                      if (!v) return acc + 1;
+                      if (v.capacityChange <= 0 && baseCapacity > 0) return acc + 1;
+                      if ((v.validationIssues || []).some((x: any) => x.severity === 'error')) return acc + 1;
+                      return acc;
+                    }, 0);
+                    if (countFails(revised) <= countFails(validatedScenarios)) {
+                      validatedScenarios = revised;
+                      if (revMessage?.content) assistantText = revMessage.content;
+                      console.log('[bc-scenario-agent] Revision accepted (pass 2)');
+                    } else {
+                      console.log('[bc-scenario-agent] Revision rejected — keeping pass 1');
+                    }
+                  }
+                } catch (revErr) {
+                  console.error('[bc-scenario-agent] Failed to parse revision payload:', revErr);
+                }
+              }
+            } else {
+              console.warn('[bc-scenario-agent] Revision call non-ok:', revResp.status);
+            }
+          }
+
+          toolCallArgsString = JSON.stringify({ scenarios: validatedScenarios, revisionAttempts });
         }
       } catch (err) {
         console.error('[bc-scenario-agent] Failed to validate scenarios:', err);
