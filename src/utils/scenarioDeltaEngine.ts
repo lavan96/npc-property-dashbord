@@ -557,11 +557,19 @@ export function runScenario(
     if (e.dtiCapLimit !== undefined) total.dtiCapLimit = e.dtiCapLimit;
   }
 
+  // Phase E (M3): rescale HEM-derived expenses for the new income tier
+  const newGross = Math.max(0, context.baseInputs.grossAnnualIncome + total.incomeAdjustment);
+  const hemDelta = computeHemTierDelta(
+    context.baseInputs.grossAnnualIncome,
+    newGross,
+    context.baseInputs.monthlyLivingExpenses,
+  );
+
   const scenarioInputs: BorrowingCapacityInput = {
     ...context.baseInputs,
-    grossAnnualIncome: Math.max(0, context.baseInputs.grossAnnualIncome + total.incomeAdjustment),
+    grossAnnualIncome: newGross,
     shadedAnnualIncome: Math.max(0, context.baseInputs.shadedAnnualIncome + total.shadedIncomeAdjustment),
-    monthlyLivingExpenses: Math.max(0, context.baseInputs.monthlyLivingExpenses + total.expenseAdjustment),
+    monthlyLivingExpenses: Math.max(0, context.baseInputs.monthlyLivingExpenses + total.expenseAdjustment + hemDelta),
     monthlyCommitments: Math.max(0, context.baseInputs.monthlyCommitments + total.commitmentAdjustment),
     interestRate: Math.max(0.5, context.baseInputs.interestRate + total.rateAdjustment),
     loanTermYears: Math.max(5, context.baseInputs.loanTermYears + total.loanTermAdjustment),
