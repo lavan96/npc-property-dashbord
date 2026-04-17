@@ -289,9 +289,15 @@ export function BCScenarioAgent({
           if (parsed.scenarios && Array.isArray(parsed.scenarios)) {
             setScenarios(parsed.scenarios);
             setAppliedIndex(null);
-            // Add a summary message if the assistant didn't say anything
-            if (!assistantText.trim()) {
-              const summaryText = `I've generated **3 scenarios** based on your requirements. Review them below and click **"Apply"** on any scenario to load it into the strategy modelling section.`;
+            // Phase H: only emit the generic fallback when the model returned
+            // ZERO prose AND the user message wasn't a clarifying question.
+            // Otherwise the assistant's own answer (or the server's
+            // clarification-mode prose) is preserved.
+            const lower = trimmed.toLowerCase();
+            const looksLikeClarification = lower.includes('?') &&
+              !/(generate|create|build|run|propose|recommend|show me|give me)/.test(lower);
+            if (!assistantText.trim() && !looksLikeClarification) {
+              const summaryText = `I've generated **3 scenarios** based on your requirements. Each card below shows the **engine-validated** capacity and (when a target price was detected) whether the strategy actually clears the budget. Click **"Apply"** to load it into the strategy modelling section.`;
               updateAssistant(summaryText);
             }
           }
