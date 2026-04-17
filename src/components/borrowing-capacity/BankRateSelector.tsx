@@ -43,15 +43,23 @@ export function BankRateSelector({
 
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
 
-  // When lender changes, auto-select the best rate
+  // Reset product selection when the lender changes so the auto-pick effect
+  // can fire exactly once for the new lender's rates.
   useEffect(() => {
-    if (selectedLenderRates && selectedLenderRates.length > 0) {
-      // Find the best matching rate
-      const bestRate = selectedLenderRates[0]; // Already sorted by rate
-      setSelectedProductId(bestRate.productId);
-      onChange(Math.round(bestRate.rate * 100) / 100, bestRate.lenderName);
-    }
-  }, [selectedLenderRates, onChange]);
+    setSelectedProductId(null);
+  }, [selectedLender]);
+
+  // Auto-select the best rate ONLY when no product is selected yet for the
+  // current lender. This prevents the effect from clobbering a manual choice
+  // every time `selectedLenderRates` re-references or `onChange` re-renders.
+  useEffect(() => {
+    if (!selectedLenderRates || selectedLenderRates.length === 0) return;
+    if (selectedProductId) return; // user (or prior auto-pick) already chose
+    const bestRate = selectedLenderRates[0]; // sorted by rate ascending
+    setSelectedProductId(bestRate.productId);
+    onChange(Math.round(bestRate.rate * 100) / 100, bestRate.lenderName);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedLenderRates, selectedProductId]);
 
   // Handle manual product selection
   const handleProductChange = (productId: string) => {
