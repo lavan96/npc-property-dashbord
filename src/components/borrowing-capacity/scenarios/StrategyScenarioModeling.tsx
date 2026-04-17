@@ -91,6 +91,8 @@ interface StrategyState {
   equityReleasePropertyIds: Set<string>;
   equityReleaseTargetLVRs: Map<string, number>; // per-property target LVR
   rateAdjustment: number;
+  /** Phase F1 — per-property contracted-rate overrides (propertyId → new rate %) */
+  propertyRateOverrides: Map<string, number>;
   additional: AdditionalStrategyState;
 }
 
@@ -105,6 +107,8 @@ interface AcquisitionState {
   isForeignBuyer: boolean;
   lmiMode: 'none' | 'display_deduction' | 'debt_capitalised';
   cashOnHand: number;
+  /** Phase F2 — target purchase price the strategy is solving for (0 = no target). */
+  targetPurchasePrice: number;
 }
 
 const DEFAULT_EQUITY_LVR = 0.80;
@@ -116,6 +120,7 @@ const DEFAULT_STRATEGY: StrategyState = {
   equityReleasePropertyIds: new Set(),
   equityReleaseTargetLVRs: new Map(),
   rateAdjustment: 0,
+  propertyRateOverrides: new Map(),
   additional: { ...DEFAULT_ADDITIONAL_STRATEGY },
 };
 
@@ -128,6 +133,7 @@ const DEFAULT_ACQUISITION: AcquisitionState = {
   isForeignBuyer: false,
   lmiMode: 'display_deduction',
   cashOnHand: 0,
+  targetPurchasePrice: 0,
 };
 
 // ── Scenario Preset Types ──────────────────────────────
