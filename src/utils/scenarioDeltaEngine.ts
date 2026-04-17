@@ -93,15 +93,19 @@ export interface ScenarioLiability {
 // ============================================
 
 export interface DeltaEffect {
-  incomeAdjustment: number;       // annual income delta (gross)
-  shadedIncomeAdjustment: number; // annual shaded income delta
-  expenseAdjustment: number;      // monthly expense delta
-  commitmentAdjustment: number;   // monthly commitment delta
-  rateAdjustment: number;         // interest rate delta (percentage points)
-  loanTermAdjustment: number;     // loan term delta (years)
-  debtBalanceAdjustment: number;  // total debt balance delta (DTI)
-  dtiCapEnabled?: boolean;        // explicit toggle from delta
-  dtiCapLimit?: number;           // explicit cap value from delta
+  incomeAdjustment: number;
+  shadedIncomeAdjustment: number;
+  expenseAdjustment: number;
+  commitmentAdjustment: number;
+  rateAdjustment: number;
+  loanTermAdjustment: number;
+  debtBalanceAdjustment: number;
+  dtiCapEnabled?: boolean;
+  dtiCapLimit?: number;
+  /** Phase C: cash freed from equity-release deltas (post-LMI on the release loan) */
+  releasedCapital: number;
+  /** Phase C: notes from equity-release / acquisition levers (audit trail) */
+  acquisitionNotes: string[];
   description: string;
 }
 
@@ -114,6 +118,8 @@ function emptyEffect(description = ''): DeltaEffect {
     rateAdjustment: 0,
     loanTermAdjustment: 0,
     debtBalanceAdjustment: 0,
+    releasedCapital: 0,
+    acquisitionNotes: [],
     description,
   };
 }
