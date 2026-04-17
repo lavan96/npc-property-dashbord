@@ -1940,6 +1940,50 @@ export function StrategyScenarioModeling({
         baseGrossIncome={baseInputs.grossAnnualIncome}
       />
 
+      {/* ═══ PHASE K2 — Capital Flow Canvas ═══ */}
+      {(() => {
+        const ledgerPool = capitalLedger?.pools?.['pool-default'];
+        const ledgerSources = ledgerPool?.sources ?? [];
+        // Prefer ledger truth (post-engine). Fall back to deployed equity + cash on hand for pre-allocation rendering.
+        const fallbackEquity = totalAccessibleEquity || 0;
+        const fallbackCash = acquisition.enabled ? (acquisition.cashOnHand || 0) : 0;
+        const pool = ledgerSources.length > 0
+          ? {
+              poolTotal: ledgerPool!.totalIn,
+              sources: ledgerSources.map(s => ({ label: s.label, amount: s.amount, type: s.sourceType })),
+            }
+          : {
+              poolTotal: fallbackEquity + fallbackCash,
+              sources: [
+                ...(fallbackEquity > 0 ? [{ label: 'Equity release (deployed)', amount: fallbackEquity, type: 'equity_release' }] : []),
+                ...(fallbackCash > 0 ? [{ label: 'Cash on hand', amount: fallbackCash, type: 'cash_on_hand' }] : []),
+              ],
+            };
+        const flowTargets = {
+          liabilities: liabilities.map(l => ({
+            id: l.id,
+            label: l.label,
+            balance: l.balance,
+            monthlyServicing: l.monthlyServicing,
+          })),
+          properties: properties.map(p => ({
+            id: p.id,
+            address: p.address,
+            loanRemaining: p.loan_remaining,
+            interestRate: p.interest_rate,
+          })),
+        };
+        return (
+          <CapitalFlowCanvas
+            pool={pool}
+            targets={flowTargets}
+            allocations={capitalAllocations}
+            onAllocationsChange={setCapitalAllocations}
+            ledger={capitalLedger}
+          />
+        );
+      })()}
+
       {/* ═══ Quick Scenario Presets ═══ */}
       <div className="space-y-2">
         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Quick Presets</p>
