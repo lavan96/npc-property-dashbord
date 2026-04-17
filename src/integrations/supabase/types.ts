@@ -6568,6 +6568,379 @@ export type Database = {
           },
         ]
       }
+      lender_comparison_sheets: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          created_by: string | null
+          deal_id: string | null
+          filters: Json | null
+          id: string
+          lender_ids: string[]
+          name: string
+          notes: string | null
+          pdf_storage_path: string | null
+          rate_snapshot: Json
+          shared_with_client: boolean
+          updated_at: string
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deal_id?: string | null
+          filters?: Json | null
+          id?: string
+          lender_ids?: string[]
+          name: string
+          notes?: string | null
+          pdf_storage_path?: string | null
+          rate_snapshot?: Json
+          shared_with_client?: boolean
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deal_id?: string | null
+          filters?: Json | null
+          id?: string
+          lender_ids?: string[]
+          name?: string
+          notes?: string | null
+          pdf_storage_path?: string | null
+          rate_snapshot?: Json
+          shared_with_client?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lender_comparison_sheets_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lender_comparison_sheets_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "client_deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lender_favourites: {
+        Row: {
+          created_at: string
+          display_order: number
+          id: string
+          lender_id: string
+          lender_name: string
+          notes: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          lender_id: string
+          lender_name: string
+          notes?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          lender_id?: string
+          lender_name?: string
+          notes?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      lender_rate_alerts: {
+        Row: {
+          created_at: string
+          id: string
+          is_enabled: boolean
+          last_triggered_at: string | null
+          last_triggered_rate: number | null
+          lender_id: string
+          lender_name: string
+          loan_purpose:
+            | Database["public"]["Enums"]["lender_loan_purpose"]
+            | null
+          lvr_max: number | null
+          repayment_type:
+            | Database["public"]["Enums"]["lender_repayment_type"]
+            | null
+          threshold_rate: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          last_triggered_at?: string | null
+          last_triggered_rate?: number | null
+          lender_id: string
+          lender_name: string
+          loan_purpose?:
+            | Database["public"]["Enums"]["lender_loan_purpose"]
+            | null
+          lvr_max?: number | null
+          repayment_type?:
+            | Database["public"]["Enums"]["lender_repayment_type"]
+            | null
+          threshold_rate: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          last_triggered_at?: string | null
+          last_triggered_rate?: number | null
+          lender_id?: string
+          lender_name?: string
+          loan_purpose?:
+            | Database["public"]["Enums"]["lender_loan_purpose"]
+            | null
+          lvr_max?: number | null
+          repayment_type?:
+            | Database["public"]["Enums"]["lender_repayment_type"]
+            | null
+          threshold_rate?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      lender_submission_documents: {
+        Row: {
+          created_at: string
+          display_order: number
+          doc_name: string
+          doc_type: string
+          file_size: number | null
+          id: string
+          mime_type: string | null
+          notes: string | null
+          status: Database["public"]["Enums"]["lender_doc_status"]
+          storage_path: string | null
+          submission_id: string
+          updated_at: string
+          uploaded_at: string | null
+          uploaded_by: string | null
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          doc_name: string
+          doc_type: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          notes?: string | null
+          status?: Database["public"]["Enums"]["lender_doc_status"]
+          storage_path?: string | null
+          submission_id: string
+          updated_at?: string
+          uploaded_at?: string | null
+          uploaded_by?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          doc_name?: string
+          doc_type?: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          notes?: string | null
+          status?: Database["public"]["Enums"]["lender_doc_status"]
+          storage_path?: string | null
+          submission_id?: string
+          updated_at?: string
+          uploaded_at?: string | null
+          uploaded_by?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lender_submission_documents_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "lender_submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lender_submission_timeline: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          event_label: string
+          event_type: string
+          id: string
+          payload: Json | null
+          submission_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          event_label: string
+          event_type: string
+          id?: string
+          payload?: Json | null
+          submission_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          event_label?: string
+          event_type?: string
+          id?: string
+          payload?: Json | null
+          submission_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lender_submission_timeline_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "lender_submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lender_submissions: {
+        Row: {
+          approved_at: string | null
+          assessed_at: string | null
+          assigned_broker_id: string | null
+          client_id: string
+          comparison_rate: number | null
+          created_at: string
+          created_by: string | null
+          deal_id: string | null
+          decline_reason: string | null
+          external_reference: string | null
+          ghl_pipeline_stage_id: string | null
+          id: string
+          interest_rate: number | null
+          lender_id: string
+          lender_name: string
+          loan_amount: number | null
+          loan_purpose:
+            | Database["public"]["Enums"]["lender_loan_purpose"]
+            | null
+          loan_term_years: number | null
+          lvr: number | null
+          notes: string | null
+          product_name: string | null
+          repayment_type:
+            | Database["public"]["Enums"]["lender_repayment_type"]
+            | null
+          settled_at: string | null
+          status: Database["public"]["Enums"]["lender_submission_status"]
+          submitted_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          assessed_at?: string | null
+          assigned_broker_id?: string | null
+          client_id: string
+          comparison_rate?: number | null
+          created_at?: string
+          created_by?: string | null
+          deal_id?: string | null
+          decline_reason?: string | null
+          external_reference?: string | null
+          ghl_pipeline_stage_id?: string | null
+          id?: string
+          interest_rate?: number | null
+          lender_id: string
+          lender_name: string
+          loan_amount?: number | null
+          loan_purpose?:
+            | Database["public"]["Enums"]["lender_loan_purpose"]
+            | null
+          loan_term_years?: number | null
+          lvr?: number | null
+          notes?: string | null
+          product_name?: string | null
+          repayment_type?:
+            | Database["public"]["Enums"]["lender_repayment_type"]
+            | null
+          settled_at?: string | null
+          status?: Database["public"]["Enums"]["lender_submission_status"]
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          assessed_at?: string | null
+          assigned_broker_id?: string | null
+          client_id?: string
+          comparison_rate?: number | null
+          created_at?: string
+          created_by?: string | null
+          deal_id?: string | null
+          decline_reason?: string | null
+          external_reference?: string | null
+          ghl_pipeline_stage_id?: string | null
+          id?: string
+          interest_rate?: number | null
+          lender_id?: string
+          lender_name?: string
+          loan_amount?: number | null
+          loan_purpose?:
+            | Database["public"]["Enums"]["lender_loan_purpose"]
+            | null
+          loan_term_years?: number | null
+          lvr?: number | null
+          notes?: string | null
+          product_name?: string | null
+          repayment_type?:
+            | Database["public"]["Enums"]["lender_repayment_type"]
+            | null
+          settled_at?: string | null
+          status?: Database["public"]["Enums"]["lender_submission_status"]
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lender_submissions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lender_submissions_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "client_deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       marketing_intelligence_reports: {
         Row: {
           audience_segment: string
@@ -8783,6 +9156,19 @@ export type Database = {
         | "pre_budget"
         | "post_budget_second_hand"
         | "post_budget_brand_new"
+      lender_doc_status: "required" | "received" | "verified" | "waived"
+      lender_loan_purpose: "OWNER_OCCUPIED" | "INVESTMENT"
+      lender_repayment_type: "PRINCIPAL_AND_INTEREST" | "INTEREST_ONLY"
+      lender_submission_status:
+        | "draft"
+        | "pre_assessment"
+        | "submitted"
+        | "conditional_approval"
+        | "unconditional_approval"
+        | "loan_docs_issued"
+        | "settled"
+        | "declined"
+        | "withdrawn"
       portal_report_request_status:
         | "pending"
         | "in_progress"
@@ -9091,6 +9477,20 @@ export const Constants = {
         "pre_budget",
         "post_budget_second_hand",
         "post_budget_brand_new",
+      ],
+      lender_doc_status: ["required", "received", "verified", "waived"],
+      lender_loan_purpose: ["OWNER_OCCUPIED", "INVESTMENT"],
+      lender_repayment_type: ["PRINCIPAL_AND_INTEREST", "INTEREST_ONLY"],
+      lender_submission_status: [
+        "draft",
+        "pre_assessment",
+        "submitted",
+        "conditional_approval",
+        "unconditional_approval",
+        "loan_docs_issued",
+        "settled",
+        "declined",
+        "withdrawn",
       ],
       portal_report_request_status: [
         "pending",
