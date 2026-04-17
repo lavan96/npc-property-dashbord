@@ -15,6 +15,7 @@ import { useTheme } from 'next-themes';
 import { ComparisonScoreMigration } from '@/components/admin/ComparisonScoreMigration';
 import { ProfileCredentials } from '@/components/settings/ProfileCredentials';
 import { FinanceAgentContacts } from '@/components/settings/FinanceAgentContacts';
+import { PushNotificationToggle } from '@/components/settings/PushNotificationToggle';
 import { useAuth } from '@/hooks/useAuth';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
@@ -219,6 +220,8 @@ export default function Settings() {
       {/* Profile & Credentials */}
       <ProfileCredentials />
 
+      {/* Push Notifications */}
+      <PushNotificationToggle />
 
       {/* Personal Mailbox Settings */}
       <Card>
