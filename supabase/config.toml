@@ -356,6 +356,9 @@ verify_jwt = true
 [functions.calculate-borrowing-capacity]
 verify_jwt = true
 
+[functions.manage-bc-scenarios]
+verify_jwt = true
+
 [functions.cdr-lending-rates-service]
 verify_jwt = true
 request_timeout = 120
