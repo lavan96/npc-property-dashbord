@@ -907,15 +907,42 @@ export function computeAcquisitionCapacity(
 // CORE ENGINE
 // ============================================
 
+/** Phase G1 — Order-aware delta sort. `property_value_change` deltas must
+ *  resolve BEFORE any other property-bound delta in the same run, since they
+ *  mutate the resolved property record (currentValue) that downstream
+ *  equity_release / portfolio_lvr_release / property_refinance / property_sell
+ *  deltas read from. Stable for everything else. */
+function orderDeltas(deltas: ScenarioDelta[]): ScenarioDelta[] {
+  const valueChanges: ScenarioDelta[] = [];
+  const others: ScenarioDelta[] = [];
+  for (const d of deltas) {
+    if (d.type === 'property_value_change') valueChanges.push(d);
+    else others.push(d);
+  }
+  return [...valueChanges, ...others];
+}
+
+/** Phase G1 — Deep-clone the property records so in-place mutations from
+ *  `property_value_change` are scenario-scoped and never leak back into the
+ *  caller's portfolio. Liabilities & acquisition pass through untouched. */
+function cloneContextForRun(context: ScenarioContext): ScenarioContext {
+  return {
+    ...context,
+    properties: (context.properties || []).map(p => ({ ...p })),
+  };
+}
+
 export function runScenario(
   scenarioName: string,
   deltas: ScenarioDelta[],
   context: ScenarioContext,
 ): ScenarioCapacityResult {
   const total = emptyEffect(scenarioName);
+  const ctx = cloneContextForRun(context);
+  const ordered = orderDeltas(deltas);
 
-  for (const d of deltas) {
-    const e = applyDelta(d, context);
+  for (const d of ordered) {
+    const e = applyDelta(d, ctx);
     total.incomeAdjustment += e.incomeAdjustment;
     total.shadedIncomeAdjustment += e.shadedIncomeAdjustment;
     total.expenseAdjustment += e.expenseAdjustment;
@@ -930,34 +957,34 @@ export function runScenario(
   }
 
   // Phase E (M3): rescale HEM-derived expenses for the new income tier
-  const newGross = Math.max(0, context.baseInputs.grossAnnualIncome + total.incomeAdjustment);
+  const newGross = Math.max(0, ctx.baseInputs.grossAnnualIncome + total.incomeAdjustment);
   const hemDelta = computeHemTierDelta(
-    context.baseInputs.grossAnnualIncome,
+    ctx.baseInputs.grossAnnualIncome,
     newGross,
-    context.baseInputs.monthlyLivingExpenses,
+    ctx.baseInputs.monthlyLivingExpenses,
   );
 
   const scenarioInputs: BorrowingCapacityInput = {
-    ...context.baseInputs,
+    ...ctx.baseInputs,
     grossAnnualIncome: newGross,
-    shadedAnnualIncome: Math.max(0, context.baseInputs.shadedAnnualIncome + total.shadedIncomeAdjustment),
-    monthlyLivingExpenses: Math.max(0, context.baseInputs.monthlyLivingExpenses + total.expenseAdjustment + hemDelta),
-    monthlyCommitments: Math.max(0, context.baseInputs.monthlyCommitments + total.commitmentAdjustment),
-    interestRate: Math.max(0.5, context.baseInputs.interestRate + total.rateAdjustment),
-    loanTermYears: Math.max(5, context.baseInputs.loanTermYears + total.loanTermAdjustment),
-    totalDebtBalances: Math.max(0, (context.baseInputs.totalDebtBalances || 0) + total.debtBalanceAdjustment),
-    dtiCapEnabled: total.dtiCapEnabled ?? context.baseInputs.dtiCapEnabled,
-    dtiCapLimit: total.dtiCapLimit ?? context.baseInputs.dtiCapLimit,
+    shadedAnnualIncome: Math.max(0, ctx.baseInputs.shadedAnnualIncome + total.shadedIncomeAdjustment),
+    monthlyLivingExpenses: Math.max(0, ctx.baseInputs.monthlyLivingExpenses + total.expenseAdjustment + hemDelta),
+    monthlyCommitments: Math.max(0, ctx.baseInputs.monthlyCommitments + total.commitmentAdjustment),
+    interestRate: Math.max(0.5, ctx.baseInputs.interestRate + total.rateAdjustment),
+    loanTermYears: Math.max(5, ctx.baseInputs.loanTermYears + total.loanTermAdjustment),
+    totalDebtBalances: Math.max(0, (ctx.baseInputs.totalDebtBalances || 0) + total.debtBalanceAdjustment),
+    dtiCapEnabled: total.dtiCapEnabled ?? ctx.baseInputs.dtiCapEnabled,
+    dtiCapLimit: total.dtiCapLimit ?? ctx.baseInputs.dtiCapLimit,
   };
 
   const scenarioResult = calculateBorrowingCapacity(scenarioInputs);
   const capacityChange = buildScenarioChange(
-    context.baseResult.borrowingCapacity,
+    ctx.baseResult.borrowingCapacity,
     scenarioResult.borrowingCapacity,
   );
 
-  const acquisitionCapacity = context.acquisition
-    ? computeAcquisitionCapacity(scenarioResult.borrowingCapacity, context, total)
+  const acquisitionCapacity = ctx.acquisition
+    ? computeAcquisitionCapacity(scenarioResult.borrowingCapacity, ctx, total)
     : null;
 
   return {
@@ -992,10 +1019,22 @@ export function runScenarioWithInputs(
   const propertyIds = new Set((context.properties || []).map(p => p.id));
   const liabilityIds = new Set((context.liabilities || []).map(l => l.id));
   const safeDeltas = deltas.filter(d => {
-    if (d.type === 'property_sell' || d.type === 'property_refinance' || d.type === 'equity_release') return propertyIds.has(d.id);
+    if (
+      d.type === 'property_sell' ||
+      d.type === 'property_refinance' ||
+      d.type === 'equity_release' ||
+      d.type === 'property_rate_change' ||
+      d.type === 'property_value_change'
+    ) return propertyIds.has(d.id);
     if (d.type === 'liability_payoff') return liabilityIds.has(d.id);
+    // portfolio_lvr_release filters its own pool inside applyDelta — let it through
     return true;
   });
+
+  // Phase G1 — clone context + sort property_value_change FIRST so downstream
+  // property-bound deltas see the new valuations
+  const ctx = cloneContextForRun(context);
+  const orderedSafe = orderDeltas(safeDeltas);
 
   const total = emptyEffect(scenarioName);
   for (const d of safeDeltas) {
