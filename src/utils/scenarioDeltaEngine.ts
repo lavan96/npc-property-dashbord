@@ -212,12 +212,21 @@ export function validateDeltas(
       case 'property_sell':
       case 'property_refinance':
       case 'equity_release':
+      case 'property_rate_change':
         if (!propertyIds.has(d.id)) {
           issues.push({
             deltaId: d.id,
             deltaType: d.type,
             severity: 'warning',
             message: `Property "${d.id}" not found in client portfolio — delta ignored`,
+          });
+        }
+        if (d.type === 'property_rate_change' && (d.value < 0.5 || d.value > 25)) {
+          issues.push({
+            deltaId: d.id,
+            deltaType: d.type,
+            severity: 'warning',
+            message: `Property rate ${d.value}% outside plausible 0.5–25% band`,
           });
         }
         break;
@@ -329,11 +338,54 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
       const property = context.properties?.find(p => p.id === delta.id);
       if (property && property.loanRemaining > 0) {
         const currentRepayment = property.loanRepaymentAmount || property.monthlyRepayment || 0;
-        const ioMonthlyRate = context.baseInputs.interestRate / 100 / 12;
+        // Phase F1 — use the property's own contracted rate (fallback to global)
+        const propertyRatePct = property.interestRate ?? context.baseInputs.interestRate;
+        const ioMonthlyRate = propertyRatePct / 100 / 12;
         const ioRepayment = property.loanRemaining * ioMonthlyRate;
         const saving = Math.max(0, currentRepayment - ioRepayment);
         if (saving > 0) effect.commitmentAdjustment = -saving;
+        effect.acquisitionNotes.push(
+          `Refinance ${property.address?.slice(0, 30) || 'property'} P&I→IO @ ${propertyRatePct.toFixed(2)}%: monthly servicing −$${Math.round(saving).toLocaleString()}`
+        );
         effect.description = `Refinance ${property.address?.slice(0, 30) || 'property'} to IO`;
+      }
+      break;
+    }
+
+    case 'property_rate_change': {
+      // Phase F1 — repricing a single property (e.g. negotiated refinance to a
+      // lower rate). Recomputes that property's monthly servicing using the
+      // NEW rate, keeping the existing repayment structure (P&I vs IO) intact.
+      const property = context.properties?.find(p => p.id === delta.id);
+      if (property && property.loanRemaining > 0 && Number.isFinite(delta.value) && delta.value > 0) {
+        const currentRepayment = property.loanRepaymentAmount || property.monthlyRepayment || 0;
+        const oldRatePct = property.interestRate ?? context.baseInputs.interestRate;
+        const newRatePct = delta.value;
+
+        // Infer current structure from the relationship between repayment & loan.
+        // If repayment looks like IO at the current rate, keep IO at the new rate.
+        // Otherwise treat as P&I over the policy-default term.
+        const monthlyOldIO = property.loanRemaining * (oldRatePct / 100 / 12);
+        const isIo = currentRepayment > 0 && Math.abs(currentRepayment - monthlyOldIO) / Math.max(1, monthlyOldIO) < 0.05;
+
+        let newRepayment: number;
+        if (isIo) {
+          newRepayment = property.loanRemaining * (newRatePct / 100 / 12);
+        } else {
+          const termYears = context.baseInputs.loanTermYears || 30;
+          const periods = termYears * 12;
+          const monthlyRate = newRatePct / 100 / 12;
+          newRepayment = monthlyRate > 0
+            ? property.loanRemaining * (monthlyRate * Math.pow(1 + monthlyRate, periods)) / (Math.pow(1 + monthlyRate, periods) - 1)
+            : property.loanRemaining / periods;
+        }
+
+        const delta$ = newRepayment - currentRepayment;
+        effect.commitmentAdjustment = delta$;
+        effect.acquisitionNotes.push(
+          `Reprice ${property.address?.slice(0, 30) || 'property'}: ${oldRatePct.toFixed(2)}% → ${newRatePct.toFixed(2)}% ${isIo ? '(IO)' : '(P&I)'}, monthly servicing ${delta$ >= 0 ? '+' : '−'}$${Math.round(Math.abs(delta$)).toLocaleString()}`
+        );
+        effect.description = `Reprice ${property.address?.slice(0, 30) || 'property'} to ${newRatePct.toFixed(2)}%`;
       }
       break;
     }
