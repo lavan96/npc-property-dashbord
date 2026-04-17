@@ -17,7 +17,7 @@ import { toast } from 'sonner';
 import {
   Loader2, Search, MoreHorizontal, Mail, Shield, RefreshCw,
   Ban, CheckCircle2, History, Settings, Users, Copy,
-  BarChart3, FileSpreadsheet, FileText,
+  BarChart3, FileSpreadsheet, FileText, DollarSign,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
