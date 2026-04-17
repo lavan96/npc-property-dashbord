@@ -30,18 +30,39 @@ import {
 import {
   type ScenarioDelta,
   type ScenarioCapacityResult,
+  type AcquisitionCapacity,
   buildScenarioChange,
 } from './borrowingCapacityTypes';
+import { estimateLMI, type LmiMode } from './lmiCalculations';
+import {
+  calculateStampDuty,
+  estimateOtherAcquisitionCosts,
+  type AustralianState,
+  type PurchaseIntent,
+  type PropertyCategory,
+} from './stampDutyCalculator';
 
 // ============================================
 // CONTEXT TYPES
 // ============================================
+
+export interface AcquisitionContext {
+  state?: AustralianState;
+  intent?: PurchaseIntent;
+  category?: PropertyCategory;
+  isFirstHomeBuyer?: boolean;
+  isForeignBuyer?: boolean;
+  lmiMode?: LmiMode;
+  /** Cash on hand brought to settlement (in addition to released equity) */
+  cashOnHand?: number;
+}
 
 export interface ScenarioContext {
   baseInputs: BorrowingCapacityInput;
   baseResult: BorrowingCapacityResult;
   properties?: ScenarioProperty[];
   liabilities?: ScenarioLiability[];
+  acquisition?: AcquisitionContext;
 }
 
 export interface ScenarioProperty {
@@ -72,15 +93,19 @@ export interface ScenarioLiability {
 // ============================================
 
 export interface DeltaEffect {
-  incomeAdjustment: number;       // annual income delta (gross)
-  shadedIncomeAdjustment: number; // annual shaded income delta
-  expenseAdjustment: number;      // monthly expense delta
-  commitmentAdjustment: number;   // monthly commitment delta
-  rateAdjustment: number;         // interest rate delta (percentage points)
-  loanTermAdjustment: number;     // loan term delta (years)
-  debtBalanceAdjustment: number;  // total debt balance delta (DTI)
-  dtiCapEnabled?: boolean;        // explicit toggle from delta
-  dtiCapLimit?: number;           // explicit cap value from delta
+  incomeAdjustment: number;
+  shadedIncomeAdjustment: number;
+  expenseAdjustment: number;
+  commitmentAdjustment: number;
+  rateAdjustment: number;
+  loanTermAdjustment: number;
+  debtBalanceAdjustment: number;
+  dtiCapEnabled?: boolean;
+  dtiCapLimit?: number;
+  /** Phase C: cash freed from equity-release deltas (post-LMI on the release loan) */
+  releasedCapital: number;
+  /** Phase C: notes from equity-release / acquisition levers (audit trail) */
+  acquisitionNotes: string[];
   description: string;
 }
 
@@ -93,6 +118,8 @@ function emptyEffect(description = ''): DeltaEffect {
     rateAdjustment: 0,
     loanTermAdjustment: 0,
     debtBalanceAdjustment: 0,
+    releasedCapital: 0,
+    acquisitionNotes: [],
     description,
   };
 }
@@ -290,17 +317,182 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
     }
 
     case 'equity_release': {
-      // Phase C will fold released capital into acquisition capacity.
-      // For Phase B we record the lever as informational so the audit trail
-      // shows it without double-counting in serviceability surplus.
+      // Phase C: Equity-release lever now produces real cash + servicing impact.
+      //
+      // Inputs interpreted from the delta:
+      //   value: target LVR as a ratio (0.80) OR % (80) OR absolute release amount
+      //   meta.targetLVR: optional explicit target LVR (0–1 ratio)
+      //   meta.amount: optional explicit cash amount to release (overrides LVR math)
+      //   unit: 'ratio' = LVR ratio, 'percent' = LVR %, 'absolute' = direct $ amount
+      //
+      // Output:
+      //   - releasedCapital ≈ new equity loan − LMI on that loan
+      //   - commitmentAdjustment += monthly IO repayment on the new equity loan
+      //   - debtBalanceAdjustment += new equity loan principal
       const property = context.properties?.find(p => p.id === delta.id);
-      if (property) {
-        effect.description = `Release equity from ${property.address?.slice(0, 30) || 'property'}`;
+      if (!property || property.currentValue <= 0) break;
+
+      const fhb = !!context.acquisition?.isFirstHomeBuyer;
+      const ratePct = context.baseInputs.interestRate || 6.5;
+      const monthlyRate = (ratePct / 100) / 12;
+
+      // Resolve the new max loan size on this property
+      let newLoan = 0;
+      if (delta.unit === 'absolute' && delta.value > 0) {
+        newLoan = property.loanRemaining + delta.value;
+      } else {
+        const targetLVR = delta.unit === 'percent'
+          ? delta.value / 100
+          : (delta.meta?.targetLVR as number | undefined) ?? delta.value;
+        const safeTarget = Math.max(0, Math.min(0.95, targetLVR || 0.8));
+        newLoan = property.currentValue * safeTarget;
       }
+      const grossRelease = Math.max(0, newLoan - property.loanRemaining);
+      if (grossRelease <= 0) {
+        effect.acquisitionNotes.push(`Equity release on ${property.address?.slice(0, 30) || 'property'}: no equity available at requested LVR`);
+        break;
+      }
+
+      // LMI on the equity-release loan if LVR > 80%
+      const newLvr = (newLoan / property.currentValue) * 100;
+      let lmiOnRelease = 0;
+      if (newLvr > 80) {
+        const est = estimateLMI({
+          propertyValue: property.currentValue,
+          depositAmount: property.currentValue - newLoan,
+          loanAmount: newLoan,
+          isFirstHomeBuyer: fhb,
+        });
+        lmiOnRelease = est.lmiAmount;
+      }
+
+      // Net usable cash (after LMI on the release loan)
+      const netRelease = Math.max(0, grossRelease - lmiOnRelease);
+
+      // Servicing impact: assume IO equity loan (worst-case for serviceability)
+      const ioRepayment = newLoan * monthlyRate - property.loanRemaining * monthlyRate;
+      effect.commitmentAdjustment = Math.max(0, ioRepayment);
+      effect.debtBalanceAdjustment = grossRelease;
+
+      effect.releasedCapital = netRelease;
+      effect.acquisitionNotes.push(
+        `Equity release on ${property.address?.slice(0, 30) || 'property'}: gross $${Math.round(grossRelease).toLocaleString()} − LMI $${Math.round(lmiOnRelease).toLocaleString()} = $${Math.round(netRelease).toLocaleString()} usable. New LVR ${newLvr.toFixed(1)}%.`
+      );
+      effect.description = `Release equity from ${property.address?.slice(0, 30) || 'property'}`;
       break;
     }
   }
   return effect;
+}
+
+// ============================================
+// ACQUISITION CAPACITY HELPER (Phase C)
+// ============================================
+
+/** Iteratively solve for the maximum purchase price given:
+ *   - serviceable loan capacity (post-deltas)
+ *   - cash available (released equity + cash on hand)
+ *   - LMI mode (none / display_deduction / debt_capitalised)
+ *   - state stamp duty + acquisition costs
+ *
+ *  In `display_deduction` mode the loan stays at `borrowingCapacity` and LMI
+ *  is netted from the cash side. In `debt_capitalised` mode the loan absorbs
+ *  the LMI premium, so available principal for the property = capacity − LMI.
+ */
+export function computeAcquisitionCapacity(
+  borrowingCapacity: number,
+  context: ScenarioContext,
+  effect: DeltaEffect,
+): AcquisitionCapacity {
+  const acq = context.acquisition || {};
+  const lmiMode = acq.lmiMode ?? 'display_deduction';
+  const state = acq.state ?? 'NSW';
+  const intent = acq.intent ?? 'investor';
+  const category = acq.category ?? 'established';
+  const isFhb = !!acq.isFirstHomeBuyer;
+  const isForeign = !!acq.isForeignBuyer;
+  const cashOnHand = Math.max(0, acq.cashOnHand ?? 0);
+
+  const cashAvailable = cashOnHand + Math.max(0, effect.releasedCapital);
+  const notes = [...effect.acquisitionNotes];
+
+  if (borrowingCapacity <= 0 && cashAvailable <= 0) {
+    return {
+      releasedCapital: effect.releasedCapital,
+      lmi: 0, lmiMode, stampDuty: 0, otherAcquisitionCosts: 0,
+      maxPurchasePrice: 0, loanAvailableForPurchase: 0, cashAvailable, notes,
+    };
+  }
+
+  // Iterate up to 6 times — each pass refines stamp duty, LMI on a higher
+  // property price, and the resulting purchase ceiling.
+  let purchasePrice = borrowingCapacity + cashAvailable;
+  let lmi = 0;
+  let stampDuty = 0;
+  let otherCosts = 0;
+  let loanAvail = borrowingCapacity;
+
+  for (let i = 0; i < 6; i++) {
+    // Stamp duty + other costs on the current candidate price
+    const sdResult = calculateStampDuty({
+      propertyValue: purchasePrice,
+      state, intent, category,
+      isFirstHomeBuyer: isFhb,
+      isForeignBuyer: isForeign,
+    });
+    stampDuty = sdResult.totalDuty;
+    otherCosts = estimateOtherAcquisitionCosts(purchasePrice).total;
+
+    // Loan size required for this purchase = price − cashAvailable
+    const requiredLoan = Math.max(0, purchasePrice - cashAvailable);
+    const cappedLoan = Math.min(borrowingCapacity, requiredLoan);
+
+    // LMI on the acquisition loan (LVR = loan / price)
+    if (lmiMode !== 'none') {
+      const est = estimateLMI({
+        propertyValue: purchasePrice,
+        depositAmount: cashAvailable,
+        loanAmount: cappedLoan,
+        isFirstHomeBuyer: isFhb,
+      });
+      lmi = est.lmiAmount;
+    } else {
+      lmi = 0;
+    }
+
+    // Recompute loan-available-for-purchase based on LMI mode
+    if (lmiMode === 'debt_capitalised') {
+      loanAvail = Math.max(0, borrowingCapacity - lmi);
+    } else {
+      loanAvail = borrowingCapacity;
+    }
+
+    // New purchase ceiling = loan + cash − LMI (display) − stamp duty − other
+    const lmiCashDeduction = lmiMode === 'display_deduction' ? lmi : 0;
+    const newPrice = Math.max(0, loanAvail + cashAvailable - lmiCashDeduction - stampDuty - otherCosts);
+
+    if (Math.abs(newPrice - purchasePrice) < 1000) {
+      purchasePrice = newPrice;
+      break;
+    }
+    purchasePrice = newPrice;
+  }
+
+  if (lmi > 0) notes.push(`LMI ${lmiMode === 'debt_capitalised' ? 'capitalised onto loan' : 'deducted from settlement cash'}: $${Math.round(lmi).toLocaleString()}`);
+  if (stampDuty > 0) notes.push(`${state} stamp duty: $${Math.round(stampDuty).toLocaleString()} (${intent}${isFhb ? ', FHB' : ''})`);
+  if (otherCosts > 0) notes.push(`Acquisition costs (legals, inspections, registrations): $${Math.round(otherCosts).toLocaleString()}`);
+
+  return {
+    releasedCapital: Math.round(effect.releasedCapital),
+    lmi: Math.round(lmi),
+    lmiMode,
+    stampDuty: Math.round(stampDuty),
+    otherAcquisitionCosts: Math.round(otherCosts),
+    maxPurchasePrice: Math.round(Math.max(0, purchasePrice)),
+    loanAvailableForPurchase: Math.round(loanAvail),
+    cashAvailable: Math.round(cashAvailable),
+    notes,
+  };
 }
 
 // ============================================
@@ -323,6 +515,8 @@ export function runScenario(
     total.rateAdjustment += e.rateAdjustment;
     total.loanTermAdjustment += e.loanTermAdjustment;
     total.debtBalanceAdjustment += e.debtBalanceAdjustment;
+    total.releasedCapital += e.releasedCapital;
+    if (e.acquisitionNotes.length) total.acquisitionNotes.push(...e.acquisitionNotes);
     if (e.dtiCapEnabled !== undefined) total.dtiCapEnabled = e.dtiCapEnabled;
     if (e.dtiCapLimit !== undefined) total.dtiCapLimit = e.dtiCapLimit;
   }
@@ -346,6 +540,10 @@ export function runScenario(
     scenarioResult.borrowingCapacity,
   );
 
+  const acquisitionCapacity = context.acquisition
+    ? computeAcquisitionCapacity(scenarioResult.borrowingCapacity, context, total)
+    : null;
+
   return {
     scenarioName,
     deltas,
@@ -354,6 +552,7 @@ export function runScenario(
     serviceabilityBand: scenarioResult.serviceabilityBand,
     dtiRatio: scenarioResult.dtiRatio,
     capacityChange,
+    acquisitionCapacity,
   };
 }
 
@@ -392,6 +591,8 @@ export function runScenarioWithInputs(
     total.rateAdjustment += e.rateAdjustment;
     total.loanTermAdjustment += e.loanTermAdjustment;
     total.debtBalanceAdjustment += e.debtBalanceAdjustment;
+    total.releasedCapital += e.releasedCapital;
+    if (e.acquisitionNotes.length) total.acquisitionNotes.push(...e.acquisitionNotes);
     if (e.dtiCapEnabled !== undefined) total.dtiCapEnabled = e.dtiCapEnabled;
     if (e.dtiCapLimit !== undefined) total.dtiCapLimit = e.dtiCapLimit;
   }
@@ -411,6 +612,9 @@ export function runScenarioWithInputs(
 
   const calc = calculateBorrowingCapacity(inputs);
   const capacityChange = buildScenarioChange(context.baseResult.borrowingCapacity, calc.borrowingCapacity);
+  const acquisitionCapacity = context.acquisition
+    ? computeAcquisitionCapacity(calc.borrowingCapacity, context, total)
+    : null;
 
   return {
     result: {
@@ -421,6 +625,8 @@ export function runScenarioWithInputs(
       serviceabilityBand: calc.serviceabilityBand,
       dtiRatio: calc.dtiRatio,
       capacityChange,
+      acquisitionCapacity,
+      validationIssues: issues.map(i => ({ deltaId: i.deltaId, deltaType: i.deltaType, severity: i.severity, message: i.message })),
     },
     inputs,
     effect: total,
