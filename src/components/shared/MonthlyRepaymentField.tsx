@@ -30,6 +30,59 @@ export function computeMonthlyRepayment(
   return Math.round(m * 100) / 100;
 }
 
+/**
+ * Reverse: derive annual interest rate (%) from monthly repayment + loan balance.
+ * IO: closed-form (rate = monthly × 12 / loan × 100).
+ * P&I: Newton-Raphson on the amortization equation.
+ * Returns 0 if inputs invalid or no convergence.
+ */
+export function computeInterestRateFromRepayment(
+  monthlyAmount: number,
+  loanBalance: number,
+  repaymentType: RepaymentType,
+  loanTermYears: number = DEFAULT_LOAN_TERM_YEARS,
+): number {
+  if (!monthlyAmount || monthlyAmount <= 0 || !loanBalance || loanBalance <= 0) return 0;
+
+  if (repaymentType === 'interest_only') {
+    const annualPct = (monthlyAmount * 12 / loanBalance) * 100;
+    if (annualPct <= 0 || annualPct > 50) return 0;
+    return Math.round(annualPct * 100) / 100;
+  }
+
+  // P&I: solve M = P * r * (1+r)^n / ((1+r)^n - 1) for r (monthly rate)
+  const n = loanTermYears * 12;
+  const M = monthlyAmount;
+  const P = loanBalance;
+  // Repayment must at least cover the principal-only payment
+  if (M <= P / n) return 0;
+
+  // Newton-Raphson starting from a reasonable monthly rate (~5%/yr)
+  let r = 0.005;
+  for (let i = 0; i < 100; i++) {
+    const pow = Math.pow(1 + r, n);
+    const f = P * r * pow / (pow - 1) - M;
+    // derivative df/dr (numerical via small h is robust enough)
+    const h = 1e-7;
+    const r2 = r + h;
+    const pow2 = Math.pow(1 + r2, n);
+    const f2 = P * r2 * pow2 / (pow2 - 1) - M;
+    const df = (f2 - f) / h;
+    if (!isFinite(df) || df === 0) break;
+    const next = r - f / df;
+    if (!isFinite(next) || next <= 0) {
+      r = r / 2;
+      continue;
+    }
+    if (Math.abs(next - r) < 1e-9) { r = next; break; }
+    r = next;
+  }
+
+  const annualPct = r * 12 * 100;
+  if (!isFinite(annualPct) || annualPct <= 0 || annualPct > 50) return 0;
+  return Math.round(annualPct * 100) / 100;
+}
+
 interface Props {
   monthlyAmount: number;
   repaymentType: RepaymentType;
@@ -43,6 +96,8 @@ interface Props {
     repaymentType: RepaymentType;
     interestOnlyYears: number;
     autoCalculate: boolean;
+    /** Reverse-derived annual rate (%) when user manually edits monthlyAmount. Optional. */
+    derivedInterestRate?: number;
   }) => void;
   /** Compact = portal styling (smaller inputs). Default = dashboard. */
   compact?: boolean;
@@ -91,9 +146,8 @@ export function MonthlyRepaymentField({
               </TooltipTrigger>
               <TooltipContent side="top" className="max-w-xs">
                 <p className="text-xs">
-                  <strong>Interest Only:</strong> Loan × Rate ÷ 12.<br />
-                  <strong>P&amp;I:</strong> Standard amortization over {loanTermYears}-year term.<br />
-                  Switch to Manual to override.
+                  <strong>Auto:</strong> repayment is computed from rate.<br />
+                  <strong>Manual:</strong> type a repayment and the interest rate is reverse-derived (IO closed-form, P&amp;I via Newton-Raphson over {loanTermYears}y).
                 </p>
               </TooltipContent>
             </Tooltip>
@@ -147,7 +201,22 @@ export function MonthlyRepaymentField({
         <Input
           type="number"
           value={monthlyAmount || ''}
-          onChange={(e) => set({ monthlyAmount: parseFloat(e.target.value) || 0, autoCalculate: false })}
+          onChange={(e) => {
+            const newAmount = parseFloat(e.target.value) || 0;
+            const derived = computeInterestRateFromRepayment(
+              newAmount,
+              loanBalance,
+              repaymentType,
+              loanTermYears,
+            );
+            onChange({
+              monthlyAmount: newAmount,
+              repaymentType,
+              interestOnlyYears,
+              autoCalculate: false,
+              ...(derived > 0 ? { derivedInterestRate: derived } : {}),
+            });
+          }}
           className={inputClass}
           placeholder="0"
           disabled={autoCalculate}
@@ -176,6 +245,12 @@ export function MonthlyRepaymentField({
           {repaymentType === 'interest_only'
             ? `${loanBalance.toLocaleString()} × ${interestRate}% ÷ 12`
             : `${loanBalance.toLocaleString()} amortized @ ${interestRate}% over ${loanTermYears}y`}
+        </p>
+      )}
+
+      {!autoCalculate && monthlyAmount > 0 && loanBalance > 0 && (
+        <p className="text-[10px] text-muted-foreground">
+          Manual: rate auto-derived from repayment ({repaymentType === 'interest_only' ? 'IO closed-form' : `P&I over ${loanTermYears}y`}).
         </p>
       )}
     </div>

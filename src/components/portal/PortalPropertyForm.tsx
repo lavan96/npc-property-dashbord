@@ -440,6 +440,7 @@ export function PortalPropertyForm({ existingProperty, onComplete, onCancel }: P
                     repayment_type: next.repaymentType,
                     interest_only_period_years: next.interestOnlyYears,
                     autoCalculateInterest: next.autoCalculate,
+                    ...(next.derivedInterestRate !== undefined ? { interest_rate: next.derivedInterestRate } : {}),
                   }))}
                   compact
                 />
