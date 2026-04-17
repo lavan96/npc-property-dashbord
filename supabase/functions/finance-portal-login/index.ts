@@ -1,0 +1,193 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
+import { verifyPassword } from "../_shared/password.ts"
+import { createCorsHeaders, createSessionCookie } from "../_shared/auth.ts"
+
+const SESSION_HOURS = 12; // Finance portal sessions are shorter than client portal
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_MINUTES = 15;
+
+serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = createCorsHeaders(origin);
+
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+    const { email, password, turnstile_token } = await req.json()
+
+    if (!email || !password) {
+      return new Response(
+        JSON.stringify({ error: 'Email and password are required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Optional Turnstile verification
+    const turnstileSecret = Deno.env.get('TURNSTILE_SECRET_KEY')
+    if (turnstileSecret) {
+      if (!turnstile_token) {
+        return new Response(
+          JSON.stringify({ error: 'Security verification required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+      const verifyRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ secret: turnstileSecret, response: turnstile_token }),
+      })
+      const verifyData = await verifyRes.json()
+      if (!verifyData.success) {
+        return new Response(
+          JSON.stringify({ error: 'Security verification failed. Please try again.' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Look up the finance portal user (joined to finance_agent_contacts for display info)
+    const { data: portalUser, error: userError } = await supabase
+      .from('finance_portal_users')
+      .select(`
+        id, finance_contact_id, email, password_hash, is_active,
+        has_accepted_terms, has_completed_onboarding,
+        failed_login_attempts, locked_until, revoked_at,
+        last_login_at,
+        finance_agent_contacts:finance_contact_id (id, name, email, company, contact_type, is_active)
+      `)
+      .eq('email', normalizedEmail)
+      .maybeSingle()
+
+    if (userError || !portalUser) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid email or password' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Check active status / revocation
+    if (!portalUser.is_active || portalUser.revoked_at) {
+      return new Response(
+        JSON.stringify({ error: 'Your access has been revoked. Please contact your administrator.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const contact = portalUser.finance_agent_contacts as any;
+    if (!contact || !contact.is_active) {
+      return new Response(
+        JSON.stringify({ error: 'The finance contact linked to this account is no longer active.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Lockout check
+    if (portalUser.locked_until && new Date(portalUser.locked_until) > new Date()) {
+      const minutesLeft = Math.ceil((new Date(portalUser.locked_until).getTime() - Date.now()) / 60000);
+      return new Response(
+        JSON.stringify({ error: `Account temporarily locked. Try again in ${minutesLeft} minute(s).` }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Must have accepted invite (has password_hash)
+    if (!portalUser.password_hash) {
+      return new Response(
+        JSON.stringify({ error: 'Please accept your invite first to set up your password.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Verify password
+    const isValid = await verifyPassword(password, portalUser.password_hash)
+    if (!isValid) {
+      const newAttempts = (portalUser.failed_login_attempts || 0) + 1;
+      const updates: Record<string, any> = { failed_login_attempts: newAttempts };
+      if (newAttempts >= MAX_FAILED_ATTEMPTS) {
+        const lockUntil = new Date();
+        lockUntil.setMinutes(lockUntil.getMinutes() + LOCKOUT_MINUTES);
+        updates.locked_until = lockUntil.toISOString();
+        updates.failed_login_attempts = 0;
+      }
+      await supabase.from('finance_portal_users').update(updates).eq('id', portalUser.id);
+
+      return new Response(
+        JSON.stringify({ error: 'Invalid email or password' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Generate session
+    const sessionToken = crypto.randomUUID() + '-' + crypto.randomUUID();
+    const expiresAt = new Date()
+    expiresAt.setHours(expiresAt.getHours() + SESSION_HOURS)
+
+    await supabase
+      .from('finance_portal_users')
+      .update({
+        session_token: sessionToken,
+        session_expires_at: expiresAt.toISOString(),
+        last_login_at: new Date().toISOString(),
+        failed_login_attempts: 0,
+        locked_until: null,
+      })
+      .eq('id', portalUser.id)
+
+    // Activity log
+    const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || null;
+    const userAgent = req.headers.get('user-agent') || null;
+    await supabase.from('finance_portal_activity_log').insert({
+      finance_user_id: portalUser.id,
+      actor_user_id: portalUser.id,
+      actor_type: 'finance_user',
+      action: 'login',
+      entity_type: 'session',
+      ip_address: ipAddress,
+      user_agent: userAgent,
+      metadata: { email: normalizedEmail },
+    });
+
+    const sessionCookie = createSessionCookie(sessionToken, expiresAt)
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        user: {
+          id: portalUser.id,
+          finance_contact_id: portalUser.finance_contact_id,
+          email: portalUser.email,
+          name: contact.name,
+          company: contact.company,
+          contact_type: contact.contact_type,
+          has_accepted_terms: portalUser.has_accepted_terms,
+          has_completed_onboarding: portalUser.has_completed_onboarding,
+        },
+        session_token: sessionToken,
+        expires_at: expiresAt.toISOString(),
+      }),
+      {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+          'Set-Cookie': sessionCookie,
+        }
+      }
+    )
+  } catch (error: any) {
+    console.error('Finance portal login error:', error)
+    return new Response(
+      JSON.stringify({ error: 'Internal server error' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  }
+})
