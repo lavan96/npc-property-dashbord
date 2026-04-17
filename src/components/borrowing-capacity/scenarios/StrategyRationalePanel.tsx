@@ -125,6 +125,27 @@ function buildPlainTextBrief(report: RationaleReport, fmt: (n: number) => string
       if (s.detail) lines.push(`   ${s.detail}`);
     });
   }
+  if (report.capitalFlow && report.capitalFlow.legs.length > 0) {
+    const cf = report.capitalFlow;
+    lines.push('');
+    lines.push('CAPITAL FLOW (sources → sinks)');
+    lines.push('─'.repeat(60));
+    lines.push(`Pool: ${fmt(cf.totalAvailable)} available · ${fmt(cf.totalRouted)} routed · ${fmt(cf.remainder)} residual`);
+    if (cf.overcommitted) lines.push('⚠ POOL OVERCOMMITTED — sinks were clamped.');
+    cf.legs.forEach((leg) => {
+      const svc = leg.monthlyServicingDelta;
+      const svcLabel = svc !== 0
+        ? ` · ${svc < 0 ? '−' : '+'}${fmt(Math.abs(svc))}/mo servicing`
+        : '';
+      const debt = leg.debtBalanceDelta;
+      const debtLabel = debt !== 0
+        ? ` · ${debt < 0 ? '−' : '+'}${fmt(Math.abs(debt))} debt`
+        : '';
+      lines.push(`• ${leg.sourceLabel} → ${leg.sinkLabel}: ${fmt(leg.amount)}${svcLabel}${debtLabel}`);
+      if (leg.note) lines.push(`   ${leg.note}`);
+    });
+    lines.push(`Net servicing impact: ${cf.monthlyServicingDelta < 0 ? '−' : '+'}${fmt(Math.abs(cf.monthlyServicingDelta))}/mo · Net debt impact: ${cf.debtBalanceDelta < 0 ? '−' : '+'}${fmt(Math.abs(cf.debtBalanceDelta))}`);
+  }
   lines.push('');
   lines.push('CAVEATS & ASSUMPTIONS');
   lines.push('─'.repeat(60));
