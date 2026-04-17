@@ -55,6 +55,11 @@ export interface AcquisitionContext {
   lmiMode?: LmiMode;
   /** Cash on hand brought to settlement (in addition to released equity) */
   cashOnHand?: number;
+  /** Phase F2 — target purchase price the strategy is trying to hit.
+   *  When set, AcquisitionCapacity reports `meetsTarget` + `shortfallToTarget`
+   *  and exposes `loanRequiredForPurchase` / `netCashAfterSettlement` so the
+   *  Strategy Builder can show "achievable" / "short by $X" feedback. */
+  targetPurchasePrice?: number;
 }
 
 export interface ScenarioContext {
@@ -77,6 +82,10 @@ export interface ScenarioProperty {
   /** Net monthly cash flow (rent − expenses), positive or negative */
   netMonthlyCashflow?: number;
   monthlyRentalIncome?: number;
+  /** Phase F1 — contracted annual interest rate on this property's loan (%).
+   *  Used by `equity_release`, `property_refinance`, and `property_rate_change`
+   *  deltas instead of the global `baseInputs.interestRate`. */
+  interestRate?: number;
 }
 
 export interface ScenarioLiability {
