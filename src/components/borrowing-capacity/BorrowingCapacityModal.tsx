@@ -40,6 +40,7 @@ import { BankRateSelector } from './BankRateSelector';
 import { BankRateComparisonModal } from './BankRateComparisonModal';
 import { LmiSection } from './sections/LmiSection';
 import { classifyIncomeLabel } from '@/utils/incomeComponentMapping';
+import { useBcScenarios } from '@/hooks/useBcScenarios';
 
 // Secure data fetching via HttpOnly cookies
 async function fetchBorrowingCapacityData(clientId: string) {
@@ -189,8 +190,52 @@ export function BorrowingCapacityModal({
     expenses: { items: new Map() },
   });
   
-  // Scenario presets state
-  const [scenarioPresets, setScenarioPresets] = useState<ScenarioPreset[]>([]);
+  // Scenario presets state — Phase K6: persisted to bc_scenarios table per client
+  const {
+    scenarios: persistedScenarios,
+    setScenarios: setPersistedScenarios,
+    saveScenario: persistScenario,
+    deleteScenario: removePersistedScenario,
+  } = useBcScenarios({ clientId, enabled: open });
+  const [scenarioPresets, setScenarioPresetsLocal] = useState<ScenarioPreset[]>([]);
+
+  // Sync persisted scenarios into local state whenever they reload from the server.
+  useEffect(() => {
+    setScenarioPresetsLocal(persistedScenarios);
+  }, [persistedScenarios]);
+
+  // Wrap setter so any UI mutation (save/delete/auto-base) is persisted.
+  const setScenarioPresets = useCallback(
+    (next: ScenarioPreset[] | ((prev: ScenarioPreset[]) => ScenarioPreset[])) => {
+      setScenarioPresetsLocal((prev) => {
+        const resolved = typeof next === 'function' ? (next as (p: ScenarioPreset[]) => ScenarioPreset[])(prev) : next;
+        // Diff to find adds and removes (by id)
+        const prevIds = new Set(prev.map((p) => p.id));
+        const nextIds = new Set(resolved.map((p) => p.id));
+        // Newly added presets → persist
+        resolved.forEach((p) => {
+          if (!prevIds.has(p.id)) {
+            // Don't await — optimistic; the hook reconciles ids via reload-on-mount
+            persistScenario(p).then((saved) => {
+              if (saved && saved.id !== p.id) {
+                // Replace temp id with DB id in local state
+                setScenarioPresetsLocal((cur) => cur.map((c) => (c.id === p.id ? saved : c)));
+              }
+            });
+          }
+        });
+        // Removed presets → persist deletion (skip auto-base / temp ids)
+        prev.forEach((p) => {
+          if (!nextIds.has(p.id) && p.id !== 'base' && !p.id.startsWith('applied-')) {
+            removePersistedScenario(p.id);
+          }
+        });
+        return resolved;
+      });
+    },
+    [persistScenario, removePersistedScenario]
+  );
+
   // Active scenario overlay — when set, overrides calculator inputs (front-end only)
   const [activeScenario, setActiveScenario] = useState<ScenarioPreset | null>(null);
 
