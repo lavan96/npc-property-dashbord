@@ -334,14 +334,36 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
         lender_name: isRental ? null : (formData.lender_name || null),
       };
 
-      const { data, error } = await invokeSecureFunction('manage-client-data', {
-        operation: 'update',
-        table: 'client_properties',
-        clientId: property.client_id,
-        recordId: property.id,
-        data: updateData,
-      });
-      
+      // ── Resilient update with single transient-error retry ──
+      // Cold-started edge functions occasionally throw a network/abort error
+      // on the first call. We retry once before surfacing the failure to
+      // avoid spurious "failed to update property" toasts when the data is
+      // actually fine to save on a second attempt.
+      const tryUpdate = async () => {
+        return invokeSecureFunction('manage-client-data', {
+          operation: 'update',
+          table: 'client_properties',
+          clientId: property.client_id,
+          recordId: property.id,
+          data: updateData,
+        });
+      };
+
+      let { data, error } = await tryUpdate();
+
+      const isTransient = (msg?: string) =>
+        !!msg && /network|timed out|fetch|aborted|ECONN|HTTP 5\d\d/i.test(msg);
+
+      if ((error || !data?.success) && isTransient(error?.message || data?.error)) {
+        console.warn('[PropertyEditSheet] First update attempt failed transiently — retrying once', {
+          message: error?.message || data?.error,
+        });
+        await new Promise((r) => setTimeout(r, 400));
+        const retry = await tryUpdate();
+        data = retry.data;
+        error = retry.error;
+      }
+
       if (error || !data?.success) {
         throw new Error(error?.message || data?.error || 'Failed to update property');
       }
@@ -365,17 +387,28 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
       }
     },
     onSuccess: () => {
+      // Invalidate every cache that depends on property data so downstream
+      // surfaces (BC calculator, BC modal, scenarios, scorecard, dashboard
+      // metrics, etc.) reflect the change immediately. Previously the BC
+      // modal kept its own ['borrowing-capacity-client-data'] cache that
+      // wasn't invalidated here — opening the BC calculator after editing
+      // a property's repayment_type would silently use stale data.
       queryClient.invalidateQueries({ queryKey: ['client-properties', property.client_id] });
       queryClient.invalidateQueries({ queryKey: ['secure-client-data', property.client_id] });
+      queryClient.invalidateQueries({ queryKey: ['secure-client-properties', property.client_id] });
+      queryClient.invalidateQueries({ queryKey: ['borrowing-capacity-client-data', property.client_id] });
+      queryClient.invalidateQueries({ queryKey: ['client-data', property.client_id] });
+      queryClient.invalidateQueries({ queryKey: ['borrowing-capacity-history', property.client_id] });
+      queryClient.invalidateQueries({ queryKey: ['get-client-data'] });
       toast.success('Property updated successfully');
-      
+
       addNotification({
         type: 'portfolio_updated',
         title: 'Property Updated',
         message: `Property at ${formData.address} has been updated`,
         entityId: property.client_id
       });
-      
+
       onOpenChange(false);
       onComplete();
     },
@@ -398,17 +431,24 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
       }
     },
     onSuccess: () => {
+      // Same broad invalidation as the update path so the BC calculator
+      // and other downstream surfaces never serve stale post-deletion data.
       queryClient.invalidateQueries({ queryKey: ['client-properties', property.client_id] });
       queryClient.invalidateQueries({ queryKey: ['secure-client-data', property.client_id] });
+      queryClient.invalidateQueries({ queryKey: ['secure-client-properties', property.client_id] });
+      queryClient.invalidateQueries({ queryKey: ['borrowing-capacity-client-data', property.client_id] });
+      queryClient.invalidateQueries({ queryKey: ['client-data', property.client_id] });
+      queryClient.invalidateQueries({ queryKey: ['borrowing-capacity-history', property.client_id] });
+      queryClient.invalidateQueries({ queryKey: ['get-client-data'] });
       toast.success('Property deleted successfully');
-      
+
       addNotification({
         type: 'portfolio_updated',
         title: 'Property Deleted',
         message: `Property at ${property.address} has been removed`,
         entityId: property.client_id
       });
-      
+
       onOpenChange(false);
       onComplete();
     },
