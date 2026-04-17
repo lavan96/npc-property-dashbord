@@ -1436,9 +1436,24 @@ export function StrategyScenarioModeling({
                       <Switch checked={acquisition.isForeignBuyer} onCheckedChange={(v) => setAcquisition(p => ({ ...p, isForeignBuyer: v }))} />
                     </div>
                   </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Cash on Hand (deposit)</Label>
-                    <Input type="number" value={acquisition.cashOnHand || ''} onChange={(e) => setAcquisition(p => ({ ...p, cashOnHand: Number(e.target.value) || 0 }))} placeholder="0" className="h-9 text-sm" />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Cash on Hand (deposit)</Label>
+                      <Input type="number" value={acquisition.cashOnHand || ''} onChange={(e) => setAcquisition(p => ({ ...p, cashOnHand: Number(e.target.value) || 0 }))} placeholder="0" className="h-9 text-sm" />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                        Target Purchase Price
+                        <span className="text-[10px] text-muted-foreground/70">(optional)</span>
+                      </Label>
+                      <Input
+                        type="number"
+                        value={acquisition.targetPurchasePrice || ''}
+                        onChange={(e) => setAcquisition(p => ({ ...p, targetPurchasePrice: Number(e.target.value) || 0 }))}
+                        placeholder="e.g. 700000"
+                        className="h-9 text-sm"
+                      />
+                    </div>
                   </div>
 
                   {acquisitionCapacity && (
@@ -1498,6 +1513,15 @@ export function StrategyScenarioModeling({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* F3 + F4 — Effective Purchase Power headline + per-lever waterfall */}
+          <PurchasePowerHeadline
+            baseCapacity={baseResult.borrowingCapacity}
+            scenarioCapacity={scenarioResult.borrowingCapacity}
+            acquisitionCapacity={acquisition.enabled ? acquisitionCapacity : null}
+            leverAttribution={leverAttribution}
+            formatCurrency={formatCurrency}
+          />
+
           {impactBreakdown.length > 0 && (
             <div className="space-y-2">
               {impactBreakdown.map((impact, i) => (
