@@ -571,59 +571,78 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Action: Refresh all lender caches (CDR + manual)
+    // Action: Refresh all lender caches (CDR + manual) — PARALLEL with per-lender timeout
     if (action === 'refresh-all') {
-      const results: { lenderId: string; lenderName: string; success: boolean; rateCount: number; cached: boolean }[] = [];
-
       const totalCount = Object.keys(CDR_LENDERS).length + Object.keys(MANUAL_LENDERS).length;
-      console.log(`[CDR] Starting refresh-all for ${totalCount} lenders`);
+      console.log(`[CDR] Starting PARALLEL refresh-all for ${totalCount} lenders`);
 
-      for (const [id, config] of Object.entries(CDR_LENDERS)) {
+      const PER_LENDER_TIMEOUT_MS = 25_000; // 25s hard cap per lender
+      const withTimeout = <T,>(p: Promise<T>, ms: number, label: string): Promise<T> =>
+        Promise.race([
+          p,
+          new Promise<T>((_, rej) =>
+            setTimeout(() => rej(new Error(`Timeout after ${ms}ms: ${label}`)), ms)
+          ),
+        ]);
+
+      // Kick off all CDR fetches concurrently
+      const cdrPromises = Object.entries(CDR_LENDERS).map(async ([id, config]) => {
         try {
-          const rates = await fetchLenderProducts(id, {
-            baseUrl: config.baseUrl,
-            productVersion: config.productVersion,
-            detailVersion: config.detailVersion,
-          });
+          const rates = await withTimeout(
+            fetchLenderProducts(id, {
+              baseUrl: config.baseUrl,
+              productVersion: config.productVersion,
+              detailVersion: config.detailVersion,
+            }),
+            PER_LENDER_TIMEOUT_MS,
+            id
+          );
           let cached = false;
           if (rates.length > 0) {
             cached = await setCachedRates(supabase, id, rates);
           }
-          results.push({ lenderId: id, lenderName: config.name, success: rates.length > 0, rateCount: rates.length, cached });
           console.log(`[CDR] Refresh ${id}: ${rates.length} rates, cached: ${cached}`);
-        } catch (error) {
-          console.error(`[CDR] Failed to refresh ${id}:`, error);
-          results.push({ lenderId: id, lenderName: config.name, success: false, rateCount: 0, cached: false });
+          return { lenderId: id, lenderName: config.name, success: rates.length > 0, rateCount: rates.length, cached };
+        } catch (error: any) {
+          console.error(`[CDR] Failed to refresh ${id}:`, error?.message || error);
+          return { lenderId: id, lenderName: config.name, success: false, rateCount: 0, cached: false };
         }
-      }
+      });
 
-      // Manual lenders — always succeed (static rate cards)
-      for (const [id, manual] of Object.entries(MANUAL_LENDERS)) {
+      // Manual lenders are synchronous-ish (no network) but keep them concurrent for symmetry
+      const manualPromises = Object.entries(MANUAL_LENDERS).map(async ([id, manual]) => {
         try {
           const rates = manual.build();
           const cached = rates.length > 0 ? await setCachedRates(supabase, id, rates) : false;
-          results.push({ lenderId: id, lenderName: manual.name, success: rates.length > 0, rateCount: rates.length, cached });
           console.log(`[manual] Refresh ${id}: ${rates.length} rates, cached: ${cached}`);
-        } catch (error) {
-          console.error(`[manual] Failed to refresh ${id}:`, error);
-          results.push({ lenderId: id, lenderName: manual.name, success: false, rateCount: 0, cached: false });
+          return { lenderId: id, lenderName: manual.name, success: rates.length > 0, rateCount: rates.length, cached };
+        } catch (error: any) {
+          console.error(`[manual] Failed to refresh ${id}:`, error?.message || error);
+          return { lenderId: id, lenderName: manual.name, success: false, rateCount: 0, cached: false };
         }
-      }
+      });
+
+      const settled = await Promise.allSettled([...cdrPromises, ...manualPromises]);
+      const results = settled.map((s) =>
+        s.status === 'fulfilled'
+          ? s.value
+          : { lenderId: 'unknown', lenderName: 'unknown', success: false, rateCount: 0, cached: false }
+      );
 
       const successCount = results.filter(r => r.success && r.rateCount > 0).length;
       const totalRates = results.reduce((sum, r) => sum + r.rateCount, 0);
-      
+
       console.log(`[CDR] Refresh complete: ${successCount}/${results.length} lenders, ${totalRates} total rates`);
 
       return new Response(
-        JSON.stringify({ 
-          success: true, 
+        JSON.stringify({
+          success: true,
           data: results,
           summary: {
             totalLenders: results.length,
             successfulLenders: successCount,
-            totalRates
-          }
+            totalRates,
+          },
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
