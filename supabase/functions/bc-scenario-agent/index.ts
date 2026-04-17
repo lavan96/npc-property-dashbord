@@ -321,6 +321,12 @@ serve(async (req) => {
     // Cap conversation length
     const cappedMessages = messages.slice(-20);
 
+    // ── Phase H: detect target purchase price + clarification mode ──────
+    const inferredTargetPrice = detectTargetPrice(cappedMessages);
+    const lastUserMessage = [...cappedMessages].reverse().find((m: any) => m.role === 'user')?.content || '';
+    const clarificationMode = isClarificationMessage(lastUserMessage);
+    console.log('[bc-scenario-agent] inferredTargetPrice:', inferredTargetPrice, '| clarificationMode:', clarificationMode);
+
     // Build context summary from client data
     let contextBlock = "";
     if (clientContext) {
