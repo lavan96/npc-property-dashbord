@@ -4648,6 +4648,197 @@ export type Database = {
           },
         ]
       }
+      finance_portal_activity_log: {
+        Row: {
+          action: string
+          actor_type: string
+          actor_user_id: string | null
+          client_id: string | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          finance_user_id: string | null
+          id: string
+          ip_address: string | null
+          metadata: Json | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_type?: string
+          actor_user_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          finance_user_id?: string | null
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_type?: string
+          actor_user_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          finance_user_id?: string | null
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      finance_portal_client_assignments: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          auto_link_source: string | null
+          auto_linked: boolean
+          client_id: string
+          finance_user_id: string
+          id: string
+          permissions: Json
+          updated_at: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          auto_link_source?: string | null
+          auto_linked?: boolean
+          client_id: string
+          finance_user_id: string
+          id?: string
+          permissions?: Json
+          updated_at?: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          auto_link_source?: string | null
+          auto_linked?: boolean
+          client_id?: string
+          finance_user_id?: string
+          id?: string
+          permissions?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_portal_client_assignments_finance_user_id_fkey"
+            columns: ["finance_user_id"]
+            isOneToOne: false
+            referencedRelation: "finance_portal_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_portal_default_permissions: {
+        Row: {
+          id: string
+          permissions: Json
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          permissions?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          permissions?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      finance_portal_users: {
+        Row: {
+          created_at: string
+          email: string
+          failed_login_attempts: number
+          finance_contact_id: string
+          has_accepted_terms: boolean
+          has_completed_onboarding: boolean
+          id: string
+          invite_accepted_at: string | null
+          invite_sent_at: string | null
+          invite_token: string | null
+          invite_token_expires_at: string | null
+          invited_by: string | null
+          is_active: boolean
+          last_login_at: string | null
+          locked_until: string | null
+          password_hash: string | null
+          reset_token: string | null
+          reset_token_expires_at: string | null
+          revoked_at: string | null
+          revoked_by: string | null
+          session_expires_at: string | null
+          session_token: string | null
+          terms_accepted_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          failed_login_attempts?: number
+          finance_contact_id: string
+          has_accepted_terms?: boolean
+          has_completed_onboarding?: boolean
+          id?: string
+          invite_accepted_at?: string | null
+          invite_sent_at?: string | null
+          invite_token?: string | null
+          invite_token_expires_at?: string | null
+          invited_by?: string | null
+          is_active?: boolean
+          last_login_at?: string | null
+          locked_until?: string | null
+          password_hash?: string | null
+          reset_token?: string | null
+          reset_token_expires_at?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          session_expires_at?: string | null
+          session_token?: string | null
+          terms_accepted_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          failed_login_attempts?: number
+          finance_contact_id?: string
+          has_accepted_terms?: boolean
+          has_completed_onboarding?: boolean
+          id?: string
+          invite_accepted_at?: string | null
+          invite_sent_at?: string | null
+          invite_token?: string | null
+          invite_token_expires_at?: string | null
+          invited_by?: string | null
+          is_active?: boolean
+          last_login_at?: string | null
+          locked_until?: string | null
+          password_hash?: string | null
+          reset_token?: string | null
+          reset_token_expires_at?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          session_expires_at?: string | null
+          session_token?: string | null
+          terms_accepted_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       game_plan_actions: {
         Row: {
           assigned_to: string | null
