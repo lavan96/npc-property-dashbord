@@ -1600,7 +1600,10 @@ Deno.serve(async (req) => {
           limit: l.limit,
           monthlyServicing: l.monthlyServicing,
         })),
-        // Phase C: optional acquisition context for max-purchase-price math
+        // Phase C: optional acquisition context for max-purchase-price math.
+        // CRITICAL: include `targetPurchasePrice` so the engine can report
+        // meetsTarget / shortfallToTarget / loanRequired / netCashAfterSettlement
+        // when the broker is solving for a specific budget (e.g. $700k).
         acquisition: acquisition ? {
           state: acquisition.state,
           intent: acquisition.intent,
@@ -1609,6 +1612,9 @@ Deno.serve(async (req) => {
           isForeignBuyer: acquisition.isForeignBuyer ?? false,
           lmiMode: acquisition.lmiMode ?? overrides?.lmiMode ?? 'display_deduction',
           cashOnHand: acquisition.cashOnHand ?? 0,
+          targetPurchasePrice: Number.isFinite(acquisition.targetPurchasePrice) && acquisition.targetPurchasePrice > 0
+            ? acquisition.targetPurchasePrice
+            : undefined,
         } : undefined,
       }, !!strictScenarioValidation),
       proposedLoanCheck,
