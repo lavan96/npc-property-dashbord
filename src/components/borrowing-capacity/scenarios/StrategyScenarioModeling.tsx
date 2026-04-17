@@ -522,12 +522,28 @@ export function StrategyScenarioModeling({
     const acquisitionCapacity = (result.acquisitionCapacity ?? null) as AcquisitionCapacity | null;
     const validationIssues = result.validationIssues ?? [];
 
+    // ── F4 — Per-lever attribution ──────────────────────────────────────
+    // Replay each delta IN ISOLATION against the same base context to
+    // measure the capacity uplift attributable to that lever alone.
+    // The sum of these isolated impacts won't equal the compounded total
+    // (levers interact); the headline component surfaces the residual.
+    const leverAttribution: LeverAttribution[] = deltas.map(d => {
+      const isolated = runScenarioWithInputs(`Isolated: ${d.label}`, [d], ctx);
+      return {
+        id: `${d.type}-${d.id}`,
+        label: d.label,
+        capacityImpact: isolated.result.borrowingCapacity - baseResult.borrowingCapacity,
+        cashflowNote: leverCashflowNotes.get(`${d.type}-${d.id}`),
+      };
+    });
+
     return {
       scenarioResult: result as unknown as BorrowingCapacityResult,
       scenarioInputs: inputs,
       impactBreakdown: impacts,
       acquisitionCapacity,
       validationIssues,
+      leverAttribution,
     };
   }, [strategy, acquisition, baseInputs, baseResult, consolidatableDebts, investmentProperties, equityReleaseProperties, properties, liabilities]);
 
