@@ -503,7 +503,7 @@ export function PortalPropertyForm({ existingProperty, onComplete, onCancel }: P
           {formData.property_type === 'owner_occupied' && (
             <div className="flex justify-between text-sm font-medium">
               <span>Monthly Repayment</span>
-              <span className="text-destructive">-{formatCurrency(loanRepaymentMonthly || formData.monthly_interest_repayment)}</span>
+              <span className="text-destructive">-{formatCurrency(formData.monthly_interest_repayment)}</span>
             </div>
           )}
           {isRental && (
