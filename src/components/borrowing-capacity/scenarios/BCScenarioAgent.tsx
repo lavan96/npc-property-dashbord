@@ -26,8 +26,12 @@ interface ScenarioAdjustments {
   loanTermAdjustment?: number;
   portfolioSellPropertyIds?: string[];
   dtiCapOverride?: { enabled: boolean; value: number } | null;
-  /** Phase D: Acquisition context driving stamp duty + LMI math.
-   *  When set, the engine derives a maximum purchase price for the scenario. */
+  /** Phase F1 — per-property rate repricing for partial portfolio refinances. */
+  propertyRateChanges?: Array<{ propertyId: string; newRate: number }>;
+  /** Phase D + F2: Acquisition context driving stamp duty + LMI math.
+   *  When set, the engine derives a maximum purchase price for the scenario.
+   *  When `targetPurchasePrice` is included, the engine also reports
+   *  `meetsTarget` / `shortfallToTarget`. */
   acquisition?: {
     state: 'NSW' | 'VIC' | 'QLD' | 'WA' | 'SA' | 'TAS' | 'NT' | 'ACT';
     intent: 'owner_occupier' | 'investor';
@@ -36,6 +40,7 @@ interface ScenarioAdjustments {
     isForeignBuyer?: boolean;
     lmiMode?: 'none' | 'display_deduction' | 'debt_capitalised';
     cashOnHand?: number;
+    targetPurchasePrice?: number;
   } | null;
 }
 
