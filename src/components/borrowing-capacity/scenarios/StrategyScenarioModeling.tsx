@@ -166,6 +166,12 @@ interface StrategyScenarioModelingProps {
   clientId?: string;
   /** Optional client display name — used in PDF exports (F6 Finance Hand-off). */
   clientName?: string;
+  /** Phase I1 — typed income components for lender-aware re-shading. */
+  incomeComponents?: import('@/utils/lenderShadingProfiles').ScenarioIncomeComponent[];
+  /** Phase I1 — current lender profile id (defaults to bank_standard). */
+  currentLenderProfileId?: string;
+  /** Phase I2 — monthly HEM benchmark; engine floors expenses here. */
+  hemBenchmark?: number;
 }
 
 // ── Helpers ────────────────────────────────────────────
@@ -203,6 +209,9 @@ export function StrategyScenarioModeling({
   onPresetsChange,
   clientId,
   clientName,
+  incomeComponents,
+  currentLenderProfileId,
+  hemBenchmark,
 }: StrategyScenarioModelingProps) {
   const [strategy, setStrategy] = useState<StrategyState>(DEFAULT_STRATEGY);
   const [acquisition, setAcquisition] = useState<AcquisitionState>(DEFAULT_ACQUISITION);
@@ -569,6 +578,11 @@ export function StrategyScenarioModeling({
       properties: engineProperties,
       liabilities: engineLiabilities,
       acquisition: acquisitionCtx,
+      // Phase I1/I2 — propagate lender awareness + HEM floor so re-shading
+      // and HEM clamps fire when the broker uses a `dti_cap_change` lender flip.
+      incomeComponents,
+      currentLenderProfileId,
+      hemBenchmark,
     };
 
     // Delegate ALL scenario math to the unified engine
@@ -756,6 +770,9 @@ export function StrategyScenarioModeling({
         liabilities={liabilities}
         properties={properties}
         clientId={clientId}
+        incomeComponents={incomeComponents}
+        currentLenderProfileId={currentLenderProfileId}
+        hemBenchmark={hemBenchmark}
         onApplyScenario={(scenario: AIScenario) => {
           // Map AI scenario adjustments to strategy state
            setStrategy(prev => {

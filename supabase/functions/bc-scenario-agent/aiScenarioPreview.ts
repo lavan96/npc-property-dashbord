@@ -93,7 +93,9 @@ interface AIAdjustments {
   loanTermAdjustment?: number;
   portfolioSellPropertyIds?: string[];
   equityRelease?: { propertyId: string; targetLVR: number } | null;
-  dtiCapOverride?: { enabled: boolean; value: number } | null;
+  dtiCapOverride?: { enabled: boolean; value: number; lenderProfile?: string } | null;
+  /** Phase I1 — explicit lender profile flip (independent of dtiCapOverride). */
+  lenderProfile?: 'bank_standard' | 'anz' | 'macquarie' | 'westpac' | 'non_bank' | null;
   propertyRateChanges?: Array<{ propertyId: string; newRate: number }>;
   valuationOverrides?: Array<{
     propertyId: string;
@@ -278,15 +280,29 @@ export function adjustmentsToDeltas(adj: AIAdjustments): ScenarioDelta[] {
     });
   }
 
-  // 12. DTI cap override
+  // 12. DTI cap override + lender profile flip (Phase I1)
+  const lenderProfile = adj.lenderProfile ?? adj.dtiCapOverride?.lenderProfile;
   if (adj.dtiCapOverride && adj.dtiCapOverride.enabled && Number.isFinite(adj.dtiCapOverride.value)) {
     deltas.push({
       id: 'dti-cap',
-      label: `DTI cap ${adj.dtiCapOverride.value}x`,
+      label: `DTI cap ${adj.dtiCapOverride.value}x${lenderProfile ? ` (${lenderProfile})` : ''}`,
       type: 'dti_cap_change',
       value: adj.dtiCapOverride.value,
       unit: 'ratio',
-      meta: { enabled: true },
+      meta: lenderProfile
+        ? { enabled: true, lenderProfile }
+        : { enabled: true },
+    });
+  } else if (lenderProfile) {
+    // Lender flip without DTI cap change — still emit a dti_cap_change so the
+    // engine triggers re-shading. Keep cap large enough to be non-binding.
+    deltas.push({
+      id: 'dti-cap',
+      label: `Lender flip → ${lenderProfile}`,
+      type: 'dti_cap_change',
+      value: 99,
+      unit: 'ratio',
+      meta: { enabled: false, lenderProfile },
     });
   }
 
@@ -310,6 +326,12 @@ interface ChatClientContext {
     net_monthly_cashflow?: number;
     interest_rate?: number;
   }>;
+  /** Phase I1 — typed income components for lender-aware re-shading. */
+  incomeComponents?: Array<{ id: string; label: string; type: string; grossAnnual: number; currentShadingRate: number }>;
+  /** Phase I1 — current lender profile id (defaults to bank_standard). */
+  currentLenderProfileId?: string;
+  /** Phase I2 — monthly HEM benchmark; engine floors expenses here. */
+  hemBenchmark?: number;
 }
 
 export function buildScenarioContext(
@@ -350,6 +372,13 @@ export function buildScenarioContext(
       calculationMode: client.baseInputs?.calculationMode,
       dtiCapEnabled: !!client.baseInputs?.dtiCapEnabled,
       dtiCapLimit: Number(client.baseInputs?.dtiCapLimit || 6),
+      // Phase I1/I2 — propagate so re-shading + HEM clamp behave identically
+      // to the client engine. ScenarioBaseInputs already declares these fields.
+      incomeComponents: Array.isArray(client.incomeComponents)
+        ? client.incomeComponents as any
+        : undefined,
+      currentLenderProfileId: client.currentLenderProfileId,
+      hemBenchmark: Number(client.hemBenchmark) > 0 ? Number(client.hemBenchmark) : undefined,
     },
     baseResult: {
       borrowingCapacity: Number(client.baseResult?.borrowingCapacity || 0),

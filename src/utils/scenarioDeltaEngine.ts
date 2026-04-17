@@ -1108,11 +1108,55 @@ export function runScenarioWithInputs(
     ctx.baseInputs.monthlyLivingExpenses,
   );
 
+  // Phase I1 — lender-aware re-shading parity with `runScenario`
+  const baseProfileId2 = ctx.currentLenderProfileId ?? BANK_STANDARD_PROFILE.id;
+  const targetProfileId2 = total.lenderProfileOverride ?? baseProfileId2;
+  let computedShadedAnnual2: number;
+  if (
+    total.lenderProfileOverride &&
+    targetProfileId2 !== baseProfileId2 &&
+    Array.isArray(ctx.incomeComponents) &&
+    ctx.incomeComponents.length > 0
+  ) {
+    const targetProfile2 = resolveLenderProfile(targetProfileId2);
+    const grossScale = ctx.baseInputs.grossAnnualIncome > 0
+      ? newGross2 / ctx.baseInputs.grossAnnualIncome : 1;
+    const scaled: ScenarioIncomeComponent[] = ctx.incomeComponents.map(c => ({
+      ...c,
+      grossAnnual: Math.max(0, c.grossAnnual * grossScale),
+    }));
+    computedShadedAnnual2 = reshadeIncome(scaled, targetProfile2).shadedAnnual;
+    issues.push({
+      deltaId: 'dti-cap',
+      deltaType: 'dti_cap_change',
+      severity: 'warning',
+      message: `Lender flipped to "${targetProfile2.displayName}" — income re-shaded to $${Math.round(computedShadedAnnual2).toLocaleString()}/yr (was $${Math.round(ctx.baseInputs.shadedAnnualIncome).toLocaleString()}). Confirm 2yr history before submission.`,
+    });
+  } else {
+    computedShadedAnnual2 = Math.max(0, ctx.baseInputs.shadedAnnualIncome + total.shadedIncomeAdjustment);
+  }
+
+  // Phase I2 — HEM hard floor parity
+  const requestedExp2 = ctx.baseInputs.monthlyLivingExpenses + total.expenseAdjustment + hemDelta2;
+  const targetProfile2b = resolveLenderProfile(targetProfileId2);
+  const hemBenchmark2 = ctx.hemBenchmark ?? 0;
+  let finalExpenses2 = Math.max(0, requestedExp2);
+  if (hemBenchmark2 > 0 && targetProfile2b.enforcesHemFloor && finalExpenses2 < hemBenchmark2) {
+    const expChange = orderedSafe.find(d => d.type === 'expense_change');
+    issues.push({
+      deltaId: expChange?.id ?? 'expense_change',
+      deltaType: 'expense_change',
+      severity: 'warning',
+      message: `Expense reduction floored at HEM benchmark $${Math.round(hemBenchmark2).toLocaleString()}/mo (requested $${Math.round(requestedExp2).toLocaleString()}). Banks use MAX(declared, HEM).`,
+    });
+    finalExpenses2 = hemBenchmark2;
+  }
+
   const inputs: BorrowingCapacityInput = {
     ...ctx.baseInputs,
     grossAnnualIncome: newGross2,
-    shadedAnnualIncome: Math.max(0, ctx.baseInputs.shadedAnnualIncome + total.shadedIncomeAdjustment),
-    monthlyLivingExpenses: Math.max(0, ctx.baseInputs.monthlyLivingExpenses + total.expenseAdjustment + hemDelta2),
+    shadedAnnualIncome: computedShadedAnnual2,
+    monthlyLivingExpenses: finalExpenses2,
     monthlyCommitments: Math.max(0, ctx.baseInputs.monthlyCommitments + total.commitmentAdjustment),
     interestRate: Math.max(0.5, ctx.baseInputs.interestRate + total.rateAdjustment),
     loanTermYears: Math.max(5, ctx.baseInputs.loanTermYears + total.loanTermAdjustment),

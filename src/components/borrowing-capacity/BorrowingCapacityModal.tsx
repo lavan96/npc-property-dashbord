@@ -40,6 +40,7 @@ import { CapacityHistoryChart } from './CapacityHistoryChart';
 import { BankRateSelector } from './BankRateSelector';
 import { BankRateComparisonModal } from './BankRateComparisonModal';
 import { LmiSection } from './sections/LmiSection';
+import { classifyIncomeLabel } from '@/utils/incomeComponentMapping';
 
 // Secure data fetching via HttpOnly cookies
 async function fetchBorrowingCapacityData(clientId: string) {
@@ -1178,6 +1179,15 @@ export function BorrowingCapacityModal({
                   loan_repayment_amount: Number(p.loan_repayment_amount) || 0,
                   net_monthly_cashflow: Number(p.net_monthly_cashflow) || 0,
                 }))}
+                /* Phase I1/I2 — typed income + HEM floor for lender-aware re-shading */
+                incomeComponents={incomeBreakdown.map(it => ({
+                  id: it.id,
+                  label: it.label,
+                  type: classifyIncomeLabel(it.label),
+                  grossAnnual: it.grossAmount,
+                  currentShadingRate: typeof it.shadingRate === 'number' ? it.shadingRate : 1,
+                })).filter(c => c.grossAnnual > 0)}
+                hemBenchmark={hemBenchmark}
                 savedPresets={scenarioPresets}
                 onPresetsChange={setScenarioPresets}
                 onApplyScenario={(inputs, accessibleEquity) => {

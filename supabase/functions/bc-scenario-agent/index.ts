@@ -163,9 +163,20 @@ const SCENARIO_TOOL = {
                     properties: {
                       enabled: { type: "boolean", description: "Whether to enable a custom DTI cap" },
                       value: { type: "number", description: "DTI cap multiplier e.g. 8 for 8x gross income" },
+                      lenderProfile: {
+                        type: "string",
+                        enum: ["bank_standard", "anz", "macquarie", "westpac", "non_bank"],
+                        description: "Phase I1 — flip to this lender's shading profile (re-shades bonus/commission/rental per their policy). ANZ/Westpac=100% bonus w/ 2yr history, Macquarie=95%, non_bank skips HEM floor.",
+                      },
                     },
                     required: ["enabled", "value"],
                     description: "Override DTI cap to model different lender policies. Set enabled=false if not applicable.",
+                    nullable: true,
+                  },
+                  lenderProfile: {
+                    type: "string",
+                    enum: ["bank_standard", "anz", "macquarie", "westpac", "non_bank"],
+                    description: "Phase I1 — top-level lender flip when not changing DTI cap. Triggers re-shading of bonus/commission/rental per that lender's policy.",
                     nullable: true,
                   },
                   propertyRateChanges: {

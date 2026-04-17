@@ -102,6 +102,12 @@ interface BCScenarioAgentProps {
   onApplyScenario: (scenario: AIScenario) => void | string | Promise<string | void>;
   /** Optional client identifier — used to scope persisted chat history per client. */
   clientId?: string;
+  /** Phase I1 — typed income components forwarded to the engine for lender-aware re-shading. */
+  incomeComponents?: import('@/utils/lenderShadingProfiles').ScenarioIncomeComponent[];
+  /** Phase I1 — current lender profile id (defaults to bank_standard). */
+  currentLenderProfileId?: string;
+  /** Phase I2 — monthly HEM benchmark; engine floors expenses here. */
+  hemBenchmark?: number;
 }
 
 // ── Persistence helpers ────────────────────────────────
@@ -153,6 +159,9 @@ export function BCScenarioAgent({
   properties,
   onApplyScenario,
   clientId,
+  incomeComponents,
+  currentLenderProfileId,
+  hemBenchmark,
 }: BCScenarioAgentProps) {
   // Load persisted state synchronously on mount so history is available immediately
   const initialState = loadPersistedState(clientId);
@@ -212,7 +221,17 @@ export function BCScenarioAgent({
           body: JSON.stringify({
             session_token: sessionToken,
             messages: updatedMessages,
-            clientContext: { baseInputs, baseResult, liabilities, properties },
+            clientContext: {
+              baseInputs,
+              baseResult,
+              liabilities,
+              properties,
+              // Phase I1/I2 — propagate so the server preview re-shades and
+              // floors expenses identically to the client engine.
+              incomeComponents,
+              currentLenderProfileId,
+              hemBenchmark,
+            },
           }),
         }
       );
