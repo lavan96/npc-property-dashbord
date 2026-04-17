@@ -1423,6 +1423,36 @@ export function runScenarioWithInputs(
     ? computeAcquisitionCapacity(calc.borrowingCapacity, ctx, total)
     : null;
 
+  // Phase I10 — Honest DTI parity with runScenario
+  const debtMoves2 = splitDebtMoves(safeDeltas, ctx);
+  const proposedAcqLoan2 = acquisitionCapacity?.loanRequiredForPurchase ?? 0;
+  const refinedDti2 = computeDti(
+    {
+      existingDebtBalances: Math.max(0, ctx.baseInputs.totalDebtBalances || 0),
+      proposedLoanAmount: proposedAcqLoan2,
+      releasedCapitalDebt: debtMoves2.releasedCapitalDebt,
+      debtRemovedByScenario: debtMoves2.debtRemovedByScenario,
+    },
+    {
+      incomeComponents: Array.isArray(ctx.incomeComponents) && ctx.incomeComponents.length > 0
+        ? ctx.incomeComponents.map(c => ({
+            ...c,
+            grossAnnual: Math.max(0, c.grossAnnual * (ctx.baseInputs.grossAnnualIncome > 0 ? newGross2 / ctx.baseInputs.grossAnnualIncome : 1)),
+          }))
+        : undefined,
+      fallbackGrossAnnual: newGross2,
+    },
+    ctx.baseInputs.dtiCapLimit,
+  );
+  if (refinedDti2.exceedsApraTrigger || refinedDti2.exceedsLenderCap) {
+    issues.push({
+      deltaId: 'dti-honest',
+      deltaType: 'dti_cap_change',
+      severity: 'warning',
+      message: `Honest DTI ${refinedDti2.dtiRatio.toFixed(2)}× ${refinedDti2.exceedsApraTrigger ? '(>6× APRA trigger)' : ''}${refinedDti2.exceedsLenderCap ? ` (>lender cap ${ctx.baseInputs.dtiCapLimit}×)` : ''}. Numerator $${Math.round(refinedDti2.numerator).toLocaleString()} (existing+proposed+released−removed).`,
+    });
+  }
+
   return {
     result: {
       scenarioName,
