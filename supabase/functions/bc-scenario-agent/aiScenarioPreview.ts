@@ -19,7 +19,68 @@ import {
   type ScenarioLiability,
   type AcquisitionContext,
 } from '../_shared/scenarioDeltaEngine.ts';
-import { calculateBorrowingCapacity } from '../_shared/scenarioDeltaEngine.ts';
+
+// ── Local BC kernel (mirrors calculate-borrowing-capacity formula) ────
+// Directional replay for the chat preview — the post-Apply engine produces
+// the canonical number. This kernel matches the same APRA surplus → P&I
+// amortisation formula used everywhere else in the app.
+
+import { getTaxBreakdown } from './tax.ts';
+
+interface BcParams {
+  grossAnnualIncome: number;
+  shadedAnnualIncome: number;
+  monthlyLivingExpenses: number;
+  monthlyCommitments: number;
+  interestRate: number;
+  bufferRate: number;
+  loanTermYears: number;
+  totalDebtBalances: number;
+  dtiCapEnabled?: boolean;
+  dtiCapLimit?: number;
+}
+
+interface BcResult {
+  borrowingCapacity: number;
+  monthlySurplus: number;
+  serviceabilityBand: 'green' | 'amber' | 'red';
+  dtiRatio: number;
+}
+
+function calculateBorrowingCapacity(p: BcParams): BcResult {
+  const assessableIncome = p.shadedAnnualIncome > 0 ? p.shadedAnnualIncome : p.grossAnnualIncome;
+  const tax = getTaxBreakdown(assessableIncome);
+  const monthlyAfterTax = tax.afterTaxIncome / 12;
+  const monthlySurplus = monthlyAfterTax - p.monthlyLivingExpenses - p.monthlyCommitments;
+
+  const assessmentRate = p.interestRate + p.bufferRate;
+  const monthlyRate = (assessmentRate / 100) / 12;
+  const periods = p.loanTermYears * 12;
+  const maxRepayment = Math.max(0, monthlySurplus);
+  let capacity = 0;
+  if (monthlyRate > 0 && maxRepayment > 0) {
+    const factor = (1 - Math.pow(1 + monthlyRate, -periods)) / monthlyRate;
+    capacity = Math.round(maxRepayment * factor);
+  }
+
+  let dtiRatio = p.grossAnnualIncome > 0
+    ? Math.round(((p.totalDebtBalances + capacity) / p.grossAnnualIncome) * 100) / 100
+    : 0;
+
+  const dtiCap = p.dtiCapLimit ?? 6;
+  if (p.dtiCapEnabled && dtiRatio > dtiCap && p.grossAnnualIncome > 0) {
+    const maxTotalDebt = p.grossAnnualIncome * dtiCap;
+    capacity = Math.max(0, Math.round(maxTotalDebt - p.totalDebtBalances));
+    dtiRatio = Math.round(((p.totalDebtBalances + capacity) / p.grossAnnualIncome) * 100) / 100;
+  }
+
+  let band: 'green' | 'amber' | 'red';
+  if (monthlySurplus > 1000 && dtiRatio < 5) band = 'green';
+  else if (monthlySurplus > 0 && dtiRatio < 7) band = 'amber';
+  else band = 'red';
+
+  return { borrowingCapacity: capacity, monthlySurplus: Math.round(monthlySurplus), serviceabilityBand: band, dtiRatio };
+}
 
 // ── Types mirroring the AI tool schema ────────────────────────────────
 
