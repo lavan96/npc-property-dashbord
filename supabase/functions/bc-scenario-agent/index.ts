@@ -5,6 +5,7 @@ import {
   validateAIScenarios,
   detectTargetPrice,
   isClarificationMessage,
+  extractAcquisitionHints,
   type AIScenario,
 } from "./aiScenarioPreview.ts";
 
