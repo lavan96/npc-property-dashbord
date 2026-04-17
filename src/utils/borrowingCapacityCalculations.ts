@@ -408,12 +408,15 @@ export function calculateBorrowingCapacity(params: BorrowingCapacityInput): Borr
   const assessmentRate = interestRate + bufferRate;
   const monthlyRate = (assessmentRate / 100) / 12;
   
-  // *** KEY CHANGE: Calculate after-tax income for serviceability ***
-  // Banks assess serviceability based on after-tax income, not gross
-  const afterTaxAnnualIncome = calculateAfterTaxIncome(grossAnnualIncome);
+  // *** Phase A1/A4 FIX: Tax must be applied to the SHADED (assessable) income ***
+  // Banks assess serviceability on the income they actually count — not raw gross.
+  // Using gross overstated take-home pay for variable-income clients (bonus/commission/casual).
+  // Fall back to gross only if shaded is missing or zero (defensive).
+  const assessableIncome = shadedAnnualIncome > 0 ? shadedAnnualIncome : grossAnnualIncome;
+  const afterTaxAnnualIncome = calculateAfterTaxIncome(assessableIncome);
   const monthlyAfterTaxIncome = afterTaxAnnualIncome / 12;
   
-  // Monthly net income available = after-tax income (what they actually take home)
+  // Monthly net income available = after-tax shaded income (what banks count as take-home)
   const monthlyIncome = monthlyAfterTaxIncome;
   let monthlySurplus = monthlyIncome - monthlyLivingExpenses - monthlyCommitments;
   
@@ -422,15 +425,18 @@ export function calculateBorrowingCapacity(params: BorrowingCapacityInput): Borr
     // Apply surplus buffer multiplier (only use 85% of calculated surplus)
     monthlySurplus = monthlySurplus * CONSERVATIVE_MODE_ADJUSTMENTS.surplusBufferMultiplier;
     
-    // Enforce minimum surplus floor
+    // *** Phase A2 FIX: Enforce real minimum surplus floor (was a no-op clamp) ***
+    // If surplus is below the conservative floor, treat the shortfall as zero capacity
+    // for serviceability purposes — capacity should not flow from sub-floor surplus.
     if (monthlySurplus < CONSERVATIVE_MODE_ADJUSTMENTS.minimumSurplusFloor) {
-      monthlySurplus = Math.max(0, monthlySurplus);
+      monthlySurplus = 0;
     }
     
-    // Enforce residual income floor
+    // Enforce residual income floor (income remaining after commitments)
     const residualIncome = monthlyIncome - monthlyCommitments;
     if (residualIncome < CONSERVATIVE_MODE_ADJUSTMENTS.residualIncomeFloor) {
-      monthlySurplus = Math.max(0, monthlySurplus - (CONSERVATIVE_MODE_ADJUSTMENTS.residualIncomeFloor - residualIncome));
+      const shortfall = CONSERVATIVE_MODE_ADJUSTMENTS.residualIncomeFloor - residualIncome;
+      monthlySurplus = Math.max(0, monthlySurplus - shortfall);
     }
   }
   
