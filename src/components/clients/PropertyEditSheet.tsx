@@ -334,14 +334,36 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
         lender_name: isRental ? null : (formData.lender_name || null),
       };
 
-      const { data, error } = await invokeSecureFunction('manage-client-data', {
-        operation: 'update',
-        table: 'client_properties',
-        clientId: property.client_id,
-        recordId: property.id,
-        data: updateData,
-      });
-      
+      // ── Resilient update with single transient-error retry ──
+      // Cold-started edge functions occasionally throw a network/abort error
+      // on the first call. We retry once before surfacing the failure to
+      // avoid spurious "failed to update property" toasts when the data is
+      // actually fine to save on a second attempt.
+      const tryUpdate = async () => {
+        return invokeSecureFunction('manage-client-data', {
+          operation: 'update',
+          table: 'client_properties',
+          clientId: property.client_id,
+          recordId: property.id,
+          data: updateData,
+        });
+      };
+
+      let { data, error } = await tryUpdate();
+
+      const isTransient = (msg?: string) =>
+        !!msg && /network|timed out|fetch|aborted|ECONN|HTTP 5\d\d/i.test(msg);
+
+      if ((error || !data?.success) && isTransient(error?.message || data?.error)) {
+        console.warn('[PropertyEditSheet] First update attempt failed transiently — retrying once', {
+          message: error?.message || data?.error,
+        });
+        await new Promise((r) => setTimeout(r, 400));
+        const retry = await tryUpdate();
+        data = retry.data;
+        error = retry.error;
+      }
+
       if (error || !data?.success) {
         throw new Error(error?.message || data?.error || 'Failed to update property');
       }
