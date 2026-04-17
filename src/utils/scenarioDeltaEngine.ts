@@ -515,6 +515,8 @@ export function runScenario(
     total.rateAdjustment += e.rateAdjustment;
     total.loanTermAdjustment += e.loanTermAdjustment;
     total.debtBalanceAdjustment += e.debtBalanceAdjustment;
+    total.releasedCapital += e.releasedCapital;
+    if (e.acquisitionNotes.length) total.acquisitionNotes.push(...e.acquisitionNotes);
     if (e.dtiCapEnabled !== undefined) total.dtiCapEnabled = e.dtiCapEnabled;
     if (e.dtiCapLimit !== undefined) total.dtiCapLimit = e.dtiCapLimit;
   }
@@ -538,6 +540,10 @@ export function runScenario(
     scenarioResult.borrowingCapacity,
   );
 
+  const acquisitionCapacity = context.acquisition
+    ? computeAcquisitionCapacity(scenarioResult.borrowingCapacity, context, total)
+    : null;
+
   return {
     scenarioName,
     deltas,
@@ -546,6 +552,7 @@ export function runScenario(
     serviceabilityBand: scenarioResult.serviceabilityBand,
     dtiRatio: scenarioResult.dtiRatio,
     capacityChange,
+    acquisitionCapacity,
   };
 }
 
