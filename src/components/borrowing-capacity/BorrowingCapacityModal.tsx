@@ -21,7 +21,6 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useBorrowingCapacity } from '@/hooks/useBorrowingCapacity';
 import { getHemBenchmark, getHemBreakdown, getHecsRepayment, DEFAULT_DTI_CAP } from '@/utils/borrowingCapacityCalculations';
-import { DEFAULT_LOAN_PARAMS } from '@/utils/policyEngine';
 import type { FullAssessmentResult, BorrowingCapacityInput, CalculationMode, HemBreakdown } from '@/utils/borrowingCapacityCalculations';
 import type { LmiMode, LmiEstimate } from '@/utils/lmiCalculations';
 import { calculateLmiImpact } from '@/utils/lmiCalculations';
@@ -429,15 +428,6 @@ export function BorrowingCapacityModal({
       };
     });
 
-    // Phase E (H2 fix): Stress rate is now sourced from policy + user buffer instead
-    // of a hard-coded 9.5%. Falls back to product rate (6.5%) + buffer (3%) when missing.
-    const productRatePct = Number((clientData as any)?.borrowingCapacity?.[0]?.interest_rate_used)
-      || DEFAULT_LOAN_PARAMS.interestRate;
-    const bufferPct = Number((clientData as any)?.borrowingCapacity?.[0]?.buffer_rate)
-      || DEFAULT_LOAN_PARAMS.bufferRate;
-    const LOAN_ASSESSMENT_RATE = (productRatePct + bufferPct) / 100;
-    const LOAN_TERM_MONTHS = (DEFAULT_LOAN_PARAMS.loanTermYears || 30) * 12;
-    
     clientData?.properties.forEach(prop => {
       const propertyType = prop.property_type?.toLowerCase() || '';
       if (propertyType === 'rental') {
@@ -452,31 +442,6 @@ export function BorrowingCapacityModal({
             calculationNote: 'Rent paid as tenant',
           });
         }
-      } else if (prop.loan_remaining && prop.loan_remaining > 0) {
-        const loanBalance = Number(prop.loan_remaining);
-        const monthlyRate = LOAN_ASSESSMENT_RATE / 12;
-        const piRepayment = loanBalance * (monthlyRate * Math.pow(1 + monthlyRate, LOAN_TERM_MONTHS))
-                            / (Math.pow(1 + monthlyRate, LOAN_TERM_MONTHS) - 1);
-        const actualRepayment = Number(prop.monthly_interest_repayment) || 0;
-        const repaymentType = (prop as any).repayment_type as string | null;
-        // P&I loans (user-supplied amortized) → trust stored value; IO/legacy → stress-floor at P&I
-        const monthlyServicing = repaymentType === 'principal_and_interest' && actualRepayment > 0
-          ? actualRepayment
-          : Math.max(piRepayment, actualRepayment);
-        const note = repaymentType === 'principal_and_interest' && actualRepayment > 0
-          ? `P&I (user-supplied)`
-          : (piRepayment > actualRepayment
-              ? `Stress-tested P&I @ ${(LOAN_ASSESSMENT_RATE * 100).toFixed(2)}%${repaymentType === 'interest_only' ? ' (IO → P&I)' : ''}`
-              : 'Actual repayment');
-
-        items.push({
-          id: `prop-${prop.id}-loan`,
-          type: prop.property_type === 'owner_occupied' ? 'home_loan' : 'investment_loan',
-          label: `Loan: ${prop.address?.slice(0, 25)}...`,
-          balance: loanBalance,
-          monthlyServicing: Math.round(monthlyServicing * 100) / 100,
-          calculationNote: note,
-        });
       }
     });
 
@@ -743,6 +708,7 @@ export function BorrowingCapacityModal({
         calculationMode,
         dtiCapEnabled,
         dtiCapLimit,
+        selectedLenderName: selectedLenderName || undefined,
         ...lmiOverrides,
       });
       setResult(calcResult);
@@ -751,14 +717,14 @@ export function BorrowingCapacityModal({
     } finally {
       setIsLocalCalculating(false);
     }
-  }, [quickCalculate, effectiveGrossIncomeForCalc, effectiveShadedIncomeForCalc, effectiveCommitmentsForCalc, effectiveExpensesForCalc, interestRate, loanTermYears, proposedLoanAmount, calculationMode, dtiCapEnabled, dtiCapLimit, effectiveBufferRate, lmiMode, lmiEstimate, lmiPropertyValue, lmiDepositAmount, isFirstHomeBuyer]);
+  }, [quickCalculate, effectiveGrossIncomeForCalc, effectiveShadedIncomeForCalc, effectiveCommitmentsForCalc, effectiveExpensesForCalc, interestRate, loanTermYears, proposedLoanAmount, calculationMode, dtiCapEnabled, dtiCapLimit, selectedLenderName, effectiveBufferRate, lmiMode, lmiEstimate, lmiPropertyValue, lmiDepositAmount, isFirstHomeBuyer]);
 
   // Auto-calculate on mount and when key inputs change
   useEffect(() => {
     if (open && clientData) {
       handleCalculate();
     }
-  }, [open, clientData, effectiveExpensesForCalc, interestRate, loanTermYears, calculationMode, dtiCapEnabled, dtiCapLimit, effectiveBufferRate, incomeOverrides, liabilityOverrides, lmiMode, lmiEstimate, proposedRentalNetAssessable, activeScenario]);
+  }, [open, clientData, effectiveExpensesForCalc, interestRate, loanTermYears, calculationMode, dtiCapEnabled, dtiCapLimit, selectedLenderName, effectiveBufferRate, incomeOverrides, liabilityOverrides, lmiMode, lmiEstimate, proposedRentalNetAssessable, activeScenario]);
 
   const headerContent = (
     <div className="flex items-center justify-between flex-wrap gap-2">
