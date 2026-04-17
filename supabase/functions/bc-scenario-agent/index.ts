@@ -346,7 +346,7 @@ serve(async (req) => {
     );
 
     const body = await req.json();
-    const { messages, clientContext } = body;
+    const { messages, clientContext, priorScenarios } = body;
 
     // Auth check
     const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
