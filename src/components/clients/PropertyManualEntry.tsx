@@ -281,23 +281,31 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
       }
     },
     onSuccess: () => {
+      // Broad invalidation so the BC calculator and any other downstream
+      // consumer (scorecard, dashboards, scenarios) immediately reflect the
+      // newly added property without showing stale figures.
       queryClient.invalidateQueries({ queryKey: ['client-properties', clientId] });
       queryClient.invalidateQueries({ queryKey: ['secure-client-data', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['secure-client-properties', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['borrowing-capacity-client-data', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['client-data', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['borrowing-capacity-history', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['get-client-data'] });
       toast.success('Property added successfully');
-      
-      const propertyTypeLabel = 
+
+      const propertyTypeLabel =
         formData.property_type === 'investment' ? 'investment' :
         formData.property_type === 'smsf' ? 'SMSF' :
         formData.property_type === 'rental' ? 'rental (tenant)' :
         'owner-occupied';
-      
+
       addNotification({
         type: 'portfolio_updated',
         title: formData.property_type === 'rental' ? 'Personal Expense Added' : 'Portfolio Updated',
         message: `New ${propertyTypeLabel} property added: ${formData.address}`,
         entityId: clientId
       });
-      
+
       setFormData(defaultFormData);
       setOpen(false);
       onComplete();
