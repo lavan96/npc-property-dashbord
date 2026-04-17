@@ -279,33 +279,24 @@ ${JSON.stringify(comparisonData, null, 2)}
 
 Return ONLY the formatted markdown report. Do not include any commentary or explanation outside the report.`;
 
-    const response = await fetch('https://api.perplexity.ai/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${perplexityApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'sonar',
-        messages: [
-          {
-            role: 'system',
-            content: `You are a professional real estate report formatter. Your output must:
+    const { callLLMRaw } = await import('../_shared/llmRouter.ts');
+    const response = await callLLMRaw({
+      agentKey: 'comparison_formatter',
+      messages: [
+        {
+          role: 'system',
+          content: `You are a professional real estate report formatter. Your output must:
 1. Use clean markdown formatting (no HTML entities)
 2. Include ALL properties in every table and section
 3. Use " • " as bullet separator within table cells
 4. Never truncate tables or split them across sections
 5. Use actual ampersand "&" characters, never "&#x26;" or "&amp;"
-6. Maintain consistent property numbering throughout`
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.1, // Lower temperature for more consistent formatting
-        max_tokens: 12000, // Increased for complete reports
-      }),
+6. Maintain consistent property numbering throughout`,
+        },
+        { role: 'user', content: prompt },
+      ],
+      temperature: 0.1,
+      maxTokens: 12000,
     });
 
     if (!response.ok) {

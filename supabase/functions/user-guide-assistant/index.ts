@@ -101,21 +101,14 @@ serve(async (req) => {
 
 ${knowledgeBase}`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: fullSystemPrompt },
-          ...messages,
-        ],
-        stream: true,
-        stream_options: { include_usage: true },
-      }),
+    const { streamLLM } = await import('../_shared/llmRouter.ts');
+    const response = await streamLLM({
+      agentKey: 'user_guide_assistant',
+      messages: [
+        { role: 'system', content: fullSystemPrompt },
+        ...messages,
+      ],
+      extraBody: { stream_options: { include_usage: true } },
     });
 
     if (!response.ok) {

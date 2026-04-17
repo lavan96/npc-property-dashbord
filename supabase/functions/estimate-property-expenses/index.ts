@@ -70,22 +70,16 @@ Respond with ONLY a valid JSON object in this exact format, no other text:
   "repairsMaintenance": number (annual $ amount)
 }`;
 
-    const response = await fetch('https://api.perplexity.ai/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${perplexityApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'sonar',
-        messages: [
-          { 
-            role: 'system', 
-            content: 'You are an Australian property investment expense estimator. Search for current, accurate expense data for the specific property location. Always respond with ONLY valid JSON, no markdown or explanation.' 
-          },
-          { role: 'user', content: userPrompt }
-        ],
-      }),
+    const { callLLMRaw } = await import('../_shared/llmRouter.ts');
+    const response = await callLLMRaw({
+      agentKey: 'expense_estimation',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an Australian property investment expense estimator. Search for current, accurate expense data for the specific property location. Always respond with ONLY valid JSON, no markdown or explanation.',
+        },
+        { role: 'user', content: userPrompt },
+      ],
     });
 
     if (!response.ok) {

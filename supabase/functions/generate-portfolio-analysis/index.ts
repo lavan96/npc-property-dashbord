@@ -634,38 +634,19 @@ Format your response as valid JSON with this structure:
 }`;
 
     // Call Lovable AI
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      console.error('LOVABLE_API_KEY not configured');
-      return new Response(
-        JSON.stringify({ error: 'AI service not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log('Calling Lovable AI for portfolio analysis...');
-
-    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are an expert property portfolio analyst and trusted advisor. Provide detailed, actionable, and consultative portfolio analysis. Your tone should be warm and professional, building client trust. CRITICAL: Always respond with ONLY valid JSON - no markdown, no code blocks. Return pure JSON starting with { and ending with }.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 16000
-      }),
+    const { callLLMRaw } = await import('../_shared/llmRouter.ts');
+    console.log('Calling LLM router for portfolio analysis...');
+    const aiResponse = await callLLMRaw({
+      agentKey: 'portfolio_analysis',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an expert property portfolio analyst and trusted advisor. Provide detailed, actionable, and consultative portfolio analysis. Your tone should be warm and professional, building client trust. CRITICAL: Always respond with ONLY valid JSON - no markdown, no code blocks. Return pure JSON starting with { and ending with }.',
+        },
+        { role: 'user', content: prompt },
+      ],
+      temperature: 0.7,
+      maxTokens: 16000,
     });
 
     if (!aiResponse.ok) {

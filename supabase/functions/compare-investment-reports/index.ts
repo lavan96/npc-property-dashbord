@@ -375,32 +375,21 @@ Format your response as valid JSON with this structure:
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout
-
-        const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'google/gemini-2.5-flash',
-            messages: [
-              {
-                role: 'system',
-                content: 'You are an expert property investment analyst specializing in comparative analysis. Provide detailed, actionable insights based on data. CRITICAL: Always respond with ONLY valid JSON - no markdown formatting, no code blocks, no ```json wrappers. Return pure JSON starting with { and ending with }.'
-              },
-              {
-                role: 'user',
-                content: prompt
-              }
-            ],
-            temperature: 0.7,
-            max_tokens: 12000
-          }),
-          signal: controller.signal,
+        const { callLLMRaw } = await import('../_shared/llmRouter.ts');
+        const aiResponse = await callLLMRaw({
+          agentKey: 'report_comparison',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are an expert property investment analyst specializing in comparative analysis. Provide detailed, actionable insights based on data. CRITICAL: Always respond with ONLY valid JSON - no markdown formatting, no code blocks, no ```json wrappers. Return pure JSON starting with { and ending with }.',
+            },
+            { role: 'user', content: prompt },
+          ],
+          temperature: 0.7,
+          maxTokens: 12000,
         });
+        // Router handles its own internal timeouts/fallbacks; abort no longer needed
+        const timeoutId = 0 as any; const controller = { abort: () => {} } as any;
 
         clearTimeout(timeoutId);
 

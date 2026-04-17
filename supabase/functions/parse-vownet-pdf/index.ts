@@ -73,21 +73,15 @@ JSON Schema:
   "portfolioSummary": { "totalPortfolioValue": number, "totalDebt": number, "totalMonthlyExpenditure": number, "totalMonthlyIncome": number, "totalMonthlyRentalIncome": number, "netMonthlyCashFlow": number } | null
 }`;
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Extract all client data from this VowNet form PDF text:\n\n${truncatedText}` }
-        ],
-        temperature: 0.1,
-        response_format: { type: 'json_object' },
-      }),
+    const { callLLMRaw } = await import('../_shared/llmRouter.ts');
+    const response = await callLLMRaw({
+      agentKey: 'pdf_vownet_extraction',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: `Extract all client data from this VowNet form PDF text:\n\n${truncatedText}` },
+      ],
+      temperature: 0.1,
+      responseFormat: { type: 'json_object' },
     });
 
     if (!response.ok) {

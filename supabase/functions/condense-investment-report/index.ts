@@ -374,29 +374,18 @@ IMPORTANT:
 - Maintain professional formatting throughout`;
 
     // Call Lovable AI to condense the report
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
-    }
-
-    console.log('Calling Lovable AI for condensation...');
-    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        // NOTE: Must be a model supported by the Lovable AI gateway.
-        // See edge function logs for the current allowlist.
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        max_tokens: targetTier === 'briefing' ? 16000 : 6000,
-        temperature: 0.3, // Lower temperature for more consistent output
-      }),
+    // Phase 4 (LLM Router): model selection driven by agent_model_assignments
+    // for agent_key='investment_report_condense'.
+    const { callLLMRaw } = await import('../_shared/llmRouter.ts');
+    console.log('Calling LLM router for condensation...');
+    const aiResponse = await callLLMRaw({
+      agentKey: 'investment_report_condense',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      maxTokens: targetTier === 'briefing' ? 16000 : 6000,
+      temperature: 0.3,
     });
 
     if (!aiResponse.ok) {

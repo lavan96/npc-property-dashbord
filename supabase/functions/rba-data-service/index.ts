@@ -107,26 +107,17 @@ async function fetchLiveEconomicData() {
   try {
     console.log('🌐 Querying Perplexity for live Australian economic data...');
     
-    const response = await fetch('https://api.perplexity.ai/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${perplexityApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'sonar',
-        temperature: 0.0,
-        max_tokens: 1000,
-        search_domain_filter: ['rba.gov.au', 'abs.gov.au', 'treasury.gov.au', 'reuters.com', 'afr.com'],
-        search_recency_filter: 'month',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a financial data extraction tool. Return ONLY the requested JSON with exact current values. No commentary.'
-          },
-          {
-            role: 'user',
-            content: `What are the current Australian economic indicators as of today? I need the exact current values for:
+    const { callLLMRaw } = await import('../_shared/llmRouter.ts');
+    const response = await callLLMRaw({
+      agentKey: 'rba_data_service',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a financial data extraction tool. Return ONLY the requested JSON with exact current values. No commentary.',
+        },
+        {
+          role: 'user',
+          content: `What are the current Australian economic indicators as of today? I need the exact current values for:
 1. RBA Official Cash Rate (the current target cash rate set by the Reserve Bank of Australia)
 2. The previous cash rate before the most recent change
 3. Annual CPI inflation rate (latest ABS quarterly figure)
@@ -141,10 +132,15 @@ Return ONLY valid JSON in this exact format, no other text:
   "inflation": {"annual": 0.0, "core": 0.0, "quarterly": 0.0},
   "labour": {"unemploymentRate": 0.0, "participationRate": 0.0},
   "gdpGrowth": 0.0
-}`
-          }
-        ]
-      }),
+}`,
+        },
+      ],
+      temperature: 0.0,
+      maxTokens: 1000,
+      extraBody: {
+        search_domain_filter: ['rba.gov.au', 'abs.gov.au', 'treasury.gov.au', 'reuters.com', 'afr.com'],
+        search_recency_filter: 'month',
+      },
     });
 
     if (!response.ok) {

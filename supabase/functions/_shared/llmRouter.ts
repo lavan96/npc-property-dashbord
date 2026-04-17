@@ -347,3 +347,140 @@ export class LLMError extends Error {
     this.attempts = attempts;
   }
 }
+
+// =====================================================================
+// Compatibility helpers — drop-in replacements for hardcoded fetch sites
+// =====================================================================
+
+/**
+ * Drop-in replacement for direct fetch() calls to AI provider chat endpoints.
+ * Returns a `Response`-like object whose `.json()` yields an OpenAI-shaped body
+ * (`{ choices: [{ message: { content, tool_calls } }], usage }`), so existing
+ * call sites that read `data.choices[0].message.content` continue to work.
+ *
+ * Use this when an edge function previously did:
+ *   const r = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', { ... })
+ *
+ * and you want minimal code disruption while gaining centralised model
+ * selection, fallback, and provider routing.
+ */
+export async function callLLMRaw(args: CallLLMArgs & {
+  /** Pass-through body fields like response_format that aren't on CallLLMArgs */
+  extraBody?: Record<string, any>;
+}): Promise<{
+  ok: boolean;
+  status: number;
+  json: () => Promise<any>;
+  text: () => Promise<string>;
+  modelUsed: string;
+  routeUsed: LLMRoute;
+  attempts: CallLLMResult['attempts'];
+}> {
+  try {
+    const result = await callLLM(args);
+    return {
+      ok: true,
+      status: 200,
+      json: async () => result.rawResponse,
+      text: async () => JSON.stringify(result.rawResponse),
+      modelUsed: result.modelUsed,
+      routeUsed: result.routeUsed,
+      attempts: result.attempts,
+    };
+  } catch (e) {
+    const err = e as LLMError;
+    const status = err?.status ?? 500;
+    const attempts = err?.attempts ?? [];
+    const errBody = JSON.stringify({ error: err?.message ?? String(e), attempts });
+    return {
+      ok: false,
+      status,
+      json: async () => ({ error: err?.message ?? String(e), attempts }),
+      text: async () => errBody,
+      modelUsed: '',
+      routeUsed: 'gateway',
+      attempts,
+    };
+  }
+}
+
+/**
+ * Streaming variant — returns the raw upstream `Response` so its body can be
+ * piped directly to the client (SSE). On streaming requests we do NOT walk the
+ * fallback chain (the connection is already open by the time we'd retry).
+ *
+ * If the primary model returns 404/410/5xx BEFORE streaming begins we DO retry
+ * with the next fallback.
+ */
+export async function streamLLM(args: CallLLMArgs & {
+  /** Pass-through body fields like response_format that aren't on CallLLMArgs */
+  extraBody?: Record<string, any>;
+}): Promise<Response> {
+  const assignment = await loadAssignment(args.agentKey);
+  const chain = args.forceRoute && args.forceModelId
+    ? [{ route: args.forceRoute, model_id: args.forceModelId }]
+    : buildChain(assignment);
+
+  let lastErr: { status: number; body: string } | null = null;
+  for (const step of chain) {
+    if (step.route !== 'gateway' && step.route !== 'openrouter' && !step.model_id.startsWith('gpt-') && !step.model_id.startsWith('o') && !step.model_id.startsWith('chatgpt')) {
+      // Native Anthropic/Gemini/Perplexity streaming uses different SSE shapes — only
+      // honour OpenAI-compatible streaming endpoints to keep clients unchanged.
+      continue;
+    }
+
+    let url = '';
+    let headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (step.route === 'gateway') {
+      const apiKey = Deno.env.get('LOVABLE_API_KEY');
+      if (!apiKey) { lastErr = { status: 500, body: 'LOVABLE_API_KEY not configured' }; continue; }
+      url = 'https://ai.gateway.lovable.dev/v1/chat/completions';
+      headers.Authorization = `Bearer ${apiKey}`;
+    } else if (step.route === 'openrouter') {
+      const apiKey = Deno.env.get('OPENROUTER_API_KEY');
+      if (!apiKey) { lastErr = { status: 500, body: 'OPENROUTER_API_KEY not configured' }; continue; }
+      url = 'https://openrouter.ai/api/v1/chat/completions';
+      headers.Authorization = `Bearer ${apiKey}`;
+      headers['HTTP-Referer'] = Deno.env.get('APP_URL') ?? 'https://lovable.dev';
+      headers['X-Title'] = 'NPC Property Dashboard';
+    } else {
+      const apiKey = Deno.env.get('OPENAI_API_KEY');
+      if (!apiKey) { lastErr = { status: 500, body: 'OPENAI_API_KEY not configured' }; continue; }
+      url = 'https://api.openai.com/v1/chat/completions';
+      headers.Authorization = `Bearer ${apiKey}`;
+    }
+
+    const body: any = {
+      model: step.model_id,
+      messages: args.messages,
+      stream: true,
+      ...(args.extraBody ?? {}),
+    };
+    if (args.temperature ?? assignment.temperature !== null) body.temperature = args.temperature ?? assignment.temperature;
+    if (args.maxTokens ?? assignment.max_tokens !== null) body.max_tokens = args.maxTokens ?? assignment.max_tokens;
+    if (args.tools) body.tools = args.tools;
+    if (args.toolChoice) body.tool_choice = args.toolChoice;
+    if (args.responseFormat) body.response_format = args.responseFormat;
+    if (args.reasoningEffort ?? assignment.reasoning_effort) body.reasoning = { effort: args.reasoningEffort ?? assignment.reasoning_effort };
+
+    const r = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+    if (r.ok) {
+      // Mark assignment used (best effort)
+      try {
+        const admin = getAdminClient();
+        await admin.from('agent_model_assignments').update({ last_used_at: new Date().toISOString(), last_error: null }).eq('agent_key', args.agentKey);
+      } catch { /* swallow */ }
+      return r;
+    }
+    if (NON_RETRYABLE_STATUSES.has(r.status)) return r; // bubble 401/402/403/429
+    lastErr = { status: r.status, body: await r.text().catch(() => '') };
+    if (!RETRYABLE_STATUSES.has(r.status)) {
+      // Other 4xx — don't retry
+      return new Response(lastErr.body, { status: r.status, headers: { 'Content-Type': 'application/json' } });
+    }
+  }
+  return new Response(JSON.stringify({ error: lastErr?.body ?? 'All streaming fallbacks failed', attempts: chain }), {
+    status: lastErr?.status ?? 502,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}

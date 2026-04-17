@@ -253,14 +253,15 @@ Rules:
     },
   };
 
-  const resp = await fetch("https://api.perplexity.ai/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
+  const { callLLMRaw } = await import('../_shared/llmRouter.ts');
+  const routerResp = await callLLMRaw({
+    agentKey: 'listing_scrape',
+    messages: body.messages as any,
+    temperature: body.temperature,
+    maxTokens: body.max_tokens,
+    responseFormat: body.response_format,
   });
+  const resp = { ok: routerResp.ok, status: routerResp.status, json: routerResp.json, text: routerResp.text } as any;
 
   const rawText = await resp.text();
   let parsed: any = null;
