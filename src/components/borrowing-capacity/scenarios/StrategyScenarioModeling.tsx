@@ -770,6 +770,9 @@ export function StrategyScenarioModeling({
         liabilities={liabilities}
         properties={properties}
         clientId={clientId}
+        incomeComponents={incomeComponents}
+        currentLenderProfileId={currentLenderProfileId}
+        hemBenchmark={hemBenchmark}
         onApplyScenario={(scenario: AIScenario) => {
           // Map AI scenario adjustments to strategy state
            setStrategy(prev => {
