@@ -1115,7 +1115,7 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const body = await req.json();
-    const { clientId, overrides, saveResult = true, scenarioDeltas } = body;
+    const { clientId, overrides, saveResult = true, scenarioDeltas, acquisition, strictScenarioValidation } = body;
 
     // SECURITY: Verify authentication (enforced - TODO removed)
     const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
@@ -1600,7 +1600,17 @@ Deno.serve(async (req) => {
           limit: l.limit,
           monthlyServicing: l.monthlyServicing,
         })),
-      }),
+        // Phase C: optional acquisition context for max-purchase-price math
+        acquisition: acquisition ? {
+          state: acquisition.state,
+          intent: acquisition.intent,
+          category: acquisition.category,
+          isFirstHomeBuyer: acquisition.isFirstHomeBuyer ?? overrides?.isFirstHomeBuyer ?? false,
+          isForeignBuyer: acquisition.isForeignBuyer ?? false,
+          lmiMode: acquisition.lmiMode ?? overrides?.lmiMode ?? 'display_deduction',
+          cashOnHand: acquisition.cashOnHand ?? 0,
+        } : undefined,
+      }, !!strictScenarioValidation),
       proposedLoanCheck,
       // ── Phase 5: Audit Trail & Explanation ──
       auditTrail,
