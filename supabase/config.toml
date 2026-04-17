@@ -519,3 +519,6 @@ verify_jwt = true
 
 [functions.finance-portal-accept-invite]
 verify_jwt = false
+
+[functions.finance-portal-admin]
+verify_jwt = true
