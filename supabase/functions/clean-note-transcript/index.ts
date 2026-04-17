@@ -59,21 +59,15 @@ Rules:
 
 Note type context: ${noteType || 'general'}`;
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Please clean up this voice transcript into a professional note:\n\n"${transcript}"` }
-        ],
-        temperature: 0.3,
-        max_tokens: 500,
-      }),
+    const { callLLMRaw } = await import('../_shared/llmRouter.ts');
+    const response = await callLLMRaw({
+      agentKey: 'transcript_cleaning',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: `Please clean up this voice transcript into a professional note:\n\n"${transcript}"` },
+      ],
+      temperature: 0.3,
+      maxTokens: 500,
     });
 
     if (!response.ok) {
