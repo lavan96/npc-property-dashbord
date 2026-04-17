@@ -802,7 +802,22 @@ export function aggregateDeltas(
     });
   }
 
-  // Phase I2 — HEM floor enforcement. The bank uses MAX(declared, HEM); a
+  // Phase I8 — DTI denominator refinement (APS 220-aligned, surface-only)
+  if (Array.isArray(ctx.baseInputs.incomeComponents) && ctx.baseInputs.incomeComponents.length > 0) {
+    const grossScale = ctx.baseInputs.grossAnnualIncome > 0 ? newGross / ctx.baseInputs.grossAnnualIncome : 1;
+    const scaledForDti = ctx.baseInputs.incomeComponents.map(c => ({ ...c, grossAnnual: Math.max(0, c.grossAnnual * grossScale) }));
+    const dtiDen = computeDtiDenominator({ incomeComponents: scaledForDti, fallbackGrossAnnual: newGross });
+    if (dtiDen.dtiAdjustedAnnualIncome < newGross * 0.95 && dtiDen.dtiAdjustedAnnualIncome > 0) {
+      issues.push({
+        deltaId: 'dti-denominator',
+        deltaType: 'income_change',
+        severity: 'warning',
+        message: `DTI denominator (APS 220): $${Math.round(dtiDen.dtiAdjustedAnnualIncome).toLocaleString()}/yr (${((dtiDen.dtiAdjustedAnnualIncome / newGross) * 100).toFixed(0)}% of gross). Lender DTI review uses this — not the headline gross.`,
+      });
+    }
+  }
+
+  // Phase I2 — HEM floor enforcement.
   // scenario that promises -30% expenses cannot fall below that floor.
   // We respect a per-lender opt-out via `enforcesHemFloor = false` (e.g.
   // some non-banks). When the cut is impossible, surface a validation note
