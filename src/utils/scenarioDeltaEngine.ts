@@ -939,24 +939,33 @@ export function computeAcquisitionCapacity(
     const otherTarget = estimateOtherAcquisitionCosts(target).total;
 
     const requiredLoanRaw = Math.max(0, target - cashAvailable);
+    // Phase I9 — clamp the target loan by the LVR cap on the target price
+    const lvrCapDollarTarget = Math.max(0, target * acquisitionLvrCap);
+    const cappedRequiredLoan = Math.min(requiredLoanRaw, lvrCapDollarTarget);
     let lmiAtTarget = 0;
     if (lmiMode !== 'none') {
       lmiAtTarget = estimateLMI({
         propertyValue: target,
         depositAmount: cashAvailable,
-        loanAmount: requiredLoanRaw,
+        loanAmount: cappedRequiredLoan,
         isFirstHomeBuyer: isFhb,
       }).lmiAmount;
     }
     const lmiCashAtTarget = lmiMode === 'display_deduction' ? lmiAtTarget : 0;
     loanRequiredForPurchase = lmiMode === 'debt_capitalised'
-      ? requiredLoanRaw + lmiAtTarget
-      : requiredLoanRaw;
+      ? cappedRequiredLoan + lmiAtTarget
+      : cappedRequiredLoan;
 
     netCashAfterSettlement = cashAvailable - Math.max(0, target - (loanRequiredForPurchase ?? 0)) - lmiCashAtTarget - sdTarget - otherTarget;
-    meetsTarget = (loanRequiredForPurchase ?? 0) <= borrowingCapacity && netCashAfterSettlement >= 0;
+    meetsTarget = (loanRequiredForPurchase ?? 0) <= borrowingCapacity
+      && cappedRequiredLoan >= requiredLoanRaw  // LVR cap doesn't bind
+      && netCashAfterSettlement >= 0;
     shortfallToTarget = Math.max(0, target - Math.max(0, purchasePrice));
 
+    if (cappedRequiredLoan < requiredLoanRaw) {
+      loanCappedByLvr = true;
+      notes.push(`⚠ Target $${Math.round(target).toLocaleString()} requires loan > LVR cap (${(acquisitionLvrCap * 100).toFixed(0)}% × $${Math.round(target).toLocaleString()} = $${Math.round(lvrCapDollarTarget).toLocaleString()}). Increase deposit by $${Math.round(requiredLoanRaw - cappedRequiredLoan).toLocaleString()} to settle.`);
+    }
     if (meetsTarget) {
       notes.push(
         `✅ Target $${Math.round(target).toLocaleString()} achievable: needs loan $${Math.round(loanRequiredForPurchase).toLocaleString()} (capacity $${Math.round(borrowingCapacity).toLocaleString()}); net cash post-settlement $${Math.round(netCashAfterSettlement).toLocaleString()}.`
@@ -989,6 +998,8 @@ export function computeAcquisitionCapacity(
     targetPurchasePrice: target !== undefined ? Math.round(target) : undefined,
     meetsTarget,
     shortfallToTarget: shortfallToTarget !== undefined ? Math.round(shortfallToTarget) : undefined,
+    acquisitionLvrCap,
+    loanCappedByLvr,
     notes,
   };
 }
