@@ -61,6 +61,7 @@ import { computeBindingConstraint } from '@/utils/bindingConstraint';
 import { PurchasePowerHeadline, type LeverAttribution } from './PurchasePowerHeadline';
 import { StrategyRationalePanel } from './StrategyRationalePanel';
 import { buildStrategyRationale } from '@/utils/strategyRationaleEngine';
+import { CapacityMathInspector } from './CapacityMathInspector';
 
 // ── Types ──────────────────────────────────────────────
 
@@ -1220,36 +1221,122 @@ export function StrategyScenarioModeling({
                     const currentRepayment = prop.monthly_interest_repayment ||
                       calculatePIRepayment(prop.loan_remaining, baseInputs.interestRate, baseInputs.loanTermYears);
                     const ioRepayment = calculateIORepayment(prop.loan_remaining, baseInputs.interestRate);
-                    const saving = Math.max(0, currentRepayment - ioRepayment);
                     const isSelected = strategy.refinancedToIO.has(prop.id);
+                    const manualRepayment = strategy.refinanceManualRepayments.get(prop.id);
+                    const ioPeriodYears = strategy.refinanceIoPeriodYears.get(prop.id) ?? 5;
+                    const effectiveRepayment = Number.isFinite(manualRepayment as number) && (manualRepayment as number) >= 0
+                      ? (manualRepayment as number)
+                      : ioRepayment;
+                    const saving = Math.max(0, currentRepayment - effectiveRepayment);
 
                     return (
                       <div
                         key={prop.id}
-                        className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors ${
+                        className={`rounded-lg border transition-colors ${
                           isSelected ? 'bg-primary/10 border-primary/30' : 'hover:bg-muted/50'
                         }`}
-                        onClick={() => toggleRefinance(prop.id)}
                       >
-                        <div className="flex items-center gap-3">
-                          <Switch
-                            checked={isSelected}
-                            onCheckedChange={() => toggleRefinance(prop.id)}
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                          <div>
-                            <p className="text-sm font-medium">{prop.address?.slice(0, 35) || 'Investment Property'}</p>
+                        <div
+                          className="flex items-center justify-between p-3 cursor-pointer"
+                          onClick={() => toggleRefinance(prop.id)}
+                        >
+                          <div className="flex items-center gap-3">
+                            <Switch
+                              checked={isSelected}
+                              onCheckedChange={() => toggleRefinance(prop.id)}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                            <div>
+                              <p className="text-sm font-medium">{prop.address?.slice(0, 35) || 'Investment Property'}</p>
+                              <p className="text-xs text-muted-foreground">
+                                Loan: {formatCurrency(prop.loan_remaining)} · P&I: {formatCurrency(currentRepayment)}/mo
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right">
                             <p className="text-xs text-muted-foreground">
-                              Loan: {formatCurrency(prop.loan_remaining)} · P&I: {formatCurrency(currentRepayment)}/mo
+                              {Number.isFinite(manualRepayment as number) ? `Manual: ${formatCurrency(effectiveRepayment)}/mo` : `IO: ${formatCurrency(ioRepayment)}/mo`}
+                            </p>
+                            <p className="text-sm font-semibold text-emerald-600">
+                              Save {formatCurrency(saving)}/mo
                             </p>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-xs text-muted-foreground">IO: {formatCurrency(ioRepayment)}/mo</p>
-                          <p className="text-sm font-semibold text-emerald-600">
-                            Save {formatCurrency(saving)}/mo
-                          </p>
-                        </div>
+
+                        {/* Phase 3 — Granular refinance controls (per-property) */}
+                        {isSelected && (
+                          <div className="px-3 pb-3 pt-2 border-t border-border/50 space-y-3" onClick={(e) => e.stopPropagation()}>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs text-muted-foreground">IO Period</Label>
+                              <div className="flex gap-1.5">
+                                {[3, 5, 10].map(yrs => (
+                                  <button
+                                    key={yrs}
+                                    type="button"
+                                    onClick={() => setStrategy(prev => {
+                                      const next = new Map(prev.refinanceIoPeriodYears);
+                                      next.set(prop.id, yrs);
+                                      return { ...prev, refinanceIoPeriodYears: next };
+                                    })}
+                                    className={`flex-1 py-1.5 px-2 rounded text-xs font-medium transition-colors ${
+                                      ioPeriodYears === yrs
+                                        ? 'bg-primary text-primary-foreground'
+                                        : 'bg-secondary hover:bg-secondary/80 text-secondary-foreground'
+                                    }`}
+                                  >
+                                    {yrs} yrs
+                                  </button>
+                                ))}
+                              </div>
+                              <p className="text-[10px] text-muted-foreground/70">
+                                Informational — engine uses IO servicing for the assessment period.
+                              </p>
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <div className="flex items-center justify-between">
+                                <Label className="text-xs text-muted-foreground">
+                                  Manual Repayment Override
+                                </Label>
+                                {Number.isFinite(manualRepayment as number) && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setStrategy(prev => {
+                                      const next = new Map(prev.refinanceManualRepayments);
+                                      next.delete(prop.id);
+                                      return { ...prev, refinanceManualRepayments: next };
+                                    })}
+                                    className="text-[10px] text-muted-foreground hover:text-foreground underline"
+                                  >
+                                    Reset to auto
+                                  </button>
+                                )}
+                              </div>
+                              <Input
+                                type="number"
+                                inputMode="decimal"
+                                value={Number.isFinite(manualRepayment as number) ? String(manualRepayment) : ''}
+                                placeholder={`Auto: ${formatCurrency(ioRepayment)}/mo`}
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  setStrategy(prev => {
+                                    const next = new Map(prev.refinanceManualRepayments);
+                                    if (v === '') next.delete(prop.id);
+                                    else {
+                                      const num = Number(v);
+                                      if (Number.isFinite(num) && num >= 0) next.set(prop.id, num);
+                                    }
+                                    return { ...prev, refinanceManualRepayments: next };
+                                  });
+                                }}
+                                className="h-8 text-sm"
+                              />
+                              <p className="text-[10px] text-muted-foreground/70">
+                                Override $/mo if you've negotiated a specific repayment with the lender.
+                              </p>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
