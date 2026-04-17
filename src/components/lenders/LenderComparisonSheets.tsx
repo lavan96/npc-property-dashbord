@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, Scale, Trash2, Share2, ShareOff } from 'lucide-react';
+import { Plus, Scale, Trash2, Share2, EyeOff } from 'lucide-react';
 import { useComparisonSheets } from '@/hooks/useLenderSubmissions';
 import { useBankLendingRates } from '@/hooks/useBankLendingRates';
 import { cn } from '@/lib/utils';
@@ -31,7 +31,6 @@ export function LenderComparisonSheets({ clientId, dealId }: Props) {
         lender_id: s.lenderId,
         lender_name: s.lenderName,
         lowest_rate: s.lowestRate,
-        product_count: s.productCount,
       }));
     create({
       client_id: clientId ?? null,
@@ -124,7 +123,7 @@ export function LenderComparisonSheets({ clientId, dealId }: Props) {
                     >
                       {sheet.shared_with_client
                         ? <Share2 className="h-3.5 w-3.5 text-primary" />
-                        : <ShareOff className="h-3.5 w-3.5 text-muted-foreground" />}
+                        : <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />}
                     </Button>
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => remove(sheet.id)}>
                       <Trash2 className="h-3.5 w-3.5 text-destructive" />
