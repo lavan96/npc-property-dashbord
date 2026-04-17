@@ -438,7 +438,7 @@ ${(properties || []).map((p: any) => `- [${p.id}] ${p.address} (${p.property_typ
     }
 
     const aiMessages = [
-      { role: "system", content: SYSTEM_PROMPT + contextBlock + directives },
+      { role: "system", content: SYSTEM_PROMPT + contextBlock + priorScenariosBlock + directives },
       ...cappedMessages.map((m: any) => ({ role: m.role, content: m.content })),
     ];
 
