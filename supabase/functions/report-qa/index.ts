@@ -1086,18 +1086,13 @@ No investment report has been uploaded. You are having an open conversation abou
                 ).join('\n\n');
                 
                 // Generate summary using a fast model
-                const summaryResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-                  method: "POST",
-                  headers: {
-                    Authorization: `Bearer ${LOVABLE_API_KEY}`,
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({
-                    model: "google/gemini-2.5-flash",
-                    messages: [
-                      {
-                        role: "system",
-                        content: `You are a conversation summarizer. Create a concise but comprehensive summary of this Q&A conversation about property investment. Preserve:
+                const { callLLMRaw } = await import("../_shared/llmRouter.ts");
+                const summaryResponse = await callLLMRaw({
+                  agentKey: 'transcript_cleaning',
+                  messages: [
+                    {
+                      role: "system",
+                      content: `You are a conversation summarizer. Create a concise but comprehensive summary of this Q&A conversation about property investment. Preserve:
 1. ALL specific numbers, figures, property addresses, and financial data mentioned
 2. Key questions asked and conclusions reached
 3. Any recommendations or action items discussed
@@ -1105,14 +1100,13 @@ No investment report has been uploaded. You are having an open conversation abou
 5. Any specific properties, suburbs, or markets discussed
 
 Format as a structured summary with bullet points. Be thorough but concise. Max 2000 words.`,
-                      },
-                      {
-                        role: "user",
-                        content: `${existingSummary ? `PREVIOUS SUMMARY:\n${existingSummary}\n\n---\n\nNEW MESSAGES TO INCORPORATE:\n` : ''}${transcript}`,
-                      },
-                    ],
-                    max_tokens: 4096,
-                  }),
+                    },
+                    {
+                      role: "user",
+                      content: `${existingSummary ? `PREVIOUS SUMMARY:\n${existingSummary}\n\n---\n\nNEW MESSAGES TO INCORPORATE:\n` : ''}${transcript}`,
+                    },
+                  ],
+                  maxTokens: 4096,
                 });
                 
                 if (summaryResponse.ok) {
