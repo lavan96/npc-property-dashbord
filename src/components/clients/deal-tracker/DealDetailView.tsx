@@ -49,6 +49,8 @@ import { TeamUserSelect } from '@/components/ui/TeamUserSelect';
 import { useTeamUsers } from '@/hooks/useTeamUsers';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { useAuth } from '@/hooks/useAuth';
+import { LenderSubmissionsPanel } from '@/components/lenders/LenderSubmissionsPanel';
+import { LenderComparisonSheets } from '@/components/lenders/LenderComparisonSheets';
 
 function ResponsiblePersonSelect({ deal, onUpdate }: { deal: Deal; onUpdate: (data: Partial<Deal>) => void }) {
   const { data: teamUsers = [] } = useTeamUsers();
@@ -93,6 +95,7 @@ export function DealDetailView({ deal, clientId, onBack }: DealDetailViewProps) 
     financial: true,
     dates: true,
     build: true,
+    lenders: false,
     notes: false,
   });
 
@@ -299,6 +302,21 @@ export function DealDetailView({ deal, clientId, onBack }: DealDetailViewProps) 
           </Collapsible>
         </>
       )}
+
+      {/* Lenders & Submissions */}
+      <Separator />
+      <Collapsible open={openSections.lenders} onOpenChange={() => toggleSection('lenders')}>
+        <CollapsibleTrigger asChild>
+          <Button variant="ghost" className="w-full justify-between h-9 text-sm font-medium">
+            Lender Submissions & Comparison
+            <ChevronDown className={cn('h-4 w-4 transition-transform', openSections.lenders && 'rotate-180')} />
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pt-2 space-y-3">
+          <LenderSubmissionsPanel clientId={clientId} dealId={deal.id} />
+          <LenderComparisonSheets clientId={clientId} dealId={deal.id} />
+        </CollapsibleContent>
+      </Collapsible>
 
       {/* Notes */}
       <Separator />
