@@ -79,6 +79,9 @@ export function PurchasePowerHeadline({
   acquisitionCapacity,
   leverAttribution,
   formatCurrency,
+  baseTheoreticalCapacity,
+  scenarioTheoreticalCapacity,
+  floorActive = false,
 }: PurchasePowerHeadlineProps) {
   const capacityChange = scenarioCapacity - baseCapacity;
   const acq = acquisitionCapacity;
@@ -91,16 +94,34 @@ export function PurchasePowerHeadline({
   const interactionResidual = capacityChange - sumIsolated;
   const showInteraction = Math.abs(interactionResidual) > 1000 && leverAttribution.length > 0;
 
-  const sortedLevers = [...leverAttribution].sort(
-    (a, b) => Math.abs(b.capacityImpact) - Math.abs(a.capacityImpact)
+  // Theoretical (unfloored) totals — only meaningful when the floor is active.
+  const theoreticalCapacityChange =
+    (scenarioTheoreticalCapacity ?? 0) - (baseTheoreticalCapacity ?? 0);
+  const sumTheoretical = leverAttribution.reduce(
+    (s, l) => s + (l.theoreticalImpact ?? 0),
+    0
   );
+
+  // When floor is active we sort by theoretical impact (the meaningful signal),
+  // otherwise by the compounded floored impact (the audit signal).
+  const sortedLevers = [...leverAttribution].sort((a, b) => {
+    const aVal = floorActive
+      ? Math.abs(a.theoreticalImpact ?? 0)
+      : Math.abs(a.capacityImpact);
+    const bVal = floorActive
+      ? Math.abs(b.theoreticalImpact ?? 0)
+      : Math.abs(b.capacityImpact);
+    return bVal - aVal;
+  });
 
   // Max absolute value across all bars (incl. residual) → drives the relative
   // bar widths so the most impactful lever fills the row.
   const maxAbs = Math.max(
     1,
-    ...sortedLevers.map(l => Math.abs(l.capacityImpact)),
-    Math.abs(interactionResidual),
+    ...sortedLevers.map(l =>
+      floorActive ? Math.abs(l.theoreticalImpact ?? 0) : Math.abs(l.capacityImpact)
+    ),
+    floorActive ? 0 : Math.abs(interactionResidual),
   );
 
   // ── F3: target-vs-actual derived state ─────────────────────────────────
