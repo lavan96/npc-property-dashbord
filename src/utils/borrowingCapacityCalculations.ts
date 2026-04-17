@@ -71,6 +71,11 @@ export interface BorrowingCapacityInput {
   calculationMode?: CalculationMode;
   dtiCapEnabled?: boolean;
   dtiCapLimit?: number;
+  /** Phase I11 — APS 220-aligned DTI denominator (rental @ 75%, FTB @ 50%, etc.).
+   *  When provided, OVERRIDES grossAnnualIncome inside the DTI cap path so two
+   *  borrowers with identical headline gross but different rental mixes get
+   *  honestly-different caps. Pass `computeDtiDenominator(...).dtiAdjustedAnnualIncome`. */
+  dtiAdjustedAnnualIncome?: number;
 }
 
 export interface BorrowingCapacityResult {
@@ -400,6 +405,7 @@ export function calculateBorrowingCapacity(params: BorrowingCapacityInput): Borr
     calculationMode = 'bank',
     dtiCapEnabled = false,
     dtiCapLimit = DEFAULT_DTI_CAP,
+    dtiAdjustedAnnualIncome,
   } = params;
   
   const isConservative = calculationMode === 'conservative';
@@ -452,24 +458,30 @@ export function calculateBorrowingCapacity(params: BorrowingCapacityInput): Borr
     borrowingCapacity = Math.round(maxNewRepayment * factor);
   }
   
-  // Calculate DTI ratio using industry standard: Total Debt Balances / Gross Annual Income
-  // This is the macro-prudential measure used by APRA and lenders
+  // ── Phase I11 ─ DTI denominator now APS 220-aware ────────────────────
+  // When the caller supplied `dtiAdjustedAnnualIncome` (computed via
+  // computeDtiDenominator with rental @ 75%, FTB @ 50%, etc.), use it as
+  // the cap denominator. The headline `dtiRatio` we surface ALSO switches
+  // to that denominator so lender review and our number agree.
+  const dtiDenominator = (typeof dtiAdjustedAnnualIncome === 'number' && dtiAdjustedAnnualIncome > 0)
+    ? dtiAdjustedAnnualIncome
+    : grossAnnualIncome;
   const totalDebtWithNewLoan = totalDebtBalances + borrowingCapacity;
-  let dtiRatio = grossAnnualIncome > 0 ? Math.round((totalDebtWithNewLoan / grossAnnualIncome) * 100) / 100 : 0;
-  
+  let dtiRatio = dtiDenominator > 0 ? Math.round((totalDebtWithNewLoan / dtiDenominator) * 100) / 100 : 0;
+
   // Apply DTI cap if enabled or in conservative mode
   const effectiveDtiCap = isConservative ? CONSERVATIVE_MODE_ADJUSTMENTS.dtiHardCap : dtiCapLimit;
   const shouldApplyDtiCap = dtiCapEnabled || isConservative;
-  
-  if (shouldApplyDtiCap && dtiRatio > effectiveDtiCap && grossAnnualIncome > 0) {
-    // Calculate max new loan to stay within DTI cap
-    const maxTotalDebt = grossAnnualIncome * effectiveDtiCap;
+
+  if (shouldApplyDtiCap && dtiRatio > effectiveDtiCap && dtiDenominator > 0) {
+    // Calculate max new loan to stay within DTI cap (APS 220-aware denominator)
+    const maxTotalDebt = dtiDenominator * effectiveDtiCap;
     const maxNewLoan = Math.max(0, maxTotalDebt - totalDebtBalances);
-    
+
     if (maxNewLoan < borrowingCapacity) {
       borrowingCapacity = Math.round(maxNewLoan);
-      // Recalculate DTI with capped capacity
-      dtiRatio = Math.round(((totalDebtBalances + borrowingCapacity) / grossAnnualIncome) * 100) / 100;
+      // Recalculate DTI with capped capacity (same denominator)
+      dtiRatio = Math.round(((totalDebtBalances + borrowingCapacity) / dtiDenominator) * 100) / 100;
     }
   }
   
