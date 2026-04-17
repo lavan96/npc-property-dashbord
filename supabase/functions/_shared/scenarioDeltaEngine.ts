@@ -807,7 +807,10 @@ export function aggregateDeltas(
 
   // G1 — clone context + sort value-changes first
   const ctx = cloneContextForRun(context);
-  const ordered = orderDeltas(safeDeltas);
+  // Phase K1 — split capital_allocation sinks from main loop
+  const safeNonAlloc = safeDeltas.filter(d => d.type !== 'capital_allocation');
+  const safeAllocs = safeDeltas.filter(d => d.type === 'capital_allocation');
+  const ordered = orderDeltas(safeNonAlloc);
 
   const total = emptyEffect(scenarioName);
   for (const d of ordered) {
@@ -827,6 +830,61 @@ export function aggregateDeltas(
     // bag so the downstream re-shading branch actually fires.
     if (e.lenderProfileOverride) total.lenderProfileOverride = e.lenderProfileOverride;
   }
+
+  // Phase K1 — Capital Allocation Ledger (server mirror).
+  // Re-run source-emitting deltas in isolation to attribute per-delta
+  // releasedCapital, then build the ledger and fold sink effects into totals.
+  function srcType(d: ScenarioDelta): CapitalSourceType | null {
+    if (d.type === 'equity_release') return 'equity_release';
+    if (d.type === 'portfolio_lvr_release') return 'portfolio_lvr_release';
+    if (d.type === 'property_sell') return 'property_sell';
+    return null;
+  }
+  const sourceContribs: LedgerContext['sourceContributions'] = [];
+  for (const d of safeNonAlloc) {
+    const st = srcType(d);
+    if (!st) continue;
+    if (st === 'property_sell') {
+      const p = ctx.properties?.find(x => x.id === d.id);
+      const equity = p ? Math.max(0, (p.currentValue || 0) - (p.loanRemaining || 0)) : 0;
+      if (equity > 0) sourceContribs.push({ deltaId: d.id, sourceType: 'property_sell', label: `Sell ${p?.address?.slice(0, 28) || 'property'}`, amount: equity });
+      continue;
+    }
+    const sandbox = cloneContextForRun(ctx);
+    const eff = applyDelta(d, sandbox);
+    if (eff.releasedCapital > 0) {
+      sourceContribs.push({
+        deltaId: d.id, sourceType: st,
+        label: d.label || (st === 'equity_release' ? 'Equity release' : 'Pool release'),
+        amount: eff.releasedCapital,
+      });
+    }
+  }
+  const ledgerCtx: LedgerContext = {
+    properties: (ctx.properties || []).map(p => ({
+      id: p.id, address: p.address, propertyType: p.propertyType,
+      currentValue: p.currentValue, loanRemaining: p.loanRemaining,
+      monthlyRepayment: p.monthlyRepayment, loanRepaymentAmount: p.loanRepaymentAmount,
+      interestRate: p.interestRate,
+    })),
+    liabilities: (ctx.liabilities || []).map(l => ({
+      id: l.id, label: l.label, type: l.type,
+      balance: l.balance, monthlyServicing: l.monthlyServicing,
+    })),
+    cashOnHand: ctx.acquisition?.cashOnHand ?? 0,
+    sourceContributions: sourceContribs,
+  };
+  const k1 = buildCapitalLedger([...safeNonAlloc, ...safeAllocs], ledgerCtx);
+  total.commitmentAdjustment += k1.sinkAggregate.monthlyServicingDelta;
+  total.debtBalanceAdjustment += k1.sinkAggregate.debtBalanceDelta;
+  if (k1.sinkAggregate.notes.length) total.acquisitionNotes.push(...k1.sinkAggregate.notes);
+  let totalAllocated = 0;
+  for (const poolId of Object.keys(k1.ledger.pools)) totalAllocated += k1.ledger.pools[poolId].totalOut;
+  const consumedByNonDeposit = Math.max(0, totalAllocated - k1.sinkAggregate.depositContribution);
+  total.releasedCapital = Math.max(0, total.releasedCapital - consumedByNonDeposit);
+  for (const i of k1.issues) issues.push({ deltaId: i.deltaId, deltaType: i.deltaType, severity: i.severity, message: i.message });
+  // Surface ledger on the totals bag via a side-channel field for callers
+  (total as DeltaEffect & { capitalLedger?: CapitalLedger }).capitalLedger = k1.ledger;
 
   const newGross = Math.max(0, ctx.baseInputs.grossAnnualIncome + total.incomeAdjustment);
   const hemDelta = computeHemTierDelta(
