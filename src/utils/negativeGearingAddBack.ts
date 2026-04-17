@@ -36,6 +36,13 @@ export interface NegativeGearingInput {
   marginalTaxRate: number;
   /** Lender shading on the add-back (default 1.0 = 100% of tax saving). */
   addBackShading?: number;
+  /** Phase I12 — APRA buffer rate in % (e.g. 3.00). When provided AND the
+   *  property carries an `interestRate` + `loanRemaining`, the cash loss
+   *  is recomputed using IO at (contracted + buffer) so the add-back tracks
+   *  the loss the LENDER assesses, not the cheaper contracted-rate cash
+   *  position. Falls back to the recorded `netMonthlyCashflow` when buffer
+   *  inputs are missing. */
+  bufferRatePct?: number;
 }
 
 export interface NegativeGearingResult {
@@ -68,18 +75,37 @@ export function marginalTaxRateFor(grossAnnualIncome: number): number {
 export function computeNegativeGearingAddBack(input: NegativeGearingInput): NegativeGearingResult {
   const shading = Math.max(0, Math.min(1, input.addBackShading ?? 1));
   const mrt = Math.max(0, Math.min(0.5, input.marginalTaxRate));
+  const buffer = Math.max(0, input.bufferRatePct ?? 0);
   let totalAnnualAddBack = 0;
   const perProperty: NegativeGearingResult['perProperty'] = [];
   const notes: string[] = [];
+  let bufferUsedFor = 0;
 
   for (const p of input.investmentProperties || []) {
     const monthlyRent = p.monthlyRentalIncome ?? 0;
-    // Prefer explicit netMonthlyCashflow when present (richest signal),
-    // otherwise approximate from rent − loan servicing only.
-    const monthlyNet = typeof p.netMonthlyCashflow === 'number'
+    const recordedRepayment = p.loanRepaymentAmount ?? p.monthlyRepayment ?? 0;
+    const recordedCashflow = typeof p.netMonthlyCashflow === 'number'
       ? p.netMonthlyCashflow
-      : monthlyRent - (p.loanRepaymentAmount ?? p.monthlyRepayment ?? 0);
-    if (monthlyNet >= 0) continue; // not negatively geared
+      : monthlyRent - recordedRepayment;
+
+    // Phase I12 — recompute the cash loss at the buffered IO rate when we
+    // have enough signal. The buffered IO repayment substitutes for the
+    // recorded repayment; everything else (rent + holding) stays.
+    let monthlyNet = recordedCashflow;
+    let usedBuffer = false;
+    if (
+      buffer > 0 &&
+      typeof p.interestRate === 'number' && p.interestRate > 0 &&
+      typeof p.loanRemaining === 'number' && p.loanRemaining > 0
+    ) {
+      const ioBuffered = p.loanRemaining * ((p.interestRate + buffer) / 100 / 12);
+      // Strip the recorded debt service and substitute the buffered figure.
+      monthlyNet = recordedCashflow + recordedRepayment - ioBuffered;
+      usedBuffer = true;
+    }
+
+    if (monthlyNet >= 0) continue; // not negatively geared at the assessed rate
+    if (usedBuffer) bufferUsedFor++;
     const annualLoss = Math.abs(monthlyNet) * 12;
     const taxSaving = annualLoss * mrt;
     const addBack = taxSaving * shading;
@@ -94,10 +120,13 @@ export function computeNegativeGearingAddBack(input: NegativeGearingInput): Nega
   }
 
   if (perProperty.length > 0) {
+    const bufNote = bufferUsedFor > 0
+      ? ` (loss assessed at IO + ${buffer.toFixed(2)}pp APRA buffer for ${bufferUsedFor}/${perProperty.length} ${bufferUsedFor === 1 ? 'property' : 'properties'})`
+      : '';
     notes.push(
       `Negative-gearing add-back: $${Math.round(totalAnnualAddBack).toLocaleString()}/yr ` +
       `from ${perProperty.length} investment ${perProperty.length === 1 ? 'property' : 'properties'} ` +
-      `at marginal rate ${(mrt * 100).toFixed(1)}%${shading < 1 ? ` (shaded ${(shading * 100).toFixed(0)}%)` : ''}.`
+      `at marginal rate ${(mrt * 100).toFixed(1)}%${shading < 1 ? ` (shaded ${(shading * 100).toFixed(0)}%)` : ''}${bufNote}.`
     );
   }
 
