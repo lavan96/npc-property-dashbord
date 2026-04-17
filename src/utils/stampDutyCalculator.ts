@@ -23,6 +23,10 @@ export interface StampDutyInput {
   category?: PropertyCategory;
   isFirstHomeBuyer?: boolean;
   isForeignBuyer?: boolean;
+  /** Phase I5 — VIC off-the-plan concession: dutiable value is reduced by
+   *  the % of construction not yet complete at contract date. Pass 0–1
+   *  (e.g. 0.6 = 60% of price represents future construction). VIC only. */
+  offThePlanConstructionFraction?: number;
 }
 
 export interface StampDutyBreakdown {
@@ -49,12 +53,24 @@ function calcNSW(value: number): number {
   return 47295 + (value - 1168000) * 0.055;
 }
 
+/** VIC general (non-PPR / investor) rates — 2024-25 SRO schedule. */
 function calcVIC(value: number): number {
   if (value <= 25000) return value * 0.014;
   if (value <= 130000) return 350 + (value - 25000) * 0.024;
-  if (value <= 960000) return 2870 + (value - 130000) * 0.06; // VIC simplified flat 6% above $130k for non-PPR
-  if (value <= 2000000) return 52470 + (value - 960000) * 0.06;
-  return 110070 + (value - 2000000) * 0.065;
+  if (value <= 960000) return 2870 + (value - 130000) * 0.06;
+  if (value <= 2000000) return value * 0.055; // flat 5.5% bracket
+  return 110000 + (value - 2000000) * 0.065;
+}
+
+/** VIC PPR (owner-occupier) rates — preferential brackets to $550k.
+ *  Above $550k VIC PPR pays the same as general rates, so we fall through. */
+function calcVICppr(value: number): number {
+  if (value <= 25000) return value * 0.014;
+  if (value <= 130000) return 350 + (value - 25000) * 0.024;
+  if (value <= 440000) return 2870 + (value - 130000) * 0.05;
+  if (value <= 550000) return 18370 + (value - 440000) * 0.06;
+  // ≥ $550k PPR uses general rates
+  return calcVIC(value);
 }
 
 function calcQLD(value: number): number {
