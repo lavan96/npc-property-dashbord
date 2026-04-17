@@ -28,6 +28,21 @@ interface ScenarioAdjustments {
   dtiCapOverride?: { enabled: boolean; value: number } | null;
   /** Phase F1 — per-property rate repricing for partial portfolio refinances. */
   propertyRateChanges?: Array<{ propertyId: string; newRate: number }>;
+  /** Phase G1 — Valuation overrides (manual/AVM/desktop/comp sales) */
+  valuationOverrides?: Array<{
+    propertyId: string;
+    newValue: number;
+    basis: 'manual' | 'desktop' | 'avm' | 'comparable_sales';
+    source?: string;
+  }>;
+  /** Phase G2 — Cross-collateralised pool release */
+  crossCollatPool?: {
+    enabled: boolean;
+    propertyIds: string[];
+    blendedTargetLVR: number;
+    lenderMaxLVR?: number;
+    allocationStrategy?: 'highest_equity_first' | 'pro_rata';
+  } | null;
   /** Phase D + F2: Acquisition context driving stamp duty + LMI math.
    *  When set, the engine derives a maximum purchase price for the scenario.
    *  When `targetPurchasePrice` is included, the engine also reports
