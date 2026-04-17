@@ -1,0 +1,309 @@
+/**
+ * Strategy Rationale Panel — Phase F5
+ * ────────────────────────────────────
+ * Renders the deterministic narrative produced by `buildStrategyRationale`
+ * as a finance-ready brief. Designed to slot directly under the Purchase
+ * Power headline inside the Strategy Builder.
+ *
+ * Sections:
+ *   1. Headline + sub-headline (target framing)
+ *   2. What & Why bullets (sorted by material impact)
+ *   3. Reconciliation paragraph
+ *   4. Recommended execution sequence (numbered, owner-coded)
+ *   5. Caveats / assumptions
+ *
+ * Includes a "Copy brief" action so the broker can paste the rationale
+ * straight into an email or hand-off note to the finance division
+ * (precursor to the F6 export packaging).
+ */
+
+import { useMemo, useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import {
+  ScrollText,
+  ListChecks,
+  AlertTriangle,
+  ShieldAlert,
+  Clipboard,
+  ClipboardCheck,
+  ArrowRight,
+  Scale,
+  Sparkles,
+} from 'lucide-react';
+import { toast } from 'sonner';
+import type { RationaleReport, RationaleSeverity } from '@/utils/strategyRationaleEngine';
+
+interface StrategyRationalePanelProps {
+  report: RationaleReport;
+  /** Same currency formatter the parent uses. */
+  formatCurrency: (n: number) => string;
+}
+
+// Map severity → semantic-token-aware Tailwind classes (no raw colors)
+const SEVERITY_CLASSES: Record<RationaleSeverity, { badge: string; ring: string; text: string }> = {
+  positive: {
+    badge: 'bg-emerald-500/10 text-emerald-700 border-emerald-500/30 dark:text-emerald-400',
+    ring: 'border-l-emerald-500',
+    text: 'text-emerald-700 dark:text-emerald-400',
+  },
+  caution: {
+    badge: 'bg-amber-500/10 text-amber-700 border-amber-500/30 dark:text-amber-400',
+    ring: 'border-l-amber-500',
+    text: 'text-amber-700 dark:text-amber-400',
+  },
+  critical: {
+    badge: 'bg-destructive/10 text-destructive border-destructive/30',
+    ring: 'border-l-destructive',
+    text: 'text-destructive',
+  },
+  info: {
+    badge: 'bg-muted text-muted-foreground border-border',
+    ring: 'border-l-muted-foreground/40',
+    text: 'text-muted-foreground',
+  },
+};
+
+const OWNER_LABEL: Record<'broker' | 'finance' | 'client', string> = {
+  broker: 'Broker',
+  finance: 'Finance',
+  client: 'Client',
+};
+
+const OWNER_BADGE: Record<'broker' | 'finance' | 'client', string> = {
+  broker: 'bg-primary/10 text-primary border-primary/30',
+  finance: 'bg-blue-500/10 text-blue-700 border-blue-500/30 dark:text-blue-400',
+  client: 'bg-purple-500/10 text-purple-700 border-purple-500/30 dark:text-purple-400',
+};
+
+function buildPlainTextBrief(report: RationaleReport, fmt: (n: number) => string): string {
+  const lines: string[] = [];
+  lines.push('STRATEGY RATIONALE — Borrowing Capacity Scenario');
+  lines.push('━'.repeat(60));
+  lines.push('');
+  lines.push(report.headline);
+  if (report.subHeadline) {
+    lines.push('');
+    lines.push(report.subHeadline);
+  }
+  lines.push('');
+  lines.push('WHAT WE PROPOSE & WHY');
+  lines.push('─'.repeat(60));
+  if (report.bullets.length === 0) {
+    lines.push('• Baseline only — no levers applied.');
+  } else {
+    report.bullets.forEach((b, i) => {
+      const impact = b.capacityImpact === 0
+        ? ''
+        : ` (capacity ${b.capacityImpact > 0 ? '+' : ''}${fmt(b.capacityImpact)})`;
+      lines.push(`${i + 1}. ${b.what}${impact}`);
+      lines.push(`   ${b.why}`);
+      if (b.cashflowNote) lines.push(`   Cash-flow: ${b.cashflowNote}`);
+      lines.push('');
+    });
+  }
+  lines.push('RECONCILIATION');
+  lines.push('─'.repeat(60));
+  lines.push(report.reconciliation);
+  lines.push('');
+  lines.push('RECOMMENDED EXECUTION SEQUENCE');
+  lines.push('─'.repeat(60));
+  if (report.sequence.length === 0) {
+    lines.push('No execution steps required.');
+  } else {
+    report.sequence.forEach(s => {
+      lines.push(`${s.step}. [${OWNER_LABEL[s.owner]}] ${s.action}`);
+      if (s.detail) lines.push(`   ${s.detail}`);
+    });
+  }
+  lines.push('');
+  lines.push('CAVEATS & ASSUMPTIONS');
+  lines.push('─'.repeat(60));
+  report.caveats.forEach(c => lines.push(`• ${c}`));
+  lines.push('');
+  lines.push(`Generated: ${new Date(report.generatedAt).toLocaleString()}`);
+  return lines.join('\n');
+}
+
+export function StrategyRationalePanel({ report, formatCurrency }: StrategyRationalePanelProps) {
+  const [copied, setCopied] = useState(false);
+  const briefText = useMemo(() => buildPlainTextBrief(report, formatCurrency), [report, formatCurrency]);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(briefText);
+      setCopied(true);
+      toast.success('Strategy brief copied to clipboard');
+      setTimeout(() => setCopied(false), 2200);
+    } catch {
+      toast.error('Could not copy — clipboard access denied');
+    }
+  };
+
+  return (
+    <Card className="border bg-card">
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-2 min-w-0">
+            <ScrollText className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+            <div className="min-w-0">
+              <CardTitle className="text-base flex items-center gap-2 flex-wrap">
+                Strategy Rationale
+                <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+                  <Sparkles className="h-2.5 w-2.5 mr-1" />
+                  Finance-ready
+                </Badge>
+              </CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">
+                Auto-generated explanation of what this scenario does, why each lever earns its place, and how the finance team should execute it.
+              </p>
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleCopy}
+            className="shrink-0"
+          >
+            {copied ? (
+              <>
+                <ClipboardCheck className="h-3.5 w-3.5 mr-1.5" />
+                Copied
+              </>
+            ) : (
+              <>
+                <Clipboard className="h-3.5 w-3.5 mr-1.5" />
+                Copy brief
+              </>
+            )}
+          </Button>
+        </div>
+      </CardHeader>
+
+      <CardContent className="space-y-5">
+        {/* ── Headline ─────────────────────────────────────────────── */}
+        <div className="rounded-md border bg-muted/40 p-3 space-y-1.5">
+          <p className="text-sm font-medium leading-snug">{report.headline}</p>
+          {report.subHeadline && (
+            <p className="text-xs text-muted-foreground leading-relaxed">{report.subHeadline}</p>
+          )}
+        </div>
+
+        {/* ── What & Why ──────────────────────────────────────────── */}
+        <section className="space-y-2">
+          <div className="flex items-center gap-2">
+            <ListChecks className="h-4 w-4 text-primary" />
+            <h4 className="text-sm font-semibold">What we propose & why</h4>
+            {report.bullets.length > 0 && (
+              <Badge variant="secondary" className="text-[10px]">
+                {report.bullets.length} lever{report.bullets.length === 1 ? '' : 's'}
+              </Badge>
+            )}
+          </div>
+
+          {report.bullets.length === 0 ? (
+            <p className="text-xs text-muted-foreground italic pl-6">
+              No levers active — toggle a lever above to see its rationale here.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {report.bullets.map(b => {
+                const cls = SEVERITY_CLASSES[b.severity];
+                return (
+                  <li
+                    key={b.id}
+                    className={`border-l-2 pl-3 py-1.5 ${cls.ring}`}
+                  >
+                    <div className="flex items-start justify-between gap-2 flex-wrap">
+                      <p className="text-sm font-medium leading-snug">{b.what}</p>
+                      {b.capacityImpact !== 0 && (
+                        <Badge variant="outline" className={`text-[10px] ${cls.badge}`}>
+                          {b.capacityImpact > 0 ? '+' : ''}{formatCurrency(b.capacityImpact)} capacity
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{b.why}</p>
+                    {b.cashflowNote && (
+                      <p className={`text-[11px] mt-1 font-medium ${cls.text}`}>
+                        Cash-flow effect: {b.cashflowNote}
+                      </p>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+
+        {/* ── Reconciliation ──────────────────────────────────────── */}
+        <section className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Scale className="h-4 w-4 text-primary" />
+            <h4 className="text-sm font-semibold">How the math reconciles</h4>
+          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed pl-6">
+            {report.reconciliation}
+          </p>
+        </section>
+
+        <Separator />
+
+        {/* ── Sequence ────────────────────────────────────────────── */}
+        <section className="space-y-2">
+          <div className="flex items-center gap-2">
+            <ArrowRight className="h-4 w-4 text-primary" />
+            <h4 className="text-sm font-semibold">Recommended execution sequence</h4>
+          </div>
+
+          {report.sequence.length === 0 ? (
+            <p className="text-xs text-muted-foreground italic pl-6">
+              No execution steps — baseline scenario.
+            </p>
+          ) : (
+            <ol className="space-y-2">
+              {report.sequence.map(s => (
+                <li key={s.step} className="flex gap-3 items-start">
+                  <div className="shrink-0 w-7 h-7 rounded-full bg-primary/10 text-primary border border-primary/30 flex items-center justify-center text-xs font-semibold">
+                    {s.step}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2 flex-wrap">
+                      <p className="text-sm font-medium leading-snug">{s.action}</p>
+                      <Badge variant="outline" className={`text-[10px] ${OWNER_BADGE[s.owner]}`}>
+                        {OWNER_LABEL[s.owner]}
+                      </Badge>
+                    </div>
+                    {s.detail && (
+                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{s.detail}</p>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ol>
+          )}
+        </section>
+
+        <Separator />
+
+        {/* ── Caveats ─────────────────────────────────────────────── */}
+        <section className="space-y-2">
+          <div className="flex items-center gap-2">
+            <ShieldAlert className="h-4 w-4 text-amber-600" />
+            <h4 className="text-sm font-semibold">Caveats & assumptions</h4>
+          </div>
+          <ul className="space-y-1.5 pl-6">
+            {report.caveats.map((c, i) => (
+              <li key={i} className="text-xs text-muted-foreground leading-relaxed flex gap-2">
+                <AlertTriangle className="h-3 w-3 text-amber-600 mt-0.5 shrink-0" />
+                <span>{c}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      </CardContent>
+    </Card>
+  );
+}
