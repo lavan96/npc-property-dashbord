@@ -815,11 +815,30 @@ export function computeAcquisitionCapacity(
   const cashAvailable = cashOnHand + Math.max(0, effect.releasedCapital);
   const notes = [...effect.acquisitionNotes];
 
+  // ── Phase I9 — Wire I7 LVR cap matrix into the acquisition ceiling.
+  // The acquisition loan must respect the lender's per-security cap for
+  // intent (OO vs INV) and property kind (established / OTP / land /
+  // construction etc.). Previously implicit via the LMI estimator; now
+  // binds explicitly so investors aren't approved for OO-only LVRs.
+  const acqIntent = intent === 'owner_occupier' ? 'owner_occupier' : 'investment';
+  const acqKind = category === 'vacant_land' ? 'vacant_land'
+    : category === 'new' ? 'new_build'
+    : 'established';
+  const lvrCapResult = resolveLvrCap({
+    lenderId: context.currentLenderProfileId,
+    intent: acqIntent,
+    kind: acqKind,
+    isFirstHomeBuyer: isFhb,
+    isForeignBuyer: isForeign,
+  });
+  const acquisitionLvrCap = lvrCapResult.cap;
+
   if (borrowingCapacity <= 0 && cashAvailable <= 0) {
     return {
       releasedCapital: effect.releasedCapital,
       lmi: 0, lmiMode, stampDuty: 0, otherAcquisitionCosts: 0,
       maxPurchasePrice: 0, loanAvailableForPurchase: 0, cashAvailable, notes,
+      acquisitionLvrCap, loanCappedByLvr: false,
     };
   }
 
@@ -830,6 +849,7 @@ export function computeAcquisitionCapacity(
   let stampDuty = 0;
   let otherCosts = 0;
   let loanAvail = borrowingCapacity;
+  let loanCappedByLvr = false;
 
   for (let i = 0; i < 6; i++) {
     // Stamp duty + other costs on the current candidate price
@@ -844,7 +864,14 @@ export function computeAcquisitionCapacity(
 
     // Loan size required for this purchase = price − cashAvailable
     const requiredLoan = Math.max(0, purchasePrice - cashAvailable);
-    const cappedLoan = Math.min(borrowingCapacity, requiredLoan);
+    // Phase I9 — bind required loan to (a) serviceable capacity AND
+    // (b) the per-security LVR cap (loan ≤ price × cap). The lender
+    // will never advance more than its policy cap on this security.
+    const lvrCapDollar = Math.max(0, purchasePrice * acquisitionLvrCap);
+    const cappedLoan = Math.min(borrowingCapacity, requiredLoan, lvrCapDollar);
+    if (lvrCapDollar < Math.min(borrowingCapacity, requiredLoan)) {
+      loanCappedByLvr = true;
+    }
 
     // LMI on the acquisition loan (LVR = loan / price)
     if (lmiMode !== 'none') {
@@ -861,9 +888,9 @@ export function computeAcquisitionCapacity(
 
     // Recompute loan-available-for-purchase based on LMI mode
     if (lmiMode === 'debt_capitalised') {
-      loanAvail = Math.max(0, borrowingCapacity - lmi);
+      loanAvail = Math.max(0, Math.min(borrowingCapacity, lvrCapDollar) - lmi);
     } else {
-      loanAvail = borrowingCapacity;
+      loanAvail = Math.min(borrowingCapacity, lvrCapDollar);
     }
 
     // New purchase ceiling = loan + cash − LMI (display) − stamp duty − other
@@ -880,6 +907,12 @@ export function computeAcquisitionCapacity(
   if (lmi > 0) notes.push(`LMI ${lmiMode === 'debt_capitalised' ? 'capitalised onto loan' : 'deducted from settlement cash'}: $${Math.round(lmi).toLocaleString()}`);
   if (stampDuty > 0) notes.push(`${state} stamp duty: $${Math.round(stampDuty).toLocaleString()} (${intent}${isFhb ? ', FHB' : ''})`);
   if (otherCosts > 0) notes.push(`Acquisition costs (legals, inspections, registrations): $${Math.round(otherCosts).toLocaleString()}`);
+  // Phase I9 — surface the binding LVR cap so the PDF + UI can show
+  // "max LVR for this security: 90%" alongside the dollar release.
+  notes.push(`Acquisition LVR cap (${lvrCapResult.matrix.lenderId}, ${acqIntent}, ${acqKind}): ${(acquisitionLvrCap * 100).toFixed(0)}% — ${lvrCapResult.reason}`);
+  if (loanCappedByLvr) {
+    notes.push(`⚠ Acquisition loan clamped by LVR cap — serviceable capacity exceeded the ${(acquisitionLvrCap * 100).toFixed(0)}% per-security ceiling.`);
+  }
 
   // ── Phase F2 — Target solving + actual loan-required + net cash ──
   // The Strategy Builder needs a clear "achievable / short by $X" answer
