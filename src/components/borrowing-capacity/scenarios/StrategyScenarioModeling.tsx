@@ -391,7 +391,6 @@ export function StrategyScenarioModeling({
 
     // 7b. Equity Release → equity_release deltas (Phase F2 — wire releases into engine)
     let equityReleaseMonthlyCost = 0;
-    let equityReleaseTotalNet = 0;
     if (strategy.equityReleaseEnabled && strategy.equityReleasePropertyIds.size > 0) {
       strategy.equityReleasePropertyIds.forEach(propId => {
         const prop = equityReleaseProperties.find(p => p.id === propId);
@@ -415,7 +414,6 @@ export function StrategyScenarioModeling({
         const grossRelease = Math.max(0, newLoan - prop.loan_remaining);
         equityReleaseMonthlyCost += grossRelease * (ratePct / 100 / 12);
       });
-      equityReleaseTotalNet = totalAccessibleEquity;
       if (equityReleaseMonthlyCost > 0) {
         impacts.push({
           label: `Equity release servicing on ${strategy.equityReleasePropertyIds.size} property(s) (IO)`,
