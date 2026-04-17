@@ -416,18 +416,42 @@ export function StrategyScenarioModeling({
       monthlyServicing: l.monthlyServicing,
     }));
 
+    const acquisitionCtx: EngineAcquisitionContext | undefined = acquisition.enabled ? {
+      state: acquisition.state,
+      intent: acquisition.intent,
+      category: acquisition.category,
+      isFirstHomeBuyer: acquisition.isFirstHomeBuyer,
+      isForeignBuyer: acquisition.isForeignBuyer,
+      lmiMode: acquisition.lmiMode,
+      cashOnHand: acquisition.cashOnHand,
+    } : undefined;
+
     const ctx: ScenarioContext = {
       baseInputs,
       baseResult,
       properties: engineProperties,
       liabilities: engineLiabilities,
+      acquisition: acquisitionCtx,
     };
 
     // Delegate ALL scenario math to the unified engine
     const { inputs, result } = runScenarioWithInputs('Strategy Preview', deltas, ctx);
+    const acquisitionCapacity = (result.acquisitionCapacity ?? null) as AcquisitionCapacity | null;
+    const validationIssues = result.validationIssues ?? [];
 
-    return { scenarioResult: result as unknown as BorrowingCapacityResult, scenarioInputs: inputs, impactBreakdown: impacts };
-  }, [strategy, baseInputs, baseResult, consolidatableDebts, investmentProperties, properties, liabilities]);
+    return {
+      scenarioResult: result as unknown as BorrowingCapacityResult,
+      scenarioInputs: inputs,
+      impactBreakdown: impacts,
+      acquisitionCapacity,
+      validationIssues,
+    };
+  }, [strategy, acquisition, baseInputs, baseResult, consolidatableDebts, investmentProperties, properties, liabilities]);
+
+  const { acquisitionCapacity, validationIssues } = useMemo(
+    () => ({ acquisitionCapacity: (scenarioResult as any)?.acquisitionCapacity ?? null, validationIssues: [] }),
+    [scenarioResult]
+  );
 
 
   // Equity release calculation — now supports multiple properties
