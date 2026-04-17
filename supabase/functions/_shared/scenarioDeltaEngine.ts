@@ -619,6 +619,26 @@ export interface AggregateResult {
   issues: DeltaValidationIssue[];
 }
 
+/** Phase G1 — clone properties so in-place valuation mutations are scenario-scoped. */
+function cloneContextForRun(context: ScenarioContext): ScenarioContext {
+  return {
+    ...context,
+    properties: (context.properties || []).map(p => ({ ...p })),
+  };
+}
+
+/** Phase G1 — `property_value_change` deltas resolve BEFORE other property-bound deltas
+ *  so downstream equity/refinance/pool math sees the new currentValue. */
+function orderDeltas(deltas: ScenarioDelta[]): ScenarioDelta[] {
+  const valueChanges: ScenarioDelta[] = [];
+  const others: ScenarioDelta[] = [];
+  for (const d of deltas) {
+    if (d.type === 'property_value_change') valueChanges.push(d);
+    else others.push(d);
+  }
+  return [...valueChanges, ...others];
+}
+
 export function aggregateDeltas(
   scenarioName: string,
   deltas: ScenarioDelta[],
@@ -628,14 +648,25 @@ export function aggregateDeltas(
   const propertyIds = new Set((context.properties || []).map(p => p.id));
   const liabilityIds = new Set((context.liabilities || []).map(l => l.id));
   const safeDeltas = deltas.filter(d => {
-    if (d.type === 'property_sell' || d.type === 'property_refinance' || d.type === 'equity_release') return propertyIds.has(d.id);
+    if (
+      d.type === 'property_sell' ||
+      d.type === 'property_refinance' ||
+      d.type === 'equity_release' ||
+      d.type === 'property_rate_change' ||
+      d.type === 'property_value_change'
+    ) return propertyIds.has(d.id);
     if (d.type === 'liability_payoff') return liabilityIds.has(d.id);
+    // portfolio_lvr_release filters its own pool inside applyDelta
     return true;
   });
 
+  // G1 — clone context + sort value-changes first
+  const ctx = cloneContextForRun(context);
+  const ordered = orderDeltas(safeDeltas);
+
   const total = emptyEffect(scenarioName);
-  for (const d of safeDeltas) {
-    const e = applyDelta(d, context);
+  for (const d of ordered) {
+    const e = applyDelta(d, ctx);
     total.incomeAdjustment += e.incomeAdjustment;
     total.shadedIncomeAdjustment += e.shadedIncomeAdjustment;
     total.expenseAdjustment += e.expenseAdjustment;
@@ -649,26 +680,25 @@ export function aggregateDeltas(
     if (e.dtiCapLimit !== undefined) total.dtiCapLimit = e.dtiCapLimit;
   }
 
-  // Phase E (M3): rescale HEM-derived expenses if income tier changed
-  const newGross = Math.max(0, context.baseInputs.grossAnnualIncome + total.incomeAdjustment);
+  const newGross = Math.max(0, ctx.baseInputs.grossAnnualIncome + total.incomeAdjustment);
   const hemDelta = computeHemTierDelta(
-    context.baseInputs.grossAnnualIncome,
+    ctx.baseInputs.grossAnnualIncome,
     newGross,
-    context.baseInputs.monthlyLivingExpenses,
+    ctx.baseInputs.monthlyLivingExpenses,
   );
 
   const inputs: AggregatedScenarioInputs = {
     grossAnnualIncome: newGross,
-    shadedAnnualIncome: Math.max(0, context.baseInputs.shadedAnnualIncome + total.shadedIncomeAdjustment),
-    monthlyLivingExpenses: Math.max(0, context.baseInputs.monthlyLivingExpenses + total.expenseAdjustment + hemDelta),
-    monthlyCommitments: Math.max(0, context.baseInputs.monthlyCommitments + total.commitmentAdjustment),
-    interestRate: Math.max(0.5, context.baseInputs.interestRate + total.rateAdjustment),
-    bufferRate: context.baseInputs.bufferRate,
-    loanTermYears: Math.max(5, context.baseInputs.loanTermYears + total.loanTermAdjustment),
-    totalDebtBalances: Math.max(0, (context.baseInputs.totalDebtBalances || 0) + total.debtBalanceAdjustment),
-    calculationMode: context.baseInputs.calculationMode,
-    dtiCapEnabled: total.dtiCapEnabled ?? context.baseInputs.dtiCapEnabled,
-    dtiCapLimit: total.dtiCapLimit ?? context.baseInputs.dtiCapLimit,
+    shadedAnnualIncome: Math.max(0, ctx.baseInputs.shadedAnnualIncome + total.shadedIncomeAdjustment),
+    monthlyLivingExpenses: Math.max(0, ctx.baseInputs.monthlyLivingExpenses + total.expenseAdjustment + hemDelta),
+    monthlyCommitments: Math.max(0, ctx.baseInputs.monthlyCommitments + total.commitmentAdjustment),
+    interestRate: Math.max(0.5, ctx.baseInputs.interestRate + total.rateAdjustment),
+    bufferRate: ctx.baseInputs.bufferRate,
+    loanTermYears: Math.max(5, ctx.baseInputs.loanTermYears + total.loanTermAdjustment),
+    totalDebtBalances: Math.max(0, (ctx.baseInputs.totalDebtBalances || 0) + total.debtBalanceAdjustment),
+    calculationMode: ctx.baseInputs.calculationMode,
+    dtiCapEnabled: total.dtiCapEnabled ?? ctx.baseInputs.dtiCapEnabled,
+    dtiCapLimit: total.dtiCapLimit ?? ctx.baseInputs.dtiCapLimit,
   };
 
   return { inputs, effect: total, safeDeltas, issues };
