@@ -12,6 +12,7 @@ import {
 import {
   Sheet, SheetContent, SheetTrigger,
 } from '@/components/ui/sheet';
+import { FinancePortalOnboardingGate } from './FinancePortalOnboardingGate';
 
 const NAV_ITEMS = [
   { to: '/finance', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -65,10 +66,10 @@ export function FinancePortalLayout({ children }: { children?: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Top bar */}
+      <FinancePortalOnboardingGate />
+
       <header className="sticky top-0 z-30 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
         <div className="flex h-16 items-center gap-3 px-4 md:px-6">
-          {/* Mobile menu */}
           <Sheet>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="md:hidden">
@@ -123,12 +124,10 @@ export function FinancePortalLayout({ children }: { children?: ReactNode }) {
       </header>
 
       <div className="flex-1 flex">
-        {/* Desktop sidebar */}
         <aside className="hidden md:flex md:w-60 border-r bg-card/40 flex-col">
           <SidebarNav />
         </aside>
 
-        {/* Main content */}
         <main className="flex-1 min-w-0">
           {children ?? <Outlet />}
         </main>

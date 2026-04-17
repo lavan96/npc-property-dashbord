@@ -522,6 +522,3 @@ verify_jwt = false
 
 [functions.finance-portal-admin]
 verify_jwt = true
-
-[functions.finance-portal-client-data]
-verify_jwt = false

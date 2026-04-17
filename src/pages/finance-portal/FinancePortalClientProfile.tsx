@@ -1,215 +1,125 @@
-import { useEffect, useState, useCallback } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useMemo } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Loader2, ArrowLeft, Mail, Phone, Lock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import {
-  ArrowLeft, Lock, Eye, Edit, Trash2, AlertCircle, Mail, Phone, MapPin,
-  Home, DollarSign, CreditCard, Wallet, Receipt, Briefcase, StickyNote, UserPlus,
-} from 'lucide-react';
+import { FINANCE_TABLE_CONFIGS, FINANCE_TABLE_KEYS, FinanceTableKey } from '@/components/finance-portal/financeTableConfig';
 import { FinanceRecordList } from '@/components/finance-portal/FinanceRecordList';
-import { TableKey, TABLE_FIELD_CONFIG } from '@/components/finance-portal/financeTableConfig';
-
-interface ClientPermissions {
-  [key: string]: { view: boolean; edit: boolean; delete: boolean };
-}
-
-const TAB_META: { key: TableKey; label: string; icon: any }[] = [
-  { key: 'properties', label: 'Properties', icon: Home },
-  { key: 'income', label: 'Income', icon: DollarSign },
-  { key: 'expenses', label: 'Expenses', icon: Receipt },
-  { key: 'assets', label: 'Assets', icon: Wallet },
-  { key: 'liabilities', label: 'Liabilities', icon: CreditCard },
-  { key: 'employment', label: 'Employment', icon: Briefcase },
-  { key: 'notes', label: 'Notes', icon: StickyNote },
-  { key: 'contacts', label: 'Contacts', icon: UserPlus },
-];
 
 export default function FinancePortalClientProfile() {
   const { clientId } = useParams<{ clientId: string }>();
-  const navigate = useNavigate();
   const { invokeFinanceFunction } = useFinancePortalAuth();
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [client, setClient] = useState<any>(null);
-  const [data, setData] = useState<Record<string, any[]>>({});
-  const [permissions, setPermissions] = useState<ClientPermissions | null>(null);
-  const [activeTab, setActiveTab] = useState<TableKey>('properties');
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['finance-portal-client-summary', clientId],
+    queryFn: async () => {
+      const { data, error } = await invokeFinanceFunction('finance-portal-client-data', {
+        operation: 'get_client_summary',
+        client_id: clientId,
+      });
+      if (error) throw new Error(error.message);
+      return data as { client: any; permissions: Record<string, { view: boolean; edit: boolean; delete: boolean }> };
+    },
+    enabled: !!clientId,
+  });
 
-  const loadAll = useCallback(async () => {
-    if (!clientId) return;
-    setLoading(true);
-    setError('');
+  const permissions = data?.permissions || {};
+  const visibleTabs = useMemo(
+    () => FINANCE_TABLE_KEYS.filter(k => permissions[k]?.view),
+    [permissions]
+  );
+  const defaultTab = visibleTabs[0] || 'properties';
 
-    const [clientRes, dataRes] = await Promise.all([
-      invokeFinanceFunction('finance-portal-client-data', {
-        operation: 'get_client', client_id: clientId,
-      }),
-      invokeFinanceFunction('finance-portal-client-data', {
-        operation: 'get_client_data', client_id: clientId,
-      }),
-    ]);
-
-    if (clientRes.error) {
-      setError(clientRes.error.message || 'Failed to load client');
-      setLoading(false);
-      return;
-    }
-    if (dataRes.error) {
-      setError(dataRes.error.message || 'Failed to load client data');
-      setLoading(false);
-      return;
-    }
-    setClient(clientRes.data?.client || null);
-    setPermissions(dataRes.data?.permissions || null);
-    setData(dataRes.data?.data || {});
-
-    // Auto-select the first viewable tab
-    const firstViewable = TAB_META.find(t => dataRes.data?.permissions?.[t.key]?.view);
-    if (firstViewable) setActiveTab(firstViewable.key);
-
-    setLoading(false);
-  }, [clientId, invokeFinanceFunction]);
-
-  useEffect(() => { loadAll(); }, [loadAll]);
-
-  const handleRefresh = () => loadAll();
-
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-6">
-        <Skeleton className="h-10 w-48" />
-        <Skeleton className="h-32 w-full" />
-        <Skeleton className="h-96 w-full" />
+      <div className="p-6"><div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div></div>
+    );
+  }
+
+  if (error || !data?.client) {
+    const msg = (error as Error)?.message || 'Client not accessible';
+    return (
+      <div className="p-6 max-w-3xl mx-auto">
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Lock className="h-10 w-10 mx-auto text-muted-foreground opacity-50 mb-3" />
+            <p className="text-sm text-destructive">{msg}</p>
+            <Button asChild variant="outline" className="mt-4 gap-2">
+              <Link to="/finance/clients"><ArrowLeft className="h-4 w-4" /> Back to clients</Link>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
-  if (error) {
-    return (
-      <div className="p-4 md:p-8 max-w-3xl mx-auto">
-        <Button variant="ghost" size="sm" onClick={() => navigate('/finance/clients')} className="mb-4">
-          <ArrowLeft className="h-4 w-4 mr-2" />Back to clients
-        </Button>
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
-
-  const fullName = client ? `${client.first_name || ''} ${client.surname || ''}`.trim() : 'Client';
+  const client = data.client;
 
   return (
-    <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-6">
-      <Button variant="ghost" size="sm" asChild className="mb-2">
-        <Link to="/finance/clients"><ArrowLeft className="h-4 w-4 mr-2" />Back to clients</Link>
-      </Button>
-
-      {/* Client header */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-start justify-between gap-4 flex-wrap">
-            <div>
-              <CardTitle className="text-2xl">{fullName || 'Unnamed Client'}</CardTitle>
-              <CardDescription className="mt-2 space-y-1">
-                {client?.email && (
-                  <div className="flex items-center gap-2"><Mail className="h-3 w-3" />{client.email}</div>
-                )}
-                {client?.mobile && (
-                  <div className="flex items-center gap-2"><Phone className="h-3 w-3" />{client.mobile}</div>
-                )}
-                {client?.current_address && (
-                  <div className="flex items-center gap-2"><MapPin className="h-3 w-3" />{client.current_address}</div>
-                )}
-              </CardDescription>
-            </div>
-            {client?.status && (
-              <Badge variant="secondary" className="capitalize">{client.status}</Badge>
-            )}
-          </div>
-        </CardHeader>
-      </Card>
-
-      {/* Tabbed editor */}
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TableKey)}>
-        <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
-          <TabsList className="inline-flex w-auto md:grid md:grid-cols-8 md:w-full">
-            {TAB_META.map(t => {
-              const perm = permissions?.[t.key];
-              const Icon = t.icon;
-              const canView = !!perm?.view;
-              return (
-                <TabsTrigger
-                  key={t.key}
-                  value={t.key}
-                  disabled={!canView}
-                  className="gap-2 whitespace-nowrap"
-                >
-                  <Icon className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">{t.label}</span>
-                  {!canView && <Lock className="h-3 w-3 ml-1 opacity-50" />}
-                </TabsTrigger>
-              );
-            })}
-          </TabsList>
-        </div>
-
-        {TAB_META.map(t => {
-          const perm = permissions?.[t.key];
-          const records = data[t.key] || [];
-          return (
-            <TabsContent key={t.key} value={t.key} className="mt-4">
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between flex-wrap gap-2">
-                    <div>
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <t.icon className="h-5 w-5 text-primary" />
-                        {t.label}
-                      </CardTitle>
-                      <CardDescription>
-                        {records.length} record{records.length === 1 ? '' : 's'}
-                      </CardDescription>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {perm?.view && <Badge variant="outline" className="gap-1"><Eye className="h-3 w-3" />View</Badge>}
-                      {perm?.edit && <Badge variant="outline" className="gap-1"><Edit className="h-3 w-3" />Edit</Badge>}
-                      {perm?.delete && <Badge variant="outline" className="gap-1"><Trash2 className="h-3 w-3" />Delete</Badge>}
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {!perm?.view ? (
-                    <Alert>
-                      <Lock className="h-4 w-4" />
-                      <AlertDescription>
-                        You don't have permission to view this section. Contact your administrator if you need access.
-                      </AlertDescription>
-                    </Alert>
-                  ) : (
-                    <FinanceRecordList
-                      tableKey={t.key}
-                      clientId={clientId!}
-                      records={records}
-                      canEdit={!!perm?.edit}
-                      canDelete={!!perm?.delete}
-                      onMutated={handleRefresh}
-                      fields={TABLE_FIELD_CONFIG[t.key]}
-                    />
+    <div className="p-6 space-y-6 max-w-6xl mx-auto">
+      <div>
+        <Button variant="ghost" asChild size="sm" className="gap-1 mb-3 -ml-2">
+          <Link to="/finance/clients"><ArrowLeft className="h-4 w-4" /> Back to clients</Link>
+        </Button>
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+              <div>
+                <CardTitle className="text-2xl">
+                  {client.primary_contact_name}
+                  {client.secondary_contact_name && (
+                    <span className="text-base text-muted-foreground font-normal ml-2">
+                      & {client.secondary_contact_name}
+                    </span>
                   )}
-                </CardContent>
-              </Card>
+                </CardTitle>
+                <CardDescription className="mt-2 space-y-1">
+                  {client.primary_contact_email && (
+                    <div className="flex items-center gap-2 text-sm"><Mail className="h-3.5 w-3.5" /> {client.primary_contact_email}</div>
+                  )}
+                  {client.primary_contact_phone && (
+                    <div className="flex items-center gap-2 text-sm"><Phone className="h-3.5 w-3.5" /> {client.primary_contact_phone}</div>
+                  )}
+                </CardDescription>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {client.status && <Badge variant="secondary">{client.status}</Badge>}
+                <Badge variant="outline">{visibleTabs.length} of 8 sections accessible</Badge>
+              </div>
+            </div>
+          </CardHeader>
+        </Card>
+      </div>
+
+      {visibleTabs.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Lock className="h-10 w-10 mx-auto text-muted-foreground opacity-50 mb-3" />
+            <p className="text-sm text-muted-foreground">
+              You have been assigned to this client but have no view permissions on any section. Contact your NPC manager.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <Tabs defaultValue={defaultTab}>
+          <TabsList className="flex-wrap h-auto">
+            {visibleTabs.map(k => (
+              <TabsTrigger key={k} value={k} className="text-xs">
+                {FINANCE_TABLE_CONFIGS[k].label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+          {visibleTabs.map(k => (
+            <TabsContent key={k} value={k} className="mt-4">
+              <FinanceRecordList clientId={clientId!} config={FINANCE_TABLE_CONFIGS[k]} />
             </TabsContent>
-          );
-        })}
-      </Tabs>
+          ))}
+        </Tabs>
+      )}
     </div>
   );
 }

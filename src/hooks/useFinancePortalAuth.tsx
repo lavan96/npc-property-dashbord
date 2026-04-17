@@ -26,6 +26,7 @@ interface FinancePortalAuthContextType {
     body?: Record<string, any>
   ) => Promise<{ data: any; error: any }>;
   getSessionToken: () => string | null;
+  refreshUser: () => Promise<void>;
 }
 
 const FinancePortalAuthContext = createContext<FinancePortalAuthContextType | undefined>(undefined);
@@ -87,7 +88,7 @@ export function FinancePortalAuthProvider({ children }: { children: ReactNode })
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    checkSession();
+    void checkSession();
   }, []);
 
   const clearAuthState = () => {
@@ -118,6 +119,13 @@ export function FinancePortalAuthProvider({ children }: { children: ReactNode })
     }
   };
 
+  const refreshUser = useCallback(async () => {
+    const sessionToken = getStoredValue(FINANCE_SESSION_KEY);
+    if (!sessionToken) return;
+    const { data, error } = await invokeFinanceFunction('finance-portal-verify');
+    if (!error && data?.valid) setUser(data.user);
+  }, []);
+
   const signIn = useCallback(async (email: string, password: string, turnstileToken?: string) => {
     try {
       const { data, error } = await invokeFinanceFunction('finance-portal-login', {
@@ -144,22 +152,13 @@ export function FinancePortalAuthProvider({ children }: { children: ReactNode })
   }, []);
 
   const acceptTerms = useCallback(async () => {
-    try {
-      await invokeFinanceFunction('finance-portal-verify', { action: 'accept_terms' });
-      setUser(prev => prev ? { ...prev, has_accepted_terms: true } : prev);
-    } catch (e) {
-      console.error('Failed to accept terms:', e);
-      throw e;
-    }
+    await invokeFinanceFunction('finance-portal-verify', { action: 'accept_terms' });
+    setUser(prev => prev ? { ...prev, has_accepted_terms: true } : prev);
   }, []);
 
   const completeOnboarding = useCallback(async () => {
-    try {
-      await invokeFinanceFunction('finance-portal-verify', { action: 'complete_onboarding' });
-      setUser(prev => prev ? { ...prev, has_completed_onboarding: true } : prev);
-    } catch (e) {
-      console.error('Failed to complete onboarding:', e);
-    }
+    await invokeFinanceFunction('finance-portal-verify', { action: 'complete_onboarding' });
+    setUser(prev => prev ? { ...prev, has_completed_onboarding: true } : prev);
   }, []);
 
   const requestPasswordReset = useCallback(async (email: string) => {
@@ -192,7 +191,7 @@ export function FinancePortalAuthProvider({ children }: { children: ReactNode })
         user, loading, signIn, signOut,
         requestPasswordReset, verifyOTP, resetPassword,
         acceptTerms, completeOnboarding,
-        invokeFinanceFunction, getSessionToken,
+        invokeFinanceFunction, getSessionToken, refreshUser,
       }}
     >
       {children}

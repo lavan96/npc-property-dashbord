@@ -1,26 +1,22 @@
 /**
- * Finance Portal Client Data Edge Function
- * Session-validated, permission-enforced CRUD proxy for finance portal users.
+ * Finance Portal Client Data — secure mediation layer
+ * Permission-gated CRUD for the 8 sub-tables (+ document, BC, notification, message ops added in Phase 5).
  *
- * Auth: Validates `x-finance-session-token` (or body.finance_session_token) against
- *       finance_portal_users.session_token. Enforces session expiry & active status.
- *
- * Permission model: Each operation includes `client_id` and `table` (one of:
- *   properties, income, expenses, assets, liabilities, employment, notes, contacts).
- *   The function loads the user's permissions matrix for that client from
- *   finance_portal_client_assignments and checks view/edit/delete before proceeding.
- *
- * Operations:
- *   - list_clients:       Lists assigned clients with summary info
- *   - get_client:         Loads a single client (must be assigned)
- *   - get_client_data:    Loads all sub-table data the user can VIEW for a client
- *   - create:             Insert into a sub-table (requires edit)
- *   - update:             Update a record by id (requires edit)
- *   - delete:             Delete a record by id (requires delete)
+ * All requests carry a finance portal session token (header or body). The function:
+ *   1. Validates the session against finance_portal_users
+ *   2. Resolves the client_id and looks up the assignment
+ *   3. Enforces the per-client permission matrix for the requested operation/table
+ *   4. Performs the action with the service role
+ *   5. Audits to finance_portal_activity_log
  */
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
-import { createCorsHeaders } from "../_shared/auth.ts";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-finance-session-token, x-session-token',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
 
 const TABLE_MAP: Record<string, string> = {
   properties: 'client_properties',
@@ -33,283 +29,202 @@ const TABLE_MAP: Record<string, string> = {
   contacts: 'client_additional_contacts',
 };
 
-type PermKey = keyof typeof TABLE_MAP;
-type PermAction = 'view' | 'edit' | 'delete';
-
-function extractSessionToken(headers: Headers, body?: any): string | null {
-  return (
-    headers.get('x-finance-session-token') ||
-    body?.finance_session_token ||
-    headers.get('x-session-token') ||
-    body?.session_token ||
-    null
-  );
+function extractToken(headers: Headers, body?: any): string | null {
+  return headers.get('x-finance-session-token')
+    || body?.finance_session_token
+    || headers.get('x-session-token')
+    || body?.session_token
+    || null;
 }
 
-function jsonResponse(payload: any, status: number, corsHeaders: HeadersInit) {
-  return new Response(JSON.stringify(payload), {
+function jsonResponse(data: any, status = 200) {
+  return new Response(JSON.stringify(data), {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 }
 
-function checkPermission(
-  permissions: any,
-  table: string,
-  action: PermAction,
-): boolean {
-  if (!permissions || typeof permissions !== 'object') return false;
-  const tablePerms = permissions[table];
-  if (!tablePerms || typeof tablePerms !== 'object') return false;
-  return tablePerms[action] === true;
-}
-
-async function logActivity(
-  supabase: any,
-  financeUserId: string,
-  clientId: string | null,
-  action: string,
-  metadata: Record<string, any> = {},
-) {
-  try {
-    await supabase.from('finance_portal_activity_log').insert({
-      finance_user_id: financeUserId,
-      client_id: clientId,
-      action,
-      metadata,
-    });
-  } catch (e) {
-    console.error('Activity log failed:', e);
-  }
-}
-
 serve(async (req) => {
-  const origin = req.headers.get('origin');
-  const corsHeaders = createCorsHeaders(origin);
-
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
-  }
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, serviceKey);
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    );
 
     const body = await req.json().catch(() => ({}));
-    const sessionToken = extractSessionToken(req.headers, body);
+    const sessionToken = extractToken(req.headers, body);
+    if (!sessionToken) return jsonResponse({ error: 'Session token required' }, 401);
 
-    if (!sessionToken) {
-      return jsonResponse({ error: 'Session token is required' }, 401, corsHeaders);
-    }
-
-    // Validate session
-    const { data: portalUser, error: userErr } = await supabase
+    // 1. Validate session
+    const { data: portalUser, error: puErr } = await supabase
       .from('finance_portal_users')
-      .select('id, email, is_active, revoked_at, session_expires_at, finance_contact_id')
+      .select('id, finance_contact_id, email, is_active, revoked_at, session_expires_at')
       .eq('session_token', sessionToken)
       .maybeSingle();
 
-    if (userErr || !portalUser || !portalUser.is_active || portalUser.revoked_at) {
-      return jsonResponse({ error: 'Invalid or expired session' }, 401, corsHeaders);
+    if (puErr || !portalUser || !portalUser.is_active || portalUser.revoked_at) {
+      return jsonResponse({ error: 'Invalid session' }, 401);
     }
     if (!portalUser.session_expires_at || new Date(portalUser.session_expires_at) < new Date()) {
-      return jsonResponse({ error: 'Session expired' }, 401, corsHeaders);
+      return jsonResponse({ error: 'Session expired' }, 401);
     }
 
-    const financeUserId = portalUser.id;
-    const { operation, client_id, table, record_id, data } = body;
+    const { operation } = body;
+    if (!operation) return jsonResponse({ error: 'operation required' }, 400);
 
-    // ── list_clients: Return summary list of assigned clients ──
-    if (operation === 'list_clients') {
+    // ── list_assigned_clients ──
+    if (operation === 'list_assigned_clients') {
       const { data: assignments, error: aErr } = await supabase
         .from('finance_portal_client_assignments')
-        .select('client_id, permissions, assigned_at, auto_linked, auto_link_source')
-        .eq('finance_user_id', financeUserId);
-
+        .select('id, client_id, permissions, assigned_at')
+        .eq('finance_user_id', portalUser.id);
       if (aErr) throw aErr;
-      if (!assignments || assignments.length === 0) {
-        return jsonResponse({ clients: [] }, 200, corsHeaders);
+
+      const clientIds = (assignments || []).map((a: any) => a.client_id);
+      if (clientIds.length === 0) {
+        return jsonResponse({ success: true, records: [] });
       }
 
-      const clientIds = assignments.map((a: any) => a.client_id);
-      const { data: clients, error: cErr } = await supabase
+      const { data: clients } = await supabase
         .from('clients')
-        .select('id, first_name, surname, email, mobile, status, dealflow_status, current_address, created_at, updated_at')
+        .select('id, primary_contact_name, secondary_contact_name, primary_contact_email, primary_contact_phone, status, created_at, finance_contact_id')
         .in('id', clientIds);
 
-      if (cErr) throw cErr;
+      const cMap = new Map((clients || []).map((c: any) => [c.id, c]));
+      const records = (assignments || []).map((a: any) => ({
+        assignment_id: a.id,
+        client_id: a.client_id,
+        permissions: a.permissions,
+        assigned_at: a.assigned_at,
+        client: cMap.get(a.client_id) || null,
+      }));
 
-      const permsByClient = new Map(assignments.map((a: any) => [a.client_id, a]));
-      const merged = (clients || []).map((c: any) => {
-        const a = permsByClient.get(c.id) as any;
-        return {
-          ...c,
-          full_name: `${c.first_name || ''} ${c.surname || ''}`.trim(),
-          permissions: a?.permissions ?? null,
-          assigned_at: a?.assigned_at ?? null,
-          auto_linked: a?.auto_linked ?? false,
-          auto_link_source: a?.auto_link_source ?? null,
-        };
-      });
-
-      // Sort alphabetically by full name
-      merged.sort((x: any, y: any) => x.full_name.localeCompare(y.full_name));
-
-      return jsonResponse({ clients: merged }, 200, corsHeaders);
+      return jsonResponse({ success: true, records });
     }
 
-    // For all other operations, client_id is required and must be assigned
-    if (!client_id) {
-      return jsonResponse({ error: 'client_id is required' }, 400, corsHeaders);
-    }
+    // For all client-scoped operations, require client_id and check assignment
+    const { client_id } = body;
+    if (!client_id) return jsonResponse({ error: 'client_id required' }, 400);
 
     const { data: assignment, error: assignErr } = await supabase
       .from('finance_portal_client_assignments')
       .select('id, permissions')
-      .eq('finance_user_id', financeUserId)
+      .eq('finance_user_id', portalUser.id)
       .eq('client_id', client_id)
       .maybeSingle();
 
     if (assignErr || !assignment) {
-      return jsonResponse({ error: 'You do not have access to this client' }, 403, corsHeaders);
+      return jsonResponse({ error: 'You are not assigned to this client' }, 403);
     }
-    const permissions = assignment.permissions;
 
-    // ── get_client: Single client basic info ──
-    if (operation === 'get_client') {
-      const { data: client, error } = await supabase
+    const permissions = (assignment.permissions || {}) as Record<string, { view: boolean; edit: boolean; delete: boolean }>;
+
+    const audit = async (action: string, tableKey: string | null, entityId: string | null, metadata: any = {}) => {
+      try {
+        await supabase.from('finance_portal_activity_log').insert({
+          finance_user_id: portalUser.id,
+          client_id,
+          actor_user_id: null,
+          actor_type: 'finance_partner',
+          action,
+          entity_type: tableKey ? `client_${tableKey}` : null,
+          entity_id: entityId,
+          metadata: { ...metadata, table_key: tableKey, finance_email: portalUser.email },
+        });
+      } catch (e) {
+        console.error('[finance-portal-client-data] audit failed', e);
+      }
+    };
+
+    // ── get_client_summary ──
+    if (operation === 'get_client_summary') {
+      const { data: client } = await supabase
         .from('clients')
-        .select('*')
+        .select('id, primary_contact_name, secondary_contact_name, primary_contact_email, primary_contact_phone, primary_address, status, created_at')
         .eq('id', client_id)
         .maybeSingle();
-      if (error || !client) return jsonResponse({ error: 'Client not found' }, 404, corsHeaders);
-      return jsonResponse({ client, permissions }, 200, corsHeaders);
+      await audit('view_client_summary', null, client_id);
+      return jsonResponse({ success: true, client, permissions });
     }
 
-    // ── get_client_data: All sub-table data the user can VIEW ──
-    if (operation === 'get_client_data') {
-      const result: Record<string, any[]> = {};
-      for (const key of Object.keys(TABLE_MAP) as PermKey[]) {
-        if (!checkPermission(permissions, key, 'view')) {
-          result[key] = [];
-          continue;
-        }
-        const dbTable = TABLE_MAP[key];
-        const { data: rows, error } = await supabase
-          .from(dbTable)
-          .select('*')
-          .eq('client_id', client_id)
-          .order('created_at', { ascending: false });
-        if (error) {
-          console.error(`Failed to load ${dbTable}:`, error);
-          result[key] = [];
-        } else {
-          result[key] = rows || [];
-        }
-      }
-      return jsonResponse({ data: result, permissions }, 200, corsHeaders);
-    }
+    // ── list_records ──
+    if (operation === 'list_records') {
+      const { table_key } = body;
+      const dbTable = TABLE_MAP[table_key];
+      if (!dbTable) return jsonResponse({ error: 'Unknown table' }, 400);
+      if (!permissions[table_key]?.view) return jsonResponse({ error: 'No view permission for ' + table_key }, 403);
 
-    // CRUD operations require `table` to be one of the 8 permitted keys
-    if (!table || !(table in TABLE_MAP)) {
-      return jsonResponse({ error: 'Invalid or missing table' }, 400, corsHeaders);
-    }
-    const dbTable = TABLE_MAP[table as PermKey];
-
-    // ── create ──
-    if (operation === 'create') {
-      if (!checkPermission(permissions, table, 'edit')) {
-        return jsonResponse({ error: 'You do not have edit permission on this table' }, 403, corsHeaders);
-      }
-      if (!data || typeof data !== 'object') {
-        return jsonResponse({ error: 'data is required' }, 400, corsHeaders);
-      }
-      const insertPayload = { ...data, client_id };
-      // Strip server-managed fields
-      delete (insertPayload as any).id;
-      delete (insertPayload as any).created_at;
-      delete (insertPayload as any).updated_at;
-
-      const { data: inserted, error } = await supabase
+      const { data, error } = await supabase
         .from(dbTable)
-        .insert(insertPayload)
+        .select('*')
+        .eq('client_id', client_id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      await audit('list_records', table_key, null, { count: data?.length || 0 });
+      return jsonResponse({ success: true, records: data || [], permission: permissions[table_key] });
+    }
+
+    // ── create_record ──
+    if (operation === 'create_record') {
+      const { table_key, payload } = body;
+      const dbTable = TABLE_MAP[table_key];
+      if (!dbTable) return jsonResponse({ error: 'Unknown table' }, 400);
+      if (!permissions[table_key]?.edit) return jsonResponse({ error: 'No edit permission for ' + table_key }, 403);
+
+      const insert = { ...(payload || {}), client_id };
+      const { data, error } = await supabase.from(dbTable).insert(insert).select().maybeSingle();
+      if (error) throw error;
+      await audit('create_record', table_key, data?.id || null, { fields: Object.keys(payload || {}) });
+      return jsonResponse({ success: true, record: data });
+    }
+
+    // ── update_record ──
+    if (operation === 'update_record') {
+      const { table_key, record_id, payload } = body;
+      const dbTable = TABLE_MAP[table_key];
+      if (!dbTable) return jsonResponse({ error: 'Unknown table' }, 400);
+      if (!record_id) return jsonResponse({ error: 'record_id required' }, 400);
+      if (!permissions[table_key]?.edit) return jsonResponse({ error: 'No edit permission for ' + table_key }, 403);
+
+      const updates = { ...(payload || {}) };
+      delete updates.id;
+      delete updates.client_id;
+
+      const { data, error } = await supabase
+        .from(dbTable)
+        .update(updates)
+        .eq('id', record_id)
+        .eq('client_id', client_id)
         .select()
-        .single();
-
-      if (error) {
-        console.error(`Insert into ${dbTable} failed:`, error);
-        return jsonResponse({ error: error.message }, 400, corsHeaders);
-      }
-      await logActivity(supabase, financeUserId, client_id, 'create', { table, record_id: inserted.id });
-      return jsonResponse({ record: inserted }, 200, corsHeaders);
-    }
-
-    // ── update ──
-    if (operation === 'update') {
-      if (!checkPermission(permissions, table, 'edit')) {
-        return jsonResponse({ error: 'You do not have edit permission on this table' }, 403, corsHeaders);
-      }
-      if (!record_id || !data) {
-        return jsonResponse({ error: 'record_id and data are required' }, 400, corsHeaders);
-      }
-      // Verify record belongs to client
-      const { data: existing, error: chkErr } = await supabase
-        .from(dbTable)
-        .select('id, client_id')
-        .eq('id', record_id)
         .maybeSingle();
-      if (chkErr || !existing || existing.client_id !== client_id) {
-        return jsonResponse({ error: 'Record not found for this client' }, 404, corsHeaders);
-      }
-
-      const updatePayload = { ...data };
-      delete (updatePayload as any).id;
-      delete (updatePayload as any).client_id;
-      delete (updatePayload as any).created_at;
-
-      const { data: updated, error } = await supabase
-        .from(dbTable)
-        .update(updatePayload)
-        .eq('id', record_id)
-        .select()
-        .single();
-
-      if (error) {
-        console.error(`Update ${dbTable} failed:`, error);
-        return jsonResponse({ error: error.message }, 400, corsHeaders);
-      }
-      await logActivity(supabase, financeUserId, client_id, 'update', { table, record_id });
-      return jsonResponse({ record: updated }, 200, corsHeaders);
+      if (error) throw error;
+      await audit('update_record', table_key, record_id, { fields: Object.keys(updates) });
+      return jsonResponse({ success: true, record: data });
     }
 
-    // ── delete ──
-    if (operation === 'delete') {
-      if (!checkPermission(permissions, table, 'delete')) {
-        return jsonResponse({ error: 'You do not have delete permission on this table' }, 403, corsHeaders);
-      }
-      if (!record_id) {
-        return jsonResponse({ error: 'record_id is required' }, 400, corsHeaders);
-      }
-      const { data: existing, error: chkErr } = await supabase
+    // ── delete_record ──
+    if (operation === 'delete_record') {
+      const { table_key, record_id } = body;
+      const dbTable = TABLE_MAP[table_key];
+      if (!dbTable) return jsonResponse({ error: 'Unknown table' }, 400);
+      if (!record_id) return jsonResponse({ error: 'record_id required' }, 400);
+      if (!permissions[table_key]?.delete) return jsonResponse({ error: 'No delete permission for ' + table_key }, 403);
+
+      const { error } = await supabase
         .from(dbTable)
-        .select('id, client_id')
+        .delete()
         .eq('id', record_id)
-        .maybeSingle();
-      if (chkErr || !existing || existing.client_id !== client_id) {
-        return jsonResponse({ error: 'Record not found for this client' }, 404, corsHeaders);
-      }
-      const { error } = await supabase.from(dbTable).delete().eq('id', record_id);
-      if (error) {
-        return jsonResponse({ error: error.message }, 400, corsHeaders);
-      }
-      await logActivity(supabase, financeUserId, client_id, 'delete', { table, record_id });
-      return jsonResponse({ success: true }, 200, corsHeaders);
+        .eq('client_id', client_id);
+      if (error) throw error;
+      await audit('delete_record', table_key, record_id);
+      return jsonResponse({ success: true });
     }
 
-    return jsonResponse({ error: `Unknown operation: ${operation}` }, 400, corsHeaders);
-  } catch (error: any) {
-    console.error('finance-portal-client-data error:', error);
-    return jsonResponse({ error: error.message || 'Internal server error' }, 500, corsHeaders);
+    return jsonResponse({ error: `Unknown operation: ${operation}` }, 400);
+  } catch (e: any) {
+    console.error('[finance-portal-client-data] error', e);
+    return jsonResponse({ error: 'Internal server error', details: e?.message }, 500);
   }
 });

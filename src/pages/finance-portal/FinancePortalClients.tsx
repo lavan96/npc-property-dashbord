@@ -1,150 +1,105 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import { Search, Users, Loader2, ArrowRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Search, Users, ArrowRight, Mail, Phone } from 'lucide-react';
-
-interface AssignedClient {
-  id: string;
-  full_name: string;
-  email: string | null;
-  mobile: string | null;
-  status: string | null;
-  permissions: any;
-}
-
-const PERMISSION_TABLES = [
-  'properties', 'income', 'expenses', 'assets',
-  'liabilities', 'employment', 'notes', 'contacts',
-] as const;
-
-function summarizePermissions(perms: any) {
-  let view = 0, edit = 0, del = 0;
-  for (const t of PERMISSION_TABLES) {
-    const p = perms?.[t];
-    if (p?.view) view++;
-    if (p?.edit) edit++;
-    if (p?.delete) del++;
-  }
-  return { view, edit, del };
-}
 
 export default function FinancePortalClients() {
   const { invokeFinanceFunction } = useFinancePortalAuth();
-  const [clients, setClients] = useState<AssignedClient[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [search, setSearch] = useState('');
 
-  useEffect(() => {
-    (async () => {
-      setLoading(true);
+  const { data, isLoading } = useQuery({
+    queryKey: ['finance-portal-clients-list'],
+    queryFn: async () => {
       const { data, error } = await invokeFinanceFunction('finance-portal-client-data', {
-        operation: 'list_clients',
+        operation: 'list_assigned_clients',
       });
-      if (error) setError(error.message || 'Failed to load clients');
-      else setClients(data?.clients || []);
-      setLoading(false);
-    })();
-  }, [invokeFinanceFunction]);
+      if (error) throw new Error(error.message);
+      return data;
+    },
+  });
+
+  const records = data?.records || [];
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return clients;
-    const s = search.toLowerCase();
-    return clients.filter(c =>
-      c.full_name.toLowerCase().includes(s) ||
-      (c.email || '').toLowerCase().includes(s) ||
-      (c.mobile || '').toLowerCase().includes(s)
+    const s = search.trim().toLowerCase();
+    if (!s) return records;
+    return records.filter((r: any) =>
+      (r.client?.primary_contact_name || '').toLowerCase().includes(s) ||
+      (r.client?.secondary_contact_name || '').toLowerCase().includes(s) ||
+      (r.client?.primary_contact_email || '').toLowerCase().includes(s)
     );
-  }, [clients, search]);
+  }, [records, search]);
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">My Clients</h1>
-          <p className="text-muted-foreground mt-1">
-            {loading ? 'Loading...' : `${clients.length} client${clients.length === 1 ? '' : 's'} assigned to you`}
-          </p>
-        </div>
+    <div className="p-6 space-y-6 max-w-6xl mx-auto">
+      <div>
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <Users className="h-6 w-6 text-primary" />
+          My Clients
+        </h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Clients NPC has assigned to you. Click any client to view and manage their financial profile.
+        </p>
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <CardTitle>{records.length} assigned</CardTitle>
+            <CardDescription>{filtered.length === records.length ? 'Showing all' : `Showing ${filtered.length} of ${records.length}`}</CardDescription>
+          </div>
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
+              placeholder="Search by name or email..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by name, email or phone..."
-              className="pl-9"
+              onChange={e => setSearch(e.target.value)}
+              className="pl-8 w-72"
             />
           </div>
         </CardHeader>
         <CardContent>
-          {loading && (
-            <div className="space-y-3">
-              {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-20 w-full rounded-md" />)}
+          {isLoading ? (
+            <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-12 border rounded-lg text-sm text-muted-foreground">
+              {records.length === 0 ? 'No clients have been assigned to you yet.' : 'No matches.'}
             </div>
-          )}
-
-          {!loading && error && (
-            <div className="text-sm text-destructive py-4">{error}</div>
-          )}
-
-          {!loading && !error && filtered.length === 0 && (
-            <div className="text-center py-12">
-              <Users className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground">
-                {clients.length === 0
-                  ? 'No clients have been assigned to you yet.'
-                  : 'No clients match your search.'}
-              </p>
-            </div>
-          )}
-
-          {!loading && !error && filtered.length > 0 && (
+          ) : (
             <div className="space-y-2">
-              {filtered.map(c => {
-                const s = summarizePermissions(c.permissions);
+              {filtered.map((r: any) => {
+                const perms = r.permissions || {};
+                const grantedTables = Object.entries(perms).filter(([_, p]: any) => p?.view).length;
                 return (
                   <Link
-                    key={c.id}
-                    to={`/finance/clients/${c.id}`}
-                    className="flex items-center justify-between p-4 rounded-md border hover:bg-muted/50 transition-colors group"
+                    key={r.assignment_id}
+                    to={`/finance/clients/${r.client_id}`}
+                    className="flex items-center justify-between border rounded-lg p-4 hover:bg-muted/40 transition-colors"
                   >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <div className="font-medium truncate">{c.full_name || 'Unnamed Client'}</div>
-                        {c.status && (
-                          <Badge variant="secondary" className="font-normal text-xs capitalize">
-                            {c.status}
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground mt-1">
-                        {c.email && (
-                          <span className="flex items-center gap-1">
-                            <Mail className="h-3 w-3" />{c.email}
-                          </span>
-                        )}
-                        {c.mobile && (
-                          <span className="flex items-center gap-1">
-                            <Phone className="h-3 w-3" />{c.mobile}
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium">
+                        {r.client?.primary_contact_name || '—'}
+                        {r.client?.secondary_contact_name && (
+                          <span className="text-muted-foreground font-normal text-sm ml-2">
+                            & {r.client.secondary_contact_name}
                           </span>
                         )}
                       </div>
-                    </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                      <div className="hidden sm:flex flex-col items-end gap-1 text-xs">
-                        <Badge variant="secondary" className="font-normal">{s.view}/8 view</Badge>
-                        {s.edit > 0 && <Badge variant="outline" className="font-normal">{s.edit} edit</Badge>}
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        {r.client?.primary_contact_email || ''}
+                        {r.client?.primary_contact_phone && ` · ${r.client.primary_contact_phone}`}
                       </div>
-                      <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        <Badge variant="outline" className="text-xs">{grantedTables} of 8 sections</Badge>
+                        {r.client?.status && <Badge variant="secondary" className="text-xs">{r.client.status}</Badge>}
+                      </div>
                     </div>
+                    <ArrowRight className="h-4 w-4 text-muted-foreground ml-3" />
                   </Link>
                 );
               })}

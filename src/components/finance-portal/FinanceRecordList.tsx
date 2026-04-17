@@ -1,318 +1,315 @@
 import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
-import {
-  Dialog, DialogContent, DialogDescription, DialogFooter,
-  DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Pencil, Trash2, Loader2, Eye } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { TableKey, FieldConfig } from './financeTableConfig';
+import { Badge } from '@/components/ui/badge';
+import { Loader2, Plus, Pencil, Trash2, Eye, Lock } from 'lucide-react';
+import { toast } from 'sonner';
+import type { TableConfig } from './financeTableConfig';
 
-interface FinanceRecordListProps {
-  tableKey: TableKey;
+interface Props {
   clientId: string;
-  records: any[];
-  fields: FieldConfig[];
-  canEdit: boolean;
-  canDelete: boolean;
-  onMutated: () => void;
+  config: TableConfig;
 }
 
-function formatCurrency(v: any): string {
-  if (v === null || v === undefined || v === '') return '—';
-  const n = Number(v);
-  if (Number.isNaN(n)) return String(v);
-  return new Intl.NumberFormat('en-AU', {
-    style: 'currency', currency: 'AUD', maximumFractionDigits: 0,
-  }).format(n);
-}
-
-function formatDate(v: any): string {
-  if (!v) return '—';
-  try { return new Date(v).toLocaleDateString('en-AU'); } catch { return String(v); }
-}
-
-function displayValue(field: FieldConfig, value: any): string {
-  if (value === null || value === undefined || value === '') return '—';
-  if (field.type === 'currency') return formatCurrency(value);
-  if (field.type === 'date') return formatDate(value);
-  if (field.type === 'select' && field.options) {
-    const o = field.options.find(opt => opt.value === String(value));
-    return o ? o.label : String(value);
-  }
-  return String(value);
-}
-
-function buildEmptyRecord(fields: FieldConfig[]): Record<string, any> {
-  const obj: Record<string, any> = {};
-  for (const f of fields) obj[f.key] = '';
-  return obj;
-}
-
-export function FinanceRecordList({
-  tableKey, clientId, records, fields, canEdit, canDelete, onMutated,
-}: FinanceRecordListProps) {
+export function FinanceRecordList({ clientId, config }: Props) {
   const { invokeFinanceFunction } = useFinancePortalAuth();
-  const { toast } = useToast();
-
+  const qc = useQueryClient();
   const [editing, setEditing] = useState<any | null>(null);
-  const [creating, setCreating] = useState<Record<string, any> | null>(null);
+  const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState<any | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [viewing, setViewing] = useState<any | null>(null);
 
-  const summaryFields = fields.filter(f => !f.hideInSummary).slice(0, 4);
+  const queryKey = ['finance-portal-client-data', clientId, config.key];
 
-  const handleSave = async (payload: Record<string, any>, recordId?: string) => {
-    setSubmitting(true);
-    // Coerce numeric/currency fields and yes/no
-    const cleaned: Record<string, any> = {};
-    for (const f of fields) {
-      let v = payload[f.key];
-      if (v === '' || v === undefined) { cleaned[f.key] = null; continue; }
-      if (f.type === 'number' || f.type === 'currency') {
-        const n = Number(v);
-        cleaned[f.key] = Number.isNaN(n) ? null : n;
-      } else if (f.type === 'select' && f.options?.some(o => o.value === 'true' || o.value === 'false')) {
-        cleaned[f.key] = v === 'true' || v === true;
-      } else {
-        cleaned[f.key] = v;
-      }
+  const { data, isLoading, error } = useQuery({
+    queryKey,
+    queryFn: async () => {
+      const { data, error } = await invokeFinanceFunction('finance-portal-client-data', {
+        operation: 'list_records',
+        client_id: clientId,
+        table_key: config.key,
+      });
+      if (error) throw new Error(error.message);
+      return data as { records: any[]; permission: { view: boolean; edit: boolean; delete: boolean } };
+    },
+  });
+
+  const permission = data?.permission || { view: false, edit: false, delete: false };
+  const records = data?.records || [];
+
+  const saveMutation = useMutation({
+    mutationFn: async (vars: { mode: 'create' | 'update'; payload: any; record_id?: string }) => {
+      const { data, error } = await invokeFinanceFunction('finance-portal-client-data', {
+        operation: vars.mode === 'create' ? 'create_record' : 'update_record',
+        client_id: clientId,
+        table_key: config.key,
+        record_id: vars.record_id,
+        payload: vars.payload,
+      });
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    onSuccess: (_d, vars) => {
+      toast.success(vars.mode === 'create' ? `${config.singular} created` : `${config.singular} updated`);
+      qc.invalidateQueries({ queryKey });
+      setCreating(false);
+      setEditing(null);
+    },
+    onError: (e: any) => toast.error(e.message || 'Save failed'),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (record_id: string) => {
+      const { data, error } = await invokeFinanceFunction('finance-portal-client-data', {
+        operation: 'delete_record',
+        client_id: clientId,
+        table_key: config.key,
+        record_id,
+      });
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    onSuccess: () => {
+      toast.success(`${config.singular} deleted`);
+      qc.invalidateQueries({ queryKey });
+      setDeleting(null);
+    },
+    onError: (e: any) => toast.error(e.message || 'Delete failed'),
+  });
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    const msg = (error as Error).message || 'Failed to load';
+    if (msg.includes('No view permission')) {
+      return (
+        <Card>
+          <CardContent className="py-12 text-center text-sm text-muted-foreground">
+            <Lock className="h-8 w-8 mx-auto mb-3 opacity-50" />
+            You do not have permission to view {config.label.toLowerCase()} for this client.
+          </CardContent>
+        </Card>
+      );
     }
-
-    const op = recordId ? 'update' : 'create';
-    const { data, error } = await invokeFinanceFunction('finance-portal-client-data', {
-      operation: op,
-      table: tableKey,
-      client_id: clientId,
-      record_id: recordId,
-      data: cleaned,
-    });
-    setSubmitting(false);
-
-    if (error) {
-      toast({ title: 'Save failed', description: error.message, variant: 'destructive' });
-      return;
-    }
-    toast({ title: recordId ? 'Updated successfully' : 'Created successfully' });
-    setEditing(null);
-    setCreating(null);
-    onMutated();
-  };
-
-  const handleDelete = async (recordId: string) => {
-    setSubmitting(true);
-    const { error } = await invokeFinanceFunction('finance-portal-client-data', {
-      operation: 'delete',
-      table: tableKey,
-      client_id: clientId,
-      record_id: recordId,
-    });
-    setSubmitting(false);
-    if (error) {
-      toast({ title: 'Delete failed', description: error.message, variant: 'destructive' });
-      return;
-    }
-    toast({ title: 'Deleted' });
-    setDeleting(null);
-    onMutated();
-  };
-
-  const renderForm = (record: Record<string, any>, setRecord: (r: Record<string, any>) => void) => (
-    <div className="grid gap-4 sm:grid-cols-2 max-h-[60vh] overflow-y-auto pr-1">
-      {fields.map(f => (
-        <div
-          key={f.key}
-          className={`space-y-1.5 ${f.type === 'textarea' ? 'sm:col-span-2' : ''}`}
-        >
-          <Label htmlFor={`field-${f.key}`}>
-            {f.label}{f.required && <span className="text-destructive ml-1">*</span>}
-          </Label>
-          {f.type === 'textarea' ? (
-            <Textarea
-              id={`field-${f.key}`}
-              value={record[f.key] ?? ''}
-              onChange={(e) => setRecord({ ...record, [f.key]: e.target.value })}
-              rows={3}
-              placeholder={f.placeholder}
-            />
-          ) : f.type === 'select' && f.options ? (
-            <Select
-              value={record[f.key] != null ? String(record[f.key]) : ''}
-              onValueChange={(v) => setRecord({ ...record, [f.key]: v })}
-            >
-              <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
-              <SelectContent>
-                {f.options.map(o => (
-                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : (
-            <Input
-              id={`field-${f.key}`}
-              type={
-                f.type === 'currency' || f.type === 'number' ? 'number'
-                  : f.type === 'date' ? 'date'
-                    : f.type === 'email' ? 'email'
-                      : f.type === 'tel' ? 'tel'
-                        : 'text'
-              }
-              value={record[f.key] ?? ''}
-              onChange={(e) => setRecord({ ...record, [f.key]: e.target.value })}
-              placeholder={f.placeholder}
-              step={f.type === 'currency' || f.type === 'number' ? 'any' : undefined}
-            />
-          )}
-        </div>
-      ))}
-    </div>
-  );
+    return (
+      <Card>
+        <CardContent className="py-12 text-center text-sm text-destructive">{msg}</CardContent>
+      </Card>
+    );
+  }
 
   return (
-    <div className="space-y-3">
-      {canEdit && (
-        <div className="flex justify-end">
-          <Button size="sm" onClick={() => setCreating(buildEmptyRecord(fields))}>
-            <Plus className="h-4 w-4 mr-2" />Add new
+    <Card>
+      <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <CardTitle className="flex items-center gap-2">
+            {config.label}
+            <Badge variant="outline" className="text-xs gap-1">
+              <Eye className="h-3 w-3" />
+              View
+              {permission.edit && <> · <Pencil className="h-3 w-3" /> Edit</>}
+              {permission.delete && <> · <Trash2 className="h-3 w-3" /> Delete</>}
+            </Badge>
+          </CardTitle>
+          <CardDescription>{config.description}</CardDescription>
+        </div>
+        {permission.edit && (
+          <Button onClick={() => setCreating(true)} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Add {config.singular}
           </Button>
-        </div>
-      )}
-
-      {records.length === 0 ? (
-        <div className="text-center py-10 text-sm text-muted-foreground border border-dashed rounded-md">
-          No records yet.
-          {canEdit && ' Click "Add new" above to create the first one.'}
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {records.map(r => (
-            <div key={r.id} className="flex items-start justify-between gap-3 p-3 border rounded-md hover:bg-muted/30 transition-colors">
-              <div className="min-w-0 flex-1 grid gap-1">
-                {summaryFields.map(f => {
-                  const val = displayValue(f, r[f.key]);
-                  if (f.primary) {
-                    return (
-                      <div key={f.key} className="font-medium truncate">{val}</div>
-                    );
-                  }
-                  if (f.secondary) {
-                    return (
-                      <div key={f.key} className="text-sm text-muted-foreground truncate">{val}</div>
-                    );
-                  }
-                  return (
-                    <div key={f.key} className="text-xs text-muted-foreground truncate">
-                      <span className="font-medium">{f.label}:</span> {val}
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="flex items-center gap-1 shrink-0">
-                <Button size="icon" variant="ghost" onClick={() => setViewing(r)} title="View details">
-                  <Eye className="h-4 w-4" />
-                </Button>
-                {canEdit && (
-                  <Button size="icon" variant="ghost" onClick={() => setEditing({ ...r })} title="Edit">
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                )}
-                {canDelete && (
-                  <Button size="icon" variant="ghost" onClick={() => setDeleting(r)} title="Delete" className="text-destructive hover:text-destructive">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* View dialog */}
-      <Dialog open={!!viewing} onOpenChange={(o) => !o && setViewing(null)}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Record Details</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-2 max-h-[60vh] overflow-y-auto">
-            {viewing && fields.map(f => (
-              <div key={f.key} className="grid grid-cols-3 gap-2 py-1.5 border-b last:border-0">
-                <div className="text-xs text-muted-foreground font-medium">{f.label}</div>
-                <div className="col-span-2 text-sm break-words">{displayValue(f, viewing[f.key])}</div>
+        )}
+      </CardHeader>
+      <CardContent>
+        {records.length === 0 ? (
+          <div className="py-12 text-center text-sm text-muted-foreground border rounded-lg">
+            No {config.label.toLowerCase()} recorded yet.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {records.map(r => (
+              <div key={r.id} className="border rounded-lg p-4 flex items-start justify-between gap-3 hover:bg-muted/30 transition-colors">
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-sm">
+                    {r[config.primaryColumn] || '—'}
+                    {config.secondaryColumn && r[config.secondaryColumn] && (
+                      <span className="text-muted-foreground font-normal ml-2 text-xs">
+                        · {r[config.secondaryColumn]}
+                      </span>
+                    )}
+                  </div>
+                  {config.renderSummary?.(r) ?? null}
+                </div>
+                <div className="flex items-center gap-1">
+                  {permission.edit && (
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditing(r)}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                  {permission.delete && (
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleting(r)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
-        </DialogContent>
-      </Dialog>
+        )}
+      </CardContent>
 
-      {/* Create dialog */}
-      <Dialog open={!!creating} onOpenChange={(o) => !o && setCreating(null)}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Add new record</DialogTitle>
-            <DialogDescription>Fill in the fields below and save.</DialogDescription>
-          </DialogHeader>
-          {creating && renderForm(creating, setCreating)}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCreating(null)} disabled={submitting}>Cancel</Button>
-            <Button onClick={() => creating && handleSave(creating)} disabled={submitting}>
-              {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Create
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {(creating || editing) && (
+        <RecordDialog
+          open
+          onClose={() => { setCreating(false); setEditing(null); }}
+          config={config}
+          record={editing}
+          onSave={(payload) =>
+            saveMutation.mutate({
+              mode: editing ? 'update' : 'create',
+              payload,
+              record_id: editing?.id,
+            })
+          }
+          saving={saveMutation.isPending}
+        />
+      )}
 
-      {/* Edit dialog */}
-      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Edit record</DialogTitle>
-            <DialogDescription>Update the fields below and save changes.</DialogDescription>
-          </DialogHeader>
-          {editing && renderForm(editing, setEditing)}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditing(null)} disabled={submitting}>Cancel</Button>
-            <Button onClick={() => editing && handleSave(editing, editing.id)} disabled={submitting}>
-              {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Save changes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete confirmation */}
-      <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
+      <AlertDialog open={!!deleting} onOpenChange={o => { if (!o) setDeleting(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this record?</AlertDialogTitle>
+            <AlertDialogTitle>Delete {config.singular.toLowerCase()}?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. The record will be permanently removed.
+              This action cannot be undone. The record will be permanently removed and an audit entry created.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={submitting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => deleting && handleDelete(deleting.id)}
-              disabled={submitting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleting && deleteMutation.mutate(deleting.id)}
             >
-              {submitting ? 'Deleting...' : 'Delete'}
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </Card>
+  );
+}
+
+function RecordDialog({ open, onClose, config, record, onSave, saving }: {
+  open: boolean;
+  onClose: () => void;
+  config: TableConfig;
+  record: any | null;
+  onSave: (payload: any) => void;
+  saving: boolean;
+}) {
+  const [form, setForm] = useState<Record<string, any>>(() => {
+    const initial: Record<string, any> = {};
+    for (const f of config.fields) {
+      initial[f.key] = record?.[f.key] ?? (f.type === 'boolean' ? false : '');
+    }
+    return initial;
+  });
+
+  const update = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }));
+
+  const handleSubmit = () => {
+    const payload: Record<string, any> = {};
+    for (const f of config.fields) {
+      const v = form[f.key];
+      if (f.required && (v === '' || v == null)) {
+        toast.error(`${f.label} is required`);
+        return;
+      }
+      if (v === '' || v == null) {
+        payload[f.key] = null;
+      } else if (f.type === 'number' || f.type === 'currency' || f.type === 'percent') {
+        payload[f.key] = Number(v);
+      } else {
+        payload[f.key] = v;
+      }
+    }
+    onSave(payload);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={o => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{record ? `Edit ${config.singular}` : `Add ${config.singular}`}</DialogTitle>
+          <DialogDescription>{config.description}</DialogDescription>
+        </DialogHeader>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-2">
+          {config.fields.map(f => (
+            <div key={f.key} className={f.type === 'textarea' ? 'sm:col-span-2' : ''}>
+              <Label className="text-xs flex items-center gap-1">
+                {f.label}
+                {f.required && <span className="text-destructive">*</span>}
+              </Label>
+              {f.type === 'select' ? (
+                <Select value={form[f.key] || ''} onValueChange={v => update(f.key, v)}>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Select..." /></SelectTrigger>
+                  <SelectContent>
+                    {f.options?.map(o => (
+                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : f.type === 'textarea' ? (
+                <Textarea value={form[f.key] || ''} onChange={e => update(f.key, e.target.value)} rows={4} className="mt-1" />
+              ) : f.type === 'boolean' ? (
+                <div className="flex items-center gap-2 mt-2">
+                  <Switch checked={!!form[f.key]} onCheckedChange={v => update(f.key, v)} />
+                  <span className="text-sm text-muted-foreground">{form[f.key] ? 'Yes' : 'No'}</span>
+                </div>
+              ) : (
+                <Input
+                  type={f.type === 'date' ? 'date' : f.type === 'number' || f.type === 'currency' || f.type === 'percent' ? 'number' : 'text'}
+                  step={f.type === 'percent' ? '0.01' : undefined}
+                  value={form[f.key] ?? ''}
+                  onChange={e => update(f.key, e.target.value)}
+                  placeholder={f.placeholder}
+                  className="mt-1"
+                />
+              )}
+              {f.helpText && <div className="text-xs text-muted-foreground mt-1">{f.helpText}</div>}
+            </div>
+          ))}
+        </div>
+
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose} disabled={saving}>Cancel</Button>
+          <Button onClick={handleSubmit} disabled={saving} className="gap-2">
+            {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+            {record ? 'Save Changes' : `Create ${config.singular}`}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
