@@ -24,6 +24,10 @@ import {
   type ScenarioIncomeComponent,
   type LenderShadingProfile,
 } from './lenderShadingProfiles.ts';
+import {
+  computeNegativeGearingAddBack,
+  marginalTaxRateFor,
+} from './negativeGearingAddBack.ts';
 
 // ============================================
 // TYPES (mirrored from src/utils/borrowingCapacityTypes.ts)
@@ -750,6 +754,27 @@ export function aggregateDeltas(
     });
   } else {
     computedShadedAnnual = Math.max(0, ctx.baseInputs.shadedAnnualIncome + total.shadedIncomeAdjustment);
+  }
+
+  // Phase I6 — Negative-gearing add-back. Mirrors `src/utils/scenarioDeltaEngine.ts`.
+  const investmentProps = (ctx.properties || []).filter(p => {
+    const t = (p.propertyType || '').toLowerCase();
+    return t.includes('invest') || t.includes('rental') || t === 'investment';
+  });
+  const ngResult = computeNegativeGearingAddBack({
+    investmentProperties: investmentProps,
+    marginalTaxRate: marginalTaxRateFor(newGross),
+    addBackShading: 1.0,
+  });
+  if (ngResult.annualAddBack > 0) {
+    computedShadedAnnual += ngResult.annualAddBack;
+    total.acquisitionNotes.push(...ngResult.notes);
+    issues.push({
+      deltaId: 'negative-gearing',
+      deltaType: 'income_change',
+      severity: 'warning',
+      message: ngResult.notes[0] ?? 'Negative-gearing add-back applied',
+    });
   }
 
   // Phase I2 — HEM floor enforcement. The bank uses MAX(declared, HEM); a

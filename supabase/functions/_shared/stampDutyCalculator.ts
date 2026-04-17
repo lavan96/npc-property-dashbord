@@ -15,6 +15,8 @@ export interface StampDutyInput {
   category?: PropertyCategory;
   isFirstHomeBuyer?: boolean;
   isForeignBuyer?: boolean;
+  /** Phase I5 — VIC off-the-plan reduction (PPR/FHB only). Pass 0–1. */
+  offThePlanConstructionFraction?: number;
 }
 
 export interface StampDutyBreakdown {
@@ -40,8 +42,15 @@ function calcVIC(v: number): number {
   if (v <= 25000) return v * 0.014;
   if (v <= 130000) return 350 + (v - 25000) * 0.024;
   if (v <= 960000) return 2870 + (v - 130000) * 0.06;
-  if (v <= 2000000) return 52470 + (v - 960000) * 0.06;
-  return 110070 + (v - 2000000) * 0.065;
+  if (v <= 2000000) return v * 0.055;
+  return 110000 + (v - 2000000) * 0.065;
+}
+function calcVICppr(v: number): number {
+  if (v <= 25000) return v * 0.014;
+  if (v <= 130000) return 350 + (v - 25000) * 0.024;
+  if (v <= 440000) return 2870 + (v - 130000) * 0.05;
+  if (v <= 550000) return 18370 + (v - 440000) * 0.06;
+  return calcVIC(v);
 }
 function calcQLD(v: number): number {
   if (v <= 5000) return 0;
@@ -158,27 +167,38 @@ export function calculateStampDuty(input: StampDutyInput): StampDutyBreakdown {
     return { baseDuty: 0, fhbConcession: 0, foreignSurcharge: 0, investorSurcharge: 0, totalDuty: 0, effectiveRate: 0, notes: ['Invalid input'], state };
   }
 
-  const baseDuty = Math.round(CALC[state](value));
-  const fhbSaving = isFhb ? Math.round(fhbConcession(value, state, category)) : 0;
+  // Phase I5 — VIC off-the-plan dutiable-value reduction (PPR/FHB only).
+  let dutiableValue = value;
+  let otpReductionApplied = 0;
+  const otpFrac = Math.max(0, Math.min(1, input.offThePlanConstructionFraction ?? 0));
+  if (state === 'VIC' && otpFrac > 0 && intent === 'owner_occupier' && category === 'new') {
+    const cap = isFhb ? 750000 : 550000;
+    if (value <= cap) {
+      dutiableValue = value * (1 - otpFrac);
+      otpReductionApplied = value - dutiableValue;
+    }
+  }
+
+  // Phase I5 — VIC PPR uses preferential brackets <$550k.
+  const calc = (state === 'VIC' && intent === 'owner_occupier') ? calcVICppr : CALC[state];
+
+  const baseDuty = Math.round(calc(dutiableValue));
+  const fhbSaving = isFhb ? Math.round(fhbConcession(dutiableValue, state, category)) : 0;
   const foreign = isForeign ? Math.round(foreignSurcharge(value, state)) : 0;
   const investor = 0;
   const totalDuty = Math.max(0, baseDuty - fhbSaving + foreign + investor);
   const effectiveRate = value > 0 ? (totalDuty / value) * 100 : 0;
 
   const notes: string[] = [];
+  if (otpReductionApplied > 0) notes.push(`VIC off-the-plan: dutiable value reduced by $${Math.round(otpReductionApplied).toLocaleString()} (${(otpFrac * 100).toFixed(0)}% construction)`);
+  if (state === 'VIC' && intent === 'owner_occupier' && value <= 550000) notes.push(`VIC PPR brackets applied (preferential <$550k)`);
   if (fhbSaving > 0) notes.push(`FHB concession: −$${fhbSaving.toLocaleString()} (${state} ${category})`);
   if (foreign > 0) notes.push(`Foreign buyer surcharge: +$${foreign.toLocaleString()}`);
   if (notes.length === 0) notes.push(`Standard ${state} ${intent} duty`);
 
   return {
-    baseDuty,
-    fhbConcession: fhbSaving,
-    foreignSurcharge: foreign,
-    investorSurcharge: investor,
-    totalDuty,
-    effectiveRate: Math.round(effectiveRate * 100) / 100,
-    notes,
-    state,
+    baseDuty, fhbConcession: fhbSaving, foreignSurcharge: foreign, investorSurcharge: investor,
+    totalDuty, effectiveRate: Math.round(effectiveRate * 100) / 100, notes, state,
   };
 }
 

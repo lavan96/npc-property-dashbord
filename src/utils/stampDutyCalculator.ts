@@ -23,6 +23,10 @@ export interface StampDutyInput {
   category?: PropertyCategory;
   isFirstHomeBuyer?: boolean;
   isForeignBuyer?: boolean;
+  /** Phase I5 — VIC off-the-plan concession: dutiable value is reduced by
+   *  the % of construction not yet complete at contract date. Pass 0–1
+   *  (e.g. 0.6 = 60% of price represents future construction). VIC only. */
+  offThePlanConstructionFraction?: number;
 }
 
 export interface StampDutyBreakdown {
@@ -49,12 +53,24 @@ function calcNSW(value: number): number {
   return 47295 + (value - 1168000) * 0.055;
 }
 
+/** VIC general (non-PPR / investor) rates — 2024-25 SRO schedule. */
 function calcVIC(value: number): number {
   if (value <= 25000) return value * 0.014;
   if (value <= 130000) return 350 + (value - 25000) * 0.024;
-  if (value <= 960000) return 2870 + (value - 130000) * 0.06; // VIC simplified flat 6% above $130k for non-PPR
-  if (value <= 2000000) return 52470 + (value - 960000) * 0.06;
-  return 110070 + (value - 2000000) * 0.065;
+  if (value <= 960000) return 2870 + (value - 130000) * 0.06;
+  if (value <= 2000000) return value * 0.055; // flat 5.5% bracket
+  return 110000 + (value - 2000000) * 0.065;
+}
+
+/** VIC PPR (owner-occupier) rates — preferential brackets to $550k.
+ *  Above $550k VIC PPR pays the same as general rates, so we fall through. */
+function calcVICppr(value: number): number {
+  if (value <= 25000) return value * 0.014;
+  if (value <= 130000) return 350 + (value - 25000) * 0.024;
+  if (value <= 440000) return 2870 + (value - 130000) * 0.05;
+  if (value <= 550000) return 18370 + (value - 440000) * 0.06;
+  // ≥ $550k PPR uses general rates
+  return calcVIC(value);
 }
 
 function calcQLD(value: number): number {
@@ -205,8 +221,27 @@ export function calculateStampDuty(input: StampDutyInput): StampDutyBreakdown {
     };
   }
 
-  const baseDuty = Math.round(STATE_CALCULATORS[state](value));
-  const fhbSaving = isFhb ? Math.round(fhbConcession(value, state, category)) : 0;
+  // Phase I5 — VIC off-the-plan dutiable-value reduction (PPR / FHB only).
+  // Construction-fraction × price is exempt from duty up to the eligibility
+  // threshold. Investor purchasers cannot use OTP concessions since 2017.
+  let dutiableValue = value;
+  let otpReductionApplied = 0;
+  const otpFrac = Math.max(0, Math.min(1, input.offThePlanConstructionFraction ?? 0));
+  if (state === 'VIC' && otpFrac > 0 && intent === 'owner_occupier' && category === 'new') {
+    const otpEligibilityCap = isFhb ? 750000 : 550000;
+    if (value <= otpEligibilityCap) {
+      dutiableValue = value * (1 - otpFrac);
+      otpReductionApplied = value - dutiableValue;
+    }
+  }
+
+  // Phase I5 — VIC PPR uses preferential brackets <$550k.
+  const calc = (state === 'VIC' && intent === 'owner_occupier')
+    ? calcVICppr
+    : STATE_CALCULATORS[state];
+
+  const baseDuty = Math.round(calc(dutiableValue));
+  const fhbSaving = isFhb ? Math.round(fhbConcession(dutiableValue, state, category)) : 0;
   const foreign = isForeign ? Math.round(foreignSurcharge(value, state)) : 0;
   const investor = intent === 'investor' ? Math.round(investorSurcharge(value, state)) : 0;
 
@@ -214,6 +249,8 @@ export function calculateStampDuty(input: StampDutyInput): StampDutyBreakdown {
   const effectiveRate = value > 0 ? (totalDuty / value) * 100 : 0;
 
   const notes: string[] = [];
+  if (otpReductionApplied > 0) notes.push(`VIC off-the-plan: dutiable value reduced by $${Math.round(otpReductionApplied).toLocaleString()} (${(otpFrac * 100).toFixed(0)}% construction)`);
+  if (state === 'VIC' && intent === 'owner_occupier' && value <= 550000) notes.push(`VIC PPR brackets applied (preferential <$550k)`);
   if (fhbSaving > 0) notes.push(`FHB concession: −$${fhbSaving.toLocaleString()} (${state} ${category})`);
   if (foreign > 0) notes.push(`Foreign buyer surcharge: +$${foreign.toLocaleString()}`);
   if (investor > 0) notes.push(`Investor surcharge: +$${investor.toLocaleString()}`);
