@@ -17,7 +17,7 @@ import { toast } from 'sonner';
 import {
   Loader2, Search, MoreHorizontal, Mail, Shield, RefreshCw,
   Ban, CheckCircle2, History, Settings, Users, Copy,
-  BarChart3, FileSpreadsheet, FileText,
+  BarChart3, FileSpreadsheet, FileText, DollarSign,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
@@ -191,6 +191,9 @@ export default function FinancePortalAdmin() {
           </Button>
           <Button variant="outline" asChild className="gap-2">
             <Link to="/admin/finance-portal/compliance"><FileText className="h-4 w-4" />Compliance</Link>
+          </Button>
+          <Button variant="outline" asChild className="gap-2">
+            <Link to="/admin/finance-portal/commissions"><DollarSign className="h-4 w-4" />Commissions</Link>
           </Button>
           <Button variant="outline" onClick={() => { setActivityForUser(null); setActivityOpen(true); }} className="gap-2">
             <History className="h-4 w-4" />
