@@ -290,6 +290,7 @@ export function StrategyScenarioModeling({
           value: liability.balance,
           unit: 'absolute',
         });
+        leverCashflowNotes.set(`liability_payoff-${liability.id}`, `+${formatCurrency(liability.monthlyServicing)}/mo`);
       }
     });
     if (consolidationSaving > 0) {
@@ -313,6 +314,7 @@ export function StrategyScenarioModeling({
           value: 0,
           unit: 'absolute',
         });
+        if (saving > 0) leverCashflowNotes.set(`property_refinance-${prop.id}`, `+${formatCurrency(saving)}/mo`);
       }
     });
     if (refinanceSaving > 0) {
@@ -422,7 +424,14 @@ export function StrategyScenarioModeling({
         const ratePct = prop.interest_rate ?? baseInputs.interestRate;
         const newLoan = prop.current_value * targetLVR;
         const grossRelease = Math.max(0, newLoan - prop.loan_remaining);
-        equityReleaseMonthlyCost += grossRelease * (ratePct / 100 / 12);
+        const monthlyServicing = grossRelease * (ratePct / 100 / 12);
+        equityReleaseMonthlyCost += monthlyServicing;
+        if (grossRelease > 0) {
+          leverCashflowNotes.set(
+            `equity_release-${prop.id}`,
+            `+${formatCurrency(grossRelease)} cash · −${formatCurrency(monthlyServicing)}/mo IO`,
+          );
+        }
       });
       if (equityReleaseMonthlyCost > 0) {
         impacts.push({
