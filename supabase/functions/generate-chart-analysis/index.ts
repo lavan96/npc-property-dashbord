@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 import { logApiUsage, extractOpenAIUsage } from '../_shared/logApiUsage.ts';
+import { callLLMRaw } from '../_shared/llmRouter.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -371,27 +372,14 @@ serve(async (req) => {
     console.log('Generated prompt for analysis');
 
     // Call OpenAI API with enhanced configuration
-    const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini', // Using reliable model for better compatibility
-        messages: [
-          {
-            role: 'system',
-            content: getSystemPrompt(chartData.type)
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        max_tokens: 300, // Using max_tokens for gpt-4o-mini
-        temperature: 0.7, // Add temperature for better responses
-      }),
+    const openAIResponse = await callLLMRaw({
+      agentKey: 'chart_analysis',
+      messages: [
+        { role: 'system', content: getSystemPrompt(chartData.type) },
+        { role: 'user', content: prompt },
+      ],
+      maxTokens: 300,
+      temperature: 0.7,
     });
 
     if (!openAIResponse.ok) {

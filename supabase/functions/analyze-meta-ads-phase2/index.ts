@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { callLLMRaw } from '../_shared/llmRouter.ts';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -278,19 +279,12 @@ Example:
 Do NOT output raw plain text paragraphs — structure everything using these blocks.`;
 
   try {
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-3-flash-preview',
-        messages: [
-          { role: 'system', content: 'You are a performance marketing strategist specializing in Australian property services advertising. Provide data-driven, actionable budget and audience recommendations.' },
-          { role: 'user', content: prompt },
-        ],
-      }),
+    const response = await callLLMRaw({
+      agentKey: 'meta_ads_strategy',
+      messages: [
+        { role: 'system', content: 'You are a performance marketing strategist specializing in Australian property services advertising. Provide data-driven, actionable budget and audience recommendations.' },
+        { role: 'user', content: prompt },
+      ],
     });
 
     if (!response.ok) {
@@ -430,19 +424,12 @@ async function analyzeLeadQuality(
     ).join('\n');
 
     try {
-      const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'google/gemini-3-flash-preview',
-          messages: [
-            { role: 'system', content: 'You are a CRM and marketing analytics expert for an Australian property buyers agency. Analyze lead quality by source.' },
-            { role: 'user', content: `Analyze lead quality across sources:\n\n${qualityText}\n\nProvide: 1) Which source delivers highest quality leads 2) Where conversion bottlenecks exist 3) Recommendations for improving conversion. Keep under 150 words.` },
-          ],
-        }),
+      const response = await callLLMRaw({
+        agentKey: 'meta_ads_lead_quality',
+        messages: [
+          { role: 'system', content: 'You are a CRM and marketing analytics expert for an Australian property buyers agency. Analyze lead quality by source.' },
+          { role: 'user', content: `Analyze lead quality across sources:\n\n${qualityText}\n\nProvide: 1) Which source delivers highest quality leads 2) Where conversion bottlenecks exist 3) Recommendations for improving conversion. Keep under 150 words.` },
+        ],
       });
 
       if (response.ok) {

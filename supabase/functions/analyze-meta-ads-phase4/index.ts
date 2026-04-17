@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { callLLMRaw } from '../_shared/llmRouter.ts';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -76,27 +77,19 @@ async function queryPerplexity(prompt: string, apiKey: string, systemPrompt?: st
 
 // ─── AI Analysis via Lovable Gateway ─────────────────────────────────────────
 
-async function callGemini(prompt: string, apiKey: string, maxTokens: number = 4000): Promise<string> {
-  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'google/gemini-2.5-flash',
-      messages: [
-        { role: 'system', content: 'You are an expert performance marketing strategist specialising in Australian property investment digital advertising. You produce data-driven, actionable analysis with specific numbers and clear recommendations. Format your output using Markdown with bold text, headers, bullet points, and tables where appropriate.' },
-        { role: 'user', content: prompt },
-      ],
-      temperature: 0.3,
-      max_tokens: maxTokens,
-    }),
+async function callGemini(prompt: string, _apiKey: string, maxTokens: number = 4000): Promise<string> {
+  const response = await callLLMRaw({
+    agentKey: 'meta_ads_benchmarks',
+    messages: [
+      { role: 'system', content: 'You are an expert performance marketing strategist specialising in Australian property investment digital advertising. You produce data-driven, actionable analysis with specific numbers and clear recommendations. Format your output using Markdown with bold text, headers, bullet points, and tables where appropriate.' },
+      { role: 'user', content: prompt },
+    ],
+    maxTokens,
   });
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(`AI Gateway error [${response.status}]: ${text}`);
+    throw new Error(`AI Router error [${response.status}]: ${text}`);
   }
 
   const data = await response.json();
@@ -105,19 +98,49 @@ async function callGemini(prompt: string, apiKey: string, maxTokens: number = 40
 
 // ─── Structured Benchmark Extraction ─────────────────────────────────────────
 
-async function extractBenchmarks(apiKey: string, perplexityContext: string): Promise<any> {
-  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
+async function extractBenchmarks(_apiKey: string, perplexityContext: string): Promise<any> {
+  const tools = [{
+    type: 'function',
+    function: {
+      name: 'provide_benchmarks',
+      description: 'Provide structured industry benchmark data for Meta Ads in Australian property investment lead generation.',
+      parameters: {
+        type: 'object',
+        properties: {
+          benchmarks: {
+            type: 'array',
+            description: 'Array of benchmark metrics. Must include: CTR, CPC, CPL, CPM, Frequency, Conversion Rate.',
+            items: {
+              type: 'object',
+              properties: {
+                metric: { type: 'string', description: 'Metric name — one of: CTR, CPC, CPL, CPM, Frequency, Conversion Rate' },
+                unit: { type: 'string', enum: ['percentage', 'currency_aud', 'number'] },
+                industry_avg: { type: 'number', description: 'Industry average for Australian property investment ads' },
+                industry_top_quartile: { type: 'number', description: 'Top 25% performer value (the threshold above/below which the best performers sit)' },
+                industry_bottom_quartile: { type: 'number', description: 'Bottom 25% performer value (the threshold at which poor performers sit)' },
+                notes: { type: 'string', description: 'Contextual explanation of what drives variance in this metric for property investment campaigns, including any YoY trends or seasonal patterns. 2-3 sentences.' },
+                yoy_trend: { type: 'string', description: 'Year-over-year trend direction and approximate magnitude, e.g., "+11% YoY" or "Stable"' },
+              },
+              required: ['metric', 'unit', 'industry_avg', 'industry_top_quartile', 'industry_bottom_quartile', 'notes'],
+              additionalProperties: false,
+            },
+          },
+          data_period: { type: 'string', description: 'Specific time period these benchmarks represent, e.g., "Q4 2025 – Q1 2026"' },
+          data_sources: { type: 'string', description: 'Named sources this data is derived from (e.g., WordStream, Meta Blueprint, AdExchanger)' },
+          methodology_note: { type: 'string', description: 'Brief note on methodology: what types of campaigns/accounts these benchmarks are drawn from' },
+        },
+        required: ['benchmarks', 'data_period', 'data_sources'],
+        additionalProperties: false,
+      },
     },
-    body: JSON.stringify({
-      model: 'google/gemini-2.5-flash',
-      messages: [
-        {
-          role: 'system',
-          content: `You are a senior digital marketing data analyst with deep expertise in the Australian property investment advertising vertical.
+  }];
+
+  const response = await callLLMRaw({
+    agentKey: 'meta_ads_benchmarks',
+    messages: [
+      {
+        role: 'system',
+        content: `You are a senior digital marketing data analyst with deep expertise in the Australian property investment advertising vertical.
 
 Your task is to extract the most accurate, current industry benchmark figures for Meta/Facebook Ads performance in this specific niche. Use the real-time research data provided as your PRIMARY source of truth — extract specific numbers directly from it where available. Only fall back to your training data for metrics not covered in the research.
 
@@ -130,54 +153,19 @@ Key context:
 - Currency: AUD
 
 Ensure benchmark figures reflect the premium/niche nature of property investment advertising, which typically has higher CPC and CPL than general real estate due to narrower targeting and higher-value conversions.`
-        },
-        {
-          role: 'user',
-          content: `Based on the following real-time market research, extract precise benchmark figures for Australian property investment Meta Ads campaigns.
+      },
+      {
+        role: 'user',
+        content: `Based on the following real-time market research, extract precise benchmark figures for Australian property investment Meta Ads campaigns.
 
 **Real-Time Research Data:**
 ${perplexityContext || 'No real-time research available — use your best knowledge of Q4 2025 / Q1 2026 Australian property investment ad benchmarks.'}
 
 Extract benchmarks for these metrics: CTR, CPC, CPL, CPM, Frequency, and Conversion Rate. For each metric, provide the industry average, top 25% performer threshold, and bottom 25% threshold. Include contextual notes explaining what drives variance in each metric for this specific vertical.`
-        },
-      ],
-      tools: [{
-        type: 'function',
-        function: {
-          name: 'provide_benchmarks',
-          description: 'Provide structured industry benchmark data for Meta Ads in Australian property investment lead generation.',
-          parameters: {
-            type: 'object',
-            properties: {
-              benchmarks: {
-                type: 'array',
-                description: 'Array of benchmark metrics. Must include: CTR, CPC, CPL, CPM, Frequency, Conversion Rate.',
-                items: {
-                  type: 'object',
-                  properties: {
-                    metric: { type: 'string', description: 'Metric name — one of: CTR, CPC, CPL, CPM, Frequency, Conversion Rate' },
-                    unit: { type: 'string', enum: ['percentage', 'currency_aud', 'number'] },
-                    industry_avg: { type: 'number', description: 'Industry average for Australian property investment ads' },
-                    industry_top_quartile: { type: 'number', description: 'Top 25% performer value (the threshold above/below which the best performers sit)' },
-                    industry_bottom_quartile: { type: 'number', description: 'Bottom 25% performer value (the threshold at which poor performers sit)' },
-                    notes: { type: 'string', description: 'Contextual explanation of what drives variance in this metric for property investment campaigns, including any YoY trends or seasonal patterns. 2-3 sentences.' },
-                    yoy_trend: { type: 'string', description: 'Year-over-year trend direction and approximate magnitude, e.g., "+11% YoY" or "Stable"' },
-                  },
-                  required: ['metric', 'unit', 'industry_avg', 'industry_top_quartile', 'industry_bottom_quartile', 'notes'],
-                  additionalProperties: false,
-                },
-              },
-              data_period: { type: 'string', description: 'Specific time period these benchmarks represent, e.g., "Q4 2025 – Q1 2026"' },
-              data_sources: { type: 'string', description: 'Named sources this data is derived from (e.g., WordStream, Meta Blueprint, AdExchanger)' },
-              methodology_note: { type: 'string', description: 'Brief note on methodology: what types of campaigns/accounts these benchmarks are drawn from' },
-            },
-            required: ['benchmarks', 'data_period', 'data_sources'],
-            additionalProperties: false,
-          },
-        },
-      }],
-      tool_choice: { type: 'function', function: { name: 'provide_benchmarks' } },
-    }),
+      },
+    ],
+    tools,
+    toolChoice: { type: 'function', function: { name: 'provide_benchmarks' } },
   });
 
   if (!response.ok) {
@@ -263,57 +251,46 @@ function scoreBenchmarks(totals: any, benchmarkData: any[]): BenchmarkData[] {
 
 // ─── Market Events Extraction ────────────────────────────────────────────────
 
-async function extractMarketEvents(apiKey: string): Promise<any> {
-  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'google/gemini-2.5-flash',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are an Australian market analyst specializing in property investment advertising.'
-        },
-        {
-          role: 'user',
-          content: `List the most significant recent and upcoming Australian market events (last 90 days and next 30 days) that would impact property investment advertising performance on Meta Ads. Include RBA rate decisions, major economic data releases, housing market reports, regulatory changes, and seasonal patterns.`
-        },
-      ],
-      tools: [{
-        type: 'function',
-        function: {
-          name: 'provide_market_events',
-          description: 'Provide structured market events that impact property advertising.',
-          parameters: {
-            type: 'object',
-            properties: {
-              events: {
-                type: 'array',
-                items: {
-                  type: 'object',
-                  properties: {
-                    date: { type: 'string', description: 'Date in YYYY-MM-DD format' },
-                    event: { type: 'string', description: 'Short event title' },
-                    category: { type: 'string', enum: ['interest_rate', 'economic', 'housing', 'regulatory', 'seasonal'] },
-                    impact: { type: 'string', enum: ['positive', 'negative', 'neutral'] },
-                    description: { type: 'string', description: 'How this impacts property ad performance' },
-                    relevance_score: { type: 'number', description: 'Relevance to property ads 0-100' },
-                  },
-                  required: ['date', 'event', 'category', 'impact', 'description', 'relevance_score'],
-                  additionalProperties: false,
-                },
+async function extractMarketEvents(_apiKey: string): Promise<any> {
+  const tools = [{
+    type: 'function',
+    function: {
+      name: 'provide_market_events',
+      description: 'Provide structured market events that impact property advertising.',
+      parameters: {
+        type: 'object',
+        properties: {
+          events: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                date: { type: 'string', description: 'Date in YYYY-MM-DD format' },
+                event: { type: 'string', description: 'Short event title' },
+                category: { type: 'string', enum: ['interest_rate', 'economic', 'housing', 'regulatory', 'seasonal'] },
+                impact: { type: 'string', enum: ['positive', 'negative', 'neutral'] },
+                description: { type: 'string', description: 'How this impacts property ad performance' },
+                relevance_score: { type: 'number', description: 'Relevance to property ads 0-100' },
               },
+              required: ['date', 'event', 'category', 'impact', 'description', 'relevance_score'],
+              additionalProperties: false,
             },
-            required: ['events'],
-            additionalProperties: false,
           },
         },
-      }],
-      tool_choice: { type: 'function', function: { name: 'provide_market_events' } },
-    }),
+        required: ['events'],
+        additionalProperties: false,
+      },
+    },
+  }];
+
+  const response = await callLLMRaw({
+    agentKey: 'meta_ads_benchmarks',
+    messages: [
+      { role: 'system', content: 'You are an Australian market analyst specializing in property investment advertising.' },
+      { role: 'user', content: `List the most significant recent and upcoming Australian market events (last 90 days and next 30 days) that would impact property investment advertising performance on Meta Ads. Include RBA rate decisions, major economic data releases, housing market reports, regulatory changes, and seasonal patterns.` },
+    ],
+    tools,
+    toolChoice: { type: 'function', function: { name: 'provide_market_events' } },
   });
 
   if (!response.ok) {

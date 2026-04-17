@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { callLLMRaw } from '../_shared/llmRouter.ts';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -327,29 +328,18 @@ Be specific with numbers. Reference campaign names. Be direct and action-oriente
 
 // ─── AI Integration ──────────────────────────────────────────────────────────
 
-async function callGemini(prompt: string, apiKey: string): Promise<string> {
-  const url = 'https://ai.gateway.lovable.dev/v1/chat/completions';
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'google/gemini-2.5-flash',
-      messages: [
-        { role: 'system', content: 'You are an expert marketing analytics advisor for property investment campaigns. Provide data-driven insights.' },
-        { role: 'user', content: prompt },
-      ],
-      temperature: 0.4,
-      max_tokens: 4000,
-    }),
+async function callGemini(prompt: string, _apiKey: string): Promise<string> {
+  const response = await callLLMRaw({
+    agentKey: 'meta_ads_forecast',
+    messages: [
+      { role: 'system', content: 'You are an expert marketing analytics advisor for property investment campaigns. Provide data-driven insights.' },
+      { role: 'user', content: prompt },
+    ],
   });
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(`AI Gateway error [${response.status}]: ${text}`);
+    throw new Error(`AI Router error [${response.status}]: ${text}`);
   }
 
   const data = await response.json();
