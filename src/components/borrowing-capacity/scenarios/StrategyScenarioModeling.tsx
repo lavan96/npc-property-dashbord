@@ -1698,6 +1698,8 @@ export function StrategyScenarioModeling({
             formatCurrency={formatCurrency}
             baseTheoreticalCapacity={baseTheoreticalCapacity}
             scenarioTheoreticalCapacity={scenarioTheoreticalCapacity}
+            baseRawSurplus={baseRawSurplus}
+            scenarioRawSurplus={scenarioRawSurplus}
             floorActive={floorActive}
           />
 

@@ -59,6 +59,11 @@ interface PurchasePowerHeadlineProps {
   baseTheoreticalCapacity?: number;
   /** Theoretical (unfloored) scenario capacity. */
   scenarioTheoreticalCapacity?: number;
+  /** Raw (unfloored) base monthly surplus — surfaced in the floor banner so
+   *  the broker can see exactly how far underwater the client is. */
+  baseRawSurplus?: number;
+  /** Raw (unfloored) scenario monthly surplus. */
+  scenarioRawSurplus?: number;
   /** True when both displayed capacities are clamped at $0 but the underlying
    *  surplus math shows real movement — triggers the explainer banner. */
   floorActive?: boolean;
