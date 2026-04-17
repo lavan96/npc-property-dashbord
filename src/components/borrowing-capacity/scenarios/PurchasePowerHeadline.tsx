@@ -135,17 +135,36 @@ export function PurchasePowerHeadline({
   const target = acq?.targetPurchasePrice;
   const meetsTarget = acq?.meetsTarget;
   const shortfall = acq?.shortfallToTarget ?? 0;
-  const headlinePower = acq ? acq.maxPurchasePrice : scenarioCapacity;
+
+  // The headline always reports SCENARIO BORROWING CAPACITY so the label
+  // never silently flips on the broker. When acquisition mode is enabled we
+  // additionally surface Effective Purchase Power as an explicit second line
+  // (loan + cash − costs) so both metrics are visible side-by-side.
+  // When the engine is clamped at the $0 servicing floor, the displayed
+  // capacity hides the true (negative) position — so we show the unfloored
+  // theoretical figure as the headline and tag it "true position".
+  const showTrueNegative =
+    floorActive &&
+    typeof scenarioTheoreticalCapacity === 'number' &&
+    scenarioTheoreticalCapacity < scenarioCapacity;
+  const headlineCapacity = showTrueNegative
+    ? (scenarioTheoreticalCapacity as number)
+    : scenarioCapacity;
 
   return (
     <div className="space-y-3">
-      {/* ═══ F3 — EFFECTIVE PURCHASE POWER HEADLINE ═══ */}
+      {/* ═══ F3 — SCENARIO BORROWING CAPACITY HEADLINE ═══ */}
       <Card className="border-2 border-primary/40 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent shadow-md">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between gap-3">
             <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
               <Target className="h-3.5 w-3.5 text-primary" />
-              {acq ? 'Effective Purchase Power' : 'Scenario Borrowing Capacity'}
+              Scenario Borrowing Capacity
+              {showTrueNegative && (
+                <Badge variant="outline" className="ml-1 text-[9px] uppercase tracking-wider border-destructive/40 text-destructive">
+                  True position · floor lifted
+                </Badge>
+              )}
             </CardTitle>
             {target && target > 0 && (
               meetsTarget ? (
@@ -166,17 +185,33 @@ export function PurchasePowerHeadline({
           {/* Big number */}
           <div className="flex items-end justify-between gap-3 flex-wrap">
             <div>
-              <p className="text-3xl md:text-4xl font-bold text-primary leading-none tracking-tight">
-                {formatCurrency(headlinePower)}
+              <p className={`text-3xl md:text-4xl font-bold leading-none tracking-tight ${
+                showTrueNegative ? 'text-destructive' : 'text-primary'
+              }`}>
+                {formatSignedCurrency(headlineCapacity, formatCurrency)}
               </p>
-              {acq ? (
-                <p className="text-xs text-muted-foreground mt-1.5">
-                  Loan {formatCurrency(acq.loanAvailableForPurchase)} + Cash {formatCurrency(acq.cashAvailable)} − Costs {formatCurrency(acq.lmi + acq.stampDuty + acq.otherAcquisitionCosts)}
+              {showTrueNegative ? (
+                <p className="text-xs text-muted-foreground mt-1.5 leading-snug">
+                  Engine clamps displayed capacity at <span className="font-medium text-foreground">{formatCurrency(scenarioCapacity)}</span> (≥ $0 floor).
+                  This figure is the unfloored serviceability position so the team can see the true gap.
                 </p>
               ) : (
                 <p className="text-xs text-muted-foreground mt-1.5">
-                  Serviceable loan ceiling. Enable acquisition mode below to model purchase power.
+                  Serviceable loan ceiling under APRA stress assumptions.
                 </p>
+              )}
+              {acq && (
+                <div className="mt-2 pt-2 border-t border-primary/15">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                    <Banknote className="h-3 w-3" /> Effective Purchase Power
+                  </p>
+                  <p className="text-xl font-bold text-primary mt-0.5">
+                    {formatCurrency(acq.maxPurchasePrice)}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    Loan {formatCurrency(acq.loanAvailableForPurchase)} + Cash {formatCurrency(acq.cashAvailable)} − Costs {formatCurrency(acq.lmi + acq.stampDuty + acq.otherAcquisitionCosts)}
+                  </p>
+                </div>
               )}
             </div>
             <div className="text-right">
