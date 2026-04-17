@@ -1,5 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { computeDtiDenominator } from '../_shared/dtiDenominator.ts';
+import type { ScenarioIncomeComponent } from '../_shared/lenderShadingProfiles.ts';
 import {
   aggregateDeltas,
   computeAcquisitionCapacity,
@@ -719,8 +721,8 @@ function getHemBenchmark(maritalStatus: string | null, dependentsCount: number |
 }
 
 function calculateIncomeBreakdown(incomeRecords: any[], properties: any[], incomeSources: any[]): { 
-  grossTotal: number; 
-  shadedTotal: number; 
+  grossTotal: number;
+  shadedTotal: number;
   breakdown: IncomeBreakdownItem[];
 } {
   const breakdown: IncomeBreakdownItem[] = [];
@@ -834,6 +836,121 @@ function calculateIncomeBreakdown(incomeRecords: any[], properties: any[], incom
   return { grossTotal, shadedTotal, breakdown };
 }
 
+function mapIncomeTypeToDtiComponent(sourceType?: string | null): ScenarioIncomeComponent['type'] {
+  const t = (sourceType || '').toLowerCase();
+  if (t.includes('salary') || t.includes('payg') || t.includes('wage')) return 'base_salary';
+  if (t.includes('self')) return 'self_employed';
+  if (t.includes('bonus')) return 'bonus';
+  if (t.includes('commission')) return 'commission';
+  if (t.includes('allowance')) return 'allowance';
+  if (t.includes('overtime') && t.includes('essential')) return 'overtime_essential';
+  if (t.includes('overtime')) return 'overtime_non_essential';
+  if (t.includes('rental')) return 'rental_residential';
+  if (t.includes('dividend') || t.includes('investment')) return 'investment_dividend';
+  if (t.includes('family') && t.includes('benefit')) return 'family_tax_benefit';
+  if (t.includes('centrelink')) return 'centrelink_other';
+  if (t.includes('child') && t.includes('support')) return 'child_support';
+  return 'other';
+}
+
+function buildDtiIncomeComponents(incomeRecords: any[], incomeSources: any[], properties: any[]): ScenarioIncomeComponent[] {
+  const components: ScenarioIncomeComponent[] = [];
+
+  if ((incomeSources || []).length > 0) {
+    for (const src of incomeSources) {
+      const grossAnnual = Number(src.gross_annual_amount) || 0;
+      const baseType = mapIncomeTypeToDtiComponent(src.source_type || src.source_name);
+      const baseRate = Number(src.custom_shading_rate ?? src.default_shading_rate ?? 1);
+      if (grossAnnual > 0) {
+        components.push({
+          id: `${src.id}-base`,
+          label: src.source_name || src.source_type || 'Income',
+          type: baseType,
+          grossAnnual,
+          currentShadingRate: Number.isFinite(baseRate) ? baseRate : 1,
+        });
+      }
+
+      const fields: Array<{ key: string; type: ScenarioIncomeComponent['type']; label: string; rate: number }> = [
+        { key: 'bonus', type: 'bonus', label: 'Bonus', rate: 0.8 },
+        { key: 'commission', type: 'commission', label: 'Commission', rate: 0.8 },
+        { key: 'overtime_essential', type: 'overtime_essential', label: 'Essential Overtime', rate: 1.0 },
+        { key: 'overtime_non_essential', type: 'overtime_non_essential', label: 'Non-Essential Overtime', rate: 0.5 },
+        { key: 'allowance', type: 'allowance', label: 'Allowance', rate: 0.8 },
+        { key: 'other_taxable_income', type: 'other', label: 'Other Taxable', rate: 0.8 },
+      ];
+
+      for (const f of fields) {
+        const v = Number(src[f.key]) || 0;
+        if (v <= 0) continue;
+        components.push({
+          id: `${src.id}-${f.key}`,
+          label: `${src.source_name || 'Income'} ${f.label}`,
+          type: f.type,
+          grossAnnual: v,
+          currentShadingRate: f.rate,
+        });
+      }
+    }
+  } else {
+    for (const income of incomeRecords || []) {
+      const salary = Number(income.gross_salary) || 0;
+      if (salary > 0) {
+        const frequency = (income.salary_frequency || 'annual').toLowerCase();
+        const annualAmount =
+          frequency === 'monthly' ? salary * 12 :
+          frequency === 'fortnightly' ? salary * 26 :
+          frequency === 'weekly' ? salary * 52 :
+          salary;
+        components.push({
+          id: `${income.id}-salary`,
+          label: 'Base Salary',
+          type: 'base_salary',
+          grossAnnual: annualAmount,
+          currentShadingRate: 1,
+        });
+      }
+
+      const fields: Array<{ key: string; type: ScenarioIncomeComponent['type']; label: string; rate: number }> = [
+        { key: 'bonus', type: 'bonus', label: 'Bonus', rate: 0.8 },
+        { key: 'commission', type: 'commission', label: 'Commission', rate: 0.8 },
+        { key: 'overtime_essential', type: 'overtime_essential', label: 'Essential Overtime', rate: 1.0 },
+        { key: 'overtime_non_essential', type: 'overtime_non_essential', label: 'Non-Essential Overtime', rate: 0.5 },
+        { key: 'allowance', type: 'allowance', label: 'Allowance', rate: 0.8 },
+        { key: 'other_taxable_income', type: 'other', label: 'Other Taxable', rate: 0.8 },
+      ];
+      for (const f of fields) {
+        const v = Number(income[f.key]) || 0;
+        if (v <= 0) continue;
+        components.push({
+          id: `${income.id}-${f.key}`,
+          label: f.label,
+          type: f.type,
+          grossAnnual: v,
+          currentShadingRate: f.rate,
+        });
+      }
+    }
+  }
+
+  for (const property of properties || []) {
+    const propertyType = property.property_type?.toLowerCase() || '';
+    if (propertyType === 'rental') continue;
+    const netMonthlyCashflow = Number(property.net_monthly_cashflow) || 0;
+    if (netMonthlyCashflow > 0) {
+      components.push({
+        id: `property-${property.id}-net-cf`,
+        label: `Property Net CF (${property.address?.substring(0, 24) || 'Property'})`,
+        type: 'rental_residential',
+        grossAnnual: netMonthlyCashflow * 12,
+        currentShadingRate: DEFAULT_POLICY.propertyPolicy.rentalShadingRate,
+      });
+    }
+  }
+
+  return components.filter(c => Number.isFinite(c.grossAnnual) && c.grossAnnual > 0);
+}
+
 // Calculate negative property cash flows to be layered on top of expenses
 function calculateNegativePropertyCashFlows(properties: any[]): {
   totalMonthly: number;
@@ -917,11 +1034,9 @@ function calculateLiabilityBreakdown(liabilities: any[], properties: any[], annu
     totalMonthly += monthlyServicing;
   }
 
-  // Fix #1 — APRA APG-223 aligned existing-debt assessment.
-  // Replaces the legacy "blanket P&I @ 9.5% / 30y" treatment with rules that
-  // honour the loan's actual repayment_type, contracted rate, IO period, and
-  // remaining term. Implementation lives in `assessExistingPropertyLoan` so
-  // the property-contribution engine and the liability breakdown stay in sync.
+  // Owned properties are represented via net_monthly_cashflow in income/expense
+  // paths, so we do NOT add property-loan servicing here (prevents double count).
+  // Rental-as-tenant commitments are still included below.
   for (const property of properties) {
     const propertyType = property.property_type?.toLowerCase() || '';
 
@@ -937,26 +1052,6 @@ function calculateLiabilityBreakdown(liabilities: any[], properties: any[], annu
           monthlyServicing: monthlyRentPaid,
         });
       }
-    } else if (property.loan_remaining && property.loan_remaining > 0) {
-      const loanAssessment = assessExistingPropertyLoan(property, policy.propertyPolicy);
-      const monthlyServicing = loanAssessment.assessedMonthlyDebt;
-
-      totalMonthly += monthlyServicing;
-
-      // Label reflects which branch was used so the rationale/PDF audit can
-      // surface the methodology to advisors and compliance reviewers.
-      const methodLabel =
-        loanAssessment.method === 'io_actual'
-          ? 'I/O actual'
-          : loanAssessment.method === 'pi_remaining_term'
-          ? 'P&I rem. term'
-          : 'Legacy stress';
-
-      breakdown.push({
-        type: `Existing Loan (${methodLabel}, ${property.address?.substring(0, 24) || 'Property'}...)`,
-        balance: property.loan_remaining,
-        monthlyServicing: Math.round(monthlyServicing * 100) / 100,
-      });
     }
   }
 
@@ -1361,7 +1456,7 @@ Deno.serve(async (req) => {
       livingExpenses = Math.max(hemBenchmark, totalDeclaredExpenses);
     }
     
-    const expenseMethodUsed = overrides?.livingExpenses 
+    const expenseMethodUsed = overrides?.livingExpenses !== undefined && overrides?.livingExpenses !== null
       ? 'declared' 
       : (totalDeclaredExpenses > hemBenchmark ? 'declared_higher' : 'hem');
     
@@ -1406,9 +1501,24 @@ Deno.serve(async (req) => {
     const { totalMonthly: liabilityServicing, breakdown: liabilityBreakdown } = 
       calculateLiabilityBreakdown(liabilities, properties, effectiveGrossIncome, effectivePolicy);
     
-    // Calculate total outstanding debt balances for DTI (industry standard)
-    let totalDebtBalances = liabilityBreakdown.reduce((sum, item) => sum + (item.balance || 0), 0);
+    // Calculate total outstanding debt balances for DTI.
+    // Include liabilities + owned property loan balances (even though their
+    // monthly servicing is not separately counted when net cashflow is used).
+    const propertyDebtBalances = properties.reduce((sum, p) => {
+      const propertyType = p.property_type?.toLowerCase() || '';
+      if (propertyType === 'rental') return sum;
+      return sum + (Number(p.loan_remaining) || 0);
+    }, 0);
+    let totalDebtBalances = liabilityBreakdown.reduce((sum, item) => sum + (item.balance || 0), 0) + propertyDebtBalances;
     console.log(`[calculate-borrowing-capacity] Total debt balances for DTI: $${totalDebtBalances}`);
+
+    // Phase I11 — APS 220 denominator binding is ON by default in base path.
+    const dtiIncomeComponents = buildDtiIncomeComponents(incomeRecords, incomeSources, properties);
+    const dtiDenominatorResult = computeDtiDenominator({
+      incomeComponents: dtiIncomeComponents,
+      fallbackGrossAnnual: effectiveGrossIncome,
+    });
+    const effectiveDtiAdjustedAnnualIncome = dtiDenominatorResult.dtiAdjustedAnnualIncome;
     
     // debt_capitalised mode: Add LMI to total debt balances so it impacts DTI and capacity
     const lmiMode = overrides?.lmiMode || 'none';
@@ -1455,6 +1565,7 @@ Deno.serve(async (req) => {
       calculationMode: overrides?.calculationMode || 'bank',
       dtiCapEnabled: overrides?.dtiCapEnabled || false,
       dtiCapLimit: overrides?.dtiCapLimit || activePolicy.loanDefaults.dtiCap,
+      dtiAdjustedAnnualIncome: effectiveDtiAdjustedAnnualIncome,
       policy: activePolicy,
     });
 
@@ -1548,6 +1659,7 @@ Deno.serve(async (req) => {
       { key: "Existing Loan Stress Rate", value: `P&I at ${(effectiveLoanAssessmentRate * 100).toFixed(2)}% (max of policy ${(activePolicy.propertyPolicy.loanAssessmentRate * 100).toFixed(1)}% and assessment rate ${(userAssessmentRateDecimal * 100).toFixed(2)}%)` },
       { key: "Tax Year", value: `${activePolicy.tax.taxYear} (incl. ${(activePolicy.tax.medicareLevyRate * 100).toFixed(0)}% Medicare Levy)` },
       { key: "Assessable Income (Shaded)", value: `$${effectiveShadedIncome.toLocaleString()}/yr` },
+      { key: "DTI Denominator (APS 220)", value: `$${Math.round(effectiveDtiAdjustedAnnualIncome).toLocaleString()}/yr` },
       { key: "After-Tax Income Used", value: `$${taxBreakdown.afterTaxIncome.toLocaleString()}/yr (on shaded income)` },
       { key: "Marginal Tax Rate", value: `${(taxBreakdown.marginalTaxRate * 100).toFixed(0)}%` },
       { key: "Stress Test Increment", value: `+${activePolicy.loanDefaults.stressTestIncrement}%` },

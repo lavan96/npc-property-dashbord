@@ -54,6 +54,7 @@ export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', 
   const [showRecommendations, setShowRecommendations] = useState(true);
   const [showAssumptions, setShowAssumptions] = useState(false);
   const [showTaxBreakdown, setShowTaxBreakdown] = useState(false);
+  const [showAdvancedCapacity, setShowAdvancedCapacity] = useState(false);
 
   // Proposed loan serviceability check — prefer engine-provided result, fall back to local calc
   const proposedLoanCheck = useMemo(() => {
@@ -194,9 +195,9 @@ export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', 
   const BandIcon = bandConfig.icon;
   const capacityProgress = Math.min(100, (Math.max(0, result.borrowingCapacity) / 1500000) * 100);
 
-  // Engine has floored a negative true position to $0 — surface the truth.
+  // Engine has floored a negative true position to $0.
   const floorActive = result.borrowingCapacity <= 0 && result.monthlySurplus < 0;
-  const displayedCapacity = floorActive ? theoreticalCapacity : result.borrowingCapacity;
+  const displayedCapacity = floorActive && showAdvancedCapacity ? theoreticalCapacity : result.borrowingCapacity;
 
   return (
     <Card className="h-full">
@@ -302,7 +303,7 @@ export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', 
           <div className="flex items-center justify-between mb-1">
             <p className="text-sm font-medium text-muted-foreground">
               BORROWING CAPACITY
-              {floorActive && (
+              {floorActive && showAdvancedCapacity && (
                 <span className="ml-2 text-[10px] uppercase tracking-wide text-destructive">
                   True position (unfloored)
                 </span>
@@ -325,14 +326,27 @@ export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', 
             )}
           </div>
           {floorActive && (
-            <p className="text-[11px] text-muted-foreground/80 mt-2 leading-relaxed flex items-start gap-1">
-              <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
-              <span>
-                Surplus is negative ({formatCurrency(result.monthlySurplus)}/mo) so the lendable figure is clamped at $0
-                for APRA compliance. The headline above shows the <strong>true serviceability gap</strong> — the
-                amount the client is "underwater" against the assessment rate.
-              </span>
-            </p>
+            <div className="mt-2 space-y-2">
+              <p className="text-[11px] text-muted-foreground/80 leading-relaxed flex items-start gap-1">
+                <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                <span>
+                  Surplus is negative ({formatCurrency(result.monthlySurplus)}/mo) so lendable capacity is clamped at $0
+                  for APRA compliance.
+                </span>
+              </p>
+              <button
+                type="button"
+                className="text-[11px] underline underline-offset-2 text-muted-foreground hover:text-foreground"
+                onClick={() => setShowAdvancedCapacity(prev => !prev)}
+              >
+                {showAdvancedCapacity ? 'Hide advanced true-position view' : 'Show advanced true-position view'}
+              </button>
+              {showAdvancedCapacity && (
+                <p className="text-[11px] text-muted-foreground/80 leading-relaxed">
+                  True serviceability gap (unfloored) at assessment rate: <strong>{formatCurrency(theoreticalCapacity)}</strong>.
+                </p>
+              )}
+            </div>
           )}
         </div>
 
