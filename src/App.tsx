@@ -52,6 +52,7 @@ import FinancePortalAdmin from "./pages/admin/FinancePortalAdmin";
 import FinancePortalAnalytics from "./pages/admin/FinancePortalAnalytics";
 import FinancePortalBulkImport from "./pages/admin/FinancePortalBulkImport";
 import FinancePortalCompliance from "./pages/admin/FinancePortalCompliance";
+import FinancePortalCommissions from "./pages/admin/FinancePortalCommissions";
 import ActivityLogs from "./pages/ActivityLogs";
 import { DepreciationCompsAdmin } from "./components/admin/DepreciationCompsAdmin";
 import Integrations from "./pages/Integrations";
