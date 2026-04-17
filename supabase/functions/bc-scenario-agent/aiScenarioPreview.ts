@@ -111,6 +111,24 @@ interface AIAdjustments {
     allocationStrategy?: 'highest_equity_first' | 'pro_rata';
   } | null;
   acquisition?: AcquisitionContext | null;
+  /** Phase K3 — explicit capital allocations routed via the K1 ledger.
+   *  Each entry consumes from the default capital pool (equity release +
+   *  cash-on-hand) and routes into a typed sink. */
+  capitalAllocations?: Array<{
+    amount: number;
+    sinkType:
+      | 'liability_payoff'
+      | 'offset_deposit'
+      | 'rate_buydown'
+      | 'debt_recycle'
+      | 'acquisition_deposit'
+      | 'holding_reserve'
+      | 'repayment_reduction';
+    sinkTargetId?: string;
+    offsetRatePoints?: number;
+    rateBuydownPoints?: number;
+    repaymentReductionMonthly?: number;
+  }>;
 }
 
 export interface AIScenario {
@@ -340,6 +358,27 @@ export function adjustmentsToDeltas(adj: AIAdjustments): ScenarioDelta[] {
       value: 99,
       unit: 'ratio',
       meta: { enabled: false, lenderProfile },
+    });
+  }
+
+  // 13. Phase K3 — Capital allocations (route pool $ into typed sinks)
+  for (let i = 0; i < (adjUsed.capitalAllocations || []).length; i++) {
+    const alloc = adjUsed.capitalAllocations![i];
+    if (!alloc || !Number.isFinite(alloc.amount) || alloc.amount <= 0 || !alloc.sinkType) continue;
+    deltas.push({
+      id: `cap-alloc-${i}-${alloc.sinkType}`,
+      label: `Allocate $${Math.round(alloc.amount).toLocaleString()} → ${alloc.sinkType.replace(/_/g, ' ')}`,
+      type: 'capital_allocation',
+      value: alloc.amount,
+      unit: 'absolute',
+      meta: {
+        sinkType: alloc.sinkType,
+        sinkTargetId: alloc.sinkTargetId,
+        sourcePool: 'pool-default',
+        offsetRatePoints: alloc.offsetRatePoints,
+        rateBuydownPoints: alloc.rateBuydownPoints,
+        repaymentReductionMonthly: alloc.repaymentReductionMonthly,
+      },
     });
   }
 

@@ -294,6 +294,26 @@ const SCENARIO_TOOL = {
                     description: "Acquisition context for max purchase price math. ONLY include when the user is targeting a new property purchase. Omit otherwise.",
                     nullable: true,
                   },
+                  capitalAllocations: {
+                    type: "array",
+                    description: "Phase K3 — Hyper-granular routing of pool capital (equity release + cash-on-hand) into specific sinks. Use this when you want to (a) pay down a SPECIFIC liability with a SPECIFIC dollar amount from the released equity, (b) park funds in an offset account, (c) buy down a property's interest rate, (d) reserve a precise deposit for the next purchase, etc. Each allocation consumes from the default pool. The engine clamps total allocations at the available pool balance. Use empty array if not applicable.",
+                    items: {
+                      type: "object",
+                      properties: {
+                        amount: { type: "number", description: "Dollars to route from the pool into this sink" },
+                        sinkType: {
+                          type: "string",
+                          enum: ["liability_payoff", "offset_deposit", "rate_buydown", "debt_recycle", "acquisition_deposit", "holding_reserve", "repayment_reduction"],
+                          description: "Where the cash goes. liability_payoff → reduces a liability balance + servicing. offset_deposit → cancels interest on a property loan. rate_buydown → permanently buys down a property's rate (~25 bps per 1% of loan balance). debt_recycle → OO loan paydown + IP redraw (servicing-neutral, tax-deductible). acquisition_deposit → reserved for next purchase deposit. holding_reserve → cash buffer (no servicing impact). repayment_reduction → direct $/mo cut on a target loan.",
+                        },
+                        sinkTargetId: { type: "string", description: "Liability id (for liability_payoff) or property id (for offset_deposit, rate_buydown, debt_recycle, repayment_reduction). Omit for acquisition_deposit and holding_reserve." },
+                        offsetRatePoints: { type: "number", description: "Optional override of the rate used for offset interest savings (defaults to property contracted rate)." },
+                        rateBuydownPoints: { type: "number", description: "Optional explicit rate buydown in percentage points (max 2.0). If omitted the engine derives buydown from amount/loan ratio." },
+                        repaymentReductionMonthly: { type: "number", description: "$/mo reduction on the target loan (only for repayment_reduction sink). Capped at the loan's existing servicing." },
+                      },
+                      required: ["amount", "sinkType"],
+                    },
+                  },
                 },
                 required: [
                   "consolidatedLiabilityIds",
