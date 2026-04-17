@@ -250,6 +250,9 @@ const App = () => (
                 <Route path="settings" element={<ModuleGuard moduleKey="settings"><Settings /></ModuleGuard>} />
                 <Route path="admin/users" element={<ModuleGuard moduleKey="user_management"><UserManagement /></ModuleGuard>} />
                 <Route path="admin/finance-portal" element={<ModuleGuard moduleKey="finance_portal_admin"><FinancePortalAdmin /></ModuleGuard>} />
+                <Route path="admin/finance-portal/analytics" element={<ModuleGuard moduleKey="finance_portal_admin"><FinancePortalAnalytics /></ModuleGuard>} />
+                <Route path="admin/finance-portal/bulk-import" element={<ModuleGuard moduleKey="finance_portal_admin"><FinancePortalBulkImport /></ModuleGuard>} />
+                <Route path="admin/finance-portal/compliance" element={<ModuleGuard moduleKey="finance_portal_admin"><FinancePortalCompliance /></ModuleGuard>} />
                 <Route path="admin/activity-logs" element={<ModuleGuard moduleKey="activity_logs"><ActivityLogs /></ModuleGuard>} />
                 <Route path="admin/depreciation-comps" element={<ModuleGuard moduleKey="depreciation_comps"><DepreciationCompsAdmin /></ModuleGuard>} />
                 <Route path="integrations" element={<ModuleGuard moduleKey="integrations"><Integrations /></ModuleGuard>} />
