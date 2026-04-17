@@ -79,11 +79,22 @@ export interface ScenarioLiability {
   monthlyServicing: number;
 }
 
+export interface AcquisitionContext {
+  state?: 'NSW' | 'VIC' | 'QLD' | 'WA' | 'SA' | 'TAS' | 'NT' | 'ACT';
+  intent?: 'owner_occupier' | 'investor';
+  category?: 'established' | 'new' | 'vacant_land';
+  isFirstHomeBuyer?: boolean;
+  isForeignBuyer?: boolean;
+  lmiMode?: 'none' | 'display_deduction' | 'debt_capitalised';
+  cashOnHand?: number;
+}
+
 export interface ScenarioContext {
   baseInputs: ScenarioBaseInputs;
   baseResult: ScenarioBaseResult;
   properties: ScenarioProperty[];
   liabilities: ScenarioLiability[];
+  acquisition?: AcquisitionContext;
 }
 
 export interface DeltaEffect {
@@ -96,6 +107,8 @@ export interface DeltaEffect {
   debtBalanceAdjustment: number;
   dtiCapEnabled?: boolean;
   dtiCapLimit?: number;
+  releasedCapital: number;
+  acquisitionNotes: string[];
   description: string;
 }
 
@@ -119,6 +132,8 @@ function emptyEffect(description = ''): DeltaEffect {
     rateAdjustment: 0,
     loanTermAdjustment: 0,
     debtBalanceAdjustment: 0,
+    releasedCapital: 0,
+    acquisitionNotes: [],
     description,
   };
 }
@@ -273,10 +288,39 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
       break;
     }
     case 'equity_release': {
-      // Phase B: informational only (Phase C will fold released capital into
-      // acquisition capacity). The audit trail still surfaces it.
+      // Phase C: equity-release feeds acquisition capacity (cash freed) and
+      // adds the new equity loan's IO repayment to commitments + DTI.
       const property = context.properties.find(p => p.id === delta.id);
-      if (property) effect.description = `Release equity from ${property.address?.slice(0, 30) || 'property'}`;
+      if (!property || property.currentValue <= 0) break;
+      const fhb = !!context.acquisition?.isFirstHomeBuyer;
+      const ratePct = context.baseInputs.interestRate || 6.5;
+      const monthlyRate = (ratePct / 100) / 12;
+      let newLoan = 0;
+      if (delta.unit === 'absolute' && delta.value > 0) {
+        newLoan = property.loanRemaining + delta.value;
+      } else {
+        const targetLVR = delta.unit === 'percent' ? delta.value / 100
+          : (delta.meta?.targetLVR as number | undefined) ?? delta.value;
+        newLoan = property.currentValue * Math.max(0, Math.min(0.95, targetLVR || 0.8));
+      }
+      const grossRelease = Math.max(0, newLoan - property.loanRemaining);
+      if (grossRelease <= 0) {
+        effect.acquisitionNotes.push(`Equity release on ${property.address?.slice(0, 30) || 'property'}: no equity available`);
+        break;
+      }
+      const newLvr = (newLoan / property.currentValue) * 100;
+      let lmiOnRelease = 0;
+      if (newLvr > 80) {
+        const est = estimateLmi({ propertyValue: property.currentValue, loanAmount: newLoan, isFirstHomeBuyer: fhb });
+        lmiOnRelease = est.lmiAmount;
+      }
+      const netRelease = Math.max(0, grossRelease - lmiOnRelease);
+      const ioRepayment = newLoan * monthlyRate - property.loanRemaining * monthlyRate;
+      effect.commitmentAdjustment = Math.max(0, ioRepayment);
+      effect.debtBalanceAdjustment = grossRelease;
+      effect.releasedCapital = netRelease;
+      effect.acquisitionNotes.push(`Equity release on ${property.address?.slice(0, 30) || 'property'}: $${Math.round(netRelease).toLocaleString()} usable (LVR ${newLvr.toFixed(1)}%)`);
+      effect.description = `Release equity from ${property.address?.slice(0, 30) || 'property'}`;
       break;
     }
   }
