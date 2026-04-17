@@ -118,6 +118,10 @@ export interface AIScenario {
   reasoning: string;
   adjustments: AIAdjustments;
   estimatedImpact: string;
+  /** Phase J1 — levers the model considered but discarded, with reasons. */
+  rejectedLevers?: Array<{ lever: string; reason: string }>;
+  /** Phase J1 — execution risk profile so brokers can triage at a glance. */
+  executionRisk?: 'low' | 'medium' | 'high';
   engineValidation?: EngineValidation;
 }
 
@@ -146,10 +150,39 @@ export interface EngineValidation {
  * the numbers will match exactly.
  */
 export function adjustmentsToDeltas(adj: AIAdjustments): ScenarioDelta[] {
+  // Phase J1: Hard clamps + soft-cap warnings (mutated onto the scenario by
+  // the caller after aggregation; collected here for downstream surfacing).
+  const SOFT_CAPS = {
+    incomeGrowthPercent: 25,
+    expenseReductionPercent: 30,
+    equityReleaseLVR: 0.90,
+  };
+
+  // Defensive clamp helper — never mutate the caller's object directly.
+  const clampedAdj: AIAdjustments = JSON.parse(JSON.stringify(adj || {}));
+
+  if (typeof clampedAdj.incomeGrowthPercent === 'number' && clampedAdj.incomeGrowthPercent > SOFT_CAPS.incomeGrowthPercent) {
+    console.warn(`[adjustmentsToDeltas] Clamped incomeGrowthPercent ${clampedAdj.incomeGrowthPercent} → ${SOFT_CAPS.incomeGrowthPercent}`);
+    clampedAdj.incomeGrowthPercent = SOFT_CAPS.incomeGrowthPercent;
+  }
+  if (typeof clampedAdj.expenseReductionPercent === 'number' && clampedAdj.expenseReductionPercent > SOFT_CAPS.expenseReductionPercent) {
+    console.warn(`[adjustmentsToDeltas] Clamped expenseReductionPercent ${clampedAdj.expenseReductionPercent} → ${SOFT_CAPS.expenseReductionPercent}`);
+    clampedAdj.expenseReductionPercent = SOFT_CAPS.expenseReductionPercent;
+  }
+  if (clampedAdj.equityRelease && typeof clampedAdj.equityRelease.targetLVR === 'number' && clampedAdj.equityRelease.targetLVR > SOFT_CAPS.equityReleaseLVR) {
+    console.warn(`[adjustmentsToDeltas] Clamped equityRelease.targetLVR ${clampedAdj.equityRelease.targetLVR} → ${SOFT_CAPS.equityReleaseLVR}`);
+    clampedAdj.equityRelease = { ...clampedAdj.equityRelease, targetLVR: SOFT_CAPS.equityReleaseLVR };
+  }
+  if (clampedAdj.crossCollatPool && typeof clampedAdj.crossCollatPool.blendedTargetLVR === 'number' && clampedAdj.crossCollatPool.blendedTargetLVR > SOFT_CAPS.equityReleaseLVR) {
+    console.warn(`[adjustmentsToDeltas] Clamped crossCollatPool.blendedTargetLVR ${clampedAdj.crossCollatPool.blendedTargetLVR} → ${SOFT_CAPS.equityReleaseLVR}`);
+    clampedAdj.crossCollatPool = { ...clampedAdj.crossCollatPool, blendedTargetLVR: SOFT_CAPS.equityReleaseLVR };
+  }
+
+  const adjUsed = clampedAdj;
   const deltas: ScenarioDelta[] = [];
 
   // 1. Liability payoffs
-  for (const id of adj.consolidatedLiabilityIds || []) {
+  for (const id of adjUsed.consolidatedLiabilityIds || []) {
     deltas.push({
       id,
       label: `Pay off liability ${id}`,
