@@ -673,7 +673,9 @@ export function StrategyScenarioModeling({
     strategy.additional.expenseReductionPercent !== 0 ||
     strategy.additional.loanTermAdjustment !== 0 ||
     strategy.additional.dtiCapEnabled ||
-    strategy.additional.portfolioSellPropertyIds.size > 0;
+    strategy.additional.portfolioSellPropertyIds.size > 0 ||
+    strategy.additional.valuationOverrides.size > 0 ||
+    strategy.additional.crossCollatPool.enabled;
 
   const handleReset = useCallback(() => {
     setStrategy({
