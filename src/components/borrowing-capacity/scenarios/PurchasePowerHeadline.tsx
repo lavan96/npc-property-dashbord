@@ -19,7 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
-import { TrendingUp, TrendingDown, Target, Banknote, Layers, ArrowRight, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { TrendingUp, TrendingDown, Target, Banknote, Layers, ArrowRight, CheckCircle2, AlertTriangle, Info } from 'lucide-react';
 import type { AcquisitionCapacity } from '@/utils/borrowingCapacityTypes';
 
 // ── Types ────────────────────────────────────────────────────────────────
@@ -31,6 +31,11 @@ export interface LeverAttribution {
   label: string;
   /** Capacity delta this lever contributes when applied IN ISOLATION (vs base) */
   capacityImpact: number;
+  /** Theoretical (unfloored) capacity delta computed from raw surplus × annuity
+   *  factor. Surfaces real movement when both base and scenario are clamped at
+   *  the $0 servicing floor (otherwise `capacityImpact` collapses to $0 for
+   *  every lever and the broker can't see which lever is doing the work). */
+  theoreticalImpact?: number;
   /** Optional cash-flow note: "+$420/mo" or "−$890/mo" — enriches the row */
   cashflowNote?: string;
 }
@@ -49,6 +54,14 @@ interface PurchasePowerHeadlineProps {
   leverAttribution: LeverAttribution[];
   /** Currency formatter from the parent (so "AUD" / locale stays consistent). */
   formatCurrency: (n: number) => string;
+  /** Theoretical (unfloored) base capacity — used when `floorActive` to
+   *  contextualise the "if floor lifted" attribution column. */
+  baseTheoreticalCapacity?: number;
+  /** Theoretical (unfloored) scenario capacity. */
+  scenarioTheoreticalCapacity?: number;
+  /** True when both displayed capacities are clamped at $0 but the underlying
+   *  surplus math shows real movement — triggers the explainer banner. */
+  floorActive?: boolean;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────
@@ -66,6 +79,9 @@ export function PurchasePowerHeadline({
   acquisitionCapacity,
   leverAttribution,
   formatCurrency,
+  baseTheoreticalCapacity,
+  scenarioTheoreticalCapacity,
+  floorActive = false,
 }: PurchasePowerHeadlineProps) {
   const capacityChange = scenarioCapacity - baseCapacity;
   const acq = acquisitionCapacity;
@@ -78,16 +94,34 @@ export function PurchasePowerHeadline({
   const interactionResidual = capacityChange - sumIsolated;
   const showInteraction = Math.abs(interactionResidual) > 1000 && leverAttribution.length > 0;
 
-  const sortedLevers = [...leverAttribution].sort(
-    (a, b) => Math.abs(b.capacityImpact) - Math.abs(a.capacityImpact)
+  // Theoretical (unfloored) totals — only meaningful when the floor is active.
+  const theoreticalCapacityChange =
+    (scenarioTheoreticalCapacity ?? 0) - (baseTheoreticalCapacity ?? 0);
+  const sumTheoretical = leverAttribution.reduce(
+    (s, l) => s + (l.theoreticalImpact ?? 0),
+    0
   );
+
+  // When floor is active we sort by theoretical impact (the meaningful signal),
+  // otherwise by the compounded floored impact (the audit signal).
+  const sortedLevers = [...leverAttribution].sort((a, b) => {
+    const aVal = floorActive
+      ? Math.abs(a.theoreticalImpact ?? 0)
+      : Math.abs(a.capacityImpact);
+    const bVal = floorActive
+      ? Math.abs(b.theoreticalImpact ?? 0)
+      : Math.abs(b.capacityImpact);
+    return bVal - aVal;
+  });
 
   // Max absolute value across all bars (incl. residual) → drives the relative
   // bar widths so the most impactful lever fills the row.
   const maxAbs = Math.max(
     1,
-    ...sortedLevers.map(l => Math.abs(l.capacityImpact)),
-    Math.abs(interactionResidual),
+    ...sortedLevers.map(l =>
+      floorActive ? Math.abs(l.theoreticalImpact ?? 0) : Math.abs(l.capacityImpact)
+    ),
+    floorActive ? 0 : Math.abs(interactionResidual),
   );
 
   // ── F3: target-vs-actual derived state ─────────────────────────────────
@@ -196,6 +230,41 @@ export function PurchasePowerHeadline({
         </CardContent>
       </Card>
 
+      {/* ═══ FLOOR BANNER — surface when displayed capacity is clamped at $0 ═══ */}
+      {floorActive && (
+        <Card className="border border-warning/40 bg-warning/5">
+          <CardContent className="py-3">
+            <div className="flex gap-3">
+              <Info className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-foreground">
+                  Capacity is clamped at the $0 servicing floor
+                </p>
+                <p className="text-[11px] text-muted-foreground leading-snug">
+                  Base monthly surplus is negative under APRA stress assumptions, so no
+                  single lever lifts capacity above $0 in isolation. The
+                  <span className="font-semibold text-foreground"> "if floor lifted" </span>
+                  column below shows each lever's theoretical impact (surplus × annuity
+                  factor) so you can identify which levers move the needle most.
+                  {Math.abs(theoreticalCapacityChange) > 0 && (
+                    <>
+                      {' '}Combined theoretical uplift:{' '}
+                      <span className={`font-semibold ${
+                        theoreticalCapacityChange > 0
+                          ? 'text-emerald-600 dark:text-emerald-400'
+                          : 'text-destructive'
+                      }`}>
+                        {formatSignedCurrency(theoreticalCapacityChange, formatCurrency)}
+                      </span>.
+                    </>
+                  )}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* ═══ F4 — PER-LEVER ATTRIBUTION WATERFALL ═══ */}
       {leverAttribution.length > 0 && (
         <Card className="border bg-card">
@@ -204,14 +273,20 @@ export function PurchasePowerHeadline({
               <Layers className="h-3.5 w-3.5 text-primary" />
               Lever Attribution
               <span className="ml-auto text-[10px] font-normal text-muted-foreground normal-case tracking-normal">
-                Capacity impact in isolation
+                {floorActive ? 'If floor lifted · capacity impact in isolation' : 'Capacity impact in isolation'}
               </span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {sortedLevers.map(lever => {
-              const positive = lever.capacityImpact > 0;
-              const widthPct = (Math.abs(lever.capacityImpact) / maxAbs) * 100;
+              // When the floor is active, the floored `capacityImpact` is $0 for
+              // every lever and tells the broker nothing — pivot the row to the
+              // theoretical (unfloored) impact so the column actually informs.
+              const displayedImpact = floorActive
+                ? (lever.theoreticalImpact ?? 0)
+                : lever.capacityImpact;
+              const positive = displayedImpact > 0;
+              const widthPct = (Math.abs(displayedImpact) / maxAbs) * 100;
               return (
                 <div key={lever.id} className="space-y-1">
                   <div className="flex items-center justify-between gap-2 text-xs">
@@ -224,10 +299,10 @@ export function PurchasePowerHeadline({
                       )}
                       <span className={`font-semibold tabular-nums ${
                         positive ? 'text-emerald-600 dark:text-emerald-400' :
-                        lever.capacityImpact < 0 ? 'text-destructive' :
+                        displayedImpact < 0 ? 'text-destructive' :
                         'text-muted-foreground'
                       }`}>
-                        {formatSignedCurrency(lever.capacityImpact, formatCurrency)}
+                        {formatSignedCurrency(displayedImpact, formatCurrency)}
                       </span>
                     </div>
                   </div>
@@ -235,7 +310,7 @@ export function PurchasePowerHeadline({
                     <div
                       className={`h-full rounded-full transition-all ${
                         positive ? 'bg-emerald-500' :
-                        lever.capacityImpact < 0 ? 'bg-destructive' :
+                        displayedImpact < 0 ? 'bg-destructive' :
                         'bg-muted-foreground/40'
                       }`}
                       style={{ width: `${Math.max(2, widthPct)}%` }}
@@ -245,8 +320,8 @@ export function PurchasePowerHeadline({
               );
             })}
 
-            {/* Compounding interaction residual */}
-            {showInteraction && (
+            {/* Compounding interaction residual — only meaningful when floor is NOT active */}
+            {!floorActive && showInteraction && (
               <>
                 <Separator className="my-2" />
                 <div className="space-y-1">
@@ -271,15 +346,30 @@ export function PurchasePowerHeadline({
 
             <Separator className="my-2" />
             <div className="flex items-center justify-between text-sm font-bold">
-              <span>Total scenario impact</span>
+              <span>
+                {floorActive ? 'Total theoretical impact' : 'Total scenario impact'}
+              </span>
               <span className={`tabular-nums ${
-                capacityChange > 0 ? 'text-emerald-600 dark:text-emerald-400' :
-                capacityChange < 0 ? 'text-destructive' :
-                'text-muted-foreground'
+                (floorActive ? theoreticalCapacityChange : capacityChange) > 0
+                  ? 'text-emerald-600 dark:text-emerald-400'
+                  : (floorActive ? theoreticalCapacityChange : capacityChange) < 0
+                  ? 'text-destructive'
+                  : 'text-muted-foreground'
               }`}>
-                {formatSignedCurrency(capacityChange, formatCurrency)}
+                {formatSignedCurrency(
+                  floorActive ? theoreticalCapacityChange : capacityChange,
+                  formatCurrency
+                )}
               </span>
             </div>
+
+            {floorActive && Math.abs(sumTheoretical - theoreticalCapacityChange) > 1000 && (
+              <p className="text-[10px] text-muted-foreground italic leading-tight pt-1">
+                Per-lever theoretical sum: {formatSignedCurrency(sumTheoretical, formatCurrency)}.
+                Difference vs combined ({formatSignedCurrency(theoreticalCapacityChange - sumTheoretical, formatCurrency)})
+                reflects compounding interaction between levers.
+              </p>
+            )}
           </CardContent>
         </Card>
       )}
