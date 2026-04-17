@@ -1,5 +1,15 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { buildResimacRates, RESIMAC_LENDER } from './resimacRates.ts';
+
+// ============================================
+// MANUAL (non-CDR) lender registry
+// Resimac, Pepper, Liberty, etc. don't expose CDR APIs — rates are
+// hardcoded from the broker rate cards and refreshed manually.
+// ============================================
+const MANUAL_LENDERS: Record<string, { name: string; logo?: string; build: () => any[] }> = {
+  resimac: { name: RESIMAC_LENDER.name, logo: RESIMAC_LENDER.logo, build: buildResimacRates },
+};
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -337,7 +347,7 @@ async function setCachedRates(supabase: any, lenderId: string, rates: LendingRat
     .from('bank_lending_rates_cache')
     .upsert({
       lender_id: lenderId,
-      lender_name: CDR_LENDERS[lenderId]?.name || lenderId,
+      lender_name: CDR_LENDERS[lenderId]?.name || MANUAL_LENDERS[lenderId]?.name || lenderId,
       rates,
       fetched_at: now.toISOString(),
       expires_at: expiresAt.toISOString(),
@@ -396,13 +406,15 @@ Deno.serve(async (req) => {
 
     console.log(`[CDR] Action: ${action}, Lender: ${lenderId}, Purpose: ${loanPurpose}, LVR: ${lvr}`);
 
-    // Action: List available lenders
+    // Action: List available lenders (CDR + manual non-bank cards)
     if (action === 'lenders') {
-      const lenders = Object.entries(CDR_LENDERS).map(([id, info]) => ({
-        id,
-        name: info.name,
-        logo: info.logo,
+      const cdrLenders = Object.entries(CDR_LENDERS).map(([id, info]) => ({
+        id, name: info.name, logo: info.logo,
       }));
+      const manualLenders = Object.entries(MANUAL_LENDERS).map(([id, info]) => ({
+        id, name: info.name, logo: info.logo,
+      }));
+      const lenders = [...cdrLenders, ...manualLenders].sort((a, b) => a.name.localeCompare(b.name));
 
       return new Response(
         JSON.stringify({ success: true, data: lenders }),
@@ -412,6 +424,36 @@ Deno.serve(async (req) => {
 
     // Action: Get rates for specific lender
     if (action === 'rates' && lenderId) {
+      // Manual lender path (Resimac etc.) — bypass CDR fetch, build from static rate card
+      if (MANUAL_LENDERS[lenderId]) {
+        const manual = MANUAL_LENDERS[lenderId];
+        const rates: LendingRate[] = manual.build();
+        // Refresh cache so best-rates picks them up
+        await setCachedRates(supabase, lenderId, rates).catch((e) => console.warn(`[manual] cache fail ${lenderId}`, e));
+
+        let filteredRates = rates;
+        if (loanPurpose) filteredRates = filteredRates.filter(r => r.loanPurpose === loanPurpose);
+        if (repaymentType) filteredRates = filteredRates.filter(r => r.repaymentType === repaymentType);
+        if (lvr !== null) {
+          filteredRates = filteredRates.filter(r =>
+            (r.lvrMin === null || lvr >= r.lvrMin) && (r.lvrMax === null || lvr <= r.lvrMax)
+          );
+        }
+        filteredRates.sort((a, b) => a.rate - b.rate);
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            data: filteredRates,
+            lender: { id: lenderId, name: manual.name },
+            cached: false,
+            totalRates: rates.length,
+            source: 'manual',
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       const lenderConfig = CDR_LENDERS[lenderId];
       if (!lenderConfig) {
         return new Response(
@@ -477,19 +519,28 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Action: Get best rates across all lenders
+    // Action: Get best rates across all lenders (CDR + manual)
     if (action === 'best-rates') {
       const allRates: LendingRate[] = [];
 
-      // Check cache for all lenders
-      for (const [id, config] of Object.entries(CDR_LENDERS)) {
+      // CDR cached rates
+      for (const [id] of Object.entries(CDR_LENDERS)) {
         const cached = await getCachedRates(supabase, id);
         if (cached && cached.rates.length > 0) {
           allRates.push(...cached.rates);
         }
       }
 
-      console.log(`[CDR] Found ${allRates.length} total cached rates across all lenders`);
+      // Manual rate cards (Resimac etc.) — always available, no API dependency
+      for (const [id, manual] of Object.entries(MANUAL_LENDERS)) {
+        try {
+          allRates.push(...manual.build());
+        } catch (e) {
+          console.warn(`[manual] build failed for ${id}:`, e);
+        }
+      }
+
+      console.log(`[CDR] Found ${allRates.length} total rates across all lenders`);
 
       // Apply filters
       let filteredRates = allRates;
@@ -500,7 +551,7 @@ Deno.serve(async (req) => {
         filteredRates = filteredRates.filter(r => r.repaymentType === repaymentType);
       }
       if (lvr !== null) {
-        filteredRates = filteredRates.filter(r => 
+        filteredRates = filteredRates.filter(r =>
           (!r.lvrMin || lvr >= r.lvrMin) && (!r.lvrMax || lvr <= r.lvrMax)
         );
       }
@@ -510,21 +561,22 @@ Deno.serve(async (req) => {
       const topRates = filteredRates.slice(0, 10);
 
       return new Response(
-        JSON.stringify({ 
-          success: true, 
+        JSON.stringify({
+          success: true,
           data: topRates,
-          totalLenders: Object.keys(CDR_LENDERS).length,
+          totalLenders: Object.keys(CDR_LENDERS).length + Object.keys(MANUAL_LENDERS).length,
           totalCachedRates: allRates.length,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Action: Refresh all lender caches
+    // Action: Refresh all lender caches (CDR + manual)
     if (action === 'refresh-all') {
       const results: { lenderId: string; lenderName: string; success: boolean; rateCount: number; cached: boolean }[] = [];
 
-      console.log(`[CDR] Starting refresh-all for ${Object.keys(CDR_LENDERS).length} lenders`);
+      const totalCount = Object.keys(CDR_LENDERS).length + Object.keys(MANUAL_LENDERS).length;
+      console.log(`[CDR] Starting refresh-all for ${totalCount} lenders`);
 
       for (const [id, config] of Object.entries(CDR_LENDERS)) {
         try {
@@ -534,29 +586,27 @@ Deno.serve(async (req) => {
             detailVersion: config.detailVersion,
           });
           let cached = false;
-          
           if (rates.length > 0) {
             cached = await setCachedRates(supabase, id, rates);
           }
-          
-          results.push({ 
-            lenderId: id, 
-            lenderName: config.name,
-            success: rates.length > 0, 
-            rateCount: rates.length,
-            cached 
-          });
-          
+          results.push({ lenderId: id, lenderName: config.name, success: rates.length > 0, rateCount: rates.length, cached });
           console.log(`[CDR] Refresh ${id}: ${rates.length} rates, cached: ${cached}`);
         } catch (error) {
           console.error(`[CDR] Failed to refresh ${id}:`, error);
-          results.push({ 
-            lenderId: id, 
-            lenderName: config.name,
-            success: false, 
-            rateCount: 0,
-            cached: false 
-          });
+          results.push({ lenderId: id, lenderName: config.name, success: false, rateCount: 0, cached: false });
+        }
+      }
+
+      // Manual lenders — always succeed (static rate cards)
+      for (const [id, manual] of Object.entries(MANUAL_LENDERS)) {
+        try {
+          const rates = manual.build();
+          const cached = rates.length > 0 ? await setCachedRates(supabase, id, rates) : false;
+          results.push({ lenderId: id, lenderName: manual.name, success: rates.length > 0, rateCount: rates.length, cached });
+          console.log(`[manual] Refresh ${id}: ${rates.length} rates, cached: ${cached}`);
+        } catch (error) {
+          console.error(`[manual] Failed to refresh ${id}:`, error);
+          results.push({ lenderId: id, lenderName: manual.name, success: false, rateCount: 0, cached: false });
         }
       }
 
