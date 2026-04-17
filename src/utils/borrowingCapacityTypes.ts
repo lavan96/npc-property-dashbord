@@ -230,6 +230,82 @@ export interface ScenarioDelta {
   /** Unit hint */
   unit: ScenarioDeltaUnit;
   /** Optional payload for richer deltas (e.g. equity_release target LVR, dti cap toggle,
+   *  pool propertyIds for portfolio_lvr_release, basis/source for property_value_change,
+   *  sinkType/sinkTargetId for capital_allocation) */
+  meta?: Record<string, number | string | boolean | string[] | null>;
+}
+
+// ============================================
+// PHASE K1 — CAPITAL ALLOCATION POOL
+// ============================================
+
+/** Sink categories that capital_allocation deltas can route cash into. */
+export type CapitalSinkType =
+  | 'liability_payoff'      // Pay down a debt → reduces commitment + balance
+  | 'offset_deposit'        // Park cash in offset → cancels interest on $X
+  | 'rate_buydown'          // Pay points to lower a property's rate
+  | 'debt_recycle'          // Pay OO loan, redraw as IP → tax deductible
+  | 'acquisition_deposit'   // Reserve cash as new-purchase deposit (default)
+  | 'holding_reserve'       // Park as cash buffer (no servicing effect)
+  | 'repayment_reduction';  // Direct $/mo servicing cut on a target loan
+
+/** Source categories that emit cash into the pool. */
+export type CapitalSourceType =
+  | 'equity_release'
+  | 'portfolio_lvr_release'
+  | 'property_sell'
+  | 'cash_on_hand'
+  | 'surplus_redirect';
+
+/** A single source contribution to a pool. */
+export interface CapitalSourceEntry {
+  deltaId: string;
+  sourceType: CapitalSourceType;
+  label: string;
+  amount: number;
+}
+
+/** A single allocation routed from the pool to a sink. */
+export interface CapitalSinkEntry {
+  deltaId: string;
+  sinkType: CapitalSinkType;
+  label: string;
+  amount: number;
+  /** $/mo servicing change attributable to this sink (negative = saving). */
+  monthlyServicingDelta: number;
+  /** Annual debt-balance change attributable to this sink (negative = paydown). */
+  debtBalanceDelta: number;
+  /** Notes shown in the audit trail / per-card chip. */
+  notes: string[];
+}
+
+/** A single capital pool tracked by the ledger. */
+export interface CapitalPoolLedger {
+  poolId: string;
+  sources: CapitalSourceEntry[];
+  sinks: CapitalSinkEntry[];
+  totalIn: number;
+  totalOut: number;
+  remainder: number;
+  overcommitted: boolean;
+}
+
+/** Engine output: full ledger keyed by pool id. */
+export interface CapitalLedger {
+  pools: Record<string, CapitalPoolLedger>;
+}
+
+  /** Unique identifier — for entity-bound deltas this is the property/liability ID */
+  id: string;
+  /** Human-readable label */
+  label: string;
+  /** Type of change */
+  type: ScenarioDeltaType;
+  /** The change value (interpretation depends on type) */
+  value: number;
+  /** Unit hint */
+  unit: ScenarioDeltaUnit;
+  /** Optional payload for richer deltas (e.g. equity_release target LVR, dti cap toggle,
    *  pool propertyIds for portfolio_lvr_release, basis/source for property_value_change) */
   meta?: Record<string, number | string | boolean | string[] | null>;
 }
