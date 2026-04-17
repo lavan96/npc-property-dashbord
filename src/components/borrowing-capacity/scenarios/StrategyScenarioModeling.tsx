@@ -224,30 +224,35 @@ export function StrategyScenarioModeling({
 
   // ── Compute scenario result ──
 
+  // ── Compute scenario via UNIFIED engine (Phase B) ──
+  // The Strategy Builder no longer does its own math — it converts the user's
+  // selections into ScenarioDelta[] and delegates to the same engine that the
+  // edge function uses. This eliminates client/server drift entirely.
+
   const { scenarioResult, scenarioInputs, impactBreakdown } = useMemo(() => {
-    let adjustedCommitments = baseInputs.monthlyCommitments;
-    let adjustedGrossIncome = baseInputs.grossAnnualIncome;
-    let adjustedShadedIncome = baseInputs.shadedAnnualIncome;
-    let adjustedExpenses = baseInputs.monthlyLivingExpenses;
-    let adjustedLoanTerm = baseInputs.loanTermYears;
+    const deltas: ScenarioDelta[] = [];
     const impacts: { label: string; monthlySaving: number; type: 'saving' | 'cost' | 'info' }[] = [];
 
-    // 1. Debt Consolidation
+    // 1. Debt Consolidation → liability_payoff deltas
     let consolidationSaving = 0;
     strategy.consolidatedLiabilities.forEach(id => {
       const liability = consolidatableDebts.find(l => l.id === id);
-      if (liability) consolidationSaving += liability.monthlyServicing;
+      if (liability) {
+        consolidationSaving += liability.monthlyServicing;
+        deltas.push({
+          id: liability.id,
+          label: `Pay off ${liability.label}`,
+          type: 'liability_payoff',
+          value: liability.balance,
+          unit: 'absolute',
+        });
+      }
     });
     if (consolidationSaving > 0) {
-      adjustedCommitments -= consolidationSaving;
-      impacts.push({
-        label: `Consolidate ${strategy.consolidatedLiabilities.size} debt(s)`,
-        monthlySaving: consolidationSaving,
-        type: 'saving',
-      });
+      impacts.push({ label: `Consolidate ${strategy.consolidatedLiabilities.size} debt(s)`, monthlySaving: consolidationSaving, type: 'saving' });
     }
 
-    // 2. Refinance P&I → IO
+    // 2. Refinance P&I → IO → property_refinance deltas
     let refinanceSaving = 0;
     strategy.refinancedToIO.forEach(propId => {
       const prop = investmentProperties.find(p => p.id === propId);
@@ -257,45 +262,49 @@ export function StrategyScenarioModeling({
         const ioRepayment = calculateIORepayment(prop.loan_remaining, baseInputs.interestRate);
         const saving = Math.max(0, currentRepayment - ioRepayment);
         if (saving > 0) refinanceSaving += saving;
+        deltas.push({
+          id: prop.id,
+          label: `Refinance ${prop.address?.slice(0, 25) || 'property'} to IO`,
+          type: 'property_refinance',
+          value: 0,
+          unit: 'absolute',
+        });
       }
     });
     if (refinanceSaving > 0) {
-      adjustedCommitments -= refinanceSaving;
-      impacts.push({
-        label: `Refinance ${strategy.refinancedToIO.size} loan(s) to IO`,
-        monthlySaving: refinanceSaving,
-        type: 'saving',
-      });
+      impacts.push({ label: `Refinance ${strategy.refinancedToIO.size} loan(s) to IO`, monthlySaving: refinanceSaving, type: 'saving' });
     }
 
-    // 3. Portfolio Sell — remove loan servicing for sold properties (multi-select)
+    // 3. Portfolio Sell → property_sell deltas
     let portfolioSellSaving = 0;
-    if (strategy.additional.portfolioSellPropertyIds.size > 0) {
-      strategy.additional.portfolioSellPropertyIds.forEach(propId => {
-        const soldProp = properties.find(p => p.id === propId);
-        if (soldProp) {
-          const loanServicing = soldProp.loan_repayment_amount || soldProp.monthly_interest_repayment || 0;
-          if (loanServicing > 0) {
-            portfolioSellSaving += loanServicing;
-          }
-        }
-      });
-      if (portfolioSellSaving > 0) {
-        adjustedCommitments -= portfolioSellSaving;
-        impacts.push({
-          label: `Sell ${strategy.additional.portfolioSellPropertyIds.size} property(s) (remove loan servicing)`,
-          monthlySaving: portfolioSellSaving,
-          type: 'saving',
+    strategy.additional.portfolioSellPropertyIds.forEach(propId => {
+      const soldProp = properties.find(p => p.id === propId);
+      if (soldProp) {
+        const loanServicing = soldProp.loan_repayment_amount || soldProp.monthly_interest_repayment || 0;
+        if (loanServicing > 0) portfolioSellSaving += loanServicing;
+        deltas.push({
+          id: soldProp.id,
+          label: `Sell ${soldProp.address?.slice(0, 30) || 'property'}`,
+          type: 'property_sell',
+          value: soldProp.current_value || 0,
+          unit: 'absolute',
         });
       }
+    });
+    if (portfolioSellSaving > 0) {
+      impacts.push({ label: `Sell ${strategy.additional.portfolioSellPropertyIds.size} property(s)`, monthlySaving: portfolioSellSaving, type: 'saving' });
     }
 
-    // 4. Income Growth
+    // 4. Income Growth → income_change percent
     if (strategy.additional.incomeGrowthPercent !== 0) {
-      const growthFactor = 1 + strategy.additional.incomeGrowthPercent / 100;
-      const incomeDelta = adjustedGrossIncome * (growthFactor - 1);
-      adjustedGrossIncome *= growthFactor;
-      adjustedShadedIncome *= growthFactor;
+      deltas.push({
+        id: `income-growth-${strategy.additional.incomeGrowthPercent}`,
+        label: `Income ${strategy.additional.incomeGrowthPercent > 0 ? '+' : ''}${strategy.additional.incomeGrowthPercent}%`,
+        type: 'income_change',
+        value: strategy.additional.incomeGrowthPercent,
+        unit: 'percent',
+      });
+      const incomeDelta = baseInputs.grossAnnualIncome * (strategy.additional.incomeGrowthPercent / 100);
       impacts.push({
         label: `Income ${strategy.additional.incomeGrowthPercent > 0 ? 'growth' : 'reduction'} (${strategy.additional.incomeGrowthPercent > 0 ? '+' : ''}${strategy.additional.incomeGrowthPercent}%)`,
         monthlySaving: Math.abs(incomeDelta / 12),
@@ -303,58 +312,95 @@ export function StrategyScenarioModeling({
       });
     }
 
-    // 5. Expense Reduction
+    // 5. Expense Reduction → expense_change percent (negative)
     if (strategy.additional.expenseReductionPercent > 0) {
-      const expenseSaving = adjustedExpenses * (strategy.additional.expenseReductionPercent / 100);
-      adjustedExpenses -= expenseSaving;
+      deltas.push({
+        id: `expense-${strategy.additional.expenseReductionPercent}`,
+        label: `Reduce expenses ${strategy.additional.expenseReductionPercent}%`,
+        type: 'expense_change',
+        value: -strategy.additional.expenseReductionPercent,
+        unit: 'percent',
+      });
       impacts.push({
         label: `Reduce expenses by ${strategy.additional.expenseReductionPercent}%`,
-        monthlySaving: expenseSaving,
+        monthlySaving: baseInputs.monthlyLivingExpenses * (strategy.additional.expenseReductionPercent / 100),
         type: 'saving',
       });
     }
 
-    // 6. Loan Term Adjustment
+    // 6. Loan Term Adjustment → loan_term_change
     if (strategy.additional.loanTermAdjustment !== 0) {
-      adjustedLoanTerm = Math.max(5, baseInputs.loanTermYears + strategy.additional.loanTermAdjustment);
+      deltas.push({
+        id: `loan-term-${strategy.additional.loanTermAdjustment}`,
+        label: `Loan term ${strategy.additional.loanTermAdjustment > 0 ? '+' : ''}${strategy.additional.loanTermAdjustment}yr`,
+        type: 'loan_term_change',
+        value: strategy.additional.loanTermAdjustment,
+        unit: 'years',
+      });
       impacts.push({
-        label: `Loan term ${strategy.additional.loanTermAdjustment > 0 ? 'extended' : 'shortened'} to ${adjustedLoanTerm}yr`,
+        label: `Loan term ${strategy.additional.loanTermAdjustment > 0 ? 'extended' : 'shortened'} to ${baseInputs.loanTermYears + strategy.additional.loanTermAdjustment}yr`,
         monthlySaving: 0,
         type: 'info',
       });
     }
 
-    // 7. Rate Adjustment
-    const adjustedRate = Math.max(0.5, baseInputs.interestRate + strategy.rateAdjustment);
+    // 7. Rate Adjustment → rate_change
+    if (strategy.rateAdjustment !== 0) {
+      deltas.push({
+        id: `rate-${strategy.rateAdjustment}`,
+        label: `Rates ${strategy.rateAdjustment >= 0 ? '+' : ''}${strategy.rateAdjustment}%`,
+        type: 'rate_change',
+        value: strategy.rateAdjustment,
+        unit: 'rate_points',
+      });
+    }
 
-    // Ensure commitments don't go negative
-    adjustedCommitments = Math.max(0, adjustedCommitments);
-    adjustedExpenses = Math.max(0, adjustedExpenses);
-
-    // 8. DTI Cap Override
+    // 8. DTI Cap Override → dti_cap_change
     if (strategy.additional.dtiCapEnabled) {
-      impacts.push({
-        label: `DTI cap applied at ${strategy.additional.dtiCapValue}x`,
-        monthlySaving: 0,
-        type: 'info',
+      deltas.push({
+        id: 'dti-cap',
+        label: `DTI cap ${strategy.additional.dtiCapValue}x`,
+        type: 'dti_cap_change',
+        value: strategy.additional.dtiCapValue,
+        unit: 'ratio',
+        meta: { enabled: true },
       });
+      impacts.push({ label: `DTI cap applied at ${strategy.additional.dtiCapValue}x`, monthlySaving: 0, type: 'info' });
     }
 
-    const scenarioInputs: BorrowingCapacityInput = {
-      ...baseInputs,
-      grossAnnualIncome: adjustedGrossIncome,
-      shadedAnnualIncome: adjustedShadedIncome,
-      monthlyLivingExpenses: adjustedExpenses,
-      monthlyCommitments: adjustedCommitments,
-      interestRate: adjustedRate,
-      loanTermYears: adjustedLoanTerm,
-      dtiCapEnabled: strategy.additional.dtiCapEnabled,
-      dtiCapLimit: strategy.additional.dtiCapValue,
+    // Build engine context — convert UI types to engine types
+    const engineProperties: EngineProperty[] = properties.map(p => ({
+      id: p.id,
+      address: p.address,
+      propertyType: p.property_type,
+      currentValue: p.current_value || 0,
+      loanRemaining: p.loan_remaining || 0,
+      monthlyRepayment: p.monthly_interest_repayment || 0,
+      loanRepaymentAmount: p.loan_repayment_amount || p.monthly_interest_repayment || 0,
+      netMonthlyCashflow: p.net_monthly_cashflow || 0,
+    }));
+    const engineLiabilities: EngineLiability[] = liabilities.map(l => ({
+      id: l.id,
+      type: l.type,
+      label: l.label,
+      balance: l.balance,
+      limit: l.limit,
+      monthlyServicing: l.monthlyServicing,
+    }));
+
+    const ctx: ScenarioContext = {
+      baseInputs,
+      baseResult,
+      properties: engineProperties,
+      liabilities: engineLiabilities,
     };
 
-    const result = calculateBorrowingCapacity(scenarioInputs);
-    return { scenarioResult: result, scenarioInputs, impactBreakdown: impacts };
-  }, [strategy, baseInputs, consolidatableDebts, investmentProperties, properties]);
+    // Delegate ALL scenario math to the unified engine
+    const { inputs, result } = runScenarioWithInputs('Strategy Preview', deltas, ctx);
+
+    return { scenarioResult: result as unknown as BorrowingCapacityResult, scenarioInputs: inputs, impactBreakdown: impacts };
+  }, [strategy, baseInputs, baseResult, consolidatableDebts, investmentProperties, properties, liabilities]);
+
 
   // Equity release calculation — now supports multiple properties
   interface EquityReleaseItem {
