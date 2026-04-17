@@ -898,6 +898,34 @@ export function aggregateDeltas(
     dtiCapLimit: total.dtiCapLimit ?? ctx.baseInputs.dtiCapLimit,
   };
 
+  // Phase I10 — Honest DTI: split debt moves into NEW (released) vs REMOVED
+  // (sells/payoffs) and report explicitly. Surfaces APRA 6× / lender-cap
+  // breaches as warnings on the issue stream so server replays match the UI.
+  const debtMoves = splitDebtMoves(safeDeltas, ctx);
+  const refinedDti = computeDti(
+    {
+      existingDebtBalances: Math.max(0, ctx.baseInputs.totalDebtBalances || 0),
+      proposedLoanAmount: 0,
+      releasedCapitalDebt: debtMoves.releasedCapitalDebt,
+      debtRemovedByScenario: debtMoves.debtRemovedByScenario,
+    },
+    {
+      incomeComponents: Array.isArray(ctx.incomeComponents) && ctx.incomeComponents.length > 0
+        ? ctx.incomeComponents.map(c => ({ ...c, grossAnnual: Math.max(0, c.grossAnnual * (ctx.baseInputs.grossAnnualIncome > 0 ? newGross / ctx.baseInputs.grossAnnualIncome : 1)) }))
+        : undefined,
+      fallbackGrossAnnual: newGross,
+    },
+    ctx.baseInputs.dtiCapLimit,
+  );
+  if (refinedDti.exceedsApraTrigger || refinedDti.exceedsLenderCap) {
+    issues.push({
+      deltaId: 'dti-honest',
+      deltaType: 'dti_cap_change',
+      severity: 'warning',
+      message: `Honest DTI ${refinedDti.dtiRatio.toFixed(2)}× ${refinedDti.exceedsApraTrigger ? '(>6× APRA trigger)' : ''}${refinedDti.exceedsLenderCap ? ` (>lender cap ${ctx.baseInputs.dtiCapLimit}×)` : ''}. Numerator $${Math.round(refinedDti.numerator).toLocaleString()} (existing+released−removed); denom $${Math.round(refinedDti.denominator).toLocaleString()}.`,
+    });
+  }
+
   return { inputs, effect: total, safeDeltas, issues };
 }
 
