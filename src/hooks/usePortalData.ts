@@ -46,6 +46,8 @@ export interface PortalDataInclude {
   messages?: boolean;
   reports?: boolean;
   reportRequests?: boolean;
+  lenderSubmissions?: boolean;
+  lenderComparisons?: boolean;
 }
 
 /**
@@ -173,6 +175,18 @@ export function usePortalDocumentsData() {
     client: false,
     properties: false,
     files: true,
+  });
+}
+
+/**
+ * Fetch portal lender submissions and shared comparisons
+ */
+export function usePortalLendersData() {
+  return usePortalClientData({
+    client: false,
+    properties: false,
+    lenderSubmissions: true,
+    lenderComparisons: true,
   });
 }
 
