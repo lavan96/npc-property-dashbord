@@ -583,6 +583,66 @@ export type Database = {
           },
         ]
       }
+      agent_model_assignments: {
+        Row: {
+          agent_category: string
+          agent_description: string | null
+          agent_key: string
+          agent_label: string
+          created_at: string
+          fallback_chain: Json
+          id: string
+          is_locked: boolean
+          last_error: string | null
+          last_used_at: string | null
+          max_tokens: number | null
+          model_id: string
+          reasoning_effort: string | null
+          route: string
+          temperature: number | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          agent_category?: string
+          agent_description?: string | null
+          agent_key: string
+          agent_label: string
+          created_at?: string
+          fallback_chain?: Json
+          id?: string
+          is_locked?: boolean
+          last_error?: string | null
+          last_used_at?: string | null
+          max_tokens?: number | null
+          model_id: string
+          reasoning_effort?: string | null
+          route?: string
+          temperature?: number | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          agent_category?: string
+          agent_description?: string | null
+          agent_key?: string
+          agent_label?: string
+          created_at?: string
+          fallback_chain?: Json
+          id?: string
+          is_locked?: boolean
+          last_error?: string | null
+          last_used_at?: string | null
+          max_tokens?: number | null
+          model_id?: string
+          reasoning_effort?: string | null
+          route?: string
+          temperature?: number | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       agent_playbooks: {
         Row: {
           created_at: string
@@ -7438,6 +7498,48 @@ export type Database = {
           },
         ]
       }
+      llm_integration_settings: {
+        Row: {
+          created_at: string
+          id: string
+          is_enabled: boolean
+          last_test_at: string | null
+          last_test_error: string | null
+          last_test_success: boolean | null
+          metadata: Json | null
+          monthly_spend_cap_usd: number | null
+          provider: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          last_test_at?: string | null
+          last_test_error?: string | null
+          last_test_success?: boolean | null
+          metadata?: Json | null
+          monthly_spend_cap_usd?: number | null
+          provider: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          last_test_at?: string | null
+          last_test_error?: string | null
+          last_test_success?: boolean | null
+          metadata?: Json | null
+          monthly_spend_cap_usd?: number | null
+          provider?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       marketing_intelligence_reports: {
         Row: {
           audience_segment: string
@@ -7742,6 +7844,57 @@ export type Database = {
           suburb?: string
           updated_at?: string
           vacancy_rate?: number | null
+        }
+        Relationships: []
+      }
+      model_catalog_cache: {
+        Row: {
+          capabilities: string[] | null
+          context_window: number | null
+          display_name: string | null
+          expires_at: string
+          id: string
+          last_probed_at: string
+          model_id: string
+          pricing_input_per_1m: number | null
+          pricing_output_per_1m: number | null
+          probe_error: string | null
+          provider: string
+          raw_metadata: Json | null
+          route: string
+          status: string
+        }
+        Insert: {
+          capabilities?: string[] | null
+          context_window?: number | null
+          display_name?: string | null
+          expires_at?: string
+          id?: string
+          last_probed_at?: string
+          model_id: string
+          pricing_input_per_1m?: number | null
+          pricing_output_per_1m?: number | null
+          probe_error?: string | null
+          provider: string
+          raw_metadata?: Json | null
+          route: string
+          status?: string
+        }
+        Update: {
+          capabilities?: string[] | null
+          context_window?: number | null
+          display_name?: string | null
+          expires_at?: string
+          id?: string
+          last_probed_at?: string
+          model_id?: string
+          pricing_input_per_1m?: number | null
+          pricing_output_per_1m?: number | null
+          probe_error?: string | null
+          provider?: string
+          raw_metadata?: Json | null
+          route?: string
+          status?: string
         }
         Relationships: []
       }
