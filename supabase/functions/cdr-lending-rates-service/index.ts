@@ -406,13 +406,15 @@ Deno.serve(async (req) => {
 
     console.log(`[CDR] Action: ${action}, Lender: ${lenderId}, Purpose: ${loanPurpose}, LVR: ${lvr}`);
 
-    // Action: List available lenders
+    // Action: List available lenders (CDR + manual non-bank cards)
     if (action === 'lenders') {
-      const lenders = Object.entries(CDR_LENDERS).map(([id, info]) => ({
-        id,
-        name: info.name,
-        logo: info.logo,
+      const cdrLenders = Object.entries(CDR_LENDERS).map(([id, info]) => ({
+        id, name: info.name, logo: info.logo,
       }));
+      const manualLenders = Object.entries(MANUAL_LENDERS).map(([id, info]) => ({
+        id, name: info.name, logo: info.logo,
+      }));
+      const lenders = [...cdrLenders, ...manualLenders].sort((a, b) => a.name.localeCompare(b.name));
 
       return new Response(
         JSON.stringify({ success: true, data: lenders }),
@@ -422,6 +424,36 @@ Deno.serve(async (req) => {
 
     // Action: Get rates for specific lender
     if (action === 'rates' && lenderId) {
+      // Manual lender path (Resimac etc.) — bypass CDR fetch, build from static rate card
+      if (MANUAL_LENDERS[lenderId]) {
+        const manual = MANUAL_LENDERS[lenderId];
+        const rates: LendingRate[] = manual.build();
+        // Refresh cache so best-rates picks them up
+        await setCachedRates(supabase, lenderId, rates).catch((e) => console.warn(`[manual] cache fail ${lenderId}`, e));
+
+        let filteredRates = rates;
+        if (loanPurpose) filteredRates = filteredRates.filter(r => r.loanPurpose === loanPurpose);
+        if (repaymentType) filteredRates = filteredRates.filter(r => r.repaymentType === repaymentType);
+        if (lvr !== null) {
+          filteredRates = filteredRates.filter(r =>
+            (r.lvrMin === null || lvr >= r.lvrMin) && (r.lvrMax === null || lvr <= r.lvrMax)
+          );
+        }
+        filteredRates.sort((a, b) => a.rate - b.rate);
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            data: filteredRates,
+            lender: { id: lenderId, name: manual.name },
+            cached: false,
+            totalRates: rates.length,
+            source: 'manual',
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       const lenderConfig = CDR_LENDERS[lenderId];
       if (!lenderConfig) {
         return new Response(
