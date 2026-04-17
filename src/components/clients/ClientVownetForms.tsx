@@ -56,24 +56,34 @@ interface ImportSummary {
 
 /**
  * Normalize legacy file_path values. Some older records stored the entire
- * upload-response JSON (e.g. '{"success":true,"path":"vownet-forms/...","fullPath":"..."}')
- * as the file_path. Storage requires just the in-bucket path string.
+ * upload-response JSON (e.g. '{"success":true,"path":"vownet-forms/...","fullPath":"client-files/vownet-forms/..."}')
+ * as the file_path. Returns { bucket, key } for the storage call.
+ *
+ * The actual files live in the "client-files" bucket under the "vownet-forms/" prefix
+ * (legacy upload behaviour), even though new uploads target the "vownet-forms" bucket.
  */
-function normalizeFilePath(raw: string): string {
-  if (!raw) return raw;
+function resolveStorageLocation(raw: string): { bucket: 'vownet-forms' | 'client-files'; key: string } {
+  if (!raw) return { bucket: 'vownet-forms', key: raw };
   const trimmed = raw.trim();
+
+  // Legacy: stored the JSON response object
   if (trimmed.startsWith('{')) {
     try {
       const parsed = JSON.parse(trimmed);
-      const candidate = parsed?.path || parsed?.fullPath || '';
-      return String(candidate)
-        .replace(/^client-files\//, '')
-        .replace(/^vownet-forms\//, '');
+      const fullPath: string = parsed?.fullPath || '';
+      const path: string = parsed?.path || '';
+      // fullPath is "client-files/vownet-forms/..." -> bucket=client-files, key=vownet-forms/...
+      if (fullPath.startsWith('client-files/')) {
+        return { bucket: 'client-files', key: fullPath.replace(/^client-files\//, '') };
+      }
+      if (path) return { bucket: 'vownet-forms', key: path.replace(/^vownet-forms\//, '') };
     } catch {
-      return raw;
+      /* fall through */
     }
   }
-  return raw.replace(/^client-files\//, '').replace(/^vownet-forms\//, '');
+
+  // Plain path - assume new-style upload to vownet-forms bucket
+  return { bucket: 'vownet-forms', key: trimmed.replace(/^vownet-forms\//, '') };
 }
 
 export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsProps) {
