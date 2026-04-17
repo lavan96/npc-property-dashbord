@@ -783,6 +783,9 @@ export function aggregateDeltas(
     if (e.acquisitionNotes.length) total.acquisitionNotes.push(...e.acquisitionNotes);
     if (e.dtiCapEnabled !== undefined) total.dtiCapEnabled = e.dtiCapEnabled;
     if (e.dtiCapLimit !== undefined) total.dtiCapLimit = e.dtiCapLimit;
+    // Phase I1 hardening — propagate lender-profile override to the totals
+    // bag so the downstream re-shading branch actually fires.
+    if (e.lenderProfileOverride) total.lenderProfileOverride = e.lenderProfileOverride;
   }
 
   const newGross = Math.max(0, ctx.baseInputs.grossAnnualIncome + total.incomeAdjustment);
