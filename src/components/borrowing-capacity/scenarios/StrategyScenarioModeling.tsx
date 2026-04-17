@@ -602,15 +602,51 @@ export function StrategyScenarioModeling({
     // measure the capacity uplift attributable to that lever alone.
     // The sum of these isolated impacts won't equal the compounded total
     // (levers interact); the headline component surfaces the residual.
+    //
+    // ── Theoretical (unfloored) capacity ────────────────────────────────
+    // The engine clamps `borrowingCapacity` at $0 when monthly surplus is
+    // negative (i.e. the client can't service ANY new loan). When the base
+    // is floored, every isolated lever also floors → attribution column
+    // collapses to $0 and the broker can't tell which lever moves the
+    // needle most. Compute a theoretical capacity from the raw surplus ×
+    // annuity factor (no floor) so attribution remains meaningful.
+    const annuityFactor = (annualRatePct: number, termYears: number): number => {
+      const r = (annualRatePct / 100) / 12;
+      const n = termYears * 12;
+      if (r <= 0 || n <= 0) return 0;
+      return (1 - Math.pow(1 + r, -n)) / r;
+    };
+    const baseAssessmentRate = (baseInputs.interestRate ?? 0) + (baseInputs.bufferRate ?? 0);
+    const baseTerm = baseInputs.loanTermYears ?? 30;
+    const baseTheoreticalCapacity = Math.round((baseResult.monthlySurplus ?? 0) * annuityFactor(baseAssessmentRate, baseTerm));
+
+    const scenarioAssessmentRate = (inputs.interestRate ?? baseAssessmentRate) + (inputs.bufferRate ?? 0);
+    const scenarioTerm = inputs.loanTermYears ?? baseTerm;
+    const scenarioTheoreticalCapacity = Math.round((result.monthlySurplus ?? 0) * annuityFactor(scenarioAssessmentRate, scenarioTerm));
+
     const leverAttribution: LeverAttribution[] = deltas.map(d => {
       const isolated = runScenarioWithInputs(`Isolated: ${d.label}`, [d], ctx);
+      const isoAssessRate = (isolated.inputs.interestRate ?? baseAssessmentRate) + (isolated.inputs.bufferRate ?? 0);
+      const isoTerm = isolated.inputs.loanTermYears ?? baseTerm;
+      const isoTheoretical = Math.round((isolated.result.monthlySurplus ?? 0) * annuityFactor(isoAssessRate, isoTerm));
       return {
         id: `${d.type}-${d.id}`,
         label: d.label,
         capacityImpact: isolated.result.borrowingCapacity - baseResult.borrowingCapacity,
+        theoreticalImpact: isoTheoretical - baseTheoreticalCapacity,
         cashflowNote: leverCashflowNotes.get(`${d.type}-${d.id}`),
       };
     });
+
+    // Floor is "active" when the actual displayed capacity is clamped to $0
+    // for both base and scenario but the theoretical math says there IS
+    // movement happening underneath. This is the trigger for the explainer
+    // banner + the "if floor lifted" attribution column.
+    const floorActive =
+      baseResult.borrowingCapacity <= 0 &&
+      result.borrowingCapacity <= 0 &&
+      (Math.abs(scenarioTheoreticalCapacity - baseTheoreticalCapacity) > 0 ||
+        leverAttribution.some(l => Math.abs(l.theoreticalImpact ?? 0) > 0));
 
     return {
       scenarioResult: result as unknown as BorrowingCapacityResult,
@@ -620,6 +656,9 @@ export function StrategyScenarioModeling({
       validationIssues,
       leverAttribution,
       appliedDeltas: deltas,
+      baseTheoreticalCapacity,
+      scenarioTheoreticalCapacity,
+      floorActive,
     };
   }, [strategy, acquisition, baseInputs, baseResult, consolidatableDebts, investmentProperties, equityReleaseProperties, properties, liabilities]);
 
