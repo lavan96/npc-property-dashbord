@@ -208,6 +208,7 @@ const App = () => (
                           <Route path="clients" element={<FinancePortalClients />} />
                           <Route path="clients/:clientId" element={<FinancePortalClientProfile />} />
                           <Route path="messages" element={<FinancePortalMessages />} />
+                          <Route path="earnings" element={<FinancePortalEarnings />} />
                         </Route>
 
                         {/* Internal Dashboard Routes */}
