@@ -915,8 +915,8 @@ export function aggregateDeltas(
       debtRemovedByScenario: debtMoves.debtRemovedByScenario,
     },
     {
-      incomeComponents: Array.isArray(ctx.incomeComponents) && ctx.incomeComponents.length > 0
-        ? ctx.incomeComponents.map(c => ({ ...c, grossAnnual: Math.max(0, c.grossAnnual * (ctx.baseInputs.grossAnnualIncome > 0 ? newGross / ctx.baseInputs.grossAnnualIncome : 1)) }))
+      incomeComponents: Array.isArray(ctx.baseInputs.incomeComponents) && ctx.baseInputs.incomeComponents.length > 0
+        ? ctx.baseInputs.incomeComponents.map(c => ({ ...c, grossAnnual: Math.max(0, c.grossAnnual * (ctx.baseInputs.grossAnnualIncome > 0 ? newGross / ctx.baseInputs.grossAnnualIncome : 1)) }))
         : undefined,
       fallbackGrossAnnual: newGross,
     },
