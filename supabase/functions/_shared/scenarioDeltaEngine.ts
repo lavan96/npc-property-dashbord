@@ -878,11 +878,26 @@ export function computeAcquisitionCapacity(
   const cashAvailable = cashOnHand + Math.max(0, effect.releasedCapital);
   const notes = [...effect.acquisitionNotes];
 
+  // Phase I9 — wire I7 LVR cap matrix into the acquisition ceiling.
+  const acqIntent = intent === 'owner_occupier' ? 'owner_occupier' : 'investment';
+  const acqKind = category === 'vacant_land' ? 'vacant_land'
+    : category === 'new' ? 'new_build'
+    : 'established';
+  const lvrCapResult = resolveLvrCap({
+    lenderId: context.baseInputs.currentLenderProfileId,
+    intent: acqIntent,
+    kind: acqKind,
+    isFirstHomeBuyer: isFhb,
+    isForeignBuyer: isForeign,
+  });
+  const acquisitionLvrCap = lvrCapResult.cap;
+
   if (borrowingCapacity <= 0 && cashAvailable <= 0) {
     return {
       releasedCapital: effect.releasedCapital,
       lmi: 0, lmiMode, stampDuty: 0, otherAcquisitionCosts: 0,
       maxPurchasePrice: 0, loanAvailableForPurchase: 0, cashAvailable, notes,
+      acquisitionLvrCap, loanCappedByLvr: false,
     };
   }
 
@@ -891,6 +906,7 @@ export function computeAcquisitionCapacity(
   let stampDuty = 0;
   let otherCosts = 0;
   let loanAvail = borrowingCapacity;
+  let loanCappedByLvr = false;
 
   for (let i = 0; i < 6; i++) {
     const sd = calculateStampDuty({
@@ -903,7 +919,13 @@ export function computeAcquisitionCapacity(
     otherCosts = estimateOtherAcquisitionCosts(purchasePrice).total;
 
     const requiredLoan = Math.max(0, purchasePrice - cashAvailable);
-    const cappedLoan = Math.min(borrowingCapacity, requiredLoan);
+    // Phase I9 — bind required loan to (a) serviceable capacity AND
+    // (b) the per-security LVR cap (loan ≤ price × cap).
+    const lvrCapDollar = Math.max(0, purchasePrice * acquisitionLvrCap);
+    const cappedLoan = Math.min(borrowingCapacity, requiredLoan, lvrCapDollar);
+    if (lvrCapDollar < Math.min(borrowingCapacity, requiredLoan)) {
+      loanCappedByLvr = true;
+    }
 
     if (lmiMode !== 'none') {
       const est = estimateLmi({
@@ -917,8 +939,8 @@ export function computeAcquisitionCapacity(
     }
 
     loanAvail = lmiMode === 'debt_capitalised'
-      ? Math.max(0, borrowingCapacity - lmi)
-      : borrowingCapacity;
+      ? Math.max(0, Math.min(borrowingCapacity, lvrCapDollar) - lmi)
+      : Math.min(borrowingCapacity, lvrCapDollar);
 
     const lmiCashDeduction = lmiMode === 'display_deduction' ? lmi : 0;
     const newPrice = Math.max(0, loanAvail + cashAvailable - lmiCashDeduction - stampDuty - otherCosts);
@@ -933,6 +955,11 @@ export function computeAcquisitionCapacity(
   if (lmi > 0) notes.push(`LMI ${lmiMode === 'debt_capitalised' ? 'capitalised onto loan' : 'deducted from settlement cash'}: $${Math.round(lmi).toLocaleString()}`);
   if (stampDuty > 0) notes.push(`${state} stamp duty: $${Math.round(stampDuty).toLocaleString()} (${intent}${isFhb ? ', FHB' : ''})`);
   if (otherCosts > 0) notes.push(`Acquisition costs: $${Math.round(otherCosts).toLocaleString()}`);
+  // Phase I9 — surface the binding LVR cap
+  notes.push(`Acquisition LVR cap (${lvrCapResult.matrix.lenderId}, ${acqIntent}, ${acqKind}): ${(acquisitionLvrCap * 100).toFixed(0)}% — ${lvrCapResult.reason}`);
+  if (loanCappedByLvr) {
+    notes.push(`⚠ Acquisition loan clamped by LVR cap — serviceable capacity exceeded the ${(acquisitionLvrCap * 100).toFixed(0)}% per-security ceiling.`);
+  }
 
   // Phase F2 — target-solving
   const target = acq.targetPurchasePrice && acq.targetPurchasePrice > 0 ? acq.targetPurchasePrice : undefined;
@@ -948,21 +975,30 @@ export function computeAcquisitionCapacity(
     });
     const otherT = estimateOtherAcquisitionCosts(target).total;
     const requiredLoanRaw = Math.max(0, target - cashAvailable);
+    // Phase I9 — clamp by LVR cap on the target price
+    const lvrCapDollarTarget = Math.max(0, target * acquisitionLvrCap);
+    const cappedRequiredLoan = Math.min(requiredLoanRaw, lvrCapDollarTarget);
     let lmiAtTarget = 0;
     if (lmiMode !== 'none') {
-      const estT = estimateLmi({ propertyValue: target, loanAmount: requiredLoanRaw, isFirstHomeBuyer: isFhb });
+      const estT = estimateLmi({ propertyValue: target, loanAmount: cappedRequiredLoan, isFirstHomeBuyer: isFhb });
       lmiAtTarget = estT.lmiAmount;
     }
     const lmiCashAtTarget = lmiMode === 'display_deduction' ? lmiAtTarget : 0;
     loanRequiredForPurchase = lmiMode === 'debt_capitalised'
-      ? requiredLoanRaw + lmiAtTarget
-      : requiredLoanRaw;
+      ? cappedRequiredLoan + lmiAtTarget
+      : cappedRequiredLoan;
     netCashAfterSettlement = cashAvailable
       - Math.max(0, target - (loanRequiredForPurchase ?? 0))
       - lmiCashAtTarget - sdT.totalDuty - otherT;
-    meetsTarget = (loanRequiredForPurchase ?? 0) <= borrowingCapacity && netCashAfterSettlement >= 0;
+    meetsTarget = (loanRequiredForPurchase ?? 0) <= borrowingCapacity
+      && cappedRequiredLoan >= requiredLoanRaw
+      && netCashAfterSettlement >= 0;
     shortfallToTarget = Math.max(0, target - Math.max(0, purchasePrice));
 
+    if (cappedRequiredLoan < requiredLoanRaw) {
+      loanCappedByLvr = true;
+      notes.push(`⚠ Target $${Math.round(target).toLocaleString()} requires loan > LVR cap (${(acquisitionLvrCap * 100).toFixed(0)}% × $${Math.round(target).toLocaleString()} = $${Math.round(lvrCapDollarTarget).toLocaleString()}). Increase deposit by $${Math.round(requiredLoanRaw - cappedRequiredLoan).toLocaleString()} to settle.`);
+    }
     if (meetsTarget) {
       notes.push(
         `✅ Target $${Math.round(target).toLocaleString()} achievable: needs loan $${Math.round(loanRequiredForPurchase!).toLocaleString()} (capacity $${Math.round(borrowingCapacity).toLocaleString()}); net cash post-settlement $${Math.round(netCashAfterSettlement).toLocaleString()}.`
@@ -993,6 +1029,8 @@ export function computeAcquisitionCapacity(
     targetPurchasePrice: target !== undefined ? Math.round(target) : undefined,
     meetsTarget,
     shortfallToTarget: shortfallToTarget !== undefined ? Math.round(shortfallToTarget) : undefined,
+    acquisitionLvrCap,
+    loanCappedByLvr,
     notes,
   };
 }
