@@ -3840,6 +3840,184 @@ export type Database = {
         }
         Relationships: []
       }
+      commission_ledger: {
+        Row: {
+          aggregator_fee: number
+          broker_amount: number
+          broker_id: string | null
+          broker_split_pct: number
+          client_id: string | null
+          commission_rate: number | null
+          created_at: string
+          created_by: string | null
+          deal_id: string | null
+          expected_date: string | null
+          gross_amount: number
+          gst_amount: number
+          id: string
+          invoiced_date: string | null
+          lender_id: string | null
+          lender_name: string | null
+          loan_amount: number | null
+          metadata: Json | null
+          net_amount: number
+          notes: string | null
+          received_date: string | null
+          reconciled_date: string | null
+          reference: string | null
+          status: Database["public"]["Enums"]["commission_status"]
+          submission_id: string | null
+          type: Database["public"]["Enums"]["commission_type"]
+          updated_at: string
+        }
+        Insert: {
+          aggregator_fee?: number
+          broker_amount?: number
+          broker_id?: string | null
+          broker_split_pct?: number
+          client_id?: string | null
+          commission_rate?: number | null
+          created_at?: string
+          created_by?: string | null
+          deal_id?: string | null
+          expected_date?: string | null
+          gross_amount?: number
+          gst_amount?: number
+          id?: string
+          invoiced_date?: string | null
+          lender_id?: string | null
+          lender_name?: string | null
+          loan_amount?: number | null
+          metadata?: Json | null
+          net_amount?: number
+          notes?: string | null
+          received_date?: string | null
+          reconciled_date?: string | null
+          reference?: string | null
+          status?: Database["public"]["Enums"]["commission_status"]
+          submission_id?: string | null
+          type?: Database["public"]["Enums"]["commission_type"]
+          updated_at?: string
+        }
+        Update: {
+          aggregator_fee?: number
+          broker_amount?: number
+          broker_id?: string | null
+          broker_split_pct?: number
+          client_id?: string | null
+          commission_rate?: number | null
+          created_at?: string
+          created_by?: string | null
+          deal_id?: string | null
+          expected_date?: string | null
+          gross_amount?: number
+          gst_amount?: number
+          id?: string
+          invoiced_date?: string | null
+          lender_id?: string | null
+          lender_name?: string | null
+          loan_amount?: number | null
+          metadata?: Json | null
+          net_amount?: number
+          notes?: string | null
+          received_date?: string | null
+          reconciled_date?: string | null
+          reference?: string | null
+          status?: Database["public"]["Enums"]["commission_status"]
+          submission_id?: string | null
+          type?: Database["public"]["Enums"]["commission_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commission_ledger_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commission_ledger_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "client_deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commission_ledger_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "lender_submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commission_payouts: {
+        Row: {
+          broker_id: string
+          broker_name: string | null
+          created_at: string
+          entry_count: number
+          generated_by: string | null
+          id: string
+          ledger_entry_ids: string[] | null
+          notes: string | null
+          paid_at: string | null
+          payment_method: string | null
+          payment_reference: string | null
+          pdf_storage_path: string | null
+          period_end: string
+          period_start: string
+          status: Database["public"]["Enums"]["payout_status"]
+          total_gross: number
+          total_gst: number
+          total_net: number
+          updated_at: string
+        }
+        Insert: {
+          broker_id: string
+          broker_name?: string | null
+          created_at?: string
+          entry_count?: number
+          generated_by?: string | null
+          id?: string
+          ledger_entry_ids?: string[] | null
+          notes?: string | null
+          paid_at?: string | null
+          payment_method?: string | null
+          payment_reference?: string | null
+          pdf_storage_path?: string | null
+          period_end: string
+          period_start: string
+          status?: Database["public"]["Enums"]["payout_status"]
+          total_gross?: number
+          total_gst?: number
+          total_net?: number
+          updated_at?: string
+        }
+        Update: {
+          broker_id?: string
+          broker_name?: string | null
+          created_at?: string
+          entry_count?: number
+          generated_by?: string | null
+          id?: string
+          ledger_entry_ids?: string[] | null
+          notes?: string | null
+          paid_at?: string | null
+          payment_method?: string | null
+          payment_reference?: string | null
+          pdf_storage_path?: string | null
+          period_end?: string
+          period_start?: string
+          status?: Database["public"]["Enums"]["payout_status"]
+          total_gross?: number
+          total_gst?: number
+          total_net?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       comparison_analysis_templates: {
         Row: {
           created_at: string
@@ -3874,6 +4052,165 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compliance_pack_exports: {
+        Row: {
+          client_id: string
+          created_at: string
+          deal_id: string | null
+          generated_at: string
+          generated_by: string | null
+          id: string
+          included_record_ids: string[]
+          included_types: Database["public"]["Enums"]["compliance_record_type"][]
+          notes: string | null
+          page_count: number | null
+          pdf_storage_path: string | null
+          shared_with_client: boolean
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          deal_id?: string | null
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          included_record_ids?: string[]
+          included_types?: Database["public"]["Enums"]["compliance_record_type"][]
+          notes?: string | null
+          page_count?: number | null
+          pdf_storage_path?: string | null
+          shared_with_client?: boolean
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          deal_id?: string | null
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          included_record_ids?: string[]
+          included_types?: Database["public"]["Enums"]["compliance_record_type"][]
+          notes?: string | null
+          page_count?: number | null
+          pdf_storage_path?: string | null
+          shared_with_client?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_pack_exports_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_pack_exports_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "client_deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compliance_records: {
+        Row: {
+          client_id: string
+          content: Json
+          created_at: string
+          deal_id: string | null
+          docusign_envelope_id: string | null
+          docusign_status: string | null
+          expires_at: string | null
+          generated_at: string
+          generated_by: string | null
+          id: string
+          is_current: boolean
+          notes: string | null
+          pdf_storage_path: string | null
+          signature_method:
+            | Database["public"]["Enums"]["signature_method"]
+            | null
+          signed_at: string | null
+          signed_by_name: string | null
+          signed_pdf_storage_path: string | null
+          status: Database["public"]["Enums"]["compliance_status"]
+          superseded_by: string | null
+          title: string
+          type: Database["public"]["Enums"]["compliance_record_type"]
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          client_id: string
+          content?: Json
+          created_at?: string
+          deal_id?: string | null
+          docusign_envelope_id?: string | null
+          docusign_status?: string | null
+          expires_at?: string | null
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          is_current?: boolean
+          notes?: string | null
+          pdf_storage_path?: string | null
+          signature_method?:
+            | Database["public"]["Enums"]["signature_method"]
+            | null
+          signed_at?: string | null
+          signed_by_name?: string | null
+          signed_pdf_storage_path?: string | null
+          status?: Database["public"]["Enums"]["compliance_status"]
+          superseded_by?: string | null
+          title: string
+          type: Database["public"]["Enums"]["compliance_record_type"]
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          client_id?: string
+          content?: Json
+          created_at?: string
+          deal_id?: string | null
+          docusign_envelope_id?: string | null
+          docusign_status?: string | null
+          expires_at?: string | null
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          is_current?: boolean
+          notes?: string | null
+          pdf_storage_path?: string | null
+          signature_method?:
+            | Database["public"]["Enums"]["signature_method"]
+            | null
+          signed_at?: string | null
+          signed_by_name?: string | null
+          signed_pdf_storage_path?: string | null
+          status?: Database["public"]["Enums"]["compliance_status"]
+          superseded_by?: string | null
+          title?: string
+          type?: Database["public"]["Enums"]["compliance_record_type"]
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_records_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_records_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "client_deals"
             referencedColumns: ["id"]
           },
         ]
@@ -4418,6 +4755,63 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "report_qa_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_signature_events: {
+        Row: {
+          compliance_record_id: string | null
+          created_at: string
+          document_id: string | null
+          docusign_envelope_id: string | null
+          event_status: string | null
+          event_type: string
+          id: string
+          occurred_at: string
+          payload: Json | null
+          recipient_email: string | null
+          recipient_name: string | null
+        }
+        Insert: {
+          compliance_record_id?: string | null
+          created_at?: string
+          document_id?: string | null
+          docusign_envelope_id?: string | null
+          event_status?: string | null
+          event_type: string
+          id?: string
+          occurred_at?: string
+          payload?: Json | null
+          recipient_email?: string | null
+          recipient_name?: string | null
+        }
+        Update: {
+          compliance_record_id?: string | null
+          created_at?: string
+          document_id?: string | null
+          docusign_envelope_id?: string | null
+          event_status?: string | null
+          event_type?: string
+          id?: string
+          occurred_at?: string
+          payload?: Json | null
+          recipient_email?: string | null
+          recipient_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_signature_events_compliance_record_id_fkey"
+            columns: ["compliance_record_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_records"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_signature_events_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "generated_documents"
             referencedColumns: ["id"]
           },
         ]
@@ -5830,6 +6224,109 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      generated_documents: {
+        Row: {
+          audit: Json | null
+          client_id: string | null
+          created_at: string
+          deal_id: string | null
+          docusign_envelope_id: string | null
+          docusign_status: string | null
+          generated_by: string | null
+          generation_payload: Json | null
+          id: string
+          pdf_storage_path: string | null
+          sent_at: string | null
+          sent_to: string[] | null
+          shared_with_client: boolean
+          signed_at: string | null
+          signed_pdf_storage_path: string | null
+          status: Database["public"]["Enums"]["generated_doc_status"]
+          submission_id: string | null
+          template_id: string | null
+          template_type: Database["public"]["Enums"]["template_doc_type"]
+          title: string
+          updated_at: string
+          viewed_at: string | null
+          voided_at: string | null
+          voided_reason: string | null
+        }
+        Insert: {
+          audit?: Json | null
+          client_id?: string | null
+          created_at?: string
+          deal_id?: string | null
+          docusign_envelope_id?: string | null
+          docusign_status?: string | null
+          generated_by?: string | null
+          generation_payload?: Json | null
+          id?: string
+          pdf_storage_path?: string | null
+          sent_at?: string | null
+          sent_to?: string[] | null
+          shared_with_client?: boolean
+          signed_at?: string | null
+          signed_pdf_storage_path?: string | null
+          status?: Database["public"]["Enums"]["generated_doc_status"]
+          submission_id?: string | null
+          template_id?: string | null
+          template_type?: Database["public"]["Enums"]["template_doc_type"]
+          title: string
+          updated_at?: string
+          viewed_at?: string | null
+          voided_at?: string | null
+          voided_reason?: string | null
+        }
+        Update: {
+          audit?: Json | null
+          client_id?: string | null
+          created_at?: string
+          deal_id?: string | null
+          docusign_envelope_id?: string | null
+          docusign_status?: string | null
+          generated_by?: string | null
+          generation_payload?: Json | null
+          id?: string
+          pdf_storage_path?: string | null
+          sent_at?: string | null
+          sent_to?: string[] | null
+          shared_with_client?: boolean
+          signed_at?: string | null
+          signed_pdf_storage_path?: string | null
+          status?: Database["public"]["Enums"]["generated_doc_status"]
+          submission_id?: string | null
+          template_id?: string | null
+          template_type?: Database["public"]["Enums"]["template_doc_type"]
+          title?: string
+          updated_at?: string
+          viewed_at?: string | null
+          voided_at?: string | null
+          voided_reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generated_documents_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "generated_documents_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "client_deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "generated_documents_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "lender_submissions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       generated_reports: {
         Row: {
@@ -8836,6 +9333,49 @@ export type Database = {
           },
         ]
       }
+      vw_broker_scorecard: {
+        Row: {
+          approvals: number | null
+          avg_days_to_settle: number | null
+          broker_id: string | null
+          commission_ytd_net: number | null
+          settlements: number | null
+          total_submissions: number | null
+        }
+        Relationships: []
+      }
+      vw_lender_mix: {
+        Row: {
+          approval_rate_pct: number | null
+          approved_count: number | null
+          declined_count: number | null
+          lender_id: string | null
+          lender_name: string | null
+          settled_count: number | null
+          total_loan_volume: number | null
+          total_submissions: number | null
+        }
+        Relationships: []
+      }
+      vw_pipeline_funnel: {
+        Row: {
+          period: string | null
+          status: Database["public"]["Enums"]["lender_submission_status"] | null
+          submission_count: number | null
+          total_loan_amount: number | null
+        }
+        Relationships: []
+      }
+      vw_revenue_dashboard: {
+        Row: {
+          clawback_net: number | null
+          entries: number | null
+          forecast_net: number | null
+          period: string | null
+          received_net: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       calculate_data_quality_score: {
@@ -9131,6 +9671,29 @@ export type Database = {
         | "manual"
         | "csv_import"
         | "backfill"
+      commission_status:
+        | "forecast"
+        | "invoiced"
+        | "received"
+        | "reconciled"
+        | "clawed_back"
+      commission_type: "upfront" | "trail" | "bonus" | "clawback"
+      compliance_record_type:
+        | "bid"
+        | "fact_find"
+        | "preliminary_assessment"
+        | "credit_guide"
+        | "privacy_consent"
+        | "fha"
+        | "best_interests_duty"
+        | "cost_disclosure"
+      compliance_status:
+        | "draft"
+        | "pending_signature"
+        | "signed"
+        | "expired"
+        | "superseded"
+        | "voided"
       deal_risk_status: "on_track" | "needs_follow_up" | "urgent"
       deal_stage_status: "pending" | "in_progress" | "complete" | "skipped"
       deal_type: "existing_property" | "house_and_land" | "refinance"
@@ -9156,6 +9719,14 @@ export type Database = {
         | "pre_budget"
         | "post_budget_second_hand"
         | "post_budget_brand_new"
+      generated_doc_status:
+        | "draft"
+        | "generated"
+        | "sent"
+        | "viewed"
+        | "signed"
+        | "voided"
+        | "expired"
       lender_doc_status: "required" | "received" | "verified" | "waived"
       lender_loan_purpose: "OWNER_OCCUPIED" | "INVESTMENT"
       lender_repayment_type: "PRINCIPAL_AND_INTEREST" | "INTEREST_ONLY"
@@ -9169,6 +9740,7 @@ export type Database = {
         | "settled"
         | "declined"
         | "withdrawn"
+      payout_status: "draft" | "pending" | "paid" | "cancelled"
       portal_report_request_status:
         | "pending"
         | "in_progress"
@@ -9187,6 +9759,17 @@ export type Database = {
         | "postcode"
         | "statewide"
       report_tier_enum: "compass" | "executive" | "snapshot"
+      signature_method: "docusign" | "wet" | "portal_consent" | "email_consent"
+      template_doc_type:
+        | "loan_application"
+        | "supporting_docs_cover"
+        | "bid"
+        | "credit_guide"
+        | "cost_disclosure"
+        | "consent_form"
+        | "fact_find"
+        | "preliminary_assessment"
+        | "generic"
       template_type:
         | "ai_structure"
         | "pdf_layout"
@@ -9450,6 +10033,32 @@ export const Constants = {
         "csv_import",
         "backfill",
       ],
+      commission_status: [
+        "forecast",
+        "invoiced",
+        "received",
+        "reconciled",
+        "clawed_back",
+      ],
+      commission_type: ["upfront", "trail", "bonus", "clawback"],
+      compliance_record_type: [
+        "bid",
+        "fact_find",
+        "preliminary_assessment",
+        "credit_guide",
+        "privacy_consent",
+        "fha",
+        "best_interests_duty",
+        "cost_disclosure",
+      ],
+      compliance_status: [
+        "draft",
+        "pending_signature",
+        "signed",
+        "expired",
+        "superseded",
+        "voided",
+      ],
       deal_risk_status: ["on_track", "needs_follow_up", "urgent"],
       deal_stage_status: ["pending", "in_progress", "complete", "skipped"],
       deal_type: ["existing_property", "house_and_land", "refinance"],
@@ -9478,6 +10087,15 @@ export const Constants = {
         "post_budget_second_hand",
         "post_budget_brand_new",
       ],
+      generated_doc_status: [
+        "draft",
+        "generated",
+        "sent",
+        "viewed",
+        "signed",
+        "voided",
+        "expired",
+      ],
       lender_doc_status: ["required", "received", "verified", "waived"],
       lender_loan_purpose: ["OWNER_OCCUPIED", "INVESTMENT"],
       lender_repayment_type: ["PRINCIPAL_AND_INTEREST", "INTEREST_ONLY"],
@@ -9492,6 +10110,7 @@ export const Constants = {
         "declined",
         "withdrawn",
       ],
+      payout_status: ["draft", "pending", "paid", "cancelled"],
       portal_report_request_status: [
         "pending",
         "in_progress",
@@ -9513,6 +10132,18 @@ export const Constants = {
         "statewide",
       ],
       report_tier_enum: ["compass", "executive", "snapshot"],
+      signature_method: ["docusign", "wet", "portal_consent", "email_consent"],
+      template_doc_type: [
+        "loan_application",
+        "supporting_docs_cover",
+        "bid",
+        "credit_guide",
+        "cost_disclosure",
+        "consent_form",
+        "fact_find",
+        "preliminary_assessment",
+        "generic",
+      ],
       template_type: [
         "ai_structure",
         "pdf_layout",
