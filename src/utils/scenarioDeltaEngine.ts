@@ -1248,6 +1248,21 @@ export function runScenarioWithInputs(
     finalExpenses2 = hemBenchmark2;
   }
 
+  // Phase I8 — DTI denominator refinement (parity with runScenario)
+  if (Array.isArray(ctx.incomeComponents) && ctx.incomeComponents.length > 0) {
+    const grossScale = ctx.baseInputs.grossAnnualIncome > 0 ? newGross2 / ctx.baseInputs.grossAnnualIncome : 1;
+    const scaledForDti = ctx.incomeComponents.map(c => ({ ...c, grossAnnual: Math.max(0, c.grossAnnual * grossScale) }));
+    const dtiDen = computeDtiDenominator({ incomeComponents: scaledForDti, fallbackGrossAnnual: newGross2 });
+    if (dtiDen.dtiAdjustedAnnualIncome < newGross2 * 0.95 && dtiDen.dtiAdjustedAnnualIncome > 0) {
+      issues.push({
+        deltaId: 'dti-denominator',
+        deltaType: 'income_change',
+        severity: 'warning',
+        message: `DTI denominator (APS 220): $${Math.round(dtiDen.dtiAdjustedAnnualIncome).toLocaleString()}/yr (${((dtiDen.dtiAdjustedAnnualIncome / newGross2) * 100).toFixed(0)}% of gross).`,
+      });
+    }
+  }
+
   const inputs: BorrowingCapacityInput = {
     ...ctx.baseInputs,
     grossAnnualIncome: newGross2,
