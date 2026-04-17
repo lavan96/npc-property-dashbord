@@ -231,13 +231,32 @@ serve(async (req) => {
     let contextBlock = "";
     if (clientContext) {
       const { baseInputs, baseResult, liabilities, properties } = clientContext;
-      contextBlock = `\n\n## Client Financial Snapshot
-**Current Borrowing Capacity**: $${baseResult?.borrowingCapacity?.toLocaleString() || "N/A"}
-**Serviceability Band**: ${baseResult?.serviceabilityBand || "N/A"}
-**Monthly Surplus**: $${baseResult?.monthlySurplus?.toLocaleString() || "N/A"}
-**DTI Ratio**: ${baseResult?.dtiRatio || "N/A"}
 
-**Income**: Gross $${baseInputs?.grossAnnualIncome?.toLocaleString() || 0}/yr | Shaded $${baseInputs?.shadedAnnualIncome?.toLocaleString() || 0}/yr
+      // Phase E (M4): Pre-compute the binding constraint so the AI stops
+      // proposing levers that don't move the actual ceiling.
+      const grossAnnualIncome = Number(baseInputs?.grossAnnualIncome || 0);
+      const dtiCap = Number(baseInputs?.dtiCapLimit || 6);
+      const dtiCapEnabled = !!baseInputs?.dtiCapEnabled;
+      const totalDebt = Number(baseInputs?.totalDebtBalances || 0);
+      const capacity = Number(baseResult?.borrowingCapacity || 0);
+      const dtiHeadroom = grossAnnualIncome > 0
+        ? (grossAnnualIncome * dtiCap - totalDebt - capacity) / Math.max(1, grossAnnualIncome * dtiCap)
+        : 1;
+      const surplus = Number(baseResult?.monthlySurplus || 0);
+
+      let bindingConstraint = "surplus (serviceability)";
+      if (dtiCapEnabled && dtiHeadroom < 0.05) bindingConstraint = `DTI cap (${dtiCap}x gross income — capacity is hard-capped here, income-growth and debt-payoff levers help most)`;
+      else if (surplus < 500) bindingConstraint = "monthly surplus (expense reduction or income growth move the needle most)";
+      else if (capacity < 100000) bindingConstraint = "low absolute capacity — focus on commitment reduction";
+
+      contextBlock = `\n\n## Client Financial Snapshot
+**Current Borrowing Capacity**: $${capacity.toLocaleString()}
+**Serviceability Band**: ${baseResult?.serviceabilityBand || "N/A"}
+**Monthly Surplus**: $${surplus.toLocaleString()}
+**DTI Ratio**: ${baseResult?.dtiRatio || "N/A"} (cap ${dtiCapEnabled ? `${dtiCap}x ENABLED` : `${dtiCap}x not enforced`})
+**🎯 Binding Constraint**: ${bindingConstraint}
+
+**Income**: Gross $${grossAnnualIncome.toLocaleString()}/yr | Shaded $${baseInputs?.shadedAnnualIncome?.toLocaleString() || 0}/yr
 **Living Expenses**: $${baseInputs?.monthlyLivingExpenses?.toLocaleString() || 0}/mo
 **Existing Commitments**: $${baseInputs?.monthlyCommitments?.toLocaleString() || 0}/mo
 **Interest Rate**: ${baseInputs?.interestRate || 0}% + ${baseInputs?.bufferRate || 0}% buffer
@@ -247,7 +266,12 @@ serve(async (req) => {
 ${(liabilities || []).map((l: any) => `- [${l.id}] ${l.label} (${l.type}): Balance $${l.balance?.toLocaleString()}, Servicing $${l.monthlyServicing?.toLocaleString()}/mo${l.limit ? `, Limit $${l.limit.toLocaleString()}` : ""}`).join("\n") || "None"}
 
 ### Properties (${properties?.length || 0})
-${(properties || []).map((p: any) => `- [${p.id}] ${p.address} (${p.property_type}): Value $${p.current_value?.toLocaleString()}, Loan $${p.loan_remaining?.toLocaleString()}, LVR ${p.current_value > 0 ? ((p.loan_remaining / p.current_value) * 100).toFixed(0) : 0}%`).join("\n") || "None"}`;
+${(properties || []).map((p: any) => `- [${p.id}] ${p.address} (${p.property_type}): Value $${p.current_value?.toLocaleString()}, Loan $${p.loan_remaining?.toLocaleString()}, LVR ${p.current_value > 0 ? ((p.loan_remaining / p.current_value) * 100).toFixed(0) : 0}%`).join("\n") || "None"}
+
+## Scenario Discipline (Phase E)
+- The binding constraint above tells you which lever moves capacity most. Prioritise it.
+- Cap any single 'incomeGrowthPercent' at 25 and 'expenseReductionPercent' at 30 unless the user explicitly pushes higher.
+- Always justify the assumption in 'reasoning' with concrete numbers from the snapshot.`;
     }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
