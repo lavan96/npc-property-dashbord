@@ -273,11 +273,8 @@ export function StrategyScenarioModeling({
   const { scenarioResult, scenarioInputs, impactBreakdown, acquisitionCapacity, validationIssues, leverAttribution } = useMemo(() => {
     const deltas: ScenarioDelta[] = [];
     const impacts: { label: string; monthlySaving: number; type: 'saving' | 'cost' | 'info' }[] = [];
-    /** F4 — short labels keyed by delta id, used to render the per-lever waterfall.
-     *  We capture the label at delta-creation time rather than re-deriving it
-     *  during the isolated replay, so the headline matches what the user toggled. */
-    const leverLabels = new Map<string, string>();
-    /** Optional cash-flow side-note ("+$420/mo" etc.) to enrich the waterfall row. */
+    /** F4 — short cash-flow side-notes per delta id, used to enrich the
+     *  per-lever waterfall row (e.g. "+$420/mo servicing saving"). */
     const leverCashflowNotes = new Map<string, string>();
 
     // 1. Debt Consolidation → liability_payoff deltas
