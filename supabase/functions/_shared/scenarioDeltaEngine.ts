@@ -691,6 +691,47 @@ function cloneContextForRun(context: ScenarioContext): ScenarioContext {
   };
 }
 
+/** Phase I10 — Mirror of `splitDebtMoves` in client engine. */
+function splitDebtMoves(
+  safeDeltas: ScenarioDelta[],
+  context: ScenarioContext,
+): { releasedCapitalDebt: number; debtRemovedByScenario: number } {
+  let released = 0;
+  let removed = 0;
+  for (const d of safeDeltas) {
+    if (d.type === 'equity_release') {
+      const property = context.properties?.find(p => p.id === d.id);
+      if (!property || property.currentValue <= 0) continue;
+      const lvr = resolveLvrCap({
+        lenderId: context.baseInputs.currentLenderProfileId,
+        intent: inferPropertyIntent(property.propertyType, 'investment'),
+        kind: inferPropertyKind(property.propertyType),
+        isFirstHomeBuyer: !!context.acquisition?.isFirstHomeBuyer,
+        isForeignBuyer: !!context.acquisition?.isForeignBuyer,
+        explicitCap: d.meta?.lenderMaxLVR as number | undefined,
+      });
+      const targetLvr = d.unit === 'absolute'
+        ? Math.min(lvr.cap, (property.loanRemaining + Math.max(0, d.value)) / property.currentValue)
+        : (d.unit === 'percent' ? d.value / 100 : d.value);
+      released += Math.max(0, (Math.min(targetLvr, lvr.cap) * property.currentValue) - property.loanRemaining);
+    } else if (d.type === 'portfolio_lvr_release') {
+      const target = d.unit === 'percent' ? d.value / 100 : d.value;
+      const ids = (d.meta?.propertyIds as string[] | undefined) || [];
+      const members = (context.properties || []).filter(p => ids.includes(p.id));
+      const totalValue = members.reduce((s, p) => s + (p.currentValue || 0), 0);
+      const totalDebt = members.reduce((s, p) => s + (p.loanRemaining || 0), 0);
+      released += Math.max(0, target * totalValue - totalDebt);
+    } else if (d.type === 'property_sell') {
+      const p = context.properties?.find(x => x.id === d.id);
+      if (p && p.loanRemaining > 0) removed += p.loanRemaining;
+    } else if (d.type === 'liability_payoff') {
+      const l = context.liabilities?.find(x => x.id === d.id);
+      if (l) removed += Math.max(0, l.balance || 0);
+    }
+  }
+  return { releasedCapitalDebt: released, debtRemovedByScenario: removed };
+}
+
 /** Phase G1 — `property_value_change` deltas resolve BEFORE other property-bound deltas
  *  so downstream equity/refinance/pool math sees the new currentValue. */
 function orderDeltas(deltas: ScenarioDelta[]): ScenarioDelta[] {
