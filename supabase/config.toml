@@ -498,3 +498,24 @@ request_timeout = 300
 [functions.dispatch-marketing-reports]
 verify_jwt = false
 request_timeout = 300
+
+[functions.finance-portal-login]
+verify_jwt = false
+
+[functions.finance-portal-verify]
+verify_jwt = false
+
+[functions.finance-portal-logout]
+verify_jwt = false
+
+[functions.finance-portal-forgot-password]
+verify_jwt = false
+
+[functions.finance-portal-reset-password]
+verify_jwt = false
+
+[functions.finance-portal-invite]
+verify_jwt = true
+
+[functions.finance-portal-accept-invite]
+verify_jwt = false

@@ -1,0 +1,124 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
+import { createCorsHeaders } from "../_shared/auth.ts"
+
+function extractFinanceSessionToken(headers: Headers, body?: any): string | null {
+  const headerToken = headers.get('x-finance-session-token');
+  if (headerToken) return headerToken;
+  if (body?.finance_session_token) return body.finance_session_token;
+  const sessionHeader = headers.get('x-session-token');
+  if (sessionHeader) return sessionHeader;
+  if (body?.session_token) return body.session_token;
+  return null;
+}
+
+serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = createCorsHeaders(origin);
+
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+    let sessionToken: string | null = null;
+    let action: string | null = null;
+    try {
+      const body = await req.json();
+      sessionToken = extractFinanceSessionToken(req.headers, body);
+      action = body?.action || null;
+    } catch {
+      sessionToken = extractFinanceSessionToken(req.headers);
+    }
+
+    if (!sessionToken) {
+      return new Response(
+        JSON.stringify({ error: 'Session token is required', valid: false }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const { data: portalUser, error } = await supabase
+      .from('finance_portal_users')
+      .select(`
+        id, finance_contact_id, email, is_active, revoked_at,
+        has_accepted_terms, has_completed_onboarding,
+        session_expires_at,
+        finance_agent_contacts:finance_contact_id (id, name, company, contact_type, is_active)
+      `)
+      .eq('session_token', sessionToken)
+      .maybeSingle()
+
+    if (error || !portalUser || !portalUser.is_active || portalUser.revoked_at) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid or expired session', valid: false }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (!portalUser.session_expires_at || new Date(portalUser.session_expires_at) < new Date()) {
+      return new Response(
+        JSON.stringify({ error: 'Session expired', valid: false }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const contact = portalUser.finance_agent_contacts as any;
+    if (!contact || !contact.is_active) {
+      return new Response(
+        JSON.stringify({ error: 'Linked finance contact is no longer active', valid: false }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (action === 'accept_terms') {
+      await supabase
+        .from('finance_portal_users')
+        .update({ has_accepted_terms: true, terms_accepted_at: new Date().toISOString() })
+        .eq('id', portalUser.id)
+      return new Response(
+        JSON.stringify({ success: true }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (action === 'complete_onboarding') {
+      await supabase
+        .from('finance_portal_users')
+        .update({ has_completed_onboarding: true })
+        .eq('id', portalUser.id)
+      return new Response(
+        JSON.stringify({ success: true }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    return new Response(
+      JSON.stringify({
+        valid: true,
+        user: {
+          id: portalUser.id,
+          finance_contact_id: portalUser.finance_contact_id,
+          email: portalUser.email,
+          name: contact.name,
+          company: contact.company,
+          contact_type: contact.contact_type,
+          has_accepted_terms: portalUser.has_accepted_terms,
+          has_completed_onboarding: portalUser.has_completed_onboarding,
+        },
+        session_token: sessionToken,
+      }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  } catch (error: any) {
+    console.error('Finance portal verify error:', error)
+    return new Response(
+      JSON.stringify({ error: 'Internal server error', valid: false }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  }
+})
