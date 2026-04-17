@@ -133,8 +133,9 @@ function buildPlainTextBrief(report: RationaleReport, fmt: (n: number) => string
   return lines.join('\n');
 }
 
-export function StrategyRationalePanel({ report, formatCurrency }: StrategyRationalePanelProps) {
+export function StrategyRationalePanel({ report, formatCurrency, pdfContext }: StrategyRationalePanelProps) {
   const [copied, setCopied] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const briefText = useMemo(() => buildPlainTextBrief(report, formatCurrency), [report, formatCurrency]);
 
   const handleCopy = async () => {
@@ -145,6 +146,30 @@ export function StrategyRationalePanel({ report, formatCurrency }: StrategyRatio
       setTimeout(() => setCopied(false), 2200);
     } catch {
       toast.error('Could not copy — clipboard access denied');
+    }
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!pdfContext) return;
+    setDownloading(true);
+    const toastId = 'rationale-pdf';
+    toast.loading('Generating Strategy Rationale PDF…', { id: toastId });
+    try {
+      const { blob, fileName } = await generateStrategyRationalePDF(report, pdfContext);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success('Strategy Rationale PDF downloaded', { id: toastId });
+    } catch (e) {
+      console.error('Rationale PDF generation failed', e);
+      toast.error('Could not generate PDF — see console', { id: toastId });
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -167,17 +192,17 @@ export function StrategyRationalePanel({ report, formatCurrency }: StrategyRatio
               </p>
             </div>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleCopy}
-            className="shrink-0"
-          >
-            {copied ? (
-              <>
-                <ClipboardCheck className="h-3.5 w-3.5 mr-1.5" />
-                Copied
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleCopy}
+            >
+              {copied ? (
+                <>
+                  <ClipboardCheck className="h-3.5 w-3.5 mr-1.5" />
+                  Copied
               </>
             ) : (
               <>
