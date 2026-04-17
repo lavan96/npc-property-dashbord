@@ -86,6 +86,8 @@ export function PurchasePowerHeadline({
   formatCurrency,
   baseTheoreticalCapacity,
   scenarioTheoreticalCapacity,
+  baseRawSurplus,
+  scenarioRawSurplus,
   floorActive = false,
 }: PurchasePowerHeadlineProps) {
   const capacityChange = scenarioCapacity - baseCapacity;
