@@ -166,6 +166,12 @@ interface StrategyScenarioModelingProps {
   clientId?: string;
   /** Optional client display name — used in PDF exports (F6 Finance Hand-off). */
   clientName?: string;
+  /** Phase I1 — typed income components for lender-aware re-shading. */
+  incomeComponents?: import('@/utils/lenderShadingProfiles').ScenarioIncomeComponent[];
+  /** Phase I1 — current lender profile id (defaults to bank_standard). */
+  currentLenderProfileId?: string;
+  /** Phase I2 — monthly HEM benchmark; engine floors expenses here. */
+  hemBenchmark?: number;
 }
 
 // ── Helpers ────────────────────────────────────────────
