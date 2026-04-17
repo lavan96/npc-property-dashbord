@@ -291,7 +291,7 @@ export function StrategyScenarioModeling({
   // selections into ScenarioDelta[] and delegates to the same engine that the
   // edge function uses. This eliminates client/server drift entirely.
 
-  const { scenarioResult, scenarioInputs, impactBreakdown, acquisitionCapacity, validationIssues, leverAttribution, appliedDeltas } = useMemo(() => {
+  const { scenarioResult, scenarioInputs, impactBreakdown, acquisitionCapacity, validationIssues, leverAttribution, appliedDeltas, baseTheoreticalCapacity, scenarioTheoreticalCapacity, floorActive } = useMemo(() => {
     const deltas: ScenarioDelta[] = [];
     const impacts: { label: string; monthlySaving: number; type: 'saving' | 'cost' | 'info' }[] = [];
     /** F4 — short cash-flow side-notes per delta id, used to enrich the
@@ -1672,6 +1672,9 @@ export function StrategyScenarioModeling({
             acquisitionCapacity={acquisition.enabled ? acquisitionCapacity : null}
             leverAttribution={leverAttribution}
             formatCurrency={formatCurrency}
+            baseTheoreticalCapacity={baseTheoreticalCapacity}
+            scenarioTheoreticalCapacity={scenarioTheoreticalCapacity}
+            floorActive={floorActive}
           />
 
           {/* F5 + F6 — Strategy rationale (finance-ready) with PDF export */}
