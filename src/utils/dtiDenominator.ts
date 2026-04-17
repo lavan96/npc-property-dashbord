@@ -27,7 +27,7 @@
  *  - `borrowingCapacityCalculations.ts::calculateBorrowingCapacity` (base)
  */
 
-import type { ScenarioIncomeComponent, IncomeComponentType } from '@/utils/types';
+import type { ScenarioIncomeComponent } from './lenderShadingProfiles';
 
 /** Per-component DTI inclusion ratio (NOT shading — this is the % of
  *  the GROSS amount that counts toward the DTI denominator). Most lenders
