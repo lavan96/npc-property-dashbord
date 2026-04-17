@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { callLLMRaw } from '../_shared/llmRouter.ts';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -76,27 +77,19 @@ async function queryPerplexity(prompt: string, apiKey: string, systemPrompt?: st
 
 // ─── AI Analysis via Lovable Gateway ─────────────────────────────────────────
 
-async function callGemini(prompt: string, apiKey: string, maxTokens: number = 4000): Promise<string> {
-  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'google/gemini-2.5-flash',
-      messages: [
-        { role: 'system', content: 'You are an expert performance marketing strategist specialising in Australian property investment digital advertising. You produce data-driven, actionable analysis with specific numbers and clear recommendations. Format your output using Markdown with bold text, headers, bullet points, and tables where appropriate.' },
-        { role: 'user', content: prompt },
-      ],
-      temperature: 0.3,
-      max_tokens: maxTokens,
-    }),
+async function callGemini(prompt: string, _apiKey: string, maxTokens: number = 4000): Promise<string> {
+  const response = await callLLMRaw({
+    agentKey: 'meta_ads_benchmarks',
+    messages: [
+      { role: 'system', content: 'You are an expert performance marketing strategist specialising in Australian property investment digital advertising. You produce data-driven, actionable analysis with specific numbers and clear recommendations. Format your output using Markdown with bold text, headers, bullet points, and tables where appropriate.' },
+      { role: 'user', content: prompt },
+    ],
+    maxTokens,
   });
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(`AI Gateway error [${response.status}]: ${text}`);
+    throw new Error(`AI Router error [${response.status}]: ${text}`);
   }
 
   const data = await response.json();

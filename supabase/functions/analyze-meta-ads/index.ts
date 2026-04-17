@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { callLLMRaw } from '../_shared/llmRouter.ts';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -448,19 +449,12 @@ Example warning block:
 Do NOT output raw plain text paragraphs — structure everything using these blocks.`;
 
   try {
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-3-flash-preview',
-        messages: [
-          { role: 'system', content: 'You are a senior performance marketing analyst specializing in property and real estate advertising in Australia. Provide data-driven insights with specific numbers and actionable recommendations.' },
-          { role: 'user', content: prompt },
-        ],
-      }),
+    const response = await callLLMRaw({
+      agentKey: 'meta_ads_digest',
+      messages: [
+        { role: 'system', content: 'You are a senior performance marketing analyst specializing in property and real estate advertising in Australia. Provide data-driven insights with specific numbers and actionable recommendations.' },
+        { role: 'user', content: prompt },
+      ],
     });
 
     if (!response.ok) {
