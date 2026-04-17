@@ -684,11 +684,20 @@ export function StrategyScenarioModeling({
               // Map DTI cap override
               const dtiOverride = scenario.adjustments.dtiCapOverride;
 
+              // Phase F1 — map per-property rate changes
+              const rateOverrides = new Map<string, number>();
+              (scenario.adjustments.propertyRateChanges || []).forEach(({ propertyId, newRate }) => {
+                if (propertyId && Number.isFinite(newRate) && newRate > 0) {
+                  rateOverrides.set(propertyId, newRate);
+                }
+              });
+
               return {
                 ...prev,
                 consolidatedLiabilities: new Set(scenario.adjustments.consolidatedLiabilityIds || []),
                 refinancedToIO: new Set(scenario.adjustments.refinancedToIOPropertyIds || []),
                 rateAdjustment: scenario.adjustments.rateAdjustment || 0,
+                propertyRateOverrides: rateOverrides,
                 equityReleaseEnabled: !!eqRelease,
                 equityReleasePropertyIds: newPropertyIds,
                 equityReleaseTargetLVRs: newTargetLVRs,
@@ -705,7 +714,7 @@ export function StrategyScenarioModeling({
               };
             });
 
-          // Phase D: also map AI acquisition block into the acquisition state
+          // Phase D + F2: also map AI acquisition block into the acquisition state
           const acq = scenario.adjustments.acquisition;
           if (acq) {
             setAcquisition(prev => ({
@@ -718,6 +727,7 @@ export function StrategyScenarioModeling({
               isForeignBuyer: prev.isForeignBuyer,
               lmiMode: acq.lmiMode ?? prev.lmiMode,
               cashOnHand: acq.cashOnHand ?? prev.cashOnHand,
+              targetPurchasePrice: acq.targetPurchasePrice ?? prev.targetPurchasePrice,
             }));
           }
 
