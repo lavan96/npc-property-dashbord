@@ -843,8 +843,15 @@ export function computeAcquisitionCapacity(
     };
   }
 
-  // Iterate up to 6 times — each pass refines stamp duty, LMI on a higher
-  // property price, and the resulting purchase ceiling.
+  // Phase I15 — Aitken Δ² accelerated fix-point convergence.
+  // The map P → newPrice(P) couples stamp duty (piecewise-linear in P), LMI
+  // (piecewise in LVR × loan), and other costs. The prior fixed 6-iteration
+  // loop oscillated by ±$1–3k near LVR/SD breakpoints in `debt_capitalised`
+  // mode (because LMI feeds back into loan, which feeds back into LMI).
+  // Aitken acceleration extrapolates from three successive iterates
+  // (P0, P1, P2) to the fix-point limit, collapsing oscillations in 2–3
+  // outer steps. We fall back to plain iteration when the denominator is
+  // near zero (already converged) or when the accelerator overshoots.
   let purchasePrice = borrowingCapacity + cashAvailable;
   let lmi = 0;
   let stampDuty = 0;
@@ -852,32 +859,24 @@ export function computeAcquisitionCapacity(
   let loanAvail = borrowingCapacity;
   let loanCappedByLvr = false;
 
-  for (let i = 0; i < 6; i++) {
-    // Stamp duty + other costs on the current candidate price
+  const stepFn = (P: number): number => {
     const sdResult = calculateStampDuty({
-      propertyValue: purchasePrice,
+      propertyValue: P,
       state, intent, category,
       isFirstHomeBuyer: isFhb,
       isForeignBuyer: isForeign,
     });
     stampDuty = sdResult.totalDuty;
-    otherCosts = estimateOtherAcquisitionCosts(purchasePrice).total;
-
-    // Loan size required for this purchase = price − cashAvailable
-    const requiredLoan = Math.max(0, purchasePrice - cashAvailable);
-    // Phase I9 — bind required loan to (a) serviceable capacity AND
-    // (b) the per-security LVR cap (loan ≤ price × cap). The lender
-    // will never advance more than its policy cap on this security.
-    const lvrCapDollar = Math.max(0, purchasePrice * acquisitionLvrCap);
+    otherCosts = estimateOtherAcquisitionCosts(P).total;
+    const requiredLoan = Math.max(0, P - cashAvailable);
+    const lvrCapDollar = Math.max(0, P * acquisitionLvrCap);
     const cappedLoan = Math.min(borrowingCapacity, requiredLoan, lvrCapDollar);
     if (lvrCapDollar < Math.min(borrowingCapacity, requiredLoan)) {
       loanCappedByLvr = true;
     }
-
-    // LMI on the acquisition loan (LVR = loan / price)
     if (lmiMode !== 'none') {
       const est = estimateLMI({
-        propertyValue: purchasePrice,
+        propertyValue: P,
         depositAmount: cashAvailable,
         loanAmount: cappedLoan,
         isFirstHomeBuyer: isFhb,
@@ -886,24 +885,29 @@ export function computeAcquisitionCapacity(
     } else {
       lmi = 0;
     }
-
-    // Recompute loan-available-for-purchase based on LMI mode
-    if (lmiMode === 'debt_capitalised') {
-      loanAvail = Math.max(0, Math.min(borrowingCapacity, lvrCapDollar) - lmi);
-    } else {
-      loanAvail = Math.min(borrowingCapacity, lvrCapDollar);
-    }
-
-    // New purchase ceiling = loan + cash − LMI (display) − stamp duty − other
+    loanAvail = lmiMode === 'debt_capitalised'
+      ? Math.max(0, Math.min(borrowingCapacity, lvrCapDollar) - lmi)
+      : Math.min(borrowingCapacity, lvrCapDollar);
     const lmiCashDeduction = lmiMode === 'display_deduction' ? lmi : 0;
-    const newPrice = Math.max(0, loanAvail + cashAvailable - lmiCashDeduction - stampDuty - otherCosts);
+    return Math.max(0, loanAvail + cashAvailable - lmiCashDeduction - stampDuty - otherCosts);
+  };
 
-    if (Math.abs(newPrice - purchasePrice) < 1000) {
-      purchasePrice = newPrice;
-      break;
-    }
-    purchasePrice = newPrice;
+  for (let i = 0; i < 5; i++) {
+    const P0 = purchasePrice;
+    const P1 = stepFn(P0);
+    if (Math.abs(P1 - P0) < 250) { purchasePrice = P1; break; }
+    const P2 = stepFn(P1);
+    if (Math.abs(P2 - P1) < 250) { purchasePrice = P2; break; }
+    const denom = P2 - 2 * P1 + P0;
+    const Pstar = Math.abs(denom) > 1
+      ? P0 - ((P1 - P0) * (P1 - P0)) / denom
+      : P2;
+    // Damp pathological accelerator outputs back to the last iterate.
+    purchasePrice = (Pstar > 0 && Pstar < P2 * 2) ? Pstar : P2;
+    if (Math.abs(purchasePrice - P2) < 250) break;
   }
+  // Final settle-pass refreshes stampDuty/lmi/loanAvail at the converged price.
+  purchasePrice = stepFn(purchasePrice);
 
   if (lmi > 0) notes.push(`LMI ${lmiMode === 'debt_capitalised' ? 'capitalised onto loan' : 'deducted from settlement cash'}: $${Math.round(lmi).toLocaleString()}`);
   if (stampDuty > 0) notes.push(`${state} stamp duty: $${Math.round(stampDuty).toLocaleString()} (${intent}${isFhb ? ', FHB' : ''})`);
