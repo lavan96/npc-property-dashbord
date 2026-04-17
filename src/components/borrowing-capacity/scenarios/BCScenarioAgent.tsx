@@ -58,7 +58,7 @@ interface BCScenarioAgentProps {
   baseResult: BorrowingCapacityResult;
   liabilities: LiabilityItem[];
   properties: PropertyItem[];
-  onApplyScenario: (scenario: AIScenario) => void;
+  onApplyScenario: (scenario: AIScenario) => void | string | Promise<string | void>;
   /** Optional client identifier — used to scope persisted chat history per client. */
   clientId?: string;
 }
@@ -276,7 +276,14 @@ export function BCScenarioAgent({
 
   const handleApply = (scenario: AIScenario, index: number) => {
     setAppliedIndex(index);
-    onApplyScenario(scenario);
+    // Phase E (L1): callback may return engine-reconciled impact string —
+    // update the badge so users see verified math, not just AI estimate.
+    const maybe = onApplyScenario(scenario) as unknown;
+    Promise.resolve(maybe as Promise<string | void> | string | void).then((reconciled) => {
+      if (typeof reconciled === 'string' && reconciled.length > 0) {
+        setScenarios(prev => prev.map((s, i) => i === index ? { ...s, reconciledImpact: reconciled } : s));
+      }
+    }).catch(() => {/* non-fatal */});
     toast.success(`"${scenario.name}" applied to strategy levers`);
   };
 
