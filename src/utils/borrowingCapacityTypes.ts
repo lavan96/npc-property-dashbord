@@ -209,8 +209,9 @@ export interface ScenarioDelta {
   value: number;
   /** Unit hint */
   unit: ScenarioDeltaUnit;
-  /** Optional payload for richer deltas (e.g. equity_release target LVR, dti cap toggle) */
-  meta?: Record<string, number | string | boolean | null>;
+  /** Optional payload for richer deltas (e.g. equity_release target LVR, dti cap toggle,
+   *  pool propertyIds for portfolio_lvr_release, basis/source for property_value_change) */
+  meta?: Record<string, number | string | boolean | string[] | null>;
 }
 
 /** Phase C: Acquisition Capacity — what the client can ACTUALLY purchase
