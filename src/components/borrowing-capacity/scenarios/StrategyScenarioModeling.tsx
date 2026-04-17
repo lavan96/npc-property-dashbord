@@ -1624,6 +1624,39 @@ export function StrategyScenarioModeling({
               effectivePurchasePower: acquisition.enabled && acquisitionCapacity ? acquisitionCapacity.maxPurchasePrice : null,
               targetPurchasePrice: acquisition.enabled && acquisitionCapacity?.targetPurchasePrice ? acquisitionCapacity.targetPurchasePrice : null,
               meetsTarget: acquisition.enabled && acquisitionCapacity ? (acquisitionCapacity.meetsTarget ?? null) : null,
+              valuationAssumptions: strategy.additional.valuationOverrides.size > 0
+                ? Array.from(strategy.additional.valuationOverrides.values()).map(v => {
+                    const prop = properties.find(p => p.id === v.propertyId);
+                    return {
+                      address: prop?.address || v.propertyId,
+                      originalValue: prop?.current_value || 0,
+                      newValue: v.newValue,
+                      basis: v.basis,
+                      source: v.source,
+                    };
+                  })
+                : undefined,
+              crossCollatPool: strategy.additional.crossCollatPool.enabled && strategy.additional.crossCollatPool.propertyIds.size > 0
+                ? (() => {
+                    const memberIds = Array.from(strategy.additional.crossCollatPool.propertyIds);
+                    const members = memberIds.map(id => properties.find(p => p.id === id)).filter(Boolean) as PropertyItem[];
+                    const overrides = strategy.additional.valuationOverrides;
+                    const totalPoolValue = members.reduce((s, m) => s + (overrides.get(m.id)?.newValue ?? m.current_value), 0);
+                    const totalPoolDebt = members.reduce((s, m) => s + (m.loan_remaining || 0), 0);
+                    const targetTotalDebt = totalPoolValue * strategy.additional.crossCollatPool.blendedTargetLVR;
+                    const poolReleaseAmount = Math.max(0, targetTotalDebt - totalPoolDebt);
+                    return {
+                      enabled: true,
+                      propertyAddresses: members.map(m => m.address || m.id),
+                      blendedTargetLVR: strategy.additional.crossCollatPool.blendedTargetLVR,
+                      lenderMaxLVR: strategy.additional.crossCollatPool.lenderMaxLVR,
+                      allocationStrategy: strategy.additional.crossCollatPool.allocationStrategy,
+                      totalPoolValue,
+                      totalPoolDebt,
+                      poolReleaseAmount,
+                    };
+                  })()
+                : null,
             } : undefined}
           />
 
