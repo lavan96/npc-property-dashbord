@@ -142,6 +142,9 @@ export interface DeltaEffect {
   debtBalanceAdjustment: number;
   dtiCapEnabled?: boolean;
   dtiCapLimit?: number;
+  /** Phase I1 — when set, the lender profile id to apply during
+   *  aggregation. Triggers a full re-shade of `incomeComponents`. */
+  lenderProfileOverride?: string;
   releasedCapital: number;
   acquisitionNotes: string[];
   description: string;
