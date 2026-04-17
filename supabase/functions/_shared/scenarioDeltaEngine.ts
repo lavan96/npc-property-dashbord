@@ -379,14 +379,25 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
       const property = context.properties.find(p => p.id === delta.id);
       if (property && property.loanRemaining > 0) {
         const cur = property.loanRepaymentAmount || property.monthlyRepayment || 0;
-        // Phase F1 — per-property rate
         const propRate = property.interestRate ?? context.baseInputs.interestRate;
         const ioRate = propRate / 100 / 12;
-        const io = property.loanRemaining * ioRate;
-        const saving = Math.max(0, cur - io);
+        const autoIo = property.loanRemaining * ioRate;
+        // Phase 3 — granular refinance controls
+        const manualRepayment = (delta.meta as any)?.manualRepayment as number | undefined;
+        const ioPeriodYears = (delta.meta as any)?.ioPeriodYears as number | undefined;
+        const newRep = Number.isFinite(manualRepayment as number) && (manualRepayment as number) >= 0
+          ? (manualRepayment as number)
+          : autoIo;
+        const saving = Math.max(0, cur - newRep);
         if (saving > 0) effect.commitmentAdjustment = -saving;
-        effect.acquisitionNotes.push(`Refinance ${property.address?.slice(0, 30) || 'property'} P&I→IO @ ${propRate.toFixed(2)}%: −$${Math.round(saving).toLocaleString()}/mo`);
-        effect.description = `Refinance ${property.address?.slice(0, 30) || 'property'} to IO`;
+        const repayLabel = Number.isFinite(manualRepayment as number)
+          ? `manual $${Math.round(manualRepayment as number).toLocaleString()}/mo`
+          : `IO @ ${propRate.toFixed(2)}%`;
+        const periodLabel = Number.isFinite(ioPeriodYears as number) && (ioPeriodYears as number) > 0
+          ? ` (${ioPeriodYears}yr IO period)`
+          : '';
+        effect.acquisitionNotes.push(`Refinance ${property.address?.slice(0, 30) || 'property'} → ${repayLabel}${periodLabel}: −$${Math.round(saving).toLocaleString()}/mo`);
+        effect.description = `Refinance ${property.address?.slice(0, 30) || 'property'} to IO${periodLabel}`;
       }
       break;
     }
