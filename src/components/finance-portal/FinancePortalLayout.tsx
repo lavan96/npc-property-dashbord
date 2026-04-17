@@ -3,7 +3,7 @@ import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
 import { Button } from '@/components/ui/button';
 import {
-  Building2, LayoutDashboard, Users, LogOut, Menu, MessageSquare,
+  Building2, LayoutDashboard, Users, LogOut, Menu, MessageSquare, Wallet,
 } from 'lucide-react';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -18,6 +18,8 @@ import { FinancePortalNotificationBell } from './FinancePortalNotificationBell';
 const NAV_ITEMS = [
   { to: '/finance', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/finance/clients', label: 'My Clients', icon: Users, end: false },
+  { to: '/finance/messages', label: 'Messages', icon: MessageSquare, end: false },
+  { to: '/finance/earnings', label: 'Earnings', icon: Wallet, end: false },
 ];
 
 function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {

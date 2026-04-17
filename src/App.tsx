@@ -52,6 +52,7 @@ import FinancePortalAdmin from "./pages/admin/FinancePortalAdmin";
 import FinancePortalAnalytics from "./pages/admin/FinancePortalAnalytics";
 import FinancePortalBulkImport from "./pages/admin/FinancePortalBulkImport";
 import FinancePortalCompliance from "./pages/admin/FinancePortalCompliance";
+import FinancePortalCommissions from "./pages/admin/FinancePortalCommissions";
 import ActivityLogs from "./pages/ActivityLogs";
 import { DepreciationCompsAdmin } from "./components/admin/DepreciationCompsAdmin";
 import Integrations from "./pages/Integrations";
@@ -96,6 +97,7 @@ import FinancePortalDashboard from "./pages/finance-portal/FinancePortalDashboar
 import FinancePortalClients from "./pages/finance-portal/FinancePortalClients";
 import FinancePortalClientProfile from "./pages/finance-portal/FinancePortalClientProfile";
 import FinancePortalMessages from "./pages/finance-portal/FinancePortalMessages";
+import FinancePortalEarnings from "./pages/finance-portal/FinancePortalEarnings";
 
 const queryClient = new QueryClient();
 
@@ -206,6 +208,7 @@ const App = () => (
                           <Route path="clients" element={<FinancePortalClients />} />
                           <Route path="clients/:clientId" element={<FinancePortalClientProfile />} />
                           <Route path="messages" element={<FinancePortalMessages />} />
+                          <Route path="earnings" element={<FinancePortalEarnings />} />
                         </Route>
 
                         {/* Internal Dashboard Routes */}
@@ -253,6 +256,7 @@ const App = () => (
                 <Route path="admin/finance-portal/analytics" element={<ModuleGuard moduleKey="finance_portal_admin"><FinancePortalAnalytics /></ModuleGuard>} />
                 <Route path="admin/finance-portal/bulk-import" element={<ModuleGuard moduleKey="finance_portal_admin"><FinancePortalBulkImport /></ModuleGuard>} />
                 <Route path="admin/finance-portal/compliance" element={<ModuleGuard moduleKey="finance_portal_admin"><FinancePortalCompliance /></ModuleGuard>} />
+                <Route path="admin/finance-portal/commissions" element={<ModuleGuard moduleKey="finance_portal_admin"><FinancePortalCommissions /></ModuleGuard>} />
                 <Route path="admin/activity-logs" element={<ModuleGuard moduleKey="activity_logs"><ActivityLogs /></ModuleGuard>} />
                 <Route path="admin/depreciation-comps" element={<ModuleGuard moduleKey="depreciation_comps"><DepreciationCompsAdmin /></ModuleGuard>} />
                 <Route path="integrations" element={<ModuleGuard moduleKey="integrations"><Integrations /></ModuleGuard>} />

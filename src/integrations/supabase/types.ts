@@ -4600,48 +4600,346 @@ export type Database = {
       }
       finance_agent_contacts: {
         Row: {
+          abn: string | null
+          bank_account_name: string | null
+          bank_account_number: string | null
+          bank_bsb: string | null
           company: string | null
           contact_type: string | null
           created_at: string
           created_by: string | null
+          default_commission_basis: string | null
+          default_commission_rate_pct: number | null
           email: string
+          gst_registered: boolean | null
           id: string
           is_active: boolean | null
           is_default: boolean | null
           name: string
           notes: string | null
+          payment_method: string | null
           updated_at: string
         }
         Insert: {
+          abn?: string | null
+          bank_account_name?: string | null
+          bank_account_number?: string | null
+          bank_bsb?: string | null
           company?: string | null
           contact_type?: string | null
           created_at?: string
           created_by?: string | null
+          default_commission_basis?: string | null
+          default_commission_rate_pct?: number | null
           email: string
+          gst_registered?: boolean | null
           id?: string
           is_active?: boolean | null
           is_default?: boolean | null
           name: string
           notes?: string | null
+          payment_method?: string | null
           updated_at?: string
         }
         Update: {
+          abn?: string | null
+          bank_account_name?: string | null
+          bank_account_number?: string | null
+          bank_bsb?: string | null
           company?: string | null
           contact_type?: string | null
           created_at?: string
           created_by?: string | null
+          default_commission_basis?: string | null
+          default_commission_rate_pct?: number | null
           email?: string
+          gst_registered?: boolean | null
           id?: string
           is_active?: boolean | null
           is_default?: boolean | null
           name?: string
           notes?: string | null
+          payment_method?: string | null
           updated_at?: string
         }
         Relationships: [
           {
             foreignKeyName: "finance_agent_contacts_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_partner_commissions: {
+        Row: {
+          basis_amount: number
+          build_payment_id: string | null
+          client_id: string | null
+          client_name_snapshot: string | null
+          commission_basis: string
+          created_at: string
+          created_by: string | null
+          deal_id: string | null
+          deal_type_snapshot: string | null
+          finance_contact_id: string
+          gross_amount: number
+          gst_amount: number
+          id: string
+          invoice_date: string | null
+          invoice_ref: string | null
+          net_amount: number
+          notes: string | null
+          paid_at: string | null
+          partner_company_snapshot: string | null
+          partner_name_snapshot: string | null
+          rate_pct: number
+          statement_id: string | null
+          status: string
+          trigger_event: string | null
+          updated_at: string
+        }
+        Insert: {
+          basis_amount?: number
+          build_payment_id?: string | null
+          client_id?: string | null
+          client_name_snapshot?: string | null
+          commission_basis?: string
+          created_at?: string
+          created_by?: string | null
+          deal_id?: string | null
+          deal_type_snapshot?: string | null
+          finance_contact_id: string
+          gross_amount?: number
+          gst_amount?: number
+          id?: string
+          invoice_date?: string | null
+          invoice_ref?: string | null
+          net_amount?: number
+          notes?: string | null
+          paid_at?: string | null
+          partner_company_snapshot?: string | null
+          partner_name_snapshot?: string | null
+          rate_pct?: number
+          statement_id?: string | null
+          status?: string
+          trigger_event?: string | null
+          updated_at?: string
+        }
+        Update: {
+          basis_amount?: number
+          build_payment_id?: string | null
+          client_id?: string | null
+          client_name_snapshot?: string | null
+          commission_basis?: string
+          created_at?: string
+          created_by?: string | null
+          deal_id?: string | null
+          deal_type_snapshot?: string | null
+          finance_contact_id?: string
+          gross_amount?: number
+          gst_amount?: number
+          id?: string
+          invoice_date?: string | null
+          invoice_ref?: string | null
+          net_amount?: number
+          notes?: string | null
+          paid_at?: string | null
+          partner_company_snapshot?: string | null
+          partner_name_snapshot?: string | null
+          rate_pct?: number
+          statement_id?: string | null
+          status?: string
+          trigger_event?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_partner_commissions_build_payment_id_fkey"
+            columns: ["build_payment_id"]
+            isOneToOne: false
+            referencedRelation: "build_progress_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_partner_commissions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_partner_commissions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_partner_commissions_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "client_deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_partner_commissions_finance_contact_id_fkey"
+            columns: ["finance_contact_id"]
+            isOneToOne: false
+            referencedRelation: "finance_agent_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fpc_statement_fk"
+            columns: ["statement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_partner_statements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_partner_statement_lines: {
+        Row: {
+          accrual_date: string | null
+          basis_snapshot: string | null
+          client_name_snapshot: string | null
+          commission_id: string
+          created_at: string
+          deal_type_snapshot: string | null
+          gross_snapshot: number | null
+          gst_snapshot: number | null
+          id: string
+          net_snapshot: number | null
+          rate_pct_snapshot: number | null
+          statement_id: string
+          trigger_event_snapshot: string | null
+        }
+        Insert: {
+          accrual_date?: string | null
+          basis_snapshot?: string | null
+          client_name_snapshot?: string | null
+          commission_id: string
+          created_at?: string
+          deal_type_snapshot?: string | null
+          gross_snapshot?: number | null
+          gst_snapshot?: number | null
+          id?: string
+          net_snapshot?: number | null
+          rate_pct_snapshot?: number | null
+          statement_id: string
+          trigger_event_snapshot?: string | null
+        }
+        Update: {
+          accrual_date?: string | null
+          basis_snapshot?: string | null
+          client_name_snapshot?: string | null
+          commission_id?: string
+          created_at?: string
+          deal_type_snapshot?: string | null
+          gross_snapshot?: number | null
+          gst_snapshot?: number | null
+          id?: string
+          net_snapshot?: number | null
+          rate_pct_snapshot?: number | null
+          statement_id?: string
+          trigger_event_snapshot?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_partner_statement_lines_commission_id_fkey"
+            columns: ["commission_id"]
+            isOneToOne: false
+            referencedRelation: "finance_partner_commissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_partner_statement_lines_statement_id_fkey"
+            columns: ["statement_id"]
+            isOneToOne: false
+            referencedRelation: "finance_partner_statements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_partner_statements: {
+        Row: {
+          created_at: string
+          finance_contact_id: string
+          id: string
+          issued_at: string | null
+          issued_by: string | null
+          line_count: number
+          notes: string | null
+          paid_at: string | null
+          paid_reference: string | null
+          partner_company_snapshot: string | null
+          partner_name_snapshot: string | null
+          pdf_storage_path: string | null
+          period_end: string
+          period_start: string
+          remittance_csv_path: string | null
+          status: string
+          total_gross: number
+          total_gst: number
+          total_net: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          finance_contact_id: string
+          id?: string
+          issued_at?: string | null
+          issued_by?: string | null
+          line_count?: number
+          notes?: string | null
+          paid_at?: string | null
+          paid_reference?: string | null
+          partner_company_snapshot?: string | null
+          partner_name_snapshot?: string | null
+          pdf_storage_path?: string | null
+          period_end: string
+          period_start: string
+          remittance_csv_path?: string | null
+          status?: string
+          total_gross?: number
+          total_gst?: number
+          total_net?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          finance_contact_id?: string
+          id?: string
+          issued_at?: string | null
+          issued_by?: string | null
+          line_count?: number
+          notes?: string | null
+          paid_at?: string | null
+          paid_reference?: string | null
+          partner_company_snapshot?: string | null
+          partner_name_snapshot?: string | null
+          pdf_storage_path?: string | null
+          period_end?: string
+          period_start?: string
+          remittance_csv_path?: string | null
+          status?: string
+          total_gross?: number
+          total_gst?: number
+          total_net?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_partner_statements_finance_contact_id_fkey"
+            columns: ["finance_contact_id"]
+            isOneToOne: false
+            referencedRelation: "finance_agent_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_partner_statements_issued_by_fkey"
+            columns: ["issued_by"]
             isOneToOne: false
             referencedRelation: "custom_users"
             referencedColumns: ["id"]
@@ -7996,6 +8294,14 @@ export type Database = {
       cleanup_expired_transport_cache: { Args: never; Returns: undefined }
       cleanup_old_health_logs: { Args: never; Returns: undefined }
       extract_email_address: { Args: { raw_text: string }; Returns: string }
+      fp_resolve_partner_for_deal: {
+        Args: { _deal_id: string }
+        Returns: {
+          default_rate: number
+          finance_contact_id: string
+          gst_registered: boolean
+        }[]
+      }
       get_all_cache_stats: {
         Args: never
         Returns: {
