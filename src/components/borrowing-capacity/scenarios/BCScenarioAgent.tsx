@@ -6,7 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   Bot, Send, ChevronDown, ChevronUp, Sparkles, Loader2,
-  TrendingUp, CheckCircle2, Zap,
+  TrendingUp, CheckCircle2, Zap, Trash2,
 } from 'lucide-react';
 import { VoiceToTextButton } from '@/components/ui/VoiceToTextButton';
 import ReactMarkdown from 'react-markdown';
