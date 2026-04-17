@@ -1320,7 +1320,7 @@ Deno.serve(async (req) => {
 
     // ── PROPERTY CONTRIBUTION ENGINE (Phase 1) ──
     // Run unified assessment alongside legacy for parity validation
-    const propertyContributions = assessAllPropertyContributions(properties, activePolicy.propertyPolicy);
+    const propertyContributions = assessAllPropertyContributions(properties, effectivePolicy.propertyPolicy);
     
     // Parity validation: compare engine outputs against legacy functions
     // Legacy income from properties = income added by calculateIncomeBreakdown from positive cashflows
@@ -1345,7 +1345,7 @@ Deno.serve(async (req) => {
 
     // Calculate liability servicing
     const { totalMonthly: liabilityServicing, breakdown: liabilityBreakdown } = 
-      calculateLiabilityBreakdown(liabilities, properties, effectiveGrossIncome, activePolicy);
+      calculateLiabilityBreakdown(liabilities, properties, effectiveGrossIncome, effectivePolicy);
     
     // Calculate total outstanding debt balances for DTI (industry standard)
     let totalDebtBalances = liabilityBreakdown.reduce((sum, item) => sum + (item.balance || 0), 0);
@@ -1378,8 +1378,8 @@ Deno.serve(async (req) => {
         : liabilityServicing + lmiMonthlyServicing;
 
     // Set calculation parameters (use policy defaults if no overrides)
-    const interestRate = overrides?.interestRate ?? activePolicy.loanDefaults.interestRate;
-    const bufferRate = overrides?.bufferRate ?? activePolicy.loanDefaults.bufferRate;
+    const interestRate = earlyInterestRate;
+    const bufferRate = earlyBufferRate;
     const loanTermYears = overrides?.loanTermYears ?? activePolicy.loanDefaults.loanTermYears;
 
     // Perform calculation - uses after-tax income internally
