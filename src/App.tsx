@@ -70,6 +70,8 @@ import RemindersHub from "./pages/RemindersHub";
 import Checklists from "./pages/Checklists";
 import Agreements from "./pages/Agreements";
 import GamePlan from "./pages/GamePlan";
+import Commissions from "./pages/Commissions";
+import ReportsAnalytics from "./pages/ReportsAnalytics";
 import NotFound from "./pages/NotFound";
 import { PortalAuthProvider } from "@/hooks/usePortalAuth";
 import { PortalProtectedRoute } from "@/components/portal/PortalProtectedRoute";
@@ -282,6 +284,8 @@ const App = () => (
                 <Route path="marketing-analytics" element={<ModuleGuard moduleKey="marketing_analytics"><MarketingAnalytics /></ModuleGuard>} />
                 <Route path="conversations" element={<ModuleGuard moduleKey="conversations"><Conversations /></ModuleGuard>} />
                 <Route path="lenders" element={<ModuleGuard moduleKey="lenders"><Lenders /></ModuleGuard>} />
+                <Route path="commissions" element={<Commissions />} />
+                <Route path="reports/analytics" element={<ReportsAnalytics />} />
                         </Route>
                         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                         <Route path="*" element={<NotFound />} />

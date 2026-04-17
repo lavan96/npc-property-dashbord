@@ -213,6 +213,5 @@ export default function ReportsAnalytics() {
           </CardContent>
         </Card>
       </div>
-    </DashboardLayout>
   );
 }
