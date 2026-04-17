@@ -699,10 +699,31 @@ export function StrategyScenarioModeling({
       hemBenchmark,
     };
 
+    // 12. Phase K2 — Capital Flow Canvas → capital_allocation deltas
+    capitalAllocations.forEach((alloc) => {
+      if (!alloc.amount || alloc.amount <= 0) return;
+      deltas.push({
+        id: alloc.id,
+        label: `Capital allocation → ${alloc.sinkType.replace(/_/g, ' ')}`,
+        type: 'capital_allocation',
+        value: alloc.amount,
+        unit: 'absolute',
+        meta: {
+          sinkType: alloc.sinkType,
+          sinkTargetId: alloc.sinkTargetId,
+          sourcePool: 'pool-default',
+          offsetRatePoints: alloc.offsetRatePoints,
+          rateBuydownPoints: alloc.rateBuydownPoints,
+          repaymentReductionMonthly: alloc.repaymentReductionMonthly,
+        },
+      });
+    });
+
     // Delegate ALL scenario math to the unified engine
     const { inputs, result } = runScenarioWithInputs('Strategy Preview', deltas, ctx);
     const acquisitionCapacity = (result.acquisitionCapacity ?? null) as AcquisitionCapacity | null;
     const validationIssues = result.validationIssues ?? [];
+    const capitalLedger = (result as any).capitalLedger ?? null;
 
     // ── F4 — Per-lever attribution ──────────────────────────────────────
     // Replay each delta IN ISOLATION against the same base context to
