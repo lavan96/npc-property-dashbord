@@ -1557,6 +1557,134 @@ export function StrategyScenarioModeling({
                           </div>
                         )}
                       </div>
+
+                      {/* ── Phase 2: Granular Deployment Controls ── */}
+                      <div className="pt-3 mt-2 border-t border-border/50 space-y-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Deployment Controls
+                        </p>
+
+                        {/* Deployment % slider */}
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs text-muted-foreground">
+                              Deploy {(item.deploymentPercent * 100).toFixed(0)}% of accessible equity
+                            </Label>
+                            <span className="text-xs font-medium tabular-nums">
+                              {formatCurrency(item.deployedNet)}
+                            </span>
+                          </div>
+                          <Slider
+                            value={[item.deploymentPercent * 100]}
+                            min={0}
+                            max={100}
+                            step={5}
+                            onValueChange={([val]) => setStrategy(prev => {
+                              const next = new Map(prev.equityReleaseDeploymentPercents);
+                              next.set(item.property.id, val / 100);
+                              return { ...prev, equityReleaseDeploymentPercents: next };
+                            })}
+                            className="py-1"
+                          />
+                          <div className="flex justify-between text-[10px] text-muted-foreground">
+                            <span>0%</span>
+                            <span>50%</span>
+                            <span>100%</span>
+                          </div>
+                        </div>
+
+                        {/* Repayment structure toggle */}
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground">Repayment Structure (new slice)</Label>
+                          <div className="flex gap-1.5">
+                            {([
+                              { id: 'interest_only' as const, label: 'Interest Only' },
+                              { id: 'principal_and_interest' as const, label: 'P&I' },
+                            ]).map(opt => (
+                              <button
+                                key={opt.id}
+                                type="button"
+                                onClick={() => setStrategy(prev => {
+                                  const next = new Map(prev.equityReleaseRepaymentTypes);
+                                  next.set(item.property.id, opt.id);
+                                  return { ...prev, equityReleaseRepaymentTypes: next };
+                                })}
+                                className={`flex-1 py-1.5 px-2 rounded text-xs font-medium transition-colors ${
+                                  item.repaymentType === opt.id
+                                    ? 'bg-primary text-primary-foreground'
+                                    : 'bg-secondary hover:bg-secondary/80 text-secondary-foreground'
+                                }`}
+                              >
+                                {opt.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Manual repayment override */}
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs text-muted-foreground">
+                              Manual Repayment Override
+                            </Label>
+                            {Number.isFinite(item.manualRepayment as number) && (
+                              <button
+                                type="button"
+                                onClick={() => setStrategy(prev => {
+                                  const next = new Map(prev.equityReleaseManualRepayments);
+                                  next.delete(item.property.id);
+                                  return { ...prev, equityReleaseManualRepayments: next };
+                                })}
+                                className="text-[10px] text-muted-foreground hover:text-foreground underline"
+                              >
+                                Reset to auto
+                              </button>
+                            )}
+                          </div>
+                          <Input
+                            type="number"
+                            inputMode="decimal"
+                            value={Number.isFinite(item.manualRepayment as number) ? String(item.manualRepayment) : ''}
+                            placeholder={`Auto: ${formatCurrency(item.autoMonthlyServicing)}/mo`}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setStrategy(prev => {
+                                const next = new Map(prev.equityReleaseManualRepayments);
+                                if (v === '') next.delete(item.property.id);
+                                else {
+                                  const num = Number(v);
+                                  if (Number.isFinite(num) && num >= 0) next.set(item.property.id, num);
+                                }
+                                return { ...prev, equityReleaseManualRepayments: next };
+                              });
+                            }}
+                            className="h-8 text-sm"
+                          />
+                          <p className="text-[10px] text-muted-foreground/70">
+                            Auto uses assessment-rate {item.repaymentType === 'interest_only' ? 'IO' : 'P&I'} servicing on the deployed amount.
+                          </p>
+                        </div>
+
+                        {/* Servicing summary card */}
+                        <div className="p-2.5 rounded bg-muted/50 border space-y-1 text-xs">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Deployed (net)</span>
+                            <span className="font-medium tabular-nums text-emerald-600">
+                              +{formatCurrency(item.deployedNet)} cash
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Monthly servicing impact</span>
+                            <span className="font-medium tabular-nums text-destructive">
+                              −{formatCurrency(
+                                Number.isFinite(item.manualRepayment as number)
+                                  ? (item.manualRepayment as number)
+                                  : item.autoMonthlyServicing
+                              )}/mo
+                            </span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   ))}
 
