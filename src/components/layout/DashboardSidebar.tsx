@@ -34,6 +34,7 @@ import {
   Globe,
   Send,
   Map,
+  Cpu,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -82,6 +83,7 @@ const adminItems = [
   { title: 'Integrations', url: '/integrations', icon: Plug, moduleKey: 'integrations' },
   { title: 'Cloudflare', url: '/cloudflare', icon: Cloud, moduleKey: 'cloudflare' },
   { title: 'API Usage', url: '/api-usage', icon: Gauge, moduleKey: 'api_usage' },
+  { title: 'Model Hub', url: '/model-hub', icon: Cpu, moduleKey: 'integrations' },
   { title: 'Monitoring', url: '/monitoring', icon: Activity, moduleKey: 'monitoring' },
   { title: 'Quality Assurance', url: '/quality-assurance', icon: ShieldCheck, moduleKey: 'quality_assurance' },
   { title: 'Data Import', url: '/data-import', icon: Upload, moduleKey: 'data_import' },
