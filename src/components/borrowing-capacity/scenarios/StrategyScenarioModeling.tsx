@@ -93,6 +93,12 @@ interface StrategyState {
   equityReleaseEnabled: boolean;
   equityReleasePropertyIds: Set<string>;
   equityReleaseTargetLVRs: Map<string, number>; // per-property target LVR
+  /** Phase 2 — per-property deployment % of gross release (0..1, default 1.0) */
+  equityReleaseDeploymentPercents: Map<string, number>;
+  /** Phase 2 — per-property repayment structure on the new slice */
+  equityReleaseRepaymentTypes: Map<string, 'interest_only' | 'principal_and_interest'>;
+  /** Phase 2 — per-property manual $/mo override on the new slice (undefined = auto) */
+  equityReleaseManualRepayments: Map<string, number>;
   rateAdjustment: number;
   /** Phase F1 — per-property contracted-rate overrides (propertyId → new rate %) */
   propertyRateOverrides: Map<string, number>;
@@ -122,6 +128,9 @@ const DEFAULT_STRATEGY: StrategyState = {
   equityReleaseEnabled: false,
   equityReleasePropertyIds: new Set(),
   equityReleaseTargetLVRs: new Map(),
+  equityReleaseDeploymentPercents: new Map(),
+  equityReleaseRepaymentTypes: new Map(),
+  equityReleaseManualRepayments: new Map(),
   rateAdjustment: 0,
   propertyRateOverrides: new Map(),
   additional: { ...DEFAULT_ADDITIONAL_STRATEGY },
