@@ -369,7 +369,12 @@ export function StrategyScenarioModeling({
     ].join('|');
   }, [acquisition]);
 
-  const { scenarioResult, scenarioInputs, impactBreakdown, acquisitionCapacity, validationIssues, leverAttribution, appliedDeltas, baseTheoreticalCapacity, scenarioTheoreticalCapacity, baseRawSurplus, scenarioRawSurplus, floorActive, baseAfterTaxIncome, baseLivingExpenses, baseCommitments, baseAssessmentRate, baseTerm, baseAnnuity, scenarioAfterTaxIncome, scenarioLivingExpenses, scenarioCommitments, scenarioAssessmentRate, scenarioTerm, scenarioAnnuity } = useMemo(() => {
+  const capitalAllocationsSignature = useMemo(
+    () => capitalAllocations.map(a => `${a.id}:${a.amount}:${a.sinkType}:${a.sinkTargetId || ''}:${a.offsetRatePoints || ''}:${a.rateBuydownPoints || ''}:${a.repaymentReductionMonthly || ''}`).join('||'),
+    [capitalAllocations],
+  );
+
+  const { scenarioResult, scenarioInputs, impactBreakdown, acquisitionCapacity, validationIssues, leverAttribution, appliedDeltas, capitalLedger, baseTheoreticalCapacity, scenarioTheoreticalCapacity, baseRawSurplus, scenarioRawSurplus, floorActive, baseAfterTaxIncome, baseLivingExpenses, baseCommitments, baseAssessmentRate, baseTerm, baseAnnuity, scenarioAfterTaxIncome, scenarioLivingExpenses, scenarioCommitments, scenarioAssessmentRate, scenarioTerm, scenarioAnnuity } = useMemo(() => {
     const deltas: ScenarioDelta[] = [];
     const impacts: { label: string; monthlySaving: number; type: 'saving' | 'cost' | 'info' }[] = [];
     /** F4 — short cash-flow side-notes per delta id, used to enrich the
@@ -852,6 +857,7 @@ export function StrategyScenarioModeling({
       validationIssues,
       leverAttribution,
       appliedDeltas: deltas,
+      capitalLedger,
       baseTheoreticalCapacity,
       scenarioTheoreticalCapacity,
       baseRawSurplus,
@@ -876,6 +882,7 @@ export function StrategyScenarioModeling({
     // Reactivity signatures — guarantee re-run on ANY nested Map/Set/value change
     strategySignature,
     acquisitionSignature,
+    capitalAllocationsSignature,
     // Stable refs from props/derived data
     baseInputs,
     baseResult,
