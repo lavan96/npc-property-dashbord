@@ -783,6 +783,9 @@ export function aggregateDeltas(
     if (e.acquisitionNotes.length) total.acquisitionNotes.push(...e.acquisitionNotes);
     if (e.dtiCapEnabled !== undefined) total.dtiCapEnabled = e.dtiCapEnabled;
     if (e.dtiCapLimit !== undefined) total.dtiCapLimit = e.dtiCapLimit;
+    // Phase I1 hardening — propagate lender-profile override to the totals
+    // bag so the downstream re-shading branch actually fires.
+    if (e.lenderProfileOverride) total.lenderProfileOverride = e.lenderProfileOverride;
   }
 
   const newGross = Math.max(0, ctx.baseInputs.grossAnnualIncome + total.incomeAdjustment);
@@ -832,10 +835,13 @@ export function aggregateDeltas(
     const t = (p.propertyType || '').toLowerCase();
     return t.includes('invest') || t.includes('rental') || t === 'investment';
   });
+  // Phase I12 — pass APRA buffer so loss is recomputed at IO + buffer (assessment),
+  // not the cheaper contracted rate. Mirrors `src/utils/scenarioDeltaEngine.ts`.
   const ngResult = computeNegativeGearingAddBack({
     investmentProperties: investmentProps,
     marginalTaxRate: marginalTaxRateFor(newGross),
     addBackShading: 1.0,
+    bufferRatePct: ctx.baseInputs.bufferRate ?? 3,
   });
   if (ngResult.annualAddBack > 0) {
     computedShadedAnnual += ngResult.annualAddBack;
@@ -848,27 +854,26 @@ export function aggregateDeltas(
     });
   }
 
-  // Phase I8 — DTI denominator refinement (APS 220-aligned, surface-only)
+  // Phase I11 — DTI denominator refinement (APS 220-aligned). Compute the
+  // adjusted denominator AND bind it into the DTI cap PATH on the server twin
+  // so replay matches the UI (rental @ 75%, etc.).
+  let dtiAdjustedIncome: number | undefined;
   if (Array.isArray(ctx.baseInputs.incomeComponents) && ctx.baseInputs.incomeComponents.length > 0) {
     const grossScale = ctx.baseInputs.grossAnnualIncome > 0 ? newGross / ctx.baseInputs.grossAnnualIncome : 1;
     const scaledForDti = ctx.baseInputs.incomeComponents.map(c => ({ ...c, grossAnnual: Math.max(0, c.grossAnnual * grossScale) }));
     const dtiDen = computeDtiDenominator({ incomeComponents: scaledForDti, fallbackGrossAnnual: newGross });
+    dtiAdjustedIncome = dtiDen.dtiAdjustedAnnualIncome;
     if (dtiDen.dtiAdjustedAnnualIncome < newGross * 0.95 && dtiDen.dtiAdjustedAnnualIncome > 0) {
       issues.push({
         deltaId: 'dti-denominator',
         deltaType: 'income_change',
         severity: 'warning',
-        message: `DTI denominator (APS 220): $${Math.round(dtiDen.dtiAdjustedAnnualIncome).toLocaleString()}/yr (${((dtiDen.dtiAdjustedAnnualIncome / newGross) * 100).toFixed(0)}% of gross). Lender DTI review uses this — not the headline gross.`,
+        message: `DTI denominator (APS 220): $${Math.round(dtiDen.dtiAdjustedAnnualIncome).toLocaleString()}/yr (${((dtiDen.dtiAdjustedAnnualIncome / newGross) * 100).toFixed(0)}% of gross). Bound into DTI cap path — capacity may be tighter than headline gross suggests.`,
       });
     }
   }
 
-  // Phase I2 — HEM floor enforcement.
-  // scenario that promises -30% expenses cannot fall below that floor.
-  // We respect a per-lender opt-out via `enforcesHemFloor = false` (e.g.
-  // some non-banks). When the cut is impossible, surface a validation note
-  // so the broker sees what was clamped — silent clamps were the #2 source
-  // of "engine-says-X-but-lender-says-Y" surprises.
+  // Phase I2 — HEM floor enforcement (mirror of client-side logic).
   const requestedExpenses = ctx.baseInputs.monthlyLivingExpenses + total.expenseAdjustment + hemDelta;
   const hemBenchmark = ctx.baseInputs.hemBenchmark ?? 0;
   const targetProfile = resolveLenderProfile(targetProfileId);
@@ -896,7 +901,10 @@ export function aggregateDeltas(
     calculationMode: ctx.baseInputs.calculationMode,
     dtiCapEnabled: total.dtiCapEnabled ?? ctx.baseInputs.dtiCapEnabled,
     dtiCapLimit: total.dtiCapLimit ?? ctx.baseInputs.dtiCapLimit,
-  };
+    // Phase I11 — surfaced for downstream consumers (server-side
+    // calculateBorrowingCapacity reads this off-band where available).
+    dtiAdjustedAnnualIncome: dtiAdjustedIncome,
+  } as AggregatedScenarioInputs;
 
   // Phase I10 — Honest DTI: split debt moves into NEW (released) vs REMOVED
   // (sells/payoffs) and report explicitly. Surfaces APRA 6× / lender-cap
@@ -910,8 +918,8 @@ export function aggregateDeltas(
       debtRemovedByScenario: debtMoves.debtRemovedByScenario,
     },
     {
-      incomeComponents: Array.isArray(ctx.incomeComponents) && ctx.incomeComponents.length > 0
-        ? ctx.incomeComponents.map(c => ({ ...c, grossAnnual: Math.max(0, c.grossAnnual * (ctx.baseInputs.grossAnnualIncome > 0 ? newGross / ctx.baseInputs.grossAnnualIncome : 1)) }))
+      incomeComponents: Array.isArray(ctx.baseInputs.incomeComponents) && ctx.baseInputs.incomeComponents.length > 0
+        ? ctx.baseInputs.incomeComponents.map(c => ({ ...c, grossAnnual: Math.max(0, c.grossAnnual * (ctx.baseInputs.grossAnnualIncome > 0 ? newGross / ctx.baseInputs.grossAnnualIncome : 1)) }))
         : undefined,
       fallbackGrossAnnual: newGross,
     },
@@ -971,6 +979,14 @@ export function computeAcquisitionCapacity(
     };
   }
 
+  // Phase I15 — Aitken Δ² accelerated fix-point convergence.
+  // The map P → newPrice(P) involves SD (piecewise-linear in P), LMI (piecewise
+  // in LVR×loan), and other costs. In `debt_capitalised` mode the prior fixed
+  // 6-iteration loop oscillated by ±$1–3k near LVR/SD breakpoints. Aitken
+  // acceleration uses three successive iterates (P0, P1=f(P0), P2=f(P1)) to
+  // estimate the limit:  P* ≈ P0 − (P1−P0)² / (P2 − 2·P1 + P0)
+  // — collapsing oscillations in 2–3 outer steps. We fall back to plain
+  // iteration if the denominator is ~0 (already converged).
   let purchasePrice = borrowingCapacity + cashAvailable;
   let lmi = 0;
   let stampDuty = 0;
@@ -978,49 +994,49 @@ export function computeAcquisitionCapacity(
   let loanAvail = borrowingCapacity;
   let loanCappedByLvr = false;
 
-  for (let i = 0; i < 6; i++) {
+  const stepFn = (P: number): number => {
     const sd = calculateStampDuty({
-      propertyValue: purchasePrice,
-      state, intent, category,
-      isFirstHomeBuyer: isFhb,
-      isForeignBuyer: isForeign,
+      propertyValue: P, state, intent, category,
+      isFirstHomeBuyer: isFhb, isForeignBuyer: isForeign,
     });
     stampDuty = sd.totalDuty;
-    otherCosts = estimateOtherAcquisitionCosts(purchasePrice).total;
-
-    const requiredLoan = Math.max(0, purchasePrice - cashAvailable);
-    // Phase I9 — bind required loan to (a) serviceable capacity AND
-    // (b) the per-security LVR cap (loan ≤ price × cap).
-    const lvrCapDollar = Math.max(0, purchasePrice * acquisitionLvrCap);
+    otherCosts = estimateOtherAcquisitionCosts(P).total;
+    const requiredLoan = Math.max(0, P - cashAvailable);
+    const lvrCapDollar = Math.max(0, P * acquisitionLvrCap);
     const cappedLoan = Math.min(borrowingCapacity, requiredLoan, lvrCapDollar);
     if (lvrCapDollar < Math.min(borrowingCapacity, requiredLoan)) {
       loanCappedByLvr = true;
     }
-
     if (lmiMode !== 'none') {
-      const est = estimateLmi({
-        propertyValue: purchasePrice,
-        loanAmount: cappedLoan,
-        isFirstHomeBuyer: isFhb,
-      });
+      const est = estimateLmi({ propertyValue: P, loanAmount: cappedLoan, isFirstHomeBuyer: isFhb });
       lmi = est.lmiAmount;
     } else {
       lmi = 0;
     }
-
     loanAvail = lmiMode === 'debt_capitalised'
       ? Math.max(0, Math.min(borrowingCapacity, lvrCapDollar) - lmi)
       : Math.min(borrowingCapacity, lvrCapDollar);
-
     const lmiCashDeduction = lmiMode === 'display_deduction' ? lmi : 0;
-    const newPrice = Math.max(0, loanAvail + cashAvailable - lmiCashDeduction - stampDuty - otherCosts);
+    return Math.max(0, loanAvail + cashAvailable - lmiCashDeduction - stampDuty - otherCosts);
+  };
 
-    if (Math.abs(newPrice - purchasePrice) < 1000) {
-      purchasePrice = newPrice;
-      break;
-    }
-    purchasePrice = newPrice;
+  for (let i = 0; i < 5; i++) {
+    const P0 = purchasePrice;
+    const P1 = stepFn(P0);
+    if (Math.abs(P1 - P0) < 250) { purchasePrice = P1; break; }
+    const P2 = stepFn(P1);
+    if (Math.abs(P2 - P1) < 250) { purchasePrice = P2; break; }
+    const denom = P2 - 2 * P1 + P0;
+    // Aitken accelerator (with safety fallback to last plain iterate)
+    const Pstar = Math.abs(denom) > 1
+      ? P0 - ((P1 - P0) * (P1 - P0)) / denom
+      : P2;
+    // Damp if accelerator overshoots negative or > 2× last value
+    purchasePrice = (Pstar > 0 && Pstar < P2 * 2) ? Pstar : P2;
+    if (Math.abs(purchasePrice - P2) < 250) break;
   }
+  // One final settle-pass to refresh stampDuty/lmi/loanAvail at the converged P
+  purchasePrice = stepFn(purchasePrice);
 
   if (lmi > 0) notes.push(`LMI ${lmiMode === 'debt_capitalised' ? 'capitalised onto loan' : 'deducted from settlement cash'}: $${Math.round(lmi).toLocaleString()}`);
   if (stampDuty > 0) notes.push(`${state} stamp duty: $${Math.round(stampDuty).toLocaleString()} (${intent}${isFhb ? ', FHB' : ''})`);

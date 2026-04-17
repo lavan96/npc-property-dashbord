@@ -857,11 +857,15 @@ function calculateBorrowingCapacity(params: {
   dtiCapEnabled?: boolean;
   dtiCapLimit?: number;
   policy?: PolicyConfig;
+  /** Phase I11 — APS 220-aligned DTI denominator (rental @ 75%, etc.).
+   *  When supplied, the DTI cap PATH uses this rather than headline gross. */
+  dtiAdjustedAnnualIncome?: number;
 }): CalculationResult & { afterTaxAnnualIncome: number; monthlyAfterTaxIncome: number } {
   const activePolicy = params.policy || DEFAULT_POLICY;
   const { grossAnnualIncome, shadedAnnualIncome, monthlyLivingExpenses, monthlyCommitments, 
           interestRate, bufferRate, loanTermYears,
-          calculationMode = 'bank', dtiCapEnabled = false, dtiCapLimit = activePolicy.loanDefaults.dtiCap } = params;
+          calculationMode = 'bank', dtiCapEnabled = false, dtiCapLimit = activePolicy.loanDefaults.dtiCap,
+          dtiAdjustedAnnualIncome } = params;
   
   const isConservative = calculationMode === 'conservative';
   const conservativeConfig = activePolicy.conservativeMode;
@@ -909,21 +913,26 @@ function calculateBorrowingCapacity(params: {
     borrowingCapacity = Math.round(maxNewRepayment * factor);
   }
   
-  // DTI ratio - Industry standard: Total Outstanding Debt Balances / Gross Annual Income
+  // DTI ratio - Industry standard: Total Outstanding Debt Balances / Gross Annual Income.
+  // Phase I11 — when caller supplied APS 220-aligned denominator, use it for the
+  // CAP PATH so DTI-binding scenarios match the broker UI exactly.
+  const dtiDenominator = (typeof dtiAdjustedAnnualIncome === 'number' && dtiAdjustedAnnualIncome > 0)
+    ? dtiAdjustedAnnualIncome
+    : params.grossAnnualIncome;
   const totalDebtWithNewLoan = params.totalDebtBalances + borrowingCapacity;
-  let dtiRatio = params.grossAnnualIncome > 0 ? Math.round((totalDebtWithNewLoan / params.grossAnnualIncome) * 100) / 100 : 0;
+  let dtiRatio = dtiDenominator > 0 ? Math.round((totalDebtWithNewLoan / dtiDenominator) * 100) / 100 : 0;
   
   // Apply DTI cap if enabled or in conservative mode
   const effectiveDtiCap = isConservative ? conservativeConfig.dtiHardCap : dtiCapLimit;
   const shouldApplyDtiCap = dtiCapEnabled || isConservative;
   
-  if (shouldApplyDtiCap && dtiRatio > effectiveDtiCap && grossAnnualIncome > 0) {
-    const maxTotalDebt = grossAnnualIncome * effectiveDtiCap;
+  if (shouldApplyDtiCap && dtiRatio > effectiveDtiCap && dtiDenominator > 0) {
+    const maxTotalDebt = dtiDenominator * effectiveDtiCap;
     const maxNewLoan = Math.max(0, maxTotalDebt - params.totalDebtBalances);
     
     if (maxNewLoan < borrowingCapacity) {
       borrowingCapacity = Math.round(maxNewLoan);
-      dtiRatio = Math.round(((params.totalDebtBalances + borrowingCapacity) / grossAnnualIncome) * 100) / 100;
+      dtiRatio = Math.round(((params.totalDebtBalances + borrowingCapacity) / dtiDenominator) * 100) / 100;
     }
   }
   
@@ -1066,6 +1075,8 @@ function runServerScenarios(
       calculationMode: inputs.calculationMode,
       dtiCapEnabled: inputs.dtiCapEnabled,
       dtiCapLimit: inputs.dtiCapLimit,
+      // Phase I11 — APS 220 denominator binding for cap path parity
+      dtiAdjustedAnnualIncome: (inputs as { dtiAdjustedAnnualIncome?: number }).dtiAdjustedAnnualIncome,
     });
 
     const abs = scenarioResult.borrowingCapacity - ctx.baseResult.borrowingCapacity;
