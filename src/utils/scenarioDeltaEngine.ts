@@ -659,10 +659,9 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
       const blendedTarget = delta.unit === 'percent' ? delta.value / 100 : delta.value;
       const safeBlended = Math.max(0, Math.min(0.97, blendedTarget || 0.8));
 
-      const lenderCap = (delta.meta?.lenderMaxLVR as number | undefined);
-      const safeLenderCap = (Number.isFinite(lenderCap) && (lenderCap as number) > 0 && (lenderCap as number) <= 0.99)
-        ? (lenderCap as number)
-        : 0.95;
+      // Phase I7 — per-security caps now resolved per-property using lender × intent × kind.
+      // Single override (delta.meta.lenderMaxLVR) is honoured as a tightening clamp only.
+      const explicitOverride = (delta.meta?.lenderMaxLVR as number | undefined);
 
       const allocationStrategy = (delta.meta?.allocationStrategy as string | undefined) === 'pro_rata'
         ? 'pro_rata'
@@ -681,12 +680,24 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
         break;
       }
 
-      // Per-property headroom = max additional debt before hitting lender cap
-      const headroom = members.map(p => ({
-        property: p,
-        headroom: Math.max(0, p.currentValue * safeLenderCap - p.loanRemaining),
-        equity: Math.max(0, p.currentValue - p.loanRemaining),
-      }));
+      // Per-property headroom uses I7 cap matrix (each security may differ)
+      const headroom = members.map(p => {
+        const cap = resolveLvrCap({
+          lenderId: context.currentLenderProfileId,
+          intent: inferPropertyIntent(p.propertyType, 'investment'),
+          kind: inferPropertyKind(p.propertyType),
+          isFirstHomeBuyer: !!context.acquisition?.isFirstHomeBuyer,
+          isForeignBuyer: !!context.acquisition?.isForeignBuyer,
+          explicitCap: explicitOverride,
+        });
+        return {
+          property: p,
+          headroom: Math.max(0, p.currentValue * cap.cap - p.loanRemaining),
+          equity: Math.max(0, p.currentValue - p.loanRemaining),
+          capPct: cap.cap,
+          capReason: cap.reason,
+        };
+      });
       const totalHeadroom = headroom.reduce((s, h) => s + h.headroom, 0);
       // Cap pool draw at total headroom (lender will not exceed any single security's cap)
       const cappedPool = Math.min(grossPool, totalHeadroom);
