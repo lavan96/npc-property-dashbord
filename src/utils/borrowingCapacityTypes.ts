@@ -194,7 +194,27 @@ export type ScenarioDeltaType =
    *  `meta.lenderMaxLVR`  = absolute lender ceiling per security (default 0.95).
    *  Closes the methodology gap where standalone per-property mode floors a
    *  release at $0 even when equity-rich properties could subsidise the pool. */
-  | 'portfolio_lvr_release';
+  | 'portfolio_lvr_release'
+  /** Phase K1 — Capital Allocation. Routes a $-amount of cash from the
+   *  Capital Allocation Pool (sourced by equity_release / portfolio_lvr_release
+   *  / property_sell / cashOnHand) to a typed sink that emits a serviceability
+   *  effect. Enables hyper-granular flows like "$80k of the $222k release →
+   *  pay down Liability A; $50k → offset Property B; remainder → deposit".
+   *
+   *  - `id`     = unique allocation id (e.g. 'alloc-1')
+   *  - `value`  = dollars routed
+   *  - `unit`   = 'absolute'
+   *  - `meta`:
+   *      sourcePool: string  (default 'pool-default')
+   *      sinkType: 'liability_payoff' | 'offset_deposit' | 'rate_buydown'
+   *              | 'debt_recycle' | 'acquisition_deposit'
+   *              | 'holding_reserve' | 'repayment_reduction'
+   *      sinkTargetId?: string   (liability or property id, where applicable)
+   *      offsetRatePoints?: number    (annual % rate the offset cancels)
+   *      rateBuydownPoints?: number   (basis points bought down)
+   *      repaymentReductionMonthly?: number  (direct $/mo servicing cut)
+   */
+  | 'capital_allocation';
 
 export type ScenarioDeltaUnit = 'percent' | 'absolute' | 'rate_points' | 'years' | 'ratio';
 
