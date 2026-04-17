@@ -209,10 +209,9 @@ export function PortalPropertyForm({ existingProperty, onComplete, onCancel }: P
 
   const isRental = formData.property_type === 'rental';
   const monthlyRentalIncome = formData.rental_income.monthlyValue;
-  const loanRepaymentMonthly = convertToMonthly(formData.loan_repayment_amount, formData.loan_repayment_frequency);
 
   const totalMonthlyExpenditure =
-    loanRepaymentMonthly +
+    formData.monthly_interest_repayment +
     formData.body_corporate.monthlyValue +
     formData.council_rates.monthlyValue +
     formData.water_rates.monthlyValue +
@@ -249,8 +248,8 @@ export function PortalPropertyForm({ existingProperty, onComplete, onCancel }: P
         : monthlyRentalIncome * (12 / 52),
       total_monthly_expenditure: isRental ? monthlyRentalIncome : totalMonthlyExpenditure,
       net_monthly_cashflow: isRental ? -monthlyRentalIncome : netMonthlyCashflow,
-      loan_repayment_amount: isRental ? null : (formData.loan_repayment_amount || null),
-      loan_repayment_frequency: isRental ? null : (formData.loan_repayment_frequency || 'monthly'),
+      repayment_type: isRental ? null : formData.repayment_type,
+      interest_only_period_years: isRental ? null : (formData.repayment_type === 'interest_only' ? formData.interest_only_period_years || null : null),
     };
 
     try {
@@ -426,50 +425,25 @@ export function PortalPropertyForm({ existingProperty, onComplete, onCancel }: P
                   <Input type="number" value={formData.ownership_percentage || ''} onChange={(e) => updateNumber('ownership_percentage', e.target.value)} className="pl-7 h-9" placeholder="100" />
                 </div>
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Monthly Interest Repayment</Label>
-                <div className="relative">
-                  <DollarSign className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    type="number"
-                    value={formData.monthly_interest_repayment || ''}
-                    onChange={(e) => { updateField('autoCalculateInterest', false); updateNumber('monthly_interest_repayment', e.target.value); }}
-                    className="pl-7 h-9"
-                    placeholder="0"
-                    disabled={formData.autoCalculateInterest}
-                  />
-                </div>
-                {formData.autoCalculateInterest && formData.loan_remaining > 0 && (
-                  <p className="text-[10px] text-muted-foreground">Auto-calculated from loan × rate</p>
-                )}
+              <div className="space-y-1.5 col-span-2 sm:col-span-1">
+                {/* Unified Monthly Loan Repayment */}
+                <MonthlyRepaymentField
+                  monthlyAmount={formData.monthly_interest_repayment}
+                  repaymentType={formData.repayment_type}
+                  interestOnlyYears={formData.interest_only_period_years}
+                  autoCalculate={formData.autoCalculateInterest}
+                  loanBalance={formData.loan_remaining}
+                  interestRate={formData.interest_rate}
+                  onChange={(next) => setFormData(prev => ({
+                    ...prev,
+                    monthly_interest_repayment: next.monthlyAmount,
+                    repayment_type: next.repaymentType,
+                    interest_only_period_years: next.interestOnlyYears,
+                    autoCalculateInterest: next.autoCalculate,
+                  }))}
+                  compact
+                />
               </div>
-            </div>
-
-            {/* Loan Repayment */}
-            <div className="space-y-1.5">
-              <Label className="text-xs">Loan Repayment (P&I)</Label>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <DollarSign className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    type="number"
-                    value={formData.loan_repayment_amount || ''}
-                    onChange={(e) => updateNumber('loan_repayment_amount', e.target.value)}
-                    className="pl-7 h-9 text-sm"
-                    placeholder="0"
-                  />
-                </div>
-                <Select value={formData.loan_repayment_frequency} onValueChange={(v) => updateField('loan_repayment_frequency', v as FrequencyType)}>
-                  <SelectTrigger className="w-[100px] h-9 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="weekly">Weekly</SelectItem>
-                    <SelectItem value="monthly">Monthly</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {formData.loan_repayment_frequency !== 'monthly' && formData.loan_repayment_amount > 0 && (
-                <p className="text-[10px] text-muted-foreground">= {formatCurrency(loanRepaymentMonthly)}/month</p>
-              )}
             </div>
           </CardContent>
         </Card>
