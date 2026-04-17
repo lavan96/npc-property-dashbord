@@ -338,6 +338,11 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
       const enabled = (delta.meta?.enabled as boolean | undefined) ?? true;
       effect.dtiCapEnabled = enabled;
       if (enabled) effect.dtiCapLimit = delta.value;
+      // Phase I1 — when the broker flips the DTI cap to model a different
+      // lender, accept an explicit `meta.lenderProfile` so the engine can
+      // re-shade rental / bonus / commission per that lender's policy.
+      const lp = delta.meta?.lenderProfile as string | undefined;
+      if (lp) effect.lenderProfileOverride = lp;
       break;
     }
     case 'property_sell': {
