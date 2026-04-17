@@ -127,6 +127,7 @@ export default function FinancePortalClientProfile() {
             {bcVisible && (
               <TabsTrigger value="borrowing_capacity" className="text-xs">Borrowing Capacity</TabsTrigger>
             )}
+            <TabsTrigger value="messages" className="text-xs">Messages</TabsTrigger>
           </TabsList>
           {visibleTabs.map(k => (
             <TabsContent key={k} value={k} className="mt-4">
@@ -143,6 +144,9 @@ export default function FinancePortalClientProfile() {
               <BorrowingCapacityPanel clientId={clientId!} />
             </TabsContent>
           )}
+          <TabsContent value="messages" className="mt-4">
+            <FinancePortalMessagesPanel clientId={clientId!} />
+          </TabsContent>
         </Tabs>
       )}
     </div>
