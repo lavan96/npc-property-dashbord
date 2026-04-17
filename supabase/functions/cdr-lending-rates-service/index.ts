@@ -519,19 +519,28 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Action: Get best rates across all lenders
+    // Action: Get best rates across all lenders (CDR + manual)
     if (action === 'best-rates') {
       const allRates: LendingRate[] = [];
 
-      // Check cache for all lenders
-      for (const [id, config] of Object.entries(CDR_LENDERS)) {
+      // CDR cached rates
+      for (const [id] of Object.entries(CDR_LENDERS)) {
         const cached = await getCachedRates(supabase, id);
         if (cached && cached.rates.length > 0) {
           allRates.push(...cached.rates);
         }
       }
 
-      console.log(`[CDR] Found ${allRates.length} total cached rates across all lenders`);
+      // Manual rate cards (Resimac etc.) — always available, no API dependency
+      for (const [id, manual] of Object.entries(MANUAL_LENDERS)) {
+        try {
+          allRates.push(...manual.build());
+        } catch (e) {
+          console.warn(`[manual] build failed for ${id}:`, e);
+        }
+      }
+
+      console.log(`[CDR] Found ${allRates.length} total rates across all lenders`);
 
       // Apply filters
       let filteredRates = allRates;
@@ -542,7 +551,7 @@ Deno.serve(async (req) => {
         filteredRates = filteredRates.filter(r => r.repaymentType === repaymentType);
       }
       if (lvr !== null) {
-        filteredRates = filteredRates.filter(r => 
+        filteredRates = filteredRates.filter(r =>
           (!r.lvrMin || lvr >= r.lvrMin) && (!r.lvrMax || lvr <= r.lvrMax)
         );
       }
@@ -552,10 +561,10 @@ Deno.serve(async (req) => {
       const topRates = filteredRates.slice(0, 10);
 
       return new Response(
-        JSON.stringify({ 
-          success: true, 
+        JSON.stringify({
+          success: true,
           data: topRates,
-          totalLenders: Object.keys(CDR_LENDERS).length,
+          totalLenders: Object.keys(CDR_LENDERS).length + Object.keys(MANUAL_LENDERS).length,
           totalCachedRates: allRates.length,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
