@@ -307,11 +307,40 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
       const property = context.properties.find(p => p.id === delta.id);
       if (property && property.loanRemaining > 0) {
         const cur = property.loanRepaymentAmount || property.monthlyRepayment || 0;
-        const ioRate = context.baseInputs.interestRate / 100 / 12;
+        // Phase F1 — per-property rate
+        const propRate = property.interestRate ?? context.baseInputs.interestRate;
+        const ioRate = propRate / 100 / 12;
         const io = property.loanRemaining * ioRate;
         const saving = Math.max(0, cur - io);
         if (saving > 0) effect.commitmentAdjustment = -saving;
+        effect.acquisitionNotes.push(`Refinance ${property.address?.slice(0, 30) || 'property'} P&I→IO @ ${propRate.toFixed(2)}%: −$${Math.round(saving).toLocaleString()}/mo`);
         effect.description = `Refinance ${property.address?.slice(0, 30) || 'property'} to IO`;
+      }
+      break;
+    }
+    case 'property_rate_change': {
+      // Phase F1 — reprice a single property to a new contracted rate.
+      const property = context.properties.find(p => p.id === delta.id);
+      if (property && property.loanRemaining > 0 && Number.isFinite(delta.value) && delta.value > 0) {
+        const cur = property.loanRepaymentAmount || property.monthlyRepayment || 0;
+        const oldRate = property.interestRate ?? context.baseInputs.interestRate;
+        const newRate = delta.value;
+        const monthlyOldIO = property.loanRemaining * (oldRate / 100 / 12);
+        const isIo = cur > 0 && Math.abs(cur - monthlyOldIO) / Math.max(1, monthlyOldIO) < 0.05;
+        let newRep: number;
+        if (isIo) {
+          newRep = property.loanRemaining * (newRate / 100 / 12);
+        } else {
+          const periods = (context.baseInputs.loanTermYears || 30) * 12;
+          const mr = newRate / 100 / 12;
+          newRep = mr > 0
+            ? property.loanRemaining * (mr * Math.pow(1 + mr, periods)) / (Math.pow(1 + mr, periods) - 1)
+            : property.loanRemaining / periods;
+        }
+        const d$ = newRep - cur;
+        effect.commitmentAdjustment = d$;
+        effect.acquisitionNotes.push(`Reprice ${property.address?.slice(0, 30) || 'property'}: ${oldRate.toFixed(2)}% → ${newRate.toFixed(2)}% ${isIo ? '(IO)' : '(P&I)'}, ${d$ >= 0 ? '+' : '−'}$${Math.round(Math.abs(d$)).toLocaleString()}/mo`);
+        effect.description = `Reprice ${property.address?.slice(0, 30) || 'property'} to ${newRate.toFixed(2)}%`;
       }
       break;
     }
@@ -336,12 +365,14 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
       break;
     }
     case 'equity_release': {
-      // Phase C: equity-release feeds acquisition capacity (cash freed) and
-      // adds the new equity loan's IO repayment to commitments + DTI.
+      // Phase C + F1/F2: cash freed + shadow servicing using per-property rate.
       const property = context.properties.find(p => p.id === delta.id);
       if (!property || property.currentValue <= 0) break;
       const fhb = !!context.acquisition?.isFirstHomeBuyer;
-      const ratePct = context.baseInputs.interestRate || 6.5;
+      const overrideRate = delta.meta?.releaseRate as number | undefined;
+      const ratePct = (Number.isFinite(overrideRate) && (overrideRate as number) > 0)
+        ? (overrideRate as number)
+        : (property.interestRate ?? context.baseInputs.interestRate ?? 6.5);
       const monthlyRate = (ratePct / 100) / 12;
       let newLoan = 0;
       if (delta.unit === 'absolute' && delta.value > 0) {
@@ -363,11 +394,12 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
         lmiOnRelease = est.lmiAmount;
       }
       const netRelease = Math.max(0, grossRelease - lmiOnRelease);
-      const ioRepayment = newLoan * monthlyRate - property.loanRemaining * monthlyRate;
+      // F2 fix — IO cost on the NEW slice only
+      const ioRepayment = grossRelease * monthlyRate;
       effect.commitmentAdjustment = Math.max(0, ioRepayment);
       effect.debtBalanceAdjustment = grossRelease;
       effect.releasedCapital = netRelease;
-      effect.acquisitionNotes.push(`Equity release on ${property.address?.slice(0, 30) || 'property'}: $${Math.round(netRelease).toLocaleString()} usable (LVR ${newLvr.toFixed(1)}%)`);
+      effect.acquisitionNotes.push(`Equity release on ${property.address?.slice(0, 30) || 'property'} @ ${ratePct.toFixed(2)}%: $${Math.round(netRelease).toLocaleString()} usable (LVR ${newLvr.toFixed(1)}%), +$${Math.round(ioRepayment).toLocaleString()}/mo IO`);
       effect.description = `Release equity from ${property.address?.slice(0, 30) || 'property'}`;
       break;
     }
