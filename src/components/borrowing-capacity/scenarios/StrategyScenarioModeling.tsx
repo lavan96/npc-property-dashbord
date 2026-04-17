@@ -488,7 +488,7 @@ export function StrategyScenarioModeling({
       acquisitionCapacity,
       validationIssues,
     };
-  }, [strategy, acquisition, baseInputs, baseResult, consolidatableDebts, investmentProperties, properties, liabilities]);
+  }, [strategy, acquisition, baseInputs, baseResult, consolidatableDebts, investmentProperties, equityReleaseProperties, properties, liabilities]);
 
 
   // Equity release calculation — now supports multiple properties
