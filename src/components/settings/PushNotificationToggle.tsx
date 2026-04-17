@@ -73,7 +73,7 @@ export function PushNotificationToggle() {
     if (status === 'preview-blocked') {
       return (
         <div className="flex items-start gap-2 text-sm text-muted-foreground">
-          <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-yellow-500" />
+          <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-warning" />
           <span>
             Push notifications only work on the published site (e.g.{' '}
             <span className="font-mono text-xs">command-centre.npcservices.com.au</span>),

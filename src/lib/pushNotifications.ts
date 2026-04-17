@@ -111,9 +111,14 @@ export async function subscribeToPush(): Promise<{ success: boolean; reason?: st
     let subscription = await reg.pushManager.getSubscription();
     if (!subscription) {
       const publicKey = await fetchVapidPublicKey();
+      const appServerKey = urlBase64ToUint8Array(publicKey);
       subscription = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey),
+        // Cast: the spec accepts BufferSource; some TS lib versions narrow this incorrectly.
+        applicationServerKey: appServerKey.buffer.slice(
+          appServerKey.byteOffset,
+          appServerKey.byteOffset + appServerKey.byteLength,
+        ) as ArrayBuffer,
       });
     }
 
