@@ -298,20 +298,42 @@ export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', 
         )}
 
         {/* Main Borrowing Capacity */}
-        <div className={`p-4 rounded-lg border-2 ${bandConfig.borderColor} ${bandConfig.bgLight}`}>
-          <p className="text-sm font-medium text-muted-foreground mb-1">BORROWING CAPACITY</p>
-          <div className="text-4xl font-bold text-foreground">
-            {formatCurrency(result.borrowingCapacity)}
+        <div className={`p-4 rounded-lg border-2 ${floorActive ? 'border-destructive/40 bg-destructive/5' : `${bandConfig.borderColor} ${bandConfig.bgLight}`}`}>
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-sm font-medium text-muted-foreground">
+              BORROWING CAPACITY
+              {floorActive && (
+                <span className="ml-2 text-[10px] uppercase tracking-wide text-destructive">
+                  True position (unfloored)
+                </span>
+              )}
+            </p>
+          </div>
+          <div className={`text-4xl font-bold ${floorActive ? 'text-destructive' : 'text-foreground'}`}>
+            {formatCurrency(displayedCapacity)}
           </div>
           <div className="mt-3">
-            <Progress 
-              value={capacityProgress} 
+            <Progress
+              value={capacityProgress}
               className="h-3"
             />
           </div>
           <div className="flex items-center justify-between mt-2 text-sm text-muted-foreground">
             <span>Stress-tested: {formatCurrency(result.stressTestedCapacity)}</span>
+            {floorActive && (
+              <span className="text-xs">Engine lendable: {formatCurrency(result.borrowingCapacity)}</span>
+            )}
           </div>
+          {floorActive && (
+            <p className="text-[11px] text-muted-foreground/80 mt-2 leading-relaxed flex items-start gap-1">
+              <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
+              <span>
+                Surplus is negative ({formatCurrency(result.monthlySurplus)}/mo) so the lendable figure is clamped at $0
+                for APRA compliance. The headline above shows the <strong>true serviceability gap</strong> — the
+                amount the client is "underwater" against the assessment rate.
+              </span>
+            </p>
+          )}
         </div>
 
         {/* Total Purchasing Power — shown when equity release contributes capital */}
