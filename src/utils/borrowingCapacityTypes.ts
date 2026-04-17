@@ -176,7 +176,25 @@ export type ScenarioDeltaType =
    *  contracted annual rate in %. Engine recomputes that property's holding
    *  cost using the new rate (not the global) and rolls the delta into
    *  `commitmentAdjustment`. */
-  | 'property_rate_change';
+  | 'property_rate_change'
+  /** Phase G1 — Valuation uplift. `id` = property id, `value` = either
+   *  the new $ valuation (unit: 'absolute') or a % uplift (unit: 'percent').
+   *  Pure input override — no direct cashflow impact. Resolved BEFORE every
+   *  other property-bound delta in the same run so downstream equity / pool /
+   *  refinance math sees the new value. `meta.basis` ∈
+   *  {'manual','avm','desktop','comparable_sales'} drives the PDF audit
+   *  watermark; `meta.source` is a free-text justification (e.g. agent name). */
+  | 'property_value_change'
+  /** Phase G2 — Cross-collateralised pool release. `id` is a pool identifier
+   *  (e.g. 'pool-default'); `value` = target blended LVR (ratio 0–0.95).
+   *  `meta.propertyIds` = string[] of properties pooled,
+   *  `meta.releaseRate`  = blended/avg rate %,
+   *  `meta.allocationStrategy` ∈ {'pro_rata','highest_equity_first'}
+   *    (default 'highest_equity_first'),
+   *  `meta.lenderMaxLVR`  = absolute lender ceiling per security (default 0.95).
+   *  Closes the methodology gap where standalone per-property mode floors a
+   *  release at $0 even when equity-rich properties could subsidise the pool. */
+  | 'portfolio_lvr_release';
 
 export type ScenarioDeltaUnit = 'percent' | 'absolute' | 'rate_points' | 'years' | 'ratio';
 
@@ -191,8 +209,9 @@ export interface ScenarioDelta {
   value: number;
   /** Unit hint */
   unit: ScenarioDeltaUnit;
-  /** Optional payload for richer deltas (e.g. equity_release target LVR, dti cap toggle) */
-  meta?: Record<string, number | string | boolean | null>;
+  /** Optional payload for richer deltas (e.g. equity_release target LVR, dti cap toggle,
+   *  pool propertyIds for portfolio_lvr_release, basis/source for property_value_change) */
+  meta?: Record<string, number | string | boolean | string[] | null>;
 }
 
 /** Phase C: Acquisition Capacity — what the client can ACTUALLY purchase
