@@ -90,6 +90,10 @@ export interface PropertyItem {
 interface StrategyState {
   consolidatedLiabilities: Set<string>;
   refinancedToIO: Set<string>;
+  /** Phase 3 — per-property manual $/mo override on refinanced loan (undefined = auto IO) */
+  refinanceManualRepayments: Map<string, number>;
+  /** Phase 3 — per-property informational IO period (3/5/10yr) */
+  refinanceIoPeriodYears: Map<string, number>;
   equityReleaseEnabled: boolean;
   equityReleasePropertyIds: Set<string>;
   equityReleaseTargetLVRs: Map<string, number>; // per-property target LVR
@@ -125,6 +129,8 @@ const DEFAULT_EQUITY_LVR = 0.80;
 const DEFAULT_STRATEGY: StrategyState = {
   consolidatedLiabilities: new Set(),
   refinancedToIO: new Set(),
+  refinanceManualRepayments: new Map(),
+  refinanceIoPeriodYears: new Map(),
   equityReleaseEnabled: false,
   equityReleasePropertyIds: new Set(),
   equityReleaseTargetLVRs: new Map(),
