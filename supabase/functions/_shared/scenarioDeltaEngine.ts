@@ -9,6 +9,15 @@
  * If you change one, change the other and update the parity test.
  */
 
+import { estimateLmi, type LmiMode } from './lmiCalculations.ts';
+import {
+  calculateStampDuty,
+  estimateOtherAcquisitionCosts,
+  type AustralianState,
+  type PurchaseIntent,
+  type PropertyCategory,
+} from './stampDutyCalculator.ts';
+
 // ============================================
 // TYPES (mirrored from src/utils/borrowingCapacityTypes.ts)
 // ============================================
