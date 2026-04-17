@@ -1381,7 +1381,7 @@ export function runScenarioWithInputs(
     computedShadedAnnual2 = Math.max(0, ctx.baseInputs.shadedAnnualIncome + total.shadedIncomeAdjustment);
   }
 
-  // Phase I6 — Negative-gearing add-back (parity with runScenario)
+  // Phase I6/I12 — Negative-gearing add-back (parity with runScenario, buffered)
   const investmentProps2 = (ctx.properties || []).filter(p => {
     const t = (p.propertyType || '').toLowerCase();
     return t.includes('invest') || t.includes('rental') || t === 'investment';
@@ -1390,6 +1390,7 @@ export function runScenarioWithInputs(
     investmentProperties: investmentProps2,
     marginalTaxRate: marginalTaxRateFor(newGross2),
     addBackShading: 1.0,
+    bufferRatePct: ctx.baseInputs.bufferRate ?? 3,
   });
   if (ng2.annualAddBack > 0) {
     computedShadedAnnual2 += ng2.annualAddBack;
@@ -1418,17 +1419,19 @@ export function runScenarioWithInputs(
     finalExpenses2 = hemBenchmark2;
   }
 
-  // Phase I8 — DTI denominator refinement (parity with runScenario)
+  // Phase I8/I11 — DTI denominator refinement (binds into cap path)
+  let dtiAdjustedIncome2: number | undefined;
   if (Array.isArray(ctx.incomeComponents) && ctx.incomeComponents.length > 0) {
     const grossScale = ctx.baseInputs.grossAnnualIncome > 0 ? newGross2 / ctx.baseInputs.grossAnnualIncome : 1;
     const scaledForDti = ctx.incomeComponents.map(c => ({ ...c, grossAnnual: Math.max(0, c.grossAnnual * grossScale) }));
     const dtiDen = computeDtiDenominator({ incomeComponents: scaledForDti, fallbackGrossAnnual: newGross2 });
+    dtiAdjustedIncome2 = dtiDen.dtiAdjustedAnnualIncome;
     if (dtiDen.dtiAdjustedAnnualIncome < newGross2 * 0.95 && dtiDen.dtiAdjustedAnnualIncome > 0) {
       issues.push({
         deltaId: 'dti-denominator',
         deltaType: 'income_change',
         severity: 'warning',
-        message: `DTI denominator (APS 220): $${Math.round(dtiDen.dtiAdjustedAnnualIncome).toLocaleString()}/yr (${((dtiDen.dtiAdjustedAnnualIncome / newGross2) * 100).toFixed(0)}% of gross).`,
+        message: `DTI denominator (APS 220): $${Math.round(dtiDen.dtiAdjustedAnnualIncome).toLocaleString()}/yr (${((dtiDen.dtiAdjustedAnnualIncome / newGross2) * 100).toFixed(0)}% of gross). Bound into cap path — capacity may be tighter than headline gross suggests.`,
       });
     }
   }
@@ -1444,6 +1447,8 @@ export function runScenarioWithInputs(
     totalDebtBalances: Math.max(0, (ctx.baseInputs.totalDebtBalances || 0) + total.debtBalanceAdjustment),
     dtiCapEnabled: total.dtiCapEnabled ?? ctx.baseInputs.dtiCapEnabled,
     dtiCapLimit: total.dtiCapLimit ?? ctx.baseInputs.dtiCapLimit,
+    // Phase I11 — APS 220-aligned DTI denominator binding
+    dtiAdjustedAnnualIncome: dtiAdjustedIncome2,
   };
 
   const calc = calculateBorrowingCapacity(inputs);
