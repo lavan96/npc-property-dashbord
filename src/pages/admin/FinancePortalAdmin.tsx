@@ -17,8 +17,10 @@ import { toast } from 'sonner';
 import {
   Loader2, Search, MoreHorizontal, Mail, Shield, RefreshCw,
   Ban, CheckCircle2, History, Settings, Users, Copy,
+  BarChart3, FileSpreadsheet, FileText,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { Link } from 'react-router-dom';
 import { ClientAssignmentsDialog } from '@/components/admin/finance-portal/ClientAssignmentsDialog';
 import { DefaultPermissionsDialog } from '@/components/admin/finance-portal/DefaultPermissionsDialog';
 import { ActivityLogDialog } from '@/components/admin/finance-portal/ActivityLogDialog';
@@ -181,6 +183,15 @@ export default function FinancePortalAdmin() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button variant="outline" asChild className="gap-2">
+            <Link to="/admin/finance-portal/analytics"><BarChart3 className="h-4 w-4" />Analytics</Link>
+          </Button>
+          <Button variant="outline" asChild className="gap-2">
+            <Link to="/admin/finance-portal/bulk-import"><FileSpreadsheet className="h-4 w-4" />Bulk Import</Link>
+          </Button>
+          <Button variant="outline" asChild className="gap-2">
+            <Link to="/admin/finance-portal/compliance"><FileText className="h-4 w-4" />Compliance</Link>
+          </Button>
           <Button variant="outline" onClick={() => { setActivityForUser(null); setActivityOpen(true); }} className="gap-2">
             <History className="h-4 w-4" />
             Activity Log

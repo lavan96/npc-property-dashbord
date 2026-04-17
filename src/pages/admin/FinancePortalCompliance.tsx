@@ -1,0 +1,270 @@
+/**
+ * Finance Portal — Compliance Export (Phase 6D)
+ * Pull a date-bounded audit slice (optionally per-partner) and export
+ * to CSV or printable PDF for compliance reviews.
+ */
+import { useEffect, useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { toast } from 'sonner';
+import {
+  Loader2, FileText, Download, Printer, Search, ShieldCheck,
+} from 'lucide-react';
+import { format } from 'date-fns';
+
+interface PartnerOption { id: string; name: string; email: string; }
+interface ExportRow {
+  timestamp: string;
+  partner_name: string | null;
+  partner_email: string | null;
+  client_name: string | null;
+  client_email: string | null;
+  actor_type: string;
+  action: string;
+  entity_type: string | null;
+  entity_id: string | null;
+  ip_address: string | null;
+  metadata: any;
+}
+
+function isoToday() { return new Date().toISOString().slice(0, 10); }
+function isoDaysAgo(d: number) { return new Date(Date.now() - d * 86400000).toISOString().slice(0, 10); }
+
+function csvEscape(v: any): string {
+  if (v == null) return '';
+  const s = typeof v === 'string' ? v : JSON.stringify(v);
+  if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+
+export default function FinancePortalCompliance() {
+  const [partners, setPartners] = useState<PartnerOption[]>([]);
+  const [partnerId, setPartnerId] = useState<string>('all');
+  const [since, setSince] = useState<string>(isoDaysAgo(30));
+  const [until, setUntil] = useState<string>(isoToday());
+  const [loading, setLoading] = useState(false);
+  const [rows, setRows] = useState<ExportRow[]>([]);
+  const [summary, setSummary] = useState<Record<string, number>>({});
+
+  const loadPartners = async () => {
+    try {
+      const { data } = await invokeSecureFunction('finance-portal-admin', { operation: 'list_users' });
+      const list: PartnerOption[] = (data?.records || [])
+        .filter((u: any) => u.portal_user)
+        .map((u: any) => ({ id: u.portal_user.id, name: u.name, email: u.email }));
+      setPartners(list);
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to load partners');
+    }
+  };
+
+  useEffect(() => { void loadPartners(); }, []);
+
+  const runReport = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await invokeSecureFunction('finance-portal-admin', {
+        operation: 'compliance_export',
+        finance_user_id: partnerId === 'all' ? undefined : partnerId,
+        since: new Date(since + 'T00:00:00Z').toISOString(),
+        until: new Date(until + 'T23:59:59Z').toISOString(),
+      });
+      if (error) throw new Error(error.message);
+      setRows(data?.rows || []);
+      setSummary(data?.summary || {});
+      toast.success(`${data?.total || 0} audit records loaded`);
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to generate report');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const exportCsv = () => {
+    if (rows.length === 0) { toast.error('Run a report first'); return; }
+    const headers = ['timestamp', 'partner_name', 'partner_email', 'client_name', 'client_email', 'actor_type', 'action', 'entity_type', 'entity_id', 'ip_address', 'metadata'];
+    const lines = [headers.join(',')];
+    for (const r of rows) {
+      lines.push(headers.map(h => csvEscape((r as any)[h])).join(','));
+    }
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const partnerName = partnerId === 'all' ? 'all-partners' : partners.find(p => p.id === partnerId)?.email || partnerId;
+    a.href = url;
+    a.download = `finance-portal-compliance_${partnerName}_${since}_to_${until}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const printPdf = () => {
+    if (rows.length === 0) { toast.error('Run a report first'); return; }
+    const partnerLabel = partnerId === 'all' ? 'All Partners' : partners.find(p => p.id === partnerId)?.name || 'Partner';
+    const summaryHtml = Object.entries(summary)
+      .sort((a, b) => b[1] - a[1])
+      .map(([k, v]) => `<tr><td>${k}</td><td style="text-align:right">${v}</td></tr>`)
+      .join('');
+    const rowsHtml = rows.map(r => `
+      <tr>
+        <td>${format(new Date(r.timestamp), 'yyyy-MM-dd HH:mm:ss')}</td>
+        <td>${r.partner_name || '—'}</td>
+        <td>${r.client_name || '—'}</td>
+        <td>${r.actor_type}</td>
+        <td><strong>${r.action}</strong></td>
+        <td>${r.entity_type || ''}</td>
+        <td style="font-family:monospace;font-size:10px">${r.ip_address || ''}</td>
+      </tr>`).join('');
+
+    const w = window.open('', '_blank', 'width=1024,height=768');
+    if (!w) { toast.error('Popup blocked. Allow popups to print.'); return; }
+    w.document.write(`
+      <!doctype html><html><head><meta charset="utf-8"><title>Finance Portal Compliance Report</title>
+      <style>
+        body { font-family: -apple-system, system-ui, sans-serif; color: #0D264D; margin: 24px; }
+        h1 { color: #0D264D; border-bottom: 3px solid #BF9B50; padding-bottom: 8px; margin-bottom: 4px; }
+        h2 { color: #BF9B50; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; margin-top: 24px; }
+        .meta { color: #555; font-size: 12px; margin-bottom: 16px; }
+        table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        th, td { padding: 6px 8px; border-bottom: 1px solid #e5e7eb; text-align: left; vertical-align: top; }
+        th { background: #f4f1ea; color: #0D264D; font-weight: 600; }
+        tr:nth-child(even) { background: #fafafa; }
+        .footer { margin-top: 32px; font-size: 10px; color: #888; text-align: center; }
+      </style></head><body>
+      <h1>Finance Portal — Compliance Report</h1>
+      <div class="meta">
+        <strong>${partnerLabel}</strong> · Period: ${since} → ${until} · Generated: ${format(new Date(), 'PPpp')} · ${rows.length} records
+      </div>
+      <h2>Action Summary</h2>
+      <table><thead><tr><th>Action</th><th style="text-align:right">Count</th></tr></thead><tbody>${summaryHtml}</tbody></table>
+      <h2>Audit Trail</h2>
+      <table><thead><tr>
+        <th>Timestamp</th><th>Partner</th><th>Client</th><th>Actor</th><th>Action</th><th>Entity</th><th>IP</th>
+      </tr></thead><tbody>${rowsHtml}</tbody></table>
+      <div class="footer">Generated by NPC Command Centre · Confidential</div>
+      <script>window.print();</script>
+      </body></html>`);
+    w.document.close();
+  };
+
+  return (
+    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <ShieldCheck className="h-6 w-6 text-primary" />
+            Compliance Export
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Audit-grade export of finance portal activity for compliance and partner reviews.
+          </p>
+        </div>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Report parameters</CardTitle>
+          <CardDescription>Filter by partner and time window. CSV and printable PDF available after running.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Partner</label>
+              <Select value={partnerId} onValueChange={setPartnerId}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All partners</SelectItem>
+                  {partners.map(p => (
+                    <SelectItem key={p.id} value={p.id}>{p.name} <span className="text-muted-foreground">({p.email})</span></SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">From</label>
+              <Input type="date" value={since} onChange={e => setSince(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">To</label>
+              <Input type="date" value={until} onChange={e => setUntil(e.target.value)} />
+            </div>
+            <div className="flex items-end">
+              <Button onClick={runReport} disabled={loading} className="w-full gap-2">
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                Run Report
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {rows.length > 0 && (
+        <Card>
+          <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div>
+              <CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5" />Results — {rows.length} records</CardTitle>
+              <CardDescription>
+                Action breakdown:{' '}
+                {Object.entries(summary).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k, v]) => (
+                  <Badge key={k} variant="outline" className="mr-1 text-[10px]">{k}: {v}</Badge>
+                ))}
+              </CardDescription>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={exportCsv} className="gap-2"><Download className="h-4 w-4" />CSV</Button>
+              <Button variant="default" onClick={printPdf} className="gap-2"><Printer className="h-4 w-4" />Print / PDF</Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="border rounded-lg overflow-auto max-h-[60vh]">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Timestamp</TableHead>
+                    <TableHead>Partner</TableHead>
+                    <TableHead>Client</TableHead>
+                    <TableHead>Actor</TableHead>
+                    <TableHead>Action</TableHead>
+                    <TableHead>Entity</TableHead>
+                    <TableHead>IP</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rows.slice(0, 500).map((r, i) => (
+                    <TableRow key={i}>
+                      <TableCell className="text-xs whitespace-nowrap">{format(new Date(r.timestamp), 'MMM d, HH:mm:ss')}</TableCell>
+                      <TableCell className="text-sm">
+                        <div className="font-medium">{r.partner_name || '—'}</div>
+                        <div className="text-[10px] text-muted-foreground">{r.partner_email}</div>
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        <div>{r.client_name || '—'}</div>
+                        <div className="text-[10px] text-muted-foreground">{r.client_email}</div>
+                      </TableCell>
+                      <TableCell><Badge variant="outline" className="text-[10px] capitalize">{r.actor_type}</Badge></TableCell>
+                      <TableCell className="text-sm font-medium">{r.action}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {r.entity_type || '—'}
+                        {r.entity_id && <span className="ml-1 font-mono">{r.entity_id.slice(0, 8)}</span>}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground font-mono">{r.ip_address || '—'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              {rows.length > 500 && (
+                <div className="p-3 text-center text-xs text-muted-foreground border-t">
+                  Showing first 500 of {rows.length}. Use CSV/PDF export for the full set.
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
