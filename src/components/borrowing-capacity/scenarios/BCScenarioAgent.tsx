@@ -553,6 +553,22 @@ export function BCScenarioAgent({
                     {scenario.reasoning}
                   </p>
 
+                  {/* Phase J1: Rejected levers — defends the recommendation */}
+                  {scenario.rejectedLevers && scenario.rejectedLevers.length > 0 && (
+                    <details className="mb-3 rounded-md border border-border/60 bg-muted/30 p-2">
+                      <summary className="text-[10px] uppercase tracking-wide text-muted-foreground cursor-pointer hover:text-foreground">
+                        Considered & Rejected ({scenario.rejectedLevers.length})
+                      </summary>
+                      <ul className="mt-1.5 space-y-1 text-[11px]">
+                        {scenario.rejectedLevers.map((rl, idx) => (
+                          <li key={idx} className="flex gap-1.5">
+                            <span className="text-muted-foreground shrink-0">×</span>
+                            <span><span className="font-medium">{rl.lever}:</span> <span className="text-muted-foreground">{rl.reason}</span></span>
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  )}
                   {/* Phase H: Engine-validated truth panel (pre-Apply) */}
                   {scenario.engineValidation && (() => {
                     const v = scenario.engineValidation!;
