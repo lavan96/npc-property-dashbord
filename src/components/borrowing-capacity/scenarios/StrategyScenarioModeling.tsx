@@ -865,6 +865,9 @@ export function StrategyScenarioModeling({
       refinancedToIO: new Set(),
       equityReleasePropertyIds: new Set(),
       equityReleaseTargetLVRs: new Map(),
+      equityReleaseDeploymentPercents: new Map(),
+      equityReleaseRepaymentTypes: new Map(),
+      equityReleaseManualRepayments: new Map(),
       propertyRateOverrides: new Map(),
       additional: { ...DEFAULT_ADDITIONAL_STRATEGY, portfolioSellPropertyIds: new Set() },
     });
