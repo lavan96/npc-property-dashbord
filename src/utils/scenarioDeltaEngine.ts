@@ -30,18 +30,39 @@ import {
 import {
   type ScenarioDelta,
   type ScenarioCapacityResult,
+  type AcquisitionCapacity,
   buildScenarioChange,
 } from './borrowingCapacityTypes';
+import { estimateLMI, type LmiMode } from './lmiCalculations';
+import {
+  calculateStampDuty,
+  estimateOtherAcquisitionCosts,
+  type AustralianState,
+  type PurchaseIntent,
+  type PropertyCategory,
+} from './stampDutyCalculator';
 
 // ============================================
 // CONTEXT TYPES
 // ============================================
+
+export interface AcquisitionContext {
+  state?: AustralianState;
+  intent?: PurchaseIntent;
+  category?: PropertyCategory;
+  isFirstHomeBuyer?: boolean;
+  isForeignBuyer?: boolean;
+  lmiMode?: LmiMode;
+  /** Cash on hand brought to settlement (in addition to released equity) */
+  cashOnHand?: number;
+}
 
 export interface ScenarioContext {
   baseInputs: BorrowingCapacityInput;
   baseResult: BorrowingCapacityResult;
   properties?: ScenarioProperty[];
   liabilities?: ScenarioLiability[];
+  acquisition?: AcquisitionContext;
 }
 
 export interface ScenarioProperty {
