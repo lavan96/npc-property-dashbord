@@ -164,6 +164,8 @@ interface StrategyScenarioModelingProps {
   onPresetsChange?: (presets: ScenarioPreset[]) => void;
   /** Optional client identifier — propagated to BCScenarioAgent so chat history persists per client. */
   clientId?: string;
+  /** Optional client display name — used in PDF exports (F6 Finance Hand-off). */
+  clientName?: string;
 }
 
 // ── Helpers ────────────────────────────────────────────
@@ -200,6 +202,7 @@ export function StrategyScenarioModeling({
   savedPresets: externalPresets,
   onPresetsChange,
   clientId,
+  clientName,
 }: StrategyScenarioModelingProps) {
   const [strategy, setStrategy] = useState<StrategyState>(DEFAULT_STRATEGY);
   const [acquisition, setAcquisition] = useState<AcquisitionState>(DEFAULT_ACQUISITION);
@@ -1525,7 +1528,7 @@ export function StrategyScenarioModeling({
             formatCurrency={formatCurrency}
           />
 
-          {/* F5 — Strategy rationale: what / why / how / sequence (finance-ready) */}
+          {/* F5 + F6 — Strategy rationale (finance-ready) with PDF export */}
           <StrategyRationalePanel
             report={buildStrategyRationale({
               baseCapacity: baseResult.borrowingCapacity,
@@ -1536,6 +1539,14 @@ export function StrategyScenarioModeling({
               formatCurrency,
             })}
             formatCurrency={formatCurrency}
+            pdfContext={clientName ? {
+              clientName,
+              baseCapacity: baseResult.borrowingCapacity,
+              scenarioCapacity: scenarioResult.borrowingCapacity,
+              effectivePurchasePower: acquisition.enabled && acquisitionCapacity ? acquisitionCapacity.maxPurchasePrice : null,
+              targetPurchasePrice: acquisition.enabled && acquisitionCapacity?.targetPurchasePrice ? acquisitionCapacity.targetPurchasePrice : null,
+              meetsTarget: acquisition.enabled && acquisitionCapacity ? (acquisitionCapacity.meetsTarget ?? null) : null,
+            } : undefined}
           />
 
           {impactBreakdown.length > 0 && (
