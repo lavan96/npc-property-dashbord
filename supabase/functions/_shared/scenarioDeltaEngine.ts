@@ -832,10 +832,13 @@ export function aggregateDeltas(
     const t = (p.propertyType || '').toLowerCase();
     return t.includes('invest') || t.includes('rental') || t === 'investment';
   });
+  // Phase I12 — pass APRA buffer so loss is recomputed at IO + buffer (assessment),
+  // not the cheaper contracted rate. Mirrors `src/utils/scenarioDeltaEngine.ts`.
   const ngResult = computeNegativeGearingAddBack({
     investmentProperties: investmentProps,
     marginalTaxRate: marginalTaxRateFor(newGross),
     addBackShading: 1.0,
+    bufferRatePct: ctx.baseInputs.bufferRate ?? 3,
   });
   if (ngResult.annualAddBack > 0) {
     computedShadedAnnual += ngResult.annualAddBack;
@@ -848,42 +851,25 @@ export function aggregateDeltas(
     });
   }
 
-  // Phase I8 — DTI denominator refinement (APS 220-aligned, surface-only)
+  // Phase I11 — DTI denominator refinement (APS 220-aligned). Compute the
+  // adjusted denominator AND bind it into the DTI cap PATH on the server twin
+  // so replay matches the UI (rental @ 75%, etc.).
+  let dtiAdjustedIncome: number | undefined;
   if (Array.isArray(ctx.baseInputs.incomeComponents) && ctx.baseInputs.incomeComponents.length > 0) {
     const grossScale = ctx.baseInputs.grossAnnualIncome > 0 ? newGross / ctx.baseInputs.grossAnnualIncome : 1;
     const scaledForDti = ctx.baseInputs.incomeComponents.map(c => ({ ...c, grossAnnual: Math.max(0, c.grossAnnual * grossScale) }));
     const dtiDen = computeDtiDenominator({ incomeComponents: scaledForDti, fallbackGrossAnnual: newGross });
+    dtiAdjustedIncome = dtiDen.dtiAdjustedAnnualIncome;
     if (dtiDen.dtiAdjustedAnnualIncome < newGross * 0.95 && dtiDen.dtiAdjustedAnnualIncome > 0) {
       issues.push({
         deltaId: 'dti-denominator',
         deltaType: 'income_change',
         severity: 'warning',
-        message: `DTI denominator (APS 220): $${Math.round(dtiDen.dtiAdjustedAnnualIncome).toLocaleString()}/yr (${((dtiDen.dtiAdjustedAnnualIncome / newGross) * 100).toFixed(0)}% of gross). Lender DTI review uses this — not the headline gross.`,
+        message: `DTI denominator (APS 220): $${Math.round(dtiDen.dtiAdjustedAnnualIncome).toLocaleString()}/yr (${((dtiDen.dtiAdjustedAnnualIncome / newGross) * 100).toFixed(0)}% of gross). Bound into DTI cap path — capacity may be tighter than headline gross suggests.`,
       });
     }
   }
-
-  // Phase I2 — HEM floor enforcement.
-  // scenario that promises -30% expenses cannot fall below that floor.
-  // We respect a per-lender opt-out via `enforcesHemFloor = false` (e.g.
-  // some non-banks). When the cut is impossible, surface a validation note
-  // so the broker sees what was clamped — silent clamps were the #2 source
-  // of "engine-says-X-but-lender-says-Y" surprises.
-  const requestedExpenses = ctx.baseInputs.monthlyLivingExpenses + total.expenseAdjustment + hemDelta;
-  const hemBenchmark = ctx.baseInputs.hemBenchmark ?? 0;
-  const targetProfile = resolveLenderProfile(targetProfileId);
-  let finalExpenses = Math.max(0, requestedExpenses);
-  if (hemBenchmark > 0 && targetProfile.enforcesHemFloor && finalExpenses < hemBenchmark) {
-    const expenseChangeDelta = ordered.find(d => d.type === 'expense_change');
-    issues.push({
-      deltaId: expenseChangeDelta?.id ?? 'expense_change',
-      deltaType: 'expense_change',
-      severity: 'warning',
-      message: `Expense reduction floored at HEM benchmark $${Math.round(hemBenchmark).toLocaleString()}/mo (requested $${Math.round(requestedExpenses).toLocaleString()}). Banks use MAX(declared, HEM) — additional cuts below HEM do not improve capacity.`,
-    });
-    finalExpenses = hemBenchmark;
-  }
-
+...
   const inputs: AggregatedScenarioInputs = {
     grossAnnualIncome: newGross,
     shadedAnnualIncome: computedShadedAnnual,
@@ -896,7 +882,10 @@ export function aggregateDeltas(
     calculationMode: ctx.baseInputs.calculationMode,
     dtiCapEnabled: total.dtiCapEnabled ?? ctx.baseInputs.dtiCapEnabled,
     dtiCapLimit: total.dtiCapLimit ?? ctx.baseInputs.dtiCapLimit,
-  };
+    // Phase I11 — surfaced for downstream consumers (server-side
+    // calculateBorrowingCapacity reads this off-band where available).
+    dtiAdjustedAnnualIncome: dtiAdjustedIncome,
+  } as AggregatedScenarioInputs;
 
   // Phase I10 — Honest DTI: split debt moves into NEW (released) vs REMOVED
   // (sells/payoffs) and report explicitly. Surfaces APRA 6× / lender-cap
