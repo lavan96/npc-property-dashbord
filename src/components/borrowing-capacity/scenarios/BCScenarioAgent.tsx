@@ -59,6 +59,25 @@ interface ScenarioAdjustments {
   } | null;
 }
 
+/** Phase H: Engine-validated metrics returned by the server preview.
+ *  Populated BEFORE the user clicks Apply so the cards display engine truth
+ *  (capacity, meetsTarget, shortfall, loanRequired) instead of LLM estimates. */
+export interface AIScenarioEngineValidation {
+  borrowingCapacity: number;
+  capacityChange: number;
+  monthlySurplus: number;
+  serviceabilityBand: 'green' | 'amber' | 'red';
+  dtiRatio: number;
+  meetsTarget?: boolean;
+  shortfallToTarget?: number;
+  maxPurchasePrice?: number;
+  loanRequiredForPurchase?: number;
+  netCashAfterSettlement?: number;
+  releasedCapital?: number;
+  targetPurchasePrice?: number;
+  validationIssues?: Array<{ deltaId: string; deltaType: string; severity: string; message: string }>;
+}
+
 export interface AIScenario {
   name: string;
   reasoning: string;
@@ -66,6 +85,8 @@ export interface AIScenario {
   estimatedImpact: string;
   /** Phase E (L1): Engine-reconciled impact, populated by parent after applying. */
   reconciledImpact?: string;
+  /** Phase H: pre-Apply engine validation from the server preview. */
+  engineValidation?: AIScenarioEngineValidation;
 }
 
 interface ChatMessage {
