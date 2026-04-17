@@ -195,21 +195,15 @@ async function extractWithVisionSingle(
   }
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openaiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: [
-          { role: 'system', content: EXTRACTION_SYSTEM_PROMPT },
-          { role: 'user', content: userContent }
-        ],
-        temperature: 0.1,
-        max_tokens: 3000,
-      }),
+    const { callLLMRaw } = await import('../_shared/llmRouter.ts');
+    const response = await callLLMRaw({
+      agentKey: 'pdf_property_extraction',
+      messages: [
+        { role: 'system', content: EXTRACTION_SYSTEM_PROMPT },
+        { role: 'user', content: userContent as any },
+      ],
+      temperature: 0.1,
+      maxTokens: 3000,
     });
 
     if (!response.ok) {
@@ -381,36 +375,21 @@ async function extractFromSingleImage(
 ): Promise<ExtractedPropertyData> {
   console.log(`🔍 Analyzing single image with GPT-4o Vision...`);
   
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${openaiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o',
-      messages: [
-        { role: 'system', content: EXTRACTION_SYSTEM_PROMPT },
-        { 
-          role: 'user', 
-          content: [
-            {
-              type: "text",
-              text: buildUserPrompt(1, fileName),
-            },
-            {
-              type: "image_url",
-              image_url: {
-                url: `data:${mimeType};base64,${base64}`,
-                detail: "high"
-              }
-            }
-          ]
-        }
-      ],
-      temperature: 0.1,
-      max_tokens: 3000,
-    }),
+  const { callLLMRaw } = await import('../_shared/llmRouter.ts');
+  const response = await callLLMRaw({
+    agentKey: 'pdf_property_extraction',
+    messages: [
+      { role: 'system', content: EXTRACTION_SYSTEM_PROMPT },
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: buildUserPrompt(1, fileName) },
+          { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64}`, detail: 'high' } },
+        ] as any,
+      },
+    ],
+    temperature: 0.1,
+    maxTokens: 3000,
   });
 
   if (!response.ok) {

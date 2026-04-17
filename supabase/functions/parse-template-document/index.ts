@@ -172,18 +172,13 @@ async function extractTextFromPDFWithAI(pdfBuffer: ArrayBuffer, lovableApiKey: s
   
   const base64PDF = arrayBufferToBase64(pdfBuffer);
   
-  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${lovableApiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'google/gemini-2.5-flash',
-      messages: [
-        {
-          role: 'system',
-          content: `You are a document structure extractor. Your job is to extract ALL text content from the provided document and convert it into well-structured Markdown format.
+  const { callLLMRaw } = await import('../_shared/llmRouter.ts');
+  const response = await callLLMRaw({
+    agentKey: 'template_parsing',
+    messages: [
+      {
+        role: 'system',
+        content: `You are a document structure extractor. Your job is to extract ALL text content from the provided document and convert it into well-structured Markdown format.
 
 CRITICAL REQUIREMENTS:
 1. Extract EVERY section heading, subheading, and paragraph
@@ -200,26 +195,23 @@ OUTPUT FORMAT:
 - # for main sections, ## for subsections, ### for sub-subsections
 - Use bullet points (-) for lists
 - Use tables where appropriate
-- Preserve any special formatting notes`
-        },
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'text',
-              text: 'Extract the COMPLETE text content from this PDF document and convert it to well-structured Markdown. Include every section, heading, bullet point, and instruction. This is a report template - preserve all structure and formatting guidelines.'
-            },
-            {
-              type: 'image_url',
-              image_url: {
-                url: `data:application/pdf;base64,${base64PDF}`
-              }
-            }
-          ]
-        }
-      ],
-      max_tokens: 32000, // Large output for full document extraction
-    }),
+- Preserve any special formatting notes`,
+      },
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: 'Extract the COMPLETE text content from this PDF document and convert it to well-structured Markdown. Include every section, heading, bullet point, and instruction. This is a report template - preserve all structure and formatting guidelines.',
+          },
+          {
+            type: 'image_url',
+            image_url: { url: `data:application/pdf;base64,${base64PDF}` },
+          },
+        ] as any,
+      },
+    ],
+    maxTokens: 32000,
   });
 
   if (!response.ok) {
