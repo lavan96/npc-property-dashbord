@@ -484,12 +484,19 @@ export function BCScenarioAgent({
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <h4 className="text-sm font-semibold leading-tight">{scenario.name}</h4>
                     <Badge
-                      variant={scenario.reconciledImpact ? "default" : "outline"}
+                      variant={scenario.reconciledImpact || scenario.engineValidation ? "default" : "outline"}
                       className="shrink-0 text-xs"
-                      title={scenario.reconciledImpact ? "Engine-verified" : "AI estimate (not yet verified)"}
+                      title={
+                        scenario.reconciledImpact ? "Engine-verified (post-Apply)"
+                        : scenario.engineValidation ? "Engine-validated (pre-Apply preview)"
+                        : "AI estimate (not yet verified)"
+                      }
                     >
                       <TrendingUp className="h-3 w-3 mr-1" />
-                      {scenario.reconciledImpact || scenario.estimatedImpact}
+                      {scenario.reconciledImpact
+                        || (scenario.engineValidation
+                          ? `${scenario.engineValidation.capacityChange >= 0 ? '+' : ''}$${Math.round(scenario.engineValidation.capacityChange).toLocaleString()}`
+                          : scenario.estimatedImpact)}
                     </Badge>
                   </div>
 
