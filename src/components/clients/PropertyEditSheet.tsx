@@ -440,7 +440,7 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
 
   const renderExpenseInput = (
     label: string,
-    field: keyof Pick<PropertyFormData, 'body_corporate' | 'council_rates' | 'water_rates' | 'repairs_maintenance' | 'landlord_insurance' | 'building_insurance' | 'rental_income' | 'loan_repayment'>,
+    field: keyof Pick<PropertyFormData, 'body_corporate' | 'council_rates' | 'water_rates' | 'repairs_maintenance' | 'landlord_insurance' | 'building_insurance' | 'rental_income'>,
     showMonthlyEquivalent = true,
   ) => {
     const expense = formData[field];
@@ -819,57 +819,23 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
                 </div>
               </div>
 
-              {/* Monthly Interest Repayment */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="flex items-center gap-2">
-                    Monthly Interest Repayment ($)
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger>
-                          <Info className="h-3 w-3 text-muted-foreground" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Auto-calculated from Loan × Interest Rate ÷ 12</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </Label>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 text-xs"
-                    onClick={() => updateField('autoCalculateInterest', !formData.autoCalculateInterest)}
-                  >
-                    <Calculator className="h-3 w-3 mr-1" />
-                    {formData.autoCalculateInterest ? 'Manual' : 'Auto'}
-                  </Button>
-                </div>
-                <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    type="number"
-                    value={formData.monthly_interest_repayment || ''}
-                    onChange={(e) => {
-                      updateField('autoCalculateInterest', false);
-                      updateNumberField('monthly_interest_repayment', e.target.value);
-                    }}
-                    className="pl-9"
-                    placeholder="0"
-                    disabled={formData.autoCalculateInterest}
-                  />
-                </div>
-                </div>
+              {/* Unified Monthly Loan Repayment with P&I / IO toggle */}
+              <MonthlyRepaymentField
+                monthlyAmount={formData.monthly_interest_repayment}
+                repaymentType={formData.repayment_type}
+                interestOnlyYears={formData.interest_only_period_years}
+                autoCalculate={formData.autoCalculateInterest}
+                loanBalance={formData.loan_remaining}
+                interestRate={formData.interest_rate}
+                onChange={(next) => setFormData(prev => ({
+                  ...prev,
+                  monthly_interest_repayment: next.monthlyAmount,
+                  repayment_type: next.repaymentType,
+                  interest_only_period_years: next.interestOnlyYears,
+                  autoCalculateInterest: next.autoCalculate,
+                }))}
+              />
 
-              {/* Loan Repayment */}
-              <Separator className="my-2" />
-              <h4 className="text-sm font-medium flex items-center gap-2">
-                <Building2 className="h-4 w-4" />
-                Loan Repayment
-              </h4>
-              {renderExpenseInput("Loan Repayment Amount", "loan_repayment")}
-              
               <div className="space-y-2">
                 <Label className="text-xs">Lender / Bank</Label>
                 <LenderCombobox
