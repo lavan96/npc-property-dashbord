@@ -203,14 +203,36 @@ export function StrategyRationalePanel({ report, formatCurrency, pdfContext }: S
                 <>
                   <ClipboardCheck className="h-3.5 w-3.5 mr-1.5" />
                   Copied
-              </>
-            ) : (
-              <>
-                <Clipboard className="h-3.5 w-3.5 mr-1.5" />
-                Copy brief
-              </>
+                </>
+              ) : (
+                <>
+                  <Clipboard className="h-3.5 w-3.5 mr-1.5" />
+                  Copy brief
+                </>
+              )}
+            </Button>
+            {pdfContext && (
+              <Button
+                type="button"
+                variant="default"
+                size="sm"
+                onClick={handleDownloadPDF}
+                disabled={downloading}
+              >
+                {downloading ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                    Generating…
+                  </>
+                ) : (
+                  <>
+                    <FileDown className="h-3.5 w-3.5 mr-1.5" />
+                    Download PDF
+                  </>
+                )}
+              </Button>
             )}
-          </Button>
+          </div>
         </div>
       </CardHeader>
 
