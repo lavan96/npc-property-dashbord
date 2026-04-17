@@ -12,6 +12,8 @@ export interface NegativeGearingInput {
   >>;
   marginalTaxRate: number;
   addBackShading?: number;
+  /** Phase I12 — APRA buffer in % (e.g. 3.00) for buffered-IO loss recompute. */
+  bufferRatePct?: number;
 }
 
 export interface NegativeGearingResult {
@@ -38,16 +40,32 @@ export function marginalTaxRateFor(grossAnnualIncome: number): number {
 export function computeNegativeGearingAddBack(input: NegativeGearingInput): NegativeGearingResult {
   const shading = Math.max(0, Math.min(1, input.addBackShading ?? 1));
   const mrt = Math.max(0, Math.min(0.5, input.marginalTaxRate));
+  const buffer = Math.max(0, input.bufferRatePct ?? 0);
   let total = 0;
   const perProperty: NegativeGearingResult['perProperty'] = [];
   const notes: string[] = [];
+  let bufferUsedFor = 0;
 
   for (const p of input.investmentProperties || []) {
     const monthlyRent = p.monthlyRentalIncome ?? 0;
-    const monthlyNet = typeof p.netMonthlyCashflow === 'number'
+    const recordedRepayment = p.loanRepaymentAmount ?? p.monthlyRepayment ?? 0;
+    const recordedCashflow = typeof p.netMonthlyCashflow === 'number'
       ? p.netMonthlyCashflow
-      : monthlyRent - (p.loanRepaymentAmount ?? p.monthlyRepayment ?? 0);
+      : monthlyRent - recordedRepayment;
+
+    let monthlyNet = recordedCashflow;
+    let usedBuffer = false;
+    if (
+      buffer > 0 &&
+      typeof p.interestRate === 'number' && p.interestRate > 0 &&
+      typeof p.loanRemaining === 'number' && p.loanRemaining > 0
+    ) {
+      const ioBuffered = p.loanRemaining * ((p.interestRate + buffer) / 100 / 12);
+      monthlyNet = recordedCashflow + recordedRepayment - ioBuffered;
+      usedBuffer = true;
+    }
     if (monthlyNet >= 0) continue;
+    if (usedBuffer) bufferUsedFor++;
     const annualLoss = Math.abs(monthlyNet) * 12;
     const taxSaving = annualLoss * mrt;
     const addBack = taxSaving * shading;
@@ -62,10 +80,13 @@ export function computeNegativeGearingAddBack(input: NegativeGearingInput): Nega
   }
 
   if (perProperty.length > 0) {
+    const bufNote = bufferUsedFor > 0
+      ? ` (loss assessed at IO + ${buffer.toFixed(2)}pp APRA buffer for ${bufferUsedFor}/${perProperty.length} ${bufferUsedFor === 1 ? 'property' : 'properties'})`
+      : '';
     notes.push(
       `Negative-gearing add-back: $${Math.round(total).toLocaleString()}/yr ` +
       `from ${perProperty.length} investment ${perProperty.length === 1 ? 'property' : 'properties'} ` +
-      `at marginal rate ${(mrt * 100).toFixed(1)}%${shading < 1 ? ` (shaded ${(shading * 100).toFixed(0)}%)` : ''}.`
+      `at marginal rate ${(mrt * 100).toFixed(1)}%${shading < 1 ? ` (shaded ${(shading * 100).toFixed(0)}%)` : ''}${bufNote}.`
     );
   }
 

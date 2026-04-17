@@ -1051,9 +1051,6 @@ function splitDebtMoves(
     if (d.type === 'equity_release') {
       const property = context.properties?.find(p => p.id === d.id);
       if (!property || property.currentValue <= 0) continue;
-      // Best-effort: re-derive the gross release using the same target rule
-      // as `applyDelta`. Conservative — uses the resolved cap, not the raw
-      // value, so it never overstates the new debt.
       const intentForCap = inferPropertyIntent(property.propertyType, 'investment');
       const kindForCap = inferPropertyKind(property.propertyType);
       const lvr = resolveLvrCap({
@@ -1064,21 +1061,46 @@ function splitDebtMoves(
         isForeignBuyer: !!context.acquisition?.isForeignBuyer,
         explicitCap: d.meta?.lenderMaxLVR as number | undefined,
       });
-      const targetLvr = d.unit === 'absolute'
-        ? Math.min(lvr.cap, (property.loanRemaining + Math.max(0, d.value)) / property.currentValue)
-        : (d.unit === 'percent' ? d.value / 100 : d.value);
-      const grossRelease = Math.max(0, (Math.min(targetLvr, lvr.cap) * property.currentValue) - property.loanRemaining);
+      // Phase I14 — clamp the requested target by the resolved cap BEFORE
+      // multiplying by currentValue. Previously we clamped after — when the
+      // requested LVR exceeded the policy cap (e.g. 95% INV → resolved 90%),
+      // splitDebtMoves attributed extra "new debt" to DTI that applyDelta
+      // never actually released, opening a parity gap with the cap path.
+      let targetLvr: number;
+      if (d.unit === 'absolute') {
+        targetLvr = (property.loanRemaining + Math.max(0, d.value)) / property.currentValue;
+      } else if (d.unit === 'percent') {
+        targetLvr = d.value / 100;
+      } else {
+        targetLvr = d.value;
+      }
+      const clamped = Math.max(0, Math.min(lvr.cap, targetLvr));
+      const grossRelease = Math.max(0, (clamped * property.currentValue) - property.loanRemaining);
       released += grossRelease;
     } else if (d.type === 'portfolio_lvr_release') {
-      // Pool release adds the gross pool to total debt — already
-      // captured in debtBalanceAdjustment. Conservative attribution:
-      // treat the absolute-positive delta as released debt.
       const target = d.unit === 'percent' ? d.value / 100 : d.value;
       const ids = (d.meta?.propertyIds as string[] | undefined) || [];
       const members = (context.properties || []).filter(p => ids.includes(p.id));
       const totalValue = members.reduce((s, p) => s + (p.currentValue || 0), 0);
       const totalDebt = members.reduce((s, p) => s + (p.loanRemaining || 0), 0);
-      const grossPool = Math.max(0, target * totalValue - totalDebt);
+      // Phase I14 — bound pool target by per-security headroom to mirror
+      // applyDelta's cappedPool. Otherwise DTI numerator can include debt
+      // that the per-security caps actually denied.
+      const headroomTotal = members.reduce((s, p) => {
+        const cap = resolveLvrCap({
+          lenderId: context.currentLenderProfileId,
+          intent: inferPropertyIntent(p.propertyType, 'investment'),
+          kind: inferPropertyKind(p.propertyType),
+          isFirstHomeBuyer: !!context.acquisition?.isFirstHomeBuyer,
+          isForeignBuyer: !!context.acquisition?.isForeignBuyer,
+          explicitCap: d.meta?.lenderMaxLVR as number | undefined,
+        });
+        return s + Math.max(0, p.currentValue * cap.cap - p.loanRemaining);
+      }, 0);
+      const grossPool = Math.min(
+        Math.max(0, target * totalValue - totalDebt),
+        headroomTotal,
+      );
       released += grossPool;
     } else if (d.type === 'property_sell') {
       const p = context.properties?.find(x => x.id === d.id);
@@ -1145,38 +1167,43 @@ export function runScenario(
     computedShadedAnnual = Math.max(0, ctx.baseInputs.shadedAnnualIncome + total.shadedIncomeAdjustment);
   }
 
-  // Phase I6 — Negative-gearing add-back. After deltas, identify investment
+  // Phase I6/I12 — Negative-gearing add-back. After deltas, identify investment
   // properties that are negatively geared and add back the tax saving at the
   // post-delta marginal rate. Skips PPRs and properties with non-negative
-  // cashflow. Conservative — uses cash-basis (no depreciation).
+  // cashflow. Phase I12: cash loss is recomputed using the BUFFERED assessment
+  // rate (contracted + APRA buffer) so the add-back tracks the loss the lender
+  // assesses, not the cheaper contracted-rate cash position. Conservative —
+  // uses cash-basis (no depreciation).
   const investmentProps = (ctx.properties || []).filter(p => {
     const t = (p.propertyType || '').toLowerCase();
     return t.includes('invest') || t.includes('rental') || t === 'investment';
   });
+  const ngBufferRate = ctx.baseInputs.bufferRate ?? 3;
   const ngResult = computeNegativeGearingAddBack({
     investmentProperties: investmentProps,
     marginalTaxRate: marginalTaxRateFor(newGross),
     addBackShading: 1.0,
+    bufferRatePct: ngBufferRate,
   });
   if (ngResult.annualAddBack > 0) {
     computedShadedAnnual += ngResult.annualAddBack;
     total.acquisitionNotes.push(...ngResult.notes);
   }
 
-  // Phase I8 — DTI denominator refinement: when typed components are present,
+  // Phase I8/I11 — DTI denominator refinement: when typed components are present,
   // compute an APRA-aligned DTI-adjusted income (rental at 75%, FTB at 50%, etc.).
-  // We surface this on `acquisitionNotes` for transparency. The DTI cap path
-  // inside `calculateBorrowingCapacity` continues to use grossAnnualIncome,
-  // but for high-DTI scenarios the broker now sees the conservative number
-  // they would be reviewed against under APRA APS 220.
+  // Phase I11 binds this into `calculateBorrowingCapacity` so the cap PATH itself
+  // uses the conservative denominator, not just the broker-facing warning.
+  let dtiAdjustedIncome: number | undefined;
   if (Array.isArray(ctx.incomeComponents) && ctx.incomeComponents.length > 0) {
     const grossScale = ctx.baseInputs.grossAnnualIncome > 0
       ? newGross / ctx.baseInputs.grossAnnualIncome : 1;
     const scaledForDti = ctx.incomeComponents.map(c => ({ ...c, grossAnnual: Math.max(0, c.grossAnnual * grossScale) }));
     const dtiDen = computeDtiDenominator({ incomeComponents: scaledForDti, fallbackGrossAnnual: newGross });
+    dtiAdjustedIncome = dtiDen.dtiAdjustedAnnualIncome;
     if (dtiDen.dtiAdjustedAnnualIncome < newGross * 0.95 && dtiDen.dtiAdjustedAnnualIncome > 0) {
       total.acquisitionNotes.push(
-        `DTI denominator (APS 220-aligned): $${Math.round(dtiDen.dtiAdjustedAnnualIncome).toLocaleString()}/yr (${((dtiDen.dtiAdjustedAnnualIncome / newGross) * 100).toFixed(0)}% of gross). Lender DTI review uses this — not the headline gross.`
+        `DTI denominator (APS 220-aligned): $${Math.round(dtiDen.dtiAdjustedAnnualIncome).toLocaleString()}/yr (${((dtiDen.dtiAdjustedAnnualIncome / newGross) * 100).toFixed(0)}% of gross). Bound into DTI cap path — capacity may be tighter than headline gross suggests.`
       );
     }
   }
@@ -1200,6 +1227,8 @@ export function runScenario(
     totalDebtBalances: Math.max(0, (ctx.baseInputs.totalDebtBalances || 0) + total.debtBalanceAdjustment),
     dtiCapEnabled: total.dtiCapEnabled ?? ctx.baseInputs.dtiCapEnabled,
     dtiCapLimit: total.dtiCapLimit ?? ctx.baseInputs.dtiCapLimit,
+    // Phase I11 — APS 220-aligned DTI denominator binding
+    dtiAdjustedAnnualIncome: dtiAdjustedIncome,
   };
 
   const scenarioResult = calculateBorrowingCapacity(scenarioInputs);
@@ -1352,7 +1381,7 @@ export function runScenarioWithInputs(
     computedShadedAnnual2 = Math.max(0, ctx.baseInputs.shadedAnnualIncome + total.shadedIncomeAdjustment);
   }
 
-  // Phase I6 — Negative-gearing add-back (parity with runScenario)
+  // Phase I6/I12 — Negative-gearing add-back (parity with runScenario, buffered)
   const investmentProps2 = (ctx.properties || []).filter(p => {
     const t = (p.propertyType || '').toLowerCase();
     return t.includes('invest') || t.includes('rental') || t === 'investment';
@@ -1361,6 +1390,7 @@ export function runScenarioWithInputs(
     investmentProperties: investmentProps2,
     marginalTaxRate: marginalTaxRateFor(newGross2),
     addBackShading: 1.0,
+    bufferRatePct: ctx.baseInputs.bufferRate ?? 3,
   });
   if (ng2.annualAddBack > 0) {
     computedShadedAnnual2 += ng2.annualAddBack;
@@ -1389,17 +1419,19 @@ export function runScenarioWithInputs(
     finalExpenses2 = hemBenchmark2;
   }
 
-  // Phase I8 — DTI denominator refinement (parity with runScenario)
+  // Phase I8/I11 — DTI denominator refinement (binds into cap path)
+  let dtiAdjustedIncome2: number | undefined;
   if (Array.isArray(ctx.incomeComponents) && ctx.incomeComponents.length > 0) {
     const grossScale = ctx.baseInputs.grossAnnualIncome > 0 ? newGross2 / ctx.baseInputs.grossAnnualIncome : 1;
     const scaledForDti = ctx.incomeComponents.map(c => ({ ...c, grossAnnual: Math.max(0, c.grossAnnual * grossScale) }));
     const dtiDen = computeDtiDenominator({ incomeComponents: scaledForDti, fallbackGrossAnnual: newGross2 });
+    dtiAdjustedIncome2 = dtiDen.dtiAdjustedAnnualIncome;
     if (dtiDen.dtiAdjustedAnnualIncome < newGross2 * 0.95 && dtiDen.dtiAdjustedAnnualIncome > 0) {
       issues.push({
         deltaId: 'dti-denominator',
         deltaType: 'income_change',
         severity: 'warning',
-        message: `DTI denominator (APS 220): $${Math.round(dtiDen.dtiAdjustedAnnualIncome).toLocaleString()}/yr (${((dtiDen.dtiAdjustedAnnualIncome / newGross2) * 100).toFixed(0)}% of gross).`,
+        message: `DTI denominator (APS 220): $${Math.round(dtiDen.dtiAdjustedAnnualIncome).toLocaleString()}/yr (${((dtiDen.dtiAdjustedAnnualIncome / newGross2) * 100).toFixed(0)}% of gross). Bound into cap path — capacity may be tighter than headline gross suggests.`,
       });
     }
   }
@@ -1415,6 +1447,8 @@ export function runScenarioWithInputs(
     totalDebtBalances: Math.max(0, (ctx.baseInputs.totalDebtBalances || 0) + total.debtBalanceAdjustment),
     dtiCapEnabled: total.dtiCapEnabled ?? ctx.baseInputs.dtiCapEnabled,
     dtiCapLimit: total.dtiCapLimit ?? ctx.baseInputs.dtiCapLimit,
+    // Phase I11 — APS 220-aligned DTI denominator binding
+    dtiAdjustedAnnualIncome: dtiAdjustedIncome2,
   };
 
   const calc = calculateBorrowingCapacity(inputs);
