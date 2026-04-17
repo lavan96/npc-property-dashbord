@@ -347,7 +347,7 @@ async function setCachedRates(supabase: any, lenderId: string, rates: LendingRat
     .from('bank_lending_rates_cache')
     .upsert({
       lender_id: lenderId,
-      lender_name: CDR_LENDERS[lenderId]?.name || lenderId,
+      lender_name: CDR_LENDERS[lenderId]?.name || MANUAL_LENDERS[lenderId]?.name || lenderId,
       rates,
       fetched_at: now.toISOString(),
       expires_at: expiresAt.toISOString(),
