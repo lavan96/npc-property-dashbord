@@ -55,6 +55,11 @@ export interface AcquisitionContext {
   lmiMode?: LmiMode;
   /** Cash on hand brought to settlement (in addition to released equity) */
   cashOnHand?: number;
+  /** Phase F2 — target purchase price the strategy is trying to hit.
+   *  When set, AcquisitionCapacity reports `meetsTarget` + `shortfallToTarget`
+   *  and exposes `loanRequiredForPurchase` / `netCashAfterSettlement` so the
+   *  Strategy Builder can show "achievable" / "short by $X" feedback. */
+  targetPurchasePrice?: number;
 }
 
 export interface ScenarioContext {
@@ -77,6 +82,10 @@ export interface ScenarioProperty {
   /** Net monthly cash flow (rent − expenses), positive or negative */
   netMonthlyCashflow?: number;
   monthlyRentalIncome?: number;
+  /** Phase F1 — contracted annual interest rate on this property's loan (%).
+   *  Used by `equity_release`, `property_refinance`, and `property_rate_change`
+   *  deltas instead of the global `baseInputs.interestRate`. */
+  interestRate?: number;
 }
 
 export interface ScenarioLiability {
@@ -203,12 +212,21 @@ export function validateDeltas(
       case 'property_sell':
       case 'property_refinance':
       case 'equity_release':
+      case 'property_rate_change':
         if (!propertyIds.has(d.id)) {
           issues.push({
             deltaId: d.id,
             deltaType: d.type,
             severity: 'warning',
             message: `Property "${d.id}" not found in client portfolio — delta ignored`,
+          });
+        }
+        if (d.type === 'property_rate_change' && (d.value < 0.5 || d.value > 25)) {
+          issues.push({
+            deltaId: d.id,
+            deltaType: d.type,
+            severity: 'warning',
+            message: `Property rate ${d.value}% outside plausible 0.5–25% band`,
           });
         }
         break;
@@ -320,11 +338,54 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
       const property = context.properties?.find(p => p.id === delta.id);
       if (property && property.loanRemaining > 0) {
         const currentRepayment = property.loanRepaymentAmount || property.monthlyRepayment || 0;
-        const ioMonthlyRate = context.baseInputs.interestRate / 100 / 12;
+        // Phase F1 — use the property's own contracted rate (fallback to global)
+        const propertyRatePct = property.interestRate ?? context.baseInputs.interestRate;
+        const ioMonthlyRate = propertyRatePct / 100 / 12;
         const ioRepayment = property.loanRemaining * ioMonthlyRate;
         const saving = Math.max(0, currentRepayment - ioRepayment);
         if (saving > 0) effect.commitmentAdjustment = -saving;
+        effect.acquisitionNotes.push(
+          `Refinance ${property.address?.slice(0, 30) || 'property'} P&I→IO @ ${propertyRatePct.toFixed(2)}%: monthly servicing −$${Math.round(saving).toLocaleString()}`
+        );
         effect.description = `Refinance ${property.address?.slice(0, 30) || 'property'} to IO`;
+      }
+      break;
+    }
+
+    case 'property_rate_change': {
+      // Phase F1 — repricing a single property (e.g. negotiated refinance to a
+      // lower rate). Recomputes that property's monthly servicing using the
+      // NEW rate, keeping the existing repayment structure (P&I vs IO) intact.
+      const property = context.properties?.find(p => p.id === delta.id);
+      if (property && property.loanRemaining > 0 && Number.isFinite(delta.value) && delta.value > 0) {
+        const currentRepayment = property.loanRepaymentAmount || property.monthlyRepayment || 0;
+        const oldRatePct = property.interestRate ?? context.baseInputs.interestRate;
+        const newRatePct = delta.value;
+
+        // Infer current structure from the relationship between repayment & loan.
+        // If repayment looks like IO at the current rate, keep IO at the new rate.
+        // Otherwise treat as P&I over the policy-default term.
+        const monthlyOldIO = property.loanRemaining * (oldRatePct / 100 / 12);
+        const isIo = currentRepayment > 0 && Math.abs(currentRepayment - monthlyOldIO) / Math.max(1, monthlyOldIO) < 0.05;
+
+        let newRepayment: number;
+        if (isIo) {
+          newRepayment = property.loanRemaining * (newRatePct / 100 / 12);
+        } else {
+          const termYears = context.baseInputs.loanTermYears || 30;
+          const periods = termYears * 12;
+          const monthlyRate = newRatePct / 100 / 12;
+          newRepayment = monthlyRate > 0
+            ? property.loanRemaining * (monthlyRate * Math.pow(1 + monthlyRate, periods)) / (Math.pow(1 + monthlyRate, periods) - 1)
+            : property.loanRemaining / periods;
+        }
+
+        const delta$ = newRepayment - currentRepayment;
+        effect.commitmentAdjustment = delta$;
+        effect.acquisitionNotes.push(
+          `Reprice ${property.address?.slice(0, 30) || 'property'}: ${oldRatePct.toFixed(2)}% → ${newRatePct.toFixed(2)}% ${isIo ? '(IO)' : '(P&I)'}, monthly servicing ${delta$ >= 0 ? '+' : '−'}$${Math.round(Math.abs(delta$)).toLocaleString()}`
+        );
+        effect.description = `Reprice ${property.address?.slice(0, 30) || 'property'} to ${newRatePct.toFixed(2)}%`;
       }
       break;
     }
@@ -353,23 +414,31 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
     }
 
     case 'equity_release': {
-      // Phase C: Equity-release lever now produces real cash + servicing impact.
+      // Phase C + F2: Equity-release lever closes the loop between cash freed,
+      // the new shadow debt, and the source property's actual contracted rate.
       //
       // Inputs interpreted from the delta:
       //   value: target LVR as a ratio (0.80) OR % (80) OR absolute release amount
       //   meta.targetLVR: optional explicit target LVR (0–1 ratio)
-      //   meta.amount: optional explicit cash amount to release (overrides LVR math)
+      //   meta.releaseRate: optional override rate for the release loan (% p.a.)
       //   unit: 'ratio' = LVR ratio, 'percent' = LVR %, 'absolute' = direct $ amount
       //
       // Output:
-      //   - releasedCapital ≈ new equity loan − LMI on that loan
-      //   - commitmentAdjustment += monthly IO repayment on the new equity loan
-      //   - debtBalanceAdjustment += new equity loan principal
+      //   - releasedCapital ≈ new equity loan − LMI on that loan (cash to settlement)
+      //   - commitmentAdjustment += monthly IO repayment on the NEW slice only
+      //   - debtBalanceAdjustment += new equity loan principal (DTI honest)
       const property = context.properties?.find(p => p.id === delta.id);
       if (!property || property.currentValue <= 0) break;
 
       const fhb = !!context.acquisition?.isFirstHomeBuyer;
-      const ratePct = context.baseInputs.interestRate || 6.5;
+      // Phase F1/F2 — release loan rate priority:
+      //   1. explicit override on the delta (`meta.releaseRate`)
+      //   2. property's contracted rate (`property.interestRate`)
+      //   3. global assessment rate
+      const overrideRate = delta.meta?.releaseRate as number | undefined;
+      const ratePct = (Number.isFinite(overrideRate) && (overrideRate as number) > 0)
+        ? (overrideRate as number)
+        : (property.interestRate ?? context.baseInputs.interestRate ?? 6.5);
       const monthlyRate = (ratePct / 100) / 12;
 
       // Resolve the new max loan size on this property
@@ -385,7 +454,9 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
       }
       const grossRelease = Math.max(0, newLoan - property.loanRemaining);
       if (grossRelease <= 0) {
-        effect.acquisitionNotes.push(`Equity release on ${property.address?.slice(0, 30) || 'property'}: no equity available at requested LVR`);
+        effect.acquisitionNotes.push(
+          `Equity release on ${property.address?.slice(0, 30) || 'property'}: no equity available at requested LVR (already at ${((property.loanRemaining / property.currentValue) * 100).toFixed(1)}% LVR)`
+        );
         break;
       }
 
@@ -405,14 +476,18 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
       // Net usable cash (after LMI on the release loan)
       const netRelease = Math.max(0, grossRelease - lmiOnRelease);
 
-      // Servicing impact: assume IO equity loan (worst-case for serviceability)
-      const ioRepayment = newLoan * monthlyRate - property.loanRemaining * monthlyRate;
-      effect.commitmentAdjustment = Math.max(0, ioRepayment);
+      // F2 fix — servicing impact is the IO cost on the NEW slice only
+      // (grossRelease × monthly rate). The previous formula
+      //   `newLoan*r − loanRemaining*r`
+      // was algebraically identical but obscured intent and broke if a future
+      // refactor changed how `newLoan` was computed.
+      const ioRepaymentNewSlice = grossRelease * monthlyRate;
+      effect.commitmentAdjustment = Math.max(0, ioRepaymentNewSlice);
       effect.debtBalanceAdjustment = grossRelease;
 
       effect.releasedCapital = netRelease;
       effect.acquisitionNotes.push(
-        `Equity release on ${property.address?.slice(0, 30) || 'property'}: gross $${Math.round(grossRelease).toLocaleString()} − LMI $${Math.round(lmiOnRelease).toLocaleString()} = $${Math.round(netRelease).toLocaleString()} usable. New LVR ${newLvr.toFixed(1)}%.`
+        `Equity release on ${property.address?.slice(0, 30) || 'property'} @ ${ratePct.toFixed(2)}%: gross $${Math.round(grossRelease).toLocaleString()} − LMI $${Math.round(lmiOnRelease).toLocaleString()} = $${Math.round(netRelease).toLocaleString()} usable. New LVR ${newLvr.toFixed(1)}%. Servicing +$${Math.round(ioRepaymentNewSlice).toLocaleString()}/mo (IO).`
       );
       effect.description = `Release equity from ${property.address?.slice(0, 30) || 'property'}`;
       break;
@@ -518,6 +593,67 @@ export function computeAcquisitionCapacity(
   if (stampDuty > 0) notes.push(`${state} stamp duty: $${Math.round(stampDuty).toLocaleString()} (${intent}${isFhb ? ', FHB' : ''})`);
   if (otherCosts > 0) notes.push(`Acquisition costs (legals, inspections, registrations): $${Math.round(otherCosts).toLocaleString()}`);
 
+  // ── Phase F2 — Target solving + actual loan-required + net cash ──
+  // The Strategy Builder needs a clear "achievable / short by $X" answer
+  // when finance has a target purchase price (e.g. $700k).
+  const target = acq.targetPurchasePrice && acq.targetPurchasePrice > 0
+    ? acq.targetPurchasePrice
+    : undefined;
+
+  // Loan REQUIRED for the *target* price (or for the max if no target set):
+  // = price − cashAvailable + LMI(display) + stampDuty + otherCosts
+  // For the target case we recompute LMI/SD against the target price for honesty.
+  let loanRequiredForPurchase: number | undefined;
+  let netCashAfterSettlement: number | undefined;
+  let meetsTarget: boolean | undefined;
+  let shortfallToTarget: number | undefined;
+
+  if (target !== undefined) {
+    const sdTarget = calculateStampDuty({
+      propertyValue: target,
+      state, intent, category,
+      isFirstHomeBuyer: isFhb,
+      isForeignBuyer: isForeign,
+    }).totalDuty;
+    const otherTarget = estimateOtherAcquisitionCosts(target).total;
+
+    const requiredLoanRaw = Math.max(0, target - cashAvailable);
+    let lmiAtTarget = 0;
+    if (lmiMode !== 'none') {
+      lmiAtTarget = estimateLMI({
+        propertyValue: target,
+        depositAmount: cashAvailable,
+        loanAmount: requiredLoanRaw,
+        isFirstHomeBuyer: isFhb,
+      }).lmiAmount;
+    }
+    const lmiCashAtTarget = lmiMode === 'display_deduction' ? lmiAtTarget : 0;
+    loanRequiredForPurchase = lmiMode === 'debt_capitalised'
+      ? requiredLoanRaw + lmiAtTarget
+      : requiredLoanRaw;
+
+    netCashAfterSettlement = cashAvailable - Math.max(0, target - (loanRequiredForPurchase ?? 0)) - lmiCashAtTarget - sdTarget - otherTarget;
+    meetsTarget = (loanRequiredForPurchase ?? 0) <= borrowingCapacity && netCashAfterSettlement >= 0;
+    shortfallToTarget = Math.max(0, target - Math.max(0, purchasePrice));
+
+    if (meetsTarget) {
+      notes.push(
+        `✅ Target $${Math.round(target).toLocaleString()} achievable: needs loan $${Math.round(loanRequiredForPurchase).toLocaleString()} (capacity $${Math.round(borrowingCapacity).toLocaleString()}); net cash post-settlement $${Math.round(netCashAfterSettlement).toLocaleString()}.`
+      );
+    } else {
+      const loanShort = Math.max(0, (loanRequiredForPurchase ?? 0) - borrowingCapacity);
+      const cashShort = Math.max(0, -netCashAfterSettlement);
+      notes.push(
+        `❌ Target $${Math.round(target).toLocaleString()} NOT met: short by $${Math.round(shortfallToTarget).toLocaleString()} (loan gap $${Math.round(loanShort).toLocaleString()}, cash gap $${Math.round(cashShort).toLocaleString()}).`
+      );
+    }
+  } else {
+    // No target — still report the loan that would actually be drawn for the
+    // computed maxPurchasePrice, so the UI can headline "Loan required" cleanly.
+    loanRequiredForPurchase = Math.max(0, Math.max(0, purchasePrice) - cashAvailable);
+    netCashAfterSettlement = 0; // by construction at the ceiling
+  }
+
   return {
     releasedCapital: Math.round(effect.releasedCapital),
     lmi: Math.round(lmi),
@@ -526,7 +662,12 @@ export function computeAcquisitionCapacity(
     otherAcquisitionCosts: Math.round(otherCosts),
     maxPurchasePrice: Math.round(Math.max(0, purchasePrice)),
     loanAvailableForPurchase: Math.round(loanAvail),
+    loanRequiredForPurchase: loanRequiredForPurchase !== undefined ? Math.round(loanRequiredForPurchase) : undefined,
+    netCashAfterSettlement: netCashAfterSettlement !== undefined ? Math.round(netCashAfterSettlement) : undefined,
     cashAvailable: Math.round(cashAvailable),
+    targetPurchasePrice: target !== undefined ? Math.round(target) : undefined,
+    meetsTarget,
+    shortfallToTarget: shortfallToTarget !== undefined ? Math.round(shortfallToTarget) : undefined,
     notes,
   };
 }

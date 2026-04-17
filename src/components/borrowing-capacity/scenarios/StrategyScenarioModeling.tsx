@@ -80,6 +80,8 @@ export interface PropertyItem {
   monthly_interest_repayment: number;
   loan_repayment_amount?: number;
   net_monthly_cashflow?: number;
+  /** Phase F1 — per-property contracted rate (% p.a.) */
+  interest_rate?: number;
 }
 
 interface StrategyState {
@@ -410,6 +412,8 @@ export function StrategyScenarioModeling({
       monthlyRepayment: p.monthly_interest_repayment || 0,
       loanRepaymentAmount: p.loan_repayment_amount || p.monthly_interest_repayment || 0,
       netMonthlyCashflow: p.net_monthly_cashflow || 0,
+      // Phase F1 — pipe per-property rate
+      interestRate: p.interest_rate ?? undefined,
     }));
     const engineLiabilities: EngineLiability[] = liabilities.map(l => ({
       id: l.id,
