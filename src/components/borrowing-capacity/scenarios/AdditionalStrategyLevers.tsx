@@ -140,6 +140,12 @@ export function AdditionalStrategyLevers({
   properties,
   baseGrossIncome,
 }: AdditionalStrategyLeversProps) {
+  openSections,
+  onToggleSection,
+  baseLoanTermYears,
+  properties,
+  baseGrossIncome,
+}: AdditionalStrategyLeversProps) {
   const stampDuty = estimateStampDuty(strategy.stampDutyPurchasePrice);
   const transferFee = estimateTransferFee(strategy.stampDutyPurchasePrice);
   const legalFees = strategy.stampDutyPurchasePrice > 0 ? 2500 : 0;
