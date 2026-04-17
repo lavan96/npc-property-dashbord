@@ -44,6 +44,8 @@ export interface AIScenario {
   reasoning: string;
   adjustments: ScenarioAdjustments;
   estimatedImpact: string;
+  /** Phase E (L1): Engine-reconciled impact, populated by parent after applying. */
+  reconciledImpact?: string;
 }
 
 interface ChatMessage {
