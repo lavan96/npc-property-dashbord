@@ -162,6 +162,7 @@ const App = () => (
                         <Route path="/portal/accept-invite" element={
                           <PortalAcceptInvite />
                         } />
+                        <Route path="/client/handoff" element={<PortalHandoff />} />
                         <Route path="/client/consent" element={
                           <PortalAuthProvider>
                             <PortalConsentWall />
