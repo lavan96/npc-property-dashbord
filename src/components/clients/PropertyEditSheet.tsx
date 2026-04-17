@@ -387,17 +387,28 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
       }
     },
     onSuccess: () => {
+      // Invalidate every cache that depends on property data so downstream
+      // surfaces (BC calculator, BC modal, scenarios, scorecard, dashboard
+      // metrics, etc.) reflect the change immediately. Previously the BC
+      // modal kept its own ['borrowing-capacity-client-data'] cache that
+      // wasn't invalidated here — opening the BC calculator after editing
+      // a property's repayment_type would silently use stale data.
       queryClient.invalidateQueries({ queryKey: ['client-properties', property.client_id] });
       queryClient.invalidateQueries({ queryKey: ['secure-client-data', property.client_id] });
+      queryClient.invalidateQueries({ queryKey: ['secure-client-properties', property.client_id] });
+      queryClient.invalidateQueries({ queryKey: ['borrowing-capacity-client-data', property.client_id] });
+      queryClient.invalidateQueries({ queryKey: ['client-data', property.client_id] });
+      queryClient.invalidateQueries({ queryKey: ['borrowing-capacity-history', property.client_id] });
+      queryClient.invalidateQueries({ queryKey: ['get-client-data'] });
       toast.success('Property updated successfully');
-      
+
       addNotification({
         type: 'portfolio_updated',
         title: 'Property Updated',
         message: `Property at ${formData.address} has been updated`,
         entityId: property.client_id
       });
-      
+
       onOpenChange(false);
       onComplete();
     },
