@@ -59,6 +59,11 @@ interface PurchasePowerHeadlineProps {
   baseTheoreticalCapacity?: number;
   /** Theoretical (unfloored) scenario capacity. */
   scenarioTheoreticalCapacity?: number;
+  /** Raw (unfloored) base monthly surplus — surfaced in the floor banner so
+   *  the broker can see exactly how far underwater the client is. */
+  baseRawSurplus?: number;
+  /** Raw (unfloored) scenario monthly surplus. */
+  scenarioRawSurplus?: number;
   /** True when both displayed capacities are clamped at $0 but the underlying
    *  surplus math shows real movement — triggers the explainer banner. */
   floorActive?: boolean;
@@ -81,6 +86,8 @@ export function PurchasePowerHeadline({
   formatCurrency,
   baseTheoreticalCapacity,
   scenarioTheoreticalCapacity,
+  baseRawSurplus,
+  scenarioRawSurplus,
   floorActive = false,
 }: PurchasePowerHeadlineProps) {
   const capacityChange = scenarioCapacity - baseCapacity;
@@ -236,29 +243,60 @@ export function PurchasePowerHeadline({
           <CardContent className="py-3">
             <div className="flex gap-3">
               <Info className="h-4 w-4 text-warning shrink-0 mt-0.5" />
-              <div className="space-y-1">
+              <div className="space-y-2 flex-1">
                 <p className="text-xs font-semibold text-foreground">
                   Capacity is clamped at the $0 servicing floor
                 </p>
                 <p className="text-[11px] text-muted-foreground leading-snug">
-                  Base monthly surplus is negative under APRA stress assumptions, so no
-                  single lever lifts capacity above $0 in isolation. The
+                  Base monthly surplus is negative under APRA stress assumptions, so the
+                  engine returns $0 lendable capacity. The
                   <span className="font-semibold text-foreground"> "if floor lifted" </span>
-                  column below shows each lever's theoretical impact (surplus × annuity
-                  factor) so you can identify which levers move the needle most.
-                  {Math.abs(theoreticalCapacityChange) > 0 && (
-                    <>
-                      {' '}Combined theoretical uplift:{' '}
-                      <span className={`font-semibold ${
-                        theoreticalCapacityChange > 0
-                          ? 'text-emerald-600 dark:text-emerald-400'
-                          : 'text-destructive'
-                      }`}>
-                        {formatSignedCurrency(theoreticalCapacityChange, formatCurrency)}
-                      </span>.
-                    </>
-                  )}
+                  column ranks each lever's <em>diagnostic</em> impact on the underlying
+                  surplus × annuity factor — use it to see which levers move the needle.
+                  These figures are not lendable amounts; they describe how far above (or
+                  below) zero the client's servicing position would sit if the $0 floor
+                  did not exist.
                 </p>
+                {(typeof baseRawSurplus === 'number' && typeof scenarioRawSurplus === 'number') && (
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <div className="rounded-md border border-border/50 bg-background/50 px-2.5 py-1.5">
+                      <p className="text-[9px] uppercase tracking-wider text-muted-foreground">Base surplus</p>
+                      <p className={`text-xs font-semibold tabular-nums ${baseRawSurplus < 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                        {formatSignedCurrency(Math.round(baseRawSurplus), formatCurrency)}/mo
+                      </p>
+                      <p className="text-[10px] text-muted-foreground tabular-nums">
+                        ≈ {formatSignedCurrency(baseTheoreticalCapacity ?? 0, formatCurrency)} theoretical
+                      </p>
+                    </div>
+                    <div className="rounded-md border border-border/50 bg-background/50 px-2.5 py-1.5">
+                      <p className="text-[9px] uppercase tracking-wider text-muted-foreground">Scenario surplus</p>
+                      <p className={`text-xs font-semibold tabular-nums ${scenarioRawSurplus < 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                        {formatSignedCurrency(Math.round(scenarioRawSurplus), formatCurrency)}/mo
+                      </p>
+                      <p className="text-[10px] text-muted-foreground tabular-nums">
+                        ≈ {formatSignedCurrency(scenarioTheoreticalCapacity ?? 0, formatCurrency)} theoretical
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {Math.abs(theoreticalCapacityChange) > 0 && (
+                  <p className="text-[11px] text-foreground/80 leading-snug pt-1">
+                    Net theoretical movement vs base:{' '}
+                    <span className={`font-semibold ${
+                      theoreticalCapacityChange > 0
+                        ? 'text-emerald-600 dark:text-emerald-400'
+                        : 'text-destructive'
+                    }`}>
+                      {formatSignedCurrency(theoreticalCapacityChange, formatCurrency)}
+                    </span>
+                    {typeof baseRawSurplus === 'number' && typeof scenarioRawSurplus === 'number' && (
+                      <>
+                        {' '}({formatSignedCurrency(Math.round(scenarioRawSurplus - baseRawSurplus), formatCurrency)}/mo
+                        change in raw surplus)
+                      </>
+                    )}.
+                  </p>
+                )}
               </div>
             </div>
           </CardContent>

@@ -291,7 +291,7 @@ export function StrategyScenarioModeling({
   // selections into ScenarioDelta[] and delegates to the same engine that the
   // edge function uses. This eliminates client/server drift entirely.
 
-  const { scenarioResult, scenarioInputs, impactBreakdown, acquisitionCapacity, validationIssues, leverAttribution, appliedDeltas, baseTheoreticalCapacity, scenarioTheoreticalCapacity, floorActive } = useMemo(() => {
+  const { scenarioResult, scenarioInputs, impactBreakdown, acquisitionCapacity, validationIssues, leverAttribution, appliedDeltas, baseTheoreticalCapacity, scenarioTheoreticalCapacity, baseRawSurplus, scenarioRawSurplus, floorActive } = useMemo(() => {
     const deltas: ScenarioDelta[] = [];
     const impacts: { label: string; monthlySaving: number; type: 'saving' | 'cost' | 'info' }[] = [];
     /** F4 — short cash-flow side-notes per delta id, used to enrich the
@@ -605,30 +605,49 @@ export function StrategyScenarioModeling({
     //
     // ── Theoretical (unfloored) capacity ────────────────────────────────
     // The engine clamps `borrowingCapacity` at $0 when monthly surplus is
-    // negative (i.e. the client can't service ANY new loan). When the base
-    // is floored, every isolated lever also floors → attribution column
-    // collapses to $0 and the broker can't tell which lever moves the
-    // needle most. Compute a theoretical capacity from the raw surplus ×
-    // annuity factor (no floor) so attribution remains meaningful.
+    // negative AND, in conservative mode, ALSO clamps `monthlySurplus`
+    // itself to $0 once it drops below the minimum surplus floor. Reading
+    // `result.monthlySurplus` therefore returns a flat $0 for any scenario
+    // below the floor — which collapses the entire theoretical column to
+    // a single (wrong) number.
+    //
+    // Fix: derive the TRUE raw surplus from the engine's exposed inputs
+    // (after-tax income − living expenses − commitments) so the
+    // theoretical math is honest regardless of conservative-mode floors.
     const annuityFactor = (annualRatePct: number, termYears: number): number => {
       const r = (annualRatePct / 100) / 12;
       const n = termYears * 12;
       if (r <= 0 || n <= 0) return 0;
       return (1 - Math.pow(1 + r, -n)) / r;
     };
+    /** Compute the unfloored raw monthly surplus directly from the engine's
+     *  decomposed result. Bypasses conservative-mode floors and the
+     *  Math.max(0,…) clamp on `monthlySurplus`. */
+    const rawSurplusFrom = (r: any): number => {
+      const income = r?.monthlyAfterTaxIncome ?? 0;
+      const expenses = r?.totalLivingExpenses ?? r?.livingExpensesMonthly ?? 0;
+      const commitments = r?.existingCommitmentsMonthly ?? 0;
+      return income - expenses - commitments;
+    };
+
     const baseAssessmentRate = (baseInputs.interestRate ?? 0) + (baseInputs.bufferRate ?? 0);
     const baseTerm = baseInputs.loanTermYears ?? 30;
-    const baseTheoreticalCapacity = Math.round((baseResult.monthlySurplus ?? 0) * annuityFactor(baseAssessmentRate, baseTerm));
+    const baseRawSurplus = rawSurplusFrom(baseResult);
+    const baseAnnuity = annuityFactor(baseAssessmentRate, baseTerm);
+    const baseTheoreticalCapacity = Math.round(baseRawSurplus * baseAnnuity);
 
     const scenarioAssessmentRate = (inputs.interestRate ?? baseAssessmentRate) + (inputs.bufferRate ?? 0);
     const scenarioTerm = inputs.loanTermYears ?? baseTerm;
-    const scenarioTheoreticalCapacity = Math.round((result.monthlySurplus ?? 0) * annuityFactor(scenarioAssessmentRate, scenarioTerm));
+    const scenarioRawSurplus = rawSurplusFrom(result);
+    const scenarioAnnuity = annuityFactor(scenarioAssessmentRate, scenarioTerm);
+    const scenarioTheoreticalCapacity = Math.round(scenarioRawSurplus * scenarioAnnuity);
 
     const leverAttribution: LeverAttribution[] = deltas.map(d => {
       const isolated = runScenarioWithInputs(`Isolated: ${d.label}`, [d], ctx);
       const isoAssessRate = (isolated.inputs.interestRate ?? baseAssessmentRate) + (isolated.inputs.bufferRate ?? 0);
       const isoTerm = isolated.inputs.loanTermYears ?? baseTerm;
-      const isoTheoretical = Math.round((isolated.result.monthlySurplus ?? 0) * annuityFactor(isoAssessRate, isoTerm));
+      const isoRawSurplus = rawSurplusFrom(isolated.result);
+      const isoTheoretical = Math.round(isoRawSurplus * annuityFactor(isoAssessRate, isoTerm));
       return {
         id: `${d.type}-${d.id}`,
         label: d.label,
@@ -642,9 +661,12 @@ export function StrategyScenarioModeling({
     // for both base and scenario but the theoretical math says there IS
     // movement happening underneath. This is the trigger for the explainer
     // banner + the "if floor lifted" attribution column.
+    //
+    // We also flag floorActive when the base raw surplus is negative (true
+    // underwater state) — in that case the engine's reported capacity may
+    // be technically positive but the diagnostic view is still useful.
     const floorActive =
-      baseResult.borrowingCapacity <= 0 &&
-      result.borrowingCapacity <= 0 &&
+      (baseResult.borrowingCapacity <= 0 || baseRawSurplus < 0) &&
       (Math.abs(scenarioTheoreticalCapacity - baseTheoreticalCapacity) > 0 ||
         leverAttribution.some(l => Math.abs(l.theoreticalImpact ?? 0) > 0));
 
@@ -658,6 +680,8 @@ export function StrategyScenarioModeling({
       appliedDeltas: deltas,
       baseTheoreticalCapacity,
       scenarioTheoreticalCapacity,
+      baseRawSurplus,
+      scenarioRawSurplus,
       floorActive,
     };
   }, [strategy, acquisition, baseInputs, baseResult, consolidatableDebts, investmentProperties, equityReleaseProperties, properties, liabilities]);
@@ -1674,6 +1698,8 @@ export function StrategyScenarioModeling({
             formatCurrency={formatCurrency}
             baseTheoreticalCapacity={baseTheoreticalCapacity}
             scenarioTheoreticalCapacity={scenarioTheoreticalCapacity}
+            baseRawSurplus={baseRawSurplus}
+            scenarioRawSurplus={scenarioRawSurplus}
             floorActive={floorActive}
           />
 
