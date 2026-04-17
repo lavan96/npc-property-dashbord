@@ -848,7 +848,24 @@ export function StrategyScenarioModeling({
       scenarioTerm,
       scenarioAnnuity,
     };
-  }, [strategy, acquisition, baseInputs, baseResult, consolidatableDebts, investmentProperties, equityReleaseProperties, properties, liabilities]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    // Reactivity signatures — guarantee re-run on ANY nested Map/Set/value change
+    strategySignature,
+    acquisitionSignature,
+    // Stable refs from props/derived data
+    baseInputs,
+    baseResult,
+    consolidatableDebts,
+    investmentProperties,
+    equityReleaseProperties,
+    properties,
+    liabilities,
+    // Lender-aware context (Phase I) — propagated into engine
+    incomeComponents,
+    currentLenderProfileId,
+    hemBenchmark,
+  ]);
 
 
   // Equity release calculation — supports multiple properties + Phase 2 deployment %
