@@ -442,7 +442,27 @@ export function StrategyScenarioModeling({
       impacts.push({ label: `DTI cap applied at ${strategy.additional.dtiCapValue}x`, monthlySaving: 0, type: 'info' });
     }
 
-    // Build engine context — convert UI types to engine types
+    // 9. Per-Property Rate Repricing → property_rate_change deltas (Phase F1)
+    if (strategy.propertyRateOverrides.size > 0) {
+      strategy.propertyRateOverrides.forEach((newRate, propId) => {
+        const prop = properties.find(p => p.id === propId);
+        if (!prop || !Number.isFinite(newRate) || newRate <= 0) return;
+        const oldRate = prop.interest_rate ?? baseInputs.interestRate;
+        if (Math.abs(newRate - oldRate) < 0.01) return;
+        deltas.push({
+          id: prop.id,
+          label: `Reprice ${prop.address?.slice(0, 25) || 'property'} → ${newRate.toFixed(2)}%`,
+          type: 'property_rate_change',
+          value: newRate,
+          unit: 'rate_points',
+        });
+        impacts.push({
+          label: `Reprice ${prop.address?.slice(0, 25) || 'property'}: ${oldRate.toFixed(2)}% → ${newRate.toFixed(2)}%`,
+          monthlySaving: 0,
+          type: 'info',
+        });
+      });
+    }
     const engineProperties: EngineProperty[] = properties.map(p => ({
       id: p.id,
       address: p.address,
@@ -472,6 +492,8 @@ export function StrategyScenarioModeling({
       isForeignBuyer: acquisition.isForeignBuyer,
       lmiMode: acquisition.lmiMode,
       cashOnHand: acquisition.cashOnHand,
+      // Phase F2 — surface the target so the engine reports meetsTarget / shortfall
+      targetPurchasePrice: acquisition.targetPurchasePrice > 0 ? acquisition.targetPurchasePrice : undefined,
     } : undefined;
 
     const ctx: ScenarioContext = {
