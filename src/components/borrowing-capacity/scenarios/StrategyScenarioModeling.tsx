@@ -307,6 +307,66 @@ export function StrategyScenarioModeling({
   // selections into ScenarioDelta[] and delegates to the same engine that the
   // edge function uses. This eliminates client/server drift entirely.
 
+  // ── Reactivity signature ─────────────────────────────────────────────
+  // The heavy useMemo below depends on `strategy` and `acquisition`, but those
+  // contain nested Maps and Sets. React only re-runs the memo when the OUTER
+  // state object identity changes — which works correctly because every
+  // setter does `setStrategy(prev => ({...prev, ...}))`. To make the
+  // reactivity bullet-proof against any future setter that forgets to clone,
+  // we serialize all nested Map/Set keys + values into a stable signature
+  // string and add it as an explicit dep. This guarantees the scenario
+  // engine re-runs on EVERY lever change, no matter how deeply nested.
+  const strategySignature = useMemo(() => {
+    const setSig = (s: Set<string>) => Array.from(s).sort().join(',');
+    const mapSig = (m: Map<string, unknown>) =>
+      Array.from(m.entries())
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([k, v]) => `${k}:${typeof v === 'object' ? JSON.stringify(v) : v}`)
+        .join('|');
+    const a = strategy.additional;
+    return [
+      setSig(strategy.consolidatedLiabilities),
+      setSig(strategy.refinancedToIO),
+      mapSig(strategy.refinanceManualRepayments),
+      mapSig(strategy.refinanceIoPeriodYears),
+      strategy.equityReleaseEnabled ? '1' : '0',
+      setSig(strategy.equityReleasePropertyIds),
+      mapSig(strategy.equityReleaseTargetLVRs),
+      mapSig(strategy.equityReleaseDeploymentPercents),
+      mapSig(strategy.equityReleaseRepaymentTypes as Map<string, unknown>),
+      mapSig(strategy.equityReleaseManualRepayments),
+      String(strategy.rateAdjustment),
+      mapSig(strategy.propertyRateOverrides),
+      // Additional levers — every nested field that the engine consumes
+      String(a.incomeGrowthPercent),
+      String(a.expenseReductionPercent),
+      String(a.loanTermAdjustment),
+      a.dtiCapEnabled ? `dti:${a.dtiCapValue}` : 'dti:off',
+      String(a.stampDutyPurchasePrice),
+      setSig(a.portfolioSellPropertyIds),
+      a.portfolioSellReinvest ? '1' : '0',
+      mapSig(a.valuationOverrides as Map<string, unknown>),
+      a.crossCollatPool.enabled
+        ? `pool:${(a.crossCollatPool.blendedTargetLVR).toFixed(4)}:${a.crossCollatPool.lenderMaxLVR}:${a.crossCollatPool.allocationStrategy}:${setSig(a.crossCollatPool.propertyIds)}`
+        : 'pool:off',
+    ].join('||');
+  }, [strategy]);
+
+  const acquisitionSignature = useMemo(() => {
+    if (!acquisition.enabled) return 'acq:off';
+    return [
+      'acq:on',
+      acquisition.state,
+      acquisition.intent,
+      acquisition.category,
+      acquisition.isFirstHomeBuyer ? '1' : '0',
+      acquisition.isForeignBuyer ? '1' : '0',
+      acquisition.lmiMode,
+      String(acquisition.cashOnHand),
+      String(acquisition.targetPurchasePrice),
+    ].join('|');
+  }, [acquisition]);
+
   const { scenarioResult, scenarioInputs, impactBreakdown, acquisitionCapacity, validationIssues, leverAttribution, appliedDeltas, baseTheoreticalCapacity, scenarioTheoreticalCapacity, baseRawSurplus, scenarioRawSurplus, floorActive, baseAfterTaxIncome, baseLivingExpenses, baseCommitments, baseAssessmentRate, baseTerm, baseAnnuity, scenarioAfterTaxIncome, scenarioLivingExpenses, scenarioCommitments, scenarioAssessmentRate, scenarioTerm, scenarioAnnuity } = useMemo(() => {
     const deltas: ScenarioDelta[] = [];
     const impacts: { label: string; monthlySaving: number; type: 'saving' | 'cost' | 'info' }[] = [];
@@ -788,7 +848,24 @@ export function StrategyScenarioModeling({
       scenarioTerm,
       scenarioAnnuity,
     };
-  }, [strategy, acquisition, baseInputs, baseResult, consolidatableDebts, investmentProperties, equityReleaseProperties, properties, liabilities]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    // Reactivity signatures — guarantee re-run on ANY nested Map/Set/value change
+    strategySignature,
+    acquisitionSignature,
+    // Stable refs from props/derived data
+    baseInputs,
+    baseResult,
+    consolidatableDebts,
+    investmentProperties,
+    equityReleaseProperties,
+    properties,
+    liabilities,
+    // Lender-aware context (Phase I) — propagated into engine
+    incomeComponents,
+    currentLenderProfileId,
+    hemBenchmark,
+  ]);
 
 
   // Equity release calculation — supports multiple properties + Phase 2 deployment %
