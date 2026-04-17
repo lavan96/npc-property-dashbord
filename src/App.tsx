@@ -73,6 +73,7 @@ import { PortalAuthProvider } from "@/hooks/usePortalAuth";
 import { PortalProtectedRoute } from "@/components/portal/PortalProtectedRoute";
 import { PortalLayout } from "@/components/portal/PortalLayout";
 import PortalAuth from "./pages/portal/PortalAuth";
+import PortalHandoff from "./pages/portal/PortalHandoff";
 import PortalDashboard from "./pages/portal/PortalDashboard";
 import PortalProfile from "./pages/portal/PortalProfile";
 import PortalProperties from "./pages/portal/PortalProperties";
