@@ -752,8 +752,10 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
         const ratePct = a.property.interestRate ?? blendedRatePct;
         const assessRatePct = ratePct + (context.baseInputs.bufferRate ?? 3);
         totalIo += a.allocation * (assessRatePct / 100 / 12);
+        const matchedHeadroom = headroom.find(h => h.property.id === a.property.id);
+        const capPctNote = matchedHeadroom ? ` cap ${(matchedHeadroom.capPct * 100).toFixed(0)}%` : '';
         securityNotes.push(
-          `${a.property.address?.slice(0, 25) || 'property'}: +$${Math.round(a.allocation).toLocaleString()} (LVR → ${newLvr.toFixed(1)}%${lmiSlice > 0 ? `, LMI $${Math.round(lmiSlice).toLocaleString()}` : ''})`
+          `${a.property.address?.slice(0, 25) || 'property'}: +$${Math.round(a.allocation).toLocaleString()} (LVR → ${newLvr.toFixed(1)}%${lmiSlice > 0 ? `, LMI $${Math.round(lmiSlice).toLocaleString()}` : ''}${capPctNote})`
         );
       }
 
@@ -770,8 +772,9 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
       );
       for (const n of securityNotes) effect.acquisitionNotes.push(`  · ${n}`);
       if (cappedPool < grossPool) {
+        const minCap = headroom.length ? Math.min(...headroom.map(h => h.capPct)) : 0.95;
         effect.acquisitionNotes.push(
-          `  · ⚠ Pool capped at $${Math.round(cappedPool).toLocaleString()} (target wanted $${Math.round(grossPool).toLocaleString()}, but lender cap of ${(safeLenderCap * 100).toFixed(0)}% per security limits draw).`
+          `  · ⚠ Pool capped at $${Math.round(cappedPool).toLocaleString()} (target wanted $${Math.round(grossPool).toLocaleString()}, lender per-security caps min ${(minCap * 100).toFixed(0)}% — see I7 cap matrix).`
         );
       }
       effect.description = `Cross-collat release pool @ ${(safeBlended * 100).toFixed(0)}% blended LVR`;
