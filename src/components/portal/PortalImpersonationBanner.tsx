@@ -44,15 +44,15 @@ export function PortalImpersonationBanner() {
   };
 
   return (
-    <div className="bg-amber-500/15 border-b border-amber-500/40 text-amber-900 dark:text-amber-200 px-4 py-2 flex items-center justify-between gap-3 text-sm">
+    <div className="bg-warning/15 border-b border-warning/40 text-warning-foreground px-4 py-2 flex items-center justify-between gap-3 text-sm">
       <div className="flex items-center gap-2 min-w-0">
-        <ShieldAlert className="h-4 w-4 shrink-0" />
+        <ShieldAlert className="h-4 w-4 shrink-0 text-warning" />
         <span className="font-medium">Partner impersonation</span>
         <span className="hidden sm:inline text-xs opacity-80 truncate">
           You are viewing this client's portal as a finance partner.
         </span>
         {readonly && (
-          <span className="hidden md:inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-amber-500/25">
+          <span className="hidden md:inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-warning/25">
             <Eye className="h-3 w-3" /> Read-only
           </span>
         )}
@@ -61,7 +61,7 @@ export function PortalImpersonationBanner() {
         size="sm"
         variant="outline"
         onClick={handleExit}
-        className="h-7 px-2 text-xs border-amber-600/40 hover:bg-amber-500/10"
+        className="h-7 px-2 text-xs"
       >
         <X className="h-3.5 w-3.5 mr-1" /> Exit impersonation
       </Button>
