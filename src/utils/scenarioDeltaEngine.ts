@@ -1672,6 +1672,7 @@ export function runScenarioWithInputs(
       monthlyAfterTaxIncome: calc.monthlyAfterTaxIncome,
       capacityChange,
       acquisitionCapacity,
+      capitalLedger: capitalLedgerWI,
       validationIssues: issues.map(i => ({ deltaId: i.deltaId, deltaType: i.deltaType, severity: i.severity, message: i.message })),
     },
     inputs,
