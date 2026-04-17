@@ -463,11 +463,14 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
         lmiOnRelease = est.lmiAmount;
       }
       const netRelease = Math.max(0, grossRelease - lmiOnRelease);
-      const ioRepayment = grossRelease * monthlyRate;
+      // Phase I3 — APRA: assess servicing at buffered rate.
+      const assessRatePct = ratePct + (context.baseInputs.bufferRate ?? 3);
+      const assessMonthlyRate = (assessRatePct / 100) / 12;
+      const ioRepayment = grossRelease * assessMonthlyRate;
       effect.commitmentAdjustment = Math.max(0, ioRepayment);
       effect.debtBalanceAdjustment = grossRelease;
       effect.releasedCapital = netRelease;
-      effect.acquisitionNotes.push(`Equity release on ${property.address?.slice(0, 30) || 'property'} @ ${ratePct.toFixed(2)}%: $${Math.round(netRelease).toLocaleString()} usable (LVR ${newLvr.toFixed(1)}%), +$${Math.round(ioRepayment).toLocaleString()}/mo IO`);
+      effect.acquisitionNotes.push(`Equity release on ${property.address?.slice(0, 30) || 'property'} @ ${ratePct.toFixed(2)}% (assessed @ ${assessRatePct.toFixed(2)}%): $${Math.round(netRelease).toLocaleString()} usable (LVR ${newLvr.toFixed(1)}%), +$${Math.round(ioRepayment).toLocaleString()}/mo IO @ buffered rate`);
       effect.description = `Release equity from ${property.address?.slice(0, 30) || 'property'}`;
       break;
     }
@@ -568,7 +571,9 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
         }
         totalLmi += lmiSlice;
         const ratePct = a.property.interestRate ?? blendedRatePct;
-        totalIo += a.allocation * (ratePct / 100 / 12);
+        // Phase I3 — assess servicing at buffered rate
+        const assessRatePct = ratePct + (context.baseInputs.bufferRate ?? 3);
+        totalIo += a.allocation * (assessRatePct / 100 / 12);
         securityNotes.push(
           `${a.property.address?.slice(0, 25) || 'property'}: +$${Math.round(a.allocation).toLocaleString()} (LVR → ${newLvr.toFixed(1)}%${lmiSlice > 0 ? `, LMI $${Math.round(lmiSlice).toLocaleString()}` : ''})`
         );

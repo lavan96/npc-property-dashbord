@@ -567,18 +567,22 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
       // Net usable cash (after LMI on the release loan)
       const netRelease = Math.max(0, grossRelease - lmiOnRelease);
 
-      // F2 fix — servicing impact is the IO cost on the NEW slice only
-      // (grossRelease × monthly rate). The previous formula
-      //   `newLoan*r − loanRemaining*r`
-      // was algebraically identical but obscured intent and broke if a future
-      // refactor changed how `newLoan` was computed.
-      const ioRepaymentNewSlice = grossRelease * monthlyRate;
+      // F2 fix — servicing impact is the IO cost on the NEW slice only.
+      // Phase I3 — APRA requires servicing be assessed at the BUFFERED rate
+      // (contracted + buffer, typically +3.00%). Using the contracted rate
+      // here understated commitments and inflated capacity. Borrowers will
+      // be tested at the assessment rate by the lender, so the engine must
+      // mirror that to stay honest.
+      const assessmentRatePct = ratePct + (context.baseInputs.bufferRate ?? 3);
+      const assessmentMonthlyRate = (assessmentRatePct / 100) / 12;
+      const ioRepaymentNewSlice = grossRelease * assessmentMonthlyRate;
       effect.commitmentAdjustment = Math.max(0, ioRepaymentNewSlice);
+      // Phase I4 — debt balance includes the new equity slice so DTI sees it.
       effect.debtBalanceAdjustment = grossRelease;
 
       effect.releasedCapital = netRelease;
       effect.acquisitionNotes.push(
-        `Equity release on ${property.address?.slice(0, 30) || 'property'} @ ${ratePct.toFixed(2)}%: gross $${Math.round(grossRelease).toLocaleString()} − LMI $${Math.round(lmiOnRelease).toLocaleString()} = $${Math.round(netRelease).toLocaleString()} usable. New LVR ${newLvr.toFixed(1)}%. Servicing +$${Math.round(ioRepaymentNewSlice).toLocaleString()}/mo (IO).`
+        `Equity release on ${property.address?.slice(0, 30) || 'property'} @ ${ratePct.toFixed(2)}% (assessed @ ${assessmentRatePct.toFixed(2)}%): gross $${Math.round(grossRelease).toLocaleString()} − LMI $${Math.round(lmiOnRelease).toLocaleString()} = $${Math.round(netRelease).toLocaleString()} usable. New LVR ${newLvr.toFixed(1)}%. Servicing +$${Math.round(ioRepaymentNewSlice).toLocaleString()}/mo (IO @ buffered rate).`
       );
       effect.description = `Release equity from ${property.address?.slice(0, 30) || 'property'}`;
       break;
@@ -713,9 +717,10 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
           lmiSlice = est.lmiAmount;
         }
         totalLmi += lmiSlice;
-        // Servicing on the new slice only — use property's own rate where available, blended otherwise
+        // Servicing on the new slice — Phase I3: assessed @ buffered rate.
         const ratePct = a.property.interestRate ?? blendedRatePct;
-        totalIo += a.allocation * (ratePct / 100 / 12);
+        const assessRatePct = ratePct + (context.baseInputs.bufferRate ?? 3);
+        totalIo += a.allocation * (assessRatePct / 100 / 12);
         securityNotes.push(
           `${a.property.address?.slice(0, 25) || 'property'}: +$${Math.round(a.allocation).toLocaleString()} (LVR → ${newLvr.toFixed(1)}%${lmiSlice > 0 ? `, LMI $${Math.round(lmiSlice).toLocaleString()}` : ''})`
         );
