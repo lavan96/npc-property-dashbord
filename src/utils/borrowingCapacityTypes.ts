@@ -155,18 +155,39 @@ export interface ProposedLoanCheckResult {
 // SCENARIO CAPACITY (Output 2 — Phase 4 will expand)
 // ============================================
 
-/** A scenario delta describes a single what-if change */
+/** A scenario delta describes a single what-if change.
+ *  Phase B (Engine Unification): expanded to cover every lever exposed by the
+ *  Strategy Scenario Builder so that the same delta vocabulary drives the
+ *  client preview, the "Apply Scenario" output, and the server-side replay.
+ */
+export type ScenarioDeltaType =
+  | 'income_change'
+  | 'expense_change'
+  | 'debt_change'
+  | 'rate_change'
+  | 'property_sell'
+  | 'property_refinance'
+  | 'property_add'
+  | 'liability_payoff'
+  | 'loan_term_change'
+  | 'dti_cap_change'
+  | 'equity_release';
+
+export type ScenarioDeltaUnit = 'percent' | 'absolute' | 'rate_points' | 'years' | 'ratio';
+
 export interface ScenarioDelta {
-  /** Unique identifier for this delta */
+  /** Unique identifier — for entity-bound deltas this is the property/liability ID */
   id: string;
   /** Human-readable label */
   label: string;
   /** Type of change */
-  type: 'income_change' | 'expense_change' | 'debt_change' | 'rate_change' | 'property_sell' | 'property_refinance' | 'property_add' | 'liability_payoff';
+  type: ScenarioDeltaType;
   /** The change value (interpretation depends on type) */
   value: number;
-  /** Unit: 'percent', 'absolute', 'rate_points' */
-  unit: 'percent' | 'absolute' | 'rate_points';
+  /** Unit hint */
+  unit: ScenarioDeltaUnit;
+  /** Optional payload for richer deltas (e.g. equity_release target LVR, dti cap toggle) */
+  meta?: Record<string, number | string | boolean | null>;
 }
 
 /** Result of a scenario calculation */
