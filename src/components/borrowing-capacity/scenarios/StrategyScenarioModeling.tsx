@@ -56,6 +56,8 @@ import {
   DEFAULT_ADDITIONAL_STRATEGY,
   type AdditionalStrategyState,
 } from './AdditionalStrategyLevers';
+import { BindingConstraintBadge } from '../BindingConstraintBadge';
+import { computeBindingConstraint } from '@/utils/bindingConstraint';
 
 // ── Types ──────────────────────────────────────────────
 
@@ -499,6 +501,18 @@ export function StrategyScenarioModeling({
   const surplusChange = scenarioResult.monthlySurplus - baseResult.monthlySurplus;
   const totalMonthlySaving = impactBreakdown.reduce((sum, i) =>
     sum + (i.type === 'saving' ? i.monthlySaving : i.type === 'cost' ? -i.monthlySaving : 0), 0);
+
+  // Binding-constraint analysis for both base and scenario — surfaces the
+  // "wall" the user is currently pressed against (DTI cap vs surplus vs absolute).
+  // Pure compute, no math change.
+  const baseBinding = useMemo(
+    () => computeBindingConstraint(baseInputs, baseResult),
+    [baseInputs, baseResult]
+  );
+  const scenarioBinding = useMemo(
+    () => computeBindingConstraint(scenarioInputs, scenarioResult),
+    [scenarioInputs, scenarioResult]
+  );
 
   const hasAnyStrategy = strategy.consolidatedLiabilities.size > 0 ||
     strategy.refinancedToIO.size > 0 ||
@@ -1421,16 +1435,23 @@ export function StrategyScenarioModeling({
           )}
 
           {/* Before → After comparison */}
-          <div className="grid grid-cols-3 gap-3 items-center pt-2">
-            <div className="text-center p-3 rounded-lg bg-secondary/30">
+          <div className="grid grid-cols-3 gap-3 items-start pt-2">
+            <div className="text-center p-3 rounded-lg bg-secondary/30 space-y-2">
               <p className="text-xs text-muted-foreground mb-1">CURRENT</p>
               <p className="text-lg font-bold">{formatCapacity(baseResult.borrowingCapacity)}</p>
-              <Badge className="mt-1.5 text-xs" style={{ backgroundColor: baseBand.bg === 'bg-emerald-500/10' ? '#10b981' : baseBand.bg === 'bg-amber-500/10' ? '#f59e0b' : '#ef4444', color: 'white' }}>
+              <Badge className="text-xs" style={{ backgroundColor: baseBand.bg === 'bg-emerald-500/10' ? '#10b981' : baseBand.bg === 'bg-amber-500/10' ? '#f59e0b' : '#ef4444', color: 'white' }}>
                 {baseBand.label}
               </Badge>
+              <BindingConstraintBadge
+                inputs={baseInputs}
+                result={baseResult}
+                analysis={baseBinding}
+                variant="compact"
+                className="w-full justify-center"
+              />
             </div>
 
-            <div className="text-center">
+            <div className="text-center pt-3">
               <div className="flex items-center justify-center mb-1">
                 {capacityChange > 0 && <TrendingUp className="h-5 w-5 text-emerald-600" />}
                 {capacityChange < 0 && <TrendingDown className="h-5 w-5 text-destructive" />}
@@ -1448,20 +1469,42 @@ export function StrategyScenarioModeling({
                   ({((capacityChange / baseResult.borrowingCapacity) * 100).toFixed(1)}%)
                 </p>
               )}
+              {/* Wall-shift indicator: did the binding constraint change? */}
+              {baseBinding.binding !== scenarioBinding.binding && (
+                <p className="text-[10px] text-primary mt-1 leading-tight">
+                  Wall shifted:<br />
+                  {baseBinding.bindingLabel} → {scenarioBinding.bindingLabel}
+                </p>
+              )}
             </div>
 
-            <div className={`text-center p-3 rounded-lg border-2 ${
+            <div className={`text-center p-3 rounded-lg border-2 space-y-2 ${
               capacityChange > 0 ? 'bg-emerald-500/10 border-emerald-500/30' :
               capacityChange < 0 ? 'bg-destructive/10 border-destructive/30' :
               'bg-secondary/30 border-secondary'
             }`}>
               <p className="text-xs text-muted-foreground mb-1">SCENARIO</p>
               <p className="text-lg font-bold">{formatCapacity(scenarioResult.borrowingCapacity)}</p>
-              <Badge className="mt-1.5 text-xs" style={{ backgroundColor: scenarioBand.bg === 'bg-emerald-500/10' ? '#10b981' : scenarioBand.bg === 'bg-amber-500/10' ? '#f59e0b' : '#ef4444', color: 'white' }}>
+              <Badge className="text-xs" style={{ backgroundColor: scenarioBand.bg === 'bg-emerald-500/10' ? '#10b981' : scenarioBand.bg === 'bg-amber-500/10' ? '#f59e0b' : '#ef4444', color: 'white' }}>
                 {scenarioBand.label}
               </Badge>
+              <BindingConstraintBadge
+                inputs={scenarioInputs}
+                result={scenarioResult}
+                analysis={scenarioBinding}
+                variant="compact"
+                className="w-full justify-center"
+              />
             </div>
           </div>
+
+          {/* Binding-constraint breakdown — explains WHY the lever moved (or didn't) */}
+          <BindingConstraintBadge
+            inputs={scenarioInputs}
+            result={scenarioResult}
+            analysis={scenarioBinding}
+            variant="expanded"
+          />
 
           {/* Monthly Surplus */}
           <div className="p-3 rounded-lg bg-secondary/30">
