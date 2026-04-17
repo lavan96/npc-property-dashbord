@@ -56,6 +56,8 @@ import {
   DEFAULT_ADDITIONAL_STRATEGY,
   type AdditionalStrategyState,
 } from './AdditionalStrategyLevers';
+import { BindingConstraintBadge } from '../BindingConstraintBadge';
+import { computeBindingConstraint } from '@/utils/bindingConstraint';
 
 // ── Types ──────────────────────────────────────────────
 
