@@ -359,7 +359,11 @@ export function buildStrategyRationale(input: RationaleInput): RationaleReport {
     leverAttribution,
     acquisitionCapacity,
     formatCurrency: fmt,
+    capitalLedger,
   } = input;
+
+  // Phase K5 — capital flow narrative
+  const capitalFlow = buildCapitalFlow(capitalLedger);
 
   const capacityChange = scenarioCapacity - baseCapacity;
   const noLevers = deltas.length === 0;
