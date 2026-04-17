@@ -378,7 +378,9 @@ serve(async (req) => {
     const inferredTargetPrice = detectTargetPrice(cappedMessages);
     const lastUserMessage = [...cappedMessages].reverse().find((m: any) => m.role === 'user')?.content || '';
     const clarificationMode = isClarificationMessage(lastUserMessage);
-    console.log('[bc-scenario-agent] inferredTargetPrice:', inferredTargetPrice, '| clarificationMode:', clarificationMode);
+    // Phase J2: structured acquisition hints from the conversation prose
+    const acquisitionHints = extractAcquisitionHints(cappedMessages);
+    console.log('[bc-scenario-agent] inferredTargetPrice:', inferredTargetPrice, '| clarificationMode:', clarificationMode, '| acquisitionHints:', acquisitionHints);
 
     // Build context summary from client data
     let contextBlock = "";
@@ -435,10 +437,34 @@ ${(properties || []).map((p: any) => `- [${p.id}] ${p.address} (${p.property_typ
       });
     }
 
+    // ── Phase J1: prior-scenario memory block ───────────────────────────
+    let priorScenariosBlock = '';
+    if (Array.isArray(priorScenarios) && priorScenarios.length > 0) {
+      const summarised = priorScenarios.slice(0, 3).map((s: any, i: number) => {
+        const v = s?.engineValidation || {};
+        const cap = typeof v.borrowingCapacity === 'number' ? `$${Math.round(v.borrowingCapacity).toLocaleString()}` : 'n/a';
+        const change = typeof v.capacityChange === 'number' ? `${v.capacityChange >= 0 ? '+' : ''}$${Math.round(v.capacityChange).toLocaleString()}` : 'n/a';
+        const meets = v.meetsTarget === true ? 'meets target' : (typeof v.shortfallToTarget === 'number' && v.shortfallToTarget > 0 ? `short $${Math.round(v.shortfallToTarget).toLocaleString()}` : '');
+        const risk = s?.executionRisk ? ` risk=${s.executionRisk}` : '';
+        const adj = s?.adjustments ? JSON.stringify(s.adjustments).slice(0, 280) : '';
+        return `Scenario ${i + 1}: ${s?.name || 'Untitled'} — capacity ${cap} (${change})${meets ? `, ${meets}` : ''}${risk}\n  adjustments: ${adj}`;
+      }).join('\n');
+      priorScenariosBlock = `\n\n## Prior Scenarios (engine-validated)\nThe broker is iterating on these previously-generated scenarios. Reference them by name when refining; do not re-derive numbers from scratch.\n${summarised}`;
+    }
+
     // ── Phase H: inject inferred target + clarification directive ───────
     let directives = '';
     if (inferredTargetPrice) {
       directives += `\n\n## 🎯 DETECTED TARGET PURCHASE PRICE: $${inferredTargetPrice.toLocaleString()}\nThe broker has mentioned a target purchase price of $${inferredTargetPrice.toLocaleString()}. You MUST set \`acquisition.targetPurchasePrice = ${inferredTargetPrice}\` on EVERY scenario you generate so the engine returns a binary "Achievable / Short by $X" verdict. Do not omit this field.`;
+    }
+    if (acquisitionHints && (acquisitionHints.state || acquisitionHints.intent || acquisitionHints.category || acquisitionHints.isFirstHomeBuyer || acquisitionHints.cashOnHand)) {
+      const hintLines: string[] = [];
+      if (acquisitionHints.state) hintLines.push(`- state: ${acquisitionHints.state}`);
+      if (acquisitionHints.intent) hintLines.push(`- intent: ${acquisitionHints.intent}`);
+      if (acquisitionHints.category) hintLines.push(`- category: ${acquisitionHints.category}`);
+      if (acquisitionHints.isFirstHomeBuyer != null) hintLines.push(`- isFirstHomeBuyer: ${acquisitionHints.isFirstHomeBuyer}`);
+      if (acquisitionHints.cashOnHand != null) hintLines.push(`- cashOnHand: $${acquisitionHints.cashOnHand.toLocaleString()}`);
+      directives += `\n\n## 📋 EXTRACTED ACQUISITION HINTS\nThe broker's prose surfaced these acquisition parameters — use them as the defaults on \`acquisition\` (do NOT contradict them without explicit reason):\n${hintLines.join('\n')}`;
     }
     if (clarificationMode) {
       directives += `\n\n## ⚠️ CLARIFICATION MODE\nThe broker is asking a clarifying question about a previously-generated scenario, NOT requesting new scenarios. DO NOT call the generate_scenarios tool. Respond in natural-language prose only. Reference the engine-validated numbers from the prior scenarios (capacity, meetsTarget, shortfall, loanRequired) directly in your answer.`;
@@ -449,9 +475,14 @@ ${(properties || []).map((p: any) => `- [${p.id}] ${p.address} (${p.property_typ
       ...cappedMessages.map((m: any) => ({ role: m.role, content: m.content })),
     ];
 
+    // Phase J2: model upgrade — Pro reasoning produces materially better
+    // constraint-led scenarios at a small latency premium. Override via
+    // BC_AGENT_MODEL secret if needed.
+    const MODEL_ID = Deno.env.get('BC_AGENT_MODEL') || 'google/gemini-3-pro-preview';
+
     // In clarification mode, omit the tool entirely so the model can't generate scenarios.
     const aiPayload: any = {
-      model: "google/gemini-3-flash-preview",
+      model: MODEL_ID,
       messages: aiMessages,
       stream: false, // switched to non-streaming so we can post-process the tool call
     };
