@@ -6,6 +6,9 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
@@ -18,9 +21,35 @@ import {
   ShieldCheck,
   Receipt,
   Building,
+  Layers,
+  Network,
 } from 'lucide-react';
 
 // ── Types ──────────────────────────────────────────────
+
+/** Phase G1 — per-property valuation override entry. */
+export interface ValuationOverride {
+  propertyId: string;
+  /** New valuation in AUD */
+  newValue: number;
+  /** Methodology basis — drives PDF audit watermark */
+  basis: 'manual' | 'desktop' | 'avm' | 'comparable_sales';
+  /** Free-text justification (e.g. agent name, comparable address) */
+  source: string;
+}
+
+/** Phase G2 — cross-collateralised pool release configuration. */
+export interface CrossCollatPoolState {
+  enabled: boolean;
+  /** Which properties to pool (subset of portfolio) */
+  propertyIds: Set<string>;
+  /** Target blended LVR across the pool (0–0.95) */
+  blendedTargetLVR: number;
+  /** Per-security lender ceiling (default 0.95) */
+  lenderMaxLVR: number;
+  /** Allocation strategy — highest_equity_first cleans up healthiest securities first */
+  allocationStrategy: 'highest_equity_first' | 'pro_rata';
+}
 
 export interface AdditionalStrategyState {
   incomeGrowthPercent: number;
@@ -31,6 +60,10 @@ export interface AdditionalStrategyState {
   stampDutyPurchasePrice: number;
   portfolioSellPropertyIds: Set<string>;
   portfolioSellReinvest: boolean;
+  /** Phase G1 — valuation overrides keyed by property id */
+  valuationOverrides: Map<string, ValuationOverride>;
+  /** Phase G2 — cross-collateralised pool */
+  crossCollatPool: CrossCollatPoolState;
 }
 
 export const DEFAULT_ADDITIONAL_STRATEGY: AdditionalStrategyState = {
@@ -42,6 +75,14 @@ export const DEFAULT_ADDITIONAL_STRATEGY: AdditionalStrategyState = {
   stampDutyPurchasePrice: 0,
   portfolioSellPropertyIds: new Set(),
   portfolioSellReinvest: false,
+  valuationOverrides: new Map(),
+  crossCollatPool: {
+    enabled: false,
+    propertyIds: new Set(),
+    blendedTargetLVR: 0.80,
+    lenderMaxLVR: 0.95,
+    allocationStrategy: 'highest_equity_first',
+  },
 };
 
 interface PropertyForSale {
@@ -568,6 +609,232 @@ export function AdditionalStrategyLevers({
                     </div>
                   </div>
                 </div>
+              )}
+            </CardContent>
+          </CollapsibleContent>
+        </Collapsible>
+      </Card>
+
+      {/* ═══ LEVER 11 (G1): Valuation Uplift Assumptions ═══ */}
+      <Card>
+        <Collapsible open={openSections.valuationUplift} onOpenChange={() => onToggleSection('valuationUplift')}>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Layers className="h-4 w-4 text-primary" />
+                  Valuation Uplift Assumptions
+                  <Badge variant="outline" className="text-[10px]">G1</Badge>
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  {strategy.valuationOverrides.size > 0 && (
+                    <Badge variant="secondary" className="text-xs">
+                      {strategy.valuationOverrides.size} override{strategy.valuationOverrides.size === 1 ? '' : 's'}
+                    </Badge>
+                  )}
+                  <ChevronDown className={`h-4 w-4 transition-transform ${openSections.valuationUplift ? 'rotate-180' : ''}`} />
+                </div>
+              </div>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="pt-0 space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Override stored property valuations using a desktop val, AVM, or comparable sales. Resolved BEFORE equity / pool deltas so downstream math sees the new value. Audit basis is preserved on the PDF.
+              </p>
+              {properties.filter(p => p.current_value > 0).length === 0 ? (
+                <p className="text-xs text-muted-foreground italic py-2">No properties available.</p>
+              ) : (
+                <div className="space-y-2">
+                  {properties.filter(p => p.current_value > 0).map(prop => {
+                    const ov = strategy.valuationOverrides.get(prop.id);
+                    const newVal = ov?.newValue ?? prop.current_value;
+                    const pct = prop.current_value > 0 ? ((newVal - prop.current_value) / prop.current_value) * 100 : 0;
+                    return (
+                      <div key={prop.id} className="p-3 rounded-lg border space-y-2">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-medium truncate">{prop.address?.slice(0, 40) || 'Property'}</p>
+                          <p className="text-xs text-muted-foreground">stored {formatCurrency(prop.current_value)}</p>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          <Input
+                            type="number"
+                            placeholder="New value"
+                            value={ov?.newValue ?? ''}
+                            onChange={(e) => {
+                              const v = Number(e.target.value);
+                              const next = new Map(strategy.valuationOverrides);
+                              if (!v || v <= 0) next.delete(prop.id);
+                              else next.set(prop.id, { propertyId: prop.id, newValue: v, basis: ov?.basis ?? 'desktop', source: ov?.source ?? '' });
+                              onStrategyChange({ valuationOverrides: next });
+                            }}
+                            className="text-sm h-9"
+                          />
+                          <Select
+                            value={ov?.basis ?? 'desktop'}
+                            onValueChange={(b) => {
+                              if (!ov) return;
+                              const next = new Map(strategy.valuationOverrides);
+                              next.set(prop.id, { ...ov, basis: b as ValuationOverride['basis'] });
+                              onStrategyChange({ valuationOverrides: next });
+                            }}
+                          >
+                            <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="manual">Manual</SelectItem>
+                              <SelectItem value="desktop">Desktop val</SelectItem>
+                              <SelectItem value="avm">AVM</SelectItem>
+                              <SelectItem value="comparable_sales">Comp sales</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Input
+                            type="text"
+                            placeholder="Source/note"
+                            value={ov?.source ?? ''}
+                            onChange={(e) => {
+                              if (!ov) return;
+                              const next = new Map(strategy.valuationOverrides);
+                              next.set(prop.id, { ...ov, source: e.target.value });
+                              onStrategyChange({ valuationOverrides: next });
+                            }}
+                            className="text-sm h-9"
+                          />
+                        </div>
+                        {ov && (
+                          <p className={`text-xs ${pct >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
+                            {pct >= 0 ? '+' : ''}{pct.toFixed(1)}% → {formatCurrency(newVal)}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </CollapsibleContent>
+        </Collapsible>
+      </Card>
+
+      {/* ═══ LEVER 12 (G2): Cross-Collateralised Pool Release ═══ */}
+      <Card>
+        <Collapsible open={openSections.crossCollatPool} onOpenChange={() => onToggleSection('crossCollatPool')}>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Network className="h-4 w-4 text-primary" />
+                  Cross-Collateralised Pool Release
+                  <Badge variant="outline" className="text-[10px]">G2</Badge>
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  {strategy.crossCollatPool.enabled && (
+                    <Badge variant="secondary" className="text-xs">
+                      {strategy.crossCollatPool.propertyIds.size} props · {(strategy.crossCollatPool.blendedTargetLVR * 100).toFixed(0)}% LVR
+                    </Badge>
+                  )}
+                  <ChevronDown className={`h-4 w-4 transition-transform ${openSections.crossCollatPool ? 'rotate-180' : ''}`} />
+                </div>
+              </div>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="pt-0 space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Pool selected securities and release equity against the BLENDED LVR. Equity-rich properties subsidise over-LVR ones. Per-security LMI is computed for any slice crossing 80% LVR.
+              </p>
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">Enable pool mode</Label>
+                <Switch
+                  checked={strategy.crossCollatPool.enabled}
+                  onCheckedChange={(checked) => onStrategyChange({
+                    crossCollatPool: { ...strategy.crossCollatPool, enabled: checked },
+                  })}
+                />
+              </div>
+              {strategy.crossCollatPool.enabled && (
+                <>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Blended target LVR</span>
+                      <span className="font-medium">{(strategy.crossCollatPool.blendedTargetLVR * 100).toFixed(0)}%</span>
+                    </div>
+                    <Slider
+                      value={[strategy.crossCollatPool.blendedTargetLVR * 100]}
+                      onValueChange={([v]) => onStrategyChange({
+                        crossCollatPool: { ...strategy.crossCollatPool, blendedTargetLVR: v / 100 },
+                      })}
+                      min={50} max={90} step={1}
+                      className="py-2"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Lender max LVR / security</Label>
+                      <Input
+                        type="number" step="0.01" min="0.5" max="0.99"
+                        value={strategy.crossCollatPool.lenderMaxLVR}
+                        onChange={(e) => onStrategyChange({
+                          crossCollatPool: { ...strategy.crossCollatPool, lenderMaxLVR: Math.max(0.5, Math.min(0.99, Number(e.target.value) || 0.95)) },
+                        })}
+                        className="h-9 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Allocation</Label>
+                      <Select
+                        value={strategy.crossCollatPool.allocationStrategy}
+                        onValueChange={(v) => onStrategyChange({
+                          crossCollatPool: { ...strategy.crossCollatPool, allocationStrategy: v as 'highest_equity_first' | 'pro_rata' },
+                        })}
+                      >
+                        <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="highest_equity_first">Highest equity first</SelectItem>
+                          <SelectItem value="pro_rata">Pro-rata</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <Separator />
+                  <Label className="text-xs text-muted-foreground">Pool members</Label>
+                  <div className="space-y-2">
+                    {properties.filter(p => p.current_value > 0).map(prop => {
+                      const isSelected = strategy.crossCollatPool.propertyIds.has(prop.id);
+                      const lvr = prop.current_value > 0 ? (prop.loan_remaining / prop.current_value) * 100 : 0;
+                      return (
+                        <div
+                          key={prop.id}
+                          className={`p-2.5 rounded-lg border cursor-pointer transition-colors ${
+                            isSelected ? 'bg-primary/10 border-primary/30' : 'hover:bg-muted/50'
+                          }`}
+                          onClick={() => {
+                            const next = new Set(strategy.crossCollatPool.propertyIds);
+                            if (next.has(prop.id)) next.delete(prop.id); else next.add(prop.id);
+                            onStrategyChange({
+                              crossCollatPool: { ...strategy.crossCollatPool, propertyIds: next },
+                            });
+                          }}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Switch checked={isSelected} onClick={(e) => e.stopPropagation()} onCheckedChange={() => {
+                                const next = new Set(strategy.crossCollatPool.propertyIds);
+                                if (next.has(prop.id)) next.delete(prop.id); else next.add(prop.id);
+                                onStrategyChange({ crossCollatPool: { ...strategy.crossCollatPool, propertyIds: next } });
+                              }} />
+                              <div>
+                                <p className="text-xs font-medium truncate max-w-[200px]">{prop.address?.slice(0, 32) || 'Property'}</p>
+                                <p className="text-[11px] text-muted-foreground">
+                                  {formatCurrency(prop.current_value)} · loan {formatCurrency(prop.loan_remaining)} · LVR {lvr.toFixed(0)}%
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
               )}
             </CardContent>
           </CollapsibleContent>

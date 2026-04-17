@@ -34,7 +34,11 @@ export type ScenarioDeltaType =
   | 'loan_term_change'
   | 'dti_cap_change'
   | 'equity_release'
-  | 'property_rate_change';
+  | 'property_rate_change'
+  /** Phase G1 — Valuation override (manual/AVM/desktop/comp sales). */
+  | 'property_value_change'
+  /** Phase G2 — Cross-collateralised pool release across multiple securities. */
+  | 'portfolio_lvr_release';
 
 export type ScenarioDeltaUnit = 'percent' | 'absolute' | 'rate_points' | 'years' | 'ratio';
 
@@ -44,7 +48,7 @@ export interface ScenarioDelta {
   type: ScenarioDeltaType;
   value: number;
   unit: ScenarioDeltaUnit;
-  meta?: Record<string, number | string | boolean | null>;
+  meta?: Record<string, number | string | boolean | string[] | null>;
 }
 
 export interface ScenarioBaseInputs {
@@ -211,10 +215,40 @@ export function validateDeltas(deltas: ScenarioDelta[], context: ScenarioContext
       case 'property_refinance':
       case 'equity_release':
       case 'property_rate_change':
+      case 'property_value_change':
         if (!propertyIds.has(d.id)) {
           issues.push({ deltaId: d.id, deltaType: d.type, severity: 'warning', message: `Property "${d.id}" not found in client portfolio — delta ignored` });
         }
+        if (d.type === 'property_value_change') {
+          if (d.unit === 'percent' && Math.abs(d.value) > 100) {
+            issues.push({ deltaId: d.id, deltaType: d.type, severity: 'warning', message: `Valuation uplift ${d.value}% exceeds ±100% — likely a data entry error` });
+          }
+          if (d.unit === 'absolute' && d.value <= 0) {
+            issues.push({ deltaId: d.id, deltaType: d.type, severity: 'error', message: `Absolute valuation must be positive (got ${d.value})` });
+          }
+          const basis = d.meta?.basis as string | undefined;
+          if (!basis) {
+            issues.push({ deltaId: d.id, deltaType: d.type, severity: 'warning', message: 'Valuation override missing `meta.basis` — PDF will watermark as unverified' });
+          }
+        }
         break;
+      case 'portfolio_lvr_release': {
+        const ids = (d.meta?.propertyIds as string[] | undefined) || [];
+        if (!Array.isArray(ids) || ids.length === 0) {
+          issues.push({ deltaId: d.id, deltaType: d.type, severity: 'error', message: 'Pool release missing `meta.propertyIds` — at least one property required' });
+        } else {
+          for (const pid of ids) {
+            if (!propertyIds.has(pid)) {
+              issues.push({ deltaId: d.id, deltaType: d.type, severity: 'warning', message: `Pool member "${pid}" not in portfolio — excluded from blended LVR` });
+            }
+          }
+        }
+        const target = d.unit === 'percent' ? d.value / 100 : d.value;
+        if (!Number.isFinite(target) || target <= 0 || target > 0.97) {
+          issues.push({ deltaId: d.id, deltaType: d.type, severity: 'warning', message: `Blended target LVR ${(target * 100).toFixed(1)}% outside 0–97% sane band` });
+        }
+        break;
+      }
       case 'liability_payoff':
         if (!liabilityIds.has(d.id)) {
           issues.push({ deltaId: d.id, deltaType: d.type, severity: 'warning', message: `Liability "${d.id}" not found — delta ignored` });
@@ -365,7 +399,7 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
       break;
     }
     case 'equity_release': {
-      // Phase C + F1/F2: cash freed + shadow servicing using per-property rate.
+      // Phase C + F1/F2 + G3: cash freed + shadow IO using per-property rate.
       const property = context.properties.find(p => p.id === delta.id);
       if (!property || property.currentValue <= 0) break;
       const fhb = !!context.acquisition?.isFirstHomeBuyer;
@@ -374,17 +408,27 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
         ? (overrideRate as number)
         : (property.interestRate ?? context.baseInputs.interestRate ?? 6.5);
       const monthlyRate = (ratePct / 100) / 12;
+      // G3 — externalised lender cap
+      const lenderCap = (delta.meta?.lenderMaxLVR as number | undefined);
+      const safeLenderCap = (Number.isFinite(lenderCap) && (lenderCap as number) > 0 && (lenderCap as number) <= 0.99)
+        ? (lenderCap as number)
+        : 0.95;
       let newLoan = 0;
       if (delta.unit === 'absolute' && delta.value > 0) {
         newLoan = property.loanRemaining + delta.value;
       } else {
         const targetLVR = delta.unit === 'percent' ? delta.value / 100
           : (delta.meta?.targetLVR as number | undefined) ?? delta.value;
-        newLoan = property.currentValue * Math.max(0, Math.min(0.95, targetLVR || 0.8));
+        newLoan = property.currentValue * Math.max(0, Math.min(safeLenderCap, targetLVR || 0.8));
       }
+      newLoan = Math.min(newLoan, property.currentValue * safeLenderCap);
       const grossRelease = Math.max(0, newLoan - property.loanRemaining);
       if (grossRelease <= 0) {
-        effect.acquisitionNotes.push(`Equity release on ${property.address?.slice(0, 30) || 'property'}: no equity available`);
+        // G3 — no longer silent. Surface why so finance can consider G1/G2 levers.
+        const currentLvr = (property.loanRemaining / property.currentValue) * 100;
+        effect.acquisitionNotes.push(
+          `⚠ Equity release on ${property.address?.slice(0, 30) || 'property'} skipped — already at ${currentLvr.toFixed(1)}% LVR. Consider valuation uplift (G1) or cross-collateralised pool (G2).`
+        );
         break;
       }
       const newLvr = (newLoan / property.currentValue) * 100;
@@ -394,13 +438,134 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
         lmiOnRelease = est.lmiAmount;
       }
       const netRelease = Math.max(0, grossRelease - lmiOnRelease);
-      // F2 fix — IO cost on the NEW slice only
       const ioRepayment = grossRelease * monthlyRate;
       effect.commitmentAdjustment = Math.max(0, ioRepayment);
       effect.debtBalanceAdjustment = grossRelease;
       effect.releasedCapital = netRelease;
       effect.acquisitionNotes.push(`Equity release on ${property.address?.slice(0, 30) || 'property'} @ ${ratePct.toFixed(2)}%: $${Math.round(netRelease).toLocaleString()} usable (LVR ${newLvr.toFixed(1)}%), +$${Math.round(ioRepayment).toLocaleString()}/mo IO`);
       effect.description = `Release equity from ${property.address?.slice(0, 30) || 'property'}`;
+      break;
+    }
+
+    case 'property_value_change': {
+      // Phase G1 — Pure input override. Mutates the resolved property record
+      // so any downstream property-bound delta sees the new valuation.
+      const property = context.properties.find(p => p.id === delta.id);
+      if (!property || property.currentValue <= 0) break;
+      const oldValue = property.currentValue;
+      let newValue = oldValue;
+      if (delta.unit === 'percent') {
+        newValue = oldValue * (1 + delta.value / 100);
+      } else if (delta.unit === 'absolute' && delta.value > 0) {
+        newValue = delta.value;
+      }
+      newValue = Math.max(0, newValue);
+      if (Math.abs(newValue - oldValue) < 1) break;
+      property.currentValue = newValue;
+      const basis = (delta.meta?.basis as string | undefined) || 'manual';
+      const source = (delta.meta?.source as string | undefined) || '—';
+      const pct = oldValue > 0 ? ((newValue - oldValue) / oldValue) * 100 : 0;
+      effect.acquisitionNotes.push(
+        `Revalue ${property.address?.slice(0, 30) || 'property'}: $${Math.round(oldValue).toLocaleString()} → $${Math.round(newValue).toLocaleString()} (${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%, basis: ${basis}, source: ${source})`
+      );
+      effect.description = `Revalue ${property.address?.slice(0, 30) || 'property'}`;
+      break;
+    }
+
+    case 'portfolio_lvr_release': {
+      // Phase G2 — Cross-collateralised / blended-LVR release.
+      const pool = (delta.meta?.propertyIds as string[] | undefined) || [];
+      const members = (context.properties || []).filter(p => pool.includes(p.id) && p.currentValue > 0);
+      if (members.length === 0) {
+        effect.acquisitionNotes.push(`⚠ Pool release: no valid pool members found in portfolio.`);
+        break;
+      }
+      const blendedTarget = delta.unit === 'percent' ? delta.value / 100 : delta.value;
+      const safeBlended = Math.max(0, Math.min(0.97, blendedTarget || 0.8));
+      const lenderCap = (delta.meta?.lenderMaxLVR as number | undefined);
+      const safeLenderCap = (Number.isFinite(lenderCap) && (lenderCap as number) > 0 && (lenderCap as number) <= 0.99)
+        ? (lenderCap as number)
+        : 0.95;
+      const allocationStrategy = (delta.meta?.allocationStrategy as string | undefined) === 'pro_rata'
+        ? 'pro_rata'
+        : 'highest_equity_first';
+
+      const totalValue = members.reduce((s, p) => s + p.currentValue, 0);
+      const totalDebt = members.reduce((s, p) => s + p.loanRemaining, 0);
+      const targetTotalDebt = totalValue * safeBlended;
+      const grossPool = Math.max(0, targetTotalDebt - totalDebt);
+
+      if (grossPool <= 0) {
+        const currentBlended = totalValue > 0 ? (totalDebt / totalValue) * 100 : 0;
+        effect.acquisitionNotes.push(
+          `⚠ Pool release skipped — current blended LVR ${currentBlended.toFixed(1)}% already at/above target ${(safeBlended * 100).toFixed(1)}%.`
+        );
+        break;
+      }
+
+      const headroom = members.map(p => ({
+        property: p,
+        headroom: Math.max(0, p.currentValue * safeLenderCap - p.loanRemaining),
+        equity: Math.max(0, p.currentValue - p.loanRemaining),
+      }));
+      const totalHeadroom = headroom.reduce((s, h) => s + h.headroom, 0);
+      const cappedPool = Math.min(grossPool, totalHeadroom);
+
+      let allocations: Array<{ property: typeof members[number]; allocation: number }> = [];
+      if (allocationStrategy === 'pro_rata' && totalHeadroom > 0) {
+        allocations = headroom.map(h => ({ property: h.property, allocation: cappedPool * (h.headroom / totalHeadroom) }));
+      } else {
+        const sorted = [...headroom].sort((a, b) => b.equity - a.equity);
+        let remaining = cappedPool;
+        allocations = sorted.map(h => {
+          const take = Math.min(h.headroom, remaining);
+          remaining = Math.max(0, remaining - take);
+          return { property: h.property, allocation: take };
+        }).filter(a => a.allocation > 0);
+      }
+
+      const fhb = !!context.acquisition?.isFirstHomeBuyer;
+      let totalGross = 0, totalLmi = 0, totalIo = 0;
+      const overrideRate = delta.meta?.releaseRate as number | undefined;
+      const blendedRatePct = (Number.isFinite(overrideRate) && (overrideRate as number) > 0)
+        ? (overrideRate as number)
+        : context.baseInputs.interestRate ?? 6.5;
+      const securityNotes: string[] = [];
+      for (const a of allocations) {
+        if (a.allocation <= 0) continue;
+        totalGross += a.allocation;
+        const newLoan = a.property.loanRemaining + a.allocation;
+        const newLvr = (newLoan / a.property.currentValue) * 100;
+        let lmiSlice = 0;
+        if (newLvr > 80) {
+          const est = estimateLmi({ propertyValue: a.property.currentValue, loanAmount: newLoan, isFirstHomeBuyer: fhb });
+          lmiSlice = est.lmiAmount;
+        }
+        totalLmi += lmiSlice;
+        const ratePct = a.property.interestRate ?? blendedRatePct;
+        totalIo += a.allocation * (ratePct / 100 / 12);
+        securityNotes.push(
+          `${a.property.address?.slice(0, 25) || 'property'}: +$${Math.round(a.allocation).toLocaleString()} (LVR → ${newLvr.toFixed(1)}%${lmiSlice > 0 ? `, LMI $${Math.round(lmiSlice).toLocaleString()}` : ''})`
+        );
+      }
+      const netPool = Math.max(0, totalGross - totalLmi);
+
+      effect.commitmentAdjustment = Math.max(0, totalIo);
+      effect.debtBalanceAdjustment = totalGross;
+      effect.releasedCapital = netPool;
+
+      const blendedNow = totalValue > 0 ? (totalDebt / totalValue) * 100 : 0;
+      const blendedAfter = totalValue > 0 ? ((totalDebt + totalGross) / totalValue) * 100 : 0;
+      effect.acquisitionNotes.push(
+        `Cross-collat pool (${members.length} properties, ${allocationStrategy}): blended LVR ${blendedNow.toFixed(1)}% → ${blendedAfter.toFixed(1)}% (target ${(safeBlended * 100).toFixed(1)}%). Gross $${Math.round(totalGross).toLocaleString()} − LMI $${Math.round(totalLmi).toLocaleString()} = $${Math.round(netPool).toLocaleString()} usable. Servicing +$${Math.round(totalIo).toLocaleString()}/mo IO.`
+      );
+      for (const n of securityNotes) effect.acquisitionNotes.push(`  · ${n}`);
+      if (cappedPool < grossPool) {
+        effect.acquisitionNotes.push(
+          `  · ⚠ Pool capped at $${Math.round(cappedPool).toLocaleString()} (target wanted $${Math.round(grossPool).toLocaleString()}, lender cap ${(safeLenderCap * 100).toFixed(0)}%/security).`
+        );
+      }
+      effect.description = `Cross-collat release pool @ ${(safeBlended * 100).toFixed(0)}% blended LVR`;
       break;
     }
   }
@@ -454,6 +619,26 @@ export interface AggregateResult {
   issues: DeltaValidationIssue[];
 }
 
+/** Phase G1 — clone properties so in-place valuation mutations are scenario-scoped. */
+function cloneContextForRun(context: ScenarioContext): ScenarioContext {
+  return {
+    ...context,
+    properties: (context.properties || []).map(p => ({ ...p })),
+  };
+}
+
+/** Phase G1 — `property_value_change` deltas resolve BEFORE other property-bound deltas
+ *  so downstream equity/refinance/pool math sees the new currentValue. */
+function orderDeltas(deltas: ScenarioDelta[]): ScenarioDelta[] {
+  const valueChanges: ScenarioDelta[] = [];
+  const others: ScenarioDelta[] = [];
+  for (const d of deltas) {
+    if (d.type === 'property_value_change') valueChanges.push(d);
+    else others.push(d);
+  }
+  return [...valueChanges, ...others];
+}
+
 export function aggregateDeltas(
   scenarioName: string,
   deltas: ScenarioDelta[],
@@ -463,14 +648,25 @@ export function aggregateDeltas(
   const propertyIds = new Set((context.properties || []).map(p => p.id));
   const liabilityIds = new Set((context.liabilities || []).map(l => l.id));
   const safeDeltas = deltas.filter(d => {
-    if (d.type === 'property_sell' || d.type === 'property_refinance' || d.type === 'equity_release') return propertyIds.has(d.id);
+    if (
+      d.type === 'property_sell' ||
+      d.type === 'property_refinance' ||
+      d.type === 'equity_release' ||
+      d.type === 'property_rate_change' ||
+      d.type === 'property_value_change'
+    ) return propertyIds.has(d.id);
     if (d.type === 'liability_payoff') return liabilityIds.has(d.id);
+    // portfolio_lvr_release filters its own pool inside applyDelta
     return true;
   });
 
+  // G1 — clone context + sort value-changes first
+  const ctx = cloneContextForRun(context);
+  const ordered = orderDeltas(safeDeltas);
+
   const total = emptyEffect(scenarioName);
-  for (const d of safeDeltas) {
-    const e = applyDelta(d, context);
+  for (const d of ordered) {
+    const e = applyDelta(d, ctx);
     total.incomeAdjustment += e.incomeAdjustment;
     total.shadedIncomeAdjustment += e.shadedIncomeAdjustment;
     total.expenseAdjustment += e.expenseAdjustment;
@@ -484,26 +680,25 @@ export function aggregateDeltas(
     if (e.dtiCapLimit !== undefined) total.dtiCapLimit = e.dtiCapLimit;
   }
 
-  // Phase E (M3): rescale HEM-derived expenses if income tier changed
-  const newGross = Math.max(0, context.baseInputs.grossAnnualIncome + total.incomeAdjustment);
+  const newGross = Math.max(0, ctx.baseInputs.grossAnnualIncome + total.incomeAdjustment);
   const hemDelta = computeHemTierDelta(
-    context.baseInputs.grossAnnualIncome,
+    ctx.baseInputs.grossAnnualIncome,
     newGross,
-    context.baseInputs.monthlyLivingExpenses,
+    ctx.baseInputs.monthlyLivingExpenses,
   );
 
   const inputs: AggregatedScenarioInputs = {
     grossAnnualIncome: newGross,
-    shadedAnnualIncome: Math.max(0, context.baseInputs.shadedAnnualIncome + total.shadedIncomeAdjustment),
-    monthlyLivingExpenses: Math.max(0, context.baseInputs.monthlyLivingExpenses + total.expenseAdjustment + hemDelta),
-    monthlyCommitments: Math.max(0, context.baseInputs.monthlyCommitments + total.commitmentAdjustment),
-    interestRate: Math.max(0.5, context.baseInputs.interestRate + total.rateAdjustment),
-    bufferRate: context.baseInputs.bufferRate,
-    loanTermYears: Math.max(5, context.baseInputs.loanTermYears + total.loanTermAdjustment),
-    totalDebtBalances: Math.max(0, (context.baseInputs.totalDebtBalances || 0) + total.debtBalanceAdjustment),
-    calculationMode: context.baseInputs.calculationMode,
-    dtiCapEnabled: total.dtiCapEnabled ?? context.baseInputs.dtiCapEnabled,
-    dtiCapLimit: total.dtiCapLimit ?? context.baseInputs.dtiCapLimit,
+    shadedAnnualIncome: Math.max(0, ctx.baseInputs.shadedAnnualIncome + total.shadedIncomeAdjustment),
+    monthlyLivingExpenses: Math.max(0, ctx.baseInputs.monthlyLivingExpenses + total.expenseAdjustment + hemDelta),
+    monthlyCommitments: Math.max(0, ctx.baseInputs.monthlyCommitments + total.commitmentAdjustment),
+    interestRate: Math.max(0.5, ctx.baseInputs.interestRate + total.rateAdjustment),
+    bufferRate: ctx.baseInputs.bufferRate,
+    loanTermYears: Math.max(5, ctx.baseInputs.loanTermYears + total.loanTermAdjustment),
+    totalDebtBalances: Math.max(0, (ctx.baseInputs.totalDebtBalances || 0) + total.debtBalanceAdjustment),
+    calculationMode: ctx.baseInputs.calculationMode,
+    dtiCapEnabled: total.dtiCapEnabled ?? ctx.baseInputs.dtiCapEnabled,
+    dtiCapLimit: total.dtiCapLimit ?? ctx.baseInputs.dtiCapLimit,
   };
 
   return { inputs, effect: total, safeDeltas, issues };
