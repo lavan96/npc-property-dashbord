@@ -51,6 +51,8 @@ import { useNotifications } from '@/contexts/NotificationsContext';
 import { useAuth } from '@/hooks/useAuth';
 import { LenderSubmissionsPanel } from '@/components/lenders/LenderSubmissionsPanel';
 import { LenderComparisonSheets } from '@/components/lenders/LenderComparisonSheets';
+import { ComplianceTab } from '@/components/compliance/ComplianceTab';
+import { DocumentsTab } from '@/components/documents/DocumentsTab';
 
 function ResponsiblePersonSelect({ deal, onUpdate }: { deal: Deal; onUpdate: (data: Partial<Deal>) => void }) {
   const { data: teamUsers = [] } = useTeamUsers();
@@ -96,6 +98,8 @@ export function DealDetailView({ deal, clientId, onBack }: DealDetailViewProps) 
     dates: true,
     build: true,
     lenders: false,
+    compliance: false,
+    documents: false,
     notes: false,
   });
 
@@ -315,6 +319,34 @@ export function DealDetailView({ deal, clientId, onBack }: DealDetailViewProps) 
         <CollapsibleContent className="pt-2 space-y-3">
           <LenderSubmissionsPanel clientId={clientId} dealId={deal.id} />
           <LenderComparisonSheets clientId={clientId} dealId={deal.id} />
+        </CollapsibleContent>
+      </Collapsible>
+
+      {/* Compliance */}
+      <Separator />
+      <Collapsible open={openSections.compliance} onOpenChange={() => toggleSection('compliance')}>
+        <CollapsibleTrigger asChild>
+          <Button variant="ghost" className="w-full justify-between h-9 text-sm font-medium">
+            Compliance Records
+            <ChevronDown className={cn('h-4 w-4 transition-transform', openSections.compliance && 'rotate-180')} />
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pt-2">
+          <ComplianceTab clientId={clientId} dealId={deal.id} />
+        </CollapsibleContent>
+      </Collapsible>
+
+      {/* Generated Documents */}
+      <Separator />
+      <Collapsible open={openSections.documents} onOpenChange={() => toggleSection('documents')}>
+        <CollapsibleTrigger asChild>
+          <Button variant="ghost" className="w-full justify-between h-9 text-sm font-medium">
+            Generated Documents
+            <ChevronDown className={cn('h-4 w-4 transition-transform', openSections.documents && 'rotate-180')} />
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pt-2">
+          <DocumentsTab clientId={clientId} dealId={deal.id} />
         </CollapsibleContent>
       </Collapsible>
 

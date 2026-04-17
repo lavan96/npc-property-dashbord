@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { format } from 'date-fns';
 import { TrendingUp, Users, Activity, PieChart as PieIcon } from 'lucide-react';
-import { DashboardLayout } from '@/components/layout/DashboardLayout';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -51,8 +51,7 @@ export default function ReportsAnalytics() {
   );
 
   return (
-    <DashboardLayout>
-      <div className="container mx-auto p-4 sm:p-6 space-y-6 max-w-[1600px]">
+    <div className="container mx-auto p-4 sm:p-6 space-y-6 max-w-[1600px]">
         <header>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Analytics</h1>
           <p className="text-sm text-muted-foreground">Pipeline, lender mix, broker performance and revenue.</p>
@@ -214,6 +213,5 @@ export default function ReportsAnalytics() {
           </CardContent>
         </Card>
       </div>
-    </DashboardLayout>
   );
 }
