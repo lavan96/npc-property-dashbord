@@ -87,6 +87,10 @@ export interface AIScenario {
   reconciledImpact?: string;
   /** Phase H: pre-Apply engine validation from the server preview. */
   engineValidation?: AIScenarioEngineValidation;
+  /** Phase J1: Levers the model considered but discarded, with reasons. */
+  rejectedLevers?: Array<{ lever: string; reason: string }>;
+  /** Phase J1: Execution risk profile (low / medium / high). */
+  executionRisk?: 'low' | 'medium' | 'high';
 }
 
 interface ChatMessage {
@@ -232,6 +236,16 @@ export function BCScenarioAgent({
               currentLenderProfileId,
               hemBenchmark,
             },
+            // Phase J1 — give the model an explicit memory of the prior run
+            // so refinement requests reference real numbers, not re-derived ones.
+            priorScenarios: scenarios.length > 0
+              ? scenarios.slice(0, 3).map(s => ({
+                  name: s.name,
+                  adjustments: s.adjustments,
+                  engineValidation: s.engineValidation,
+                  executionRisk: s.executionRisk,
+                }))
+              : undefined,
           }),
         }
       );
