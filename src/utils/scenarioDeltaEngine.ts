@@ -31,8 +31,14 @@ import {
   type ScenarioDelta,
   type ScenarioCapacityResult,
   type AcquisitionCapacity,
+  type CapitalLedger,
+  type CapitalSourceType,
   buildScenarioChange,
 } from './borrowingCapacityTypes';
+import {
+  buildCapitalLedger,
+  type LedgerContext,
+} from './capitalAllocationLedger';
 import { estimateLMI, type LmiMode } from './lmiCalculations';
 import {
   calculateStampDuty,
@@ -1171,6 +1177,92 @@ function splitDebtMoves(
   return { releasedCapitalDebt: released, debtRemovedByScenario: removed };
 }
 
+// ── Phase K1: Capital Allocation Ledger integration ────────────────────
+function sourceTypeForDelta(d: ScenarioDelta): CapitalSourceType | null {
+  switch (d.type) {
+    case 'equity_release': return 'equity_release';
+    case 'portfolio_lvr_release': return 'portfolio_lvr_release';
+    case 'property_sell': return 'property_sell';
+    default: return null;
+  }
+}
+
+/** Apply the K1 capital ledger to the running totals.
+ *  - Re-runs source deltas in isolation on a sandboxed clone to attribute
+ *    per-delta `releasedCapital` (sells don't emit one — derive from equity)
+ *  - Builds the ledger via buildCapitalLedger
+ *  - Folds sink effects into commitmentAdjustment + debtBalanceAdjustment
+ *  - Subtracts non-deposit allocations from releasedCapital so the residual
+ *    reflects only what's left for the next-purchase deposit pool. */
+function applyCapitalLedger(
+  total: DeltaEffect,
+  safeDeltas: ScenarioDelta[],
+  ctx: ScenarioContext,
+): { ledger: CapitalLedger; sinkDepositContribution: number; issues: ReturnType<typeof buildCapitalLedger>['issues'] } {
+  const sourceContribs: LedgerContext['sourceContributions'] = [];
+  for (const d of safeDeltas) {
+    const st = sourceTypeForDelta(d);
+    if (!st) continue;
+    if (st === 'property_sell') {
+      const p = ctx.properties?.find(x => x.id === d.id);
+      const equity = p ? Math.max(0, (p.currentValue || 0) - (p.loanRemaining || 0)) : 0;
+      if (equity > 0) {
+        sourceContribs.push({
+          deltaId: d.id, sourceType: 'property_sell',
+          label: `Sell ${p?.address?.slice(0, 28) || 'property'}`,
+          amount: equity,
+        });
+      }
+      continue;
+    }
+    const sandbox = cloneContextForRun(ctx);
+    const eff = applyDelta(d, sandbox);
+    const amount = Math.max(0, eff.releasedCapital);
+    if (amount > 0) {
+      sourceContribs.push({
+        deltaId: d.id, sourceType: st,
+        label: d.label || (st === 'equity_release' ? 'Equity release' : 'Pool release'),
+        amount,
+      });
+    }
+  }
+
+  const ledgerCtx: LedgerContext = {
+    properties: (ctx.properties || []).map(p => ({
+      id: p.id,
+      address: p.address,
+      propertyType: p.propertyType,
+      currentValue: p.currentValue,
+      loanRemaining: p.loanRemaining,
+      monthlyRepayment: p.monthlyRepayment,
+      loanRepaymentAmount: p.loanRepaymentAmount,
+      interestRate: p.interestRate,
+    })),
+    liabilities: (ctx.liabilities || []).map(l => ({
+      id: l.id, label: l.label, type: l.type,
+      balance: l.balance, monthlyServicing: l.monthlyServicing,
+    })),
+    cashOnHand: ctx.acquisition?.cashOnHand ?? 0,
+    sourceContributions: sourceContribs,
+  };
+  const { ledger, sinkAggregate, issues } = buildCapitalLedger(safeDeltas, ledgerCtx);
+
+  // Fold sink aggregates into running totals
+  total.commitmentAdjustment += sinkAggregate.monthlyServicingDelta;
+  total.debtBalanceAdjustment += sinkAggregate.debtBalanceDelta;
+  if (sinkAggregate.notes.length) total.acquisitionNotes.push(...sinkAggregate.notes);
+
+  // Subtract non-deposit allocations from the residual deposit pool
+  let totalAllocated = 0;
+  for (const poolId of Object.keys(ledger.pools)) {
+    totalAllocated += ledger.pools[poolId].totalOut;
+  }
+  const consumedByNonDeposit = Math.max(0, totalAllocated - sinkAggregate.depositContribution);
+  total.releasedCapital = Math.max(0, total.releasedCapital - consumedByNonDeposit);
+
+  return { ledger, sinkDepositContribution: sinkAggregate.depositContribution, issues };
+}
+
 export function runScenario(
   scenarioName: string,
   deltas: ScenarioDelta[],
@@ -1178,7 +1270,11 @@ export function runScenario(
 ): ScenarioCapacityResult {
   const total = emptyEffect(scenarioName);
   const ctx = cloneContextForRun(context);
-  const ordered = orderDeltas(deltas);
+  // Phase K1 — separate capital_allocation sinks from the main applyDelta loop;
+  // they are folded in via applyCapitalLedger after sources are summed.
+  const nonAlloc = deltas.filter(d => d.type !== 'capital_allocation');
+  const allocDeltas = deltas.filter(d => d.type === 'capital_allocation');
+  const ordered = orderDeltas(nonAlloc);
 
   for (const d of ordered) {
     const e = applyDelta(d, ctx);
@@ -1194,6 +1290,11 @@ export function runScenario(
     if (e.dtiCapEnabled !== undefined) total.dtiCapEnabled = e.dtiCapEnabled;
     if (e.dtiCapLimit !== undefined) total.dtiCapLimit = e.dtiCapLimit;
   }
+
+  // Phase K1 — Build & apply capital allocation ledger (sinks consume sources)
+  const k1 = applyCapitalLedger(total, [...nonAlloc, ...allocDeltas], ctx);
+  const capitalLedger = k1.ledger;
+  const ledgerIssues = k1.issues;
 
   // Phase E (M3): rescale HEM-derived expenses for the new income tier
   const newGross = Math.max(0, ctx.baseInputs.grossAnnualIncome + total.incomeAdjustment);
@@ -1350,6 +1451,8 @@ export function runScenario(
     monthlyAfterTaxIncome: scenarioResult.monthlyAfterTaxIncome,
     capacityChange,
     acquisitionCapacity,
+    capitalLedger,
+    validationIssues: ledgerIssues.length > 0 ? ledgerIssues : undefined,
   };
 }
 
@@ -1388,7 +1491,10 @@ export function runScenarioWithInputs(
   // Phase G1 — clone context + sort property_value_change FIRST so downstream
   // property-bound deltas see the new valuations
   const ctx = cloneContextForRun(context);
-  const orderedSafe = orderDeltas(safeDeltas);
+  // Phase K1 — split capital_allocation sinks from main loop
+  const safeNonAlloc = safeDeltas.filter(d => d.type !== 'capital_allocation');
+  const safeAllocs = safeDeltas.filter(d => d.type === 'capital_allocation');
+  const orderedSafe = orderDeltas(safeNonAlloc);
 
   const total = emptyEffect(scenarioName);
   for (const d of orderedSafe) {
@@ -1405,6 +1511,11 @@ export function runScenarioWithInputs(
     if (e.dtiCapEnabled !== undefined) total.dtiCapEnabled = e.dtiCapEnabled;
     if (e.dtiCapLimit !== undefined) total.dtiCapLimit = e.dtiCapLimit;
   }
+
+  // Phase K1 — apply capital allocation ledger
+  const k1WI = applyCapitalLedger(total, [...safeNonAlloc, ...safeAllocs], ctx);
+  const capitalLedgerWI = k1WI.ledger;
+  for (const i of k1WI.issues) issues.push(i);
 
   // Phase E (M3): rescale HEM-derived expenses for the new income tier
   const newGross2 = Math.max(0, ctx.baseInputs.grossAnnualIncome + total.incomeAdjustment);
@@ -1561,6 +1672,7 @@ export function runScenarioWithInputs(
       monthlyAfterTaxIncome: calc.monthlyAfterTaxIncome,
       capacityChange,
       acquisitionCapacity,
+      capitalLedger: capitalLedgerWI,
       validationIssues: issues.map(i => ({ deltaId: i.deltaId, deltaType: i.deltaType, severity: i.severity, message: i.message })),
     },
     inputs,
