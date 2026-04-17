@@ -87,11 +87,33 @@ export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', 
     };
   }, [result, proposedLoanAmount, interestRate, bufferRate, loanTermYears]);
 
-  // Calculate tax breakdown based on gross income
-  const taxBreakdown: TaxBreakdown | null = useMemo(() => {
-    if (!result?.grossAnnualIncome) return null;
-    return getTaxBreakdown(result.grossAnnualIncome);
-  }, [result?.grossAnnualIncome]);
+  // Tax breakdown — prefer the engine's own breakdown (assessable/shaded basis)
+  // so the displayed tax matches what serviceability actually used.
+  // Fall back to a local computation on SHADED income (not gross) so the audit
+  // row and this card stay aligned with the engine's after-tax figure.
+  const taxBreakdown: (TaxBreakdown & { monthlyTakeHome: number }) | null = useMemo(() => {
+    if (!result) return null;
+    // Engine-provided breakdown is the source of truth
+    const engine = (result as any).taxBreakdown;
+    if (engine && typeof engine.afterTaxIncome === 'number') {
+      return {
+        grossIncome: result.shadedAnnualIncome ?? result.grossAnnualIncome ?? 0,
+        taxPayable: engine.taxPayable ?? 0,
+        medicareLevy: engine.medicareLevy ?? 0,
+        totalTax: engine.totalTax ?? 0,
+        afterTaxIncome: engine.afterTaxIncome ?? 0,
+        effectiveTaxRate: engine.effectiveTaxRate ?? 0,
+        marginalTaxRate: engine.marginalTaxRate ?? 0,
+        marginalBracket: engine.marginalBracket ?? '',
+        monthlyTakeHome: engine.monthlyTakeHome ?? Math.round((engine.afterTaxIncome ?? 0) / 12),
+      };
+    }
+    // Fallback: compute locally on SHADED income (the assessable basis)
+    const basis = result.shadedAnnualIncome ?? result.grossAnnualIncome ?? 0;
+    if (!basis) return null;
+    const tb = getTaxBreakdown(basis);
+    return { ...tb, monthlyTakeHome: Math.round(tb.afterTaxIncome / 12) };
+  }, [result]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-AU', {
@@ -327,8 +349,22 @@ export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', 
             uses AFTER-TAX shaded income (not gross) — this row makes
             that explicit and prevents "the maths doesn't add up" confusion. */}
         {(() => {
-          const monthlyAfterTax = result.monthlyAfterTaxIncome
-            ?? Math.round((result.afterTaxAnnualIncome ?? 0) / 12);
+          // Resolve monthly after-tax with a robust fallback chain:
+          // 1) engine top-level monthlyAfterTaxIncome
+          // 2) engine top-level afterTaxAnnualIncome / 12
+          // 3) engine taxBreakdown.monthlyTakeHome
+          // 4) engine taxBreakdown.afterTaxIncome / 12
+          // 5) locally derived from shaded (or gross) income — same basis as the
+          //    Tax Breakdown card above, so the two never contradict each other.
+          const monthlyAfterTax =
+            (result.monthlyAfterTaxIncome && result.monthlyAfterTaxIncome > 0
+              ? result.monthlyAfterTaxIncome
+              : 0)
+            || (result.afterTaxAnnualIncome
+              ? Math.round(result.afterTaxAnnualIncome / 12)
+              : 0)
+            || (taxBreakdown?.monthlyTakeHome ?? 0)
+            || (taxBreakdown ? Math.round(taxBreakdown.afterTaxIncome / 12) : 0);
           const monthlyExpenses = Math.round(result.livingExpensesMonthly || 0);
           const monthlyCommitments = Math.round(result.existingCommitmentsMonthly || 0);
           const computedSurplus = monthlyAfterTax - monthlyExpenses - monthlyCommitments;
@@ -419,7 +455,7 @@ export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', 
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Gross Income:</span>
+                    <span className="text-muted-foreground">Assessable Income (shaded):</span>
                     <span className="font-medium">{formatCurrency(taxBreakdown.grossIncome)}</span>
                   </div>
                   <div className="flex justify-between">
