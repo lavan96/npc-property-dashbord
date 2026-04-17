@@ -41,6 +41,12 @@ import {
   type PurchaseIntent,
   type PropertyCategory,
 } from './stampDutyCalculator';
+import {
+  resolveLenderProfile,
+  reshadeIncome,
+  BANK_STANDARD_PROFILE,
+  type ScenarioIncomeComponent,
+} from './lenderShadingProfiles';
 
 // ============================================
 // CONTEXT TYPES
@@ -68,6 +74,12 @@ export interface ScenarioContext {
   properties?: ScenarioProperty[];
   liabilities?: ScenarioLiability[];
   acquisition?: AcquisitionContext;
+  /** Phase I1 — typed income components for lender-aware re-shading. */
+  incomeComponents?: ScenarioIncomeComponent[];
+  /** Phase I1 — current lender profile id (defaults to bank_standard). */
+  currentLenderProfileId?: string;
+  /** Phase I2 — monthly HEM benchmark; engine floors expenses here. */
+  hemBenchmark?: number;
 }
 
 export interface ScenarioProperty {
@@ -111,6 +123,8 @@ export interface DeltaEffect {
   debtBalanceAdjustment: number;
   dtiCapEnabled?: boolean;
   dtiCapLimit?: number;
+  /** Phase I1 — lender profile id to apply during aggregation. */
+  lenderProfileOverride?: string;
   /** Phase C: cash freed from equity-release deltas (post-LMI on the release loan) */
   releasedCapital: number;
   /** Phase C: notes from equity-release / acquisition levers (audit trail) */
@@ -373,6 +387,10 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
       const enabled = (delta.meta?.enabled as boolean | undefined) ?? true;
       effect.dtiCapEnabled = enabled;
       if (enabled) effect.dtiCapLimit = delta.value;
+      // Phase I1 — accept lender profile flip via meta.lenderProfile so the
+      // engine can re-shade rental / bonus / commission per that lender.
+      const lp = delta.meta?.lenderProfile as string | undefined;
+      if (lp) effect.lenderProfileOverride = lp;
       break;
     }
 
@@ -964,11 +982,41 @@ export function runScenario(
     ctx.baseInputs.monthlyLivingExpenses,
   );
 
+  // Phase I1 — lender-aware re-shading
+  const baseProfileId = ctx.currentLenderProfileId ?? BANK_STANDARD_PROFILE.id;
+  const targetProfileId = total.lenderProfileOverride ?? baseProfileId;
+  let computedShadedAnnual: number;
+  if (
+    total.lenderProfileOverride &&
+    targetProfileId !== baseProfileId &&
+    Array.isArray(ctx.incomeComponents) &&
+    ctx.incomeComponents.length > 0
+  ) {
+    const targetProfile = resolveLenderProfile(targetProfileId);
+    const grossScale = ctx.baseInputs.grossAnnualIncome > 0
+      ? newGross / ctx.baseInputs.grossAnnualIncome : 1;
+    const scaled: ScenarioIncomeComponent[] = ctx.incomeComponents.map(c => ({
+      ...c,
+      grossAnnual: Math.max(0, c.grossAnnual * grossScale),
+    }));
+    computedShadedAnnual = reshadeIncome(scaled, targetProfile).shadedAnnual;
+  } else {
+    computedShadedAnnual = Math.max(0, ctx.baseInputs.shadedAnnualIncome + total.shadedIncomeAdjustment);
+  }
+
+  // Phase I2 — HEM hard floor
+  const requestedExpenses = ctx.baseInputs.monthlyLivingExpenses + total.expenseAdjustment + hemDelta;
+  const targetProfile = resolveLenderProfile(targetProfileId);
+  const hemBenchmark = ctx.hemBenchmark ?? 0;
+  const finalExpenses = (hemBenchmark > 0 && targetProfile.enforcesHemFloor)
+    ? Math.max(hemBenchmark, Math.max(0, requestedExpenses))
+    : Math.max(0, requestedExpenses);
+
   const scenarioInputs: BorrowingCapacityInput = {
     ...ctx.baseInputs,
     grossAnnualIncome: newGross,
-    shadedAnnualIncome: Math.max(0, ctx.baseInputs.shadedAnnualIncome + total.shadedIncomeAdjustment),
-    monthlyLivingExpenses: Math.max(0, ctx.baseInputs.monthlyLivingExpenses + total.expenseAdjustment + hemDelta),
+    shadedAnnualIncome: computedShadedAnnual,
+    monthlyLivingExpenses: finalExpenses,
     monthlyCommitments: Math.max(0, ctx.baseInputs.monthlyCommitments + total.commitmentAdjustment),
     interestRate: Math.max(0.5, ctx.baseInputs.interestRate + total.rateAdjustment),
     loanTermYears: Math.max(5, ctx.baseInputs.loanTermYears + total.loanTermAdjustment),

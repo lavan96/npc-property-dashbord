@@ -17,6 +17,13 @@ import {
   type PurchaseIntent,
   type PropertyCategory,
 } from './stampDutyCalculator.ts';
+import {
+  resolveLenderProfile,
+  reshadeIncome,
+  BANK_STANDARD_PROFILE,
+  type ScenarioIncomeComponent,
+  type LenderShadingProfile,
+} from './lenderShadingProfiles.ts';
 
 // ============================================
 // TYPES (mirrored from src/utils/borrowingCapacityTypes.ts)
@@ -63,6 +70,16 @@ export interface ScenarioBaseInputs {
   calculationMode?: 'bank' | 'conservative';
   dtiCapEnabled?: boolean;
   dtiCapLimit?: number;
+  /** Phase I1 — typed income components for lender-aware re-shading.
+   *  When omitted the engine falls back to the legacy blended ratio. */
+  incomeComponents?: ScenarioIncomeComponent[];
+  /** Phase I1 — id of the lender profile applied when computing
+   *  `shadedAnnualIncome`. Used to decide whether re-shading is needed
+   *  when a `dti_cap_change` delta flips lenders. */
+  currentLenderProfileId?: string;
+  /** Phase I2 — monthly HEM benchmark for this household. The engine
+   *  floors `monthlyLivingExpenses` here after `expense_change` deltas. */
+  hemBenchmark?: number;
 }
 
 export interface ScenarioBaseResult {
@@ -125,6 +142,9 @@ export interface DeltaEffect {
   debtBalanceAdjustment: number;
   dtiCapEnabled?: boolean;
   dtiCapLimit?: number;
+  /** Phase I1 — when set, the lender profile id to apply during
+   *  aggregation. Triggers a full re-shade of `incomeComponents`. */
+  lenderProfileOverride?: string;
   releasedCapital: number;
   acquisitionNotes: string[];
   description: string;
@@ -318,6 +338,11 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
       const enabled = (delta.meta?.enabled as boolean | undefined) ?? true;
       effect.dtiCapEnabled = enabled;
       if (enabled) effect.dtiCapLimit = delta.value;
+      // Phase I1 — when the broker flips the DTI cap to model a different
+      // lender, accept an explicit `meta.lenderProfile` so the engine can
+      // re-shade rental / bonus / commission per that lender's policy.
+      const lp = delta.meta?.lenderProfile as string | undefined;
+      if (lp) effect.lenderProfileOverride = lp;
       break;
     }
     case 'property_sell': {
@@ -687,10 +712,66 @@ export function aggregateDeltas(
     ctx.baseInputs.monthlyLivingExpenses,
   );
 
+  // Phase I1 — lender-aware shading. If a `dti_cap_change` delta carried a
+  // `meta.lenderProfile`, fully re-shade the typed income components per
+  // that lender's policy. The result REPLACES the additive shaded delta
+  // (rather than stacking on top) so the math is unambiguous.
+  const baseProfileId = ctx.baseInputs.currentLenderProfileId ?? BANK_STANDARD_PROFILE.id;
+  const targetProfileId = total.lenderProfileOverride ?? baseProfileId;
+  let computedShadedAnnual: number;
+  if (
+    total.lenderProfileOverride &&
+    targetProfileId !== baseProfileId &&
+    Array.isArray(ctx.baseInputs.incomeComponents) &&
+    ctx.baseInputs.incomeComponents.length > 0
+  ) {
+    const targetProfile = resolveLenderProfile(targetProfileId);
+    // Apply income_change adjustments proportionally across components so
+    // the re-shade reflects the post-delta gross.
+    const grossScale = ctx.baseInputs.grossAnnualIncome > 0
+      ? newGross / ctx.baseInputs.grossAnnualIncome
+      : 1;
+    const scaledComponents: ScenarioIncomeComponent[] = ctx.baseInputs.incomeComponents.map(c => ({
+      ...c,
+      grossAnnual: Math.max(0, c.grossAnnual * grossScale),
+    }));
+    const reshaded = reshadeIncome(scaledComponents, targetProfile);
+    computedShadedAnnual = reshaded.shadedAnnual;
+    issues.push({
+      deltaId: 'dti-cap',
+      deltaType: 'dti_cap_change',
+      severity: 'warning',
+      message: `Lender flipped to "${targetProfile.displayName}" — income re-shaded to $${Math.round(computedShadedAnnual).toLocaleString()}/yr (was $${Math.round(ctx.baseInputs.shadedAnnualIncome).toLocaleString()}). Confirm 2yr history evidence before submission.`,
+    });
+  } else {
+    computedShadedAnnual = Math.max(0, ctx.baseInputs.shadedAnnualIncome + total.shadedIncomeAdjustment);
+  }
+
+  // Phase I2 — HEM floor enforcement. The bank uses MAX(declared, HEM); a
+  // scenario that promises -30% expenses cannot fall below that floor.
+  // We respect a per-lender opt-out via `enforcesHemFloor = false` (e.g.
+  // some non-banks). When the cut is impossible, surface a validation note
+  // so the broker sees what was clamped — silent clamps were the #2 source
+  // of "engine-says-X-but-lender-says-Y" surprises.
+  const requestedExpenses = ctx.baseInputs.monthlyLivingExpenses + total.expenseAdjustment + hemDelta;
+  const hemBenchmark = ctx.baseInputs.hemBenchmark ?? 0;
+  const targetProfile = resolveLenderProfile(targetProfileId);
+  let finalExpenses = Math.max(0, requestedExpenses);
+  if (hemBenchmark > 0 && targetProfile.enforcesHemFloor && finalExpenses < hemBenchmark) {
+    const expenseChangeDelta = ordered.find(d => d.type === 'expense_change');
+    issues.push({
+      deltaId: expenseChangeDelta?.id ?? 'expense_change',
+      deltaType: 'expense_change',
+      severity: 'warning',
+      message: `Expense reduction floored at HEM benchmark $${Math.round(hemBenchmark).toLocaleString()}/mo (requested $${Math.round(requestedExpenses).toLocaleString()}). Banks use MAX(declared, HEM) — additional cuts below HEM do not improve capacity.`,
+    });
+    finalExpenses = hemBenchmark;
+  }
+
   const inputs: AggregatedScenarioInputs = {
     grossAnnualIncome: newGross,
-    shadedAnnualIncome: Math.max(0, ctx.baseInputs.shadedAnnualIncome + total.shadedIncomeAdjustment),
-    monthlyLivingExpenses: Math.max(0, ctx.baseInputs.monthlyLivingExpenses + total.expenseAdjustment + hemDelta),
+    shadedAnnualIncome: computedShadedAnnual,
+    monthlyLivingExpenses: finalExpenses,
     monthlyCommitments: Math.max(0, ctx.baseInputs.monthlyCommitments + total.commitmentAdjustment),
     interestRate: Math.max(0.5, ctx.baseInputs.interestRate + total.rateAdjustment),
     bufferRate: ctx.baseInputs.bufferRate,
