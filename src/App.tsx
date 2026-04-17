@@ -84,6 +84,14 @@ import PortalBooking from "./pages/portal/PortalBooking";
 import PortalAppointments from "./pages/portal/PortalAppointments";
 import PortalConfig from "./pages/PortalConfig";
 import { PortalConsentWall } from "@/components/portal/PortalConsentWall";
+import { FinancePortalAuthProvider } from "@/hooks/useFinancePortalAuth";
+import { FinancePortalProtectedRoute } from "@/components/finance-portal/FinancePortalProtectedRoute";
+import { FinancePortalLayout } from "@/components/finance-portal/FinancePortalLayout";
+import FinancePortalLogin from "./pages/finance-portal/FinancePortalLogin";
+import FinancePortalAcceptInvite from "./pages/finance-portal/FinancePortalAcceptInvite";
+import FinancePortalDashboard from "./pages/finance-portal/FinancePortalDashboard";
+import FinancePortalClients from "./pages/finance-portal/FinancePortalClients";
+import FinancePortalClientProfile from "./pages/finance-portal/FinancePortalClientProfile";
 
 const queryClient = new QueryClient();
 
@@ -174,6 +182,27 @@ const App = () => (
                           <Route path="property-insights" element={<PortalPropertyInsights />} />
                           <Route path="booking" element={<PortalBooking />} />
                           <Route path="appointments" element={<PortalAppointments />} />
+                        </Route>
+
+                        {/* Finance Portal Routes */}
+                        <Route path="/finance/login" element={
+                          <FinancePortalAuthProvider>
+                            <FinancePortalLogin />
+                          </FinancePortalAuthProvider>
+                        } />
+                        <Route path="/finance/accept-invite" element={
+                          <FinancePortalAcceptInvite />
+                        } />
+                        <Route path="/finance" element={
+                          <FinancePortalAuthProvider>
+                            <FinancePortalProtectedRoute>
+                              <FinancePortalLayout />
+                            </FinancePortalProtectedRoute>
+                          </FinancePortalAuthProvider>
+                        }>
+                          <Route index element={<FinancePortalDashboard />} />
+                          <Route path="clients" element={<FinancePortalClients />} />
+                          <Route path="clients/:clientId" element={<FinancePortalClientProfile />} />
                         </Route>
 
                         {/* Internal Dashboard Routes */}
