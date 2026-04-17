@@ -32,7 +32,7 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import {
-  calculateBorrowingCapacity,
+  calculateAfterTaxIncome,
   formatCapacity,
   getServiceabilityBandColor,
   type BorrowingCapacityInput,
@@ -675,9 +675,34 @@ export function StrategyScenarioModeling({
      *  Math.max(0,…) clamp on `monthlySurplus`. The engine has already
      *  aggregated commitments (incl. any new equity-release servicing) so
      *  this is the *true* post-aggregation surplus before the floor kicks in. */
+    const resolveMonthlyAfterTaxIncome = (r: any, inputs: any): number => {
+      const directIncome =
+        r?.monthlyAfterTaxIncome ??
+        r?.currentCapacity?.monthlyAfterTaxIncome ??
+        r?.taxBreakdown?.monthlyTakeHome ??
+        (typeof r?.afterTaxAnnualIncome === 'number' ? r.afterTaxAnnualIncome / 12 : undefined) ??
+        (typeof r?.currentCapacity?.afterTaxAnnualIncome === 'number' ? r.currentCapacity.afterTaxAnnualIncome / 12 : undefined);
+
+      if (Number.isFinite(directIncome as number) && (directIncome as number) > 0) {
+        return Math.round(directIncome as number);
+      }
+
+      const assessableAnnualIncome =
+        inputs?.shadedAnnualIncome ??
+        r?.shadedAnnualIncome ??
+        r?.currentCapacity?.shadedAnnualIncome ??
+        inputs?.grossAnnualIncome ??
+        r?.grossAnnualIncome ??
+        r?.currentCapacity?.grossAnnualIncome ??
+        0;
+
+      return assessableAnnualIncome > 0
+        ? Math.round(calculateAfterTaxIncome(assessableAnnualIncome) / 12)
+        : 0;
+    };
+
     const rawSurplusFrom = (r: any, inputs: any): number => {
-      // Income: prefer engine-computed `monthlyAfterTaxIncome` (already shaded + taxed)
-      const income = r?.monthlyAfterTaxIncome ?? 0;
+      const income = resolveMonthlyAfterTaxIncome(r, inputs);
       // Expenses & commitments from the *inputs* the engine actually consumed
       const expenses = inputs?.monthlyLivingExpenses ?? r?.totalLivingExpenses ?? 0;
       const commitments = inputs?.monthlyCommitments ?? r?.existingCommitmentsMonthly ?? 0;
@@ -709,10 +734,10 @@ export function StrategyScenarioModeling({
     const scenarioTheoreticalCapacity = Math.round(scenarioRawSurplus * scenarioAnnuity);
 
     // Phase 4 — math-inspector breakdown values (decomposed components used in the waterfall)
-    const baseAfterTaxIncome = (baseResult as any)?.monthlyAfterTaxIncome ?? 0;
+    const baseAfterTaxIncome = resolveMonthlyAfterTaxIncome(baseResult, baseInputs);
     const baseLivingExpenses = (baseInputs as any)?.monthlyLivingExpenses ?? (baseResult as any)?.totalLivingExpenses ?? 0;
     const baseCommitments = (baseInputs as any)?.monthlyCommitments ?? (baseResult as any)?.existingCommitmentsMonthly ?? 0;
-    const scenarioAfterTaxIncome = (result as any)?.monthlyAfterTaxIncome ?? 0;
+    const scenarioAfterTaxIncome = resolveMonthlyAfterTaxIncome(result, inputs);
     const scenarioLivingExpenses = (inputs as any)?.monthlyLivingExpenses ?? (result as any)?.totalLivingExpenses ?? 0;
     const scenarioCommitments = (inputs as any)?.monthlyCommitments ?? (result as any)?.existingCommitmentsMonthly ?? 0;
 
