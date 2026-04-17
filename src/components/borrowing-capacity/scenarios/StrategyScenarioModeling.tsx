@@ -257,7 +257,7 @@ export function StrategyScenarioModeling({
   // selections into ScenarioDelta[] and delegates to the same engine that the
   // edge function uses. This eliminates client/server drift entirely.
 
-  const { scenarioResult, scenarioInputs, impactBreakdown } = useMemo(() => {
+  const { scenarioResult, scenarioInputs, impactBreakdown, acquisitionCapacity, validationIssues } = useMemo(() => {
     const deltas: ScenarioDelta[] = [];
     const impacts: { label: string; monthlySaving: number; type: 'saving' | 'cost' | 'info' }[] = [];
 
@@ -448,10 +448,14 @@ export function StrategyScenarioModeling({
     };
   }, [strategy, acquisition, baseInputs, baseResult, consolidatableDebts, investmentProperties, properties, liabilities]);
 
-  const { acquisitionCapacity, validationIssues } = useMemo(
-    () => ({ acquisitionCapacity: (scenarioResult as any)?.acquisitionCapacity ?? null, validationIssues: [] }),
-    [scenarioResult]
-  );
+    return {
+      scenarioResult: result as unknown as BorrowingCapacityResult,
+      scenarioInputs: inputs,
+      impactBreakdown: impacts,
+      acquisitionCapacity,
+      validationIssues,
+    };
+  }, [strategy, acquisition, baseInputs, baseResult, consolidatableDebts, investmentProperties, properties, liabilities]);
 
 
   // Equity release calculation — now supports multiple properties
