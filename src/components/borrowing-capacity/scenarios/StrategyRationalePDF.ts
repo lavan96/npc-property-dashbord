@@ -153,6 +153,25 @@ export interface RationalePDFContext {
   meetsTarget?: boolean | null;
   /** Optional scenario name (preset label). */
   scenarioName?: string;
+  /** Phase G1 — Valuation assumptions to publish for finance audit. */
+  valuationAssumptions?: Array<{
+    address: string;
+    originalValue: number;
+    newValue: number;
+    basis: 'manual' | 'desktop' | 'avm' | 'comparable_sales';
+    source?: string;
+  }>;
+  /** Phase G2 — Cross-collateralised pool methodology disclosure. */
+  crossCollatPool?: {
+    enabled: boolean;
+    propertyAddresses: string[];
+    blendedTargetLVR: number;
+    lenderMaxLVR: number;
+    allocationStrategy: 'highest_equity_first' | 'pro_rata';
+    totalPoolValue: number;
+    totalPoolDebt: number;
+    poolReleaseAmount: number;
+  } | null;
 }
 
 export async function generateStrategyRationalePDF(
