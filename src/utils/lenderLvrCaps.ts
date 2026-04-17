@@ -23,8 +23,6 @@
  *  - PDF rationale (per-security cap shown alongside release math)
  */
 
-import type { LenderShadingProfile } from '@/utils/types';
-
 export type PropertyIntent = 'owner_occupier' | 'investment' | 'rental';
 export type PropertyKind =
   | 'established'
