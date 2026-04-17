@@ -427,9 +427,13 @@ export function BCScenarioAgent({
                 >
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <h4 className="text-sm font-semibold leading-tight">{scenario.name}</h4>
-                    <Badge variant="outline" className="shrink-0 text-xs">
+                    <Badge
+                      variant={scenario.reconciledImpact ? "default" : "outline"}
+                      className="shrink-0 text-xs"
+                      title={scenario.reconciledImpact ? "Engine-verified" : "AI estimate (not yet verified)"}
+                    >
                       <TrendingUp className="h-3 w-3 mr-1" />
-                      {scenario.estimatedImpact}
+                      {scenario.reconciledImpact || scenario.estimatedImpact}
                     </Badge>
                   </div>
 
