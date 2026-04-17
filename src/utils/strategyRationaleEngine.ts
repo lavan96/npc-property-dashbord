@@ -16,6 +16,8 @@
 import type {
   ScenarioDelta,
   AcquisitionCapacity,
+  CapitalLedger,
+  CapitalSinkType,
 } from './borrowingCapacityTypes';
 import type { LeverAttribution } from '@/components/borrowing-capacity/scenarios/PurchasePowerHeadline';
 
@@ -48,6 +50,41 @@ export interface RationaleSequenceStep {
   owner: 'broker' | 'finance' | 'client';
 }
 
+/** Phase K5 — explainable capital routing block (sources → sinks). */
+export interface RationaleCapitalFlowEntry {
+  /** Source bucket (e.g. "Equity release · 28 King St", "Cash on hand"). */
+  sourceLabel: string;
+  /** Sink bucket (e.g. "Pay down ANZ Visa", "Offset deposit · 12 Smith St"). */
+  sinkLabel: string;
+  /** Sink type for badge / colour. */
+  sinkType: CapitalSinkType | 'unallocated';
+  /** Dollars routed through this leg. */
+  amount: number;
+  /** Engine-derived monthly servicing delta (negative = saving). */
+  monthlyServicingDelta: number;
+  /** Engine-derived debt balance delta (negative = paid down). */
+  debtBalanceDelta: number;
+  /** One-line audit note from the K1 ledger. */
+  note?: string;
+}
+
+export interface RationaleCapitalFlow {
+  /** Total $ routed through the ledger (sum of sinks). */
+  totalRouted: number;
+  /** Total $ available before allocation (sum of sources). */
+  totalAvailable: number;
+  /** Net monthly servicing impact across all sinks (negative = saving). */
+  monthlyServicingDelta: number;
+  /** Net debt balance impact (negative = paid down). */
+  debtBalanceDelta: number;
+  /** True if any pool is overcommitted. */
+  overcommitted: boolean;
+  /** Residual (un-routed) pool $ — heads to the acquisition deposit pool. */
+  remainder: number;
+  /** Per-leg explanations. */
+  legs: RationaleCapitalFlowEntry[];
+}
+
 export interface RationaleReport {
   /** Headline sentence summarising the scenario outcome */
   headline: string;
@@ -61,6 +98,8 @@ export interface RationaleReport {
   sequence: RationaleSequenceStep[];
   /** Caveats / assumptions the finance team must validate */
   caveats: string[];
+  /** Phase K5 — optional capital allocation flow narrative. */
+  capitalFlow?: RationaleCapitalFlow;
   /** ISO timestamp */
   generatedAt: string;
 }
@@ -78,6 +117,8 @@ export interface RationaleInput {
   acquisitionCapacity: AcquisitionCapacity | null;
   /** Currency formatter — passed in so locale stays consistent with the parent */
   formatCurrency: (n: number) => string;
+  /** Phase K5 — capital allocation ledger from the K1 engine. */
+  capitalLedger?: CapitalLedger | null;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
