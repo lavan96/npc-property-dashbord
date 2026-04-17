@@ -1270,7 +1270,11 @@ export function runScenario(
 ): ScenarioCapacityResult {
   const total = emptyEffect(scenarioName);
   const ctx = cloneContextForRun(context);
-  const ordered = orderDeltas(deltas);
+  // Phase K1 — separate capital_allocation sinks from the main applyDelta loop;
+  // they are folded in via applyCapitalLedger after sources are summed.
+  const nonAlloc = deltas.filter(d => d.type !== 'capital_allocation');
+  const allocDeltas = deltas.filter(d => d.type === 'capital_allocation');
+  const ordered = orderDeltas(nonAlloc);
 
   for (const d of ordered) {
     const e = applyDelta(d, ctx);
@@ -1286,6 +1290,11 @@ export function runScenario(
     if (e.dtiCapEnabled !== undefined) total.dtiCapEnabled = e.dtiCapEnabled;
     if (e.dtiCapLimit !== undefined) total.dtiCapLimit = e.dtiCapLimit;
   }
+
+  // Phase K1 — Build & apply capital allocation ledger (sinks consume sources)
+  const k1 = applyCapitalLedger(total, [...nonAlloc, ...allocDeltas], ctx);
+  const capitalLedger = k1.ledger;
+  const ledgerIssues = k1.issues;
 
   // Phase E (M3): rescale HEM-derived expenses for the new income tier
   const newGross = Math.max(0, ctx.baseInputs.grossAnnualIncome + total.incomeAdjustment);
