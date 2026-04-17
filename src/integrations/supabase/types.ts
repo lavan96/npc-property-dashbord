@@ -3193,6 +3193,7 @@ export type Database = {
           created_at: string
           deal_closed_at: string | null
           id: string
+          interest_only_period_years: number | null
           interest_rate: number | null
           lender_name: string | null
           loan_remaining: number | null
@@ -3212,6 +3213,7 @@ export type Database = {
           property_type: string
           purchase_date: string | null
           purchase_price: number | null
+          repayment_type: string | null
           smsf_abn: string | null
           smsf_auditor_name: string | null
           smsf_compliance_status: string | null
@@ -3231,6 +3233,7 @@ export type Database = {
           created_at?: string
           deal_closed_at?: string | null
           id?: string
+          interest_only_period_years?: number | null
           interest_rate?: number | null
           lender_name?: string | null
           loan_remaining?: number | null
@@ -3250,6 +3253,7 @@ export type Database = {
           property_type?: string
           purchase_date?: string | null
           purchase_price?: number | null
+          repayment_type?: string | null
           smsf_abn?: string | null
           smsf_auditor_name?: string | null
           smsf_compliance_status?: string | null
@@ -3269,6 +3273,7 @@ export type Database = {
           created_at?: string
           deal_closed_at?: string | null
           id?: string
+          interest_only_period_years?: number | null
           interest_rate?: number | null
           lender_name?: string | null
           loan_remaining?: number | null
@@ -3288,6 +3293,7 @@ export type Database = {
           property_type?: string
           purchase_date?: string | null
           purchase_price?: number | null
+          repayment_type?: string | null
           smsf_abn?: string | null
           smsf_auditor_name?: string | null
           smsf_compliance_status?: string | null
