@@ -296,6 +296,30 @@ export function BCScenarioAgent({
 
         <CollapsibleContent>
           <div className="mt-2 border rounded-lg overflow-hidden bg-card">
+            {/* Chat toolbar */}
+            {(messages.length > 0 || scenarios.length > 0) && (
+              <div className="flex items-center justify-between border-b px-3 py-1.5 bg-muted/30">
+                <span className="text-[11px] text-muted-foreground">
+                  {messages.length} message{messages.length === 1 ? '' : 's'} • saved
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-[11px] text-muted-foreground hover:text-destructive"
+                  onClick={() => {
+                    setMessages([]);
+                    setScenarios([]);
+                    setAppliedIndex(null);
+                    try { localStorage.removeItem(getStorageKey(clientId)); } catch {}
+                    toast.success('Chat history cleared');
+                  }}
+                  disabled={isLoading}
+                >
+                  <Trash2 className="h-3 w-3 mr-1" />
+                  Clear
+                </Button>
+              </div>
+            )}
             {/* Chat messages */}
             <div ref={scrollRef} className="max-h-[300px] overflow-y-auto p-4 space-y-3">
               {messages.length === 0 && (
