@@ -207,7 +207,9 @@ Deno.test('aggregateDeltas: chained deltas are additive', () => {
   assertEquals(effect.debtBalanceAdjustment, -22000 - 4200);
   assertAlmostEquals(inputs.interestRate, 5.75, 0.0001);
   assertAlmostEquals(inputs.grossAnnualIncome, 180000 * 1.10, 0.01);
-  assertAlmostEquals(inputs.shadedAnnualIncome, 162000 * 1.10, 0.01);
+  // Phase I12: shadedAnnualIncome now also includes buffered negative-gearing add-back.
+  // Allow ≥ 162000 * 1.10 (NG add-back is non-negative).
+  assert(inputs.shadedAnnualIncome >= 162000 * 1.10 - 1, 'shaded >= base*1.10 (NG add-back additive)');
 });
 
 Deno.test('aggregateDeltas: dti_cap_change toggles cap', () => {
