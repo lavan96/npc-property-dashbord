@@ -151,6 +151,18 @@ function whyForDelta(
       return `Pre-loads a future acquisition into the schedule for forward-looking servicing.`;
     case 'debt_change':
       return `Adjusts assessed liabilities — useful when consolidating or correcting bureau data.`;
+    case 'property_value_change': {
+      const basis = (d.meta?.basis as string) ?? 'manual';
+      const source = (d.meta?.source as string) ?? '';
+      const basisLabel = basis === 'avm' ? 'AVM' : basis === 'desktop' ? 'desktop val' : basis === 'comparable_sales' ? 'comparable sales' : 'manual override';
+      return `Updates the recorded valuation to ${fmt(d.value)} (${basisLabel}${source ? ` — ${source}` : ''}). All downstream LVR, equity, and pool math uses the new figure. Finance must validate the basis before submission.`;
+    }
+    case 'portfolio_lvr_release': {
+      const blended = (d.value * 100).toFixed(0);
+      const ids = Array.isArray(d.meta?.propertyIds) ? (d.meta!.propertyIds as string[]) : [];
+      const strategy = (d.meta?.allocationStrategy as string) ?? 'highest_equity_first';
+      return `Pools ${ids.length} security${ids.length === 1 ? '' : 'ies'} into a cross-collateralised facility at a ${blended}% blended LVR (${strategy.replace(/_/g, ' ')}). Equity-rich properties subsidise equity-poor ones, unlocking cash that standalone per-security releases would floor at $0. Capacity impact: ${capacityImpact >= 0 ? '+' : ''}${fmt(capacityImpact)}.`;
+    }
     default:
       return `Capacity impact in isolation: ${capacityImpact >= 0 ? '+' : ''}${fmt(capacityImpact)}.`;
   }
@@ -174,7 +186,10 @@ function ownerForDelta(d: ScenarioDelta): RationaleSequenceStep['owner'] {
     case 'rate_change':
     case 'loan_term_change':
     case 'dti_cap_change':
+    case 'portfolio_lvr_release':
       return 'finance';
+    case 'property_value_change':
+      return 'broker';
     default:
       return 'broker';
   }
@@ -185,6 +200,8 @@ function priorityForDelta(d: ScenarioDelta): number {
   // would actually execute in real life: free up servicing first, then
   // unlock equity, then reprice, then submit.
   switch (d.type) {
+    case 'property_value_change':
+      return 5; // resolve valuations first
     case 'liability_payoff':
       return 10;
     case 'expense_change':
