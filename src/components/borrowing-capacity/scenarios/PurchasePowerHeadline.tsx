@@ -19,7 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
-import { TrendingUp, TrendingDown, Target, Banknote, Layers, ArrowRight, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { TrendingUp, TrendingDown, Target, Banknote, Layers, ArrowRight, CheckCircle2, AlertTriangle, Info } from 'lucide-react';
 import type { AcquisitionCapacity } from '@/utils/borrowingCapacityTypes';
 
 // ── Types ────────────────────────────────────────────────────────────────
@@ -31,6 +31,11 @@ export interface LeverAttribution {
   label: string;
   /** Capacity delta this lever contributes when applied IN ISOLATION (vs base) */
   capacityImpact: number;
+  /** Theoretical (unfloored) capacity delta computed from raw surplus × annuity
+   *  factor. Surfaces real movement when both base and scenario are clamped at
+   *  the $0 servicing floor (otherwise `capacityImpact` collapses to $0 for
+   *  every lever and the broker can't see which lever is doing the work). */
+  theoreticalImpact?: number;
   /** Optional cash-flow note: "+$420/mo" or "−$890/mo" — enriches the row */
   cashflowNote?: string;
 }
@@ -49,6 +54,14 @@ interface PurchasePowerHeadlineProps {
   leverAttribution: LeverAttribution[];
   /** Currency formatter from the parent (so "AUD" / locale stays consistent). */
   formatCurrency: (n: number) => string;
+  /** Theoretical (unfloored) base capacity — used when `floorActive` to
+   *  contextualise the "if floor lifted" attribution column. */
+  baseTheoreticalCapacity?: number;
+  /** Theoretical (unfloored) scenario capacity. */
+  scenarioTheoreticalCapacity?: number;
+  /** True when both displayed capacities are clamped at $0 but the underlying
+   *  surplus math shows real movement — triggers the explainer banner. */
+  floorActive?: boolean;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────
