@@ -438,9 +438,13 @@ export function StrategyScenarioModeling({
         const prop = equityReleaseProperties.find(p => p.id === propId);
         if (!prop) return;
         const targetLVR = strategy.equityReleaseTargetLVRs.get(propId) ?? DEFAULT_EQUITY_LVR;
+        // Phase 2 — granular controls
+        const deploymentPercent = strategy.equityReleaseDeploymentPercents.get(propId) ?? 1;
+        const repaymentType = strategy.equityReleaseRepaymentTypes.get(propId) ?? 'interest_only';
+        const manualRepayment = strategy.equityReleaseManualRepayments.get(propId);
         deltas.push({
           id: prop.id,
-          label: `Equity release ${prop.address?.slice(0, 25) || 'property'} → ${(targetLVR * 100).toFixed(0)}% LVR`,
+          label: `Equity release ${prop.address?.slice(0, 25) || 'property'} → ${(targetLVR * 100).toFixed(0)}% LVR (deploy ${(deploymentPercent * 100).toFixed(0)}%, ${repaymentType === 'interest_only' ? 'IO' : 'P&I'})`,
           type: 'equity_release',
           value: targetLVR,
           unit: 'percent',
@@ -448,24 +452,40 @@ export function StrategyScenarioModeling({
             targetLVR,
             // honour per-property contracted rate if present, otherwise let engine fall back
             releaseRate: prop.interest_rate ?? null,
+            deploymentPercent,
+            repaymentType,
+            ...(Number.isFinite(manualRepayment as number) ? { manualRepayment } : {}),
           },
         });
-        // Track shadow IO cost on the new slice for the impact summary
+        // Track shadow servicing cost on the deployed slice for the impact summary
         const ratePct = prop.interest_rate ?? baseInputs.interestRate;
+        const assessRatePct = ratePct + (baseInputs.bufferRate ?? 3);
         const newLoan = prop.current_value * targetLVR;
         const grossRelease = Math.max(0, newLoan - prop.loan_remaining);
-        const monthlyServicing = grossRelease * (ratePct / 100 / 12);
+        const deployedGross = grossRelease * deploymentPercent;
+        let monthlyServicing = 0;
+        if (Number.isFinite(manualRepayment as number) && (manualRepayment as number) >= 0) {
+          monthlyServicing = manualRepayment as number;
+        } else if (repaymentType === 'principal_and_interest') {
+          const r = assessRatePct / 100 / 12;
+          const n = (baseInputs.loanTermYears || 30) * 12;
+          monthlyServicing = r > 0 && deployedGross > 0
+            ? deployedGross * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1)
+            : 0;
+        } else {
+          monthlyServicing = deployedGross * (assessRatePct / 100 / 12);
+        }
         equityReleaseMonthlyCost += monthlyServicing;
-        if (grossRelease > 0) {
+        if (deployedGross > 0) {
           leverCashflowNotes.set(
             `equity_release-${prop.id}`,
-            `+${formatCurrency(grossRelease)} cash · −${formatCurrency(monthlyServicing)}/mo IO`,
+            `+${formatCurrency(deployedGross)} cash · −${formatCurrency(monthlyServicing)}/mo ${repaymentType === 'interest_only' ? 'IO' : 'P&I'}`,
           );
         }
       });
       if (equityReleaseMonthlyCost > 0) {
         impacts.push({
-          label: `Equity release servicing on ${strategy.equityReleasePropertyIds.size} property(s) (IO)`,
+          label: `Equity release servicing on ${strategy.equityReleasePropertyIds.size} property(s)`,
           monthlySaving: equityReleaseMonthlyCost,
           type: 'cost',
         });
