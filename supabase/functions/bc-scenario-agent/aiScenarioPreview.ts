@@ -193,7 +193,7 @@ export function adjustmentsToDeltas(adj: AIAdjustments): ScenarioDelta[] {
   }
 
   // 2. Property → IO refinance
-  for (const id of adj.refinancedToIOPropertyIds || []) {
+  for (const id of adjUsed.refinancedToIOPropertyIds || []) {
     deltas.push({
       id,
       label: `Refinance ${id} to IO`,
@@ -204,7 +204,7 @@ export function adjustmentsToDeltas(adj: AIAdjustments): ScenarioDelta[] {
   }
 
   // 3. Portfolio sell
-  for (const id of adj.portfolioSellPropertyIds || []) {
+  for (const id of adjUsed.portfolioSellPropertyIds || []) {
     deltas.push({
       id,
       label: `Sell ${id}`,
@@ -215,51 +215,51 @@ export function adjustmentsToDeltas(adj: AIAdjustments): ScenarioDelta[] {
   }
 
   // 4. Income change
-  if (adj.incomeGrowthPercent && Math.abs(adj.incomeGrowthPercent) > 0.001) {
+  if (adjUsed.incomeGrowthPercent && Math.abs(adjUsed.incomeGrowthPercent) > 0.001) {
     deltas.push({
-      id: `income-${adj.incomeGrowthPercent}`,
-      label: `Income ${adj.incomeGrowthPercent > 0 ? '+' : ''}${adj.incomeGrowthPercent}%`,
+      id: `income-${adjUsed.incomeGrowthPercent}`,
+      label: `Income ${adjUsed.incomeGrowthPercent > 0 ? '+' : ''}${adjUsed.incomeGrowthPercent}%`,
       type: 'income_change',
-      value: adj.incomeGrowthPercent,
+      value: adjUsed.incomeGrowthPercent,
       unit: 'percent',
     });
   }
 
   // 5. Expense reduction
-  if (adj.expenseReductionPercent && adj.expenseReductionPercent > 0.001) {
+  if (adjUsed.expenseReductionPercent && adjUsed.expenseReductionPercent > 0.001) {
     deltas.push({
-      id: `expense-${adj.expenseReductionPercent}`,
-      label: `Reduce expenses ${adj.expenseReductionPercent}%`,
+      id: `expense-${adjUsed.expenseReductionPercent}`,
+      label: `Reduce expenses ${adjUsed.expenseReductionPercent}%`,
       type: 'expense_change',
-      value: -adj.expenseReductionPercent,
+      value: -adjUsed.expenseReductionPercent,
       unit: 'percent',
     });
   }
 
   // 6. Loan term
-  if (adj.loanTermAdjustment && Math.abs(adj.loanTermAdjustment) > 0) {
+  if (adjUsed.loanTermAdjustment && Math.abs(adjUsed.loanTermAdjustment) > 0) {
     deltas.push({
-      id: `loan-term-${adj.loanTermAdjustment}`,
-      label: `Loan term ${adj.loanTermAdjustment > 0 ? '+' : ''}${adj.loanTermAdjustment}yr`,
+      id: `loan-term-${adjUsed.loanTermAdjustment}`,
+      label: `Loan term ${adjUsed.loanTermAdjustment > 0 ? '+' : ''}${adjUsed.loanTermAdjustment}yr`,
       type: 'loan_term_change',
-      value: adj.loanTermAdjustment,
+      value: adjUsed.loanTermAdjustment,
       unit: 'years',
     });
   }
 
   // 7. Global rate adjustment
-  if (adj.rateAdjustment && Math.abs(adj.rateAdjustment) > 0.001) {
+  if (adjUsed.rateAdjustment && Math.abs(adjUsed.rateAdjustment) > 0.001) {
     deltas.push({
-      id: `rate-${adj.rateAdjustment}`,
-      label: `Rates ${adj.rateAdjustment >= 0 ? '+' : ''}${adj.rateAdjustment}%`,
+      id: `rate-${adjUsed.rateAdjustment}`,
+      label: `Rates ${adjUsed.rateAdjustment >= 0 ? '+' : ''}${adjUsed.rateAdjustment}%`,
       type: 'rate_change',
-      value: adj.rateAdjustment,
+      value: adjUsed.rateAdjustment,
       unit: 'rate_points',
     });
   }
 
   // 8. Per-property rate changes (Phase F1)
-  for (const change of adj.propertyRateChanges || []) {
+  for (const change of adjUsed.propertyRateChanges || []) {
     if (Number.isFinite(change.newRate) && change.newRate > 0) {
       deltas.push({
         id: change.propertyId,
@@ -272,7 +272,7 @@ export function adjustmentsToDeltas(adj: AIAdjustments): ScenarioDelta[] {
   }
 
   // 9. Valuation overrides (Phase G1) — must resolve before equity release
-  for (const vo of adj.valuationOverrides || []) {
+  for (const vo of adjUsed.valuationOverrides || []) {
     if (Number.isFinite(vo.newValue) && vo.newValue > 0) {
       deltas.push({
         id: vo.propertyId,
@@ -286,41 +286,41 @@ export function adjustmentsToDeltas(adj: AIAdjustments): ScenarioDelta[] {
   }
 
   // 10. Single-property equity release
-  if (adj.equityRelease && adj.equityRelease.propertyId && Number.isFinite(adj.equityRelease.targetLVR)) {
+  if (adjUsed.equityRelease && adjUsed.equityRelease.propertyId && Number.isFinite(adjUsed.equityRelease.targetLVR)) {
     deltas.push({
-      id: adj.equityRelease.propertyId,
-      label: `Equity release ${adj.equityRelease.propertyId} → ${(adj.equityRelease.targetLVR * 100).toFixed(0)}% LVR`,
+      id: adjUsed.equityRelease.propertyId,
+      label: `Equity release ${adjUsed.equityRelease.propertyId} → ${(adjUsed.equityRelease.targetLVR * 100).toFixed(0)}% LVR`,
       type: 'equity_release',
-      value: adj.equityRelease.targetLVR,
+      value: adjUsed.equityRelease.targetLVR,
       unit: 'percent',
-      meta: { targetLVR: adj.equityRelease.targetLVR },
+      meta: { targetLVR: adjUsed.equityRelease.targetLVR },
     });
   }
 
   // 11. Cross-collat pool (Phase G2)
-  if (adj.crossCollatPool && adj.crossCollatPool.enabled && adj.crossCollatPool.propertyIds?.length > 0) {
+  if (adjUsed.crossCollatPool && adjUsed.crossCollatPool.enabled && adjUsed.crossCollatPool.propertyIds?.length > 0) {
     deltas.push({
       id: 'pool-default',
-      label: `Cross-collat pool → ${(adj.crossCollatPool.blendedTargetLVR * 100).toFixed(0)}% blended LVR`,
+      label: `Cross-collat pool → ${(adjUsed.crossCollatPool.blendedTargetLVR * 100).toFixed(0)}% blended LVR`,
       type: 'portfolio_lvr_release',
-      value: adj.crossCollatPool.blendedTargetLVR,
+      value: adjUsed.crossCollatPool.blendedTargetLVR,
       unit: 'ratio',
       meta: {
-        propertyIds: adj.crossCollatPool.propertyIds,
-        lenderMaxLVR: adj.crossCollatPool.lenderMaxLVR ?? null,
-        allocationStrategy: adj.crossCollatPool.allocationStrategy ?? 'highest_equity_first',
+        propertyIds: adjUsed.crossCollatPool.propertyIds,
+        lenderMaxLVR: adjUsed.crossCollatPool.lenderMaxLVR ?? null,
+        allocationStrategy: adjUsed.crossCollatPool.allocationStrategy ?? 'highest_equity_first',
       },
     });
   }
 
   // 12. DTI cap override + lender profile flip (Phase I1)
-  const lenderProfile = adj.lenderProfile ?? adj.dtiCapOverride?.lenderProfile;
-  if (adj.dtiCapOverride && adj.dtiCapOverride.enabled && Number.isFinite(adj.dtiCapOverride.value)) {
+  const lenderProfile = adjUsed.lenderProfile ?? adjUsed.dtiCapOverride?.lenderProfile;
+  if (adjUsed.dtiCapOverride && adjUsed.dtiCapOverride.enabled && Number.isFinite(adjUsed.dtiCapOverride.value)) {
     deltas.push({
       id: 'dti-cap',
-      label: `DTI cap ${adj.dtiCapOverride.value}x${lenderProfile ? ` (${lenderProfile})` : ''}`,
+      label: `DTI cap ${adjUsed.dtiCapOverride.value}x${lenderProfile ? ` (${lenderProfile})` : ''}`,
       type: 'dti_cap_change',
-      value: adj.dtiCapOverride.value,
+      value: adjUsed.dtiCapOverride.value,
       unit: 'ratio',
       meta: lenderProfile
         ? { enabled: true, lenderProfile }
