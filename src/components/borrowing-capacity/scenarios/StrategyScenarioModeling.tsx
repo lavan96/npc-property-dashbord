@@ -58,6 +58,7 @@ import {
 } from './AdditionalStrategyLevers';
 import { BindingConstraintBadge } from '../BindingConstraintBadge';
 import { computeBindingConstraint } from '@/utils/bindingConstraint';
+import { PurchasePowerHeadline, type LeverAttribution } from './PurchasePowerHeadline';
 
 // ── Types ──────────────────────────────────────────────
 
