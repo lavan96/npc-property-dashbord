@@ -507,41 +507,56 @@ ${(properties || []).map((p: any) => `- [${p.id}] ${p.address} (${p.property_typ
       ...cappedMessages.map((m: any) => ({ role: m.role, content: m.content })),
     ];
 
-    // Phase J2: model upgrade — Pro reasoning produces materially better
-    // constraint-led scenarios at a small latency premium. Override via
-    // BC_AGENT_MODEL secret if needed.
-    const MODEL_ID = Deno.env.get('BC_AGENT_MODEL') || 'google/gemini-3-pro-preview';
+    // Phase J2 → Sanity fix (LLM upgrade): the previous default
+    // 'google/gemini-3-pro-preview' is no longer routable through the
+    // Lovable AI Gateway and was causing silent failures (no completion,
+    // hung stream). Fall back to the current platform default with an
+    // explicit fallback chain. BC_AGENT_MODEL still wins if set.
+    const PRIMARY_MODEL = Deno.env.get('BC_AGENT_MODEL') || 'google/gemini-3-flash-preview';
+    const MODEL_FALLBACKS = [
+      PRIMARY_MODEL,
+      'google/gemini-2.5-flash',
+      'google/gemini-2.5-pro',
+    ];
+    // De-dup while preserving order
+    const MODEL_CHAIN = Array.from(new Set(MODEL_FALLBACKS));
 
-    // In clarification mode, omit the tool entirely so the model can't generate scenarios.
-    const aiPayload: any = {
-      model: MODEL_ID,
-      messages: aiMessages,
-      stream: false, // switched to non-streaming so we can post-process the tool call
-    };
-    if (!clarificationMode) {
-      aiPayload.tools = [SCENARIO_TOOL];
-    }
-
-    // Helper: call the AI gateway and return { assistantText, toolCallsRaw, status }.
+    // Helper: call the AI gateway, walking the fallback chain on
+    // 404 / 410 / 5xx responses so a deprecated/missing model never
+    // surfaces as a hung request to the user.
     const callAI = async (msgs: any[]) => {
-      const payload: any = {
-        model: MODEL_ID,
-        messages: msgs,
-        stream: false,
-      };
-      if (!clarificationMode) payload.tools = [SCENARIO_TOOL];
-      const resp = await fetch(
-        "https://ai.gateway.lovable.dev/v1/chat/completions",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${LOVABLE_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
+      let lastResp: Response | null = null;
+      for (const model of MODEL_CHAIN) {
+        const payload: any = { model, messages: msgs, stream: false };
+        if (!clarificationMode) payload.tools = [SCENARIO_TOOL];
+        const resp = await fetch(
+          "https://ai.gateway.lovable.dev/v1/chat/completions",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${LOVABLE_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
+          }
+        );
+        // Bubble rate-limit / payment errors immediately — retrying won't help.
+        if (resp.status === 429 || resp.status === 402) return resp;
+        if (resp.ok) {
+          console.log(`[bc-scenario-agent] AI call OK with model: ${model}`);
+          return resp;
         }
-      );
-      return resp;
+        // Model-availability failures → try next fallback
+        if (resp.status === 404 || resp.status === 410 || resp.status >= 500) {
+          const errText = await resp.text().catch(() => '');
+          console.warn(`[bc-scenario-agent] Model ${model} unavailable (${resp.status}): ${errText.slice(0, 200)} — trying next fallback`);
+          lastResp = new Response(errText, { status: resp.status, headers: resp.headers });
+          continue;
+        }
+        // Other 4xx (e.g. 400 invalid payload) — return immediately, retry won't help.
+        return resp;
+      }
+      return lastResp ?? new Response(JSON.stringify({ error: 'All model fallbacks exhausted' }), { status: 502 });
     };
 
     const response = await callAI(aiMessages);
