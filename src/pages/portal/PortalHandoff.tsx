@@ -1,0 +1,122 @@
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Loader2, ShieldCheck, AlertTriangle, Eye } from 'lucide-react';
+
+const SUPABASE_URL = "https://dduzbchuswwbefdunfct.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkdXpiY2h1c3d3YmVmZHVuZmN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0NDM4NzksImV4cCI6MjA3MTAxOTg3OX0.eSYU6fxIc3tBQuGLsdBRff0alBMkNfvv7OpW0efNjxk";
+
+const PORTAL_SESSION_KEY = 'portal_session_token';
+const IMPERSONATION_FLAG_KEY = 'portal_impersonation_active';
+const IMPERSONATION_READONLY_KEY = 'portal_impersonation_readonly';
+
+const persist = (key: string, value: string) => {
+  try { sessionStorage.setItem(key, value); } catch {}
+  try { localStorage.setItem(key, value); } catch {}
+};
+
+export default function PortalHandoff() {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const [status, setStatus] = useState<'pending' | 'success' | 'error'>('pending');
+  const [error, setError] = useState<string | null>(null);
+  const [meta, setMeta] = useState<{ name?: string; readonly?: boolean } | null>(null);
+  const ranRef = useRef(false);
+
+  const token = searchParams.get('token');
+
+  useEffect(() => {
+    if (ranRef.current) return; // StrictMode double-effect guard — token is single-use
+    ranRef.current = true;
+
+    if (!token) {
+      setStatus('error');
+      setError('Missing handoff token in URL.');
+      return;
+    }
+
+    (async () => {
+      try {
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/finance-portal-handoff-redeem`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          },
+          credentials: 'omit',
+          body: JSON.stringify({ token }),
+        });
+
+        const data = await response.json();
+        if (!response.ok || !data?.success) {
+          throw new Error(data?.error || `Handoff failed (HTTP ${response.status})`);
+        }
+
+        // Persist a real client portal session
+        persist(PORTAL_SESSION_KEY, data.session_token);
+        persist(IMPERSONATION_FLAG_KEY, '1');
+        persist(IMPERSONATION_READONLY_KEY, data.impersonation?.is_readonly ? '1' : '0');
+
+        setMeta({
+          name: data.user?.name,
+          readonly: !!data.impersonation?.is_readonly,
+        });
+        setStatus('success');
+
+        // Brief pause so the user sees the impersonation notice, then enter the portal
+        setTimeout(() => {
+          // Force a full reload so PortalAuthProvider picks up the new session token cleanly
+          window.location.replace('/client');
+        }, 1200);
+      } catch (e: any) {
+        setStatus('error');
+        setError(e?.message || 'Could not redeem handoff token.');
+      }
+    })();
+  }, [token]);
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background p-6">
+      <Card className="max-w-md w-full">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            {status === 'pending' && <Loader2 className="h-5 w-5 animate-spin text-primary" />}
+            {status === 'success' && <ShieldCheck className="h-5 w-5 text-success" />}
+            {status === 'error' && <AlertTriangle className="h-5 w-5 text-destructive" />}
+            {status === 'pending' && 'Opening client portal…'}
+            {status === 'success' && 'Access granted'}
+            {status === 'error' && 'Handoff failed'}
+          </CardTitle>
+          <CardDescription>
+            {status === 'pending' && 'Verifying your secure handoff link.'}
+            {status === 'success' && (
+              <>
+                Entering {meta?.name || 'client'}'s portal as a finance partner.
+                {meta?.readonly && (
+                  <span className="block mt-1 text-xs text-muted-foreground inline-flex items-center gap-1">
+                    <Eye className="h-3 w-3" /> Read-only impersonation session.
+                  </span>
+                )}
+              </>
+            )}
+            {status === 'error' && (error || 'The handoff link could not be redeemed. It may have expired or already been used.')}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {status === 'success' && (
+            <div className="text-xs text-muted-foreground border rounded-md p-3 bg-muted/40">
+              All actions taken in this session are audited and attributed to you.
+            </div>
+          )}
+          {status === 'error' && (
+            <Button variant="outline" className="w-full" onClick={() => window.close()}>
+              Close window
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
