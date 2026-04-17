@@ -239,11 +239,11 @@ export function PurchasePowerHeadline({
               <div className="flex items-center justify-between text-[11px]">
                 <span className="text-muted-foreground">Progress to target</span>
                 <span className="font-medium">
-                  {formatCurrency(headlinePower)} / {formatCurrency(target)}
+                  {formatCurrency(acq.maxPurchasePrice)} / {formatCurrency(target)}
                 </span>
               </div>
               <Progress
-                value={Math.min(100, target > 0 ? (headlinePower / target) * 100 : 0)}
+                value={Math.min(100, target > 0 ? (acq.maxPurchasePrice / target) * 100 : 0)}
                 className={`h-1.5 ${meetsTarget ? '[&>div]:bg-emerald-500' : '[&>div]:bg-amber-500'}`}
               />
               {acq.loanRequiredForPurchase !== undefined && (
