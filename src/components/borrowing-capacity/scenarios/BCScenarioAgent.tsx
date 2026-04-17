@@ -46,6 +46,48 @@ interface BCScenarioAgentProps {
   liabilities: LiabilityItem[];
   properties: PropertyItem[];
   onApplyScenario: (scenario: AIScenario) => void;
+  /** Optional client identifier — used to scope persisted chat history per client. */
+  clientId?: string;
+}
+
+// ── Persistence helpers ────────────────────────────────
+
+interface PersistedChatState {
+  messages: ChatMessage[];
+  scenarios: AIScenario[];
+  appliedIndex: number | null;
+  isOpen: boolean;
+}
+
+const STORAGE_PREFIX = 'bc-scenario-agent:';
+
+function getStorageKey(clientId?: string): string {
+  return `${STORAGE_PREFIX}${clientId || 'global'}`;
+}
+
+function loadPersistedState(clientId?: string): PersistedChatState | null {
+  try {
+    const raw = localStorage.getItem(getStorageKey(clientId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return null;
+    return {
+      messages: Array.isArray(parsed.messages) ? parsed.messages : [],
+      scenarios: Array.isArray(parsed.scenarios) ? parsed.scenarios : [],
+      appliedIndex: typeof parsed.appliedIndex === 'number' ? parsed.appliedIndex : null,
+      isOpen: typeof parsed.isOpen === 'boolean' ? parsed.isOpen : true,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function savePersistedState(clientId: string | undefined, state: PersistedChatState) {
+  try {
+    localStorage.setItem(getStorageKey(clientId), JSON.stringify(state));
+  } catch {
+    // Storage may be full or unavailable — fail silently
+  }
 }
 
 // ── Component ──────────────────────────────────────────
@@ -56,15 +98,33 @@ export function BCScenarioAgent({
   liabilities,
   properties,
   onApplyScenario,
+  clientId,
 }: BCScenarioAgentProps) {
-  const [isOpen, setIsOpen] = useState(true);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  // Load persisted state synchronously on mount so history is available immediately
+  const initialState = loadPersistedState(clientId);
+  const [isOpen, setIsOpen] = useState(initialState?.isOpen ?? true);
+  const [messages, setMessages] = useState<ChatMessage[]>(initialState?.messages ?? []);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [scenarios, setScenarios] = useState<AIScenario[]>([]);
-  const [appliedIndex, setAppliedIndex] = useState<number | null>(null);
+  const [scenarios, setScenarios] = useState<AIScenario[]>(initialState?.scenarios ?? []);
+  const [appliedIndex, setAppliedIndex] = useState<number | null>(initialState?.appliedIndex ?? null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Reload state when the client context changes (e.g. switching clients without unmount)
+  useEffect(() => {
+    const next = loadPersistedState(clientId);
+    setMessages(next?.messages ?? []);
+    setScenarios(next?.scenarios ?? []);
+    setAppliedIndex(next?.appliedIndex ?? null);
+    setIsOpen(next?.isOpen ?? true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientId]);
+
+  // Persist on every meaningful change
+  useEffect(() => {
+    savePersistedState(clientId, { messages, scenarios, appliedIndex, isOpen });
+  }, [clientId, messages, scenarios, appliedIndex, isOpen]);
 
   useEffect(() => {
     if (scrollRef.current) {
