@@ -414,23 +414,31 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
     }
 
     case 'equity_release': {
-      // Phase C: Equity-release lever now produces real cash + servicing impact.
+      // Phase C + F2: Equity-release lever closes the loop between cash freed,
+      // the new shadow debt, and the source property's actual contracted rate.
       //
       // Inputs interpreted from the delta:
       //   value: target LVR as a ratio (0.80) OR % (80) OR absolute release amount
       //   meta.targetLVR: optional explicit target LVR (0–1 ratio)
-      //   meta.amount: optional explicit cash amount to release (overrides LVR math)
+      //   meta.releaseRate: optional override rate for the release loan (% p.a.)
       //   unit: 'ratio' = LVR ratio, 'percent' = LVR %, 'absolute' = direct $ amount
       //
       // Output:
-      //   - releasedCapital ≈ new equity loan − LMI on that loan
-      //   - commitmentAdjustment += monthly IO repayment on the new equity loan
-      //   - debtBalanceAdjustment += new equity loan principal
+      //   - releasedCapital ≈ new equity loan − LMI on that loan (cash to settlement)
+      //   - commitmentAdjustment += monthly IO repayment on the NEW slice only
+      //   - debtBalanceAdjustment += new equity loan principal (DTI honest)
       const property = context.properties?.find(p => p.id === delta.id);
       if (!property || property.currentValue <= 0) break;
 
       const fhb = !!context.acquisition?.isFirstHomeBuyer;
-      const ratePct = context.baseInputs.interestRate || 6.5;
+      // Phase F1/F2 — release loan rate priority:
+      //   1. explicit override on the delta (`meta.releaseRate`)
+      //   2. property's contracted rate (`property.interestRate`)
+      //   3. global assessment rate
+      const overrideRate = delta.meta?.releaseRate as number | undefined;
+      const ratePct = (Number.isFinite(overrideRate) && (overrideRate as number) > 0)
+        ? (overrideRate as number)
+        : (property.interestRate ?? context.baseInputs.interestRate ?? 6.5);
       const monthlyRate = (ratePct / 100) / 12;
 
       // Resolve the new max loan size on this property
@@ -446,7 +454,9 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
       }
       const grossRelease = Math.max(0, newLoan - property.loanRemaining);
       if (grossRelease <= 0) {
-        effect.acquisitionNotes.push(`Equity release on ${property.address?.slice(0, 30) || 'property'}: no equity available at requested LVR`);
+        effect.acquisitionNotes.push(
+          `Equity release on ${property.address?.slice(0, 30) || 'property'}: no equity available at requested LVR (already at ${((property.loanRemaining / property.currentValue) * 100).toFixed(1)}% LVR)`
+        );
         break;
       }
 
@@ -466,14 +476,18 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
       // Net usable cash (after LMI on the release loan)
       const netRelease = Math.max(0, grossRelease - lmiOnRelease);
 
-      // Servicing impact: assume IO equity loan (worst-case for serviceability)
-      const ioRepayment = newLoan * monthlyRate - property.loanRemaining * monthlyRate;
-      effect.commitmentAdjustment = Math.max(0, ioRepayment);
+      // F2 fix — servicing impact is the IO cost on the NEW slice only
+      // (grossRelease × monthly rate). The previous formula
+      //   `newLoan*r − loanRemaining*r`
+      // was algebraically identical but obscured intent and broke if a future
+      // refactor changed how `newLoan` was computed.
+      const ioRepaymentNewSlice = grossRelease * monthlyRate;
+      effect.commitmentAdjustment = Math.max(0, ioRepaymentNewSlice);
       effect.debtBalanceAdjustment = grossRelease;
 
       effect.releasedCapital = netRelease;
       effect.acquisitionNotes.push(
-        `Equity release on ${property.address?.slice(0, 30) || 'property'}: gross $${Math.round(grossRelease).toLocaleString()} − LMI $${Math.round(lmiOnRelease).toLocaleString()} = $${Math.round(netRelease).toLocaleString()} usable. New LVR ${newLvr.toFixed(1)}%.`
+        `Equity release on ${property.address?.slice(0, 30) || 'property'} @ ${ratePct.toFixed(2)}%: gross $${Math.round(grossRelease).toLocaleString()} − LMI $${Math.round(lmiOnRelease).toLocaleString()} = $${Math.round(netRelease).toLocaleString()} usable. New LVR ${newLvr.toFixed(1)}%. Servicing +$${Math.round(ioRepaymentNewSlice).toLocaleString()}/mo (IO).`
       );
       effect.description = `Release equity from ${property.address?.slice(0, 30) || 'property'}`;
       break;
