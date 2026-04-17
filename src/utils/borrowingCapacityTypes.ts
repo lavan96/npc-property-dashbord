@@ -171,7 +171,12 @@ export type ScenarioDeltaType =
   | 'liability_payoff'
   | 'loan_term_change'
   | 'dti_cap_change'
-  | 'equity_release';
+  | 'equity_release'
+  /** Phase F1 — per-property rate change. `id` = property id, `value` = new
+   *  contracted annual rate in %. Engine recomputes that property's holding
+   *  cost using the new rate (not the global) and rolls the delta into
+   *  `commitmentAdjustment`. */
+  | 'property_rate_change';
 
 export type ScenarioDeltaUnit = 'percent' | 'absolute' | 'rate_points' | 'years' | 'ratio';
 
@@ -211,6 +216,20 @@ export interface AcquisitionCapacity {
   loanAvailableForPurchase: number;
   /** Cash deposit available (released equity + assumed cash on hand) */
   cashAvailable: number;
+  /** Phase F2 — actual acquisition loan required for the target purchase
+   *  price, AFTER netting cashAvailable against the price. */
+  loanRequiredForPurchase?: number;
+  /** Phase F2 — net cash position post-settlement
+   *  (cashAvailable − deposit − LMI[display] − stamp duty − other costs).
+   *  Negative = shortfall. */
+  netCashAfterSettlement?: number;
+  /** Phase F2 — target purchase price the user is solving for (if any).
+   *  Drives `meetsTarget` + `shortfall`. */
+  targetPurchasePrice?: number;
+  /** Phase F2 — true when maxPurchasePrice ≥ targetPurchasePrice. */
+  meetsTarget?: boolean;
+  /** Phase F2 — shortfall to target = max(0, targetPurchasePrice − maxPurchasePrice). */
+  shortfallToTarget?: number;
   /** Detailed audit trail */
   notes: string[];
 }
