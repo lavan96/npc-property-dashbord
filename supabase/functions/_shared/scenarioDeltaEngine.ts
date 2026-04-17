@@ -37,6 +37,12 @@ import {
   computeDtiDenominator,
   computeDti,
 } from './dtiDenominator.ts';
+import {
+  buildCapitalLedger,
+  type CapitalLedger,
+  type CapitalSourceType,
+  type LedgerContext,
+} from './capitalAllocationLedger.ts';
 
 // ============================================
 // TYPES (mirrored from src/utils/borrowingCapacityTypes.ts)
@@ -58,7 +64,9 @@ export type ScenarioDeltaType =
   /** Phase G1 — Valuation override (manual/AVM/desktop/comp sales). */
   | 'property_value_change'
   /** Phase G2 — Cross-collateralised pool release across multiple securities. */
-  | 'portfolio_lvr_release';
+  | 'portfolio_lvr_release'
+  /** Phase K1 — Capital allocation sink (routes pool $ to debt/offset/etc.). */
+  | 'capital_allocation';
 
 export type ScenarioDeltaUnit = 'percent' | 'absolute' | 'rate_points' | 'years' | 'ratio';
 
