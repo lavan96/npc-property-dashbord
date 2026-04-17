@@ -861,8 +861,11 @@ function calculateBorrowingCapacity(params: {
   const assessmentRate = interestRate + bufferRate;
   const monthlyRate = (assessmentRate / 100) / 12;
   
-  // Calculate after-tax income for serviceability
-  const taxBreakdown = getTaxBreakdown(grossAnnualIncome);
+  // *** Phase A1/A4 FIX: Tax must be applied to SHADED (assessable) income ***
+  // Banks assess serviceability on income they actually count — not raw gross.
+  // Using gross overstated take-home for variable-income clients (bonus/commission/casual).
+  const assessableIncome = shadedAnnualIncome > 0 ? shadedAnnualIncome : grossAnnualIncome;
+  const taxBreakdown = getTaxBreakdown(assessableIncome);
   const afterTaxAnnualIncome = taxBreakdown.afterTaxIncome;
   const monthlyAfterTaxIncome = afterTaxAnnualIncome / 12;
   
@@ -873,13 +876,15 @@ function calculateBorrowingCapacity(params: {
   if (isConservative) {
     monthlySurplus = monthlySurplus * conservativeConfig.surplusBufferMultiplier;
     
+    // *** Phase A2 FIX: Enforce real minimum surplus floor (was a no-op clamp) ***
     if (monthlySurplus < conservativeConfig.minimumSurplusFloor) {
-      monthlySurplus = Math.max(0, monthlySurplus);
+      monthlySurplus = 0;
     }
     
     const residualIncome = monthlyIncome - monthlyCommitments;
     if (residualIncome < conservativeConfig.residualIncomeFloor) {
-      monthlySurplus = Math.max(0, monthlySurplus - (conservativeConfig.residualIncomeFloor - residualIncome));
+      const shortfall = conservativeConfig.residualIncomeFloor - residualIncome;
+      monthlySurplus = Math.max(0, monthlySurplus - shortfall);
     }
   }
   
@@ -1055,6 +1060,13 @@ function applyServerDelta(
 ): { income: number; shadedIncome: number; expense: number; commitment: number; rate: number; debt: number } {
   const e = { income: 0, shadedIncome: 0, expense: 0, commitment: 0, rate: 0, debt: 0 };
 
+  // *** Phase A4 FIX: Use the client's actual shaded/gross ratio instead of hard-coded 0.8 ***
+  // For absolute income deltas where we don't know the shading category, fall back to the
+  // client's blended ratio so scenarios stay aligned with their existing income profile.
+  const shadingRatio = ctx.baseInputs.grossAnnualIncome > 0
+    ? Math.max(0, Math.min(1, ctx.baseInputs.shadedAnnualIncome / ctx.baseInputs.grossAnnualIncome))
+    : 0.8;
+
   switch (delta.type) {
     case 'income_change':
       if (delta.unit === 'percent') {
@@ -1062,7 +1074,7 @@ function applyServerDelta(
         e.shadedIncome = ctx.baseInputs.shadedAnnualIncome * (delta.value / 100);
       } else {
         e.income = delta.value;
-        e.shadedIncome = delta.value * 0.8;
+        e.shadedIncome = delta.value * shadingRatio;
       }
       break;
     case 'expense_change':
@@ -1090,7 +1102,7 @@ function applyServerDelta(
         if (svc > 0) e.commitment = -svc;
         if (p.loanRemaining > 0) e.debt = -p.loanRemaining;
         const cf = p.netMonthlyCashflow || 0;
-        if (cf > 0) { e.income = -(cf * 12); e.shadedIncome = -(cf * 12 * 0.8); }
+        if (cf > 0) { e.income = -(cf * 12); e.shadedIncome = -(cf * 12 * shadingRatio); }
         else if (cf < 0) { e.expense = cf; }
       }
       break;
@@ -1116,7 +1128,7 @@ function applyServerDelta(
     }
     case 'property_add':
       if (delta.unit === 'absolute') {
-        if (delta.value > 0) { e.income = delta.value * 12; e.shadedIncome = delta.value * 12 * 0.8; }
+        if (delta.value > 0) { e.income = delta.value * 12; e.shadedIncome = delta.value * 12 * shadingRatio; }
         else { e.expense = Math.abs(delta.value); }
       }
       break;
@@ -1212,6 +1224,27 @@ Deno.serve(async (req) => {
     const activePolicy = resolvePolicy(overrides?.selectedLenderName);
     console.log(`[calculate-borrowing-capacity] Active policy: ${activePolicy.name}`);
 
+    // ── PHASE A3: Build effective policy with dynamic stress rate ──
+    // Existing property loans should be stress-tested at the HIGHER of:
+    //   (a) the lender/policy assessment rate (default 9.5%)
+    //   (b) the user-configured assessment rate = interestRate + bufferRate
+    // This ensures user/lender overrides flow through to ALL stress calcs.
+    const earlyInterestRate = overrides?.interestRate ?? activePolicy.loanDefaults.interestRate;
+    const earlyBufferRate = overrides?.bufferRate ?? activePolicy.loanDefaults.bufferRate;
+    const userAssessmentRateDecimal = (earlyInterestRate + earlyBufferRate) / 100;
+    const effectiveLoanAssessmentRate = Math.max(
+      activePolicy.propertyPolicy.loanAssessmentRate,
+      userAssessmentRateDecimal,
+    );
+    const effectivePolicy: PolicyConfig = {
+      ...activePolicy,
+      propertyPolicy: {
+        ...activePolicy.propertyPolicy,
+        loanAssessmentRate: effectiveLoanAssessmentRate,
+      },
+    };
+    console.log(`[calculate-borrowing-capacity] Effective loan stress rate: ${(effectiveLoanAssessmentRate * 100).toFixed(2)}% (policy=${(activePolicy.propertyPolicy.loanAssessmentRate * 100).toFixed(2)}%, user=${(userAssessmentRateDecimal * 100).toFixed(2)}%)`);
+
     console.log(`[calculate-borrowing-capacity] Processing client: ${clientId}`);
 
     // Fetch client data
@@ -1294,7 +1327,7 @@ Deno.serve(async (req) => {
 
     // ── PROPERTY CONTRIBUTION ENGINE (Phase 1) ──
     // Run unified assessment alongside legacy for parity validation
-    const propertyContributions = assessAllPropertyContributions(properties, activePolicy.propertyPolicy);
+    const propertyContributions = assessAllPropertyContributions(properties, effectivePolicy.propertyPolicy);
     
     // Parity validation: compare engine outputs against legacy functions
     // Legacy income from properties = income added by calculateIncomeBreakdown from positive cashflows
@@ -1319,7 +1352,7 @@ Deno.serve(async (req) => {
 
     // Calculate liability servicing
     const { totalMonthly: liabilityServicing, breakdown: liabilityBreakdown } = 
-      calculateLiabilityBreakdown(liabilities, properties, effectiveGrossIncome, activePolicy);
+      calculateLiabilityBreakdown(liabilities, properties, effectiveGrossIncome, effectivePolicy);
     
     // Calculate total outstanding debt balances for DTI (industry standard)
     let totalDebtBalances = liabilityBreakdown.reduce((sum, item) => sum + (item.balance || 0), 0);
@@ -1352,8 +1385,8 @@ Deno.serve(async (req) => {
         : liabilityServicing + lmiMonthlyServicing;
 
     // Set calculation parameters (use policy defaults if no overrides)
-    const interestRate = overrides?.interestRate ?? activePolicy.loanDefaults.interestRate;
-    const bufferRate = overrides?.bufferRate ?? activePolicy.loanDefaults.bufferRate;
+    const interestRate = earlyInterestRate;
+    const bufferRate = earlyBufferRate;
     const loanTermYears = overrides?.loanTermYears ?? activePolicy.loanDefaults.loanTermYears;
 
     // Perform calculation - uses after-tax income internally
@@ -1453,19 +1486,21 @@ Deno.serve(async (req) => {
     
     const assumptionItems = [
       { key: "Policy Profile", value: activePolicy.name },
-      { key: "Serviceability Basis", value: "After-Tax Income" },
+      { key: "Serviceability Basis", value: "After-Tax of SHADED (assessable) income" },
       { key: "Buffer Rate", value: `${bufferRate}%` },
       { key: "Assessment Rate", value: `${result.assessmentRate}%` },
       { key: "Loan Term", value: `${loanTermYears} years` },
       { key: "HEM Benchmark", value: `$${hemBenchmark.toLocaleString()}/mo (income-scaled)` },
       { key: "Repayment Type", value: "Principal & Interest" },
       { key: "Rental Expense Ratio", value: `${activePolicy.propertyPolicy.rentalExpenseRatio * 100}%` },
-      { key: "Existing Loan Assessment", value: `P&I at ${(activePolicy.propertyPolicy.loanAssessmentRate * 100).toFixed(1)}%` },
+      { key: "Existing Loan Stress Rate", value: `P&I at ${(effectiveLoanAssessmentRate * 100).toFixed(2)}% (max of policy ${(activePolicy.propertyPolicy.loanAssessmentRate * 100).toFixed(1)}% and assessment rate ${(userAssessmentRateDecimal * 100).toFixed(2)}%)` },
       { key: "Tax Year", value: `${activePolicy.tax.taxYear} (incl. ${(activePolicy.tax.medicareLevyRate * 100).toFixed(0)}% Medicare Levy)` },
-      { key: "After-Tax Income Used", value: `$${taxBreakdown.afterTaxIncome.toLocaleString()}/yr` },
+      { key: "Assessable Income (Shaded)", value: `$${effectiveShadedIncome.toLocaleString()}/yr` },
+      { key: "After-Tax Income Used", value: `$${taxBreakdown.afterTaxIncome.toLocaleString()}/yr (on shaded income)` },
       { key: "Marginal Tax Rate", value: `${(taxBreakdown.marginalTaxRate * 100).toFixed(0)}%` },
       { key: "Stress Test Increment", value: `+${activePolicy.loanDefaults.stressTestIncrement}%` },
       { key: "Credit Card Servicing", value: `${(activePolicy.liabilityRules.creditCardLimitRate * 100).toFixed(1)}% of limit` },
+      { key: "Conservative Surplus Floor", value: `$${activePolicy.conservativeMode.minimumSurplusFloor}/mo (zeroed below)` },
     ];
 
     const propertyContributionData = {
