@@ -215,10 +215,40 @@ export function validateDeltas(deltas: ScenarioDelta[], context: ScenarioContext
       case 'property_refinance':
       case 'equity_release':
       case 'property_rate_change':
+      case 'property_value_change':
         if (!propertyIds.has(d.id)) {
           issues.push({ deltaId: d.id, deltaType: d.type, severity: 'warning', message: `Property "${d.id}" not found in client portfolio — delta ignored` });
         }
+        if (d.type === 'property_value_change') {
+          if (d.unit === 'percent' && Math.abs(d.value) > 100) {
+            issues.push({ deltaId: d.id, deltaType: d.type, severity: 'warning', message: `Valuation uplift ${d.value}% exceeds ±100% — likely a data entry error` });
+          }
+          if (d.unit === 'absolute' && d.value <= 0) {
+            issues.push({ deltaId: d.id, deltaType: d.type, severity: 'error', message: `Absolute valuation must be positive (got ${d.value})` });
+          }
+          const basis = d.meta?.basis as string | undefined;
+          if (!basis) {
+            issues.push({ deltaId: d.id, deltaType: d.type, severity: 'warning', message: 'Valuation override missing `meta.basis` — PDF will watermark as unverified' });
+          }
+        }
         break;
+      case 'portfolio_lvr_release': {
+        const ids = (d.meta?.propertyIds as string[] | undefined) || [];
+        if (!Array.isArray(ids) || ids.length === 0) {
+          issues.push({ deltaId: d.id, deltaType: d.type, severity: 'error', message: 'Pool release missing `meta.propertyIds` — at least one property required' });
+        } else {
+          for (const pid of ids) {
+            if (!propertyIds.has(pid)) {
+              issues.push({ deltaId: d.id, deltaType: d.type, severity: 'warning', message: `Pool member "${pid}" not in portfolio — excluded from blended LVR` });
+            }
+          }
+        }
+        const target = d.unit === 'percent' ? d.value / 100 : d.value;
+        if (!Number.isFinite(target) || target <= 0 || target > 0.97) {
+          issues.push({ deltaId: d.id, deltaType: d.type, severity: 'warning', message: `Blended target LVR ${(target * 100).toFixed(1)}% outside 0–97% sane band` });
+        }
+        break;
+      }
       case 'liability_payoff':
         if (!liabilityIds.has(d.id)) {
           issues.push({ deltaId: d.id, deltaType: d.type, severity: 'warning', message: `Liability "${d.id}" not found — delta ignored` });
