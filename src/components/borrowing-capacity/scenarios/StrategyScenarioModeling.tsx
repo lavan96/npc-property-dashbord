@@ -62,6 +62,7 @@ import { PurchasePowerHeadline, type LeverAttribution } from './PurchasePowerHea
 import { StrategyRationalePanel } from './StrategyRationalePanel';
 import { buildStrategyRationale } from '@/utils/strategyRationaleEngine';
 import { CapacityMathInspector } from './CapacityMathInspector';
+import { CapitalFlowCanvas, type CapitalAllocation } from './CapitalFlowCanvas';
 
 // ── Types ──────────────────────────────────────────────
 
@@ -238,6 +239,7 @@ export function StrategyScenarioModeling({
 }: StrategyScenarioModelingProps) {
   const [strategy, setStrategy] = useState<StrategyState>(DEFAULT_STRATEGY);
   const [acquisition, setAcquisition] = useState<AcquisitionState>(DEFAULT_ACQUISITION);
+  const [capitalAllocations, setCapitalAllocations] = useState<CapitalAllocation[]>([]);
   const [presets, setPresets] = useState<ScenarioPreset[]>(externalPresets || []);
   const [scenarioName, setScenarioName] = useState('');
   const [showSaveInput, setShowSaveInput] = useState(false);
@@ -367,7 +369,12 @@ export function StrategyScenarioModeling({
     ].join('|');
   }, [acquisition]);
 
-  const { scenarioResult, scenarioInputs, impactBreakdown, acquisitionCapacity, validationIssues, leverAttribution, appliedDeltas, baseTheoreticalCapacity, scenarioTheoreticalCapacity, baseRawSurplus, scenarioRawSurplus, floorActive, baseAfterTaxIncome, baseLivingExpenses, baseCommitments, baseAssessmentRate, baseTerm, baseAnnuity, scenarioAfterTaxIncome, scenarioLivingExpenses, scenarioCommitments, scenarioAssessmentRate, scenarioTerm, scenarioAnnuity } = useMemo(() => {
+  const capitalAllocationsSignature = useMemo(
+    () => capitalAllocations.map(a => `${a.id}:${a.amount}:${a.sinkType}:${a.sinkTargetId || ''}:${a.offsetRatePoints || ''}:${a.rateBuydownPoints || ''}:${a.repaymentReductionMonthly || ''}`).join('||'),
+    [capitalAllocations],
+  );
+
+  const { scenarioResult, scenarioInputs, impactBreakdown, acquisitionCapacity, validationIssues, leverAttribution, appliedDeltas, capitalLedger, baseTheoreticalCapacity, scenarioTheoreticalCapacity, baseRawSurplus, scenarioRawSurplus, floorActive, baseAfterTaxIncome, baseLivingExpenses, baseCommitments, baseAssessmentRate, baseTerm, baseAnnuity, scenarioAfterTaxIncome, scenarioLivingExpenses, scenarioCommitments, scenarioAssessmentRate, scenarioTerm, scenarioAnnuity } = useMemo(() => {
     const deltas: ScenarioDelta[] = [];
     const impacts: { label: string; monthlySaving: number; type: 'saving' | 'cost' | 'info' }[] = [];
     /** F4 — short cash-flow side-notes per delta id, used to enrich the
@@ -697,10 +704,31 @@ export function StrategyScenarioModeling({
       hemBenchmark,
     };
 
+    // 12. Phase K2 — Capital Flow Canvas → capital_allocation deltas
+    capitalAllocations.forEach((alloc) => {
+      if (!alloc.amount || alloc.amount <= 0) return;
+      deltas.push({
+        id: alloc.id,
+        label: `Capital allocation → ${alloc.sinkType.replace(/_/g, ' ')}`,
+        type: 'capital_allocation',
+        value: alloc.amount,
+        unit: 'absolute',
+        meta: {
+          sinkType: alloc.sinkType,
+          sinkTargetId: alloc.sinkTargetId,
+          sourcePool: 'pool-default',
+          offsetRatePoints: alloc.offsetRatePoints,
+          rateBuydownPoints: alloc.rateBuydownPoints,
+          repaymentReductionMonthly: alloc.repaymentReductionMonthly,
+        },
+      });
+    });
+
     // Delegate ALL scenario math to the unified engine
     const { inputs, result } = runScenarioWithInputs('Strategy Preview', deltas, ctx);
     const acquisitionCapacity = (result.acquisitionCapacity ?? null) as AcquisitionCapacity | null;
     const validationIssues = result.validationIssues ?? [];
+    const capitalLedger = (result as any).capitalLedger ?? null;
 
     // ── F4 — Per-lever attribution ──────────────────────────────────────
     // Replay each delta IN ISOLATION against the same base context to
@@ -829,6 +857,7 @@ export function StrategyScenarioModeling({
       validationIssues,
       leverAttribution,
       appliedDeltas: deltas,
+      capitalLedger,
       baseTheoreticalCapacity,
       scenarioTheoreticalCapacity,
       baseRawSurplus,
@@ -853,6 +882,7 @@ export function StrategyScenarioModeling({
     // Reactivity signatures — guarantee re-run on ANY nested Map/Set/value change
     strategySignature,
     acquisitionSignature,
+    capitalAllocationsSignature,
     // Stable refs from props/derived data
     baseInputs,
     baseResult,
@@ -1909,6 +1939,50 @@ export function StrategyScenarioModeling({
         }))}
         baseGrossIncome={baseInputs.grossAnnualIncome}
       />
+
+      {/* ═══ PHASE K2 — Capital Flow Canvas ═══ */}
+      {(() => {
+        const ledgerPool = capitalLedger?.pools?.['pool-default'];
+        const ledgerSources = ledgerPool?.sources ?? [];
+        // Prefer ledger truth (post-engine). Fall back to deployed equity + cash on hand for pre-allocation rendering.
+        const fallbackEquity = totalAccessibleEquity || 0;
+        const fallbackCash = acquisition.enabled ? (acquisition.cashOnHand || 0) : 0;
+        const pool = ledgerSources.length > 0
+          ? {
+              poolTotal: ledgerPool!.totalIn,
+              sources: ledgerSources.map(s => ({ label: s.label, amount: s.amount, type: s.sourceType })),
+            }
+          : {
+              poolTotal: fallbackEquity + fallbackCash,
+              sources: [
+                ...(fallbackEquity > 0 ? [{ label: 'Equity release (deployed)', amount: fallbackEquity, type: 'equity_release' }] : []),
+                ...(fallbackCash > 0 ? [{ label: 'Cash on hand', amount: fallbackCash, type: 'cash_on_hand' }] : []),
+              ],
+            };
+        const flowTargets = {
+          liabilities: liabilities.map(l => ({
+            id: l.id,
+            label: l.label,
+            balance: l.balance,
+            monthlyServicing: l.monthlyServicing,
+          })),
+          properties: properties.map(p => ({
+            id: p.id,
+            address: p.address,
+            loanRemaining: p.loan_remaining,
+            interestRate: p.interest_rate,
+          })),
+        };
+        return (
+          <CapitalFlowCanvas
+            pool={pool}
+            targets={flowTargets}
+            allocations={capitalAllocations}
+            onAllocationsChange={setCapitalAllocations}
+            ledger={capitalLedger}
+          />
+        );
+      })()}
 
       {/* ═══ Quick Scenario Presets ═══ */}
       <div className="space-y-2">
