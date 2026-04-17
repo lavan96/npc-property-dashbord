@@ -321,6 +321,85 @@ export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', 
           </div>
         </div>
 
+        {/* Net Monthly Surplus — Audit Breakdown
+            Shows the EXACT formula the engine uses so the broker can
+            reconcile the surplus number against raw inputs. The engine
+            uses AFTER-TAX shaded income (not gross) — this row makes
+            that explicit and prevents "the maths doesn't add up" confusion. */}
+        {(() => {
+          const monthlyAfterTax = result.monthlyAfterTaxIncome
+            ?? Math.round((result.afterTaxAnnualIncome ?? 0) / 12);
+          const monthlyExpenses = Math.round(result.livingExpensesMonthly || 0);
+          const monthlyCommitments = Math.round(result.existingCommitmentsMonthly || 0);
+          const computedSurplus = monthlyAfterTax - monthlyExpenses - monthlyCommitments;
+          const engineSurplus = Math.round(result.monthlySurplus || 0);
+          // Engine surplus may differ from raw computation when conservative
+          // mode applies floors / buffer multipliers — surface that delta.
+          const flooredDelta = engineSurplus - computedSurplus;
+          const monthlyGross = Math.round((result.grossAnnualIncome || 0) / 12);
+          const monthlyShaded = Math.round((result.shadedAnnualIncome || 0) / 12);
+          return (
+            <div className="rounded-lg border border-border bg-card p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-foreground uppercase tracking-wide">Net Monthly Surplus — Audit</p>
+                <Badge variant="outline" className="text-[10px] uppercase">After-Tax Basis</Badge>
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-snug">
+                The engine assesses serviceability on <strong className="text-foreground">after-tax shaded income</strong>,
+                not gross. This breakdown reconciles the surplus figure shown above.
+              </p>
+
+              <div className="space-y-1.5 text-sm pt-1">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Gross income (monthly)</span>
+                  <span className="tabular-nums">{formatCurrency(monthlyGross)}</span>
+                </div>
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Shaded income (monthly)</span>
+                  <span className="tabular-nums">{formatCurrency(monthlyShaded)}</span>
+                </div>
+                <Separator className="my-1.5" />
+                <div className="flex items-center justify-between font-medium">
+                  <span className="text-foreground">After-tax income (monthly)</span>
+                  <span className="tabular-nums text-success">{formatCurrency(monthlyAfterTax)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">− Living expenses</span>
+                  <span className="tabular-nums text-destructive">−{formatCurrency(monthlyExpenses)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">− Existing commitments</span>
+                  <span className="tabular-nums text-destructive">−{formatCurrency(monthlyCommitments)}</span>
+                </div>
+                <Separator className="my-1.5" />
+                <div className="flex items-center justify-between font-semibold">
+                  <span className="text-foreground">= Raw surplus</span>
+                  <span className={`tabular-nums ${computedSurplus >= 0 ? 'text-success' : 'text-destructive'}`}>
+                    {formatCurrency(computedSurplus)}
+                  </span>
+                </div>
+                {Math.abs(flooredDelta) > 1 && (
+                  <>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground italic">Conservative floor / buffer adjustment</span>
+                      <span className={`tabular-nums ${flooredDelta >= 0 ? 'text-success' : 'text-destructive'}`}>
+                        {flooredDelta >= 0 ? '+' : ''}{formatCurrency(flooredDelta)}
+                      </span>
+                    </div>
+                    <Separator className="my-1.5" />
+                    <div className="flex items-center justify-between font-bold">
+                      <span className="text-foreground">= Engine surplus (used for capacity)</span>
+                      <span className={`tabular-nums ${engineSurplus >= 0 ? 'text-success' : 'text-destructive'}`}>
+                        {formatCurrency(engineSurplus)}
+                      </span>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Tax Breakdown Section */}
         {taxBreakdown && (
           <Collapsible open={showTaxBreakdown} onOpenChange={setShowTaxBreakdown}>
