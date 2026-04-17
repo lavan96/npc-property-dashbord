@@ -97,6 +97,7 @@ import FinancePortalDashboard from "./pages/finance-portal/FinancePortalDashboar
 import FinancePortalClients from "./pages/finance-portal/FinancePortalClients";
 import FinancePortalClientProfile from "./pages/finance-portal/FinancePortalClientProfile";
 import FinancePortalMessages from "./pages/finance-portal/FinancePortalMessages";
+import FinancePortalEarnings from "./pages/finance-portal/FinancePortalEarnings";
 
 const queryClient = new QueryClient();
 
