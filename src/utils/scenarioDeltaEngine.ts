@@ -1212,6 +1212,45 @@ export function runScenario(
     ? computeAcquisitionCapacity(scenarioResult.borrowingCapacity, ctx, total)
     : null;
 
+  // Phase I10 — Honest DTI: split scenario debt moves into NEW debt
+  // (equity-release / pool-release) and REMOVED debt (sells / payoffs),
+  // then call computeDti with the post-delta gross income for clarity.
+  // The legacy `scenarioResult.dtiRatio` continues to drive any DTI cap
+  // logic in `calculateBorrowingCapacity`; this is the broker-facing
+  // honest number with explicit accounting.
+  const debtMoves = splitDebtMoves(deltas, ctx);
+  // Add the proposed acquisition loan to the numerator so the DTI
+  // reflects the FULL post-strategy commitment (including the new
+  // purchase). When no acquisition context exists we pass 0.
+  const proposedAcqLoan = acquisitionCapacity?.loanRequiredForPurchase ?? 0;
+  const refinedDti = computeDti(
+    {
+      existingDebtBalances: Math.max(0, ctx.baseInputs.totalDebtBalances || 0),
+      proposedLoanAmount: proposedAcqLoan,
+      releasedCapitalDebt: debtMoves.releasedCapitalDebt,
+      debtRemovedByScenario: debtMoves.debtRemovedByScenario,
+    },
+    {
+      incomeComponents: Array.isArray(ctx.incomeComponents) && ctx.incomeComponents.length > 0
+        ? ctx.incomeComponents.map(c => ({
+            ...c,
+            grossAnnual: Math.max(0, c.grossAnnual * (ctx.baseInputs.grossAnnualIncome > 0 ? newGross / ctx.baseInputs.grossAnnualIncome : 1)),
+          }))
+        : undefined,
+      fallbackGrossAnnual: newGross,
+    },
+    ctx.baseInputs.dtiCapLimit,
+  );
+  if (refinedDti.exceedsApraTrigger || refinedDti.exceedsLenderCap) {
+    total.acquisitionNotes.push(
+      `⚠ Honest DTI ${refinedDti.dtiRatio.toFixed(2)}× (${refinedDti.exceedsApraTrigger ? 'exceeds APRA 6× review trigger' : ''}${refinedDti.exceedsApraTrigger && refinedDti.exceedsLenderCap ? '; ' : ''}${refinedDti.exceedsLenderCap ? `exceeds lender cap ${ctx.baseInputs.dtiCapLimit}×` : ''}). Numerator $${Math.round(refinedDti.numerator).toLocaleString()} = existing $${Math.round(ctx.baseInputs.totalDebtBalances || 0).toLocaleString()} + proposed $${Math.round(proposedAcqLoan).toLocaleString()} + released $${Math.round(debtMoves.releasedCapitalDebt).toLocaleString()} − removed $${Math.round(debtMoves.debtRemovedByScenario).toLocaleString()}. Denominator $${Math.round(refinedDti.denominator).toLocaleString()}.`
+    );
+  } else if (debtMoves.debtRemovedByScenario > 0 || debtMoves.releasedCapitalDebt > 0) {
+    total.acquisitionNotes.push(
+      `Honest DTI ${refinedDti.dtiRatio.toFixed(2)}× — numerator $${Math.round(refinedDti.numerator).toLocaleString()} (released $${Math.round(debtMoves.releasedCapitalDebt).toLocaleString()}, removed $${Math.round(debtMoves.debtRemovedByScenario).toLocaleString()}).`
+    );
+  }
+
   return {
     scenarioName,
     deltas,
