@@ -33,7 +33,8 @@ export type ScenarioDeltaType =
   | 'liability_payoff'
   | 'loan_term_change'
   | 'dti_cap_change'
-  | 'equity_release';
+  | 'equity_release'
+  | 'property_rate_change';
 
 export type ScenarioDeltaUnit = 'percent' | 'absolute' | 'rate_points' | 'years' | 'ratio';
 
@@ -77,6 +78,8 @@ export interface ScenarioProperty {
   loanRepaymentAmount?: number;
   netMonthlyCashflow?: number;
   monthlyRentalIncome?: number;
+  /** Phase F1 — contracted annual rate per property (%) */
+  interestRate?: number;
 }
 
 export interface ScenarioLiability {
@@ -96,6 +99,8 @@ export interface AcquisitionContext {
   isForeignBuyer?: boolean;
   lmiMode?: 'none' | 'display_deduction' | 'debt_capitalised';
   cashOnHand?: number;
+  /** Phase F2 — target purchase price the strategy is solving for */
+  targetPurchasePrice?: number;
 }
 
 export interface ScenarioContext {
@@ -205,6 +210,7 @@ export function validateDeltas(deltas: ScenarioDelta[], context: ScenarioContext
       case 'property_sell':
       case 'property_refinance':
       case 'equity_release':
+      case 'property_rate_change':
         if (!propertyIds.has(d.id)) {
           issues.push({ deltaId: d.id, deltaType: d.type, severity: 'warning', message: `Property "${d.id}" not found in client portfolio — delta ignored` });
         }
