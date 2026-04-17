@@ -602,7 +602,7 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
 
       effect.releasedCapital = netRelease;
       effect.acquisitionNotes.push(
-        `Equity release on ${property.address?.slice(0, 30) || 'property'} @ ${ratePct.toFixed(2)}% (assessed @ ${assessmentRatePct.toFixed(2)}%): gross $${Math.round(grossRelease).toLocaleString()} − LMI $${Math.round(lmiOnRelease).toLocaleString()} = $${Math.round(netRelease).toLocaleString()} usable. New LVR ${newLvr.toFixed(1)}%. Servicing +$${Math.round(ioRepaymentNewSlice).toLocaleString()}/mo (IO @ buffered rate).`
+        `Equity release on ${property.address?.slice(0, 30) || 'property'} @ ${ratePct.toFixed(2)}% (assessed @ ${assessmentRatePct.toFixed(2)}%): gross $${Math.round(grossRelease).toLocaleString()} − LMI $${Math.round(lmiOnRelease).toLocaleString()} = $${Math.round(netRelease).toLocaleString()} usable. New LVR ${newLvr.toFixed(1)}% (cap: ${lvrResult.reason}). Servicing +$${Math.round(ioRepaymentNewSlice).toLocaleString()}/mo (IO @ buffered rate).`
       );
       effect.description = `Release equity from ${property.address?.slice(0, 30) || 'property'}`;
       break;
