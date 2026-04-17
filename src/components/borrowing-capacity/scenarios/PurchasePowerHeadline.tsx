@@ -1,0 +1,288 @@
+/**
+ * Purchase Power Headline + Per-Lever Attribution Waterfall
+ * ─────────────────────────────────────────────────────────
+ * Phase F3 + F4 (Strategy Builder UX).
+ *
+ * F3 — Headlines the metric finance actually uses to make a decision:
+ *      EFFECTIVE PURCHASE POWER = Loan Available + Cash Available
+ *                                 − (LMI + Stamp Duty + Other Costs)
+ *      i.e. exactly `acquisitionCapacity.maxPurchasePrice`.
+ *      When the user has set a target (e.g. $700k), the headline shows
+ *      Achievable / Short-by alongside the loan required.
+ *
+ * F4 — A per-lever waterfall: how much of the total capacity uplift came from
+ *      each lever in isolation, plus a residual "compounding interaction" line
+ *      so the math reconciles back to the scenario delta.
+ */
+
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Progress } from '@/components/ui/progress';
+import { TrendingUp, TrendingDown, Target, Banknote, Layers, ArrowRight, CheckCircle2, AlertTriangle } from 'lucide-react';
+import type { AcquisitionCapacity } from '@/utils/borrowingCapacityTypes';
+
+// ── Types ────────────────────────────────────────────────────────────────
+
+export interface LeverAttribution {
+  /** Stable id (delta id, lever key, etc.) */
+  id: string;
+  /** Display label (short, sentence case) */
+  label: string;
+  /** Capacity delta this lever contributes when applied IN ISOLATION (vs base) */
+  capacityImpact: number;
+  /** Optional cash-flow note: "+$420/mo" or "−$890/mo" — enriches the row */
+  cashflowNote?: string;
+}
+
+interface PurchasePowerHeadlineProps {
+  /** Base borrowing capacity (no scenario applied). */
+  baseCapacity: number;
+  /** Scenario borrowing capacity (with all levers applied compounded). */
+  scenarioCapacity: number;
+  /** Acquisition snapshot from the engine — drives the headline. Optional: when
+   *  the user hasn't enabled Acquisition mode the headline collapses to a
+   *  capacity-only view. */
+  acquisitionCapacity: AcquisitionCapacity | null;
+  /** Per-lever attribution for the waterfall (F4). Pass [] when no levers
+   *  are toggled — the waterfall section will hide itself. */
+  leverAttribution: LeverAttribution[];
+  /** Currency formatter from the parent (so "AUD" / locale stays consistent). */
+  formatCurrency: (n: number) => string;
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────
+
+function formatSignedCurrency(value: number, fmt: (n: number) => string): string {
+  if (value === 0) return fmt(0);
+  return value > 0 ? `+${fmt(value)}` : `−${fmt(Math.abs(value))}`;
+}
+
+// ── Component ────────────────────────────────────────────────────────────
+
+export function PurchasePowerHeadline({
+  baseCapacity,
+  scenarioCapacity,
+  acquisitionCapacity,
+  leverAttribution,
+  formatCurrency,
+}: PurchasePowerHeadlineProps) {
+  const capacityChange = scenarioCapacity - baseCapacity;
+  const acq = acquisitionCapacity;
+
+  // F4 — the sum of isolated impacts will rarely equal the compounded total
+  // because levers interact (e.g. cutting rates lifts capacity, then equity
+  // release adds servicing on top of that lifted ceiling). Surface the
+  // residual transparently so finance can see the math reconciles.
+  const sumIsolated = leverAttribution.reduce((s, l) => s + l.capacityImpact, 0);
+  const interactionResidual = capacityChange - sumIsolated;
+  const showInteraction = Math.abs(interactionResidual) > 1000 && leverAttribution.length > 0;
+
+  const sortedLevers = [...leverAttribution].sort(
+    (a, b) => Math.abs(b.capacityImpact) - Math.abs(a.capacityImpact)
+  );
+
+  // Max absolute value across all bars (incl. residual) → drives the relative
+  // bar widths so the most impactful lever fills the row.
+  const maxAbs = Math.max(
+    1,
+    ...sortedLevers.map(l => Math.abs(l.capacityImpact)),
+    Math.abs(interactionResidual),
+  );
+
+  // ── F3: target-vs-actual derived state ─────────────────────────────────
+  const target = acq?.targetPurchasePrice;
+  const meetsTarget = acq?.meetsTarget;
+  const shortfall = acq?.shortfallToTarget ?? 0;
+  const headlinePower = acq ? acq.maxPurchasePrice : scenarioCapacity;
+
+  return (
+    <div className="space-y-3">
+      {/* ═══ F3 — EFFECTIVE PURCHASE POWER HEADLINE ═══ */}
+      <Card className="border-2 border-primary/40 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent shadow-md">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between gap-3">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+              <Target className="h-3.5 w-3.5 text-primary" />
+              {acq ? 'Effective Purchase Power' : 'Scenario Borrowing Capacity'}
+            </CardTitle>
+            {target && target > 0 && (
+              meetsTarget ? (
+                <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 text-[10px] font-semibold">
+                  <CheckCircle2 className="h-3 w-3 mr-1" />
+                  Target {formatCurrency(target)} achievable
+                </Badge>
+              ) : (
+                <Badge className="bg-destructive/15 text-destructive border-destructive/30 text-[10px] font-semibold">
+                  <AlertTriangle className="h-3 w-3 mr-1" />
+                  Short by {formatCurrency(shortfall)}
+                </Badge>
+              )
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {/* Big number */}
+          <div className="flex items-end justify-between gap-3 flex-wrap">
+            <div>
+              <p className="text-3xl md:text-4xl font-bold text-primary leading-none tracking-tight">
+                {formatCurrency(headlinePower)}
+              </p>
+              {acq ? (
+                <p className="text-xs text-muted-foreground mt-1.5">
+                  Loan {formatCurrency(acq.loanAvailableForPurchase)} + Cash {formatCurrency(acq.cashAvailable)} − Costs {formatCurrency(acq.lmi + acq.stampDuty + acq.otherAcquisitionCosts)}
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground mt-1.5">
+                  Serviceable loan ceiling. Enable acquisition mode below to model purchase power.
+                </p>
+              )}
+            </div>
+            <div className="text-right">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">vs Base Capacity</p>
+              <p className={`text-lg font-bold flex items-center justify-end gap-1 ${
+                capacityChange > 0 ? 'text-emerald-600 dark:text-emerald-400' :
+                capacityChange < 0 ? 'text-destructive' :
+                'text-muted-foreground'
+              }`}>
+                {capacityChange > 0 ? <TrendingUp className="h-4 w-4" /> :
+                 capacityChange < 0 ? <TrendingDown className="h-4 w-4" /> : null}
+                {formatSignedCurrency(capacityChange, formatCurrency)}
+              </p>
+              {baseCapacity > 0 && capacityChange !== 0 && (
+                <p className="text-[10px] text-muted-foreground">
+                  ({((capacityChange / baseCapacity) * 100).toFixed(1)}%)
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Loan-required / target progress bar */}
+          {acq && target && target > 0 && (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-muted-foreground">Progress to target</span>
+                <span className="font-medium">
+                  {formatCurrency(headlinePower)} / {formatCurrency(target)}
+                </span>
+              </div>
+              <Progress
+                value={Math.min(100, target > 0 ? (headlinePower / target) * 100 : 0)}
+                className={`h-1.5 ${meetsTarget ? '[&>div]:bg-emerald-500' : '[&>div]:bg-amber-500'}`}
+              />
+              {acq.loanRequiredForPurchase !== undefined && (
+                <div className="flex items-center justify-between text-[11px] pt-1">
+                  <span className="text-muted-foreground flex items-center gap-1">
+                    <Banknote className="h-3 w-3" /> Loan required
+                  </span>
+                  <span className="font-medium">
+                    {formatCurrency(acq.loanRequiredForPurchase)}
+                    <span className="text-muted-foreground ml-1">
+                      / {formatCurrency(acq.loanAvailableForPurchase)} available
+                    </span>
+                  </span>
+                </div>
+              )}
+              {acq.netCashAfterSettlement !== undefined && (
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-muted-foreground">Net cash post-settlement</span>
+                  <span className={`font-medium ${acq.netCashAfterSettlement < 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                    {formatSignedCurrency(acq.netCashAfterSettlement, formatCurrency)}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ═══ F4 — PER-LEVER ATTRIBUTION WATERFALL ═══ */}
+      {leverAttribution.length > 0 && (
+        <Card className="border bg-card">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+              <Layers className="h-3.5 w-3.5 text-primary" />
+              Lever Attribution
+              <span className="ml-auto text-[10px] font-normal text-muted-foreground normal-case tracking-normal">
+                Capacity impact in isolation
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {sortedLevers.map(lever => {
+              const positive = lever.capacityImpact > 0;
+              const widthPct = (Math.abs(lever.capacityImpact) / maxAbs) * 100;
+              return (
+                <div key={lever.id} className="space-y-1">
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <span className="text-foreground font-medium truncate flex-1">
+                      {lever.label}
+                    </span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {lever.cashflowNote && (
+                        <span className="text-[10px] text-muted-foreground">{lever.cashflowNote}</span>
+                      )}
+                      <span className={`font-semibold tabular-nums ${
+                        positive ? 'text-emerald-600 dark:text-emerald-400' :
+                        lever.capacityImpact < 0 ? 'text-destructive' :
+                        'text-muted-foreground'
+                      }`}>
+                        {formatSignedCurrency(lever.capacityImpact, formatCurrency)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="h-1.5 bg-muted/40 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${
+                        positive ? 'bg-emerald-500' :
+                        lever.capacityImpact < 0 ? 'bg-destructive' :
+                        'bg-muted-foreground/40'
+                      }`}
+                      style={{ width: `${Math.max(2, widthPct)}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Compounding interaction residual */}
+            {showInteraction && (
+              <>
+                <Separator className="my-2" />
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <span className="text-muted-foreground italic flex items-center gap-1">
+                      <ArrowRight className="h-3 w-3" />
+                      Compounding interaction
+                    </span>
+                    <span className={`font-semibold tabular-nums ${
+                      interactionResidual > 0 ? 'text-emerald-600 dark:text-emerald-400' :
+                      'text-destructive'
+                    }`}>
+                      {formatSignedCurrency(interactionResidual, formatCurrency)}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground leading-tight">
+                    Levers interact: applying them together produces a different total than the sum of their individual impacts.
+                  </p>
+                </div>
+              </>
+            )}
+
+            <Separator className="my-2" />
+            <div className="flex items-center justify-between text-sm font-bold">
+              <span>Total scenario impact</span>
+              <span className={`tabular-nums ${
+                capacityChange > 0 ? 'text-emerald-600 dark:text-emerald-400' :
+                capacityChange < 0 ? 'text-destructive' :
+                'text-muted-foreground'
+              }`}>
+                {formatSignedCurrency(capacityChange, formatCurrency)}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}

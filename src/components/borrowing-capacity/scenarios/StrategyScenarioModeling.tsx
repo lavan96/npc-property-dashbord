@@ -58,6 +58,7 @@ import {
 } from './AdditionalStrategyLevers';
 import { BindingConstraintBadge } from '../BindingConstraintBadge';
 import { computeBindingConstraint } from '@/utils/bindingConstraint';
+import { PurchasePowerHeadline, type LeverAttribution } from './PurchasePowerHeadline';
 
 // ── Types ──────────────────────────────────────────────
 
@@ -269,9 +270,12 @@ export function StrategyScenarioModeling({
   // selections into ScenarioDelta[] and delegates to the same engine that the
   // edge function uses. This eliminates client/server drift entirely.
 
-  const { scenarioResult, scenarioInputs, impactBreakdown, acquisitionCapacity, validationIssues } = useMemo(() => {
+  const { scenarioResult, scenarioInputs, impactBreakdown, acquisitionCapacity, validationIssues, leverAttribution } = useMemo(() => {
     const deltas: ScenarioDelta[] = [];
     const impacts: { label: string; monthlySaving: number; type: 'saving' | 'cost' | 'info' }[] = [];
+    /** F4 — short cash-flow side-notes per delta id, used to enrich the
+     *  per-lever waterfall row (e.g. "+$420/mo servicing saving"). */
+    const leverCashflowNotes = new Map<string, string>();
 
     // 1. Debt Consolidation → liability_payoff deltas
     let consolidationSaving = 0;
@@ -286,6 +290,7 @@ export function StrategyScenarioModeling({
           value: liability.balance,
           unit: 'absolute',
         });
+        leverCashflowNotes.set(`liability_payoff-${liability.id}`, `+${formatCurrency(liability.monthlyServicing)}/mo`);
       }
     });
     if (consolidationSaving > 0) {
@@ -309,6 +314,7 @@ export function StrategyScenarioModeling({
           value: 0,
           unit: 'absolute',
         });
+        if (saving > 0) leverCashflowNotes.set(`property_refinance-${prop.id}`, `+${formatCurrency(saving)}/mo`);
       }
     });
     if (refinanceSaving > 0) {
@@ -418,7 +424,14 @@ export function StrategyScenarioModeling({
         const ratePct = prop.interest_rate ?? baseInputs.interestRate;
         const newLoan = prop.current_value * targetLVR;
         const grossRelease = Math.max(0, newLoan - prop.loan_remaining);
-        equityReleaseMonthlyCost += grossRelease * (ratePct / 100 / 12);
+        const monthlyServicing = grossRelease * (ratePct / 100 / 12);
+        equityReleaseMonthlyCost += monthlyServicing;
+        if (grossRelease > 0) {
+          leverCashflowNotes.set(
+            `equity_release-${prop.id}`,
+            `+${formatCurrency(grossRelease)} cash · −${formatCurrency(monthlyServicing)}/mo IO`,
+          );
+        }
       });
       if (equityReleaseMonthlyCost > 0) {
         impacts.push({
@@ -509,12 +522,28 @@ export function StrategyScenarioModeling({
     const acquisitionCapacity = (result.acquisitionCapacity ?? null) as AcquisitionCapacity | null;
     const validationIssues = result.validationIssues ?? [];
 
+    // ── F4 — Per-lever attribution ──────────────────────────────────────
+    // Replay each delta IN ISOLATION against the same base context to
+    // measure the capacity uplift attributable to that lever alone.
+    // The sum of these isolated impacts won't equal the compounded total
+    // (levers interact); the headline component surfaces the residual.
+    const leverAttribution: LeverAttribution[] = deltas.map(d => {
+      const isolated = runScenarioWithInputs(`Isolated: ${d.label}`, [d], ctx);
+      return {
+        id: `${d.type}-${d.id}`,
+        label: d.label,
+        capacityImpact: isolated.result.borrowingCapacity - baseResult.borrowingCapacity,
+        cashflowNote: leverCashflowNotes.get(`${d.type}-${d.id}`),
+      };
+    });
+
     return {
       scenarioResult: result as unknown as BorrowingCapacityResult,
       scenarioInputs: inputs,
       impactBreakdown: impacts,
       acquisitionCapacity,
       validationIssues,
+      leverAttribution,
     };
   }, [strategy, acquisition, baseInputs, baseResult, consolidatableDebts, investmentProperties, equityReleaseProperties, properties, liabilities]);
 
@@ -1407,9 +1436,24 @@ export function StrategyScenarioModeling({
                       <Switch checked={acquisition.isForeignBuyer} onCheckedChange={(v) => setAcquisition(p => ({ ...p, isForeignBuyer: v }))} />
                     </div>
                   </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Cash on Hand (deposit)</Label>
-                    <Input type="number" value={acquisition.cashOnHand || ''} onChange={(e) => setAcquisition(p => ({ ...p, cashOnHand: Number(e.target.value) || 0 }))} placeholder="0" className="h-9 text-sm" />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Cash on Hand (deposit)</Label>
+                      <Input type="number" value={acquisition.cashOnHand || ''} onChange={(e) => setAcquisition(p => ({ ...p, cashOnHand: Number(e.target.value) || 0 }))} placeholder="0" className="h-9 text-sm" />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                        Target Purchase Price
+                        <span className="text-[10px] text-muted-foreground/70">(optional)</span>
+                      </Label>
+                      <Input
+                        type="number"
+                        value={acquisition.targetPurchasePrice || ''}
+                        onChange={(e) => setAcquisition(p => ({ ...p, targetPurchasePrice: Number(e.target.value) || 0 }))}
+                        placeholder="e.g. 700000"
+                        className="h-9 text-sm"
+                      />
+                    </div>
                   </div>
 
                   {acquisitionCapacity && (
@@ -1469,6 +1513,15 @@ export function StrategyScenarioModeling({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* F3 + F4 — Effective Purchase Power headline + per-lever waterfall */}
+          <PurchasePowerHeadline
+            baseCapacity={baseResult.borrowingCapacity}
+            scenarioCapacity={scenarioResult.borrowingCapacity}
+            acquisitionCapacity={acquisition.enabled ? acquisitionCapacity : null}
+            leverAttribution={leverAttribution}
+            formatCurrency={formatCurrency}
+          />
+
           {impactBreakdown.length > 0 && (
             <div className="space-y-2">
               {impactBreakdown.map((impact, i) => (
