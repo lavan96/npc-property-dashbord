@@ -1451,6 +1451,8 @@ export function runScenario(
     monthlyAfterTaxIncome: scenarioResult.monthlyAfterTaxIncome,
     capacityChange,
     acquisitionCapacity,
+    capitalLedger,
+    validationIssues: ledgerIssues.length > 0 ? ledgerIssues : undefined,
   };
 }
 
