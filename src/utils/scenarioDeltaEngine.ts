@@ -31,8 +31,14 @@ import {
   type ScenarioDelta,
   type ScenarioCapacityResult,
   type AcquisitionCapacity,
+  type CapitalLedger,
+  type CapitalSourceType,
   buildScenarioChange,
 } from './borrowingCapacityTypes';
+import {
+  buildCapitalLedger,
+  type LedgerContext,
+} from './capitalAllocationLedger';
 import { estimateLMI, type LmiMode } from './lmiCalculations';
 import {
   calculateStampDuty,
