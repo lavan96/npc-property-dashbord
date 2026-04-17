@@ -95,6 +95,10 @@ const TYPE_TO_VERB: Record<ScenarioDelta['type'], string> = {
   loan_term_change: 'Restructure loan term',
   dti_cap_change: 'Override DTI cap',
   equity_release: 'Release equity',
+  /** Phase G1 — valuation override is a methodology assumption, not a transaction */
+  property_value_change: 'Revalue property',
+  /** Phase G2 — cross-collateralised pool release */
+  portfolio_lvr_release: 'Release pooled equity',
 };
 
 function severityForDelta(d: ScenarioDelta, capacityImpact: number): RationaleSeverity {
