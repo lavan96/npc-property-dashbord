@@ -135,11 +135,18 @@ export function useBankLendingRates(options?: UseBankLendingRatesOptions) {
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  // Refresh all lender caches
+  // Refresh all lender caches (long-running: parallel CDR fetches server-side,
+  // bump client timeout well past edge-function default to avoid AbortError).
   const refreshAllMutation = useMutation({
     mutationFn: async () => {
-      const result = await invokeEdgeFunctionSecure('refresh-all');
-      return result;
+      const { data, error } = await invokeSecureFunction(
+        'cdr-lending-rates-service',
+        { action: 'refresh-all' },
+        { timeoutMs: 180_000 } // 3 minutes
+      );
+      if (error) throw new Error(error.message);
+      if (!data?.success) throw new Error(data?.error || 'Refresh failed');
+      return data.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bank-rates-summary'] });
