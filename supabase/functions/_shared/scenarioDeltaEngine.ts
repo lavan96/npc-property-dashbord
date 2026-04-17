@@ -446,10 +446,17 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
         : (property.interestRate ?? context.baseInputs.interestRate ?? 6.5);
       const monthlyRate = (ratePct / 100) / 12;
       // G3 — externalised lender cap
-      const lenderCap = (delta.meta?.lenderMaxLVR as number | undefined);
-      const safeLenderCap = (Number.isFinite(lenderCap) && (lenderCap as number) > 0 && (lenderCap as number) <= 0.99)
-        ? (lenderCap as number)
-        : 0.95;
+      // Phase I7 — per-security cap (lender × intent × kind, FHB/foreign adj.)
+      const explicitCap = (delta.meta?.lenderMaxLVR as number | undefined);
+      const lvrResult = resolveLvrCap({
+        lenderId: context.baseInputs.currentLenderProfileId,
+        intent: inferPropertyIntent(property.propertyType, 'investment'),
+        kind: inferPropertyKind(property.propertyType),
+        isFirstHomeBuyer: !!context.acquisition?.isFirstHomeBuyer,
+        isForeignBuyer: !!context.acquisition?.isForeignBuyer,
+        explicitCap,
+      });
+      const safeLenderCap = lvrResult.cap;
       let newLoan = 0;
       if (delta.unit === 'absolute' && delta.value > 0) {
         newLoan = property.loanRemaining + delta.value;
@@ -482,7 +489,7 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
       effect.commitmentAdjustment = Math.max(0, ioRepayment);
       effect.debtBalanceAdjustment = grossRelease;
       effect.releasedCapital = netRelease;
-      effect.acquisitionNotes.push(`Equity release on ${property.address?.slice(0, 30) || 'property'} @ ${ratePct.toFixed(2)}% (assessed @ ${assessRatePct.toFixed(2)}%): $${Math.round(netRelease).toLocaleString()} usable (LVR ${newLvr.toFixed(1)}%), +$${Math.round(ioRepayment).toLocaleString()}/mo IO @ buffered rate`);
+      effect.acquisitionNotes.push(`Equity release on ${property.address?.slice(0, 30) || 'property'} @ ${ratePct.toFixed(2)}% (assessed @ ${assessRatePct.toFixed(2)}%): $${Math.round(netRelease).toLocaleString()} usable (LVR ${newLvr.toFixed(1)}%, cap: ${lvrResult.reason}), +$${Math.round(ioRepayment).toLocaleString()}/mo IO @ buffered rate`);
       effect.description = `Release equity from ${property.address?.slice(0, 30) || 'property'}`;
       break;
     }
