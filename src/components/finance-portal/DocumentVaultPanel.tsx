@@ -143,6 +143,17 @@ export function DocumentVaultPanel({ clientId }: DocumentVaultPanelProps) {
         throw new Error(`Upload failed (${putRes.status})`);
       }
 
+      // 3. Confirm upload — fans out notifications to other assignees
+      try {
+        await invokeFinanceFunction('finance-portal-documents', {
+          operation: 'confirm_upload',
+          client_id: clientId,
+          document_id: data.document.id,
+        });
+      } catch {
+        // Non-fatal: upload itself succeeded; notification can be retried later.
+      }
+
       toast.success('Document uploaded');
       setUploadOpen(false);
       resetUploadForm();

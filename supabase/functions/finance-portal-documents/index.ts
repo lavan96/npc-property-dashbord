@@ -5,6 +5,7 @@
  */
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
+import { notifyFinancePortalAssignees } from "../_shared/finance-portal-notify.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -165,6 +166,41 @@ serve(async (req) => {
           path: storagePath,
         },
       });
+    }
+
+    // ── confirm_upload (called after successful PUT to fan-out notifications) ──
+    if (operation === 'confirm_upload') {
+      if (!docPerm.edit) return jsonResponse({ error: 'No edit permission for documents' }, 403);
+      const { document_id } = body;
+      if (!document_id) return jsonResponse({ error: 'document_id required' }, 400);
+
+      const { data: doc } = await supabase
+        .from('finance_portal_documents')
+        .select('*')
+        .eq('id', document_id)
+        .eq('client_id', client_id)
+        .maybeSingle();
+      if (!doc) return jsonResponse({ error: 'Document not found' }, 404);
+
+      const { data: clientRow } = await supabase
+        .from('clients')
+        .select('first_name, surname')
+        .eq('id', client_id)
+        .maybeSingle();
+      const clientName = clientRow ? `${clientRow.first_name} ${clientRow.surname}`.trim() : 'a client';
+
+      const notifyResult = await notifyFinancePortalAssignees({
+        client_id,
+        notification_type: 'document_uploaded',
+        title: `New document for ${clientName}`,
+        body: `${doc.original_filename} (${doc.category}) was uploaded.`,
+        link_path: `/finance/clients/${client_id}?tab=documents`,
+        metadata: { document_id: doc.id, category: doc.category },
+        exclude_portal_user_id: portalUser.id,
+      });
+
+      await audit('confirm_upload', doc.id, { filename: doc.original_filename, notified: notifyResult.inserted });
+      return jsonResponse({ success: true, document: doc, notified: notifyResult.inserted });
     }
 
     // ── get_download_url ──

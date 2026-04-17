@@ -13,6 +13,7 @@ import {
   Sheet, SheetContent, SheetTrigger,
 } from '@/components/ui/sheet';
 import { FinancePortalOnboardingGate } from './FinancePortalOnboardingGate';
+import { FinancePortalNotificationBell } from './FinancePortalNotificationBell';
 
 const NAV_ITEMS = [
   { to: '/finance', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -96,6 +97,7 @@ export function FinancePortalLayout({ children }: { children?: ReactNode }) {
           </Link>
 
           <div className="ml-auto flex items-center gap-2">
+            <FinancePortalNotificationBell />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="gap-2 h-9">

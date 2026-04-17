@@ -4834,6 +4834,63 @@ export type Database = {
           },
         ]
       }
+      finance_portal_notifications: {
+        Row: {
+          body: string | null
+          client_id: string | null
+          created_at: string
+          id: string
+          is_read: boolean
+          link_path: string | null
+          metadata: Json | null
+          notification_type: string
+          portal_user_id: string
+          read_at: string | null
+          title: string
+        }
+        Insert: {
+          body?: string | null
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          link_path?: string | null
+          metadata?: Json | null
+          notification_type: string
+          portal_user_id: string
+          read_at?: string | null
+          title: string
+        }
+        Update: {
+          body?: string | null
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          link_path?: string | null
+          metadata?: Json | null
+          notification_type?: string
+          portal_user_id?: string
+          read_at?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_portal_notifications_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_portal_notifications_portal_user_id_fkey"
+            columns: ["portal_user_id"]
+            isOneToOne: false
+            referencedRelation: "finance_portal_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       finance_portal_users: {
         Row: {
           created_at: string
