@@ -529,10 +529,8 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
       }
       const blendedTarget = delta.unit === 'percent' ? delta.value / 100 : delta.value;
       const safeBlended = Math.max(0, Math.min(0.97, blendedTarget || 0.8));
-      const lenderCap = (delta.meta?.lenderMaxLVR as number | undefined);
-      const safeLenderCap = (Number.isFinite(lenderCap) && (lenderCap as number) > 0 && (lenderCap as number) <= 0.99)
-        ? (lenderCap as number)
-        : 0.95;
+      // Phase I7 — per-security caps now resolved per-property (lender × intent × kind)
+      const explicitOverride = (delta.meta?.lenderMaxLVR as number | undefined);
       const allocationStrategy = (delta.meta?.allocationStrategy as string | undefined) === 'pro_rata'
         ? 'pro_rata'
         : 'highest_equity_first';
@@ -550,11 +548,22 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
         break;
       }
 
-      const headroom = members.map(p => ({
-        property: p,
-        headroom: Math.max(0, p.currentValue * safeLenderCap - p.loanRemaining),
-        equity: Math.max(0, p.currentValue - p.loanRemaining),
-      }));
+      const headroom = members.map(p => {
+        const cap = resolveLvrCap({
+          lenderId: context.baseInputs.currentLenderProfileId,
+          intent: inferPropertyIntent(p.propertyType, 'investment'),
+          kind: inferPropertyKind(p.propertyType),
+          isFirstHomeBuyer: !!context.acquisition?.isFirstHomeBuyer,
+          isForeignBuyer: !!context.acquisition?.isForeignBuyer,
+          explicitCap: explicitOverride,
+        });
+        return {
+          property: p,
+          headroom: Math.max(0, p.currentValue * cap.cap - p.loanRemaining),
+          equity: Math.max(0, p.currentValue - p.loanRemaining),
+          capPct: cap.cap,
+        };
+      });
       const totalHeadroom = headroom.reduce((s, h) => s + h.headroom, 0);
       const cappedPool = Math.min(grossPool, totalHeadroom);
 
@@ -610,8 +619,9 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
       );
       for (const n of securityNotes) effect.acquisitionNotes.push(`  · ${n}`);
       if (cappedPool < grossPool) {
+        const minCap = headroom.length ? Math.min(...headroom.map(h => h.capPct)) : 0.95;
         effect.acquisitionNotes.push(
-          `  · ⚠ Pool capped at $${Math.round(cappedPool).toLocaleString()} (target wanted $${Math.round(grossPool).toLocaleString()}, lender cap ${(safeLenderCap * 100).toFixed(0)}%/security).`
+          `  · ⚠ Pool capped at $${Math.round(cappedPool).toLocaleString()} (target wanted $${Math.round(grossPool).toLocaleString()}, lender per-security caps min ${(minCap * 100).toFixed(0)}% — see I7 cap matrix).`
         );
       }
       effect.description = `Cross-collat release pool @ ${(safeBlended * 100).toFixed(0)}% blended LVR`;
