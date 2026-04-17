@@ -51,6 +51,14 @@ import {
   computeNegativeGearingAddBack,
   marginalTaxRateFor,
 } from './negativeGearingAddBack';
+import {
+  resolveLvrCap,
+  inferPropertyKind,
+  inferPropertyIntent,
+} from './lenderLvrCaps';
+import {
+  computeDtiDenominator,
+} from './dtiDenominator';
 
 // ============================================
 // CONTEXT TYPES
@@ -525,11 +533,19 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
         : (property.interestRate ?? context.baseInputs.interestRate ?? 6.5);
       const monthlyRate = (ratePct / 100) / 12;
 
-      // Phase G3 — lender max LVR is now externalised so finance can test 90/95/97.5
-      const lenderCap = (delta.meta?.lenderMaxLVR as number | undefined);
-      const safeLenderCap = (Number.isFinite(lenderCap) && (lenderCap as number) > 0 && (lenderCap as number) <= 0.99)
-        ? (lenderCap as number)
-        : 0.95;
+      // Phase I7 — per-security LVR cap: lender × intent × kind, with FHB/foreign adjustments.
+      const intentForCap = inferPropertyIntent(property.propertyType, 'investment');
+      const kindForCap = inferPropertyKind(property.propertyType);
+      const lenderCapInput = (delta.meta?.lenderMaxLVR as number | undefined);
+      const lvrResult = resolveLvrCap({
+        lenderId: context.currentLenderProfileId,
+        intent: intentForCap,
+        kind: kindForCap,
+        isFirstHomeBuyer: !!context.acquisition?.isFirstHomeBuyer,
+        isForeignBuyer: !!context.acquisition?.isForeignBuyer,
+        explicitCap: lenderCapInput,
+      });
+      const safeLenderCap = lvrResult.cap;
 
       // Resolve the new max loan size on this property
       let newLoan = 0;
@@ -542,7 +558,7 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
         const safeTarget = Math.max(0, Math.min(safeLenderCap, targetLVR || 0.8));
         newLoan = property.currentValue * safeTarget;
       }
-      // Phase G3 — never exceed lender cap regardless of input mode
+      // Phase I7 — never exceed lender × intent × kind cap regardless of input
       newLoan = Math.min(newLoan, property.currentValue * safeLenderCap);
       const grossRelease = Math.max(0, newLoan - property.loanRemaining);
       if (grossRelease <= 0) {
@@ -586,7 +602,7 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
 
       effect.releasedCapital = netRelease;
       effect.acquisitionNotes.push(
-        `Equity release on ${property.address?.slice(0, 30) || 'property'} @ ${ratePct.toFixed(2)}% (assessed @ ${assessmentRatePct.toFixed(2)}%): gross $${Math.round(grossRelease).toLocaleString()} − LMI $${Math.round(lmiOnRelease).toLocaleString()} = $${Math.round(netRelease).toLocaleString()} usable. New LVR ${newLvr.toFixed(1)}%. Servicing +$${Math.round(ioRepaymentNewSlice).toLocaleString()}/mo (IO @ buffered rate).`
+        `Equity release on ${property.address?.slice(0, 30) || 'property'} @ ${ratePct.toFixed(2)}% (assessed @ ${assessmentRatePct.toFixed(2)}%): gross $${Math.round(grossRelease).toLocaleString()} − LMI $${Math.round(lmiOnRelease).toLocaleString()} = $${Math.round(netRelease).toLocaleString()} usable. New LVR ${newLvr.toFixed(1)}% (cap: ${lvrResult.reason}). Servicing +$${Math.round(ioRepaymentNewSlice).toLocaleString()}/mo (IO @ buffered rate).`
       );
       effect.description = `Release equity from ${property.address?.slice(0, 30) || 'property'}`;
       break;
@@ -643,10 +659,9 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
       const blendedTarget = delta.unit === 'percent' ? delta.value / 100 : delta.value;
       const safeBlended = Math.max(0, Math.min(0.97, blendedTarget || 0.8));
 
-      const lenderCap = (delta.meta?.lenderMaxLVR as number | undefined);
-      const safeLenderCap = (Number.isFinite(lenderCap) && (lenderCap as number) > 0 && (lenderCap as number) <= 0.99)
-        ? (lenderCap as number)
-        : 0.95;
+      // Phase I7 — per-security caps now resolved per-property using lender × intent × kind.
+      // Single override (delta.meta.lenderMaxLVR) is honoured as a tightening clamp only.
+      const explicitOverride = (delta.meta?.lenderMaxLVR as number | undefined);
 
       const allocationStrategy = (delta.meta?.allocationStrategy as string | undefined) === 'pro_rata'
         ? 'pro_rata'
@@ -665,12 +680,24 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
         break;
       }
 
-      // Per-property headroom = max additional debt before hitting lender cap
-      const headroom = members.map(p => ({
-        property: p,
-        headroom: Math.max(0, p.currentValue * safeLenderCap - p.loanRemaining),
-        equity: Math.max(0, p.currentValue - p.loanRemaining),
-      }));
+      // Per-property headroom uses I7 cap matrix (each security may differ)
+      const headroom = members.map(p => {
+        const cap = resolveLvrCap({
+          lenderId: context.currentLenderProfileId,
+          intent: inferPropertyIntent(p.propertyType, 'investment'),
+          kind: inferPropertyKind(p.propertyType),
+          isFirstHomeBuyer: !!context.acquisition?.isFirstHomeBuyer,
+          isForeignBuyer: !!context.acquisition?.isForeignBuyer,
+          explicitCap: explicitOverride,
+        });
+        return {
+          property: p,
+          headroom: Math.max(0, p.currentValue * cap.cap - p.loanRemaining),
+          equity: Math.max(0, p.currentValue - p.loanRemaining),
+          capPct: cap.cap,
+          capReason: cap.reason,
+        };
+      });
       const totalHeadroom = headroom.reduce((s, h) => s + h.headroom, 0);
       // Cap pool draw at total headroom (lender will not exceed any single security's cap)
       const cappedPool = Math.min(grossPool, totalHeadroom);
@@ -725,8 +752,10 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
         const ratePct = a.property.interestRate ?? blendedRatePct;
         const assessRatePct = ratePct + (context.baseInputs.bufferRate ?? 3);
         totalIo += a.allocation * (assessRatePct / 100 / 12);
+        const matchedHeadroom = headroom.find(h => h.property.id === a.property.id);
+        const capPctNote = matchedHeadroom ? ` cap ${(matchedHeadroom.capPct * 100).toFixed(0)}%` : '';
         securityNotes.push(
-          `${a.property.address?.slice(0, 25) || 'property'}: +$${Math.round(a.allocation).toLocaleString()} (LVR → ${newLvr.toFixed(1)}%${lmiSlice > 0 ? `, LMI $${Math.round(lmiSlice).toLocaleString()}` : ''})`
+          `${a.property.address?.slice(0, 25) || 'property'}: +$${Math.round(a.allocation).toLocaleString()} (LVR → ${newLvr.toFixed(1)}%${lmiSlice > 0 ? `, LMI $${Math.round(lmiSlice).toLocaleString()}` : ''}${capPctNote})`
         );
       }
 
@@ -743,8 +772,9 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
       );
       for (const n of securityNotes) effect.acquisitionNotes.push(`  · ${n}`);
       if (cappedPool < grossPool) {
+        const minCap = headroom.length ? Math.min(...headroom.map(h => h.capPct)) : 0.95;
         effect.acquisitionNotes.push(
-          `  · ⚠ Pool capped at $${Math.round(cappedPool).toLocaleString()} (target wanted $${Math.round(grossPool).toLocaleString()}, but lender cap of ${(safeLenderCap * 100).toFixed(0)}% per security limits draw).`
+          `  · ⚠ Pool capped at $${Math.round(cappedPool).toLocaleString()} (target wanted $${Math.round(grossPool).toLocaleString()}, lender per-security caps min ${(minCap * 100).toFixed(0)}% — see I7 cap matrix).`
         );
       }
       effect.description = `Cross-collat release pool @ ${(safeBlended * 100).toFixed(0)}% blended LVR`;
@@ -1031,6 +1061,24 @@ export function runScenario(
     total.acquisitionNotes.push(...ngResult.notes);
   }
 
+  // Phase I8 — DTI denominator refinement: when typed components are present,
+  // compute an APRA-aligned DTI-adjusted income (rental at 75%, FTB at 50%, etc.).
+  // We surface this on `acquisitionNotes` for transparency. The DTI cap path
+  // inside `calculateBorrowingCapacity` continues to use grossAnnualIncome,
+  // but for high-DTI scenarios the broker now sees the conservative number
+  // they would be reviewed against under APRA APS 220.
+  if (Array.isArray(ctx.incomeComponents) && ctx.incomeComponents.length > 0) {
+    const grossScale = ctx.baseInputs.grossAnnualIncome > 0
+      ? newGross / ctx.baseInputs.grossAnnualIncome : 1;
+    const scaledForDti = ctx.incomeComponents.map(c => ({ ...c, grossAnnual: Math.max(0, c.grossAnnual * grossScale) }));
+    const dtiDen = computeDtiDenominator({ incomeComponents: scaledForDti, fallbackGrossAnnual: newGross });
+    if (dtiDen.dtiAdjustedAnnualIncome < newGross * 0.95 && dtiDen.dtiAdjustedAnnualIncome > 0) {
+      total.acquisitionNotes.push(
+        `DTI denominator (APS 220-aligned): $${Math.round(dtiDen.dtiAdjustedAnnualIncome).toLocaleString()}/yr (${((dtiDen.dtiAdjustedAnnualIncome / newGross) * 100).toFixed(0)}% of gross). Lender DTI review uses this — not the headline gross.`
+      );
+    }
+  }
+
   // Phase I2 — HEM hard floor
   const requestedExpenses = ctx.baseInputs.monthlyLivingExpenses + total.expenseAdjustment + hemDelta;
   const targetProfile = resolveLenderProfile(targetProfileId);
@@ -1198,6 +1246,21 @@ export function runScenarioWithInputs(
       message: `Expense reduction floored at HEM benchmark $${Math.round(hemBenchmark2).toLocaleString()}/mo (requested $${Math.round(requestedExp2).toLocaleString()}). Banks use MAX(declared, HEM).`,
     });
     finalExpenses2 = hemBenchmark2;
+  }
+
+  // Phase I8 — DTI denominator refinement (parity with runScenario)
+  if (Array.isArray(ctx.incomeComponents) && ctx.incomeComponents.length > 0) {
+    const grossScale = ctx.baseInputs.grossAnnualIncome > 0 ? newGross2 / ctx.baseInputs.grossAnnualIncome : 1;
+    const scaledForDti = ctx.incomeComponents.map(c => ({ ...c, grossAnnual: Math.max(0, c.grossAnnual * grossScale) }));
+    const dtiDen = computeDtiDenominator({ incomeComponents: scaledForDti, fallbackGrossAnnual: newGross2 });
+    if (dtiDen.dtiAdjustedAnnualIncome < newGross2 * 0.95 && dtiDen.dtiAdjustedAnnualIncome > 0) {
+      issues.push({
+        deltaId: 'dti-denominator',
+        deltaType: 'income_change',
+        severity: 'warning',
+        message: `DTI denominator (APS 220): $${Math.round(dtiDen.dtiAdjustedAnnualIncome).toLocaleString()}/yr (${((dtiDen.dtiAdjustedAnnualIncome / newGross2) * 100).toFixed(0)}% of gross).`,
+      });
+    }
   }
 
   const inputs: BorrowingCapacityInput = {

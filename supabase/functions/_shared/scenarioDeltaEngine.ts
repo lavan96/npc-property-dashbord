@@ -28,6 +28,14 @@ import {
   computeNegativeGearingAddBack,
   marginalTaxRateFor,
 } from './negativeGearingAddBack.ts';
+import {
+  resolveLvrCap,
+  inferPropertyKind,
+  inferPropertyIntent,
+} from './lenderLvrCaps.ts';
+import {
+  computeDtiDenominator,
+} from './dtiDenominator.ts';
 
 // ============================================
 // TYPES (mirrored from src/utils/borrowingCapacityTypes.ts)
@@ -438,10 +446,17 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
         : (property.interestRate ?? context.baseInputs.interestRate ?? 6.5);
       const monthlyRate = (ratePct / 100) / 12;
       // G3 — externalised lender cap
-      const lenderCap = (delta.meta?.lenderMaxLVR as number | undefined);
-      const safeLenderCap = (Number.isFinite(lenderCap) && (lenderCap as number) > 0 && (lenderCap as number) <= 0.99)
-        ? (lenderCap as number)
-        : 0.95;
+      // Phase I7 — per-security cap (lender × intent × kind, FHB/foreign adj.)
+      const explicitCap = (delta.meta?.lenderMaxLVR as number | undefined);
+      const lvrResult = resolveLvrCap({
+        lenderId: context.baseInputs.currentLenderProfileId,
+        intent: inferPropertyIntent(property.propertyType, 'investment'),
+        kind: inferPropertyKind(property.propertyType),
+        isFirstHomeBuyer: !!context.acquisition?.isFirstHomeBuyer,
+        isForeignBuyer: !!context.acquisition?.isForeignBuyer,
+        explicitCap,
+      });
+      const safeLenderCap = lvrResult.cap;
       let newLoan = 0;
       if (delta.unit === 'absolute' && delta.value > 0) {
         newLoan = property.loanRemaining + delta.value;
@@ -474,7 +489,7 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
       effect.commitmentAdjustment = Math.max(0, ioRepayment);
       effect.debtBalanceAdjustment = grossRelease;
       effect.releasedCapital = netRelease;
-      effect.acquisitionNotes.push(`Equity release on ${property.address?.slice(0, 30) || 'property'} @ ${ratePct.toFixed(2)}% (assessed @ ${assessRatePct.toFixed(2)}%): $${Math.round(netRelease).toLocaleString()} usable (LVR ${newLvr.toFixed(1)}%), +$${Math.round(ioRepayment).toLocaleString()}/mo IO @ buffered rate`);
+      effect.acquisitionNotes.push(`Equity release on ${property.address?.slice(0, 30) || 'property'} @ ${ratePct.toFixed(2)}% (assessed @ ${assessRatePct.toFixed(2)}%): $${Math.round(netRelease).toLocaleString()} usable (LVR ${newLvr.toFixed(1)}%, cap: ${lvrResult.reason}), +$${Math.round(ioRepayment).toLocaleString()}/mo IO @ buffered rate`);
       effect.description = `Release equity from ${property.address?.slice(0, 30) || 'property'}`;
       break;
     }
@@ -514,10 +529,8 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
       }
       const blendedTarget = delta.unit === 'percent' ? delta.value / 100 : delta.value;
       const safeBlended = Math.max(0, Math.min(0.97, blendedTarget || 0.8));
-      const lenderCap = (delta.meta?.lenderMaxLVR as number | undefined);
-      const safeLenderCap = (Number.isFinite(lenderCap) && (lenderCap as number) > 0 && (lenderCap as number) <= 0.99)
-        ? (lenderCap as number)
-        : 0.95;
+      // Phase I7 — per-security caps now resolved per-property (lender × intent × kind)
+      const explicitOverride = (delta.meta?.lenderMaxLVR as number | undefined);
       const allocationStrategy = (delta.meta?.allocationStrategy as string | undefined) === 'pro_rata'
         ? 'pro_rata'
         : 'highest_equity_first';
@@ -535,11 +548,22 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
         break;
       }
 
-      const headroom = members.map(p => ({
-        property: p,
-        headroom: Math.max(0, p.currentValue * safeLenderCap - p.loanRemaining),
-        equity: Math.max(0, p.currentValue - p.loanRemaining),
-      }));
+      const headroom = members.map(p => {
+        const cap = resolveLvrCap({
+          lenderId: context.baseInputs.currentLenderProfileId,
+          intent: inferPropertyIntent(p.propertyType, 'investment'),
+          kind: inferPropertyKind(p.propertyType),
+          isFirstHomeBuyer: !!context.acquisition?.isFirstHomeBuyer,
+          isForeignBuyer: !!context.acquisition?.isForeignBuyer,
+          explicitCap: explicitOverride,
+        });
+        return {
+          property: p,
+          headroom: Math.max(0, p.currentValue * cap.cap - p.loanRemaining),
+          equity: Math.max(0, p.currentValue - p.loanRemaining),
+          capPct: cap.cap,
+        };
+      });
       const totalHeadroom = headroom.reduce((s, h) => s + h.headroom, 0);
       const cappedPool = Math.min(grossPool, totalHeadroom);
 
@@ -595,8 +619,9 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
       );
       for (const n of securityNotes) effect.acquisitionNotes.push(`  · ${n}`);
       if (cappedPool < grossPool) {
+        const minCap = headroom.length ? Math.min(...headroom.map(h => h.capPct)) : 0.95;
         effect.acquisitionNotes.push(
-          `  · ⚠ Pool capped at $${Math.round(cappedPool).toLocaleString()} (target wanted $${Math.round(grossPool).toLocaleString()}, lender cap ${(safeLenderCap * 100).toFixed(0)}%/security).`
+          `  · ⚠ Pool capped at $${Math.round(cappedPool).toLocaleString()} (target wanted $${Math.round(grossPool).toLocaleString()}, lender per-security caps min ${(minCap * 100).toFixed(0)}% — see I7 cap matrix).`
         );
       }
       effect.description = `Cross-collat release pool @ ${(safeBlended * 100).toFixed(0)}% blended LVR`;
@@ -777,7 +802,22 @@ export function aggregateDeltas(
     });
   }
 
-  // Phase I2 — HEM floor enforcement. The bank uses MAX(declared, HEM); a
+  // Phase I8 — DTI denominator refinement (APS 220-aligned, surface-only)
+  if (Array.isArray(ctx.baseInputs.incomeComponents) && ctx.baseInputs.incomeComponents.length > 0) {
+    const grossScale = ctx.baseInputs.grossAnnualIncome > 0 ? newGross / ctx.baseInputs.grossAnnualIncome : 1;
+    const scaledForDti = ctx.baseInputs.incomeComponents.map(c => ({ ...c, grossAnnual: Math.max(0, c.grossAnnual * grossScale) }));
+    const dtiDen = computeDtiDenominator({ incomeComponents: scaledForDti, fallbackGrossAnnual: newGross });
+    if (dtiDen.dtiAdjustedAnnualIncome < newGross * 0.95 && dtiDen.dtiAdjustedAnnualIncome > 0) {
+      issues.push({
+        deltaId: 'dti-denominator',
+        deltaType: 'income_change',
+        severity: 'warning',
+        message: `DTI denominator (APS 220): $${Math.round(dtiDen.dtiAdjustedAnnualIncome).toLocaleString()}/yr (${((dtiDen.dtiAdjustedAnnualIncome / newGross) * 100).toFixed(0)}% of gross). Lender DTI review uses this — not the headline gross.`,
+      });
+    }
+  }
+
+  // Phase I2 — HEM floor enforcement.
   // scenario that promises -30% expenses cannot fall below that floor.
   // We respect a per-lender opt-out via `enforcesHemFloor = false` (e.g.
   // some non-banks). When the cut is impossible, surface a validation note
