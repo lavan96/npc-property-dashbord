@@ -910,14 +910,14 @@ function calculateLiabilityBreakdown(liabilities: any[], properties: any[], annu
     totalMonthly += monthlyServicing;
   }
 
-  // Add existing property loans - stress-tested at P&I repayments
-  // Banks assess existing loans at P&I even if currently interest-only
-  const assessmentRateForLoans = policy.propertyPolicy.loanAssessmentRate;
-  const loanTermMonths = policy.propertyPolicy.loanTermMonths;
-  
+  // Fix #1 — APRA APG-223 aligned existing-debt assessment.
+  // Replaces the legacy "blanket P&I @ 9.5% / 30y" treatment with rules that
+  // honour the loan's actual repayment_type, contracted rate, IO period, and
+  // remaining term. Implementation lives in `assessExistingPropertyLoan` so
+  // the property-contribution engine and the liability breakdown stay in sync.
   for (const property of properties) {
     const propertyType = property.property_type?.toLowerCase() || '';
-    
+
     // Handle rental properties (where client is tenant paying rent)
     if (propertyType === 'rental') {
       // Rent paid is treated as an existing commitment
@@ -931,23 +931,23 @@ function calculateLiabilityBreakdown(liabilities: any[], properties: any[], annu
         });
       }
     } else if (property.loan_remaining && property.loan_remaining > 0) {
-      // Calculate P&I servicing at assessment rate, regardless of actual loan type
-      // This is how banks stress-test existing loans
-      const loanBalance = property.loan_remaining;
-      const monthlyRate = assessmentRateForLoans / 12;
-      
-      // P&I repayment formula: M = P * [r(1+r)^n] / [(1+r)^n - 1]
-      const piRepayment = loanBalance * (monthlyRate * Math.pow(1 + monthlyRate, loanTermMonths)) 
-                          / (Math.pow(1 + monthlyRate, loanTermMonths) - 1);
-      
-      // Use the higher of: P&I calculated or actual recorded repayment
-      const actualRepayment = property.monthly_interest_repayment || 0;
-      const monthlyServicing = Math.max(piRepayment, actualRepayment);
-      
+      const loanAssessment = assessExistingPropertyLoan(property, policy.propertyPolicy);
+      const monthlyServicing = loanAssessment.assessedMonthlyDebt;
+
       totalMonthly += monthlyServicing;
+
+      // Label reflects which branch was used so the rationale/PDF audit can
+      // surface the methodology to advisors and compliance reviewers.
+      const methodLabel =
+        loanAssessment.method === 'io_actual'
+          ? 'I/O actual'
+          : loanAssessment.method === 'pi_remaining_term'
+          ? 'P&I rem. term'
+          : 'Legacy stress';
+
       breakdown.push({
-        type: `Existing Loan P&I (${property.address?.substring(0, 30) || 'Property'}...)`,
-        balance: loanBalance,
+        type: `Existing Loan (${methodLabel}, ${property.address?.substring(0, 24) || 'Property'}...)`,
+        balance: property.loan_remaining,
         monthlyServicing: Math.round(monthlyServicing * 100) / 100,
       });
     }
