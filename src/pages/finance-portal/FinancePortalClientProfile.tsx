@@ -9,6 +9,7 @@ import { Loader2, ArrowLeft, Mail, Phone, Lock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { FINANCE_TABLE_CONFIGS, FINANCE_TABLE_KEYS, FinanceTableKey } from '@/components/finance-portal/financeTableConfig';
 import { FinanceRecordList } from '@/components/finance-portal/FinanceRecordList';
+import { DocumentVaultPanel } from '@/components/finance-portal/DocumentVaultPanel';
 
 export default function FinancePortalClientProfile() {
   const { clientId } = useParams<{ clientId: string }>();
@@ -32,7 +33,10 @@ export default function FinancePortalClientProfile() {
     () => FINANCE_TABLE_KEYS.filter(k => permissions[k]?.view),
     [permissions]
   );
-  const defaultTab = visibleTabs[0] || 'properties';
+  // Documents permission defaults to true (view+edit) when assignment exists but key is missing,
+  // matching the edge function default. Hide only if explicitly { view: false }.
+  const docsVisible = permissions.documents ? !!permissions.documents.view : true;
+  const defaultTab = visibleTabs[0] || (docsVisible ? 'documents' : 'properties');
 
   if (isLoading) {
     return (
@@ -95,7 +99,7 @@ export default function FinancePortalClientProfile() {
         </Card>
       </div>
 
-      {visibleTabs.length === 0 ? (
+      {visibleTabs.length === 0 && !docsVisible ? (
         <Card>
           <CardContent className="py-12 text-center">
             <Lock className="h-10 w-10 mx-auto text-muted-foreground opacity-50 mb-3" />
@@ -112,12 +116,20 @@ export default function FinancePortalClientProfile() {
                 {FINANCE_TABLE_CONFIGS[k].label}
               </TabsTrigger>
             ))}
+            {docsVisible && (
+              <TabsTrigger value="documents" className="text-xs">Documents</TabsTrigger>
+            )}
           </TabsList>
           {visibleTabs.map(k => (
             <TabsContent key={k} value={k} className="mt-4">
               <FinanceRecordList clientId={clientId!} config={FINANCE_TABLE_CONFIGS[k]} />
             </TabsContent>
           ))}
+          {docsVisible && (
+            <TabsContent value="documents" className="mt-4">
+              <DocumentVaultPanel clientId={clientId!} />
+            </TabsContent>
+          )}
         </Tabs>
       )}
     </div>
