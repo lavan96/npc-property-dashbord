@@ -571,11 +571,12 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Action: Refresh all lender caches
+    // Action: Refresh all lender caches (CDR + manual)
     if (action === 'refresh-all') {
       const results: { lenderId: string; lenderName: string; success: boolean; rateCount: number; cached: boolean }[] = [];
 
-      console.log(`[CDR] Starting refresh-all for ${Object.keys(CDR_LENDERS).length} lenders`);
+      const totalCount = Object.keys(CDR_LENDERS).length + Object.keys(MANUAL_LENDERS).length;
+      console.log(`[CDR] Starting refresh-all for ${totalCount} lenders`);
 
       for (const [id, config] of Object.entries(CDR_LENDERS)) {
         try {
@@ -585,29 +586,27 @@ Deno.serve(async (req) => {
             detailVersion: config.detailVersion,
           });
           let cached = false;
-          
           if (rates.length > 0) {
             cached = await setCachedRates(supabase, id, rates);
           }
-          
-          results.push({ 
-            lenderId: id, 
-            lenderName: config.name,
-            success: rates.length > 0, 
-            rateCount: rates.length,
-            cached 
-          });
-          
+          results.push({ lenderId: id, lenderName: config.name, success: rates.length > 0, rateCount: rates.length, cached });
           console.log(`[CDR] Refresh ${id}: ${rates.length} rates, cached: ${cached}`);
         } catch (error) {
           console.error(`[CDR] Failed to refresh ${id}:`, error);
-          results.push({ 
-            lenderId: id, 
-            lenderName: config.name,
-            success: false, 
-            rateCount: 0,
-            cached: false 
-          });
+          results.push({ lenderId: id, lenderName: config.name, success: false, rateCount: 0, cached: false });
+        }
+      }
+
+      // Manual lenders — always succeed (static rate cards)
+      for (const [id, manual] of Object.entries(MANUAL_LENDERS)) {
+        try {
+          const rates = manual.build();
+          const cached = rates.length > 0 ? await setCachedRates(supabase, id, rates) : false;
+          results.push({ lenderId: id, lenderName: manual.name, success: rates.length > 0, rateCount: rates.length, cached });
+          console.log(`[manual] Refresh ${id}: ${rates.length} rates, cached: ${cached}`);
+        } catch (error) {
+          console.error(`[manual] Failed to refresh ${id}:`, error);
+          results.push({ lenderId: id, lenderName: manual.name, success: false, rateCount: 0, cached: false });
         }
       }
 
