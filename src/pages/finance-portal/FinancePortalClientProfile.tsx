@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +11,7 @@ import { FINANCE_TABLE_CONFIGS, FINANCE_TABLE_KEYS, FinanceTableKey } from '@/co
 import { FinanceRecordList } from '@/components/finance-portal/FinanceRecordList';
 import { DocumentVaultPanel } from '@/components/finance-portal/DocumentVaultPanel';
 import { BorrowingCapacityPanel } from '@/components/finance-portal/BorrowingCapacityPanel';
+import { FinancePortalMessagesPanel } from '@/components/finance-portal/FinancePortalMessagesPanel';
 
 export default function FinancePortalClientProfile() {
   const { clientId } = useParams<{ clientId: string }>();
