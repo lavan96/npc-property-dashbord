@@ -280,13 +280,17 @@ function buildNyawoContext(): ScenarioContext {
       serviceabilityBand: 'amber',
       dtiRatio: 0,
     },
-    // Four-property portfolio sized so that the blended LVR sits ~3pp below
-    // 80% target → pooling unlocks ~$198k of gross headroom.
+    // Four-property portfolio sized so the BLENDED LVR sits ~6.7pp below the
+    // 80% target → pooling unlocks ~$198k of gross headroom, while every
+    // individual security is already AT/ABOVE 80% LVR so per-security mode
+    // returns $0 (the exact gap the finance team flagged).
+    //   totalValue = $2,962,500   totalDebt = $2,172,000
+    //   blended LVR = 73.32%   target 80% → gross uplift ≈ $198,000
     properties: [
-      { id: 'nyawo-1', address: 'Property 1', propertyType: 'investment', currentValue: 720000, loanRemaining: 560000, monthlyRepayment: 3200, interestRate: 6.50 },
-      { id: 'nyawo-2', address: 'Property 2', propertyType: 'investment', currentValue: 640000, loanRemaining: 500000, monthlyRepayment: 2900, interestRate: 6.50 },
-      { id: 'nyawo-3', address: 'Property 3', propertyType: 'investment', currentValue: 580000, loanRemaining: 470000, monthlyRepayment: 2700, interestRate: 6.50 },
-      { id: 'nyawo-4', address: 'Property 4', propertyType: 'owner_occupied', currentValue: 760000, loanRemaining: 642000, monthlyRepayment: 3650, interestRate: 6.25 },
+      { id: 'nyawo-1', address: 'Property 1', propertyType: 'investment',     currentValue: 700_000, loanRemaining: 560_000, monthlyRepayment: 3200, interestRate: 6.50 }, // 80.00% LVR
+      { id: 'nyawo-2', address: 'Property 2', propertyType: 'investment',     currentValue: 625_000, loanRemaining: 500_000, monthlyRepayment: 2900, interestRate: 6.50 }, // 80.00% LVR
+      { id: 'nyawo-3', address: 'Property 3', propertyType: 'investment',     currentValue: 837_500, loanRemaining: 470_000, monthlyRepayment: 2700, interestRate: 6.50 }, // 56.12% LVR — pool dilutes
+      { id: 'nyawo-4', address: 'Property 4', propertyType: 'owner_occupied', currentValue: 800_000, loanRemaining: 642_000, monthlyRepayment: 3650, interestRate: 6.25 }, // 80.25% LVR
     ],
     liabilities: [],
     acquisition: {
