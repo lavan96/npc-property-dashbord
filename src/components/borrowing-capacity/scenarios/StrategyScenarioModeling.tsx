@@ -389,6 +389,42 @@ export function StrategyScenarioModeling({
       });
     }
 
+    // 7b. Equity Release → equity_release deltas (Phase F2 — wire releases into engine)
+    let equityReleaseMonthlyCost = 0;
+    let equityReleaseTotalNet = 0;
+    if (strategy.equityReleaseEnabled && strategy.equityReleasePropertyIds.size > 0) {
+      strategy.equityReleasePropertyIds.forEach(propId => {
+        const prop = equityReleaseProperties.find(p => p.id === propId);
+        if (!prop) return;
+        const targetLVR = strategy.equityReleaseTargetLVRs.get(propId) ?? DEFAULT_EQUITY_LVR;
+        deltas.push({
+          id: prop.id,
+          label: `Equity release ${prop.address?.slice(0, 25) || 'property'} → ${(targetLVR * 100).toFixed(0)}% LVR`,
+          type: 'equity_release',
+          value: targetLVR,
+          unit: 'percent',
+          meta: {
+            targetLVR,
+            // honour per-property contracted rate if present, otherwise let engine fall back
+            releaseRate: prop.interest_rate ?? null,
+          },
+        });
+        // Track shadow IO cost on the new slice for the impact summary
+        const ratePct = prop.interest_rate ?? baseInputs.interestRate;
+        const newLoan = prop.current_value * targetLVR;
+        const grossRelease = Math.max(0, newLoan - prop.loan_remaining);
+        equityReleaseMonthlyCost += grossRelease * (ratePct / 100 / 12);
+      });
+      equityReleaseTotalNet = totalAccessibleEquity;
+      if (equityReleaseMonthlyCost > 0) {
+        impacts.push({
+          label: `Equity release servicing on ${strategy.equityReleasePropertyIds.size} property(s) (IO)`,
+          monthlySaving: equityReleaseMonthlyCost,
+          type: 'cost',
+        });
+      }
+    }
+
     // 8. DTI Cap Override → dti_cap_change
     if (strategy.additional.dtiCapEnabled) {
       deltas.push({
