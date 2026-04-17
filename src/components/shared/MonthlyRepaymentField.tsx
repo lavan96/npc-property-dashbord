@@ -96,6 +96,8 @@ interface Props {
     repaymentType: RepaymentType;
     interestOnlyYears: number;
     autoCalculate: boolean;
+    /** Reverse-derived annual rate (%) when user manually edits monthlyAmount. Optional. */
+    derivedInterestRate?: number;
   }) => void;
   /** Compact = portal styling (smaller inputs). Default = dashboard. */
   compact?: boolean;
