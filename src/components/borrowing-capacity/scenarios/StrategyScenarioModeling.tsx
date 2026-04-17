@@ -39,6 +39,13 @@ import {
   type BorrowingCapacityResult,
 } from '@/utils/borrowingCapacityCalculations';
 import {
+  runScenarioWithInputs,
+  type ScenarioContext,
+  type ScenarioProperty as EngineProperty,
+  type ScenarioLiability as EngineLiability,
+} from '@/utils/scenarioDeltaEngine';
+import type { ScenarioDelta } from '@/utils/borrowingCapacityTypes';
+import {
   estimateLMI,
   calculateLVR,
 } from '@/utils/lmiCalculations';
