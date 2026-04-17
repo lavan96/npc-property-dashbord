@@ -502,6 +502,18 @@ export function StrategyScenarioModeling({
   const totalMonthlySaving = impactBreakdown.reduce((sum, i) =>
     sum + (i.type === 'saving' ? i.monthlySaving : i.type === 'cost' ? -i.monthlySaving : 0), 0);
 
+  // Binding-constraint analysis for both base and scenario — surfaces the
+  // "wall" the user is currently pressed against (DTI cap vs surplus vs absolute).
+  // Pure compute, no math change.
+  const baseBinding = useMemo(
+    () => computeBindingConstraint(baseInputs, baseResult),
+    [baseInputs, baseResult]
+  );
+  const scenarioBinding = useMemo(
+    () => computeBindingConstraint(scenarioInputs, scenarioResult),
+    [scenarioInputs, scenarioResult]
+  );
+
   const hasAnyStrategy = strategy.consolidatedLiabilities.size > 0 ||
     strategy.refinancedToIO.size > 0 ||
     strategy.equityReleaseEnabled ||
