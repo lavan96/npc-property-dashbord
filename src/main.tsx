@@ -3,12 +3,24 @@ import App from './App.tsx'
 import './index.css'
 
 // ── Service Worker Cleanup ──
-// Remove any previously registered service workers and purge stale caches.
+// Remove any previously registered service workers EXCEPT our dedicated push SW
+// (`/sw-push.js`), which is intentionally registered on production hosts only.
 // Lovable's hosting + Vite content-hashing handle caching natively;
-// a custom SW only causes stale-content issues on the published site.
+// any other custom SW only causes stale-content issues on the published site.
+const PUSH_SW_PATH = '/sw-push.js'
+
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.getRegistrations().then((registrations) => {
     for (const registration of registrations) {
+      const swUrl =
+        registration.active?.scriptURL ||
+        registration.installing?.scriptURL ||
+        registration.waiting?.scriptURL ||
+        ''
+      if (swUrl.endsWith(PUSH_SW_PATH)) {
+        // Keep the push notification service worker
+        continue
+      }
       registration.unregister().then((success) => {
         if (success) {
           console.log('[SW Cleanup] Unregistered service worker:', registration.scope)
