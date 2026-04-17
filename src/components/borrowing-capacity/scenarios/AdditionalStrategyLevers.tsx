@@ -6,6 +6,9 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
@@ -18,9 +21,35 @@ import {
   ShieldCheck,
   Receipt,
   Building,
+  Layers,
+  Network,
 } from 'lucide-react';
 
 // ── Types ──────────────────────────────────────────────
+
+/** Phase G1 — per-property valuation override entry. */
+export interface ValuationOverride {
+  propertyId: string;
+  /** New valuation in AUD */
+  newValue: number;
+  /** Methodology basis — drives PDF audit watermark */
+  basis: 'manual' | 'desktop' | 'avm' | 'comparable_sales';
+  /** Free-text justification (e.g. agent name, comparable address) */
+  source: string;
+}
+
+/** Phase G2 — cross-collateralised pool release configuration. */
+export interface CrossCollatPoolState {
+  enabled: boolean;
+  /** Which properties to pool (subset of portfolio) */
+  propertyIds: Set<string>;
+  /** Target blended LVR across the pool (0–0.95) */
+  blendedTargetLVR: number;
+  /** Per-security lender ceiling (default 0.95) */
+  lenderMaxLVR: number;
+  /** Allocation strategy — highest_equity_first cleans up healthiest securities first */
+  allocationStrategy: 'highest_equity_first' | 'pro_rata';
+}
 
 export interface AdditionalStrategyState {
   incomeGrowthPercent: number;
@@ -31,6 +60,10 @@ export interface AdditionalStrategyState {
   stampDutyPurchasePrice: number;
   portfolioSellPropertyIds: Set<string>;
   portfolioSellReinvest: boolean;
+  /** Phase G1 — valuation overrides keyed by property id */
+  valuationOverrides: Map<string, ValuationOverride>;
+  /** Phase G2 — cross-collateralised pool */
+  crossCollatPool: CrossCollatPoolState;
 }
 
 export const DEFAULT_ADDITIONAL_STRATEGY: AdditionalStrategyState = {
@@ -42,6 +75,14 @@ export const DEFAULT_ADDITIONAL_STRATEGY: AdditionalStrategyState = {
   stampDutyPurchasePrice: 0,
   portfolioSellPropertyIds: new Set(),
   portfolioSellReinvest: false,
+  valuationOverrides: new Map(),
+  crossCollatPool: {
+    enabled: false,
+    propertyIds: new Set(),
+    blendedTargetLVR: 0.80,
+    lenderMaxLVR: 0.95,
+    allocationStrategy: 'highest_equity_first',
+  },
 };
 
 interface PropertyForSale {
