@@ -3145,6 +3145,9 @@ export type Database = {
           created_at: string
           expires_at: string
           id: string
+          impersonator_finance_contact_id: string | null
+          impersonator_finance_user_id: string | null
+          is_readonly: boolean
           session_token: string
           user_id: string
         }
@@ -3152,6 +3155,9 @@ export type Database = {
           created_at?: string
           expires_at: string
           id?: string
+          impersonator_finance_contact_id?: string | null
+          impersonator_finance_user_id?: string | null
+          is_readonly?: boolean
           session_token: string
           user_id: string
         }
@@ -3159,10 +3165,20 @@ export type Database = {
           created_at?: string
           expires_at?: string
           id?: string
+          impersonator_finance_contact_id?: string | null
+          impersonator_finance_user_id?: string | null
+          is_readonly?: boolean
           session_token?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "client_portal_sessions_impersonator_finance_user_id_fkey"
+            columns: ["impersonator_finance_user_id"]
+            isOneToOne: false
+            referencedRelation: "finance_portal_users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "client_portal_sessions_user_id_fkey"
             columns: ["user_id"]
@@ -5128,6 +5144,76 @@ export type Database = {
             columns: ["uploaded_by_internal_user_id"]
             isOneToOne: false
             referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_portal_handoff_tokens: {
+        Row: {
+          client_id: string
+          consumed_at: string | null
+          consumed_session_id: string | null
+          created_at: string
+          expires_at: string
+          finance_contact_id: string | null
+          finance_user_id: string
+          id: string
+          ip_address: string | null
+          is_readonly: boolean
+          target_portal_user_id: string | null
+          token: string
+          user_agent: string | null
+        }
+        Insert: {
+          client_id: string
+          consumed_at?: string | null
+          consumed_session_id?: string | null
+          created_at?: string
+          expires_at?: string
+          finance_contact_id?: string | null
+          finance_user_id: string
+          id?: string
+          ip_address?: string | null
+          is_readonly?: boolean
+          target_portal_user_id?: string | null
+          token: string
+          user_agent?: string | null
+        }
+        Update: {
+          client_id?: string
+          consumed_at?: string | null
+          consumed_session_id?: string | null
+          created_at?: string
+          expires_at?: string
+          finance_contact_id?: string | null
+          finance_user_id?: string
+          id?: string
+          ip_address?: string | null
+          is_readonly?: boolean
+          target_portal_user_id?: string | null
+          token?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_portal_handoff_tokens_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_portal_handoff_tokens_finance_user_id_fkey"
+            columns: ["finance_user_id"]
+            isOneToOne: false
+            referencedRelation: "finance_portal_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_portal_handoff_tokens_target_portal_user_id_fkey"
+            columns: ["target_portal_user_id"]
+            isOneToOne: false
+            referencedRelation: "client_portal_users"
             referencedColumns: ["id"]
           },
         ]
