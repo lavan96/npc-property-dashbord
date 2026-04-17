@@ -30,6 +30,59 @@ export function computeMonthlyRepayment(
   return Math.round(m * 100) / 100;
 }
 
+/**
+ * Reverse: derive annual interest rate (%) from monthly repayment + loan balance.
+ * IO: closed-form (rate = monthly × 12 / loan × 100).
+ * P&I: Newton-Raphson on the amortization equation.
+ * Returns 0 if inputs invalid or no convergence.
+ */
+export function computeInterestRateFromRepayment(
+  monthlyAmount: number,
+  loanBalance: number,
+  repaymentType: RepaymentType,
+  loanTermYears: number = DEFAULT_LOAN_TERM_YEARS,
+): number {
+  if (!monthlyAmount || monthlyAmount <= 0 || !loanBalance || loanBalance <= 0) return 0;
+
+  if (repaymentType === 'interest_only') {
+    const annualPct = (monthlyAmount * 12 / loanBalance) * 100;
+    if (annualPct <= 0 || annualPct > 50) return 0;
+    return Math.round(annualPct * 100) / 100;
+  }
+
+  // P&I: solve M = P * r * (1+r)^n / ((1+r)^n - 1) for r (monthly rate)
+  const n = loanTermYears * 12;
+  const M = monthlyAmount;
+  const P = loanBalance;
+  // Repayment must at least cover the principal-only payment
+  if (M <= P / n) return 0;
+
+  // Newton-Raphson starting from a reasonable monthly rate (~5%/yr)
+  let r = 0.005;
+  for (let i = 0; i < 100; i++) {
+    const pow = Math.pow(1 + r, n);
+    const f = P * r * pow / (pow - 1) - M;
+    // derivative df/dr (numerical via small h is robust enough)
+    const h = 1e-7;
+    const r2 = r + h;
+    const pow2 = Math.pow(1 + r2, n);
+    const f2 = P * r2 * pow2 / (pow2 - 1) - M;
+    const df = (f2 - f) / h;
+    if (!isFinite(df) || df === 0) break;
+    const next = r - f / df;
+    if (!isFinite(next) || next <= 0) {
+      r = r / 2;
+      continue;
+    }
+    if (Math.abs(next - r) < 1e-9) { r = next; break; }
+    r = next;
+  }
+
+  const annualPct = r * 12 * 100;
+  if (!isFinite(annualPct) || annualPct <= 0 || annualPct > 50) return 0;
+  return Math.round(annualPct * 100) / 100;
+}
+
 interface Props {
   monthlyAmount: number;
   repaymentType: RepaymentType;
