@@ -201,7 +201,22 @@ export function MonthlyRepaymentField({
         <Input
           type="number"
           value={monthlyAmount || ''}
-          onChange={(e) => set({ monthlyAmount: parseFloat(e.target.value) || 0, autoCalculate: false })}
+          onChange={(e) => {
+            const newAmount = parseFloat(e.target.value) || 0;
+            const derived = computeInterestRateFromRepayment(
+              newAmount,
+              loanBalance,
+              repaymentType,
+              loanTermYears,
+            );
+            onChange({
+              monthlyAmount: newAmount,
+              repaymentType,
+              interestOnlyYears,
+              autoCalculate: false,
+              ...(derived > 0 ? { derivedInterestRate: derived } : {}),
+            });
+          }}
           className={inputClass}
           placeholder="0"
           disabled={autoCalculate}
@@ -230,6 +245,12 @@ export function MonthlyRepaymentField({
           {repaymentType === 'interest_only'
             ? `${loanBalance.toLocaleString()} × ${interestRate}% ÷ 12`
             : `${loanBalance.toLocaleString()} amortized @ ${interestRate}% over ${loanTermYears}y`}
+        </p>
+      )}
+
+      {!autoCalculate && monthlyAmount > 0 && loanBalance > 0 && (
+        <p className="text-[10px] text-muted-foreground">
+          Manual: rate auto-derived from repayment ({repaymentType === 'interest_only' ? 'IO closed-form' : `P&I over ${loanTermYears}y`}).
         </p>
       )}
     </div>
