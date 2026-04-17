@@ -114,6 +114,8 @@ interface StrategyScenarioModelingProps {
   onApplyScenario?: (inputs: BorrowingCapacityInput, accessibleEquity?: number) => void;
   savedPresets?: ScenarioPreset[];
   onPresetsChange?: (presets: ScenarioPreset[]) => void;
+  /** Optional client identifier — propagated to BCScenarioAgent so chat history persists per client. */
+  clientId?: string;
 }
 
 // ── Helpers ────────────────────────────────────────────
@@ -149,6 +151,7 @@ export function StrategyScenarioModeling({
   onApplyScenario,
   savedPresets: externalPresets,
   onPresetsChange,
+  clientId,
 }: StrategyScenarioModelingProps) {
   const [strategy, setStrategy] = useState<StrategyState>(DEFAULT_STRATEGY);
   const [presets, setPresets] = useState<ScenarioPreset[]>(externalPresets || []);
@@ -481,6 +484,7 @@ export function StrategyScenarioModeling({
         baseResult={baseResult}
         liabilities={liabilities}
         properties={properties}
+        clientId={clientId}
         onApplyScenario={(scenario: AIScenario) => {
           // Map AI scenario adjustments to strategy state
            setStrategy(prev => {

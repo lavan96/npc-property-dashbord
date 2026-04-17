@@ -6,7 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   Bot, Send, ChevronDown, ChevronUp, Sparkles, Loader2,
-  TrendingUp, CheckCircle2, Zap,
+  TrendingUp, CheckCircle2, Zap, Trash2,
 } from 'lucide-react';
 import { VoiceToTextButton } from '@/components/ui/VoiceToTextButton';
 import ReactMarkdown from 'react-markdown';
@@ -46,6 +46,48 @@ interface BCScenarioAgentProps {
   liabilities: LiabilityItem[];
   properties: PropertyItem[];
   onApplyScenario: (scenario: AIScenario) => void;
+  /** Optional client identifier — used to scope persisted chat history per client. */
+  clientId?: string;
+}
+
+// ── Persistence helpers ────────────────────────────────
+
+interface PersistedChatState {
+  messages: ChatMessage[];
+  scenarios: AIScenario[];
+  appliedIndex: number | null;
+  isOpen: boolean;
+}
+
+const STORAGE_PREFIX = 'bc-scenario-agent:';
+
+function getStorageKey(clientId?: string): string {
+  return `${STORAGE_PREFIX}${clientId || 'global'}`;
+}
+
+function loadPersistedState(clientId?: string): PersistedChatState | null {
+  try {
+    const raw = localStorage.getItem(getStorageKey(clientId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return null;
+    return {
+      messages: Array.isArray(parsed.messages) ? parsed.messages : [],
+      scenarios: Array.isArray(parsed.scenarios) ? parsed.scenarios : [],
+      appliedIndex: typeof parsed.appliedIndex === 'number' ? parsed.appliedIndex : null,
+      isOpen: typeof parsed.isOpen === 'boolean' ? parsed.isOpen : true,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function savePersistedState(clientId: string | undefined, state: PersistedChatState) {
+  try {
+    localStorage.setItem(getStorageKey(clientId), JSON.stringify(state));
+  } catch {
+    // Storage may be full or unavailable — fail silently
+  }
 }
 
 // ── Component ──────────────────────────────────────────
@@ -56,15 +98,33 @@ export function BCScenarioAgent({
   liabilities,
   properties,
   onApplyScenario,
+  clientId,
 }: BCScenarioAgentProps) {
-  const [isOpen, setIsOpen] = useState(true);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  // Load persisted state synchronously on mount so history is available immediately
+  const initialState = loadPersistedState(clientId);
+  const [isOpen, setIsOpen] = useState(initialState?.isOpen ?? true);
+  const [messages, setMessages] = useState<ChatMessage[]>(initialState?.messages ?? []);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [scenarios, setScenarios] = useState<AIScenario[]>([]);
-  const [appliedIndex, setAppliedIndex] = useState<number | null>(null);
+  const [scenarios, setScenarios] = useState<AIScenario[]>(initialState?.scenarios ?? []);
+  const [appliedIndex, setAppliedIndex] = useState<number | null>(initialState?.appliedIndex ?? null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Reload state when the client context changes (e.g. switching clients without unmount)
+  useEffect(() => {
+    const next = loadPersistedState(clientId);
+    setMessages(next?.messages ?? []);
+    setScenarios(next?.scenarios ?? []);
+    setAppliedIndex(next?.appliedIndex ?? null);
+    setIsOpen(next?.isOpen ?? true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientId]);
+
+  // Persist on every meaningful change
+  useEffect(() => {
+    savePersistedState(clientId, { messages, scenarios, appliedIndex, isOpen });
+  }, [clientId, messages, scenarios, appliedIndex, isOpen]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -236,6 +296,30 @@ export function BCScenarioAgent({
 
         <CollapsibleContent>
           <div className="mt-2 border rounded-lg overflow-hidden bg-card">
+            {/* Chat toolbar */}
+            {(messages.length > 0 || scenarios.length > 0) && (
+              <div className="flex items-center justify-between border-b px-3 py-1.5 bg-muted/30">
+                <span className="text-[11px] text-muted-foreground">
+                  {messages.length} message{messages.length === 1 ? '' : 's'} • saved
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-[11px] text-muted-foreground hover:text-destructive"
+                  onClick={() => {
+                    setMessages([]);
+                    setScenarios([]);
+                    setAppliedIndex(null);
+                    try { localStorage.removeItem(getStorageKey(clientId)); } catch {}
+                    toast.success('Chat history cleared');
+                  }}
+                  disabled={isLoading}
+                >
+                  <Trash2 className="h-3 w-3 mr-1" />
+                  Clear
+                </Button>
+              </div>
+            )}
             {/* Chat messages */}
             <div ref={scrollRef} className="max-h-[300px] overflow-y-auto p-4 space-y-3">
               {messages.length === 0 && (

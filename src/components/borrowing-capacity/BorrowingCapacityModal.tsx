@@ -1132,6 +1132,7 @@ export function BorrowingCapacityModal({
           <div className="p-4 sm:p-6">
             {result ? (
               <StrategyScenarioModeling
+                clientId={clientId}
                 baseInputs={{
                   grossAnnualIncome: totalGrossIncome,
                   shadedAnnualIncome: totalShadedIncome,
