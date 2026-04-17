@@ -506,20 +506,31 @@ export function applyDelta(delta: ScenarioDelta, context: ScenarioContext): Delt
     }
 
     case 'equity_release': {
-      // Phase C + F2: Equity-release lever closes the loop between cash freed,
-      // the new shadow debt, and the source property's actual contracted rate.
+      // Phase C + F2 + Phase 2 (granular controls): Equity-release lever
+      // closes the loop between cash freed, the new shadow debt, and the
+      // source property's actual contracted rate.
       //
       // Inputs interpreted from the delta:
       //   value: target LVR as a ratio (0.80) OR % (80) OR absolute release amount
       //   meta.targetLVR: optional explicit target LVR (0–1 ratio)
       //   meta.releaseRate: optional override rate for the release loan (% p.a.)
       //   meta.lenderMaxLVR: optional lender ceiling per security (default 0.95)
+      //   meta.deploymentPercent: 0–1 ratio of the gross release the broker
+      //     actually intends to deploy (default 1.0 = full release). Lower
+      //     values reduce both the new debt slice AND the servicing cost
+      //     proportionally — broker can flex the tradeoff between capital
+      //     unlocked and serviceability hit.
+      //   meta.repaymentType: 'interest_only' (default) | 'principal_and_interest'
+      //     — drives whether the new slice is serviced as IO @ assessment rate
+      //     or amortised P&I over the policy term.
+      //   meta.manualRepayment: optional explicit $/mo override on the new
+      //     slice. When provided, bypasses both auto-IO and auto-P&I math.
       //   unit: 'ratio' = LVR ratio, 'percent' = LVR %, 'absolute' = direct $ amount
       //
       // Output:
-      //   - releasedCapital ≈ new equity loan − LMI on that loan (cash to settlement)
-      //   - commitmentAdjustment += monthly IO repayment on the NEW slice only
-      //   - debtBalanceAdjustment += new equity loan principal (DTI honest)
+      //   - releasedCapital ≈ deployed equity loan − LMI on that loan (cash to settlement)
+      //   - commitmentAdjustment += monthly repayment on the NEW deployed slice only
+      //   - debtBalanceAdjustment += deployed equity loan principal (DTI honest)
       const property = context.properties?.find(p => p.id === delta.id);
       if (!property || property.currentValue <= 0) break;
 
