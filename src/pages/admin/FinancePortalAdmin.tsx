@@ -185,6 +185,14 @@ export default function FinancePortalAdmin() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button
+            onClick={() => setCreateOpen(true)}
+            className="gap-2 shadow-md ring-2 ring-primary/30"
+            size="default"
+          >
+            <UserPlus className="h-4 w-4" />
+            New Finance Contact
+          </Button>
           <Button variant="outline" asChild className="gap-2">
             <Link to="/admin/finance-portal/analytics"><BarChart3 className="h-4 w-4" />Analytics</Link>
           </Button>
@@ -204,10 +212,6 @@ export default function FinancePortalAdmin() {
           <Button variant="outline" onClick={() => setDefaultsOpen(true)} className="gap-2">
             <Settings className="h-4 w-4" />
             Default Permissions
-          </Button>
-          <Button onClick={() => setCreateOpen(true)} className="gap-2">
-            <UserPlus className="h-4 w-4" />
-            New Contact
           </Button>
           <Button variant="outline" onClick={loadAll} className="gap-2" disabled={loading}>
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
