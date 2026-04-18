@@ -27,16 +27,9 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const resendApiKey = Deno.env.get('RESEND_API_KEY')
-    // Always use the production custom domain for invite links so the
-    // recipient always lands on the live finance portal accept-invite page.
-    const PRODUCTION_APP_URL = 'https://command-centre.npcservices.com.au'
-    const configuredAppUrl = Deno.env.get('APP_URL')?.trim()
-    const appUrl = configuredAppUrl &&
-        !configuredAppUrl.includes('preview--') &&
-        !configuredAppUrl.includes('localhost') &&
-        !configuredAppUrl.includes('lovableproject.com')
-      ? configuredAppUrl.replace(/\/+$/, '')
-      : PRODUCTION_APP_URL
+    // Hard-pin to the production custom domain. APP_URL env is intentionally
+    // ignored to prevent lovable.app / preview URLs ever leaking into invites.
+    const appUrl = 'https://command-centre.npcservices.com.au'
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     const body = await req.json()

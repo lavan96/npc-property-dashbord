@@ -4,16 +4,27 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Building2, Loader2, CheckCircle2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  AlertCircle, Building2, CheckCircle, Eye, EyeOff, Loader2,
+} from 'lucide-react';
+import { validatePassword } from '@/utils/passwordValidation';
+import { PasswordStrengthMeter } from '@/components/ui/password-strength-meter';
 
 const SUPABASE_URL = "https://dduzbchuswwbefdunfct.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkdXpiY2h1c3d3YmVmZHVuZmN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0NDM4NzksImV4cCI6MjA3MTAxOTg3OX0.eSYU6fxIc3tBQuGLsdBRff0alBMkNfvv7OpW0efNjxk";
 
+const FINANCE_SESSION_KEY = 'finance_portal_session_token';
+
 async function callPublic(fn: string, body: any) {
   const r = await fetch(`${SUPABASE_URL}/functions/v1/${fn}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+    },
+    credentials: 'omit',
     body: JSON.stringify(body),
   });
   const data = await r.json();
@@ -24,55 +35,136 @@ export default function FinancePortalAcceptInvite() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const token = params.get('token') || '';
-  const [stage, setStage] = useState<'loading' | 'set_password' | 'already_active' | 'done' | 'error'>('loading');
+
+  const [stage, setStage] = useState<
+    'loading' | 'set_password' | 'already_active' | 'expired' | 'invalid' | 'success'
+  >('loading');
   const [errorMsg, setErrorMsg] = useState('');
   const [email, setEmail] = useState('');
   const [contactName, setContactName] = useState('');
   const [pw, setPw] = useState('');
   const [pw2, setPw2] = useState('');
+  const [showPw, setShowPw] = useState(false);
+  const [showPw2, setShowPw2] = useState(false);
+  const [submitErr, setSubmitErr] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     (async () => {
-      if (!token) { setStage('error'); setErrorMsg('Missing invite token'); return; }
+      if (!token) {
+        setStage('invalid');
+        setErrorMsg('Missing invite token.');
+        return;
+      }
       try {
-        const { ok, data } = await callPublic('finance-portal-accept-invite', { action: 'validate', token });
+        const { ok, data } = await callPublic('finance-portal-accept-invite', {
+          action: 'validate', token,
+        });
         if (!ok || !data?.valid) {
-          setStage('error');
+          if (data?.expired) {
+            setStage('expired');
+          } else {
+            setStage('invalid');
+          }
           setErrorMsg(data?.error || 'This invite link is invalid or has expired.');
           return;
         }
         setEmail(data.email || '');
         setContactName(data.name || '');
-        if (data.already_active) {
-          setStage('already_active');
-          return;
-        }
-        setStage('set_password');
+        setStage(data.already_active ? 'already_active' : 'set_password');
       } catch (err: any) {
-        setStage('error');
-        setErrorMsg(err?.message || 'We could not validate your invite. Please try again or contact your administrator.');
+        setStage('invalid');
+        setErrorMsg(err?.message || 'Could not validate your invite.');
       }
     })();
   }, [token]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (pw.length < 10) return toast.error('Password must be at least 10 characters');
-    if (pw !== pw2) return toast.error('Passwords do not match');
+    setSubmitErr('');
+    if (pw !== pw2) {
+      setSubmitErr('Passwords do not match');
+      return;
+    }
+    const v = validatePassword(pw);
+    if (!v.isValid) {
+      setSubmitErr(v.error || 'Password does not meet requirements');
+      return;
+    }
     setSubmitting(true);
     const { ok, data } = await callPublic('finance-portal-accept-invite', {
       action: 'accept', token, password: pw,
     });
     setSubmitting(false);
     if (!ok || !data?.success) {
-      toast.error(data?.error || 'Failed to set password');
+      setSubmitErr(data?.error || 'Failed to activate account');
       return;
     }
-    toast.success('Password set. You can now sign in.');
-    setStage('done');
-    setTimeout(() => navigate('/finance/login', { replace: true }), 1500);
+    // Auto-login: persist the session token returned by the function
+    if (data.session_token) {
+      try { sessionStorage.setItem(FINANCE_SESSION_KEY, data.session_token); } catch {}
+      try { localStorage.setItem(FINANCE_SESSION_KEY, data.session_token); } catch {}
+    }
+    setStage('success');
+    setTimeout(() => navigate('/finance', { replace: true }), 1500);
   };
+
+  if (stage === 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-10 w-10 text-primary mx-auto animate-spin" />
+          <p className="text-muted-foreground">Validating your invite…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (stage === 'invalid' || stage === 'expired') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="flex justify-center mb-4">
+              <AlertCircle className="h-16 w-16 text-destructive" />
+            </div>
+            <CardTitle className="text-2xl">
+              {stage === 'expired' ? 'Invite Expired' : 'Invalid Invite'}
+            </CardTitle>
+            <CardDescription>
+              {stage === 'expired'
+                ? 'This invite link has expired. Please contact your administrator to request a new one.'
+                : (errorMsg || 'This invite link is invalid or has already been used.')}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-center">
+            <Button onClick={() => navigate('/finance/login')}>Go to Sign In</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (stage === 'already_active') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="flex justify-center mb-4">
+              <CheckCircle className="h-16 w-16 text-success" />
+            </div>
+            <CardTitle className="text-2xl">Already Activated</CardTitle>
+            <CardDescription>
+              Your account is already set up{email ? ` for ${email}` : ''}. Sign in with your existing password.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-center">
+            <Button onClick={() => navigate('/finance/login')}>Go to Sign In</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-muted/30 p-4">
@@ -81,56 +173,81 @@ export default function FinancePortalAcceptInvite() {
           <div className="mx-auto w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
             <Building2 className="h-7 w-7 text-primary" />
           </div>
-          <CardTitle className="text-2xl">Finance Portal Invitation</CardTitle>
+          <CardTitle className="text-2xl">Set Up Your Account</CardTitle>
           <CardDescription>
-            {stage === 'loading' && 'Validating your invite...'}
-            {stage === 'set_password' && `Welcome ${contactName || ''}. Choose a password to activate your account.`}
-            {stage === 'already_active' && 'This account is already active. Please sign in to continue.'}
-            {stage === 'done' && 'Account activated.'}
-            {stage === 'error' && 'There is a problem with this invite.'}
+            {contactName ? `Welcome, ${contactName}!` : 'Welcome!'} Create a password to access the NPC Finance Partner Portal.
           </CardDescription>
+          {email && (
+            <p className="text-sm text-muted-foreground">
+              Account: <span className="font-medium text-foreground">{email}</span>
+            </p>
+          )}
         </CardHeader>
         <CardContent>
-          {stage === 'loading' && <div className="flex justify-center py-6"><Loader2 className="h-6 w-6 animate-spin" /></div>}
-          {stage === 'error' && (
-            <div className="text-center space-y-3">
-              <p className="text-sm text-destructive">{errorMsg}</p>
-              <Button variant="outline" onClick={() => navigate('/finance/login')}>Go to Login</Button>
-            </div>
+          {submitErr && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{submitErr}</AlertDescription>
+            </Alert>
           )}
-          {stage === 'already_active' && (
-            <div className="text-center space-y-3">
-              <CheckCircle2 className="h-10 w-10 text-success mx-auto" />
-              <p className="text-sm text-muted-foreground">
-                Your account is already set up{email ? ` for ${email}` : ''}. Use your existing password to sign in,
-                or reset it from the sign-in page.
-              </p>
-              <Button className="w-full" onClick={() => navigate('/finance/login', { replace: true })}>
-                Go to Sign In
-              </Button>
-            </div>
-          )}
-          {stage === 'done' && (
-            <div className="text-center space-y-3">
-              <CheckCircle2 className="h-10 w-10 text-success mx-auto" />
-              <p className="text-sm text-muted-foreground">Redirecting you to sign in...</p>
-            </div>
-          )}
-          {stage === 'set_password' && (
+          {stage === 'success' ? (
+            <Alert className="border-success">
+              <CheckCircle className="h-4 w-4 text-success" />
+              <AlertDescription>Account activated! Redirecting you to the portal…</AlertDescription>
+            </Alert>
+          ) : (
             <form onSubmit={submit} className="space-y-4">
-              <div>
-                <Label>Email</Label>
-                <Input value={email} disabled className="mt-1 bg-muted" />
+              <div className="space-y-2">
+                <Label htmlFor="fp-pw">Password</Label>
+                <div className="relative">
+                  <Input
+                    id="fp-pw"
+                    type={showPw ? 'text' : 'password'}
+                    value={pw}
+                    onChange={(e) => setPw(e.target.value)}
+                    placeholder="Create a password"
+                    required
+                    disabled={submitting}
+                    className="pr-10"
+                  />
+                  <Button
+                    type="button" variant="ghost" size="sm" tabIndex={-1}
+                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                    onClick={() => setShowPw(s => !s)}
+                  >
+                    {showPw
+                      ? <EyeOff className="h-4 w-4 text-muted-foreground" />
+                      : <Eye className="h-4 w-4 text-muted-foreground" />}
+                  </Button>
+                </div>
+                <PasswordStrengthMeter password={pw} />
               </div>
-              <div>
-                <Label>New password</Label>
-                <Input type="password" value={pw} onChange={e => setPw(e.target.value)} minLength={10} className="mt-1" required />
-                <div className="text-xs text-muted-foreground mt-1">Minimum 10 characters.</div>
+
+              <div className="space-y-2">
+                <Label htmlFor="fp-pw2">Confirm Password</Label>
+                <div className="relative">
+                  <Input
+                    id="fp-pw2"
+                    type={showPw2 ? 'text' : 'password'}
+                    value={pw2}
+                    onChange={(e) => setPw2(e.target.value)}
+                    placeholder="Confirm your password"
+                    required
+                    disabled={submitting}
+                    className="pr-10"
+                  />
+                  <Button
+                    type="button" variant="ghost" size="sm" tabIndex={-1}
+                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                    onClick={() => setShowPw2(s => !s)}
+                  >
+                    {showPw2
+                      ? <EyeOff className="h-4 w-4 text-muted-foreground" />
+                      : <Eye className="h-4 w-4 text-muted-foreground" />}
+                  </Button>
+                </div>
               </div>
-              <div>
-                <Label>Confirm password</Label>
-                <Input type="password" value={pw2} onChange={e => setPw2(e.target.value)} minLength={10} className="mt-1" required />
-              </div>
+
               <Button type="submit" className="w-full gap-2" disabled={submitting}>
                 {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
                 Activate Account

@@ -20,6 +20,8 @@ import {
   BarChart3, FileSpreadsheet, FileText, DollarSign, UserPlus,
   Pencil, Trash2,
 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { ClientAssignmentsDialog } from '@/components/admin/finance-portal/ClientAssignmentsDialog';
@@ -197,6 +199,32 @@ export default function FinancePortalAdmin() {
     }
   };
 
+  const toggleActive = async (u: FinanceUserRow, next: boolean) => {
+    setBusyId(u.id);
+    try {
+      const { data, error } = await invokeSecureFunction('finance-portal-admin', {
+        operation: 'update_contact',
+        contact_id: u.id,
+        is_active: next,
+      });
+      if (error) throw new Error(error.message);
+      if (next) {
+        toast.success(`${u.name} marked Active`);
+      } else {
+        toast.success(
+          (data as any)?.portal_revoked
+            ? `${u.name} deactivated — portal session revoked`
+            : `${u.name} marked Inactive`
+        );
+      }
+      await loadAll();
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to update status');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -302,6 +330,7 @@ export default function FinancePortalAdmin() {
                     <TableHead>Contact</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead className="w-24">Active</TableHead>
                     <TableHead>Last Login</TableHead>
                     <TableHead>Invite</TableHead>
                     <TableHead className="w-12"></TableHead>
@@ -310,7 +339,7 @@ export default function FinancePortalAdmin() {
                 <TableBody>
                   {filtered.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-8">
+                      <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-8">
                         No matching finance contacts.
                       </TableCell>
                     </TableRow>
@@ -331,6 +360,27 @@ export default function FinancePortalAdmin() {
                         <TableCell className="text-sm">{u.email}</TableCell>
                         <TableCell>
                           <Badge variant={badge.variant}>{badge.label}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <TooltipProvider delayDuration={150}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="inline-flex items-center">
+                                  <Switch
+                                    checked={u.is_active}
+                                    disabled={busyId === u.id}
+                                    onCheckedChange={(c) => toggleActive(u, c)}
+                                    aria-label={`Toggle ${u.name} active`}
+                                  />
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">
+                                {u.is_active
+                                  ? 'Active — turn off to deactivate and revoke portal session'
+                                  : 'Inactive — turn on to reactivate'}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground">
                           {portalUser?.last_login_at

@@ -9,16 +9,18 @@ interface FinancePortalUser {
   contact_type: string | null;
   has_accepted_terms: boolean;
   has_completed_onboarding: boolean;
+  must_change_password?: boolean;
 }
 
 interface FinancePortalAuthContextType {
   user: FinancePortalUser | null;
   loading: boolean;
-  signIn: (email: string, password: string, turnstileToken?: string) => Promise<{ error?: string }>;
+  signIn: (email: string, password: string, turnstileToken?: string) => Promise<{ error?: string; mustChangePassword?: boolean }>;
   signOut: () => Promise<void>;
   requestPasswordReset: (email: string) => Promise<{ error?: string; success?: boolean }>;
   verifyOTP: (email: string, otp: string) => Promise<{ error?: string; success?: boolean }>;
   resetPassword: (email: string, otp: string, newPassword: string) => Promise<{ error?: string; success?: boolean }>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<{ error?: string; success?: boolean }>;
   acceptTerms: () => Promise<void>;
   completeOnboarding: () => Promise<void>;
   invokeFinanceFunction: (
@@ -140,10 +142,26 @@ export function FinancePortalAuthProvider({ children }: { children: ReactNode })
         persistStoredValue(FINANCE_SESSION_KEY, data.session_token);
       }
       setUser(data.user);
-      return {};
+      return { mustChangePassword: !!data.user?.must_change_password || !!data.must_change_password };
     } catch {
       return { error: 'Login failed' };
     }
+  }, []);
+
+  const changePassword = useCallback(async (currentPassword: string, newPassword: string) => {
+    const { data, error } = await invokeFinanceFunction('finance-portal-change-password', {
+      current_password: currentPassword,
+      new_password: newPassword,
+    });
+    if (error || !data?.success) {
+      return { error: data?.error || error?.message || 'Failed to change password' };
+    }
+    if (data.session_token) {
+      persistStoredValue(FINANCE_SESSION_KEY, data.session_token);
+    }
+    // Update local user to clear must_change_password
+    setUser(prev => prev ? { ...prev, must_change_password: false } : prev);
+    return { success: true };
   }, []);
 
   const signOut = useCallback(async () => {
@@ -189,7 +207,7 @@ export function FinancePortalAuthProvider({ children }: { children: ReactNode })
     <FinancePortalAuthContext.Provider
       value={{
         user, loading, signIn, signOut,
-        requestPasswordReset, verifyOTP, resetPassword,
+        requestPasswordReset, verifyOTP, resetPassword, changePassword,
         acceptTerms, completeOnboarding,
         invokeFinanceFunction, getSessionToken, refreshUser,
       }}

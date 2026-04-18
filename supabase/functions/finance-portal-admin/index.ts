@@ -1023,6 +1023,13 @@ serve(async (req) => {
       }
       if (body.gst_registered !== undefined) updates.gst_registered = body.gst_registered === true;
 
+      // is_active toggle (cascades to revoke portal session when set false)
+      let cascadeRevoke = false;
+      if (body.is_active !== undefined) {
+        updates.is_active = body.is_active === true;
+        if (body.is_active === false) cascadeRevoke = true;
+      }
+
       if (body.is_default === true && !existing.is_default) {
         await supabase.from('finance_agent_contacts').update({ is_default: false }).eq('is_default', true);
         updates.is_default = true;
@@ -1048,17 +1055,46 @@ serve(async (req) => {
         if (!pUpdErr) portalEmailSynced = true;
       }
 
+      // Cascade-revoke portal session when contact is deactivated
+      let portalRevoked = false;
+      if (cascadeRevoke) {
+        const { data: revoked } = await supabase
+          .from('finance_portal_users')
+          .update({
+            is_active: false,
+            revoked_at: new Date().toISOString(),
+            revoked_by: adminUserId,
+            session_token: null,
+            session_expires_at: null,
+          })
+          .eq('finance_contact_id', contact_id)
+          .select('id')
+          .maybeSingle();
+        portalRevoked = !!revoked;
+      }
+
       await supabase.from('finance_portal_activity_log').insert({
         actor_user_id: adminUserId,
         actor_type: 'admin',
         action: 'contact_updated',
         entity_type: 'finance_agent_contact',
         entity_id: contact_id,
-        metadata: { changes: Object.keys(updates), email_changed: !!newEmail, portal_email_synced: portalEmailSynced },
+        metadata: {
+          changes: Object.keys(updates),
+          email_changed: !!newEmail,
+          portal_email_synced: portalEmailSynced,
+          cascade_revoked: portalRevoked,
+        },
       });
 
       return new Response(
-        JSON.stringify({ success: true, record: updated, portal_email_synced: portalEmailSynced, email_changed: !!newEmail }),
+        JSON.stringify({
+          success: true,
+          record: updated,
+          portal_email_synced: portalEmailSynced,
+          email_changed: !!newEmail,
+          portal_revoked: portalRevoked,
+        }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

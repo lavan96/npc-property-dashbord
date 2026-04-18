@@ -1,0 +1,163 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
+import { hashPassword, verifyPassword } from "../_shared/password.ts"
+import { createCorsHeaders, createSessionCookie } from "../_shared/auth.ts"
+
+const SESSION_HOURS = 12;
+
+function extractSessionToken(req: Request, body: any): string | null {
+  const header = req.headers.get('x-finance-session-token') || req.headers.get('x-session-token');
+  if (header) return header;
+  if (body?.finance_session_token) return body.finance_session_token;
+  if (body?.session_token) return body.session_token;
+  const cookie = req.headers.get('cookie') || '';
+  const m = cookie.match(/(?:finance_session|session_token)=([^;]+)/);
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
+serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = createCorsHeaders(origin);
+
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+    const body = await req.json().catch(() => ({}));
+    const { current_password, new_password } = body;
+
+    if (!current_password || !new_password) {
+      return new Response(
+        JSON.stringify({ error: 'Current and new passwords are required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    if (typeof new_password !== 'string' || new_password.length < 10) {
+      return new Response(
+        JSON.stringify({ error: 'New password must be at least 10 characters' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    if (new_password === current_password) {
+      return new Response(
+        JSON.stringify({ error: 'New password must be different from your current password' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const sessionToken = extractSessionToken(req, body);
+    if (!sessionToken) {
+      return new Response(
+        JSON.stringify({ error: 'Session token required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Look up portal user by session
+    const { data: portalUser } = await supabase
+      .from('finance_portal_users')
+      .select('id, finance_contact_id, email, password_hash, session_expires_at, is_active, revoked_at')
+      .eq('session_token', sessionToken)
+      .maybeSingle()
+
+    if (!portalUser) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid session' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    if (!portalUser.is_active || portalUser.revoked_at) {
+      return new Response(
+        JSON.stringify({ error: 'Your access has been revoked' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    if (portalUser.session_expires_at && new Date(portalUser.session_expires_at) < new Date()) {
+      return new Response(
+        JSON.stringify({ error: 'Session expired. Please sign in again.' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (!portalUser.password_hash) {
+      return new Response(
+        JSON.stringify({ error: 'No password is set for this account' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const valid = await verifyPassword(current_password, portalUser.password_hash);
+    if (!valid) {
+      return new Response(
+        JSON.stringify({ error: 'Current password is incorrect' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Rotate session token + password
+    const newHash = await hashPassword(new_password);
+    const newSessionToken = crypto.randomUUID() + '-' + crypto.randomUUID();
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + SESSION_HOURS);
+
+    const { error: updErr } = await supabase
+      .from('finance_portal_users')
+      .update({
+        password_hash: newHash,
+        must_change_password: false,
+        session_token: newSessionToken,
+        session_expires_at: expiresAt.toISOString(),
+        failed_login_attempts: 0,
+        locked_until: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', portalUser.id);
+
+    if (updErr) {
+      console.error('[finance-portal-change-password] update failed:', updErr);
+      return new Response(
+        JSON.stringify({ error: 'Failed to update password' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    await supabase.from('finance_portal_activity_log').insert({
+      finance_user_id: portalUser.id,
+      actor_user_id: portalUser.id,
+      actor_type: 'finance_user',
+      action: 'password_changed',
+      entity_type: 'finance_portal_user',
+      entity_id: portalUser.id,
+    });
+
+    const sessionCookie = createSessionCookie(newSessionToken, expiresAt);
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: 'Password changed successfully',
+        session_token: newSessionToken,
+        expires_at: expiresAt.toISOString(),
+      }),
+      {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+          'Set-Cookie': sessionCookie,
+        }
+      }
+    )
+  } catch (err: any) {
+    console.error('[finance-portal-change-password] error:', err);
+    return new Response(
+      JSON.stringify({ error: 'Internal server error' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  }
+})
