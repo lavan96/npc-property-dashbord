@@ -85,15 +85,30 @@ export default function Settings() {
   const handleSaveMailbox = async () => {
     setSavingMailbox(true);
     try {
-      const { data } = await invokeSecureFunction('admin-user-management', { 
-        action: 'update_own_mailbox', 
-        personal_mailbox: personalMailbox || null
+      const trimmed = personalMailbox.trim();
+      if (trimmed && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+        toast({
+          title: 'Invalid Email',
+          description: 'Please enter a valid email address.',
+          variant: 'destructive',
+        });
+        setSavingMailbox(false);
+        return;
+      }
+
+      const { data } = await invokeSecureFunction('admin-user-management', {
+        action: 'update_own_mailbox',
+        personal_mailbox: trimmed || null,
       });
 
       if (data?.success) {
+        // Reflect the saved (possibly trimmed/cleared) value back into local state
+        setPersonalMailbox(trimmed);
         toast({
           title: "Mailbox Updated",
-          description: "Your personal mailbox has been saved successfully.",
+          description: trimmed
+            ? "Your personal mailbox has been saved successfully."
+            : "Your personal mailbox has been cleared.",
         });
         logActivityDirect({
           actionType: 'settings_updated',
@@ -101,6 +116,8 @@ export default function Settings() {
           entityName: 'Personal Mailbox',
           metadata: { setting: 'personal_mailbox' }
         });
+        // Re-fetch from backend to confirm persistence and avoid drift
+        await fetchOwnProfile();
       } else {
         toast({
           title: "Error",

@@ -326,15 +326,37 @@ export default function UserManagement() {
     if (!editingMailboxUserId) return;
     setSavingMailbox(true);
     try {
-      const { data } = await invokeSecureFunction('admin-user-management', {
-        action: 'update_user', user_id: editingMailboxUserId, personal_mailbox: editingMailboxValue || null,
+      const trimmed = editingMailboxValue.trim();
+      // Basic email validation when a value is provided (empty = clear)
+      if (trimmed && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+        toast.error('Please enter a valid email address');
+        setSavingMailbox(false);
+        return;
+      }
+
+      const { data, error } = await invokeSecureFunction('admin-user-management', {
+        action: 'update_user',
+        user_id: editingMailboxUserId,
+        personal_mailbox: trimmed || null,
       });
       if (data?.success) {
-        toast.success('Mailbox updated');
+        // Optimistically update the row so the UI reflects the new value
+        // immediately, even before the list refetch resolves.
+        setUsers(prev => prev.map(u =>
+          u.id === editingMailboxUserId
+            ? { ...u, personal_mailbox: trimmed || null }
+            : u
+        ));
+        toast.success(trimmed ? 'Mailbox updated' : 'Mailbox cleared');
         setMailboxDialogOpen(false);
-        fetchUsers();
-      } else toast.error(data?.error || 'Failed to update mailbox');
-    } catch { toast.error('Failed to update mailbox'); }
+        await fetchUsers();
+      } else {
+        toast.error(data?.error || error?.message || 'Failed to update mailbox');
+      }
+    } catch (err) {
+      console.error('[UserManagement] Failed to update mailbox:', err);
+      toast.error('Failed to update mailbox');
+    }
     finally { setSavingMailbox(false); }
   };
 
