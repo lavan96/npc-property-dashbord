@@ -38,7 +38,7 @@ export function CreateFinanceContactDialog({ open, onOpenChange, onCreated }: Cr
     name: '',
     email: '',
     company: '',
-    contact_type: 'broker',
+    contact_type: 'external',
     abn: '',
     default_commission_basis: '',
     default_commission_rate_pct: '',
