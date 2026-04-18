@@ -366,6 +366,7 @@ serve(async (req) => {
       }
 
       let created = 0;
+      let cascaded = 0;
       for (const clientId of candidateClients) {
         const { data: existing } = await supabase
           .from('finance_portal_client_assignments')
@@ -386,7 +387,24 @@ serve(async (req) => {
             auto_link_source: sourceMap.get(clientId) || sourceMode,
             assigned_by: adminUserId,
           });
-        if (!insErr) created++;
+        if (!insErr) {
+          created++;
+          // Cascade finance_contact_id back to clients table if not already set
+          if (pUser.finance_contact_id) {
+            const { data: clientRow } = await supabase
+              .from('clients')
+              .select('finance_contact_id')
+              .eq('id', clientId)
+              .maybeSingle();
+            if (clientRow && !clientRow.finance_contact_id) {
+              const { error: cErr } = await supabase
+                .from('clients')
+                .update({ finance_contact_id: pUser.finance_contact_id })
+                .eq('id', clientId);
+              if (!cErr) cascaded++;
+            }
+          }
+        }
       }
 
       await supabase.from('finance_portal_activity_log').insert({
