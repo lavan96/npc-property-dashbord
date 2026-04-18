@@ -422,6 +422,13 @@ export default function FinancePortalAdmin() {
                                   </AlertDialogContent>
                                 </AlertDialog>
                               )}
+                              <DropdownMenuItem
+                                onClick={() => setDeleteUser(u)}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete Contact
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
