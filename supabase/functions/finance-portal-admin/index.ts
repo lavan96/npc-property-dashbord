@@ -220,6 +220,32 @@ serve(async (req) => {
 
       if (uErr) throw uErr;
 
+      // ── Cascade: link the client's finance_contact_id so the internal
+      // dashboard + client portal can surface this finance officer.
+      // Only set if currently NULL (don't overwrite an explicit choice).
+      const { data: pUserCascade } = await supabase
+        .from('finance_portal_users')
+        .select('finance_contact_id')
+        .eq('id', finance_user_id)
+        .maybeSingle();
+
+      let cascaded_finance_contact_id: string | null = null;
+      if (pUserCascade?.finance_contact_id) {
+        const { data: clientRow } = await supabase
+          .from('clients')
+          .select('finance_contact_id')
+          .eq('id', client_id)
+          .maybeSingle();
+
+        if (clientRow && !clientRow.finance_contact_id) {
+          const { error: cascadeErr } = await supabase
+            .from('clients')
+            .update({ finance_contact_id: pUserCascade.finance_contact_id })
+            .eq('id', client_id);
+          if (!cascadeErr) cascaded_finance_contact_id = pUserCascade.finance_contact_id;
+        }
+      }
+
       await supabase.from('finance_portal_activity_log').insert({
         finance_user_id,
         client_id,
@@ -228,11 +254,11 @@ serve(async (req) => {
         action: 'assignment_upserted',
         entity_type: 'finance_portal_client_assignment',
         entity_id: upserted?.id || null,
-        metadata: { permissions: normalized, auto_link_source: auto_link_source || null },
+        metadata: { permissions: normalized, auto_link_source: auto_link_source || null, cascaded_finance_contact_id },
       });
 
       return new Response(
-        JSON.stringify({ success: true, id: upserted?.id }),
+        JSON.stringify({ success: true, id: upserted?.id, cascaded_finance_contact_id }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
