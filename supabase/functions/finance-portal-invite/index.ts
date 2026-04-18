@@ -1,8 +1,19 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
 import { createCorsHeaders, verifyAuth } from "../_shared/auth.ts"
+import { hashPassword } from "../_shared/password.ts"
 
 const INVITE_EXPIRY_HOURS = 72;
+
+function generateTempPassword(): string {
+  // 12 chars, mixed letters/digits, no ambiguous chars
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+  const buf = new Uint8Array(12);
+  crypto.getRandomValues(buf);
+  let out = '';
+  for (let i = 0; i < buf.length; i++) out += chars[buf[i] % chars.length];
+  return out;
+}
 
 serve(async (req) => {
   const origin = req.headers.get('origin');
@@ -24,7 +35,8 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     const body = await req.json()
-    const { action, finance_contact_id, resend_invite } = body
+    const { action, finance_contact_id, resend_invite, invite_mode, custom_password } = body
+    // invite_mode: 'set_password_link' (default, user sets own) | 'temp_password' (admin issues temp pwd)
 
     // Admin auth required for all operations
     const auth = await verifyAuth(supabase, req.headers, body)
@@ -187,6 +199,17 @@ serve(async (req) => {
     expiresAt.setHours(expiresAt.getHours() + INVITE_EXPIRY_HOURS)
     const adminUserId = auth.userId === 'service_role' ? null : auth.userId;
 
+    // Resolve invite mode + temp password
+    const useTempPassword = invite_mode === 'temp_password';
+    let tempPasswordPlain: string | null = null;
+    let tempPasswordHash: string | null = null;
+    if (useTempPassword) {
+      tempPasswordPlain = (typeof custom_password === 'string' && custom_password.length >= 8)
+        ? custom_password
+        : generateTempPassword();
+      tempPasswordHash = await hashPassword(tempPasswordPlain);
+    }
+
     if (existingUser) {
       if (existingUser.invite_accepted_at && existingUser.is_active && !existingUser.revoked_at && !resend_invite) {
         return new Response(
@@ -195,44 +218,54 @@ serve(async (req) => {
         )
       }
       // Reset / refresh invite
+      const updatePayload: Record<string, any> = {
+        email: normalizedEmail,
+        invite_token: useTempPassword ? null : inviteToken,
+        invite_token_expires_at: useTempPassword ? null : expiresAt.toISOString(),
+        invite_sent_at: new Date().toISOString(),
+        is_active: true,
+        revoked_at: null,
+        revoked_by: null,
+        session_token: null,
+        session_expires_at: null,
+        failed_login_attempts: 0,
+        locked_until: null,
+      };
+      if (useTempPassword) {
+        updatePayload.password_hash = tempPasswordHash;
+        updatePayload.must_change_password = true;
+        // Mark invite as accepted so login is allowed; user is forced to change pwd on first login
+        updatePayload.invite_accepted_at = existingUser.invite_accepted_at || new Date().toISOString();
+      } else if (!existingUser.invite_accepted_at) {
+        updatePayload.password_hash = null;
+        updatePayload.must_change_password = false;
+        updatePayload.has_accepted_terms = false;
+        updatePayload.terms_accepted_at = null;
+        updatePayload.has_completed_onboarding = false;
+      }
       await supabase
         .from('finance_portal_users')
-        .update({
-          email: normalizedEmail,
-          invite_token: inviteToken,
-          invite_token_expires_at: expiresAt.toISOString(),
-          invite_sent_at: new Date().toISOString(),
-          // Re-accepting invite reactivates and clears revocation
-          is_active: true,
-          revoked_at: null,
-          revoked_by: null,
-          // Clear any stale auth state
-          session_token: null,
-          session_expires_at: null,
-          failed_login_attempts: 0,
-          locked_until: null,
-          // For resend, keep invite_accepted_at as-is so existing users don't lose acceptance
-          ...(existingUser.invite_accepted_at ? {} : {
-            password_hash: null,
-            has_accepted_terms: false,
-            terms_accepted_at: null,
-            has_completed_onboarding: false,
-          }),
-        })
+        .update(updatePayload)
         .eq('id', existingUser.id)
     } else {
+      const insertPayload: Record<string, any> = {
+        finance_contact_id: contact.id,
+        email: normalizedEmail,
+        password_hash: tempPasswordHash, // null when link mode, hash when temp pwd
+        must_change_password: useTempPassword,
+        is_active: true,
+        invite_sent_at: new Date().toISOString(),
+        invited_by: adminUserId,
+      };
+      if (useTempPassword) {
+        insertPayload.invite_accepted_at = new Date().toISOString();
+      } else {
+        insertPayload.invite_token = inviteToken;
+        insertPayload.invite_token_expires_at = expiresAt.toISOString();
+      }
       const { error: insertError } = await supabase
         .from('finance_portal_users')
-        .insert({
-          finance_contact_id: contact.id,
-          email: normalizedEmail,
-          password_hash: null,
-          is_active: true,
-          invite_token: inviteToken,
-          invite_token_expires_at: expiresAt.toISOString(),
-          invite_sent_at: new Date().toISOString(),
-          invited_by: adminUserId,
-        })
+        .insert(insertPayload)
       if (insertError) {
         console.error('[finance-portal-invite] Insert failed:', insertError)
         return new Response(
@@ -243,6 +276,35 @@ serve(async (req) => {
     }
 
     const inviteLink = `${appUrl}/finance/accept-invite?token=${encodeURIComponent(inviteToken)}`
+    const loginLink = `${appUrl}/finance/login`
+
+    // Build email content based on mode
+    const subject = useTempPassword
+      ? 'Your NPC Finance Portal account is ready'
+      : "You're Invited to the NPC Finance Portal"
+
+    const ctaBlock = useTempPassword
+      ? `
+        <p style="color:#555;font-size:16px;line-height:1.6;">
+          Your account has been created with a temporary password. For security, you'll be asked to change it on first login.
+        </p>
+        <div style="background:#F8F5EC;border:1px solid #BF9B50;border-radius:8px;padding:20px;margin:24px 0;">
+          <p style="margin:0 0 8px;color:#0D264D;font-size:13px;letter-spacing:0.5px;text-transform:uppercase;font-weight:700;">Temporary password</p>
+          <p style="margin:0;font-family:Menlo,Consolas,monospace;font-size:22px;color:#0D264D;letter-spacing:2px;font-weight:700;">${tempPasswordPlain}</p>
+        </div>
+        <div style="text-align:center;margin:32px 0;">
+          <a href="${loginLink}" style="display:inline-block;background:#BF9B50;color:#0D264D;padding:14px 32px;border-radius:8px;text-decoration:none;font-size:16px;font-weight:700;">Sign In</a>
+        </div>`
+      : `
+        <p style="color:#555;font-size:16px;line-height:1.6;">
+          You've been invited to access the NPC Finance Portal. Click the button below to set up your password and activate your account.
+        </p>
+        <div style="text-align:center;margin:32px 0;">
+          <a href="${inviteLink}" style="display:inline-block;background:#BF9B50;color:#0D264D;padding:14px 32px;border-radius:8px;text-decoration:none;font-size:16px;font-weight:700;">Set Up Your Account</a>
+        </div>
+        <p style="color:#888;font-size:14px;line-height:1.5;">
+          This invitation expires in ${INVITE_EXPIRY_HOURS} hours. If you didn't expect this, you can safely ignore this email.
+        </p>`
 
     let emailSent = false;
     if (resendApiKey) {
@@ -256,31 +318,16 @@ serve(async (req) => {
           body: JSON.stringify({
             from: 'NPC Services <noreply@npcservices.com.au>',
             to: [normalizedEmail],
-            subject: 'You\'re Invited to the NPC Finance Portal',
+            subject,
             html: `
-              <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 40px 24px; background: #ffffff;">
-                <div style="text-align: center; margin-bottom: 32px;">
-                  <h1 style="color: #0D264D; font-size: 24px; margin: 0;">Welcome to the Finance Portal</h1>
+              <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:40px 24px;background:#ffffff;">
+                <div style="text-align:center;margin-bottom:32px;">
+                  <h1 style="color:#0D264D;font-size:24px;margin:0;">Welcome to the Finance Portal</h1>
                 </div>
-                <p style="color: #555; font-size: 16px; line-height: 1.6;">Hi ${contact.name},</p>
-                <p style="color: #555; font-size: 16px; line-height: 1.6;">
-                  You've been invited to access the NPC Finance Portal. From there you can manage assigned client financial profiles —
-                  property valuations, purchase prices, and other key data points.
-                </p>
-                <div style="text-align: center; margin: 32px 0;">
-                  <a href="${inviteLink}"
-                     style="display: inline-block; background: #BF9B50; color: #0D264D; padding: 14px 32px;
-                            border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: 700;">
-                    Set Up Your Account
-                  </a>
-                </div>
-                <p style="color: #888; font-size: 14px; line-height: 1.5;">
-                  This invitation expires in ${INVITE_EXPIRY_HOURS} hours. If you didn't expect this, you can safely ignore this email.
-                </p>
-                <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0;" />
-                <p style="color: #aaa; font-size: 12px; text-align: center;">
-                  NPC Services — Property Investment Advisory
-                </p>
+                <p style="color:#555;font-size:16px;line-height:1.6;">Hi ${contact.name},</p>
+                ${ctaBlock}
+                <hr style="border:none;border-top:1px solid #eee;margin:32px 0;" />
+                <p style="color:#aaa;font-size:12px;text-align:center;">NPC Services — Property Investment Advisory</p>
               </div>
             `,
           }),
@@ -311,17 +358,22 @@ serve(async (req) => {
         action: existingUser ? 'invite_resent' : 'invite_sent',
         entity_type: 'finance_portal_user',
         entity_id: portalUserRow.id,
-        metadata: { email: normalizedEmail, expires_at: expiresAt.toISOString() },
+        metadata: { email: normalizedEmail, mode: useTempPassword ? 'temp_password' : 'set_password_link' },
       });
     }
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: emailSent ? `Invite sent to ${normalizedEmail}` : 'Invite created — copy the link manually',
-        invite_link: inviteLink,
+        message: emailSent
+          ? `Invite sent to ${normalizedEmail}`
+          : 'Invite created — copy the credentials manually',
+        invite_link: useTempPassword ? loginLink : inviteLink,
         email_sent: emailSent,
-        expires_at: expiresAt.toISOString(),
+        mode: useTempPassword ? 'temp_password' : 'set_password_link',
+        // Only return temp password to the admin so they can share it manually if email fails
+        temp_password: useTempPassword ? tempPasswordPlain : null,
+        expires_at: useTempPassword ? null : expiresAt.toISOString(),
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )

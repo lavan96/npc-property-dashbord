@@ -5892,6 +5892,7 @@ export type Database = {
           is_active: boolean
           last_login_at: string | null
           locked_until: string | null
+          must_change_password: boolean
           password_hash: string | null
           reset_token: string | null
           reset_token_expires_at: string | null
@@ -5918,6 +5919,7 @@ export type Database = {
           is_active?: boolean
           last_login_at?: string | null
           locked_until?: string | null
+          must_change_password?: boolean
           password_hash?: string | null
           reset_token?: string | null
           reset_token_expires_at?: string | null
@@ -5944,6 +5946,7 @@ export type Database = {
           is_active?: boolean
           last_login_at?: string | null
           locked_until?: string | null
+          must_change_password?: boolean
           password_hash?: string | null
           reset_token?: string | null
           reset_token_expires_at?: string | null
@@ -8497,6 +8500,7 @@ export type Database = {
           is_active: boolean
           last_seen_at: string
           p256dh: string
+          subscriber_type: string
           updated_at: string
           user_agent: string | null
           user_id: string
@@ -8510,6 +8514,7 @@ export type Database = {
           is_active?: boolean
           last_seen_at?: string
           p256dh: string
+          subscriber_type?: string
           updated_at?: string
           user_agent?: string | null
           user_id: string
@@ -8523,19 +8528,12 @@ export type Database = {
           is_active?: boolean
           last_seen_at?: string
           p256dh?: string
+          subscriber_type?: string
           updated_at?: string
           user_agent?: string | null
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "push_subscriptions_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "custom_users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       report_qa_conversation_shares: {
         Row: {

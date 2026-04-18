@@ -9,9 +9,12 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
+type SubscriberType = 'staff' | 'client_portal' | 'finance_portal';
+
 interface DispatchPayload {
   notification_id?: string;
   user_id: string;
+  subscriber_type?: SubscriberType;
   title: string;
   body?: string;
   url?: string | null;
@@ -55,11 +58,13 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    // Fetch active subscriptions for the user
+    // Fetch active subscriptions for the user (scoped to subscriber pool when provided)
+    const subscriberType: SubscriberType = payload.subscriber_type || 'staff';
     const { data: subs, error } = await supabase
       .from('push_subscriptions')
       .select('id, endpoint, p256dh, auth')
       .eq('user_id', payload.user_id)
+      .eq('subscriber_type', subscriberType)
       .eq('is_active', true);
 
     if (error) throw error;

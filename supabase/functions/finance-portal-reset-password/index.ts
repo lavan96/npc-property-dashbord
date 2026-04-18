@@ -95,6 +95,7 @@ serve(async (req) => {
         .from('finance_portal_users')
         .update({
           password_hash: hashedPassword,
+          must_change_password: false,
           reset_token: null,
           reset_token_expires_at: null,
           // Invalidate any active session
