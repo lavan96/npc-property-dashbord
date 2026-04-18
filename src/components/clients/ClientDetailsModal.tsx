@@ -91,6 +91,7 @@ import { LeadSourceCard } from './LeadSourceCard';
 import { ClientConversationsTab } from './ClientConversationsTab';
 import { LenderSubmissionsPanel } from '@/components/lenders/LenderSubmissionsPanel';
 import { LenderComparisonSheets } from '@/components/lenders/LenderComparisonSheets';
+import { FinancePartnersCard } from './FinancePartnersCard';
 import { toast } from 'sonner';
 interface ClientDetailsModalProps {
   client: {
@@ -489,6 +490,12 @@ NPC Team`
                 clientId={client.id}
                 attributions={attributions}
                 onRefresh={refetchClient}
+              />
+
+              {/* Finance Partners (Three-way sync entry point) */}
+              <FinancePartnersCard
+                clientId={client.id}
+                clientName={`${client.primary_first_name} ${client.primary_surname}`.trim()}
               />
             </TabsContent>
 

@@ -633,15 +633,33 @@ serve(async (req) => {
         rows.map((r: any) => (r.client_name || '').toString().trim()).filter(Boolean)
       ));
 
+      // Helper to derive a normalized full name from a client row
+      const fullName = (c: any) => [c?.primary_first_name, c?.primary_surname].filter(Boolean).join(' ').trim();
+
       const [puRes, cByEmailRes, cByNameRes] = await Promise.all([
         partnerEmails.length
           ? supabase.from('finance_portal_users').select('id, email, finance_contact_id, is_active, revoked_at').in('email', partnerEmails)
           : Promise.resolve({ data: [] }),
         clientEmails.length
-          ? supabase.from('clients').select('id, primary_contact_email, primary_contact_name').in('primary_contact_email', clientEmails)
+          ? supabase.from('clients').select('id, primary_email, primary_first_name, primary_surname').in('primary_email', clientEmails)
           : Promise.resolve({ data: [] }),
+        // Name lookup: we can't `.in()` on a derived expression, so fetch a wider set and filter in memory.
         clientNames.length
-          ? supabase.from('clients').select('id, primary_contact_email, primary_contact_name').in('primary_contact_name', clientNames)
+          ? supabase
+              .from('clients')
+              .select('id, primary_email, primary_first_name, primary_surname')
+              .or(
+                clientNames
+                  .map((n) => {
+                    const parts = n.split(/\s+/);
+                    const first = parts[0]?.replace(/[%,]/g, '') || '';
+                    const last = parts.slice(1).join(' ').replace(/[%,]/g, '') || '';
+                    return last
+                      ? `and(primary_first_name.ilike.${first},primary_surname.ilike.${last})`
+                      : `primary_first_name.ilike.${first}`;
+                  })
+                  .join(',')
+              )
           : Promise.resolve({ data: [] }),
       ]);
 
@@ -649,10 +667,10 @@ serve(async (req) => {
         ((puRes as any).data || []).map((u: any) => [u.email.toLowerCase(), u])
       );
       const clientByEmail = new Map<string, any>(
-        ((cByEmailRes as any).data || []).map((c: any) => [(c.primary_contact_email || '').toLowerCase(), c])
+        ((cByEmailRes as any).data || []).map((c: any) => [(c.primary_email || '').toLowerCase(), { ...c, primary_contact_name: fullName(c), primary_contact_email: c.primary_email }])
       );
       const clientByName = new Map<string, any>(
-        ((cByNameRes as any).data || []).map((c: any) => [c.primary_contact_name, c])
+        ((cByNameRes as any).data || []).map((c: any) => [fullName(c), { ...c, primary_contact_name: fullName(c), primary_contact_email: c.primary_email }])
       );
 
       const results: any[] = [];
@@ -830,7 +848,7 @@ serve(async (req) => {
           ? supabase.from('finance_portal_users').select('id, email, finance_contact_id').in('id', partnerIds)
           : Promise.resolve({ data: [] }),
         clientIds.length
-          ? supabase.from('clients').select('id, primary_contact_name, primary_contact_email').in('id', clientIds)
+          ? supabase.from('clients').select('id, primary_first_name, primary_surname, primary_email').in('id', clientIds)
           : Promise.resolve({ data: [] }),
       ]);
 
@@ -844,7 +862,10 @@ serve(async (req) => {
         ((pRes as any).data || []).map((p: any) => [p.id, { email: p.email, name: contactMap.get(p.finance_contact_id) || p.email }])
       );
       const clientMap = new Map(
-        ((cRes as any).data || []).map((c: any) => [c.id, { name: c.primary_contact_name, email: c.primary_contact_email }])
+        ((cRes as any).data || []).map((c: any) => [c.id, {
+          name: [c.primary_first_name, c.primary_surname].filter(Boolean).join(' ').trim() || null,
+          email: c.primary_email,
+        }])
       );
 
       const enriched = (logs || []).map((l: any) => ({
