@@ -354,6 +354,11 @@ export default function FinancePortalAdmin() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-56">
+                              <DropdownMenuItem onClick={() => setEditUser(u)}>
+                                <Pencil className="h-4 w-4 mr-2" />
+                                Edit Contact Details
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
                               {(u.status === 'no_access' || u.status === 'invite_expired') && (
                                 <DropdownMenuItem onClick={() => setInviteDialog({ open: true, user: u, isResend: false })}>
                                   <Mail className="h-4 w-4 mr-2" />
