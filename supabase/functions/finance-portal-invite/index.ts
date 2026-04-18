@@ -389,17 +389,16 @@ serve(async (req) => {
             from: resendFrom,
             to: [normalizedEmail],
             subject,
-            html: `
-              <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:40px 24px;background:#ffffff;">
-                <div style="text-align:center;margin-bottom:32px;">
-                  <h1 style="color:#0D264D;font-size:24px;margin:0;">Welcome to the Finance Portal</h1>
-                </div>
-                <p style="color:#555;font-size:16px;line-height:1.6;">Hi ${contact.name},</p>
-                ${ctaBlock}
-                <hr style="border:none;border-top:1px solid #eee;margin:32px 0;" />
-                <p style="color:#aaa;font-size:12px;text-align:center;">NPC Services — Property Investment Advisory</p>
-              </div>
-            `,
+            html: htmlBody,
+            text: textBody,
+            headers: {
+              'X-Entity-Ref-ID': inviteToken.slice(0, 36),
+              'List-Unsubscribe': `<mailto:admin@npcservices.com.au?subject=unsubscribe>`,
+            },
+            tags: [
+              { name: 'category', value: 'finance_portal_invite' },
+              { name: 'mode', value: useTempPassword ? 'temp_password' : 'set_password_link' },
+            ],
           }),
         })
 
