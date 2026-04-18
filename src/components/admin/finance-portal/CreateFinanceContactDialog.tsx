@@ -44,13 +44,14 @@ export function CreateFinanceContactDialog({ open, onOpenChange, onCreated }: Cr
     default_commission_rate_pct: '',
     gst_registered: false,
     is_default: false,
+    is_active: true,
     notes: '',
   });
 
   const reset = () => setForm({
     name: '', email: '', company: '', contact_type: 'external',
     abn: '', default_commission_basis: '', default_commission_rate_pct: '',
-    gst_registered: false, is_default: false, notes: '',
+    gst_registered: false, is_default: false, is_active: true, notes: '',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -85,6 +86,7 @@ export function CreateFinanceContactDialog({ open, onOpenChange, onCreated }: Cr
         default_commission_rate_pct: form.default_commission_rate_pct === '' ? null : Number(form.default_commission_rate_pct),
         gst_registered: form.gst_registered,
         is_default: form.is_default,
+        is_active: form.is_active,
         notes: form.notes.trim() || null,
       });
       if (error) throw new Error(error.message);
@@ -213,6 +215,17 @@ export function CreateFinanceContactDialog({ open, onOpenChange, onCreated }: Cr
                   id="fc-default"
                   checked={form.is_default}
                   onCheckedChange={(c) => setForm({ ...form, is_default: c })}
+                />
+              </div>
+              <div className="flex items-center justify-between rounded-md border px-3 py-2">
+                <div className="space-y-0.5">
+                  <Label htmlFor="fc-active" className="cursor-pointer">Active</Label>
+                  <p className="text-xs text-muted-foreground">Inactive contacts can't be invited or used.</p>
+                </div>
+                <Switch
+                  id="fc-active"
+                  checked={form.is_active}
+                  onCheckedChange={(c) => setForm({ ...form, is_active: c })}
                 />
               </div>
             </div>
