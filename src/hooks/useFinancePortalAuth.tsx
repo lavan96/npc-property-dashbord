@@ -180,6 +180,12 @@ export function FinancePortalAuthProvider({ children }: { children: ReactNode })
     setUser(prev => prev ? { ...prev, has_completed_onboarding: true } : prev);
   }, []);
 
+  const setSessionFromInvite = useCallback((sessionToken: string, nextUser: FinancePortalUser) => {
+    persistStoredValue(FINANCE_SESSION_KEY, sessionToken);
+    setUser(nextUser);
+    setLoading(false);
+  }, []);
+
   const requestPasswordReset = useCallback(async (email: string) => {
     const { data, error } = await invokeFinanceFunction('finance-portal-forgot-password', { email });
     if (error) return { error: error.message };
@@ -209,7 +215,7 @@ export function FinancePortalAuthProvider({ children }: { children: ReactNode })
       value={{
         user, loading, signIn, signOut,
         requestPasswordReset, verifyOTP, resetPassword, changePassword,
-        acceptTerms, completeOnboarding,
+        acceptTerms, completeOnboarding, setSessionFromInvite,
         invokeFinanceFunction, getSessionToken, refreshUser,
       }}
     >
