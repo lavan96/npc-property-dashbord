@@ -5957,7 +5957,15 @@ export type Database = {
           terms_accepted_at?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "finance_portal_users_finance_contact_id_fkey"
+            columns: ["finance_contact_id"]
+            isOneToOne: true
+            referencedRelation: "finance_agent_contacts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       game_plan_actions: {
         Row: {
