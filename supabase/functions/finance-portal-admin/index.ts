@@ -113,21 +113,32 @@ serve(async (req) => {
       const search = (body.search || '').toString().trim();
       let query = supabase
         .from('clients')
-        .select('id, primary_contact_name, secondary_contact_name, primary_contact_email, primary_contact_phone, finance_contact_id, status, created_at')
-        .order('primary_contact_name', { ascending: true })
+        .select('id, primary_first_name, primary_surname, secondary_first_name, secondary_surname, primary_email, primary_mobile, deal_status, created_at')
+        .order('primary_surname', { ascending: true })
         .limit(500);
 
       if (search) {
         query = query.or(
-          `primary_contact_name.ilike.%${search}%,secondary_contact_name.ilike.%${search}%,primary_contact_email.ilike.%${search}%`
+          `primary_first_name.ilike.%${search}%,primary_surname.ilike.%${search}%,secondary_first_name.ilike.%${search}%,secondary_surname.ilike.%${search}%,primary_email.ilike.%${search}%`
         );
       }
 
       const { data, error } = await query;
       if (error) throw error;
 
+      const records = (data || []).map((c: any) => ({
+        id: c.id,
+        primary_contact_name: [c.primary_first_name, c.primary_surname].filter(Boolean).join(' ').trim() || null,
+        secondary_contact_name: [c.secondary_first_name, c.secondary_surname].filter(Boolean).join(' ').trim() || null,
+        primary_contact_email: c.primary_email,
+        primary_contact_phone: c.primary_mobile,
+        finance_contact_id: null,
+        status: c.deal_status,
+        created_at: c.created_at,
+      }));
+
       return new Response(
-        JSON.stringify({ success: true, records: data || [] }),
+        JSON.stringify({ success: true, records }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -154,9 +165,16 @@ serve(async (req) => {
       if (clientIds.length) {
         const { data: clients } = await supabase
           .from('clients')
-          .select('id, primary_contact_name, secondary_contact_name, primary_contact_email, status, finance_contact_id')
+          .select('id, primary_first_name, primary_surname, secondary_first_name, secondary_surname, primary_email, deal_status')
           .in('id', clientIds);
-        clientsMap = new Map((clients || []).map((c: any) => [c.id, c]));
+        clientsMap = new Map((clients || []).map((c: any) => [c.id, {
+          id: c.id,
+          primary_contact_name: [c.primary_first_name, c.primary_surname].filter(Boolean).join(' ').trim() || null,
+          secondary_contact_name: [c.secondary_first_name, c.secondary_surname].filter(Boolean).join(' ').trim() || null,
+          primary_contact_email: c.primary_email,
+          status: c.deal_status,
+          finance_contact_id: null,
+        }]));
       }
 
       const records = (assignments || []).map((a: any) => ({
