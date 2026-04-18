@@ -18,6 +18,7 @@ import {
   Loader2, Search, MoreHorizontal, Mail, Shield, RefreshCw,
   Ban, CheckCircle2, History, Settings, Users, Copy,
   BarChart3, FileSpreadsheet, FileText, DollarSign, UserPlus,
+  Pencil, Trash2,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
@@ -25,6 +26,7 @@ import { ClientAssignmentsDialog } from '@/components/admin/finance-portal/Clien
 import { DefaultPermissionsDialog } from '@/components/admin/finance-portal/DefaultPermissionsDialog';
 import { ActivityLogDialog } from '@/components/admin/finance-portal/ActivityLogDialog';
 import { CreateFinanceContactDialog } from '@/components/admin/finance-portal/CreateFinanceContactDialog';
+import { EditFinanceContactDialog } from '@/components/admin/finance-portal/EditFinanceContactDialog';
 import { InviteFinanceContactDialog } from '@/components/admin/finance-portal/InviteFinanceContactDialog';
 import { EMPTY_MATRIX, normalizeMatrix, type FinancePermissionMatrix } from '@/components/admin/finance-portal/FinancePermissionMatrix';
 
@@ -70,6 +72,8 @@ export default function FinancePortalAdmin() {
   const [activityForUser, setActivityForUser] = useState<FinanceUserRow | null>(null);
   const [assignmentsForUser, setAssignmentsForUser] = useState<FinanceUserRow | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [editUser, setEditUser] = useState<FinanceUserRow | null>(null);
+  const [deleteUser, setDeleteUser] = useState<FinanceUserRow | null>(null);
   const [inviteDialog, setInviteDialog] = useState<{ open: boolean; user: FinanceUserRow | null; isResend: boolean }>({ open: false, user: null, isResend: false });
 
   const loadAll = async () => {
@@ -169,6 +173,25 @@ export default function FinancePortalAdmin() {
       await loadAll();
     } catch (e: any) {
       toast.error(e.message || 'Failed to reinstate');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const deleteContact = async (u: FinanceUserRow) => {
+    setBusyId(u.id);
+    try {
+      const { error } = await invokeSecureFunction('finance-portal-admin', {
+        operation: 'delete_contact',
+        contact_id: u.id,
+        hard_delete: false,
+      });
+      if (error) throw new Error(error.message);
+      toast.success(`${u.name} removed (soft-deleted)`);
+      setDeleteUser(null);
+      await loadAll();
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to delete contact');
     } finally {
       setBusyId(null);
     }
@@ -331,6 +354,11 @@ export default function FinancePortalAdmin() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-56">
+                              <DropdownMenuItem onClick={() => setEditUser(u)}>
+                                <Pencil className="h-4 w-4 mr-2" />
+                                Edit Contact Details
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
                               {(u.status === 'no_access' || u.status === 'invite_expired') && (
                                 <DropdownMenuItem onClick={() => setInviteDialog({ open: true, user: u, isResend: false })}>
                                   <Mail className="h-4 w-4 mr-2" />
@@ -394,6 +422,13 @@ export default function FinancePortalAdmin() {
                                   </AlertDialogContent>
                                 </AlertDialog>
                               )}
+                              <DropdownMenuItem
+                                onClick={() => setDeleteUser(u)}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete Contact
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
@@ -448,6 +483,41 @@ export default function FinancePortalAdmin() {
         isResend={inviteDialog.isResend}
         onSent={() => loadAll()}
       />
+
+      <EditFinanceContactDialog
+        open={!!editUser}
+        onOpenChange={(o) => { if (!o) setEditUser(null); }}
+        contact={editUser ? {
+          id: editUser.id,
+          name: editUser.name,
+          email: editUser.email,
+          company: editUser.company,
+          contact_type: editUser.contact_type,
+          is_default: editUser.is_default,
+          hasPortalUser: !!editUser.portal_user,
+        } : null}
+        onSaved={() => loadAll()}
+      />
+
+      <AlertDialog open={!!deleteUser} onOpenChange={(o) => { if (!o) setDeleteUser(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete finance contact?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteUser?.name} will be marked inactive and removed from active finance contact lists. Any existing portal access will be revoked. Client assignments and history are preserved for audit.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteUser && deleteContact(deleteUser)}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
