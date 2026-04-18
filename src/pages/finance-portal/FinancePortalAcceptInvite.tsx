@@ -35,7 +35,7 @@ export default function FinancePortalAcceptInvite() {
   useEffect(() => {
     (async () => {
       if (!token) { setStage('error'); setErrorMsg('Missing invite token'); return; }
-      const { ok, data } = await callPublic('finance-portal-accept-invite', { action: 'validate', invite_token: token });
+      const { ok, data } = await callPublic('finance-portal-accept-invite', { action: 'validate', token });
       if (!ok || !data?.valid) {
         setStage('error');
         setErrorMsg(data?.error || 'This invite link is invalid or has expired.');
@@ -53,7 +53,7 @@ export default function FinancePortalAcceptInvite() {
     if (pw !== pw2) return toast.error('Passwords do not match');
     setSubmitting(true);
     const { ok, data } = await callPublic('finance-portal-accept-invite', {
-      action: 'accept', invite_token: token, password: pw,
+      action: 'accept', token, password: pw,
     });
     setSubmitting(false);
     if (!ok || !data?.success) {
