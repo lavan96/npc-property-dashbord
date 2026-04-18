@@ -3524,15 +3524,32 @@ function MailboxSettingsModal({
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const { data, error } = await invokeSecureFunction('admin-user-management', { 
-        action: 'update_own_mailbox', 
-        personal_mailbox: mailboxValue || null
+      const trimmed = mailboxValue.trim();
+      if (trimmed && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+        toast.error('Please enter a valid email address');
+        setIsSaving(false);
+        return;
+      }
+
+      const { data, error } = await invokeSecureFunction('admin-user-management', {
+        action: 'update_own_mailbox',
+        personal_mailbox: trimmed || null,
       });
 
-      if (error) throw error;
+      if (error) {
+        toast.error(error.message || 'Failed to update mailbox');
+        return;
+      }
 
       if (data?.success) {
-        onMailboxUpdated(mailboxValue || null);
+        // Verify by re-fetching the profile so the parent state reflects
+        // exactly what the backend stored (handles race / trim / clear cases).
+        const { data: profile } = await invokeSecureFunction('admin-user-management', {
+          action: 'get_own_profile',
+        });
+        const persisted = profile?.success ? (profile.user?.personal_mailbox || null) : (trimmed || null);
+        onMailboxUpdated(persisted);
+        toast.success(persisted ? 'Personal mailbox saved' : 'Personal mailbox cleared');
         onOpenChange(false);
       } else {
         toast.error(data?.error || 'Failed to update mailbox');
