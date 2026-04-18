@@ -15,11 +15,12 @@ interface FinancePortalUser {
 interface FinancePortalAuthContextType {
   user: FinancePortalUser | null;
   loading: boolean;
-  signIn: (email: string, password: string, turnstileToken?: string) => Promise<{ error?: string }>;
+  signIn: (email: string, password: string, turnstileToken?: string) => Promise<{ error?: string; mustChangePassword?: boolean }>;
   signOut: () => Promise<void>;
   requestPasswordReset: (email: string) => Promise<{ error?: string; success?: boolean }>;
   verifyOTP: (email: string, otp: string) => Promise<{ error?: string; success?: boolean }>;
   resetPassword: (email: string, otp: string, newPassword: string) => Promise<{ error?: string; success?: boolean }>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<{ error?: string; success?: boolean }>;
   acceptTerms: () => Promise<void>;
   completeOnboarding: () => Promise<void>;
   invokeFinanceFunction: (
