@@ -12,6 +12,9 @@ export const FINANCE_PORTAL_TABLES = [
   { key: 'employment', label: 'Employment' },
   { key: 'notes', label: 'Notes' },
   { key: 'contacts', label: 'Contacts' },
+  { key: 'documents', label: 'Documents' },
+  { key: 'borrowing_capacity', label: 'Borrowing Capacity' },
+  { key: 'messages', label: 'Messages' },
 ] as const;
 
 export type PermissionTableKey = typeof FINANCE_PORTAL_TABLES[number]['key'];

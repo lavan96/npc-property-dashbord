@@ -92,6 +92,13 @@ export function ClientAssignmentsDialog({ open, onOpenChange, financeUser, defau
     }
   }, [selectedAssignmentId]);
 
+  // Auto-select the first assignment so the matrix is immediately visible
+  useEffect(() => {
+    if (!selectedAssignmentId && assignments.length > 0) {
+      setSelectedAssignmentId(assignments[0].id);
+    }
+  }, [assignments, selectedAssignmentId]);
+
   const assignedClientIds = new Set(assignments.map(a => a.client_id));
   const filteredAvailable = clients
     .filter(c => !assignedClientIds.has(c.id))
