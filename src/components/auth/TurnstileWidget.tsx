@@ -25,6 +25,15 @@ export function TurnstileWidget({ onVerify, onExpire, onError }: TurnstileWidget
   const widgetIdRef = useRef<string | null>(null);
   const { resolvedTheme } = useTheme();
 
+  // Keep latest callbacks in refs so the widget never re-renders when parent
+  // passes inline arrow functions (which change identity on every keystroke).
+  const onVerifyRef = useRef(onVerify);
+  const onExpireRef = useRef(onExpire);
+  const onErrorRef = useRef(onError);
+  useEffect(() => { onVerifyRef.current = onVerify; }, [onVerify]);
+  useEffect(() => { onExpireRef.current = onExpire; }, [onExpire]);
+  useEffect(() => { onErrorRef.current = onError; }, [onError]);
+
   const renderWidget = useCallback(() => {
     if (!containerRef.current || !window.turnstile) return;
     // Remove existing widget if any
@@ -34,12 +43,12 @@ export function TurnstileWidget({ onVerify, onExpire, onError }: TurnstileWidget
     }
     widgetIdRef.current = window.turnstile.render(containerRef.current, {
       sitekey: TURNSTILE_SITE_KEY,
-      callback: onVerify,
-      'expired-callback': onExpire,
-      'error-callback': onError,
+      callback: (token: string) => onVerifyRef.current?.(token),
+      'expired-callback': () => onExpireRef.current?.(),
+      'error-callback': () => onErrorRef.current?.(),
       theme: resolvedTheme === 'dark' ? 'dark' : 'light',
     });
-  }, [onVerify, onExpire, onError, resolvedTheme]);
+  }, [resolvedTheme]);
 
   useEffect(() => {
     // Load script if not already loaded
@@ -58,6 +67,7 @@ export function TurnstileWidget({ onVerify, onExpire, onError }: TurnstileWidget
     return () => {
       if (widgetIdRef.current && window.turnstile) {
         try { window.turnstile.remove(widgetIdRef.current); } catch {}
+        widgetIdRef.current = null;
       }
     };
   }, [renderWidget]);
