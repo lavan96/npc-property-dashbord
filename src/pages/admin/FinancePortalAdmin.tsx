@@ -25,6 +25,7 @@ import { ClientAssignmentsDialog } from '@/components/admin/finance-portal/Clien
 import { DefaultPermissionsDialog } from '@/components/admin/finance-portal/DefaultPermissionsDialog';
 import { ActivityLogDialog } from '@/components/admin/finance-portal/ActivityLogDialog';
 import { CreateFinanceContactDialog } from '@/components/admin/finance-portal/CreateFinanceContactDialog';
+import { InviteFinanceContactDialog } from '@/components/admin/finance-portal/InviteFinanceContactDialog';
 import { EMPTY_MATRIX, normalizeMatrix, type FinancePermissionMatrix } from '@/components/admin/finance-portal/FinancePermissionMatrix';
 
 interface FinanceUserRow {
@@ -69,6 +70,7 @@ export default function FinancePortalAdmin() {
   const [activityForUser, setActivityForUser] = useState<FinanceUserRow | null>(null);
   const [assignmentsForUser, setAssignmentsForUser] = useState<FinanceUserRow | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [inviteDialog, setInviteDialog] = useState<{ open: boolean; user: FinanceUserRow | null; isResend: boolean }>({ open: false, user: null, isResend: false });
 
   const loadAll = async () => {
     setLoading(true);
@@ -330,15 +332,15 @@ export default function FinancePortalAdmin() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-56">
                               {(u.status === 'no_access' || u.status === 'invite_expired') && (
-                                <DropdownMenuItem onClick={() => inviteUser(u, false)}>
+                                <DropdownMenuItem onClick={() => setInviteDialog({ open: true, user: u, isResend: false })}>
                                   <Mail className="h-4 w-4 mr-2" />
-                                  Send Invite
+                                  Send Invite…
                                 </DropdownMenuItem>
                               )}
                               {(u.status === 'invited' || u.status === 'invite_expired' || u.status === 'active') && (
-                                <DropdownMenuItem onClick={() => inviteUser(u, true)}>
+                                <DropdownMenuItem onClick={() => setInviteDialog({ open: true, user: u, isResend: true })}>
                                   <RefreshCw className="h-4 w-4 mr-2" />
-                                  Resend / Reset Invite
+                                  Resend / Reset Invite…
                                 </DropdownMenuItem>
                               )}
                               <DropdownMenuItem
