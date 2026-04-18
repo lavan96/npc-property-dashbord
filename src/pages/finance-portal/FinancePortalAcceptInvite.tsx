@@ -35,6 +35,7 @@ export default function FinancePortalAcceptInvite() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const { settings } = useWhiteLabel();
+  const { setSessionFromInvite } = useFinancePortalAuth();
   const token = params.get('token') || '';
 
   const [stage, setStage] = useState<
