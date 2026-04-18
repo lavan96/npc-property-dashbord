@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { validatePassword } from '@/utils/passwordValidation';
 import { PasswordStrengthMeter } from '@/components/ui/password-strength-meter';
+import { useWhiteLabel } from '@/contexts/WhiteLabelContext';
 
 const SUPABASE_URL = "https://dduzbchuswwbefdunfct.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkdXpiY2h1c3d3YmVmZHVuZmN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0NDM4NzksImV4cCI6MjA3MTAxOTg3OX0.eSYU6fxIc3tBQuGLsdBRff0alBMkNfvv7OpW0efNjxk";
@@ -34,6 +35,7 @@ async function callPublic(fn: string, body: any) {
 export default function FinancePortalAcceptInvite() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
+  const { settings } = useWhiteLabel();
   const token = params.get('token') || '';
 
   const [stage, setStage] = useState<
@@ -113,7 +115,12 @@ export default function FinancePortalAcceptInvite() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-4">
-          <Loader2 className="h-10 w-10 text-primary mx-auto animate-spin" />
+          {settings.authLogo ? (
+            <img src={settings.authLogo} alt={settings.companyName} className="h-16 max-w-[240px] object-contain mx-auto" />
+          ) : (
+            <Building2 className="h-12 w-12 text-primary mx-auto" />
+          )}
+          <Loader2 className="h-8 w-8 text-primary mx-auto animate-spin" />
           <p className="text-muted-foreground">Validating your invite…</p>
         </div>
       </div>
@@ -170,8 +177,14 @@ export default function FinancePortalAcceptInvite() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-muted/30 p-4">
       <Card className="w-full max-w-md shadow-xl border-primary/10">
         <CardHeader className="text-center space-y-3">
-          <div className="mx-auto w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
-            <Building2 className="h-7 w-7 text-primary" />
+          <div className="flex justify-center mb-2">
+            {settings.authLogo ? (
+              <img src={settings.authLogo} alt={settings.companyName} className="h-16 max-w-[240px] object-contain" />
+            ) : (
+              <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
+                <Building2 className="h-7 w-7 text-primary" />
+              </div>
+            )}
           </div>
           <CardTitle className="text-2xl">Set Up Your Account</CardTitle>
           <CardDescription>

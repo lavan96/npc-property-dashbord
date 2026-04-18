@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Building2, Loader2, Mail } from 'lucide-react';
 import { toast } from 'sonner';
+import { useWhiteLabel } from '@/contexts/WhiteLabelContext';
 
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
 
@@ -14,6 +15,7 @@ const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | u
 
 export default function FinancePortalLogin() {
   const { user, signIn, requestPasswordReset, verifyOTP, resetPassword, loading } = useFinancePortalAuth();
+  const { settings } = useWhiteLabel();
   const navigate = useNavigate();
 
   const [mode, setMode] = useState<'login' | 'forgot' | 'verify' | 'reset'>('login');
@@ -133,8 +135,14 @@ export default function FinancePortalLogin() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-muted/30 p-4">
       <Card className="w-full max-w-md shadow-xl border-primary/10">
         <CardHeader className="text-center space-y-3">
-          <div className="mx-auto w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
-            <Building2 className="h-7 w-7 text-primary" />
+          <div className="flex justify-center mb-2">
+            {settings.authLogo ? (
+              <img src={settings.authLogo} alt={settings.companyName} className="h-16 max-w-[240px] object-contain" />
+            ) : (
+              <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
+                <Building2 className="h-7 w-7 text-primary" />
+              </div>
+            )}
           </div>
           <CardTitle className="text-2xl">Finance Partner Portal</CardTitle>
           <CardDescription>
