@@ -1,11 +1,78 @@
+/**
+ * Push subscription endpoint — supports staff dashboard, client portal, and finance portal users.
+ *
+ * Auth resolution (in priority order):
+ *  - subscriber_type=client_portal  → x-portal-session-token / portal_session_token
+ *  - subscriber_type=finance_portal → x-finance-session-token / finance_session_token
+ *  - subscriber_type=staff (default) → standard Bearer JWT via verifyAuth
+ */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { verifyAuth } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, apikey, content-type, x-portal-session-token, x-finance-session-token, x-session-token',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
+
+type SubscriberType = 'staff' | 'client_portal' | 'finance_portal';
+
+function jsonResponse(data: unknown, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
+async function resolveClientPortalUser(
+  supabase: any,
+  headers: Headers,
+  body: any,
+): Promise<{ userId: string | null; error?: string }> {
+  const token =
+    headers.get('x-portal-session-token') ||
+    body?.portal_session_token ||
+    body?.session_token ||
+    null;
+  if (!token) return { userId: null, error: 'Portal session token required' };
+  const { data: session } = await supabase
+    .from('client_portal_sessions')
+    .select('user_id, expires_at')
+    .eq('session_token', token)
+    .maybeSingle();
+  if (!session) return { userId: null, error: 'Invalid portal session' };
+  if (session.expires_at && new Date(session.expires_at) < new Date()) {
+    return { userId: null, error: 'Portal session expired' };
+  }
+  return { userId: session.user_id };
+}
+
+async function resolveFinancePortalUser(
+  supabase: any,
+  headers: Headers,
+  body: any,
+): Promise<{ userId: string | null; error?: string }> {
+  const token =
+    headers.get('x-finance-session-token') ||
+    headers.get('x-session-token') ||
+    body?.finance_session_token ||
+    body?.session_token ||
+    null;
+  if (!token) return { userId: null, error: 'Finance session token required' };
+  const { data: portalUser } = await supabase
+    .from('finance_portal_users')
+    .select('id, is_active, revoked_at, session_expires_at')
+    .eq('session_token', token)
+    .maybeSingle();
+  if (!portalUser || !portalUser.is_active || portalUser.revoked_at) {
+    return { userId: null, error: 'Invalid finance session' };
+  }
+  if (!portalUser.session_expires_at || new Date(portalUser.session_expires_at) < new Date()) {
+    return { userId: null, error: 'Finance session expired' };
+  }
+  return { userId: portalUser.id };
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -13,33 +80,41 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const auth = await verifyAuth(req);
-    if (!auth?.userId) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const body = await req.json();
-    const { endpoint, keys, user_agent, device_label } = body || {};
-    if (!endpoint || !keys?.p256dh || !keys?.auth) {
-      return new Response(JSON.stringify({ error: 'Invalid subscription payload' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
+    const body = await req.json();
+    const { endpoint, keys, user_agent, device_label } = body || {};
+    const subscriber_type: SubscriberType =
+      (body?.subscriber_type as SubscriberType) || 'staff';
+
+    if (!endpoint || !keys?.p256dh || !keys?.auth) {
+      return jsonResponse({ error: 'Invalid subscription payload' }, 400);
+    }
+
+    let userId: string | null = null;
+    if (subscriber_type === 'client_portal') {
+      const r = await resolveClientPortalUser(supabase, req.headers, body);
+      if (!r.userId) return jsonResponse({ error: r.error || 'Unauthorized' }, 401);
+      userId = r.userId;
+    } else if (subscriber_type === 'finance_portal') {
+      const r = await resolveFinancePortalUser(supabase, req.headers, body);
+      if (!r.userId) return jsonResponse({ error: r.error || 'Unauthorized' }, 401);
+      userId = r.userId;
+    } else {
+      const auth = await verifyAuth(req);
+      if (!auth?.userId) return jsonResponse({ error: 'Unauthorized' }, 401);
+      userId = auth.userId;
+    }
+
     const { data, error } = await supabase
       .from('push_subscriptions')
       .upsert(
         {
-          user_id: auth.userId,
+          user_id: userId,
+          subscriber_type,
           endpoint,
           p256dh: keys.p256dh,
           auth: keys.auth,
@@ -48,21 +123,15 @@ Deno.serve(async (req) => {
           is_active: true,
           last_seen_at: new Date().toISOString(),
         },
-        { onConflict: 'endpoint' },
+        { onConflict: 'subscriber_type,endpoint' },
       )
       .select('id')
       .maybeSingle();
 
     if (error) throw error;
-
-    return new Response(JSON.stringify({ success: true, id: data?.id }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return jsonResponse({ success: true, id: data?.id, subscriber_type });
   } catch (err) {
     console.error('[push-subscribe] error', err);
-    return new Response(JSON.stringify({ error: (err as Error).message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return jsonResponse({ error: (err as Error).message }, 500);
   }
 });
