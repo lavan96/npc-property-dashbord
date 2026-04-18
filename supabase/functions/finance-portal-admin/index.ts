@@ -945,6 +945,192 @@ serve(async (req) => {
       );
     }
 
+    // ── update_contact: edit an existing finance_agent_contacts row ──
+    if (operation === 'update_contact') {
+      const contact_id = (body.contact_id ?? '').toString().trim();
+      if (!contact_id) {
+        return new Response(
+          JSON.stringify({ error: 'contact_id is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data: existing, error: exErr } = await supabase
+        .from('finance_agent_contacts')
+        .select('id, name, email, is_default')
+        .eq('id', contact_id)
+        .maybeSingle();
+      if (exErr) throw exErr;
+      if (!existing) {
+        return new Response(
+          JSON.stringify({ error: 'Finance contact not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const updates: Record<string, any> = { updated_at: new Date().toISOString() };
+      const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+      if (typeof body.name === 'string') {
+        const n = body.name.trim();
+        if (n.length < 2 || n.length > 200) {
+          return new Response(JSON.stringify({ error: 'Name must be 2–200 chars' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+        updates.name = n;
+      }
+
+      let newEmail: string | null = null;
+      if (typeof body.email === 'string') {
+        const e = body.email.trim().toLowerCase();
+        if (!emailRe.test(e) || e.length > 255) {
+          return new Response(JSON.stringify({ error: 'A valid email is required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+        if (e !== (existing.email || '').toLowerCase()) {
+          // Check duplicate
+          const { data: dup } = await supabase
+            .from('finance_agent_contacts')
+            .select('id')
+            .ilike('email', e)
+            .neq('id', contact_id)
+            .maybeSingle();
+          if (dup) {
+            return new Response(JSON.stringify({ error: `Email ${e} is already used by another contact` }),
+              { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+          }
+          updates.email = e;
+          newEmail = e;
+        }
+      }
+
+      if (body.company !== undefined) updates.company = body.company ? String(body.company).trim() : null;
+      if (body.contact_type !== undefined) updates.contact_type = String(body.contact_type).trim() || 'external';
+      if (body.notes !== undefined) updates.notes = body.notes ? String(body.notes).trim() : null;
+      if (body.abn !== undefined) updates.abn = body.abn ? String(body.abn).trim() : null;
+      if (body.default_commission_basis !== undefined) {
+        updates.default_commission_basis = body.default_commission_basis
+          ? String(body.default_commission_basis).trim() : null;
+      }
+      if (body.default_commission_rate_pct !== undefined) {
+        const n = body.default_commission_rate_pct === '' || body.default_commission_rate_pct == null
+          ? null : Number(body.default_commission_rate_pct);
+        if (n != null && (Number.isNaN(n) || n < 0 || n > 100)) {
+          return new Response(JSON.stringify({ error: 'Commission rate must be 0–100' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+        updates.default_commission_rate_pct = n;
+      }
+      if (body.gst_registered !== undefined) updates.gst_registered = body.gst_registered === true;
+
+      if (body.is_default === true && !existing.is_default) {
+        await supabase.from('finance_agent_contacts').update({ is_default: false }).eq('is_default', true);
+        updates.is_default = true;
+      } else if (body.is_default === false && existing.is_default) {
+        updates.is_default = false;
+      }
+
+      const { data: updated, error: updErr } = await supabase
+        .from('finance_agent_contacts')
+        .update(updates)
+        .eq('id', contact_id)
+        .select()
+        .single();
+      if (updErr) throw updErr;
+
+      // Sync email to finance_portal_users login row
+      let portalEmailSynced = false;
+      if (newEmail) {
+        const { error: pUpdErr } = await supabase
+          .from('finance_portal_users')
+          .update({ email: newEmail, updated_at: new Date().toISOString() })
+          .eq('finance_contact_id', contact_id);
+        if (!pUpdErr) portalEmailSynced = true;
+      }
+
+      await supabase.from('finance_portal_activity_log').insert({
+        actor_user_id: adminUserId,
+        actor_type: 'admin',
+        action: 'contact_updated',
+        entity_type: 'finance_agent_contact',
+        entity_id: contact_id,
+        metadata: { changes: Object.keys(updates), email_changed: !!newEmail, portal_email_synced: portalEmailSynced },
+      });
+
+      return new Response(
+        JSON.stringify({ success: true, record: updated, portal_email_synced: portalEmailSynced, email_changed: !!newEmail }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ── delete_contact: soft-delete (is_active=false) or hard-delete if no portal/assignments ──
+    if (operation === 'delete_contact') {
+      const contact_id = (body.contact_id ?? '').toString().trim();
+      const hard = body.hard_delete === true;
+      if (!contact_id) {
+        return new Response(
+          JSON.stringify({ error: 'contact_id is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data: existing } = await supabase
+        .from('finance_agent_contacts')
+        .select('id, name, email')
+        .eq('id', contact_id)
+        .maybeSingle();
+      if (!existing) {
+        return new Response(JSON.stringify({ error: 'Finance contact not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      if (hard) {
+        // Block hard-delete if portal user or assignments exist
+        const { data: pUser } = await supabase
+          .from('finance_portal_users')
+          .select('id')
+          .eq('finance_contact_id', contact_id)
+          .maybeSingle();
+        if (pUser) {
+          return new Response(JSON.stringify({
+            error: 'Cannot hard-delete: a portal user exists for this contact. Revoke and soft-delete instead.',
+          }), { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+        const { error: delErr } = await supabase
+          .from('finance_agent_contacts')
+          .delete()
+          .eq('id', contact_id);
+        if (delErr) throw delErr;
+      } else {
+        const { error: sErr } = await supabase
+          .from('finance_agent_contacts')
+          .update({ is_active: false, updated_at: new Date().toISOString() })
+          .eq('id', contact_id);
+        if (sErr) throw sErr;
+
+        // Also revoke their portal access if any
+        await supabase
+          .from('finance_portal_users')
+          .update({ is_active: false, revoked_at: new Date().toISOString() })
+          .eq('finance_contact_id', contact_id)
+          .is('revoked_at', null);
+      }
+
+      await supabase.from('finance_portal_activity_log').insert({
+        actor_user_id: adminUserId,
+        actor_type: 'admin',
+        action: hard ? 'contact_hard_deleted' : 'contact_soft_deleted',
+        entity_type: 'finance_agent_contact',
+        entity_id: contact_id,
+        metadata: { name: existing.name, email: existing.email },
+      });
+
+      return new Response(
+        JSON.stringify({ success: true, hard_deleted: hard }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     return new Response(
       JSON.stringify({ error: `Unknown operation: ${operation}` }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
