@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,10 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Building2, Loader2, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { useWhiteLabel } from '@/contexts/WhiteLabelContext';
-
-const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
-
-// Turnstile global is declared elsewhere in the project
+import { TurnstileWidget } from '@/components/auth/TurnstileWidget';
 
 export default function FinancePortalLogin() {
   const { user, signIn, requestPasswordReset, verifyOTP, resetPassword, loading } = useFinancePortalAuth();
@@ -25,41 +22,6 @@ export default function FinancePortalLogin() {
   const [newPassword, setNewPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-  const turnstileRef = useRef<HTMLDivElement>(null);
-
-  // Load Turnstile script
-  useEffect(() => {
-    if (!TURNSTILE_SITE_KEY || mode !== 'login') return;
-    if (window.turnstile && turnstileRef.current) {
-      try {
-        window.turnstile.render(turnstileRef.current, {
-          sitekey: TURNSTILE_SITE_KEY,
-          callback: (token: string) => setTurnstileToken(token),
-          theme: 'auto',
-        });
-        return;
-      } catch { /* ignore */ }
-    }
-    const existing = document.querySelector('script[data-turnstile]');
-    if (existing) return;
-    const s = document.createElement('script');
-    s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
-    s.async = true;
-    s.defer = true;
-    s.setAttribute('data-turnstile', 'true');
-    s.onload = () => {
-      if (window.turnstile && turnstileRef.current) {
-        try {
-          window.turnstile.render(turnstileRef.current, {
-            sitekey: TURNSTILE_SITE_KEY,
-            callback: (token: string) => setTurnstileToken(token),
-            theme: 'auto',
-          });
-        } catch { /* ignore */ }
-      }
-    };
-    document.head.appendChild(s);
-  }, [mode]);
 
   if (loading) {
     return (
@@ -74,13 +36,12 @@ export default function FinancePortalLogin() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) return toast.error('Email and password required');
-    if (TURNSTILE_SITE_KEY && !turnstileToken) return toast.error('Please complete the security check');
+    if (!turnstileToken) return toast.error('Please complete the security check');
     setSubmitting(true);
     try {
       const { error, mustChangePassword } = await signIn(email, password, turnstileToken || undefined);
       if (error) {
         toast.error(error);
-        if (window.turnstile && turnstileRef.current) try { window.turnstile.reset(turnstileRef.current.id || ''); } catch {}
         setTurnstileToken(null);
       } else if (mustChangePassword) {
         navigate('/finance/change-password', { replace: true });
@@ -163,9 +124,11 @@ export default function FinancePortalLogin() {
                 <Label>Password</Label>
                 <Input type="password" value={password} onChange={e => setPassword(e.target.value)} className="mt-1" autoComplete="current-password" required />
               </div>
-              {TURNSTILE_SITE_KEY && (
-                <div ref={turnstileRef} className="flex justify-center" />
-              )}
+              <TurnstileWidget
+                onVerify={(token) => setTurnstileToken(token)}
+                onExpire={() => setTurnstileToken(null)}
+                onError={() => setTurnstileToken(null)}
+              />
               <Button type="submit" className="w-full gap-2" disabled={submitting}>
                 {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
                 Sign In
