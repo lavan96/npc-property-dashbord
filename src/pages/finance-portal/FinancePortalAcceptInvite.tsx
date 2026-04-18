@@ -151,7 +151,7 @@ export default function FinancePortalAcceptInvite() {
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <div className="flex justify-center mb-4">
-              <CheckCircle className="h-16 w-16 text-green-500" />
+              <CheckCircle className="h-16 w-16 text-success" />
             </div>
             <CardTitle className="text-2xl">Already Activated</CardTitle>
             <CardDescription>
