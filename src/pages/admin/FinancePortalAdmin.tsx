@@ -483,6 +483,41 @@ export default function FinancePortalAdmin() {
         isResend={inviteDialog.isResend}
         onSent={() => loadAll()}
       />
+
+      <EditFinanceContactDialog
+        open={!!editUser}
+        onOpenChange={(o) => { if (!o) setEditUser(null); }}
+        contact={editUser ? {
+          id: editUser.id,
+          name: editUser.name,
+          email: editUser.email,
+          company: editUser.company,
+          contact_type: editUser.contact_type,
+          is_default: editUser.is_default,
+          hasPortalUser: !!editUser.portal_user,
+        } : null}
+        onSaved={() => loadAll()}
+      />
+
+      <AlertDialog open={!!deleteUser} onOpenChange={(o) => { if (!o) setDeleteUser(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete finance contact?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteUser?.name} will be marked inactive and removed from active finance contact lists. Any existing portal access will be revoked. Client assignments and history are preserved for audit.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteUser && deleteContact(deleteUser)}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
