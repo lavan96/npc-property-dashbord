@@ -48,7 +48,7 @@ export function CreateFinanceContactDialog({ open, onOpenChange, onCreated }: Cr
   });
 
   const reset = () => setForm({
-    name: '', email: '', company: '', contact_type: 'broker',
+    name: '', email: '', company: '', contact_type: 'external',
     abn: '', default_commission_basis: '', default_commission_rate_pct: '',
     gst_registered: false, is_default: false, notes: '',
   });
