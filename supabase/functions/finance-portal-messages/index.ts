@@ -118,7 +118,7 @@ serve(async (req) => {
         .select(`
           id, client_id, finance_user_id, subject, last_message_at, last_message_preview,
           unread_count_partner, unread_count_staff, is_archived, created_at,
-          clients:client_id (id, primary_contact_name, secondary_contact_name),
+          clients:client_id (id, primary_first_name, primary_surname, secondary_first_name, secondary_surname),
           finance_portal_users:finance_user_id (id, email, full_name)
         `)
         .order('last_message_at', { ascending: false, nullsFirst: false })
@@ -134,7 +134,17 @@ serve(async (req) => {
 
       const { data, error } = await query;
       if (error) throw error;
-      return jsonResponse({ success: true, threads: data || [] }, 200, corsHeaders);
+
+      // Synthesize legacy field names so callers don't break
+      const threads = (data || []).map((t: any) => ({
+        ...t,
+        clients: t.clients ? {
+          id: t.clients.id,
+          primary_contact_name: [t.clients.primary_first_name, t.clients.primary_surname].filter(Boolean).join(' ').trim() || null,
+          secondary_contact_name: [t.clients.secondary_first_name, t.clients.secondary_surname].filter(Boolean).join(' ').trim() || null,
+        } : null,
+      }));
+      return jsonResponse({ success: true, threads }, 200, corsHeaders);
     }
 
     // ── get_or_create_thread ──
