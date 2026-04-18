@@ -414,11 +414,11 @@ serve(async (req) => {
         action: 'bulk_auto_linked',
         entity_type: 'finance_portal_user',
         entity_id: finance_user_id,
-        metadata: { source: sourceMode, created },
+        metadata: { source: sourceMode, created, cascaded },
       });
 
       return new Response(
-        JSON.stringify({ success: true, created, total_candidates: candidateClients.size }),
+        JSON.stringify({ success: true, created, cascaded, total_candidates: candidateClients.size }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
