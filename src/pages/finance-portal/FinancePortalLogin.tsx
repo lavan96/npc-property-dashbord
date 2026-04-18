@@ -124,9 +124,11 @@ export default function FinancePortalLogin() {
                 <Label>Password</Label>
                 <Input type="password" value={password} onChange={e => setPassword(e.target.value)} className="mt-1" autoComplete="current-password" required />
               </div>
-              {TURNSTILE_SITE_KEY && (
-                <div ref={turnstileRef} className="flex justify-center" />
-              )}
+              <TurnstileWidget
+                onVerify={(token) => setTurnstileToken(token)}
+                onExpire={() => setTurnstileToken(null)}
+                onError={() => setTurnstileToken(null)}
+              />
               <Button type="submit" className="w-full gap-2" disabled={submitting}>
                 {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
                 Sign In
