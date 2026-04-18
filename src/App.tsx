@@ -100,6 +100,7 @@ import { FinancePortalProtectedRoute } from "@/components/finance-portal/Finance
 import { FinancePortalLayout } from "@/components/finance-portal/FinancePortalLayout";
 import FinancePortalLogin from "./pages/finance-portal/FinancePortalLogin";
 import FinancePortalAcceptInvite from "./pages/finance-portal/FinancePortalAcceptInvite";
+import FinancePortalChangePassword from "./pages/finance-portal/FinancePortalChangePassword";
 import FinancePortalDashboard from "./pages/finance-portal/FinancePortalDashboard";
 import FinancePortalClients from "./pages/finance-portal/FinancePortalClients";
 import FinancePortalClientProfile from "./pages/finance-portal/FinancePortalClientProfile";
@@ -206,6 +207,13 @@ const App = () => (
                         } />
                         <Route path="/finance/accept-invite" element={
                           <FinancePortalAuthProvider><FinancePortalAcceptInvite /></FinancePortalAuthProvider>
+                        } />
+                        <Route path="/finance/change-password" element={
+                          <FinancePortalAuthProvider>
+                            <FinancePortalProtectedRoute>
+                              <FinancePortalChangePassword />
+                            </FinancePortalProtectedRoute>
+                          </FinancePortalAuthProvider>
                         } />
                         <Route path="/finance" element={
                           <FinancePortalAuthProvider>

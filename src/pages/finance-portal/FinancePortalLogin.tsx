@@ -75,11 +75,13 @@ export default function FinancePortalLogin() {
     if (TURNSTILE_SITE_KEY && !turnstileToken) return toast.error('Please complete the security check');
     setSubmitting(true);
     try {
-      const { error } = await signIn(email, password, turnstileToken || undefined);
+      const { error, mustChangePassword } = await signIn(email, password, turnstileToken || undefined);
       if (error) {
         toast.error(error);
         if (window.turnstile && turnstileRef.current) try { window.turnstile.reset(turnstileRef.current.id || ''); } catch {}
         setTurnstileToken(null);
+      } else if (mustChangePassword) {
+        navigate('/finance/change-password', { replace: true });
       } else {
         navigate('/finance', { replace: true });
       }
