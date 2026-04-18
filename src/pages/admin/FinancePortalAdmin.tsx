@@ -199,6 +199,32 @@ export default function FinancePortalAdmin() {
     }
   };
 
+  const toggleActive = async (u: FinanceUserRow, next: boolean) => {
+    setBusyId(u.id);
+    try {
+      const { data, error } = await invokeSecureFunction('finance-portal-admin', {
+        operation: 'update_contact',
+        contact_id: u.id,
+        is_active: next,
+      });
+      if (error) throw new Error(error.message);
+      if (next) {
+        toast.success(`${u.name} marked Active`);
+      } else {
+        toast.success(
+          (data as any)?.portal_revoked
+            ? `${u.name} deactivated — portal session revoked`
+            : `${u.name} marked Inactive`
+        );
+      }
+      await loadAll();
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to update status');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
