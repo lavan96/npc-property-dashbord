@@ -61,7 +61,7 @@ serve(async (req) => {
         id, finance_contact_id, email, password_hash, is_active,
         has_accepted_terms, has_completed_onboarding,
         failed_login_attempts, locked_until, revoked_at,
-        last_login_at,
+        last_login_at, must_change_password,
         finance_agent_contacts:finance_contact_id (id, name, email, company, contact_type, is_active)
       `)
       .eq('email', normalizedEmail)
@@ -170,7 +170,9 @@ serve(async (req) => {
           contact_type: contact.contact_type,
           has_accepted_terms: portalUser.has_accepted_terms,
           has_completed_onboarding: portalUser.has_completed_onboarding,
+          must_change_password: !!portalUser.must_change_password,
         },
+        must_change_password: !!portalUser.must_change_password,
         session_token: sessionToken,
         expires_at: expiresAt.toISOString(),
       }),
