@@ -113,7 +113,7 @@ serve(async (req) => {
       const search = (body.search || '').toString().trim();
       let query = supabase
         .from('clients')
-        .select('id, primary_first_name, primary_surname, secondary_first_name, secondary_surname, primary_email, primary_mobile, deal_status, created_at')
+        .select('id, primary_first_name, primary_surname, secondary_first_name, secondary_surname, primary_email, primary_mobile, deal_status, finance_contact_id, created_at')
         .order('primary_surname', { ascending: true })
         .limit(500);
 
@@ -132,7 +132,7 @@ serve(async (req) => {
         secondary_contact_name: [c.secondary_first_name, c.secondary_surname].filter(Boolean).join(' ').trim() || null,
         primary_contact_email: c.primary_email,
         primary_contact_phone: c.primary_mobile,
-        finance_contact_id: null,
+        finance_contact_id: c.finance_contact_id,
         status: c.deal_status,
         created_at: c.created_at,
       }));
@@ -156,7 +156,8 @@ serve(async (req) => {
       const { data: assignments, error: aErr } = await supabase
         .from('finance_portal_client_assignments')
         .select('id, client_id, permissions, auto_linked, auto_link_source, assigned_at, assigned_by, updated_at')
-        .eq('finance_user_id', finance_user_id);
+        .eq('finance_user_id', finance_user_id)
+        .order('assigned_at', { ascending: false });
 
       if (aErr) throw aErr;
 
@@ -165,7 +166,7 @@ serve(async (req) => {
       if (clientIds.length) {
         const { data: clients } = await supabase
           .from('clients')
-          .select('id, primary_first_name, primary_surname, secondary_first_name, secondary_surname, primary_email, deal_status')
+          .select('id, primary_first_name, primary_surname, secondary_first_name, secondary_surname, primary_email, deal_status, finance_contact_id')
           .in('id', clientIds);
         clientsMap = new Map((clients || []).map((c: any) => [c.id, {
           id: c.id,
@@ -173,7 +174,7 @@ serve(async (req) => {
           secondary_contact_name: [c.secondary_first_name, c.secondary_surname].filter(Boolean).join(' ').trim() || null,
           primary_contact_email: c.primary_email,
           status: c.deal_status,
-          finance_contact_id: null,
+          finance_contact_id: c.finance_contact_id,
         }]));
       }
 
