@@ -102,13 +102,15 @@ export default function FinancePortalAcceptInvite() {
       setSubmitErr(data?.error || 'Failed to activate account');
       return;
     }
-    // Auto-login: persist the session token returned by the function
-    if (data.session_token) {
-      try { sessionStorage.setItem(FINANCE_SESSION_KEY, data.session_token); } catch {}
-      try { localStorage.setItem(FINANCE_SESSION_KEY, data.session_token); } catch {}
+    // Auto-login: hydrate the shared auth provider so /finance recognises us immediately
+    if (data.session_token && data.user) {
+      setSessionFromInvite(data.session_token, {
+        ...data.user,
+        must_change_password: false,
+      });
     }
     setStage('success');
-    setTimeout(() => navigate('/finance', { replace: true }), 1500);
+    setTimeout(() => navigate('/finance', { replace: true }), 800);
   };
 
   if (stage === 'loading') {
