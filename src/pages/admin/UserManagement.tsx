@@ -293,6 +293,11 @@ export default function UserManagement() {
   const handleCreateSubAdmin = async () => {
     if (!createUsername || !createPassword) { toast.error('Username and password are required'); return; }
     if (createPassword.length < 6) { toast.error('Password must be at least 6 characters'); return; }
+    const trimmedEmail = createEmail.trim();
+    if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      toast.error('A valid email address is required for every account');
+      return;
+    }
     setCreating(true);
     try {
       const { data } = await invokeSecureFunction('admin-user-management', {
@@ -431,8 +436,8 @@ export default function UserManagement() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Email (optional)</Label>
-                    <Input type="email" value={createEmail} onChange={(e) => setCreateEmail(e.target.value)} placeholder="user@example.com" />
+                    <Label>Email <span className="text-destructive">*</span></Label>
+                    <Input type="email" required value={createEmail} onChange={(e) => setCreateEmail(e.target.value)} placeholder="user@example.com" />
                   </div>
                   <div className="space-y-2">
                     <Label>Personal Mailbox (optional)</Label>

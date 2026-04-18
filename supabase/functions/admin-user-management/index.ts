@@ -709,6 +709,21 @@ serve(async (req: Request) => {
         }
       }
 
+      // Email integrity guard: never allow clearing or setting a malformed email
+      // (DB will reject this anyway via NOT NULL + CHECK constraint, but we surface
+      //  a friendly error rather than a raw Postgres constraint violation).
+      if ('email' in updateData) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const normalised = String(updateData.email || '').trim().toLowerCase();
+        if (!normalised || !emailRegex.test(normalised)) {
+          return new Response(
+            JSON.stringify({ success: false, error: 'A valid email address is required and cannot be cleared' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        updateData.email = normalised;
+      }
+
       const { error } = await supabase
         .from('custom_users')
         .update(updateData)
@@ -1154,6 +1169,18 @@ serve(async (req: Request) => {
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+
+      // Email is REQUIRED — DB now enforces NOT NULL + format on custom_users.email.
+      // Validate here so we return a clean error instead of a raw constraint violation.
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const normalisedEmail = (subadmin_data.email || '').trim().toLowerCase();
+      if (!normalisedEmail || !emailRegex.test(normalisedEmail)) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'A valid email address is required for every account' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      subadmin_data.email = normalisedEmail;
 
       // Validate password strength
       const validation = await validatePasswordStrength(subadmin_data.password);
