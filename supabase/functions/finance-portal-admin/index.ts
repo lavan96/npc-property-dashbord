@@ -1023,6 +1023,13 @@ serve(async (req) => {
       }
       if (body.gst_registered !== undefined) updates.gst_registered = body.gst_registered === true;
 
+      // is_active toggle (cascades to revoke portal session when set false)
+      let cascadeRevoke = false;
+      if (body.is_active !== undefined) {
+        updates.is_active = body.is_active === true;
+        if (body.is_active === false) cascadeRevoke = true;
+      }
+
       if (body.is_default === true && !existing.is_default) {
         await supabase.from('finance_agent_contacts').update({ is_default: false }).eq('is_default', true);
         updates.is_default = true;
