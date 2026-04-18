@@ -217,6 +217,17 @@ export function CreateFinanceContactDialog({ open, onOpenChange, onCreated }: Cr
                   onCheckedChange={(c) => setForm({ ...form, is_default: c })}
                 />
               </div>
+              <div className="flex items-center justify-between rounded-md border px-3 py-2">
+                <div className="space-y-0.5">
+                  <Label htmlFor="fc-active" className="cursor-pointer">Active</Label>
+                  <p className="text-xs text-muted-foreground">Inactive contacts can't be invited or used.</p>
+                </div>
+                <Switch
+                  id="fc-active"
+                  checked={form.is_active}
+                  onCheckedChange={(c) => setForm({ ...form, is_active: c })}
+                />
+              </div>
             </div>
           </div>
 
