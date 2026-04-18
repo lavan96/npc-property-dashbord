@@ -339,7 +339,7 @@ export default function FinancePortalAdmin() {
                 <TableBody>
                   {filtered.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-8">
+                      <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-8">
                         No matching finance contacts.
                       </TableCell>
                     </TableRow>
@@ -360,6 +360,27 @@ export default function FinancePortalAdmin() {
                         <TableCell className="text-sm">{u.email}</TableCell>
                         <TableCell>
                           <Badge variant={badge.variant}>{badge.label}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <TooltipProvider delayDuration={150}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="inline-flex items-center">
+                                  <Switch
+                                    checked={u.is_active}
+                                    disabled={busyId === u.id}
+                                    onCheckedChange={(c) => toggleActive(u, c)}
+                                    aria-label={`Toggle ${u.name} active`}
+                                  />
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">
+                                {u.is_active
+                                  ? 'Active — turn off to deactivate and revoke portal session'
+                                  : 'Inactive — turn on to reactivate'}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground">
                           {portalUser?.last_login_at
