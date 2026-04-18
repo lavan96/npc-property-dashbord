@@ -86,6 +86,7 @@ export function CreateFinanceContactDialog({ open, onOpenChange, onCreated }: Cr
         default_commission_rate_pct: form.default_commission_rate_pct === '' ? null : Number(form.default_commission_rate_pct),
         gst_registered: form.gst_registered,
         is_default: form.is_default,
+        is_active: form.is_active,
         notes: form.notes.trim() || null,
       });
       if (error) throw new Error(error.message);
