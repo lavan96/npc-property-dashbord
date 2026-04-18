@@ -428,6 +428,12 @@ export default function FinancePortalAdmin() {
         financeUserId={activityForUser?.portal_user?.id || null}
         title={activityForUser ? `Activity: ${activityForUser.name}` : 'Finance Portal Activity'}
       />
+
+      <CreateFinanceContactDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onCreated={() => loadAll()}
+      />
     </div>
   );
 }
