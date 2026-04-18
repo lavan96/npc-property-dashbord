@@ -205,6 +205,10 @@ export default function FinancePortalAdmin() {
             <Settings className="h-4 w-4" />
             Default Permissions
           </Button>
+          <Button onClick={() => setCreateOpen(true)} className="gap-2">
+            <UserPlus className="h-4 w-4" />
+            New Contact
+          </Button>
           <Button variant="outline" onClick={loadAll} className="gap-2" disabled={loading}>
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
