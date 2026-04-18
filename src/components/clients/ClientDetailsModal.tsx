@@ -92,6 +92,7 @@ import { ClientConversationsTab } from './ClientConversationsTab';
 import { LenderSubmissionsPanel } from '@/components/lenders/LenderSubmissionsPanel';
 import { LenderComparisonSheets } from '@/components/lenders/LenderComparisonSheets';
 import { FinancePartnersCard } from './FinancePartnersCard';
+import { ClientAssignmentsCard } from './ClientAssignmentsCard';
 import { toast } from 'sonner';
 interface ClientDetailsModalProps {
   client: {
@@ -490,6 +491,14 @@ NPC Team`
                 clientId={client.id}
                 attributions={attributions}
                 onRefresh={refetchClient}
+              />
+
+              {/* Client Assignments — Finance contact + Internal team member */}
+              <ClientAssignmentsCard
+                clientId={client.id}
+                financeContactId={(fullClient as any)?.finance_contact_id ?? null}
+                assignedTeamUserId={(fullClient as any)?.assigned_team_user_id ?? null}
+                onSaved={refetchClient}
               />
 
               {/* Finance Partners (Three-way sync entry point) */}

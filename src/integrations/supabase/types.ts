@@ -3647,6 +3647,7 @@ export type Database = {
       }
       clients: {
         Row: {
+          assigned_team_user_id: string | null
           borrowing_capacity: number | null
           country: string | null
           created_at: string
@@ -3711,6 +3712,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          assigned_team_user_id?: string | null
           borrowing_capacity?: number | null
           country?: string | null
           created_at?: string
@@ -3775,6 +3777,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          assigned_team_user_id?: string | null
           borrowing_capacity?: number | null
           country?: string | null
           created_at?: string
@@ -3839,6 +3842,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "clients_assigned_team_user_id_fkey"
+            columns: ["assigned_team_user_id"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "clients_created_by_fkey"
             columns: ["created_by"]
