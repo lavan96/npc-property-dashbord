@@ -261,10 +261,22 @@ function AgentBindings({ catalog, onRefresh }: { catalog: CatalogModel[]; onRefr
                   {agents.map((a) => {
                     const modelsForRoute = catalog.filter((m) => m.route === a.route);
                     const currentExists = modelsForRoute.some((m) => m.model_id === a.model_id);
+                    const catalogEntry = catalog.find((m) => m.route === a.route && m.model_id === a.model_id);
+                    const deprecated = isModelDeprecated(a.model_id, catalogEntry?.status);
+                    const recommended = getRecommendedUpgrade(a.agent_key, a.agent_category);
+                    const isOnRecommended = recommended && recommended.model_id === a.model_id && recommended.route === a.route;
+                    const showUpgrade = recommended && !isOnRecommended && (deprecated || !currentExists || catalogEntry?.status === 'preview');
                     return (
-                      <TableRow key={a.agent_key}>
+                      <TableRow key={a.agent_key} className={deprecated ? 'bg-amber-500/5' : undefined}>
                         <TableCell>
-                          <div className="font-medium text-sm">{a.agent_label}</div>
+                          <div className="flex items-center gap-2">
+                            <div className="font-medium text-sm">{a.agent_label}</div>
+                            {deprecated && (
+                              <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-amber-300 text-[10px]">
+                                <AlertTriangle className="mr-1 h-2.5 w-2.5" /> deprecated
+                              </Badge>
+                            )}
+                          </div>
                           <div className="text-[11px] text-muted-foreground font-mono">{a.agent_key}</div>
                         </TableCell>
                         <TableCell>
@@ -281,7 +293,7 @@ function AgentBindings({ catalog, onRefresh }: { catalog: CatalogModel[]; onRefr
                         </TableCell>
                         <TableCell>
                           <Select value={a.model_id} onValueChange={(v) => updateAssignment(a.agent_key, a.route, v)} disabled={savingKey === a.agent_key}>
-                            <SelectTrigger className="h-8 text-xs">
+                            <SelectTrigger className={`h-8 text-xs ${deprecated ? 'border-amber-500/40' : ''}`}>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="max-h-[300px]">
@@ -295,6 +307,32 @@ function AgentBindings({ catalog, onRefresh }: { catalog: CatalogModel[]; onRefr
                             </SelectContent>
                           </Select>
                           {a.last_error && <p className="text-[10px] text-rose-300/80 mt-1 truncate max-w-[300px]" title={a.last_error}>⚠ {a.last_error.slice(0, 80)}</p>}
+                          {showUpgrade && recommended && (
+                            <TooltipProvider delayDuration={150}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button
+                                    type="button"
+                                    disabled={savingKey === a.agent_key}
+                                    onClick={() => updateAssignment(a.agent_key, recommended.route, recommended.model_id)}
+                                    className="mt-1 inline-flex items-center gap-1 rounded border border-emerald-500/30 bg-emerald-500/5 px-1.5 py-0.5 text-[10px] text-emerald-300 hover:bg-emerald-500/10 transition disabled:opacity-50"
+                                  >
+                                    <ArrowUpCircle className="h-3 w-3" />
+                                    Upgrade to <span className="font-mono">{recommended.model_id}</span>
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-[300px] text-xs">
+                                  <div className="font-semibold mb-1">Recommended for this scope</div>
+                                  <div className="text-muted-foreground">{recommended.reason}</div>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                          {isOnRecommended && (
+                            <p className="mt-1 inline-flex items-center gap-1 text-[10px] text-emerald-400/80">
+                              <CheckCircle2 className="h-2.5 w-2.5" /> on recommended model
+                            </p>
+                          )}
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground">
                           {a.last_used_at ? new Date(a.last_used_at).toLocaleString() : '—'}
