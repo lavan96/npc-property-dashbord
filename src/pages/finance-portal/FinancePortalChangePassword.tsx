@@ -10,9 +10,12 @@ import { AlertCircle, Eye, EyeOff, KeyRound, Loader2, ShieldCheck } from 'lucide
 import { validatePassword } from '@/utils/passwordValidation';
 import { PasswordStrengthMeter } from '@/components/ui/password-strength-meter';
 import { toast } from 'sonner';
+import { useWhiteLabel } from '@/contexts/WhiteLabelContext';
+import { Building2 } from 'lucide-react';
 
 export default function FinancePortalChangePassword() {
   const { user, changePassword, signOut } = useFinancePortalAuth();
+  const { settings } = useWhiteLabel();
   const navigate = useNavigate();
 
   const [current, setCurrent] = useState('');
@@ -45,8 +48,14 @@ export default function FinancePortalChangePassword() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-muted/30 p-4">
       <Card className="w-full max-w-md shadow-xl border-primary/10">
         <CardHeader className="text-center space-y-3">
-          <div className="mx-auto w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
-            <ShieldCheck className="h-7 w-7 text-primary" />
+          <div className="flex justify-center mb-2">
+            {settings.authLogo ? (
+              <img src={settings.authLogo} alt={settings.companyName} className="h-16 max-w-[240px] object-contain" />
+            ) : (
+              <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
+                <ShieldCheck className="h-7 w-7 text-primary" />
+              </div>
+            )}
           </div>
           <CardTitle className="text-2xl">
             {forced ? 'Change Your Temporary Password' : 'Change Password'}
