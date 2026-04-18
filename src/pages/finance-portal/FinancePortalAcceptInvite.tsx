@@ -11,11 +11,10 @@ import {
 import { validatePassword } from '@/utils/passwordValidation';
 import { PasswordStrengthMeter } from '@/components/ui/password-strength-meter';
 import { useWhiteLabel } from '@/contexts/WhiteLabelContext';
+import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
 
 const SUPABASE_URL = "https://dduzbchuswwbefdunfct.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkdXpiY2h1c3d3YmVmZHVuZmN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0NDM4NzksImV4cCI6MjA3MTAxOTg3OX0.eSYU6fxIc3tBQuGLsdBRff0alBMkNfvv7OpW0efNjxk";
-
-const FINANCE_SESSION_KEY = 'finance_portal_session_token';
 
 async function callPublic(fn: string, body: any) {
   const r = await fetch(`${SUPABASE_URL}/functions/v1/${fn}`, {
@@ -36,6 +35,7 @@ export default function FinancePortalAcceptInvite() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const { settings } = useWhiteLabel();
+  const { setSessionFromInvite } = useFinancePortalAuth();
   const token = params.get('token') || '';
 
   const [stage, setStage] = useState<
@@ -102,13 +102,15 @@ export default function FinancePortalAcceptInvite() {
       setSubmitErr(data?.error || 'Failed to activate account');
       return;
     }
-    // Auto-login: persist the session token returned by the function
-    if (data.session_token) {
-      try { sessionStorage.setItem(FINANCE_SESSION_KEY, data.session_token); } catch {}
-      try { localStorage.setItem(FINANCE_SESSION_KEY, data.session_token); } catch {}
+    // Auto-login: hydrate the shared auth provider so /finance recognises us immediately
+    if (data.session_token && data.user) {
+      setSessionFromInvite(data.session_token, {
+        ...data.user,
+        must_change_password: false,
+      });
     }
     setStage('success');
-    setTimeout(() => navigate('/finance', { replace: true }), 1500);
+    setTimeout(() => navigate('/finance', { replace: true }), 800);
   };
 
   if (stage === 'loading') {

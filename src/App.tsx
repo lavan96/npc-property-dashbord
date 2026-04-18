@@ -201,33 +201,31 @@ const App = () => (
                           <Route path="appointments" element={<PortalAppointments />} />
                         </Route>
 
-                        {/* Finance Portal Routes */}
-                        <Route path="/finance/login" element={
-                          <FinancePortalAuthProvider><FinancePortalLogin /></FinancePortalAuthProvider>
-                        } />
-                        <Route path="/finance/accept-invite" element={
-                          <FinancePortalAuthProvider><FinancePortalAcceptInvite /></FinancePortalAuthProvider>
-                        } />
-                        <Route path="/finance/change-password" element={
+                        {/* Finance Portal Routes - single provider wrapping all /finance/* */}
+                        <Route path="/finance/*" element={
                           <FinancePortalAuthProvider>
-                            <FinancePortalProtectedRoute>
-                              <FinancePortalChangePassword />
-                            </FinancePortalProtectedRoute>
+                            <Routes>
+                              <Route path="login" element={<FinancePortalLogin />} />
+                              <Route path="accept-invite" element={<FinancePortalAcceptInvite />} />
+                              <Route path="change-password" element={
+                                <FinancePortalProtectedRoute>
+                                  <FinancePortalChangePassword />
+                                </FinancePortalProtectedRoute>
+                              } />
+                              <Route path="" element={
+                                <FinancePortalProtectedRoute>
+                                  <FinancePortalLayout />
+                                </FinancePortalProtectedRoute>
+                              }>
+                                <Route index element={<FinancePortalDashboard />} />
+                                <Route path="clients" element={<FinancePortalClients />} />
+                                <Route path="clients/:clientId" element={<FinancePortalClientProfile />} />
+                                <Route path="messages" element={<FinancePortalMessages />} />
+                                <Route path="earnings" element={<FinancePortalEarnings />} />
+                              </Route>
+                            </Routes>
                           </FinancePortalAuthProvider>
                         } />
-                        <Route path="/finance" element={
-                          <FinancePortalAuthProvider>
-                            <FinancePortalProtectedRoute>
-                              <FinancePortalLayout />
-                            </FinancePortalProtectedRoute>
-                          </FinancePortalAuthProvider>
-                        }>
-                          <Route index element={<FinancePortalDashboard />} />
-                          <Route path="clients" element={<FinancePortalClients />} />
-                          <Route path="clients/:clientId" element={<FinancePortalClientProfile />} />
-                          <Route path="messages" element={<FinancePortalMessages />} />
-                          <Route path="earnings" element={<FinancePortalEarnings />} />
-                        </Route>
 
                         {/* Internal Dashboard Routes */}
                         <Route path="/auth" element={<Auth />} />
