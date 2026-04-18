@@ -9,6 +9,7 @@ interface FinancePortalUser {
   contact_type: string | null;
   has_accepted_terms: boolean;
   has_completed_onboarding: boolean;
+  must_change_password?: boolean;
 }
 
 interface FinancePortalAuthContextType {
