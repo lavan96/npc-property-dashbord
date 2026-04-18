@@ -199,6 +199,17 @@ serve(async (req) => {
     expiresAt.setHours(expiresAt.getHours() + INVITE_EXPIRY_HOURS)
     const adminUserId = auth.userId === 'service_role' ? null : auth.userId;
 
+    // Resolve invite mode + temp password
+    const useTempPassword = invite_mode === 'temp_password';
+    let tempPasswordPlain: string | null = null;
+    let tempPasswordHash: string | null = null;
+    if (useTempPassword) {
+      tempPasswordPlain = (typeof custom_password === 'string' && custom_password.length >= 8)
+        ? custom_password
+        : generateTempPassword();
+      tempPasswordHash = await hashPassword(tempPasswordPlain);
+    }
+
     if (existingUser) {
       if (existingUser.invite_accepted_at && existingUser.is_active && !existingUser.revoked_at && !resend_invite) {
         return new Response(
@@ -207,44 +218,54 @@ serve(async (req) => {
         )
       }
       // Reset / refresh invite
+      const updatePayload: Record<string, any> = {
+        email: normalizedEmail,
+        invite_token: useTempPassword ? null : inviteToken,
+        invite_token_expires_at: useTempPassword ? null : expiresAt.toISOString(),
+        invite_sent_at: new Date().toISOString(),
+        is_active: true,
+        revoked_at: null,
+        revoked_by: null,
+        session_token: null,
+        session_expires_at: null,
+        failed_login_attempts: 0,
+        locked_until: null,
+      };
+      if (useTempPassword) {
+        updatePayload.password_hash = tempPasswordHash;
+        updatePayload.must_change_password = true;
+        // Mark invite as accepted so login is allowed; user is forced to change pwd on first login
+        updatePayload.invite_accepted_at = existingUser.invite_accepted_at || new Date().toISOString();
+      } else if (!existingUser.invite_accepted_at) {
+        updatePayload.password_hash = null;
+        updatePayload.must_change_password = false;
+        updatePayload.has_accepted_terms = false;
+        updatePayload.terms_accepted_at = null;
+        updatePayload.has_completed_onboarding = false;
+      }
       await supabase
         .from('finance_portal_users')
-        .update({
-          email: normalizedEmail,
-          invite_token: inviteToken,
-          invite_token_expires_at: expiresAt.toISOString(),
-          invite_sent_at: new Date().toISOString(),
-          // Re-accepting invite reactivates and clears revocation
-          is_active: true,
-          revoked_at: null,
-          revoked_by: null,
-          // Clear any stale auth state
-          session_token: null,
-          session_expires_at: null,
-          failed_login_attempts: 0,
-          locked_until: null,
-          // For resend, keep invite_accepted_at as-is so existing users don't lose acceptance
-          ...(existingUser.invite_accepted_at ? {} : {
-            password_hash: null,
-            has_accepted_terms: false,
-            terms_accepted_at: null,
-            has_completed_onboarding: false,
-          }),
-        })
+        .update(updatePayload)
         .eq('id', existingUser.id)
     } else {
+      const insertPayload: Record<string, any> = {
+        finance_contact_id: contact.id,
+        email: normalizedEmail,
+        password_hash: tempPasswordHash, // null when link mode, hash when temp pwd
+        must_change_password: useTempPassword,
+        is_active: true,
+        invite_sent_at: new Date().toISOString(),
+        invited_by: adminUserId,
+      };
+      if (useTempPassword) {
+        insertPayload.invite_accepted_at = new Date().toISOString();
+      } else {
+        insertPayload.invite_token = inviteToken;
+        insertPayload.invite_token_expires_at = expiresAt.toISOString();
+      }
       const { error: insertError } = await supabase
         .from('finance_portal_users')
-        .insert({
-          finance_contact_id: contact.id,
-          email: normalizedEmail,
-          password_hash: null,
-          is_active: true,
-          invite_token: inviteToken,
-          invite_token_expires_at: expiresAt.toISOString(),
-          invite_sent_at: new Date().toISOString(),
-          invited_by: adminUserId,
-        })
+        .insert(insertPayload)
       if (insertError) {
         console.error('[finance-portal-invite] Insert failed:', insertError)
         return new Response(
