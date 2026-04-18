@@ -68,6 +68,7 @@ export default function FinancePortalAdmin() {
   const [activityOpen, setActivityOpen] = useState(false);
   const [activityForUser, setActivityForUser] = useState<FinanceUserRow | null>(null);
   const [assignmentsForUser, setAssignmentsForUser] = useState<FinanceUserRow | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
 
   const loadAll = async () => {
     setLoading(true);
