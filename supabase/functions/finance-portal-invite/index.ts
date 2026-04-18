@@ -1,8 +1,19 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
 import { createCorsHeaders, verifyAuth } from "../_shared/auth.ts"
+import { hashPassword } from "../_shared/password.ts"
 
 const INVITE_EXPIRY_HOURS = 72;
+
+function generateTempPassword(): string {
+  // 12 chars, mixed letters/digits, no ambiguous chars
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+  const buf = new Uint8Array(12);
+  crypto.getRandomValues(buf);
+  let out = '';
+  for (let i = 0; i < buf.length; i++) out += chars[buf[i] % chars.length];
+  return out;
+}
 
 serve(async (req) => {
   const origin = req.headers.get('origin');
@@ -24,7 +35,8 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     const body = await req.json()
-    const { action, finance_contact_id, resend_invite } = body
+    const { action, finance_contact_id, resend_invite, invite_mode, custom_password } = body
+    // invite_mode: 'set_password_link' (default, user sets own) | 'temp_password' (admin issues temp pwd)
 
     // Admin auth required for all operations
     const auth = await verifyAuth(supabase, req.headers, body)
