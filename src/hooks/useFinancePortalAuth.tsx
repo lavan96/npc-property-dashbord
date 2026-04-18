@@ -23,6 +23,7 @@ interface FinancePortalAuthContextType {
   changePassword: (currentPassword: string, newPassword: string) => Promise<{ error?: string; success?: boolean }>;
   acceptTerms: () => Promise<void>;
   completeOnboarding: () => Promise<void>;
+  setSessionFromInvite: (sessionToken: string, user: FinancePortalUser) => void;
   invokeFinanceFunction: (
     functionName: string,
     body?: Record<string, any>
