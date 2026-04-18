@@ -330,6 +330,7 @@ export default function FinancePortalAdmin() {
                     <TableHead>Contact</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead className="w-24">Active</TableHead>
                     <TableHead>Last Login</TableHead>
                     <TableHead>Invite</TableHead>
                     <TableHead className="w-12"></TableHead>
