@@ -21,12 +21,8 @@ interface CreateFinanceContactDialogProps {
 }
 
 const CONTACT_TYPES = [
-  { value: 'broker', label: 'Mortgage Broker' },
-  { value: 'referrer', label: 'Referrer' },
-  { value: 'partner', label: 'Partner' },
-  { value: 'aggregator', label: 'Aggregator' },
-  { value: 'staff', label: 'Internal Staff' },
-  { value: 'other', label: 'Other' },
+  { value: 'external', label: 'External (Broker / Referrer / Partner)' },
+  { value: 'internal', label: 'Internal Staff' },
 ];
 
 const COMMISSION_BASES = [
