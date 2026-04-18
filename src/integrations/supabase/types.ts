@@ -2330,6 +2330,7 @@ export type Database = {
           existing_loan_amount: number | null
           expected_build_start: string | null
           finance_clause_expiry: string | null
+          finance_contact_id: string | null
           formal_approval_date: string | null
           id: string
           land_price: number | null
@@ -2375,6 +2376,7 @@ export type Database = {
           existing_loan_amount?: number | null
           expected_build_start?: string | null
           finance_clause_expiry?: string | null
+          finance_contact_id?: string | null
           formal_approval_date?: string | null
           id?: string
           land_price?: number | null
@@ -2420,6 +2422,7 @@ export type Database = {
           existing_loan_amount?: number | null
           expected_build_start?: string | null
           finance_clause_expiry?: string | null
+          finance_contact_id?: string | null
           formal_approval_date?: string | null
           id?: string
           land_price?: number | null
@@ -2448,6 +2451,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_deals_finance_contact_id_fkey"
+            columns: ["finance_contact_id"]
+            isOneToOne: false
+            referencedRelation: "finance_agent_contacts"
             referencedColumns: ["id"]
           },
           {
@@ -3647,6 +3657,7 @@ export type Database = {
           deal_status: string
           dependents_count: number | null
           equity_release: number | null
+          finance_contact_id: string | null
           first_deal_closed_at: string | null
           follow_up_date: string | null
           ghl_contact_id: string | null
@@ -3710,6 +3721,7 @@ export type Database = {
           deal_status?: string
           dependents_count?: number | null
           equity_release?: number | null
+          finance_contact_id?: string | null
           first_deal_closed_at?: string | null
           follow_up_date?: string | null
           ghl_contact_id?: string | null
@@ -3773,6 +3785,7 @@ export type Database = {
           deal_status?: string
           dependents_count?: number | null
           equity_release?: number | null
+          finance_contact_id?: string | null
           first_deal_closed_at?: string | null
           follow_up_date?: string | null
           ghl_contact_id?: string | null
@@ -3845,6 +3858,13 @@ export type Database = {
             columns: ["current_stage_id"]
             isOneToOne: false
             referencedRelation: "ghl_pipeline_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clients_finance_contact_id_fkey"
+            columns: ["finance_contact_id"]
+            isOneToOne: false
+            referencedRelation: "finance_agent_contacts"
             referencedColumns: ["id"]
           },
         ]
