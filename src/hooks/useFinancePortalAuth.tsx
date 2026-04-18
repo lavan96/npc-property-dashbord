@@ -207,7 +207,7 @@ export function FinancePortalAuthProvider({ children }: { children: ReactNode })
     <FinancePortalAuthContext.Provider
       value={{
         user, loading, signIn, signOut,
-        requestPasswordReset, verifyOTP, resetPassword,
+        requestPasswordReset, verifyOTP, resetPassword, changePassword,
         acceptTerms, completeOnboarding,
         invokeFinanceFunction, getSessionToken, refreshUser,
       }}
