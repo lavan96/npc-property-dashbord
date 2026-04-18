@@ -250,7 +250,7 @@ export function ClientAssignmentsDialog({ open, onOpenChange, financeUser, defau
                   <span className="text-[10px] text-muted-foreground italic">click a client to edit permissions →</span>
                 )}
               </div>
-              <ScrollArea className="flex-1 border rounded-lg">
+              <ScrollArea className="flex-1 min-h-[180px] border rounded-lg">
                 <div className="p-2 space-y-1">
                   {assignments.length === 0 && (
                     <div className="text-sm text-muted-foreground text-center py-6">No clients assigned yet.</div>
