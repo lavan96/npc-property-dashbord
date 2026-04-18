@@ -89,10 +89,22 @@ serve(async (req) => {
 
       const { data: clients } = await supabase
         .from('clients')
-        .select('id, primary_contact_name, secondary_contact_name, primary_contact_email, primary_contact_phone, status, created_at, finance_contact_id')
+        .select('id, primary_first_name, primary_surname, secondary_first_name, secondary_surname, primary_email, primary_mobile, deal_status, created_at')
         .in('id', clientIds);
 
-      const cMap = new Map((clients || []).map((c: any) => [c.id, c]));
+      const cMap = new Map((clients || []).map((c: any) => {
+        const primary_contact_name = [c.primary_first_name, c.primary_surname].filter(Boolean).join(' ').trim() || null;
+        const secondary_contact_name = [c.secondary_first_name, c.secondary_surname].filter(Boolean).join(' ').trim() || null;
+        return [c.id, {
+          id: c.id,
+          primary_contact_name,
+          secondary_contact_name,
+          primary_contact_email: c.primary_email,
+          primary_contact_phone: c.primary_mobile,
+          status: c.deal_status,
+          created_at: c.created_at,
+        }];
+      }));
       const records = (assignments || []).map((a: any) => ({
         assignment_id: a.id,
         client_id: a.client_id,
@@ -140,11 +152,21 @@ serve(async (req) => {
 
     // ── get_client_summary ──
     if (operation === 'get_client_summary') {
-      const { data: client } = await supabase
+      const { data: c } = await supabase
         .from('clients')
-        .select('id, primary_contact_name, secondary_contact_name, primary_contact_email, primary_contact_phone, primary_address, status, created_at')
+        .select('id, primary_first_name, primary_surname, secondary_first_name, secondary_surname, primary_email, primary_mobile, current_address, deal_status, created_at')
         .eq('id', client_id)
         .maybeSingle();
+      const client = c ? {
+        id: c.id,
+        primary_contact_name: [c.primary_first_name, c.primary_surname].filter(Boolean).join(' ').trim() || null,
+        secondary_contact_name: [c.secondary_first_name, c.secondary_surname].filter(Boolean).join(' ').trim() || null,
+        primary_contact_email: c.primary_email,
+        primary_contact_phone: c.primary_mobile,
+        primary_address: c.current_address,
+        status: c.deal_status,
+        created_at: c.created_at,
+      } : null;
       await audit('view_client_summary', null, client_id);
       return jsonResponse({ success: true, client, permissions });
     }
