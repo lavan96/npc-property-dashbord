@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -14,67 +14,62 @@ import { UserCog, Save, Loader2, Briefcase, Users } from 'lucide-react';
 
 interface Props {
   clientId: string;
+  financeContactId?: string | null;
+  assignedTeamUserId?: string | null;
+  onSaved?: () => void;
 }
 
 const UNASSIGNED = 'unassigned';
 
 /**
  * Assigns a client to (a) a Finance Contact and (b) an Internal Team Member.
- * Two independent fields, persisted on the `clients` row.
+ * Two independent fields persisted on `clients` row via manage-client-data edge function.
  */
-export function ClientAssignmentsCard({ clientId }: Props) {
+export function ClientAssignmentsCard({
+  clientId,
+  financeContactId,
+  assignedTeamUserId,
+  onSaved,
+}: Props) {
   const queryClient = useQueryClient();
   const { contacts: financeContacts, isLoading: financeLoading } = useFinanceContacts();
   const { data: teamUsers = [], isLoading: teamLoading } = useTeamUsers();
 
-  const { data: current, isLoading: currentLoading } = useQuery({
-    queryKey: ['client-assignments', clientId],
-    queryFn: async () => {
-      const { data, error } = await invokeSecureFunction('manage-client-data', {
-        operation: 'get',
-        clientId,
-        select: 'finance_contact_id, assigned_team_user_id',
-      });
-      if (error) throw new Error(error.message);
-      const rec = data?.record || data?.client || data;
-      return {
-        finance_contact_id: rec?.finance_contact_id ?? null,
-        assigned_team_user_id: rec?.assigned_team_user_id ?? null,
-      };
-    },
-  });
-
-  const [financeId, setFinanceId] = useState<string>(UNASSIGNED);
-  const [teamId, setTeamId] = useState<string>(UNASSIGNED);
+  const [financeId, setFinanceId] = useState<string>(financeContactId || UNASSIGNED);
+  const [teamId, setTeamId] = useState<string>(assignedTeamUserId || UNASSIGNED);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (current) {
-      setFinanceId(current.finance_contact_id || UNASSIGNED);
-      setTeamId(current.assigned_team_user_id || UNASSIGNED);
-    }
-  }, [current]);
+    setFinanceId(financeContactId || UNASSIGNED);
+  }, [financeContactId]);
+
+  useEffect(() => {
+    setTeamId(assignedTeamUserId || UNASSIGNED);
+  }, [assignedTeamUserId]);
 
   const dirty =
-    (current?.finance_contact_id || UNASSIGNED) !== financeId ||
-    (current?.assigned_team_user_id || UNASSIGNED) !== teamId;
+    (financeContactId || UNASSIGNED) !== financeId ||
+    (assignedTeamUserId || UNASSIGNED) !== teamId;
 
   const save = async () => {
     setSaving(true);
     try {
-      const { error } = await invokeSecureFunction('manage-client-data', {
+      const { data, error } = await invokeSecureFunction('manage-client-data', {
         operation: 'update',
+        table: 'clients',
         clientId,
-        updates: {
+        data: {
           finance_contact_id: financeId === UNASSIGNED ? null : financeId,
           assigned_team_user_id: teamId === UNASSIGNED ? null : teamId,
         },
       });
       if (error) throw new Error(error.message);
+      if (data && data.success === false) throw new Error(data.error || 'Failed to save');
       toast.success('Assignments updated');
-      queryClient.invalidateQueries({ queryKey: ['client-assignments', clientId] });
       queryClient.invalidateQueries({ queryKey: ['client', clientId] });
       queryClient.invalidateQueries({ queryKey: ['clients'] });
+      queryClient.invalidateQueries({ queryKey: ['full-client', clientId] });
+      onSaved?.();
     } catch (e: any) {
       toast.error(e.message || 'Failed to save assignments');
     } finally {
@@ -82,7 +77,7 @@ export function ClientAssignmentsCard({ clientId }: Props) {
     }
   };
 
-  const loading = financeLoading || teamLoading || currentLoading;
+  const loading = financeLoading || teamLoading;
 
   return (
     <Card>
@@ -113,7 +108,7 @@ export function ClientAssignmentsCard({ clientId }: Props) {
                 {financeContacts.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     <div className="flex flex-col">
-                      <span>{c.name}{c.is_default && ' ★'}</span>
+                      <span>{c.name}{c.is_default ? ' ★' : ''}</span>
                       <span className="text-xs text-muted-foreground">{c.email}</span>
                     </div>
                   </SelectItem>
