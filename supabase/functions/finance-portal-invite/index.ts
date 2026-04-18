@@ -201,6 +201,7 @@ serve(async (req) => {
 
     // Resolve invite mode + temp password
     const useTempPassword = invite_mode === 'temp_password';
+    const resendFrom = 'NPC Services <admin@npcservices.com.au>';
     let tempPasswordPlain: string | null = null;
     let tempPasswordHash: string | null = null;
     if (useTempPassword) {
@@ -217,11 +218,9 @@ serve(async (req) => {
           { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
-      // Reset / refresh invite
+
       const updatePayload: Record<string, any> = {
         email: normalizedEmail,
-        invite_token: useTempPassword ? null : inviteToken,
-        invite_token_expires_at: useTempPassword ? null : expiresAt.toISOString(),
         invite_sent_at: new Date().toISOString(),
         is_active: true,
         revoked_at: null,
@@ -230,19 +229,31 @@ serve(async (req) => {
         session_expires_at: null,
         failed_login_attempts: 0,
         locked_until: null,
+        reset_token: null,
+        reset_token_expires_at: null,
       };
+
       if (useTempPassword) {
+        updatePayload.invite_token = null;
+        updatePayload.invite_token_expires_at = null;
         updatePayload.password_hash = tempPasswordHash;
         updatePayload.must_change_password = true;
-        // Mark invite as accepted so login is allowed; user is forced to change pwd on first login
-        updatePayload.invite_accepted_at = existingUser.invite_accepted_at || new Date().toISOString();
-      } else if (!existingUser.invite_accepted_at) {
+        updatePayload.invite_accepted_at = new Date().toISOString();
+        updatePayload.has_accepted_terms = false;
+        updatePayload.terms_accepted_at = null;
+        updatePayload.has_completed_onboarding = false;
+      } else {
+        // Mirror client portal reset-invite behavior: force a fresh setup flow
+        updatePayload.invite_token = inviteToken;
+        updatePayload.invite_token_expires_at = expiresAt.toISOString();
         updatePayload.password_hash = null;
         updatePayload.must_change_password = false;
+        updatePayload.invite_accepted_at = null;
         updatePayload.has_accepted_terms = false;
         updatePayload.terms_accepted_at = null;
         updatePayload.has_completed_onboarding = false;
       }
+
       await supabase
         .from('finance_portal_users')
         .update(updatePayload)
@@ -251,21 +262,24 @@ serve(async (req) => {
       const insertPayload: Record<string, any> = {
         finance_contact_id: contact.id,
         email: normalizedEmail,
-        password_hash: tempPasswordHash, // null when link mode, hash when temp pwd
+        password_hash: tempPasswordHash,
         must_change_password: useTempPassword,
         is_active: true,
         invite_sent_at: new Date().toISOString(),
         invited_by: adminUserId,
       };
+
       if (useTempPassword) {
         insertPayload.invite_accepted_at = new Date().toISOString();
       } else {
         insertPayload.invite_token = inviteToken;
         insertPayload.invite_token_expires_at = expiresAt.toISOString();
       }
+
       const { error: insertError } = await supabase
         .from('finance_portal_users')
         .insert(insertPayload)
+
       if (insertError) {
         console.error('[finance-portal-invite] Insert failed:', insertError)
         return new Response(
@@ -278,7 +292,6 @@ serve(async (req) => {
     const inviteLink = `${appUrl}/finance/accept-invite?token=${encodeURIComponent(inviteToken)}`
     const loginLink = `${appUrl}/finance/login`
 
-    // Build email content based on mode
     const subject = useTempPassword
       ? 'Your NPC Finance Portal account is ready'
       : "You're Invited to the NPC Finance Portal"
@@ -307,6 +320,9 @@ serve(async (req) => {
         </p>`
 
     let emailSent = false;
+    let emailError: string | null = null;
+    let resendMessageId: string | null = null;
+
     if (resendApiKey) {
       try {
         const emailRes = await fetch('https://api.resend.com/emails', {
@@ -316,7 +332,7 @@ serve(async (req) => {
             'Authorization': `Bearer ${resendApiKey}`,
           },
           body: JSON.stringify({
-            from: 'NPC Services <noreply@npcservices.com.au>',
+            from: resendFrom,
             to: [normalizedEmail],
             subject,
             html: `
@@ -332,18 +348,29 @@ serve(async (req) => {
             `,
           }),
         })
+
+        const rawBody = await emailRes.text()
         if (emailRes.ok) {
           emailSent = true;
-          console.log(`[finance-portal-invite] Email sent to ${normalizedEmail}`)
+          try {
+            resendMessageId = JSON.parse(rawBody)?.id ?? null
+          } catch {
+            resendMessageId = null
+          }
+          console.log('[finance-portal-invite] Email sent', { to: normalizedEmail, resendMessageId, mode: useTempPassword ? 'temp_password' : 'set_password_link' })
         } else {
-          console.error('[finance-portal-invite] Resend failed:', await emailRes.text())
+          emailError = `Resend ${emailRes.status}: ${rawBody}`
+          console.error('[finance-portal-invite] Resend failed:', emailError)
         }
-      } catch (err) {
-        console.error('[finance-portal-invite] Email error:', err)
+      } catch (err: any) {
+        emailError = err?.message || String(err)
+        console.error('[finance-portal-invite] Email error:', emailError)
       }
+    } else {
+      emailError = 'RESEND_API_KEY not configured'
+      console.warn('[finance-portal-invite] RESEND_API_KEY not configured')
     }
 
-    // Activity log
     const { data: portalUserRow } = await supabase
       .from('finance_portal_users')
       .select('id')
@@ -358,7 +385,14 @@ serve(async (req) => {
         action: existingUser ? 'invite_resent' : 'invite_sent',
         entity_type: 'finance_portal_user',
         entity_id: portalUserRow.id,
-        metadata: { email: normalizedEmail, mode: useTempPassword ? 'temp_password' : 'set_password_link' },
+        metadata: {
+          email: normalizedEmail,
+          mode: useTempPassword ? 'temp_password' : 'set_password_link',
+          email_sent: emailSent,
+          resend_message_id: resendMessageId,
+          email_error: emailError,
+          sender: resendFrom,
+        },
       });
     }
 
@@ -367,11 +401,12 @@ serve(async (req) => {
         success: true,
         message: emailSent
           ? `Invite sent to ${normalizedEmail}`
-          : 'Invite created — copy the credentials manually',
+          : 'Invite created, but email delivery failed. Share the link manually.',
         invite_link: useTempPassword ? loginLink : inviteLink,
         email_sent: emailSent,
+        email_error: emailError,
+        resend_message_id: resendMessageId,
         mode: useTempPassword ? 'temp_password' : 'set_password_link',
-        // Only return temp password to the admin so they can share it manually if email fails
         temp_password: useTempPassword ? tempPasswordPlain : null,
         expires_at: useTempPassword ? null : expiresAt.toISOString(),
       }),
