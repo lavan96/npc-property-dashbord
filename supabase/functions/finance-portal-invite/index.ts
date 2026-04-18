@@ -276,6 +276,35 @@ serve(async (req) => {
     }
 
     const inviteLink = `${appUrl}/finance/accept-invite?token=${encodeURIComponent(inviteToken)}`
+    const loginLink = `${appUrl}/finance/login`
+
+    // Build email content based on mode
+    const subject = useTempPassword
+      ? 'Your NPC Finance Portal account is ready'
+      : "You're Invited to the NPC Finance Portal"
+
+    const ctaBlock = useTempPassword
+      ? `
+        <p style="color:#555;font-size:16px;line-height:1.6;">
+          Your account has been created with a temporary password. For security, you'll be asked to change it on first login.
+        </p>
+        <div style="background:#F8F5EC;border:1px solid #BF9B50;border-radius:8px;padding:20px;margin:24px 0;">
+          <p style="margin:0 0 8px;color:#0D264D;font-size:13px;letter-spacing:0.5px;text-transform:uppercase;font-weight:700;">Temporary password</p>
+          <p style="margin:0;font-family:Menlo,Consolas,monospace;font-size:22px;color:#0D264D;letter-spacing:2px;font-weight:700;">${tempPasswordPlain}</p>
+        </div>
+        <div style="text-align:center;margin:32px 0;">
+          <a href="${loginLink}" style="display:inline-block;background:#BF9B50;color:#0D264D;padding:14px 32px;border-radius:8px;text-decoration:none;font-size:16px;font-weight:700;">Sign In</a>
+        </div>`
+      : `
+        <p style="color:#555;font-size:16px;line-height:1.6;">
+          You've been invited to access the NPC Finance Portal. Click the button below to set up your password and activate your account.
+        </p>
+        <div style="text-align:center;margin:32px 0;">
+          <a href="${inviteLink}" style="display:inline-block;background:#BF9B50;color:#0D264D;padding:14px 32px;border-radius:8px;text-decoration:none;font-size:16px;font-weight:700;">Set Up Your Account</a>
+        </div>
+        <p style="color:#888;font-size:14px;line-height:1.5;">
+          This invitation expires in ${INVITE_EXPIRY_HOURS} hours. If you didn't expect this, you can safely ignore this email.
+        </p>`
 
     let emailSent = false;
     if (resendApiKey) {
@@ -289,31 +318,16 @@ serve(async (req) => {
           body: JSON.stringify({
             from: 'NPC Services <noreply@npcservices.com.au>',
             to: [normalizedEmail],
-            subject: 'You\'re Invited to the NPC Finance Portal',
+            subject,
             html: `
-              <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 40px 24px; background: #ffffff;">
-                <div style="text-align: center; margin-bottom: 32px;">
-                  <h1 style="color: #0D264D; font-size: 24px; margin: 0;">Welcome to the Finance Portal</h1>
+              <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:40px 24px;background:#ffffff;">
+                <div style="text-align:center;margin-bottom:32px;">
+                  <h1 style="color:#0D264D;font-size:24px;margin:0;">Welcome to the Finance Portal</h1>
                 </div>
-                <p style="color: #555; font-size: 16px; line-height: 1.6;">Hi ${contact.name},</p>
-                <p style="color: #555; font-size: 16px; line-height: 1.6;">
-                  You've been invited to access the NPC Finance Portal. From there you can manage assigned client financial profiles —
-                  property valuations, purchase prices, and other key data points.
-                </p>
-                <div style="text-align: center; margin: 32px 0;">
-                  <a href="${inviteLink}"
-                     style="display: inline-block; background: #BF9B50; color: #0D264D; padding: 14px 32px;
-                            border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: 700;">
-                    Set Up Your Account
-                  </a>
-                </div>
-                <p style="color: #888; font-size: 14px; line-height: 1.5;">
-                  This invitation expires in ${INVITE_EXPIRY_HOURS} hours. If you didn't expect this, you can safely ignore this email.
-                </p>
-                <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0;" />
-                <p style="color: #aaa; font-size: 12px; text-align: center;">
-                  NPC Services — Property Investment Advisory
-                </p>
+                <p style="color:#555;font-size:16px;line-height:1.6;">Hi ${contact.name},</p>
+                ${ctaBlock}
+                <hr style="border:none;border-top:1px solid #eee;margin:32px 0;" />
+                <p style="color:#aaa;font-size:12px;text-align:center;">NPC Services — Property Investment Advisory</p>
               </div>
             `,
           }),
@@ -344,17 +358,22 @@ serve(async (req) => {
         action: existingUser ? 'invite_resent' : 'invite_sent',
         entity_type: 'finance_portal_user',
         entity_id: portalUserRow.id,
-        metadata: { email: normalizedEmail, expires_at: expiresAt.toISOString() },
+        metadata: { email: normalizedEmail, mode: useTempPassword ? 'temp_password' : 'set_password_link' },
       });
     }
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: emailSent ? `Invite sent to ${normalizedEmail}` : 'Invite created — copy the link manually',
-        invite_link: inviteLink,
+        message: emailSent
+          ? `Invite sent to ${normalizedEmail}`
+          : 'Invite created — copy the credentials manually',
+        invite_link: useTempPassword ? loginLink : inviteLink,
         email_sent: emailSent,
-        expires_at: expiresAt.toISOString(),
+        mode: useTempPassword ? 'temp_password' : 'set_password_link',
+        // Only return temp password to the admin so they can share it manually if email fails
+        temp_password: useTempPassword ? tempPasswordPlain : null,
+        expires_at: useTempPassword ? null : expiresAt.toISOString(),
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
