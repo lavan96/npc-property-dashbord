@@ -36,13 +36,12 @@ export default function FinancePortalLogin() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) return toast.error('Email and password required');
-    if (TURNSTILE_SITE_KEY && !turnstileToken) return toast.error('Please complete the security check');
+    if (!turnstileToken) return toast.error('Please complete the security check');
     setSubmitting(true);
     try {
       const { error, mustChangePassword } = await signIn(email, password, turnstileToken || undefined);
       if (error) {
         toast.error(error);
-        if (window.turnstile && turnstileRef.current) try { window.turnstile.reset(turnstileRef.current.id || ''); } catch {}
         setTurnstileToken(null);
       } else if (mustChangePassword) {
         navigate('/finance/change-password', { replace: true });
