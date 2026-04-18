@@ -17,13 +17,14 @@ import { toast } from 'sonner';
 import {
   Loader2, Search, MoreHorizontal, Mail, Shield, RefreshCw,
   Ban, CheckCircle2, History, Settings, Users, Copy,
-  BarChart3, FileSpreadsheet, FileText, DollarSign,
+  BarChart3, FileSpreadsheet, FileText, DollarSign, UserPlus,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { ClientAssignmentsDialog } from '@/components/admin/finance-portal/ClientAssignmentsDialog';
 import { DefaultPermissionsDialog } from '@/components/admin/finance-portal/DefaultPermissionsDialog';
 import { ActivityLogDialog } from '@/components/admin/finance-portal/ActivityLogDialog';
+import { CreateFinanceContactDialog } from '@/components/admin/finance-portal/CreateFinanceContactDialog';
 import { EMPTY_MATRIX, normalizeMatrix, type FinancePermissionMatrix } from '@/components/admin/finance-portal/FinancePermissionMatrix';
 
 interface FinanceUserRow {
