@@ -477,8 +477,9 @@ export default function EmailCopilot() {
           action: 'get_own_profile'
         });
 
-        if (data?.success && data.user?.personal_mailbox) {
-          setPersonalMailbox(data.user.personal_mailbox);
+        if (data?.success) {
+          // Always sync state to backend value (including null when cleared)
+          setPersonalMailbox(data.user?.personal_mailbox || null);
         }
       } catch (err) {
         console.error('Failed to fetch user profile:', err);
