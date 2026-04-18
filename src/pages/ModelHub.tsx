@@ -13,10 +13,12 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   AlertTriangle, CheckCircle2, ExternalLink, KeyRound, Sparkles, Zap,
   Brain, Image as ImageIcon, Search, RefreshCw, ShieldCheck, Globe,
-  Network, Workflow, Save, FlaskConical
+  Network, Workflow, Save, FlaskConical, ArrowUpCircle
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { getRecommendedUpgrade, isModelDeprecated } from '@/lib/agentUpgradeRecommendations';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 type Route = 'gateway' | 'native' | 'openrouter';
 type Status = 'available' | 'preview' | 'deprecated' | 'unavailable';
