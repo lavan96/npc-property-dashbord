@@ -17,6 +17,7 @@ import { PortalOnboardingTour } from './PortalOnboardingTour';
 import { PortalNotificationBell } from './PortalNotificationBell';
 import { PortalNotificationProvider } from '@/contexts/PortalNotificationContext';
 import { PortalImpersonationBanner } from './PortalImpersonationBanner';
+import { ClientPortalPushPrompt } from './ClientPortalPushPrompt';
 
 const portalNavItems = [
   { to: '/client', icon: HomeIcon, label: 'Dashboard', end: true, tourId: 'dashboard' },
@@ -244,6 +245,7 @@ export function PortalLayout() {
 
       {/* Onboarding Tour */}
       <PortalOnboardingTour />
+      <ClientPortalPushPrompt />
     </div>
     </PortalNotificationProvider>
   );
