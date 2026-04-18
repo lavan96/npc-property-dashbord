@@ -21,12 +21,8 @@ interface CreateFinanceContactDialogProps {
 }
 
 const CONTACT_TYPES = [
-  { value: 'broker', label: 'Mortgage Broker' },
-  { value: 'referrer', label: 'Referrer' },
-  { value: 'partner', label: 'Partner' },
-  { value: 'aggregator', label: 'Aggregator' },
-  { value: 'staff', label: 'Internal Staff' },
-  { value: 'other', label: 'Other' },
+  { value: 'external', label: 'External (Broker / Referrer / Partner)' },
+  { value: 'internal', label: 'Internal Staff' },
 ];
 
 const COMMISSION_BASES = [
@@ -42,7 +38,7 @@ export function CreateFinanceContactDialog({ open, onOpenChange, onCreated }: Cr
     name: '',
     email: '',
     company: '',
-    contact_type: 'broker',
+    contact_type: 'external',
     abn: '',
     default_commission_basis: '',
     default_commission_rate_pct: '',
@@ -52,7 +48,7 @@ export function CreateFinanceContactDialog({ open, onOpenChange, onCreated }: Cr
   });
 
   const reset = () => setForm({
-    name: '', email: '', company: '', contact_type: 'broker',
+    name: '', email: '', company: '', contact_type: 'external',
     abn: '', default_commission_basis: '', default_commission_rate_pct: '',
     gst_registered: false, is_default: false, notes: '',
   });
