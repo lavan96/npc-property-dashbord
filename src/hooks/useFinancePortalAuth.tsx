@@ -142,10 +142,26 @@ export function FinancePortalAuthProvider({ children }: { children: ReactNode })
         persistStoredValue(FINANCE_SESSION_KEY, data.session_token);
       }
       setUser(data.user);
-      return {};
+      return { mustChangePassword: !!data.user?.must_change_password || !!data.must_change_password };
     } catch {
       return { error: 'Login failed' };
     }
+  }, []);
+
+  const changePassword = useCallback(async (currentPassword: string, newPassword: string) => {
+    const { data, error } = await invokeFinanceFunction('finance-portal-change-password', {
+      current_password: currentPassword,
+      new_password: newPassword,
+    });
+    if (error || !data?.success) {
+      return { error: data?.error || error?.message || 'Failed to change password' };
+    }
+    if (data.session_token) {
+      persistStoredValue(FINANCE_SESSION_KEY, data.session_token);
+    }
+    // Update local user to clear must_change_password
+    setUser(prev => prev ? { ...prev, must_change_password: false } : prev);
+    return { success: true };
   }, []);
 
   const signOut = useCallback(async () => {
