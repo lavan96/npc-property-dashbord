@@ -17,13 +17,14 @@ import { toast } from 'sonner';
 import {
   Loader2, Search, MoreHorizontal, Mail, Shield, RefreshCw,
   Ban, CheckCircle2, History, Settings, Users, Copy,
-  BarChart3, FileSpreadsheet, FileText, DollarSign,
+  BarChart3, FileSpreadsheet, FileText, DollarSign, UserPlus,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { ClientAssignmentsDialog } from '@/components/admin/finance-portal/ClientAssignmentsDialog';
 import { DefaultPermissionsDialog } from '@/components/admin/finance-portal/DefaultPermissionsDialog';
 import { ActivityLogDialog } from '@/components/admin/finance-portal/ActivityLogDialog';
+import { CreateFinanceContactDialog } from '@/components/admin/finance-portal/CreateFinanceContactDialog';
 import { EMPTY_MATRIX, normalizeMatrix, type FinancePermissionMatrix } from '@/components/admin/finance-portal/FinancePermissionMatrix';
 
 interface FinanceUserRow {
@@ -67,6 +68,7 @@ export default function FinancePortalAdmin() {
   const [activityOpen, setActivityOpen] = useState(false);
   const [activityForUser, setActivityForUser] = useState<FinanceUserRow | null>(null);
   const [assignmentsForUser, setAssignmentsForUser] = useState<FinanceUserRow | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
 
   const loadAll = async () => {
     setLoading(true);
@@ -202,6 +204,10 @@ export default function FinancePortalAdmin() {
           <Button variant="outline" onClick={() => setDefaultsOpen(true)} className="gap-2">
             <Settings className="h-4 w-4" />
             Default Permissions
+          </Button>
+          <Button onClick={() => setCreateOpen(true)} className="gap-2">
+            <UserPlus className="h-4 w-4" />
+            New Contact
           </Button>
           <Button variant="outline" onClick={loadAll} className="gap-2" disabled={loading}>
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
@@ -421,6 +427,12 @@ export default function FinancePortalAdmin() {
         onOpenChange={setActivityOpen}
         financeUserId={activityForUser?.portal_user?.id || null}
         title={activityForUser ? `Activity: ${activityForUser.name}` : 'Finance Portal Activity'}
+      />
+
+      <CreateFinanceContactDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onCreated={() => loadAll()}
       />
     </div>
   );

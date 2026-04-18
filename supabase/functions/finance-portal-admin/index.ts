@@ -860,6 +860,91 @@ serve(async (req) => {
       );
     }
 
+
+    // ── create_contact: create a new finance_agent_contacts row ──
+    if (operation === 'create_contact') {
+      const name = (body.name ?? '').toString().trim();
+      const email = (body.email ?? '').toString().trim().toLowerCase();
+      const company = body.company ? body.company.toString().trim() : null;
+      const contact_type = body.contact_type ? body.contact_type.toString().trim() : 'broker';
+      const notes = body.notes ? body.notes.toString().trim() : null;
+      const abn = body.abn ? body.abn.toString().trim() : null;
+      const default_commission_basis = body.default_commission_basis ? body.default_commission_basis.toString().trim() : null;
+      const default_commission_rate_pct = body.default_commission_rate_pct != null && body.default_commission_rate_pct !== ''
+        ? Number(body.default_commission_rate_pct) : null;
+      const gst_registered = body.gst_registered === true;
+      const is_default = body.is_default === true;
+
+      // Validation
+      if (!name || name.length < 2 || name.length > 200) {
+        return new Response(
+          JSON.stringify({ error: 'Name is required (2–200 characters)' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRe.test(email) || email.length > 255) {
+        return new Response(
+          JSON.stringify({ error: 'A valid email is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (default_commission_rate_pct != null && (Number.isNaN(default_commission_rate_pct) || default_commission_rate_pct < 0 || default_commission_rate_pct > 100)) {
+        return new Response(
+          JSON.stringify({ error: 'Default commission rate must be between 0 and 100' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Duplicate guard (case-insensitive email)
+      const { data: existing, error: dupErr } = await supabase
+        .from('finance_agent_contacts')
+        .select('id, name, email')
+        .ilike('email', email)
+        .maybeSingle();
+      if (dupErr) throw dupErr;
+      if (existing) {
+        return new Response(
+          JSON.stringify({ error: `A finance contact with email ${email} already exists (${existing.name})`, existing_id: existing.id }),
+          { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // If is_default requested, clear any existing default first
+      if (is_default) {
+        const { error: clrErr } = await supabase
+          .from('finance_agent_contacts')
+          .update({ is_default: false })
+          .eq('is_default', true);
+        if (clrErr) throw clrErr;
+      }
+
+      const { data: created, error: insErr } = await supabase
+        .from('finance_agent_contacts')
+        .insert({
+          name,
+          email,
+          company,
+          contact_type,
+          notes,
+          abn,
+          default_commission_basis,
+          default_commission_rate_pct,
+          gst_registered,
+          is_default,
+          is_active: true,
+          created_by: adminUserId,
+        })
+        .select()
+        .single();
+      if (insErr) throw insErr;
+
+      return new Response(
+        JSON.stringify({ success: true, record: created }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     return new Response(
       JSON.stringify({ error: `Unknown operation: ${operation}` }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
