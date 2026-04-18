@@ -22,41 +22,6 @@ export default function FinancePortalLogin() {
   const [newPassword, setNewPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-  const turnstileRef = useRef<HTMLDivElement>(null);
-
-  // Load Turnstile script
-  useEffect(() => {
-    if (!TURNSTILE_SITE_KEY || mode !== 'login') return;
-    if (window.turnstile && turnstileRef.current) {
-      try {
-        window.turnstile.render(turnstileRef.current, {
-          sitekey: TURNSTILE_SITE_KEY,
-          callback: (token: string) => setTurnstileToken(token),
-          theme: 'auto',
-        });
-        return;
-      } catch { /* ignore */ }
-    }
-    const existing = document.querySelector('script[data-turnstile]');
-    if (existing) return;
-    const s = document.createElement('script');
-    s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
-    s.async = true;
-    s.defer = true;
-    s.setAttribute('data-turnstile', 'true');
-    s.onload = () => {
-      if (window.turnstile && turnstileRef.current) {
-        try {
-          window.turnstile.render(turnstileRef.current, {
-            sitekey: TURNSTILE_SITE_KEY,
-            callback: (token: string) => setTurnstileToken(token),
-            theme: 'auto',
-          });
-        } catch { /* ignore */ }
-      }
-    };
-    document.head.appendChild(s);
-  }, [mode]);
 
   if (loading) {
     return (
