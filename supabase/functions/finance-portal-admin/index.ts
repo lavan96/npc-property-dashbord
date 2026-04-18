@@ -113,7 +113,7 @@ serve(async (req) => {
       const search = (body.search || '').toString().trim();
       let query = supabase
         .from('clients')
-        .select('id, primary_first_name, primary_surname, secondary_first_name, secondary_surname, primary_email, primary_mobile, deal_status, created_at')
+        .select('id, primary_first_name, primary_surname, secondary_first_name, secondary_surname, primary_email, primary_mobile, deal_status, finance_contact_id, created_at')
         .order('primary_surname', { ascending: true })
         .limit(500);
 
@@ -132,7 +132,7 @@ serve(async (req) => {
         secondary_contact_name: [c.secondary_first_name, c.secondary_surname].filter(Boolean).join(' ').trim() || null,
         primary_contact_email: c.primary_email,
         primary_contact_phone: c.primary_mobile,
-        finance_contact_id: null,
+        finance_contact_id: c.finance_contact_id,
         status: c.deal_status,
         created_at: c.created_at,
       }));
@@ -156,7 +156,8 @@ serve(async (req) => {
       const { data: assignments, error: aErr } = await supabase
         .from('finance_portal_client_assignments')
         .select('id, client_id, permissions, auto_linked, auto_link_source, assigned_at, assigned_by, updated_at')
-        .eq('finance_user_id', finance_user_id);
+        .eq('finance_user_id', finance_user_id)
+        .order('assigned_at', { ascending: false });
 
       if (aErr) throw aErr;
 
@@ -165,7 +166,7 @@ serve(async (req) => {
       if (clientIds.length) {
         const { data: clients } = await supabase
           .from('clients')
-          .select('id, primary_first_name, primary_surname, secondary_first_name, secondary_surname, primary_email, deal_status')
+          .select('id, primary_first_name, primary_surname, secondary_first_name, secondary_surname, primary_email, deal_status, finance_contact_id')
           .in('id', clientIds);
         clientsMap = new Map((clients || []).map((c: any) => [c.id, {
           id: c.id,
@@ -173,7 +174,7 @@ serve(async (req) => {
           secondary_contact_name: [c.secondary_first_name, c.secondary_surname].filter(Boolean).join(' ').trim() || null,
           primary_contact_email: c.primary_email,
           status: c.deal_status,
-          finance_contact_id: null,
+          finance_contact_id: c.finance_contact_id,
         }]));
       }
 
@@ -219,6 +220,32 @@ serve(async (req) => {
 
       if (uErr) throw uErr;
 
+      // ── Cascade: link the client's finance_contact_id so the internal
+      // dashboard + client portal can surface this finance officer.
+      // Only set if currently NULL (don't overwrite an explicit choice).
+      const { data: pUserCascade } = await supabase
+        .from('finance_portal_users')
+        .select('finance_contact_id')
+        .eq('id', finance_user_id)
+        .maybeSingle();
+
+      let cascaded_finance_contact_id: string | null = null;
+      if (pUserCascade?.finance_contact_id) {
+        const { data: clientRow } = await supabase
+          .from('clients')
+          .select('finance_contact_id')
+          .eq('id', client_id)
+          .maybeSingle();
+
+        if (clientRow && !clientRow.finance_contact_id) {
+          const { error: cascadeErr } = await supabase
+            .from('clients')
+            .update({ finance_contact_id: pUserCascade.finance_contact_id })
+            .eq('id', client_id);
+          if (!cascadeErr) cascaded_finance_contact_id = pUserCascade.finance_contact_id;
+        }
+      }
+
       await supabase.from('finance_portal_activity_log').insert({
         finance_user_id,
         client_id,
@@ -227,11 +254,11 @@ serve(async (req) => {
         action: 'assignment_upserted',
         entity_type: 'finance_portal_client_assignment',
         entity_id: upserted?.id || null,
-        metadata: { permissions: normalized, auto_link_source: auto_link_source || null },
+        metadata: { permissions: normalized, auto_link_source: auto_link_source || null, cascaded_finance_contact_id },
       });
 
       return new Response(
-        JSON.stringify({ success: true, id: upserted?.id }),
+        JSON.stringify({ success: true, id: upserted?.id, cascaded_finance_contact_id }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -339,6 +366,7 @@ serve(async (req) => {
       }
 
       let created = 0;
+      let cascaded = 0;
       for (const clientId of candidateClients) {
         const { data: existing } = await supabase
           .from('finance_portal_client_assignments')
@@ -359,7 +387,24 @@ serve(async (req) => {
             auto_link_source: sourceMap.get(clientId) || sourceMode,
             assigned_by: adminUserId,
           });
-        if (!insErr) created++;
+        if (!insErr) {
+          created++;
+          // Cascade finance_contact_id back to clients table if not already set
+          if (pUser.finance_contact_id) {
+            const { data: clientRow } = await supabase
+              .from('clients')
+              .select('finance_contact_id')
+              .eq('id', clientId)
+              .maybeSingle();
+            if (clientRow && !clientRow.finance_contact_id) {
+              const { error: cErr } = await supabase
+                .from('clients')
+                .update({ finance_contact_id: pUser.finance_contact_id })
+                .eq('id', clientId);
+              if (!cErr) cascaded++;
+            }
+          }
+        }
       }
 
       await supabase.from('finance_portal_activity_log').insert({
@@ -369,11 +414,11 @@ serve(async (req) => {
         action: 'bulk_auto_linked',
         entity_type: 'finance_portal_user',
         entity_id: finance_user_id,
-        metadata: { source: sourceMode, created },
+        metadata: { source: sourceMode, created, cascaded },
       });
 
       return new Response(
-        JSON.stringify({ success: true, created, total_candidates: candidateClients.size }),
+        JSON.stringify({ success: true, created, cascaded, total_candidates: candidateClients.size }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
