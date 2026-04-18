@@ -20,6 +20,8 @@ import {
   BarChart3, FileSpreadsheet, FileText, DollarSign, UserPlus,
   Pencil, Trash2,
 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { ClientAssignmentsDialog } from '@/components/admin/finance-portal/ClientAssignmentsDialog';
