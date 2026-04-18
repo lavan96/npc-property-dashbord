@@ -44,13 +44,14 @@ export function CreateFinanceContactDialog({ open, onOpenChange, onCreated }: Cr
     default_commission_rate_pct: '',
     gst_registered: false,
     is_default: false,
+    is_active: true,
     notes: '',
   });
 
   const reset = () => setForm({
     name: '', email: '', company: '', contact_type: 'external',
     abn: '', default_commission_basis: '', default_commission_rate_pct: '',
-    gst_registered: false, is_default: false, notes: '',
+    gst_registered: false, is_default: false, is_active: true, notes: '',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
