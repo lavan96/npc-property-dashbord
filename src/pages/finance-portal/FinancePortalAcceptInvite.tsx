@@ -191,8 +191,8 @@ export default function FinancePortalAcceptInvite() {
             </Alert>
           )}
           {stage === 'success' ? (
-            <Alert className="border-green-500">
-              <CheckCircle className="h-4 w-4 text-green-500" />
+            <Alert className="border-success">
+              <CheckCircle className="h-4 w-4 text-success" />
               <AlertDescription>Account activated! Redirecting you to the portal…</AlertDescription>
             </Alert>
           ) : (
