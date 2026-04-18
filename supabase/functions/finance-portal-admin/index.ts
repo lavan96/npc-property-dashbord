@@ -932,7 +932,7 @@ serve(async (req) => {
           default_commission_rate_pct,
           gst_registered,
           is_default,
-          is_active: true,
+          is_active: typeof body.is_active === 'boolean' ? body.is_active : true,
           created_by: adminUserId,
         })
         .select()
