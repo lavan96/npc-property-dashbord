@@ -440,6 +440,14 @@ export default function FinancePortalAdmin() {
         onOpenChange={setCreateOpen}
         onCreated={() => loadAll()}
       />
+
+      <InviteFinanceContactDialog
+        open={inviteDialog.open}
+        onOpenChange={(o) => setInviteDialog((s) => ({ ...s, open: o }))}
+        contact={inviteDialog.user ? { id: inviteDialog.user.id, name: inviteDialog.user.name, email: inviteDialog.user.email } : null}
+        isResend={inviteDialog.isResend}
+        onSent={() => loadAll()}
+      />
     </div>
   );
 }
