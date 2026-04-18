@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,10 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Building2, Loader2, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { useWhiteLabel } from '@/contexts/WhiteLabelContext';
-
-const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
-
-// Turnstile global is declared elsewhere in the project
+import { TurnstileWidget } from '@/components/auth/TurnstileWidget';
 
 export default function FinancePortalLogin() {
   const { user, signIn, requestPasswordReset, verifyOTP, resetPassword, loading } = useFinancePortalAuth();
