@@ -27,11 +27,16 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const resendApiKey = Deno.env.get('RESEND_API_KEY')
+    // Always use the production custom domain for invite links so the
+    // recipient always lands on the live finance portal accept-invite page.
+    const PRODUCTION_APP_URL = 'https://command-centre.npcservices.com.au'
     const configuredAppUrl = Deno.env.get('APP_URL')?.trim()
-    const fallbackAppUrl = 'https://npc-property-dashbord.lovable.app'
-    const appUrl = configuredAppUrl && !configuredAppUrl.includes('preview--') && !configuredAppUrl.includes('localhost')
+    const appUrl = configuredAppUrl &&
+        !configuredAppUrl.includes('preview--') &&
+        !configuredAppUrl.includes('localhost') &&
+        !configuredAppUrl.includes('lovableproject.com')
       ? configuredAppUrl.replace(/\/+$/, '')
-      : fallbackAppUrl
+      : PRODUCTION_APP_URL
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     const body = await req.json()
@@ -296,28 +301,77 @@ serve(async (req) => {
       ? 'Your NPC Finance Portal account is ready'
       : "You're Invited to the NPC Finance Portal"
 
+    const safeName = String(contact.name || 'there').replace(/[<>]/g, '');
+
     const ctaBlock = useTempPassword
       ? `
-        <p style="color:#555;font-size:16px;line-height:1.6;">
-          Your account has been created with a temporary password. For security, you'll be asked to change it on first login.
+        <p style="margin:0 0 16px;color:#475569;font-size:15px;line-height:1.6;">
+          Your account has been created with a temporary password. For security, you'll be asked to change it on your first sign-in.
         </p>
-        <div style="background:#F8F5EC;border:1px solid #BF9B50;border-radius:8px;padding:20px;margin:24px 0;">
-          <p style="margin:0 0 8px;color:#0D264D;font-size:13px;letter-spacing:0.5px;text-transform:uppercase;font-weight:700;">Temporary password</p>
-          <p style="margin:0;font-family:Menlo,Consolas,monospace;font-size:22px;color:#0D264D;letter-spacing:2px;font-weight:700;">${tempPasswordPlain}</p>
+        <div style="background:#F8F5EC;border:1px solid #E5D9B6;border-radius:10px;padding:18px 20px;margin:20px 0 28px;">
+          <p style="margin:0 0 6px;color:#0D264D;font-size:11px;letter-spacing:1px;text-transform:uppercase;font-weight:700;">Temporary password</p>
+          <p style="margin:0;font-family:'SFMono-Regular',Menlo,Consolas,monospace;font-size:20px;color:#0D264D;letter-spacing:2px;font-weight:700;">${tempPasswordPlain}</p>
         </div>
-        <div style="text-align:center;margin:32px 0;">
-          <a href="${loginLink}" style="display:inline-block;background:#BF9B50;color:#0D264D;padding:14px 32px;border-radius:8px;text-decoration:none;font-size:16px;font-weight:700;">Sign In</a>
-        </div>`
-      : `
-        <p style="color:#555;font-size:16px;line-height:1.6;">
-          You've been invited to access the NPC Finance Portal. Click the button below to set up your password and activate your account.
-        </p>
-        <div style="text-align:center;margin:32px 0;">
-          <a href="${inviteLink}" style="display:inline-block;background:#BF9B50;color:#0D264D;padding:14px 32px;border-radius:8px;text-decoration:none;font-size:16px;font-weight:700;">Set Up Your Account</a>
-        </div>
-        <p style="color:#888;font-size:14px;line-height:1.5;">
-          This invitation expires in ${INVITE_EXPIRY_HOURS} hours. If you didn't expect this, you can safely ignore this email.
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:0 auto 28px;">
+          <tr><td align="center" bgcolor="#0D264D" style="border-radius:8px;">
+            <a href="${loginLink}" style="display:inline-block;padding:14px 34px;font-family:Arial,sans-serif;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px;">Sign In to the Portal</a>
+          </td></tr>
+        </table>
+        <p style="margin:0;color:#94a3b8;font-size:12px;line-height:1.5;text-align:center;">
+          Or paste this link into your browser:<br/>
+          <span style="color:#475569;word-break:break-all;">${loginLink}</span>
         </p>`
+      : `
+        <p style="margin:0 0 16px;color:#475569;font-size:15px;line-height:1.6;">
+          You've been invited to access the NPC Finance Portal. Click the button below to set your password and activate your account.
+        </p>
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:24px auto 20px;">
+          <tr><td align="center" bgcolor="#0D264D" style="border-radius:8px;">
+            <a href="${inviteLink}" style="display:inline-block;padding:14px 34px;font-family:Arial,sans-serif;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px;">Set Up Your Account</a>
+          </td></tr>
+        </table>
+        <p style="margin:0 0 6px;color:#94a3b8;font-size:12px;line-height:1.5;text-align:center;">
+          This invitation expires in ${INVITE_EXPIRY_HOURS} hours.
+        </p>
+        <p style="margin:0;color:#94a3b8;font-size:12px;line-height:1.5;text-align:center;">
+          Or paste this link into your browser:<br/>
+          <span style="color:#475569;word-break:break-all;">${inviteLink}</span>
+        </p>`
+
+    const htmlBody = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${subject}</title>
+  </head>
+  <body style="margin:0;padding:0;background:#f4f5f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f4f5f7;padding:32px 12px;">
+      <tr><td align="center">
+        <table role="presentation" width="560" cellspacing="0" cellpadding="0" border="0" style="max-width:560px;background:#ffffff;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,0.06);">
+          <tr><td style="background:#0D264D;padding:28px 32px;text-align:center;">
+            <div style="font-family:Georgia,'Times New Roman',serif;color:#BF9B50;font-size:13px;letter-spacing:4px;text-transform:uppercase;font-weight:600;">NPC Services</div>
+            <div style="margin-top:6px;color:#ffffff;font-size:20px;font-weight:600;letter-spacing:0.3px;">Finance Partner Portal</div>
+          </td></tr>
+          <tr><td style="padding:32px;">
+            <p style="margin:0 0 18px;color:#0D264D;font-size:16px;line-height:1.6;">Hi ${safeName},</p>
+            ${ctaBlock}
+          </td></tr>
+          <tr><td style="padding:18px 32px 28px;border-top:1px solid #eef0f3;">
+            <p style="margin:0;color:#94a3b8;font-size:12px;line-height:1.5;text-align:center;">
+              If you didn't expect this email, you can safely ignore it.<br/>
+              NPC Services — Property Investment Advisory
+            </p>
+          </td></tr>
+        </table>
+      </td></tr>
+    </table>
+  </body>
+</html>`
+
+    const textBody = useTempPassword
+      ? `Hi ${safeName},\n\nYour NPC Finance Portal account is ready.\n\nTemporary password: ${tempPasswordPlain}\n\nSign in here: ${loginLink}\n\nYou'll be asked to change your password on first sign-in.\n\n— NPC Services`
+      : `Hi ${safeName},\n\nYou've been invited to the NPC Finance Portal.\n\nSet your password and activate your account:\n${inviteLink}\n\nThis invitation expires in ${INVITE_EXPIRY_HOURS} hours.\n\n— NPC Services`
 
     let emailSent = false;
     let emailError: string | null = null;
@@ -335,17 +389,16 @@ serve(async (req) => {
             from: resendFrom,
             to: [normalizedEmail],
             subject,
-            html: `
-              <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:40px 24px;background:#ffffff;">
-                <div style="text-align:center;margin-bottom:32px;">
-                  <h1 style="color:#0D264D;font-size:24px;margin:0;">Welcome to the Finance Portal</h1>
-                </div>
-                <p style="color:#555;font-size:16px;line-height:1.6;">Hi ${contact.name},</p>
-                ${ctaBlock}
-                <hr style="border:none;border-top:1px solid #eee;margin:32px 0;" />
-                <p style="color:#aaa;font-size:12px;text-align:center;">NPC Services — Property Investment Advisory</p>
-              </div>
-            `,
+            html: htmlBody,
+            text: textBody,
+            headers: {
+              'X-Entity-Ref-ID': inviteToken.slice(0, 36),
+              'List-Unsubscribe': `<mailto:admin@npcservices.com.au?subject=unsubscribe>`,
+            },
+            tags: [
+              { name: 'category', value: 'finance_portal_invite' },
+              { name: 'mode', value: useTempPassword ? 'temp_password' : 'set_password_link' },
+            ],
           }),
         })
 

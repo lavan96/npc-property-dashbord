@@ -24,7 +24,7 @@ export default function FinancePortalAcceptInvite() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const token = params.get('token') || '';
-  const [stage, setStage] = useState<'loading' | 'set_password' | 'done' | 'error'>('loading');
+  const [stage, setStage] = useState<'loading' | 'set_password' | 'already_active' | 'done' | 'error'>('loading');
   const [errorMsg, setErrorMsg] = useState('');
   const [email, setEmail] = useState('');
   const [contactName, setContactName] = useState('');
@@ -35,15 +35,24 @@ export default function FinancePortalAcceptInvite() {
   useEffect(() => {
     (async () => {
       if (!token) { setStage('error'); setErrorMsg('Missing invite token'); return; }
-      const { ok, data } = await callPublic('finance-portal-accept-invite', { action: 'validate', token });
-      if (!ok || !data?.valid) {
+      try {
+        const { ok, data } = await callPublic('finance-portal-accept-invite', { action: 'validate', token });
+        if (!ok || !data?.valid) {
+          setStage('error');
+          setErrorMsg(data?.error || 'This invite link is invalid or has expired.');
+          return;
+        }
+        setEmail(data.email || '');
+        setContactName(data.name || '');
+        if (data.already_active) {
+          setStage('already_active');
+          return;
+        }
+        setStage('set_password');
+      } catch (err: any) {
         setStage('error');
-        setErrorMsg(data?.error || 'This invite link is invalid or has expired.');
-        return;
+        setErrorMsg(err?.message || 'We could not validate your invite. Please try again or contact your administrator.');
       }
-      setEmail(data.email || '');
-      setContactName(data.name || '');
-      setStage('set_password');
     })();
   }, [token]);
 
@@ -76,6 +85,7 @@ export default function FinancePortalAcceptInvite() {
           <CardDescription>
             {stage === 'loading' && 'Validating your invite...'}
             {stage === 'set_password' && `Welcome ${contactName || ''}. Choose a password to activate your account.`}
+            {stage === 'already_active' && 'This account is already active. Please sign in to continue.'}
             {stage === 'done' && 'Account activated.'}
             {stage === 'error' && 'There is a problem with this invite.'}
           </CardDescription>
@@ -86,6 +96,18 @@ export default function FinancePortalAcceptInvite() {
             <div className="text-center space-y-3">
               <p className="text-sm text-destructive">{errorMsg}</p>
               <Button variant="outline" onClick={() => navigate('/finance/login')}>Go to Login</Button>
+            </div>
+          )}
+          {stage === 'already_active' && (
+            <div className="text-center space-y-3">
+              <CheckCircle2 className="h-10 w-10 text-success mx-auto" />
+              <p className="text-sm text-muted-foreground">
+                Your account is already set up{email ? ` for ${email}` : ''}. Use your existing password to sign in,
+                or reset it from the sign-in page.
+              </p>
+              <Button className="w-full" onClick={() => navigate('/finance/login', { replace: true })}>
+                Go to Sign In
+              </Button>
             </div>
           )}
           {stage === 'done' && (
