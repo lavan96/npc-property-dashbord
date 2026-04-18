@@ -176,11 +176,21 @@ serve(async (req) => {
       )
     }
 
+    // Auto-reactivate contact if admin is (re)sending an invite.
+    // Revoking portal access shouldn't permanently block re-invites.
     if (!contact.is_active) {
-      return new Response(
-        JSON.stringify({ error: 'Cannot invite an inactive finance contact. Please activate the contact first.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      const { error: reactivateError } = await supabase
+        .from('finance_agent_contacts')
+        .update({ is_active: true })
+        .eq('id', contact.id)
+      if (reactivateError) {
+        console.error('[finance-portal-invite] Failed to reactivate contact:', reactivateError)
+        return new Response(
+          JSON.stringify({ error: 'Failed to reactivate finance contact for invite' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+      contact.is_active = true;
     }
 
     if (!contact.email) {
