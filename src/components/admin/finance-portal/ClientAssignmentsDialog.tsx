@@ -92,6 +92,13 @@ export function ClientAssignmentsDialog({ open, onOpenChange, financeUser, defau
     }
   }, [selectedAssignmentId]);
 
+  // Auto-select the first assignment so the matrix is immediately visible
+  useEffect(() => {
+    if (!selectedAssignmentId && assignments.length > 0) {
+      setSelectedAssignmentId(assignments[0].id);
+    }
+  }, [assignments, selectedAssignmentId]);
+
   const assignedClientIds = new Set(assignments.map(a => a.client_id));
   const filteredAvailable = clients
     .filter(c => !assignedClientIds.has(c.id))
@@ -235,8 +242,13 @@ export function ClientAssignmentsDialog({ open, onOpenChange, financeUser, defau
                 </p>
               </div>
 
-              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                Assigned ({assignments.length})
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Assigned ({assignments.length})
+                </div>
+                {assignments.length > 0 && (
+                  <span className="text-[10px] text-muted-foreground italic">click a client to edit permissions →</span>
+                )}
               </div>
               <ScrollArea className="flex-1 border rounded-lg">
                 <div className="p-2 space-y-1">
@@ -250,7 +262,7 @@ export function ClientAssignmentsDialog({ open, onOpenChange, financeUser, defau
                         key={a.id}
                         type="button"
                         onClick={() => setSelectedAssignmentId(a.id)}
-                        className={`w-full text-left p-2 rounded-md border transition-colors ${
+                        className={`w-full text-left p-2 rounded-md border transition-colors cursor-pointer ${
                           isSelected ? 'bg-primary/10 border-primary' : 'border-transparent hover:bg-muted'
                         }`}
                       >
