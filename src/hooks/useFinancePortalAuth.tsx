@@ -171,13 +171,33 @@ export function FinancePortalAuthProvider({ children }: { children: ReactNode })
   }, []);
 
   const acceptTerms = useCallback(async () => {
-    await invokeFinanceFunction('finance-portal-verify', { action: 'accept_terms' });
-    setUser(prev => prev ? { ...prev, has_accepted_terms: true } : prev);
+    try {
+      const { data, error } = await invokeFinanceFunction('finance-portal-verify', { action: 'accept_terms' });
+      if (error || !data?.success) {
+        const msg = data?.error || error?.message || 'Failed to accept terms';
+        console.error('Failed to accept finance portal terms:', msg);
+        throw new Error(msg);
+      }
+      setUser(prev => prev ? { ...prev, has_accepted_terms: true } : prev);
+    } catch (e) {
+      console.error('Failed to accept terms:', e);
+      throw e;
+    }
   }, []);
 
   const completeOnboarding = useCallback(async () => {
-    await invokeFinanceFunction('finance-portal-verify', { action: 'complete_onboarding' });
-    setUser(prev => prev ? { ...prev, has_completed_onboarding: true } : prev);
+    try {
+      const { data, error } = await invokeFinanceFunction('finance-portal-verify', { action: 'complete_onboarding' });
+      if (error || !data?.success) {
+        const msg = data?.error || error?.message || 'Failed to complete onboarding';
+        console.error('Failed to complete finance portal onboarding:', msg);
+        throw new Error(msg);
+      }
+      setUser(prev => prev ? { ...prev, has_completed_onboarding: true } : prev);
+    } catch (e) {
+      console.error('Failed to complete onboarding:', e);
+      throw e;
+    }
   }, []);
 
   const setSessionFromInvite = useCallback((sessionToken: string, nextUser: FinancePortalUser) => {
