@@ -333,12 +333,8 @@ serve(async (req) => {
             <a href="${inviteLink}" style="display:inline-block;padding:14px 34px;font-family:Arial,sans-serif;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px;">Set Up Your Account</a>
           </td></tr>
         </table>
-        <p style="margin:0 0 6px;color:#94a3b8;font-size:12px;line-height:1.5;text-align:center;">
-          This invitation expires in ${INVITE_EXPIRY_HOURS} hours.
-        </p>
         <p style="margin:0;color:#94a3b8;font-size:12px;line-height:1.5;text-align:center;">
-          Or paste this link into your browser:<br/>
-          <span style="color:#475569;word-break:break-all;">${inviteLink}</span>
+          This invitation expires in ${INVITE_EXPIRY_HOURS} hours.
         </p>`
 
     const htmlBody = `<!doctype html>
