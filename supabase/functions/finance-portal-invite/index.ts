@@ -241,25 +241,24 @@ serve(async (req) => {
         reset_token_expires_at: null,
       };
 
+      // Preserve prior consent/onboarding state on resend so returning users
+      // who have already accepted terms / completed the tour are NOT forced
+      // through it again. Only brand-new users (insert path below) start fresh.
       if (useTempPassword) {
         updatePayload.invite_token = null;
         updatePayload.invite_token_expires_at = null;
         updatePayload.password_hash = tempPasswordHash;
         updatePayload.must_change_password = true;
         updatePayload.invite_accepted_at = new Date().toISOString();
-        updatePayload.has_accepted_terms = false;
-        updatePayload.terms_accepted_at = null;
-        updatePayload.has_completed_onboarding = false;
       } else {
         // Mirror client portal reset-invite behavior: force a fresh setup flow
+        // for the password, but keep prior consent/onboarding so the user is
+        // not asked to re-accept terms after a simple invite resend.
         updatePayload.invite_token = inviteToken;
         updatePayload.invite_token_expires_at = expiresAt.toISOString();
         updatePayload.password_hash = null;
         updatePayload.must_change_password = false;
         updatePayload.invite_accepted_at = null;
-        updatePayload.has_accepted_terms = false;
-        updatePayload.terms_accepted_at = null;
-        updatePayload.has_completed_onboarding = false;
       }
 
       await supabase
