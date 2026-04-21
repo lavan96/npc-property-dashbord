@@ -316,9 +316,9 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       const cfOverrides = report.manual_overrides?.cashFlowYearlyOverrides || {};
       const depSchedule = report.manual_overrides?.depreciationSchedule as Record<string | number, number> | undefined;
       
-      // Merge depreciationSchedule into yearlyOverrides if not already present
-      // This ensures depreciation values flow into the table even if the user
-      // didn't explicitly click "Apply to Cash Flow" in ManualDataOverrideModal
+      // Merge depreciationSchedule into yearlyOverrides.
+      // Schedule values are authoritative and must replace stale per-year
+      // depreciation entries when the depreciation method changes.
       let mergedOverrides = { ...cfOverrides };
       if (depSchedule) {
         for (let year = 1; year <= 10; year++) {
@@ -327,13 +327,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
             if (!mergedOverrides[year]) {
               mergedOverrides[year] = {};
             }
-            // Only set if no existing per-year depreciation override
-            if (mergedOverrides[year].depreciation == null) {
-              mergedOverrides[year] = {
-                ...mergedOverrides[year],
-                depreciation: scheduleValue
-              };
-            }
+            mergedOverrides[year] = {
+              ...mergedOverrides[year],
+              depreciation: scheduleValue
+            };
           }
         }
       }
@@ -494,7 +491,8 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       const cashFlow = fc.cashFlow || {};
       const assumptions = fc.assumptions || {};
       const initialCosts = fc.initialCosts || {};
-      // Merge depreciationSchedule into cfOverrides for comparison reports
+      // Merge depreciationSchedule into cfOverrides for comparison reports.
+      // Schedule values are authoritative here as well.
       let cfOverrides = { ...(mo.cashFlowYearlyOverrides || {}) };
       const compDepSchedule = mo.depreciationSchedule as Record<string | number, number> | undefined;
       if (compDepSchedule) {
@@ -502,9 +500,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
           const sv = compDepSchedule[y] ?? compDepSchedule[String(y)];
           if (sv != null) {
             if (!cfOverrides[y]) cfOverrides[y] = {};
-            if (cfOverrides[y].depreciation == null) {
-              cfOverrides[y] = { ...cfOverrides[y], depreciation: sv };
-            }
+            cfOverrides[y] = { ...cfOverrides[y], depreciation: sv };
           }
         }
       }

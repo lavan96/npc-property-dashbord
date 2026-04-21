@@ -837,6 +837,42 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
     return schedule;
   };
 
+  const normalizeDepreciationSchedule = (schedule?: Record<number | string, number>) => {
+    const normalized: Record<number, number> = {};
+
+    for (let year = 1; year <= 10; year++) {
+      const value = schedule?.[year] ?? schedule?.[String(year)];
+      if (value != null && !Number.isNaN(Number(value))) {
+        normalized[year] = Number(value);
+      }
+    }
+
+    return normalized;
+  };
+
+  const syncDepreciationScheduleToCashFlowOverrides = (
+    existingOverrides: Record<string, Record<string, number>> | undefined,
+    schedule: Record<number | string, number>
+  ) => {
+    const normalizedSchedule = normalizeDepreciationSchedule(schedule);
+    const nextOverrides: Record<string, Record<string, number>> = {
+      ...(existingOverrides || {})
+    };
+
+    for (let year = 1; year <= 10; year++) {
+      const depreciationValue = normalizedSchedule[year] ?? 0;
+      nextOverrides[String(year)] = {
+        ...(nextOverrides[String(year)] || {}),
+        depreciation: depreciationValue,
+      };
+    }
+
+    return {
+      normalizedSchedule,
+      yearlyOverrides: nextOverrides,
+    };
+  };
+
   // Update schedule when year 1 value or method changes
   const handleYear1DepreciationChange = (value: number) => {
     setYear1Depreciation(value);
@@ -895,30 +931,18 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
 
   // Apply depreciation schedule to cash flow yearly overrides
   const applyDepreciationToCashFlow = () => {
-    // Get existing cash flow yearly overrides or create new
-    const existingCashFlowOverrides = overrides.cashFlowYearlyOverrides as Record<string, Record<string, number>> || {};
-    
-    // Create new overrides with depreciation values for years 2-10
-    const updatedCashFlowOverrides = { ...existingCashFlowOverrides };
-    
-    for (let year = 2; year <= 10; year++) {
-      const depValue = depreciationSchedule[year] || 0;
-      if (!updatedCashFlowOverrides[year]) {
-        updatedCashFlowOverrides[year] = {};
-      }
-      updatedCashFlowOverrides[year] = {
-        ...updatedCashFlowOverrides[year],
-        depreciation: depValue
-      };
-    }
+    const { normalizedSchedule, yearlyOverrides } = syncDepreciationScheduleToCashFlowOverrides(
+      overrides.cashFlowYearlyOverrides as Record<string, Record<string, number>> | undefined,
+      depreciationSchedule
+    );
 
-    // Also set Year 1 depreciation in main overrides
     setOverrides(prev => ({
       ...prev,
-      depreciation: depreciationSchedule[1] || year1Depreciation,
-      cashFlowYearlyOverrides: updatedCashFlowOverrides,
-      depreciationSchedule,
-      depreciationMethod
+      depreciation: normalizedSchedule[1] ?? year1Depreciation,
+      cashFlowYearlyOverrides: yearlyOverrides,
+      depreciationSchedule: normalizedSchedule,
+      depreciationMethod,
+      cashFlowDepreciationSource: 'schedule'
     }));
 
     setHasChanges(true);
@@ -1152,8 +1176,7 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       
       console.log('📊 Recalculated totalAnnual:', mergedFinancialData.annualCosts.totalAnnual);
       
-      // Save overrides with cash flow field toggles, depreciation master toggle, and stage timing
-      const overridesWithToggles = {
+      let overridesToPersist: Record<string, any> = {
         ...overrides,
         cashFlowFieldToggles,
         includeDepreciationInCashFlow,
@@ -1161,8 +1184,32 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
         customStageMonths
       };
 
+      const currentSchedule = normalizeDepreciationSchedule(
+        (overridesToPersist.depreciationSchedule as Record<number | string, number> | undefined) || depreciationSchedule
+      );
+
+      if (Object.keys(currentSchedule).length > 0) {
+        overridesToPersist = {
+          ...overridesToPersist,
+          depreciation: currentSchedule[1] ?? overridesToPersist.depreciation ?? year1Depreciation,
+          depreciationSchedule: currentSchedule,
+        };
+
+        if (includeDepreciationInCashFlow) {
+          const { yearlyOverrides } = syncDepreciationScheduleToCashFlowOverrides(
+            overridesToPersist.cashFlowYearlyOverrides as Record<string, Record<string, number>> | undefined,
+            currentSchedule
+          );
+
+          overridesToPersist = {
+            ...overridesToPersist,
+            cashFlowYearlyOverrides: yearlyOverrides,
+          };
+        }
+      }
+
       console.log('💾 Preparing to save overrides:', {
-        overrideKeys: Object.keys(overridesWithToggles),
+        overrideKeys: Object.keys(overridesToPersist),
         reportId: report.id
       });
       
@@ -1171,7 +1218,7 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
         action: 'update',
         reportId: report.id,
         data: { 
-          manual_overrides: overridesWithToggles,
+          manual_overrides: overridesToPersist,
           financial_calculations: mergedFinancialData
         }
       });
