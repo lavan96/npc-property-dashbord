@@ -58,8 +58,8 @@ function getAvatarColor(name?: string): string {
 function PermissionBar({ granted, total }: { granted: number; total: number }) {
   const pct = total === 0 ? 0 : (granted / total) * 100;
   return (
-    <div className="flex items-center gap-2 w-full max-w-[140px]">
-      <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+    <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 max-w-[140px] sm:max-w-[140px]">
+      <div className="flex-1 h-2 sm:h-1.5 rounded-full bg-muted overflow-hidden min-w-[40px]">
         <motion.div
           className="h-full rounded-full bg-primary"
           initial={{ width: 0 }}
@@ -67,7 +67,7 @@ function PermissionBar({ granted, total }: { granted: number; total: number }) {
           transition={{ duration: 0.6, ease: 'easeOut' }}
         />
       </div>
-      <span className="text-[10px] text-muted-foreground font-medium tabular-nums whitespace-nowrap">
+      <span className="text-[10px] text-muted-foreground font-medium tabular-nums shrink-0">
         {granted}/{total}
       </span>
     </div>
@@ -389,8 +389,10 @@ export default function FinancePortalClients() {
                     className={cn(
                       'group border border-border/50 rounded-xl transition-all duration-200 cursor-pointer touch-manipulation',
                       'hover:border-primary/20 hover:bg-primary/[0.02] hover:shadow-md hover:shadow-primary/5',
-                      /* Mobile: stacked layout. Desktop: row layout */
-                      'flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-4'
+                      'active:scale-[0.99] active:bg-primary/[0.03]',
+                      /* Mobile: stacked layout with generous tap target. Desktop: row layout */
+                      'flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-4 sm:p-4',
+                      'min-h-[72px] sm:min-h-0'
                     )}
                     onClick={() => navigate(`/finance/clients/${r.client_id}`)}
                     role="button"
