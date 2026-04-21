@@ -314,7 +314,31 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
   useEffect(() => {
     if (report && isOpen) {
       const cfOverrides = report.manual_overrides?.cashFlowYearlyOverrides || {};
-      setYearlyOverrides(cfOverrides);
+      const depSchedule = report.manual_overrides?.depreciationSchedule as Record<string | number, number> | undefined;
+      
+      // Merge depreciationSchedule into yearlyOverrides if not already present
+      // This ensures depreciation values flow into the table even if the user
+      // didn't explicitly click "Apply to Cash Flow" in ManualDataOverrideModal
+      let mergedOverrides = { ...cfOverrides };
+      if (depSchedule) {
+        for (let year = 1; year <= 10; year++) {
+          const scheduleValue = depSchedule[year] ?? depSchedule[String(year)];
+          if (scheduleValue != null) {
+            if (!mergedOverrides[year]) {
+              mergedOverrides[year] = {};
+            }
+            // Only set if no existing per-year depreciation override
+            if (mergedOverrides[year].depreciation == null) {
+              mergedOverrides[year] = {
+                ...mergedOverrides[year],
+                depreciation: scheduleValue
+              };
+            }
+          }
+        }
+      }
+      
+      setYearlyOverrides(mergedOverrides);
       setHasChanges(false);
       setEditingCell(null);
       setComparisonMode(false);
