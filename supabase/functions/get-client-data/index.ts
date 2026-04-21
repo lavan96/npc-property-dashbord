@@ -238,6 +238,15 @@ serve(async (req) => {
         );
       }
 
+      if (include.addressHistory) {
+        fetchPromises.push(
+          supabase.from('client_address_history').select('*').eq('client_id', id)
+            .order('is_current', { ascending: false })
+            .order('start_date', { ascending: false })
+            .then(({ data }) => { clientResult.addressHistory = data || []; })
+        );
+      }
+
       if (include.notes) {
         fetchPromises.push(
           (async () => {
