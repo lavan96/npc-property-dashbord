@@ -343,7 +343,7 @@ export default function FinancePortalAdmin() {
                 <TableBody>
                   {filtered.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-8">
+                      <TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-8">
                         No matching finance contacts.
                       </TableCell>
                     </TableRow>
@@ -397,6 +397,59 @@ export default function FinancePortalAdmin() {
                             : '—'}
                         </TableCell>
                         <TableCell>
+                          {portalUser ? (
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <button className="flex items-center gap-1.5 text-xs hover:opacity-80 transition-opacity">
+                                  {portalUser.has_accepted_terms && portalUser.has_completed_onboarding ? (
+                                    <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
+                                  ) : (
+                                    <CircleDot className="h-4 w-4 text-amber-500 shrink-0" />
+                                  )}
+                                  <span className="text-muted-foreground">
+                                    {portalUser.has_accepted_terms && portalUser.has_completed_onboarding
+                                      ? 'Complete'
+                                      : `${(portalUser.has_accepted_terms ? 1 : 0) + (portalUser.has_completed_onboarding ? 1 : 0)}/2`}
+                                  </span>
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-64 p-3" align="end">
+                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Compliance Tracking</p>
+                                <div className="space-y-2">
+                                  <div className="flex items-center gap-2">
+                                    {portalUser.has_accepted_terms ? (
+                                      <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
+                                    ) : (
+                                      <CircleDot className="h-4 w-4 text-amber-500 shrink-0" />
+                                    )}
+                                    <span className="text-sm">Terms & Conditions</span>
+                                    <Badge variant={portalUser.has_accepted_terms ? 'default' : 'secondary'} className="ml-auto text-[10px]">
+                                      {portalUser.has_accepted_terms ? 'Accepted' : 'Pending'}
+                                    </Badge>
+                                  </div>
+                                  {portalUser.terms_accepted_at && (
+                                    <p className="text-[10px] text-muted-foreground pl-6">
+                                      Accepted on {new Date(portalUser.terms_accepted_at).toLocaleDateString()}
+                                    </p>
+                                  )}
+                                  <div className="flex items-center gap-2">
+                                    {portalUser.has_completed_onboarding ? (
+                                      <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
+                                    ) : (
+                                      <CircleDot className="h-4 w-4 text-amber-500 shrink-0" />
+                                    )}
+                                    <span className="text-sm">Onboarding Tour</span>
+                                    <Badge variant={portalUser.has_completed_onboarding ? 'default' : 'secondary'} className="ml-auto text-[10px]">
+                                      {portalUser.has_completed_onboarding ? 'Completed' : 'Pending'}
+                                    </Badge>
+                                  </div>
+                                </div>
+                              </PopoverContent>
+                            </Popover>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon" className="h-8 w-8" disabled={busyId === u.id}>
