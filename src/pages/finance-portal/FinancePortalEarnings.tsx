@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,11 +18,14 @@ const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'destructive' | '
 
 export default function FinancePortalEarnings() {
   const { invokeFinanceFunction } = useFinancePortalAuth();
+  const [searchParams] = useSearchParams();
+  const highlightLatest = searchParams.get('highlight') === 'latest';
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<'commissions' | 'statements'>('commissions');
+  const [tab, setTab] = useState<'commissions' | 'statements'>(highlightLatest ? 'commissions' : 'commissions');
   const [kpis, setKpis] = useState<any>(null);
   const [commissions, setCommissions] = useState<any[]>([]);
   const [statements, setStatements] = useState<any[]>([]);
+  const latestRowRef = useRef<HTMLTableRowElement>(null);
 
   const refresh = async () => {
     setLoading(true);
@@ -43,6 +47,13 @@ export default function FinancePortalEarnings() {
   };
 
   useEffect(() => { void refresh(); }, []);
+
+  // Scroll to latest row when highlight=latest and data loads
+  useEffect(() => {
+    if (!loading && highlightLatest && latestRowRef.current) {
+      latestRowRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [loading, highlightLatest]);
 
   const downloadStatement = async (id: string, type: 'pdf' | 'csv') => {
     const { data, error } = await invokeFinanceFunction('finance-portal-commissions', {
@@ -104,8 +115,12 @@ export default function FinancePortalEarnings() {
                 {commissions.length === 0 && (
                   <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No commissions yet</TableCell></TableRow>
                 )}
-                {commissions.map(c => (
-                  <TableRow key={c.id}>
+                {commissions.map((c, idx) => (
+                  <TableRow
+                    key={c.id}
+                    ref={idx === 0 ? latestRowRef : undefined}
+                    className={highlightLatest && idx === 0 ? 'bg-primary/10 ring-1 ring-primary/30 animate-fade-in' : ''}
+                  >
                     <TableCell className="text-xs">{format(new Date(c.created_at), 'd MMM yyyy')}</TableCell>
                     <TableCell>
                       <div>{c.client_name_snapshot || '—'}</div>
