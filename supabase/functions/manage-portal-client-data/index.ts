@@ -22,6 +22,7 @@ const ALLOWED_TABLES = [
   'client_portal_messages',
   'client_portal_notifications',
   'client_portal_report_requests',
+  'client_address_history',
 ] as const;
 
 // Tables that support insert from the portal
@@ -34,6 +35,7 @@ const INSERTABLE_TABLES = [
   'client_expenses',
   'client_assets',
   'client_liabilities',
+  'client_address_history',
 ] as const;
 
 // Tables that support delete from the portal
@@ -44,6 +46,7 @@ const DELETABLE_TABLES = [
   'client_expenses',
   'client_assets',
   'client_liabilities',
+  'client_address_history',
 ] as const;
 
 // Fields that portal users are NOT allowed to modify on the clients table
