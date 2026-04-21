@@ -811,15 +811,15 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         excludeLandTaxFromCashFlow: excludeLandTaxFromCashFlow,
       };
 
-      const { error } = await supabase
-        .from('investment_reports')
-        .update({
-          manual_overrides: updatedOverrides,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', report.id);
+      const { data: updateResult, error } = await invokeSecureFunction('manage-investment-reports', {
+        action: 'update',
+        reportId: report.id,
+        data: { manual_overrides: updatedOverrides }
+      });
 
-      if (error) throw error;
+      if (error || !updateResult?.success) {
+        throw new Error(error?.message || updateResult?.error || 'Failed to save overrides');
+      }
 
       toast({
         title: "Overrides Saved",
