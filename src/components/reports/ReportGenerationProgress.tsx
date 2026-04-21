@@ -56,10 +56,10 @@ function getAutoContinueSettings(): AutoContinueSettings {
 export function ReportGenerationProgress() {
   const location = useLocation();
   const { user, loading } = useAuth();
-  const isClientPortalRoute = location.pathname.startsWith('/client') || location.pathname.startsWith('/portal');
+  const isPortalRoute = location.pathname.startsWith('/client') || location.pathname.startsWith('/portal') || location.pathname.startsWith('/finance');
 
-  // Don't render on client-facing portal routes
-  if (isClientPortalRoute) return null;
+  // Don't render on client-facing portal or finance portal routes
+  if (isPortalRoute) return null;
 
   // Don't render (and therefore don't poll) if auth is still loading or no user is logged in
   if (loading || !user) return null;
