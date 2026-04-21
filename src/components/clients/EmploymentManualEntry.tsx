@@ -15,6 +15,8 @@ import { EmploymentFormFields, EmploymentFormData } from './EmploymentFormFields
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { formatCurrency, convertToAnnual } from './income/incomeSourceTypes';
 import { ContactInfo, getContactTabLabel } from './hooks/useClientContacts';
+import { ThreeYearCoverageWarning } from './ThreeYearCoverageWarning';
+import { calculateCoverage } from '@/utils/threeYearCoverage';
 
 interface EmploymentManualEntryProps {
   clientId: string;
