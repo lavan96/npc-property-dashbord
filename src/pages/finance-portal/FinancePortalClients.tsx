@@ -289,7 +289,7 @@ export default function FinancePortalClients() {
             </h3>
             <p className="text-sm text-muted-foreground max-w-sm">
               {records.length === 0
-                ? 'Once NPC assigns clients to your finance partner account, they'll appear here.'
+                ? 'Once NPC assigns clients to your finance partner account, they\u2019ll appear here.'
                 : `No clients match "${search}". Try a different search term.`}
             </p>
             {search && (
