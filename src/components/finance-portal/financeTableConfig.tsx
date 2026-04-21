@@ -3,7 +3,8 @@ import { Badge } from '@/components/ui/badge';
 
 export type FinanceTableKey =
   | 'properties' | 'income' | 'expenses' | 'assets'
-  | 'liabilities' | 'employment' | 'notes' | 'contacts';
+  | 'liabilities' | 'employment' | 'notes' | 'contacts'
+  | 'address_history';
 
 export interface FieldDef {
   key: string;
