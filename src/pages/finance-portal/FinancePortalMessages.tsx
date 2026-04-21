@@ -2,12 +2,19 @@
  * Finance Portal — Inbox page (partner side). Lists all threads across all clients.
  */
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, MessageSquare, ChevronRight } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import {
+  MessageSquare, ChevronRight, MessageCircle, Send, Inbox
+} from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface ThreadRow {
   id: string;
@@ -18,6 +25,31 @@ interface ThreadRow {
   unread_count_partner: number;
   is_archived: boolean;
   clients?: { id: string; primary_contact_name: string; secondary_contact_name: string | null };
+}
+
+function getInitials(name?: string): string {
+  if (!name) return '?';
+  return name.split(' ').map(n => n[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+}
+
+function getAvatarColor(name?: string): string {
+  if (!name) return 'hsl(var(--primary))';
+  const hash = name.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+  const hues = [25, 45, 200, 260, 330, 150, 10, 280];
+  return `hsl(${hues[hash % hues.length]}, 55%, 50%)`;
+}
+
+function ThreadSkeleton() {
+  return (
+    <div className="flex items-center gap-3 p-4 border border-border/50 rounded-xl">
+      <Skeleton className="h-10 w-10 rounded-full shrink-0" />
+      <div className="flex-1 space-y-2">
+        <Skeleton className="h-4 w-36" />
+        <Skeleton className="h-3 w-56" />
+      </div>
+      <Skeleton className="h-3 w-16" />
+    </div>
+  );
 }
 
 export default function FinancePortalMessages() {
@@ -39,59 +71,160 @@ export default function FinancePortalMessages() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const totalUnread = threads.reduce((sum, t) => sum + (t.unread_count_partner || 0), 0);
+
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <MessageSquare className="h-5 w-5 text-primary" /> Messages
-        </h1>
-        <p className="text-sm text-muted-foreground">Conversations with the NPC team for each of your clients.</p>
+    <motion.div
+      className="p-4 md:p-6 max-w-4xl mx-auto space-y-5"
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+    >
+      {/* Header */}
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2.5 text-foreground">
+            <div className="p-2 rounded-xl bg-primary/10">
+              <MessageSquare className="h-5 w-5 text-primary" />
+            </div>
+            Messages
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1.5 ml-[42px]">
+            Conversations with the NPC team for each client
+          </p>
+        </div>
+        {totalUnread > 0 && (
+          <Badge variant="default" className="bg-primary text-primary-foreground tabular-nums">
+            {totalUnread} unread
+          </Badge>
+        )}
       </div>
 
+      {/* Thread List */}
       {loading ? (
-        <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+        <div className="space-y-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <ThreadSkeleton key={i} />
+          ))}
+        </div>
       ) : threads.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            No conversations yet. Open a client and use the Messages tab to start chatting with the NPC team.
+        /* Illustrated empty state */
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="relative mb-6">
+              <div className="p-5 rounded-full bg-primary/5">
+                <Inbox className="h-12 w-12 text-primary/30" />
+              </div>
+              <div className="absolute -bottom-1 -right-1 p-1.5 rounded-full bg-card border border-border">
+                <Send className="h-4 w-4 text-muted-foreground/50" />
+              </div>
+            </div>
+            <h3 className="font-semibold text-lg text-foreground mb-1">No conversations yet</h3>
+            <p className="text-sm text-muted-foreground max-w-sm">
+              Open a client profile and use the Messages tab to start a conversation with the NPC team.
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-5 gap-2 rounded-xl"
+              onClick={() => navigate('/finance/clients')}
+            >
+              <MessageCircle className="h-3.5 w-3.5" />
+              Go to clients
+            </Button>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-2">
-          {threads.map(t => (
-            <button
-              key={t.id}
-              onClick={() => navigate(`/finance/clients/${t.client_id}?tab=messages`)}
-              className="w-full text-left"
-            >
-              <Card className="hover:border-primary/40 transition-colors">
-                <CardContent className="py-3 flex items-center gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium truncate">
-                        {t.clients?.primary_contact_name || 'Client'}
-                        {t.clients?.secondary_contact_name && (
-                          <span className="text-muted-foreground font-normal"> & {t.clients.secondary_contact_name}</span>
-                        )}
-                      </p>
-                      {t.unread_count_partner > 0 && (
-                        <Badge variant="default" className="text-[10px] h-5">{t.unread_count_partner} new</Badge>
+          <AnimatePresence initial={false}>
+            {threads.map((t, idx) => {
+              const name = t.clients?.primary_contact_name || 'Client';
+              const hasUnread = t.unread_count_partner > 0;
+              const avatarBg = getAvatarColor(name);
+
+              return (
+                <motion.div
+                  key={t.id}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.15, delay: idx * 0.03 }}
+                >
+                  <button
+                    onClick={() => navigate(`/finance/clients/${t.client_id}?tab=messages`)}
+                    className="w-full text-left group"
+                  >
+                    <div
+                      className={cn(
+                        'flex items-center gap-3 p-4 rounded-xl border transition-all duration-200 touch-manipulation',
+                        hasUnread
+                          ? 'border-l-[3px] border-l-primary border-t-border/50 border-r-border/50 border-b-border/50 bg-primary/[0.02]'
+                          : 'border-border/50',
+                        'hover:border-primary/20 hover:bg-primary/[0.03] hover:shadow-md hover:shadow-primary/5'
                       )}
+                    >
+                      {/* Avatar */}
+                      <div className="relative shrink-0">
+                        <Avatar className="h-10 w-10 border-2 border-border/30">
+                          <AvatarFallback
+                            className="font-semibold text-xs text-white"
+                            style={{ backgroundColor: avatarBg }}
+                          >
+                            {getInitials(name)}
+                          </AvatarFallback>
+                        </Avatar>
+                        {hasUnread && (
+                          <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-primary border-2 border-card animate-pulse" />
+                        )}
+                      </div>
+
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className={cn(
+                            'text-sm truncate',
+                            hasUnread ? 'font-bold text-foreground' : 'font-medium text-foreground'
+                          )}>
+                            {name}
+                          </span>
+                          {t.clients?.secondary_contact_name && (
+                            <span className="text-xs text-muted-foreground truncate hidden sm:inline">
+                              & {t.clients.secondary_contact_name}
+                            </span>
+                          )}
+                          {hasUnread && (
+                            <Badge
+                              variant="default"
+                              className="bg-primary text-primary-foreground text-[10px] h-[18px] px-1.5 animate-pulse shrink-0"
+                            >
+                              {t.unread_count_partner}
+                            </Badge>
+                          )}
+                        </div>
+                        <p className={cn(
+                          'text-xs mt-0.5 truncate',
+                          hasUnread ? 'text-foreground/70 font-medium' : 'text-muted-foreground'
+                        )}>
+                          {t.last_message_preview || 'No messages yet'}
+                        </p>
+                      </div>
+
+                      {/* Timestamp + Chevron */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[10px] text-muted-foreground whitespace-nowrap hidden sm:inline">
+                          {t.last_message_at
+                            ? formatDistanceToNow(new Date(t.last_message_at), { addSuffix: true })
+                            : '\u2014'}
+                        </span>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary transition-colors" />
+                      </div>
                     </div>
-                    <p className="text-xs text-muted-foreground truncate mt-0.5">
-                      {t.last_message_preview || 'No messages yet'}
-                    </p>
-                  </div>
-                  <div className="text-[10px] text-muted-foreground whitespace-nowrap">
-                    {t.last_message_at ? formatDistanceToNow(new Date(t.last_message_at), { addSuffix: true }) : '—'}
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                </CardContent>
-              </Card>
-            </button>
-          ))}
+                  </button>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }

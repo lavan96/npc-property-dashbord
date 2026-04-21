@@ -1,27 +1,155 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
 import { toast } from 'sonner';
-import { Loader2, RefreshCw, Download, DollarSign, Wallet, Hourglass, CalendarCheck } from 'lucide-react';
+import {
+  RefreshCw, Download, DollarSign, Wallet, Hourglass,
+  CalendarCheck, TrendingUp, TrendingDown, Minus,
+  FileText, FileSpreadsheet, Receipt, BarChart3
+} from 'lucide-react';
 import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const fmt = (n: number) =>
   `$${(Number(n) || 0).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-  pending: 'secondary', invoiced: 'default', paid: 'default', clawback: 'destructive', void: 'outline',
+  pending: 'secondary',
+  invoiced: 'default',
+  paid: 'default',
+  clawback: 'destructive',
+  void: 'outline',
 };
+
+const STATUS_DOT: Record<string, string> = {
+  pending: 'bg-amber-500',
+  invoiced: 'bg-blue-500',
+  paid: 'bg-emerald-500',
+  clawback: 'bg-red-500',
+  void: 'bg-zinc-400',
+};
+
+// Animated count-up for KPI values
+function useCountUp(target: number, duration = 800) {
+  const [value, setValue] = useState(0);
+  const prevTarget = useRef(0);
+  useEffect(() => {
+    if (target === prevTarget.current) return;
+    prevTarget.current = target;
+    const start = performance.now();
+    const from = 0;
+    const tick = (now: number) => {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setValue(from + (target - from) * eased);
+      if (progress < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }, [target, duration]);
+  return value;
+}
+
+function KpiCard({
+  icon,
+  label,
+  value,
+  rawValue,
+  trend,
+  accent,
+  loading,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  rawValue?: number;
+  trend?: 'up' | 'down' | 'flat';
+  accent?: boolean;
+  loading?: boolean;
+}) {
+  const animatedVal = useCountUp(rawValue ?? 0);
+  const displayVal = rawValue != null
+    ? `$${animatedVal.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    : value;
+
+  const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus;
+
+  return (
+    <Card className={cn(
+      'relative overflow-hidden transition-all duration-200 hover:shadow-lg hover:shadow-primary/5 group',
+      accent && 'border-primary/20'
+    )}>
+      {/* Gradient top accent */}
+      <div className={cn(
+        'absolute inset-x-0 top-0 h-0.5',
+        accent ? 'bg-gradient-to-r from-primary/80 via-primary to-primary/60' : 'bg-gradient-to-r from-muted via-border to-muted'
+      )} />
+      <CardContent className="pt-5 pb-4 px-5">
+        {loading ? (
+          <div className="space-y-3">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-8 w-32" />
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                <div className={cn(
+                  'p-1.5 rounded-lg transition-colors',
+                  accent ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary'
+                )}>
+                  {icon}
+                </div>
+                {label}
+              </div>
+              {trend && (
+                <div className={cn(
+                  'flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full',
+                  trend === 'up' && 'text-emerald-600 bg-emerald-500/10',
+                  trend === 'down' && 'text-red-500 bg-red-500/10',
+                  trend === 'flat' && 'text-muted-foreground bg-muted'
+                )}>
+                  <TrendIcon className="h-3 w-3" />
+                </div>
+              )}
+            </div>
+            <div className={cn(
+              'text-2xl sm:text-3xl font-bold tracking-tight tabular-nums',
+              accent ? 'text-primary' : 'text-foreground'
+            )}>
+              {displayVal}
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function KpiSkeleton() {
+  return (
+    <Card className="relative overflow-hidden">
+      <div className="absolute inset-x-0 top-0 h-0.5 bg-muted" />
+      <CardContent className="pt-5 pb-4 px-5 space-y-3">
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-8 w-32" />
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function FinancePortalEarnings() {
   const { invokeFinanceFunction } = useFinancePortalAuth();
   const [searchParams] = useSearchParams();
   const highlightLatest = searchParams.get('highlight') === 'latest';
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<'commissions' | 'statements'>(highlightLatest ? 'commissions' : 'commissions');
+  const [tab, setTab] = useState<'commissions' | 'statements'>('commissions');
   const [kpis, setKpis] = useState<any>(null);
   const [commissions, setCommissions] = useState<any[]>([]);
   const [statements, setStatements] = useState<any[]>([]);
@@ -48,7 +176,6 @@ export default function FinancePortalEarnings() {
 
   useEffect(() => { void refresh(); }, []);
 
-  // Scroll to latest row when highlight=latest and data loads
   useEffect(() => {
     if (!loading && highlightLatest && latestRowRef.current) {
       latestRowRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -57,141 +184,395 @@ export default function FinancePortalEarnings() {
 
   const downloadStatement = async (id: string, type: 'pdf' | 'csv') => {
     const { data, error } = await invokeFinanceFunction('finance-portal-commissions', {
-      operation: 'partner_statement_pdf_url', statement_id: id,
+      operation: 'partner_statement_pdf_url',
+      statement_id: id,
     });
-    if (error) { toast.error(error.message); return; }
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     const url = type === 'pdf' ? data?.pdf_url : data?.csv_url;
     if (url) window.open(url, '_blank', 'noopener');
   };
 
   return (
-    <div className="container max-w-6xl py-8 space-y-6">
-      <div className="flex items-center justify-between">
+    <motion.div
+      className="p-4 md:p-6 space-y-6 max-w-6xl mx-auto"
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+    >
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Earnings</h1>
-          <p className="text-muted-foreground">Your commissions and remittance statements.</p>
+          <h1 className="text-2xl font-bold flex items-center gap-2.5 text-foreground">
+            <div className="p-2 rounded-xl bg-primary/10">
+              <BarChart3 className="h-5 w-5 text-primary" />
+            </div>
+            Earnings
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1.5 ml-[42px]">
+            Your commissions and remittance statements
+          </p>
         </div>
-        <Button variant="outline" size="sm" onClick={refresh} disabled={loading}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />Refresh
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={refresh}
+          disabled={loading}
+          className="gap-2 rounded-xl self-start sm:self-auto"
+        >
+          <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
+          Refresh
         </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
-        <KpiCard icon={<DollarSign className="h-4 w-4" />} label="YTD Gross" value={fmt(kpis?.ytd_gross || 0)} />
-        <KpiCard icon={<Wallet className="h-4 w-4" />} label="YTD Net" value={fmt(kpis?.ytd_net || 0)} accent />
-        <KpiCard icon={<Hourglass className="h-4 w-4" />} label="Pending Net" value={fmt(kpis?.pending_net || 0)} />
-        <KpiCard icon={<CalendarCheck className="h-4 w-4" />} label="Paid This Month" value={fmt(kpis?.paid_this_month || 0)} />
+      {/* KPI Cards */}
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+        {loading ? (
+          <>
+            <KpiSkeleton />
+            <KpiSkeleton />
+            <KpiSkeleton />
+            <KpiSkeleton />
+          </>
+        ) : (
+          <>
+            <KpiCard
+              icon={<DollarSign className="h-4 w-4" />}
+              label="YTD Gross"
+              value={fmt(kpis?.ytd_gross || 0)}
+              rawValue={kpis?.ytd_gross || 0}
+              trend="up"
+            />
+            <KpiCard
+              icon={<Wallet className="h-4 w-4" />}
+              label="YTD Net"
+              value={fmt(kpis?.ytd_net || 0)}
+              rawValue={kpis?.ytd_net || 0}
+              trend="up"
+              accent
+            />
+            <KpiCard
+              icon={<Hourglass className="h-4 w-4" />}
+              label="Pending Net"
+              value={fmt(kpis?.pending_net || 0)}
+              rawValue={kpis?.pending_net || 0}
+              trend="flat"
+            />
+            <KpiCard
+              icon={<CalendarCheck className="h-4 w-4" />}
+              label="Paid This Month"
+              value={fmt(kpis?.paid_this_month || 0)}
+              rawValue={kpis?.paid_this_month || 0}
+            />
+          </>
+        )}
       </div>
 
-      <div className="flex gap-2 border-b">
-        <button onClick={() => setTab('commissions')}
-          className={`px-4 py-2 -mb-px border-b-2 text-sm font-medium ${tab === 'commissions' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground'}`}>
-          Commissions ({commissions.length})
+      {/* Tab bar */}
+      <div className="flex gap-1 p-1 bg-muted/50 rounded-xl w-fit">
+        <button
+          onClick={() => setTab('commissions')}
+          className={cn(
+            'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200',
+            tab === 'commissions'
+              ? 'bg-card text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
+          )}
+        >
+          <Receipt className="h-3.5 w-3.5" />
+          Commissions
+          <Badge variant={tab === 'commissions' ? 'secondary' : 'outline'} className="text-[10px] h-4 px-1.5">
+            {commissions.length}
+          </Badge>
         </button>
-        <button onClick={() => setTab('statements')}
-          className={`px-4 py-2 -mb-px border-b-2 text-sm font-medium ${tab === 'statements' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground'}`}>
-          Statements ({statements.length})
+        <button
+          onClick={() => setTab('statements')}
+          className={cn(
+            'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200',
+            tab === 'statements'
+              ? 'bg-card text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
+          )}
+        >
+          <FileText className="h-3.5 w-3.5" />
+          Statements
+          <Badge variant={tab === 'statements' ? 'secondary' : 'outline'} className="text-[10px] h-4 px-1.5">
+            {statements.length}
+          </Badge>
         </button>
       </div>
 
-      {loading ? (
-        <div className="flex items-center justify-center py-16 text-muted-foreground">
-          <Loader2 className="h-5 w-5 mr-2 animate-spin" />Loading…
-        </div>
-      ) : tab === 'commissions' ? (
-        <Card>
-          <CardContent className="pt-6">
-            <Table>
-              <TableHeader><TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Client</TableHead>
-                <TableHead>Trigger</TableHead>
-                <TableHead className="text-right">Basis</TableHead>
-                <TableHead className="text-right">Rate</TableHead>
-                <TableHead className="text-right">Net</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow></TableHeader>
-              <TableBody>
-                {commissions.length === 0 && (
-                  <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No commissions yet</TableCell></TableRow>
-                )}
-                {commissions.map((c, idx) => (
-                  <TableRow
-                    key={c.id}
-                    ref={idx === 0 ? latestRowRef : undefined}
-                    className={highlightLatest && idx === 0 ? 'bg-primary/10 ring-1 ring-primary/30 animate-fade-in' : ''}
-                  >
-                    <TableCell className="text-xs">{format(new Date(c.created_at), 'd MMM yyyy')}</TableCell>
-                    <TableCell>
-                      <div>{c.client_name_snapshot || '—'}</div>
-                      <div className="text-xs text-muted-foreground">{c.deal_type_snapshot || ''}</div>
-                    </TableCell>
-                    <TableCell className="text-xs">{c.trigger_event || '—'}</TableCell>
-                    <TableCell className="text-right">{fmt(c.basis_amount)}</TableCell>
-                    <TableCell className="text-right">{Number(c.rate_pct).toFixed(2)}%</TableCell>
-                    <TableCell className="text-right font-semibold">{fmt(c.net_amount)}</TableCell>
-                    <TableCell><Badge variant={STATUS_VARIANT[c.status] || 'outline'}>{c.status}</Badge></TableCell>
-                  </TableRow>
+      {/* Tab Content */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={tab}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.15 }}
+        >
+          {loading ? (
+            <Card>
+              <CardContent className="pt-6 space-y-3">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-4">
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-4 w-32 flex-1" />
+                    <Skeleton className="h-4 w-16" />
+                    <Skeleton className="h-5 w-14 rounded-full" />
+                  </div>
                 ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card>
-          <CardContent className="pt-6">
-            <Table>
-              <TableHeader><TableRow>
-                <TableHead>Period</TableHead>
-                <TableHead className="text-right">Lines</TableHead>
-                <TableHead className="text-right">Net</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Issued</TableHead>
-                <TableHead className="text-right">Download</TableHead>
-              </TableRow></TableHeader>
-              <TableBody>
-                {statements.length === 0 && (
-                  <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">No statements issued yet</TableCell></TableRow>
-                )}
-                {statements.map(s => (
-                  <TableRow key={s.id}>
-                    <TableCell className="text-sm">{s.period_start} → {s.period_end}</TableCell>
-                    <TableCell className="text-right">{s.line_count}</TableCell>
-                    <TableCell className="text-right font-semibold">{fmt(s.total_net)}</TableCell>
-                    <TableCell><Badge variant={STATUS_VARIANT[s.status] || 'outline'}>{s.status}</Badge></TableCell>
-                    <TableCell className="text-xs">{s.issued_at ? format(new Date(s.issued_at), 'd MMM yyyy') : '—'}</TableCell>
-                    <TableCell className="text-right space-x-1">
-                      {s.pdf_storage_path && (
-                        <Button size="sm" variant="ghost" onClick={() => downloadStatement(s.id, 'pdf')}>
-                          <Download className="h-4 w-4 mr-1" />PDF
-                        </Button>
+              </CardContent>
+            </Card>
+          ) : tab === 'commissions' ? (
+            <>
+              {/* Desktop Table */}
+              <Card className="hidden sm:block">
+                <CardContent className="pt-6">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Client</TableHead>
+                        <TableHead>Trigger</TableHead>
+                        <TableHead className="text-right">Basis</TableHead>
+                        <TableHead className="text-right">Rate</TableHead>
+                        <TableHead className="text-right">Net</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {commissions.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center text-muted-foreground py-12">
+                            <div className="flex flex-col items-center gap-2">
+                              <Receipt className="h-8 w-8 text-muted-foreground/30" />
+                              <span>No commissions recorded yet</span>
+                            </div>
+                          </TableCell>
+                        </TableRow>
                       )}
-                      {s.remittance_csv_path && (
-                        <Button size="sm" variant="ghost" onClick={() => downloadStatement(s.id, 'csv')}>
-                          <Download className="h-4 w-4 mr-1" />CSV
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
-    </div>
-  );
-}
+                      {commissions.map((c, idx) => (
+                        <TableRow
+                          key={c.id}
+                          ref={idx === 0 ? latestRowRef : undefined}
+                          className={cn(
+                            idx % 2 === 1 && 'bg-muted/30',
+                            highlightLatest && idx === 0 && 'bg-primary/10 ring-1 ring-primary/30'
+                          )}
+                        >
+                          <TableCell className="text-xs tabular-nums">
+                            {format(new Date(c.created_at), 'd MMM yyyy')}
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-medium text-sm">{c.client_name_snapshot || '\u2014'}</div>
+                            <div className="text-xs text-muted-foreground">{c.deal_type_snapshot || ''}</div>
+                          </TableCell>
+                          <TableCell className="text-xs">{c.trigger_event || '\u2014'}</TableCell>
+                          <TableCell className="text-right tabular-nums">{fmt(c.basis_amount)}</TableCell>
+                          <TableCell className="text-right tabular-nums">{Number(c.rate_pct).toFixed(2)}%</TableCell>
+                          <TableCell className="text-right font-semibold tabular-nums">{fmt(c.net_amount)}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1.5">
+                              <span className={cn('h-2 w-2 rounded-full', STATUS_DOT[c.status] || 'bg-zinc-400')} />
+                              <Badge variant={STATUS_VARIANT[c.status] || 'outline'} className="text-[10px] capitalize">
+                                {c.status}
+                              </Badge>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
 
-function KpiCard({ icon, label, value, accent }: { icon: React.ReactNode; label: string; value: string; accent?: boolean }) {
-  return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm text-muted-foreground flex items-center gap-2">{icon}{label}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className={`text-2xl font-semibold ${accent ? 'text-primary' : ''}`}>{value}</div>
-      </CardContent>
-    </Card>
+              {/* Mobile Cards */}
+              <div className="sm:hidden space-y-2">
+                {commissions.length === 0 ? (
+                  <Card className="border-dashed">
+                    <CardContent className="py-12 text-center">
+                      <Receipt className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+                      <p className="text-sm text-muted-foreground">No commissions recorded yet</p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  commissions.map((c, idx) => (
+                    <Card
+                      key={c.id}
+                      className={cn(
+                        'transition-all',
+                        highlightLatest && idx === 0 && 'border-primary/30 bg-primary/5'
+                      )}
+                    >
+                      <CardContent className="py-3 px-4 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-sm truncate">{c.client_name_snapshot || '\u2014'}</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className={cn('h-2 w-2 rounded-full', STATUS_DOT[c.status] || 'bg-zinc-400')} />
+                            <Badge variant={STATUS_VARIANT[c.status] || 'outline'} className="text-[10px] capitalize">
+                              {c.status}
+                            </Badge>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span>{format(new Date(c.created_at), 'd MMM yyyy')}</span>
+                          <span>{c.trigger_event || ''}</span>
+                        </div>
+                        <div className="flex items-center justify-between pt-1 border-t border-border/50">
+                          <div className="text-xs text-muted-foreground">
+                            Basis {fmt(c.basis_amount)} \u00d7 {Number(c.rate_pct).toFixed(2)}%
+                          </div>
+                          <div className="font-semibold text-sm tabular-nums text-primary">
+                            {fmt(c.net_amount)}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Desktop Table */}
+              <Card className="hidden sm:block">
+                <CardContent className="pt-6">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Period</TableHead>
+                        <TableHead className="text-right">Lines</TableHead>
+                        <TableHead className="text-right">Net</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Issued</TableHead>
+                        <TableHead className="text-right">Download</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {statements.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center text-muted-foreground py-12">
+                            <div className="flex flex-col items-center gap-2">
+                              <FileText className="h-8 w-8 text-muted-foreground/30" />
+                              <span>No statements issued yet</span>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      {statements.map((s, idx) => (
+                        <TableRow key={s.id} className={cn(idx % 2 === 1 && 'bg-muted/30')}>
+                          <TableCell className="text-sm tabular-nums">{s.period_start} \u2192 {s.period_end}</TableCell>
+                          <TableCell className="text-right tabular-nums">{s.line_count}</TableCell>
+                          <TableCell className="text-right font-semibold tabular-nums">{fmt(s.total_net)}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1.5">
+                              <span className={cn('h-2 w-2 rounded-full', STATUS_DOT[s.status] || 'bg-zinc-400')} />
+                              <Badge variant={STATUS_VARIANT[s.status] || 'outline'} className="text-[10px] capitalize">
+                                {s.status}
+                              </Badge>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-xs tabular-nums">
+                            {s.issued_at ? format(new Date(s.issued_at), 'd MMM yyyy') : '\u2014'}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              {s.pdf_storage_path && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => downloadStatement(s.id, 'pdf')}
+                                  className="gap-1.5 rounded-lg text-xs h-8"
+                                >
+                                  <FileText className="h-3.5 w-3.5 text-red-500" />
+                                  PDF
+                                </Button>
+                              )}
+                              {s.remittance_csv_path && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => downloadStatement(s.id, 'csv')}
+                                  className="gap-1.5 rounded-lg text-xs h-8"
+                                >
+                                  <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-500" />
+                                  CSV
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+
+              {/* Mobile Cards */}
+              <div className="sm:hidden space-y-2">
+                {statements.length === 0 ? (
+                  <Card className="border-dashed">
+                    <CardContent className="py-12 text-center">
+                      <FileText className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+                      <p className="text-sm text-muted-foreground">No statements issued yet</p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  statements.map((s) => (
+                    <Card key={s.id}>
+                      <CardContent className="py-3 px-4 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium tabular-nums">{s.period_start} \u2192 {s.period_end}</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className={cn('h-2 w-2 rounded-full', STATUS_DOT[s.status] || 'bg-zinc-400')} />
+                            <Badge variant={STATUS_VARIANT[s.status] || 'outline'} className="text-[10px] capitalize">
+                              {s.status}
+                            </Badge>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span>{s.line_count} line{s.line_count !== 1 ? 's' : ''}</span>
+                          <span>{s.issued_at ? format(new Date(s.issued_at), 'd MMM yyyy') : ''}</span>
+                        </div>
+                        <div className="flex items-center justify-between pt-2 border-t border-border/50">
+                          <div className="font-semibold tabular-nums text-primary">{fmt(s.total_net)}</div>
+                          <div className="flex gap-1">
+                            {s.pdf_storage_path && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => downloadStatement(s.id, 'pdf')}
+                                className="gap-1 rounded-lg text-xs h-8"
+                              >
+                                <FileText className="h-3.5 w-3.5 text-red-500" />
+                                PDF
+                              </Button>
+                            )}
+                            {s.remittance_csv_path && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => downloadStatement(s.id, 'csv')}
+                                className="gap-1 rounded-lg text-xs h-8"
+                              >
+                                <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-500" />
+                                CSV
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </div>
+            </>
+          )}
+        </motion.div>
+      </AnimatePresence>
+    </motion.div>
   );
 }
