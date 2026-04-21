@@ -1601,14 +1601,14 @@ export default function GeneratedReports() {
               }
             }}
             onTierSwitch={async (newReportId, newTier) => {
-              // Fetch the new report and switch to it
-              const { data } = await supabase
-                .from('investment_reports')
-                .select('id, property_address, property_listing_id, report_content, sources_content, created_at, current_version, report_scope, report_tier, parent_report_id, status, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence')
-                .eq('id', newReportId)
-                .single();
-              if (data) {
-                setSelectedInvestmentReport(data as InvestmentReport);
+              // Fetch the new report via secure edge function (direct supabase blocked by RLS)
+              try {
+                const refreshed = await fetchInvestmentReportDetails(newReportId);
+                if (refreshed) {
+                  setSelectedInvestmentReport(refreshed as any);
+                }
+              } catch (err) {
+                console.error('Failed to fetch tier-switched report:', err);
               }
             }}
           />
