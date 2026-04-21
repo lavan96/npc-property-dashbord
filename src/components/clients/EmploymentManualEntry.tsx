@@ -355,13 +355,16 @@ export function EmploymentManualEntry({ clientId, contacts, onComplete }: Employ
 
               {/* Dynamic contact tabs */}
               {contacts.map(contact => {
-                const contactEmployment = getEmploymentForContact(contact).filter((e: any) => e.is_current);
+                const contactEmployment = getEmploymentForContact(contact);
+                const currentEmployment = contactEmployment.filter((e: any) => e.is_current);
+                const contactCoverage = calculateCoverage(contactEmployment);
                 return (
                   <TabsContent key={contact.id} value={contact.id} className="space-y-4 mt-4">
-                    {contactEmployment.length > 0 && (
+                    <ThreeYearCoverageWarning coverage={contactCoverage} label={`${contact.name} Employment`} />
+                    {currentEmployment.length > 0 && (
                       <div className="space-y-2">
                         <Label className="text-xs text-muted-foreground">Current Employment — {contact.name}</Label>
-                        {contactEmployment.map((emp: any) => (
+                        {currentEmployment.map((emp: any) => (
                           <EmploymentCard key={emp.id} employment={emp} />
                         ))}
                       </div>
