@@ -71,7 +71,7 @@ async function verifySuperadmin(supabase: any, headers: Headers, body: any) {
   return { error: null, user };
 }
 
-serve(async (req: Request) => {
+Deno.serve(async (req: Request) => {
   const origin = req.headers.get('origin');
   const corsHeaders = createCorsHeaders(origin);
 

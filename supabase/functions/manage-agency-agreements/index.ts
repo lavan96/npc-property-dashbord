@@ -330,7 +330,7 @@ async function attemptDeferredPdfFetch(
   }
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = createCorsHeaders(origin);
 

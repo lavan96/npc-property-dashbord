@@ -7,7 +7,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = createCorsHeaders(origin);
   

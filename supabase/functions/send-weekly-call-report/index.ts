@@ -73,7 +73,7 @@ function getGradeColor(grade: string): string {
   return '#ef4444';
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = createCorsHeaders(origin);
   
