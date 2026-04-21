@@ -10,6 +10,7 @@ export const FINANCE_PORTAL_TABLES = [
   { key: 'assets', label: 'Assets' },
   { key: 'liabilities', label: 'Liabilities' },
   { key: 'employment', label: 'Employment' },
+  { key: 'address_history', label: 'Address History' },
   { key: 'notes', label: 'Notes' },
   { key: 'contacts', label: 'Contacts' },
   { key: 'documents', label: 'Documents' },
