@@ -276,6 +276,21 @@ function processCpiProjections(
 
 function getFallbackData() {
   const today = new Date().toISOString().split('T')[0];
+  const currentCpi = 2.4;
+  const target = 2.5;
+  
+  // Generate convergence projections from current CPI toward target
+  const cpiProjections = [];
+  for (let year = 1; year <= 10; year++) {
+    const convergenceFactor = 1 - Math.pow(0.8, year);
+    const projected = currentCpi + (target - currentCpi) * convergenceFactor;
+    cpiProjections.push({
+      year,
+      cpiPercent: Math.round(projected * 10) / 10,
+      source: year <= 3 ? 'Near-term estimate (fallback)' : 'Long-term convergence to RBA target (fallback)',
+    });
+  }
+  
   return {
     cashRate: {
       current: 4.10,
@@ -285,13 +300,14 @@ function getFallbackData() {
       source: 'RBA Official Cash Rate (fallback — could not fetch live data)',
     },
     inflation: {
-      annual: 2.4,
+      annual: currentCpi,
       quarterly: 0.9,
       core: 2.9,
       target: 2.5,
       lastUpdate: today,
       source: 'ABS Consumer Price Index (fallback — could not fetch live data)',
     },
+    cpiProjections,
     indicators: {
       gdpGrowth: 1.3,
       unemploymentRate: 4.1,
