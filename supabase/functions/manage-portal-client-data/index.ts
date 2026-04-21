@@ -562,6 +562,53 @@ serve(async (req) => {
         );
       }
 
+      // --- Client Address History ---
+      if (table === 'client_address_history') {
+        const addressData: Record<string, any> = {
+          client_id: clientId,
+          contact_type: payload.contact_type || 'primary',
+          additional_contact_id: payload.additional_contact_id || null,
+          address: payload.address || null,
+          country: payload.country || 'Australia',
+          living_situation: payload.living_situation || null,
+          residential_status: payload.residential_status || null,
+          start_date: payload.start_date || null,
+          end_date: payload.end_date || null,
+          is_current: payload.is_current ?? false,
+          months_at_address: payload.months_at_address || null,
+          notes: payload.notes || null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+
+        const { data: result, error } = await supabase
+          .from('client_address_history')
+          .insert(addressData)
+          .select()
+          .single();
+
+        if (error) {
+          return new Response(
+            JSON.stringify({ error: error.message, success: false }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        try {
+          await supabase.from('notifications').insert({
+            type: 'client_data_updated',
+            title: 'Client Added Address',
+            message: `A client has added an address record: ${payload.address || 'Address'}`,
+            metadata: { address_id: result.id, client_id: clientId },
+          });
+        } catch (e) { console.error('Notification error:', e); }
+
+        return new Response(
+          JSON.stringify({ success: true, data: result }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       // --- Report Requests ---
       if (table === 'client_portal_report_requests') {
         const validTypes = ['portfolio_review', 'borrowing_capacity', 'investment_property'];
