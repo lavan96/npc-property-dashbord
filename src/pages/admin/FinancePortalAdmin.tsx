@@ -450,6 +450,7 @@ export default function FinancePortalAdmin() {
                             <span className="text-xs text-muted-foreground">—</span>
                           )}
                         </TableCell>
+                        <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon" className="h-8 w-8" disabled={busyId === u.id}>
