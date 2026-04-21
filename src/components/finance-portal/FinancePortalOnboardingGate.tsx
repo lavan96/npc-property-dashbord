@@ -38,7 +38,7 @@ const WIZARD_STEPS = [
   {
     icon: Users,
     title: 'Per-client access',
-    body: 'Your client list shows only the clients you have been assigned. Inside each client you may see Properties, Income, Expenses, Assets, Liabilities, Employment, Notes and Contacts depending on the access NPC has granted.',
+    body: 'Your client list shows only the clients you have been assigned. Inside each client you may see Properties, Income, Expenses, Assets, Liabilities, Employment, Address History, Notes and Contacts depending on the access NPC has granted.',
   },
   {
     icon: Lock,
