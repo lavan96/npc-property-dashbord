@@ -264,7 +264,7 @@ export function FinancePartnersCard({ clientId, clientName }: Props) {
                     <Badge variant="secondary" className="h-4 text-[10px] px-1.5">auto</Badge>
                   )}
                   <Badge variant="outline" className="h-4 text-[10px] px-1.5">
-                    {grantedCount(a.permissions)}/8 sections
+                    {grantedCount(a.permissions)}/12 sections
                   </Badge>
                 </div>
                 <div className="text-xs text-muted-foreground truncate">{a.partner_email}</div>

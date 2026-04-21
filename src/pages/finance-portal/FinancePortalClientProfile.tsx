@@ -97,7 +97,7 @@ export default function FinancePortalClientProfile() {
               </div>
               <div className="flex flex-wrap gap-2">
                 {client.status && <Badge variant="secondary">{client.status}</Badge>}
-                <Badge variant="outline">{visibleTabs.length + (docsVisible ? 1 : 0) + (bcVisible ? 1 : 0)} of 10 sections accessible</Badge>
+                <Badge variant="outline">{visibleTabs.length + (docsVisible ? 1 : 0) + (bcVisible ? 1 : 0)} of 12 sections accessible</Badge>
               </div>
             </div>
           </CardHeader>
