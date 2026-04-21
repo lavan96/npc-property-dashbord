@@ -41,7 +41,8 @@ export default function FinancePortalClientProfile() {
   // matching the edge function default. Hide only if explicitly { view: false }.
   const docsVisible = permissions.documents ? !!permissions.documents.view : true;
   const bcVisible = permissions.borrowing_capacity ? !!permissions.borrowing_capacity.view : true;
-  const defaultTab = initialTab || visibleTabs[0] || (docsVisible ? 'documents' : (bcVisible ? 'borrowing_capacity' : 'messages'));
+  const messagesVisible = permissions.messages ? !!permissions.messages.view : true;
+  const defaultTab = initialTab || visibleTabs[0] || (docsVisible ? 'documents' : (bcVisible ? 'borrowing_capacity' : (messagesVisible ? 'messages' : '')));
 
   if (isLoading) {
     return (
