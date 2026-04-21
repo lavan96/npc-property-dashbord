@@ -2200,6 +2200,75 @@ export type Database = {
           },
         ]
       }
+      client_address_history: {
+        Row: {
+          additional_contact_id: string | null
+          address: string | null
+          client_id: string
+          contact_type: string
+          country: string | null
+          created_at: string
+          end_date: string | null
+          id: string
+          is_current: boolean
+          living_situation: string | null
+          months_at_address: number | null
+          notes: string | null
+          residential_status: string | null
+          start_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          additional_contact_id?: string | null
+          address?: string | null
+          client_id: string
+          contact_type?: string
+          country?: string | null
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          is_current?: boolean
+          living_situation?: string | null
+          months_at_address?: number | null
+          notes?: string | null
+          residential_status?: string | null
+          start_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          additional_contact_id?: string | null
+          address?: string | null
+          client_id?: string
+          contact_type?: string
+          country?: string | null
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          is_current?: boolean
+          living_situation?: string | null
+          months_at_address?: number | null
+          notes?: string | null
+          residential_status?: string | null
+          start_date?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_address_history_additional_contact_id_fkey"
+            columns: ["additional_contact_id"]
+            isOneToOne: false
+            referencedRelation: "client_additional_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_address_history_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_assets: {
         Row: {
           asset_type: string
