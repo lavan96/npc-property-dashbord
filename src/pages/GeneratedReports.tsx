@@ -706,33 +706,31 @@ export default function GeneratedReports() {
   };
 
   const handleOverrideSave = async () => {
-    // Refresh reports after override
+    // Refresh reports list after override
     await fetchInvestmentReports();
     
-    // Refetch the currently viewed report to show updated data
+    // Refetch the currently viewed report via secure edge function (direct supabase blocked by RLS)
     if (selectedInvestmentReport) {
-      const { data, error } = await supabase
-        .from('investment_reports')
-        .select('id, property_address, property_listing_id, report_content, sources_content, created_at, current_version, report_scope, status, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence')
-        .eq('id', selectedInvestmentReport.id)
-        .single();
-      
-      if (!error && data) {
-        console.log('✅ Refetched report with updated overrides:', data);
-        setSelectedInvestmentReport(data);
+      try {
+        const refreshed = await fetchInvestmentReportDetails(selectedInvestmentReport.id);
+        if (refreshed) {
+          console.log('✅ Refetched report with updated overrides via secure function');
+          setSelectedInvestmentReport(refreshed as any);
+        }
+      } catch (err) {
+        console.error('Failed to refetch selected report:', err);
       }
     }
     
     // Also refetch the override report if different
     if (selectedReportForOverride && selectedReportForOverride.id !== selectedInvestmentReport?.id) {
-      const { data, error } = await supabase
-        .from('investment_reports')
-        .select('id, property_address, property_listing_id, report_content, sources_content, created_at, current_version, report_scope, status, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence')
-        .eq('id', selectedReportForOverride.id)
-        .single();
-      
-      if (!error && data) {
-        setSelectedReportForOverride(data);
+      try {
+        const refreshed = await fetchInvestmentReportDetails(selectedReportForOverride.id);
+        if (refreshed) {
+          setSelectedReportForOverride(refreshed as any);
+        }
+      } catch (err) {
+        console.error('Failed to refetch override report:', err);
       }
     }
   };
@@ -1603,14 +1601,14 @@ export default function GeneratedReports() {
               }
             }}
             onTierSwitch={async (newReportId, newTier) => {
-              // Fetch the new report and switch to it
-              const { data } = await supabase
-                .from('investment_reports')
-                .select('id, property_address, property_listing_id, report_content, sources_content, created_at, current_version, report_scope, report_tier, parent_report_id, status, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence')
-                .eq('id', newReportId)
-                .single();
-              if (data) {
-                setSelectedInvestmentReport(data as InvestmentReport);
+              // Fetch the new report via secure edge function (direct supabase blocked by RLS)
+              try {
+                const refreshed = await fetchInvestmentReportDetails(newReportId);
+                if (refreshed) {
+                  setSelectedInvestmentReport(refreshed as any);
+                }
+              } catch (err) {
+                console.error('Failed to fetch tier-switched report:', err);
               }
             }}
           />
