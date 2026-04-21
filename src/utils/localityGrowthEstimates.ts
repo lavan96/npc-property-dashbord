@@ -117,23 +117,14 @@ export function getLocalityGrowthEstimate(propertyAddress: string): GrowthEstima
 
 /**
  * Get a recommended CPI growth rate.
- * If capital growth is available, CPI is derived as the lower of
- * capitalGrowth and the locality CPI estimate.
+ * CPI is an independent macroeconomic indicator and is NOT derived from capital growth.
+ * Returns the locality-based CPI estimate (which should be populated from live data).
  */
 export function getDerivedCpiGrowth(
-  capitalGrowthPercent: number | null,
+  _capitalGrowthPercent: number | null,
   propertyAddress: string
 ): { cpiPercent: number; source: string } {
   const locality = getLocalityGrowthEstimate(propertyAddress);
-  
-  if (capitalGrowthPercent && capitalGrowthPercent > 0) {
-    // CPI should be lower than or equal to capital growth
-    const derived = Math.min(capitalGrowthPercent, locality.cpiGrowthPercent);
-    return {
-      cpiPercent: derived,
-      source: `Derived from ${capitalGrowthPercent}% capital growth`,
-    };
-  }
   
   return {
     cpiPercent: locality.cpiGrowthPercent,

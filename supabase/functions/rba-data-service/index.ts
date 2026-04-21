@@ -120,23 +120,40 @@ async function fetchLiveEconomicData() {
           content: `What are the current Australian economic indicators as of today? I need the exact current values for:
 1. RBA Official Cash Rate (the current target cash rate set by the Reserve Bank of Australia)
 2. The previous cash rate before the most recent change
-3. Annual CPI inflation rate (latest ABS quarterly figure)
+3. Annual CPI inflation rate (latest ABS quarterly figure, headline All Groups CPI)
 4. Trimmed mean (core) inflation rate
 5. Unemployment rate (latest ABS labour force)
 6. GDP annual growth rate
 7. Labour force participation rate
+
+Also provide the best available CPI PROJECTIONS for the next 10 years. Use:
+- RBA Statement on Monetary Policy (SMP) forecasts for years 1-3
+- Federal Treasury Budget Economic Outlook for years 1-4
+- For years beyond available forecasts, project convergence toward the RBA target midpoint of 2.5%
 
 Return ONLY valid JSON in this exact format, no other text:
 {
   "cashRate": {"current": 0.00, "previous": 0.00, "lastDecisionDate": "YYYY-MM-DD"},
   "inflation": {"annual": 0.0, "core": 0.0, "quarterly": 0.0},
   "labour": {"unemploymentRate": 0.0, "participationRate": 0.0},
-  "gdpGrowth": 0.0
+  "gdpGrowth": 0.0,
+  "cpiProjections": [
+    {"year": 1, "cpiPercent": 0.0, "source": "RBA SMP / Treasury forecast"},
+    {"year": 2, "cpiPercent": 0.0, "source": "RBA SMP / Treasury forecast"},
+    {"year": 3, "cpiPercent": 0.0, "source": "RBA SMP forecast"},
+    {"year": 4, "cpiPercent": 0.0, "source": "Treasury Budget forecast"},
+    {"year": 5, "cpiPercent": 0.0, "source": "Convergence to RBA target"},
+    {"year": 6, "cpiPercent": 0.0, "source": "Convergence to RBA target"},
+    {"year": 7, "cpiPercent": 0.0, "source": "Convergence to RBA target"},
+    {"year": 8, "cpiPercent": 0.0, "source": "Convergence to RBA target"},
+    {"year": 9, "cpiPercent": 0.0, "source": "Convergence to RBA target"},
+    {"year": 10, "cpiPercent": 0.0, "source": "Convergence to RBA target"}
+  ]
 }`,
         },
       ],
       temperature: 0.0,
-      maxTokens: 1000,
+      maxTokens: 2000,
       extraBody: {
         search_domain_filter: ['rba.gov.au', 'abs.gov.au', 'treasury.gov.au', 'reuters.com', 'afr.com'],
         search_recency_filter: 'month',
@@ -173,6 +190,9 @@ Return ONLY valid JSON in this exact format, no other text:
 
     const today = new Date().toISOString().split('T')[0];
     
+    // Process CPI projections - validate and fill gaps
+    const cpiProjections = processCpiProjections(parsed.cpiProjections, parsed.inflation?.annual);
+    
     const result = {
       cashRate: {
         current: parsed.cashRate.current,
@@ -191,6 +211,7 @@ Return ONLY valid JSON in this exact format, no other text:
         lastUpdate: today,
         source: 'ABS Consumer Price Index (via Perplexity real-time search)',
       },
+      cpiProjections,
       indicators: {
         gdpGrowth: parsed.gdpGrowth || 0,
         unemploymentRate: parsed.labour?.unemploymentRate || 0,
@@ -205,6 +226,7 @@ Return ONLY valid JSON in this exact format, no other text:
       cashRate: result.cashRate.current,
       inflation: result.inflation.annual,
       unemployment: result.indicators.unemploymentRate,
+      cpiProjectionsCount: result.cpiProjections.length,
     });
 
     return result;
@@ -215,8 +237,60 @@ Return ONLY valid JSON in this exact format, no other text:
   }
 }
 
+/**
+ * Process and validate CPI projections from Perplexity.
+ * Ensures all 10 years are present with reasonable values.
+ * Falls back to convergence model if projections are missing or invalid.
+ */
+function processCpiProjections(
+  rawProjections: any[] | undefined, 
+  currentAnnualCpi: number | undefined
+): Array<{ year: number; cpiPercent: number; source: string }> {
+  const currentCpi = currentAnnualCpi || 2.5;
+  const target = 2.5;
+  const projections: Array<{ year: number; cpiPercent: number; source: string }> = [];
+  
+  for (let year = 1; year <= 10; year++) {
+    const raw = rawProjections?.find((p: any) => p.year === year);
+    
+    if (raw && typeof raw.cpiPercent === 'number' && raw.cpiPercent >= 0 && raw.cpiPercent <= 15) {
+      projections.push({
+        year,
+        cpiPercent: Math.round(raw.cpiPercent * 10) / 10,
+        source: raw.source || (year <= 3 ? 'RBA SMP forecast' : 'Projected'),
+      });
+    } else {
+      // Generate convergence projection
+      const convergenceFactor = 1 - Math.pow(0.8, year);
+      const projected = currentCpi + (target - currentCpi) * convergenceFactor;
+      projections.push({
+        year,
+        cpiPercent: Math.round(projected * 10) / 10,
+        source: year <= 3 ? 'Near-term convergence estimate' : 'Long-term convergence to RBA target',
+      });
+    }
+  }
+  
+  return projections;
+}
+
 function getFallbackData() {
   const today = new Date().toISOString().split('T')[0];
+  const currentCpi = 2.4;
+  const target = 2.5;
+  
+  // Generate convergence projections from current CPI toward target
+  const cpiProjections = [];
+  for (let year = 1; year <= 10; year++) {
+    const convergenceFactor = 1 - Math.pow(0.8, year);
+    const projected = currentCpi + (target - currentCpi) * convergenceFactor;
+    cpiProjections.push({
+      year,
+      cpiPercent: Math.round(projected * 10) / 10,
+      source: year <= 3 ? 'Near-term estimate (fallback)' : 'Long-term convergence to RBA target (fallback)',
+    });
+  }
+  
   return {
     cashRate: {
       current: 4.10,
@@ -226,13 +300,14 @@ function getFallbackData() {
       source: 'RBA Official Cash Rate (fallback — could not fetch live data)',
     },
     inflation: {
-      annual: 2.4,
+      annual: currentCpi,
       quarterly: 0.9,
       core: 2.9,
       target: 2.5,
       lastUpdate: today,
       source: 'ABS Consumer Price Index (fallback — could not fetch live data)',
     },
+    cpiProjections,
     indicators: {
       gdpGrowth: 1.3,
       unemploymentRate: 4.1,

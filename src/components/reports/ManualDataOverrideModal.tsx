@@ -967,9 +967,16 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
         setDepositValueManuallyEdited(true);
       }
       
+      // Preserve raw string during decimal input (e.g. "2." or "2.50")
+      // to avoid parseFloat stripping trailing dots/zeros
+      const shouldPreserveString = cleanValue !== '' && cleanValue !== null && (
+        cleanValue.endsWith('.') || 
+        (cleanValue.includes('.') && String(numValue) !== cleanValue)
+      );
+      
       setOverrides(prev => ({
         ...prev,
-        [key]: numValue
+        [key]: shouldPreserveString ? cleanValue : numValue
       }));
     }
     setHasChanges(true);
@@ -1230,6 +1237,14 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
   const getFieldValue = (field: OverrideField) => {
     const overrideValue = overrides[field.key];
     if (overrideValue !== undefined && overrideValue !== null) {
+      // If it's a raw string being typed (e.g. "2." during decimal input), return as-is
+      if (typeof overrideValue === 'string') {
+        // For currency-style fields with prefix '$', format with commas
+        if (field.prefix === '$') {
+          return formatNumberWithCommas(overrideValue);
+        }
+        return overrideValue;
+      }
       // Format numeric values with commas for display
       if (field.type !== 'select' && typeof overrideValue === 'number') {
         return formatNumberWithCommas(overrideValue.toString());

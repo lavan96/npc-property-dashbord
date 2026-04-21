@@ -22,7 +22,9 @@ interface LoanCalculationInput {
   // Capital growth rate - if provided, uses this instead of hardcoded scenarios
   // This allows researched capital growth from Perplexity to cascade into projections
   capitalGrowthRate?: number;
-  // Rent growth rate (CPI) - optional override
+  // CPI / expense growth rate - independent macro indicator, NOT tied to capital growth
+  cpiGrowthRate?: number;
+  // Rent growth rate - optional override (defaults to CPI-aligned)
   rentGrowthRate?: number;
 }
 
@@ -182,16 +184,20 @@ async function calculateFinancialProjections(input: LoanCalculationInput, supaba
   const customCapitalGrowth = input.capitalGrowthRate ? input.capitalGrowthRate / 100 : null;
   const customRentGrowth = input.rentGrowthRate ? input.rentGrowthRate / 100 : null;
   
+  // Fetch live CPI projections from cached economic data
+  const cpiProjections = await fetchCpiProjections(supabase);
+  const customCpiGrowth = input.cpiGrowthRate ? input.cpiGrowthRate / 100 : null;
+  
   const scenarios = customCapitalGrowth !== null ? {
     // When custom rate provided, use it as the "moderate" scenario with ±2% for conservative/optimistic
-    conservative: generateProjections({ ...input, interestRate }, monthlyPayment, annualCosts, Math.max(0, customCapitalGrowth - 0.02), customRentGrowth || 0.025),
-    moderate: generateProjections({ ...input, interestRate }, monthlyPayment, annualCosts, customCapitalGrowth, customRentGrowth || 0.03),
-    optimistic: generateProjections({ ...input, interestRate }, monthlyPayment, annualCosts, customCapitalGrowth + 0.02, customRentGrowth || 0.035)
+    conservative: generateProjections({ ...input, interestRate }, monthlyPayment, annualCosts, Math.max(0, customCapitalGrowth - 0.02), customRentGrowth || 0.025, customCpiGrowth, cpiProjections),
+    moderate: generateProjections({ ...input, interestRate }, monthlyPayment, annualCosts, customCapitalGrowth, customRentGrowth || 0.03, customCpiGrowth, cpiProjections),
+    optimistic: generateProjections({ ...input, interestRate }, monthlyPayment, annualCosts, customCapitalGrowth + 0.02, customRentGrowth || 0.035, customCpiGrowth, cpiProjections)
   } : {
     // Default scenario-based rates when no custom rate provided
-    conservative: generateProjections({ ...input, interestRate }, monthlyPayment, annualCosts, 0.02, 0.02),
-    moderate: generateProjections({ ...input, interestRate }, monthlyPayment, annualCosts, 0.04, 0.03),
-    optimistic: generateProjections({ ...input, interestRate }, monthlyPayment, annualCosts, 0.06, 0.04)
+    conservative: generateProjections({ ...input, interestRate }, monthlyPayment, annualCosts, 0.02, 0.02, customCpiGrowth, cpiProjections),
+    moderate: generateProjections({ ...input, interestRate }, monthlyPayment, annualCosts, 0.04, 0.03, customCpiGrowth, cpiProjections),
+    optimistic: generateProjections({ ...input, interestRate }, monthlyPayment, annualCosts, 0.06, 0.04, customCpiGrowth, cpiProjections)
   };
 
   // Calculate key metrics
@@ -847,7 +853,9 @@ function generateProjections(
   monthlyPayment: number,
   annualCosts: any,
   capitalGrowthRate: number,
-  rentGrowthRate: number
+  rentGrowthRate: number,
+  customCpiGrowth: number | null,
+  cpiProjections: Array<{ year: number; cpiPercent: number }>,
 ): FinancialProjection[] {
   
   const projections: FinancialProjection[] = [];
@@ -856,15 +864,29 @@ function generateProjections(
   let loanBalance = input.propertyValue - input.deposit;
   let cumulativeCashFlow = 0;
   
-  const totalAnnualCosts = Object.values(annualCosts)
+  // Base annual costs (before CPI inflation)
+  const baseTotalAnnualCosts = Object.values(annualCosts)
     .filter(val => typeof val === 'number')
     .reduce((sum, cost) => sum + cost, 0) + (monthlyPayment * 12);
+  
+  // Separate loan payments from operating expenses for CPI escalation
+  const loanPaymentsAnnual = monthlyPayment * 12;
+  let currentOperatingExpenses = baseTotalAnnualCosts - loanPaymentsAnnual;
 
   for (let year = 1; year <= 10; year++) {
     currentPropertyValue *= (1 + capitalGrowthRate);
     currentRent *= (1 + rentGrowthRate);
     
-    const annualPrincipalPayment = (monthlyPayment * 12) - (loanBalance * input.interestRate / 100);
+    // CPI escalation for operating expenses (not loan payments)
+    // Use custom override > year-specific projection > fallback 2.5%
+    const yearCpi = customCpiGrowth !== null 
+      ? customCpiGrowth 
+      : (cpiProjections.find(p => p.year === year)?.cpiPercent ?? 2.5) / 100;
+    currentOperatingExpenses *= (1 + yearCpi);
+    
+    const totalAnnualCosts = currentOperatingExpenses + loanPaymentsAnnual;
+    
+    const annualPrincipalPayment = loanPaymentsAnnual - (loanBalance * input.interestRate / 100);
     loanBalance = Math.max(0, loanBalance - annualPrincipalPayment);
     
     const annualCashFlow = currentRent - totalAnnualCosts;
@@ -885,6 +907,54 @@ function generateProjections(
     });
   }
   
+  return projections;
+}
+
+/**
+ * Fetch CPI projections from the economic_data_cache table.
+ * Returns year-by-year CPI forecasts for 10-year projection models.
+ */
+async function fetchCpiProjections(supabase: any): Promise<Array<{ year: number; cpiPercent: number }>> {
+  try {
+    const { data: cachedData, error } = await supabase
+      .from('economic_data_cache')
+      .select('data')
+      .eq('data_type', 'rba_indicators')
+      .gt('expires_at', new Date().toISOString())
+      .maybeSingle();
+
+    if (error || !cachedData?.data) {
+      console.log('[financial-calculator] No cached CPI projections, using defaults');
+      return getDefaultCpiProjections();
+    }
+
+    const cpiProjections = cachedData.data?.cpiProjections;
+    if (Array.isArray(cpiProjections) && cpiProjections.length > 0) {
+      console.log(`[financial-calculator] Using ${cpiProjections.length} cached CPI projections`);
+      return cpiProjections;
+    }
+
+    // Fall back to deriving from current CPI
+    const currentCpi = cachedData.data?.inflation?.annual || 2.5;
+    return generateConvergenceProjections(currentCpi);
+  } catch (err) {
+    console.error('[financial-calculator] Error fetching CPI projections:', err);
+    return getDefaultCpiProjections();
+  }
+}
+
+function getDefaultCpiProjections(): Array<{ year: number; cpiPercent: number }> {
+  return generateConvergenceProjections(2.5);
+}
+
+function generateConvergenceProjections(currentCpi: number): Array<{ year: number; cpiPercent: number }> {
+  const target = 2.5;
+  const projections = [];
+  for (let year = 1; year <= 10; year++) {
+    const convergenceFactor = 1 - Math.pow(0.8, year);
+    const projected = currentCpi + (target - currentCpi) * convergenceFactor;
+    projections.push({ year, cpiPercent: Math.round(projected * 10) / 10 });
+  }
   return projections;
 }
 
