@@ -20,7 +20,8 @@ import { createCorsHeaders, verifyAuth } from "../_shared/auth.ts";
 
 const PERMISSION_TABLES = [
   'properties', 'income', 'expenses', 'assets',
-  'liabilities', 'employment', 'notes', 'contacts'
+  'liabilities', 'employment', 'address_history', 'notes', 'contacts',
+  'documents', 'borrowing_capacity', 'messages'
 ] as const;
 
 const EMPTY_PERMISSIONS = PERMISSION_TABLES.reduce((acc, t) => {
