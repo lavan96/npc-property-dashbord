@@ -1176,7 +1176,7 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
       
       console.log('📊 Recalculated totalAnnual:', mergedFinancialData.annualCosts.totalAnnual);
       
-      let overridesToPersist = {
+      let overridesToPersist: Record<string, any> = {
         ...overrides,
         cashFlowFieldToggles,
         includeDepreciationInCashFlow,
