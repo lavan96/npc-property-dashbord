@@ -465,11 +465,12 @@ export default function FinancePortalClients() {
                       </div>
 
                       {/* Desktop actions */}
-                      <div className="hidden sm:flex items-center gap-2 shrink-0">
+                      <div className="hidden sm:flex items-center gap-2 shrink-0 relative z-10">
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={(e) => { e.stopPropagation(); openClientPortal(r.client_id, true); }}
+                          onClick={(e) => { e.stopPropagation(); e.preventDefault(); openClientPortal(r.client_id, true); }}
+                          onPointerDown={(e) => e.stopPropagation()}
                           disabled={isBusy}
                           title="Open this client\u2019s portal in a new tab (read-only)"
                           className="gap-1.5 rounded-lg text-xs"
