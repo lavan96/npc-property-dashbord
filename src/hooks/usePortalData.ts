@@ -48,6 +48,7 @@ export interface PortalDataInclude {
   reportRequests?: boolean;
   lenderSubmissions?: boolean;
   lenderComparisons?: boolean;
+  addressHistory?: boolean;
 }
 
 /**

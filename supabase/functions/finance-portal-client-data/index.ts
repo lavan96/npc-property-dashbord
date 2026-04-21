@@ -27,6 +27,7 @@ const TABLE_MAP: Record<string, string> = {
   employment: 'client_employment',
   notes: 'client_notes',
   contacts: 'client_additional_contacts',
+  address_history: 'client_address_history',
 };
 
 function extractToken(headers: Headers, body?: any): string | null {

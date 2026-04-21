@@ -1,12 +1,13 @@
 import { usePortalFinancesData } from '@/hooks/usePortalData';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Briefcase, TrendingUp, CreditCard, Loader2, PiggyBank, Receipt } from 'lucide-react';
+import { Briefcase, TrendingUp, CreditCard, Loader2, PiggyBank, Receipt, MapPin } from 'lucide-react';
 import { PortalEmploymentForm } from '@/components/portal/PortalEmploymentForm';
 import { PortalIncomeForm } from '@/components/portal/PortalIncomeForm';
 import { PortalExpenseForm } from '@/components/portal/PortalExpenseForm';
 import { PortalAssetForm } from '@/components/portal/PortalAssetForm';
 import { PortalLiabilityForm } from '@/components/portal/PortalLiabilityForm';
+import { PortalAddressHistoryForm } from '@/components/portal/PortalAddressHistoryForm';
 
 function fmt(val?: number | null): string {
   if (val == null) return '—';
@@ -22,6 +23,7 @@ export default function PortalEmployment() {
   const expenses = data?.expenses || [];
   const assets = data?.assets || [];
   const liabilities = data?.liabilities || [];
+  const addressHistory = data?.addressHistory || [];
 
   if (isLoading) {
     return (
@@ -84,6 +86,11 @@ export default function PortalEmployment() {
             <span className="hidden sm:inline">Employment</span>
             <span className="sm:hidden">Jobs</span>
           </TabsTrigger>
+          <TabsTrigger value="address_history" className="flex-1 gap-1.5 text-xs sm:text-sm">
+            <MapPin className="h-4 w-4" />
+            <span className="hidden sm:inline">Address</span>
+            <span className="sm:hidden">Addr.</span>
+          </TabsTrigger>
           <TabsTrigger value="income" className="flex-1 gap-1.5 text-xs sm:text-sm">
             <TrendingUp className="h-4 w-4" />
             Income
@@ -106,6 +113,10 @@ export default function PortalEmployment() {
 
         <TabsContent value="employment" className="space-y-4">
           <PortalEmploymentForm existingEmployment={employment} onRefresh={refetch} />
+        </TabsContent>
+
+        <TabsContent value="address_history" className="space-y-4">
+          <PortalAddressHistoryForm existingAddresses={addressHistory} onRefresh={refetch} />
         </TabsContent>
 
         <TabsContent value="income" className="space-y-4">
