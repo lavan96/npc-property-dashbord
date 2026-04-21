@@ -50,7 +50,6 @@ interface FinanceUserRow {
     has_accepted_terms: boolean;
     has_completed_onboarding: boolean;
     terms_accepted_at: string | null;
-    onboarding_completed_at: string | null;
     revoked_at: string | null;
   };
 }
