@@ -314,7 +314,31 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
   useEffect(() => {
     if (report && isOpen) {
       const cfOverrides = report.manual_overrides?.cashFlowYearlyOverrides || {};
-      setYearlyOverrides(cfOverrides);
+      const depSchedule = report.manual_overrides?.depreciationSchedule as Record<string | number, number> | undefined;
+      
+      // Merge depreciationSchedule into yearlyOverrides if not already present
+      // This ensures depreciation values flow into the table even if the user
+      // didn't explicitly click "Apply to Cash Flow" in ManualDataOverrideModal
+      let mergedOverrides = { ...cfOverrides };
+      if (depSchedule) {
+        for (let year = 1; year <= 10; year++) {
+          const scheduleValue = depSchedule[year] ?? depSchedule[String(year)];
+          if (scheduleValue != null) {
+            if (!mergedOverrides[year]) {
+              mergedOverrides[year] = {};
+            }
+            // Only set if no existing per-year depreciation override
+            if (mergedOverrides[year].depreciation == null) {
+              mergedOverrides[year] = {
+                ...mergedOverrides[year],
+                depreciation: scheduleValue
+              };
+            }
+          }
+        }
+      }
+      
+      setYearlyOverrides(mergedOverrides);
       setHasChanges(false);
       setEditingCell(null);
       setComparisonMode(false);
@@ -470,7 +494,20 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       const cashFlow = fc.cashFlow || {};
       const assumptions = fc.assumptions || {};
       const initialCosts = fc.initialCosts || {};
-      const cfOverrides = mo.cashFlowYearlyOverrides || {};
+      // Merge depreciationSchedule into cfOverrides for comparison reports
+      let cfOverrides = { ...(mo.cashFlowYearlyOverrides || {}) };
+      const compDepSchedule = mo.depreciationSchedule as Record<string | number, number> | undefined;
+      if (compDepSchedule) {
+        for (let y = 1; y <= 10; y++) {
+          const sv = compDepSchedule[y] ?? compDepSchedule[String(y)];
+          if (sv != null) {
+            if (!cfOverrides[y]) cfOverrides[y] = {};
+            if (cfOverrides[y].depreciation == null) {
+              cfOverrides[y] = { ...cfOverrides[y], depreciation: sv };
+            }
+          }
+        }
+      }
       const includeDepreciation = mo.includeDepreciationInCashFlow !== false;
 
       // CRITICAL: Use same fallback paths as baseFinancialData
@@ -572,7 +609,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
           depreciation = 0;
         } else if (yearOverrides.depreciation != null) {
           depreciation = yearOverrides.depreciation;
-        } else if (depreciationSchedule && depreciationSchedule[year]) {
+        } else if (depreciationSchedule && depreciationSchedule[year] != null) {
           depreciation = depreciationSchedule[year];
         } else {
           depreciation = baseDepreciation;
@@ -1023,7 +1060,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       } else if (yearOverrides.depreciation !== undefined && yearOverrides.depreciation !== null) {
         // Manual per-year override takes precedence (LOCKED)
         depreciation = yearOverrides.depreciation;
-      } else if (baseFinancialData.depreciationSchedule && baseFinancialData.depreciationSchedule[year]) {
+      } else if (baseFinancialData.depreciationSchedule && baseFinancialData.depreciationSchedule[year] != null) {
         // Use year-specific value from 10-year schedule
         depreciation = baseFinancialData.depreciationSchedule[year];
       } else {
