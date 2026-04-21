@@ -609,7 +609,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
           depreciation = 0;
         } else if (yearOverrides.depreciation != null) {
           depreciation = yearOverrides.depreciation;
-        } else if (depreciationSchedule && depreciationSchedule[year]) {
+        } else if (depreciationSchedule && depreciationSchedule[year] != null) {
           depreciation = depreciationSchedule[year];
         } else {
           depreciation = baseDepreciation;
