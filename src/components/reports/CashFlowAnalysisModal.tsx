@@ -1060,7 +1060,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       } else if (yearOverrides.depreciation !== undefined && yearOverrides.depreciation !== null) {
         // Manual per-year override takes precedence (LOCKED)
         depreciation = yearOverrides.depreciation;
-      } else if (baseFinancialData.depreciationSchedule && baseFinancialData.depreciationSchedule[year]) {
+      } else if (baseFinancialData.depreciationSchedule && baseFinancialData.depreciationSchedule[year] != null) {
         // Use year-specific value from 10-year schedule
         depreciation = baseFinancialData.depreciationSchedule[year];
       } else {
