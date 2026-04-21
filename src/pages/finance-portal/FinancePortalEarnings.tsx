@@ -115,8 +115,12 @@ export default function FinancePortalEarnings() {
                 {commissions.length === 0 && (
                   <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No commissions yet</TableCell></TableRow>
                 )}
-                {commissions.map(c => (
-                  <TableRow key={c.id}>
+                {commissions.map((c, idx) => (
+                  <TableRow
+                    key={c.id}
+                    ref={idx === 0 ? latestRowRef : undefined}
+                    className={highlightLatest && idx === 0 ? 'bg-primary/10 ring-1 ring-primary/30 animate-fade-in' : ''}
+                  >
                     <TableCell className="text-xs">{format(new Date(c.created_at), 'd MMM yyyy')}</TableCell>
                     <TableCell>
                       <div>{c.client_name_snapshot || '—'}</div>
