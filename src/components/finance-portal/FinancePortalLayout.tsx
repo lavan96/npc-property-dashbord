@@ -1,19 +1,21 @@
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
 import { Button } from '@/components/ui/button';
 import {
-  Building2, LayoutDashboard, Users, LogOut, Menu, MessageSquare, Wallet,
+  Building2, LayoutDashboard, Users, LogOut, Menu, MessageSquare, Wallet, X, Shield,
 } from 'lucide-react';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Sheet, SheetContent, SheetTrigger,
-} from '@/components/ui/sheet';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { FinancePortalOnboardingGate } from './FinancePortalOnboardingGate';
 import { FinancePortalNotificationBell } from './FinancePortalNotificationBell';
+import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const NAV_ITEMS = [
   { to: '/finance', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -22,9 +24,20 @@ const NAV_ITEMS = [
   { to: '/finance/earnings', label: 'Earnings', icon: Wallet, end: false },
 ];
 
+function getInitials(name?: string | null, email?: string | null): string {
+  const source = name || email || 'F';
+  return source
+    .split(' ')
+    .map(s => s[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+}
+
 function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   return (
-    <nav className="flex flex-col gap-1 p-3">
+    <nav className="flex flex-col gap-1 px-3">
       {NAV_ITEMS.map(item => {
         const Icon = item.icon;
         return (
@@ -34,14 +47,15 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
             end={item.end}
             onClick={onNavigate}
             className={({ isActive }) =>
-              `flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+              cn(
+                'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200',
                 isActive
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-              }`
+                  ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-accent/10'
+              )
             }
           >
-            <Icon className="h-4 w-4" />
+            <Icon className="h-4 w-4 shrink-0" />
             {item.label}
           </NavLink>
         );
@@ -53,89 +67,206 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
 export function FinancePortalLayout({ children }: { children?: ReactNode }) {
   const { user, signOut } = useFinancePortalAuth();
   const navigate = useNavigate();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleLogout = async () => {
     await signOut();
     navigate('/finance/login', { replace: true });
   };
 
-  const initials = (user?.name || user?.email || 'F')
-    .split(' ')
-    .map(s => s[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
+  const initials = getInitials(user?.name, user?.email);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <FinancePortalOnboardingGate />
 
-      <header className="sticky top-0 z-30 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
-        <div className="flex h-16 items-center gap-3 px-4 md:px-6">
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="md:hidden">
-                <Menu className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="p-0 w-64">
-              <div className="flex h-16 items-center gap-2 border-b px-4">
+      {/* ── Desktop Layout ── */}
+      <div className="flex-1 flex">
+        {/* Sidebar */}
+        <aside className="hidden md:flex md:w-64 flex-col border-r border-border bg-card/60 backdrop-blur-sm">
+          {/* Branded Header */}
+          <div className="p-5 pb-4">
+            <Link to="/finance" className="flex items-center gap-3">
+              <div className="relative flex items-center justify-center h-10 w-10 rounded-xl bg-primary/10 border border-primary/20">
                 <Building2 className="h-5 w-5 text-primary" />
-                <span className="font-semibold">Finance Portal</span>
               </div>
-              <SidebarNav />
-            </SheetContent>
-          </Sheet>
+              <div className="leading-tight">
+                <div className="text-sm font-bold text-foreground tracking-tight">Finance Portal</div>
+                <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">Partner Access</div>
+              </div>
+            </Link>
+          </div>
 
-          <Link to="/finance" className="flex items-center gap-2">
-            <Building2 className="h-6 w-6 text-primary" />
-            <div className="leading-tight">
-              <div className="text-sm font-semibold">Finance Portal</div>
-              <div className="text-xs text-muted-foreground hidden sm:block">
-                {user?.company || 'Independent Finance Partner'}
+          {/* Gold accent stripe */}
+          <div className="mx-4 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+
+          {/* User card */}
+          <div className="px-3 py-4">
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/10">
+              <Avatar className="h-9 w-9 border-2 border-primary/20">
+                <AvatarFallback className="bg-primary/10 text-primary font-semibold text-xs">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold text-sm text-foreground truncate">{user?.name || 'Partner'}</p>
+                <p className="text-muted-foreground truncate text-[11px]">{user?.company || user?.email}</p>
               </div>
             </div>
-          </Link>
-
-          <div className="ml-auto flex items-center gap-2">
-            <FinancePortalNotificationBell />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="gap-2 h-9">
-                  <span className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-primary/10 text-primary text-xs font-semibold">
-                    {initials}
-                  </span>
-                  <span className="hidden sm:inline text-sm">{user?.name || user?.email}</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>
-                  <div className="flex flex-col">
-                    <span className="text-sm font-medium">{user?.name}</span>
-                    <span className="text-xs text-muted-foreground">{user?.email}</span>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="text-destructive">
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Sign out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
           </div>
-        </div>
-      </header>
 
-      <div className="flex-1 flex">
-        <aside className="hidden md:flex md:w-60 border-r bg-card/40 flex-col">
-          <SidebarNav />
+          {/* Navigation */}
+          <ScrollArea className="flex-1 py-1">
+            <SidebarNav />
+          </ScrollArea>
+
+          {/* Footer */}
+          <div className="mx-4 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
+          <div className="p-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/5 rounded-xl py-2.5"
+              onClick={handleLogout}
+            >
+              <LogOut className="h-4 w-4 mr-3" />
+              Sign Out
+            </Button>
+            <div className="mt-2 flex items-center gap-1.5 px-3 text-[10px] text-muted-foreground/40">
+              <Shield className="h-3 w-3" />
+              <span>Secured · End-to-end encrypted</span>
+            </div>
+          </div>
         </aside>
 
-        <main className="flex-1 min-w-0">
-          {children ?? <Outlet />}
-        </main>
+        {/* Main column */}
+        <div className="flex-1 flex flex-col min-w-0">
+          {/* Top bar */}
+          <header className="sticky top-0 z-30 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
+            <div className="flex h-14 items-center gap-3 px-4 md:px-6">
+              {/* Mobile hamburger */}
+              <Button variant="ghost" size="icon" className="md:hidden h-9 w-9" onClick={() => setMobileOpen(true)}>
+                <Menu className="h-5 w-5" />
+              </Button>
+
+              {/* Mobile logo */}
+              <Link to="/finance" className="flex md:hidden items-center gap-2">
+                <Building2 className="h-5 w-5 text-primary" />
+                <span className="font-bold text-sm">Finance Portal</span>
+              </Link>
+
+              <div className="ml-auto flex items-center gap-2">
+                <FinancePortalNotificationBell />
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="gap-2 h-9 px-2">
+                      <Avatar className="h-8 w-8 border border-primary/20">
+                        <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+                          {initials}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="hidden sm:inline text-sm font-medium">{user?.name || user?.email}</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium">{user?.name}</span>
+                        <span className="text-xs text-muted-foreground">{user?.email}</span>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout} className="text-destructive">
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Sign out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+          </header>
+
+          <main className="flex-1 overflow-auto">
+            {children ?? <Outlet />}
+          </main>
+        </div>
       </div>
+
+      {/* ── Mobile Drawer ── */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              className="md:hidden fixed inset-0 z-40 bg-background/60 backdrop-blur-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setMobileOpen(false)}
+            />
+            {/* Drawer panel */}
+            <motion.div
+              className="md:hidden fixed inset-y-0 left-0 z-50 w-72 bg-card border-r border-border shadow-2xl flex flex-col"
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between p-4 border-b border-border">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-center h-9 w-9 rounded-xl bg-primary/10 border border-primary/20">
+                    <Building2 className="h-5 w-5 text-primary" />
+                  </div>
+                  <span className="font-bold text-sm">Finance Portal</span>
+                </div>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setMobileOpen(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {/* Gold stripe */}
+              <div className="mx-4 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+
+              {/* User card */}
+              <div className="px-3 py-3">
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-primary/5 border border-primary/10">
+                  <Avatar className="h-9 w-9 border border-primary/20">
+                    <AvatarFallback className="bg-primary/10 text-primary font-semibold text-xs">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-sm truncate">{user?.name || 'Partner'}</p>
+                    <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Nav */}
+              <ScrollArea className="flex-1 py-1">
+                <SidebarNav onNavigate={() => setMobileOpen(false)} />
+              </ScrollArea>
+
+              {/* Footer */}
+              <div className="mx-4 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
+              <div className="p-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-start text-muted-foreground hover:text-destructive rounded-xl py-2.5"
+                  onClick={handleLogout}
+                >
+                  <LogOut className="h-4 w-4 mr-3" />
+                  Sign Out
+                </Button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
