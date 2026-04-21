@@ -494,7 +494,20 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       const cashFlow = fc.cashFlow || {};
       const assumptions = fc.assumptions || {};
       const initialCosts = fc.initialCosts || {};
-      const cfOverrides = mo.cashFlowYearlyOverrides || {};
+      // Merge depreciationSchedule into cfOverrides for comparison reports
+      let cfOverrides = { ...(mo.cashFlowYearlyOverrides || {}) };
+      const compDepSchedule = mo.depreciationSchedule as Record<string | number, number> | undefined;
+      if (compDepSchedule) {
+        for (let y = 1; y <= 10; y++) {
+          const sv = compDepSchedule[y] ?? compDepSchedule[String(y)];
+          if (sv != null) {
+            if (!cfOverrides[y]) cfOverrides[y] = {};
+            if (cfOverrides[y].depreciation == null) {
+              cfOverrides[y] = { ...cfOverrides[y], depreciation: sv };
+            }
+          }
+        }
+      }
       const includeDepreciation = mo.includeDepreciationInCashFlow !== false;
 
       // CRITICAL: Use same fallback paths as baseFinancialData
