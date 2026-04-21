@@ -41,7 +41,8 @@ export default function FinancePortalClientProfile() {
   // matching the edge function default. Hide only if explicitly { view: false }.
   const docsVisible = permissions.documents ? !!permissions.documents.view : true;
   const bcVisible = permissions.borrowing_capacity ? !!permissions.borrowing_capacity.view : true;
-  const defaultTab = initialTab || visibleTabs[0] || (docsVisible ? 'documents' : (bcVisible ? 'borrowing_capacity' : 'messages'));
+  const messagesVisible = permissions.messages ? !!permissions.messages.view : true;
+  const defaultTab = initialTab || visibleTabs[0] || (docsVisible ? 'documents' : (bcVisible ? 'borrowing_capacity' : (messagesVisible ? 'messages' : '')));
 
   if (isLoading) {
     return (
@@ -97,14 +98,14 @@ export default function FinancePortalClientProfile() {
               </div>
               <div className="flex flex-wrap gap-2">
                 {client.status && <Badge variant="secondary">{client.status}</Badge>}
-                <Badge variant="outline">{visibleTabs.length + (docsVisible ? 1 : 0) + (bcVisible ? 1 : 0)} of 12 sections accessible</Badge>
+                <Badge variant="outline">{visibleTabs.length + (docsVisible ? 1 : 0) + (bcVisible ? 1 : 0) + (messagesVisible ? 1 : 0)} of 12 sections accessible</Badge>
               </div>
             </div>
           </CardHeader>
         </Card>
       </div>
 
-      {visibleTabs.length === 0 && !docsVisible && !bcVisible ? (
+      {visibleTabs.length === 0 && !docsVisible && !bcVisible && !messagesVisible ? (
         <Card>
           <CardContent className="py-12 text-center">
             <Lock className="h-10 w-10 mx-auto text-muted-foreground opacity-50 mb-3" />
@@ -127,7 +128,9 @@ export default function FinancePortalClientProfile() {
             {bcVisible && (
               <TabsTrigger value="borrowing_capacity" className="text-xs">Borrowing Capacity</TabsTrigger>
             )}
-            <TabsTrigger value="messages" className="text-xs">Messages</TabsTrigger>
+            {messagesVisible && (
+              <TabsTrigger value="messages" className="text-xs">Messages</TabsTrigger>
+            )}
           </TabsList>
           {visibleTabs.map(k => (
             <TabsContent key={k} value={k} className="mt-4">
@@ -144,9 +147,11 @@ export default function FinancePortalClientProfile() {
               <BorrowingCapacityPanel clientId={clientId!} />
             </TabsContent>
           )}
-          <TabsContent value="messages" className="mt-4">
-            <FinancePortalMessagesPanel clientId={clientId!} />
-          </TabsContent>
+          {messagesVisible && (
+            <TabsContent value="messages" className="mt-4">
+              <FinancePortalMessagesPanel clientId={clientId!} />
+            </TabsContent>
+          )}
         </Tabs>
       )}
     </div>

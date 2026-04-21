@@ -86,16 +86,22 @@ serve(async (req) => {
       actor = { type: 'staff', userId: auth.userId, username: auth.username || 'NPC Staff' };
     }
 
-    // Helper: ensure partner is assigned to client
+    // Helper: ensure partner is assigned to client and has messages permission
     const assertPartnerAssigned = async (clientId: string) => {
       if (actor!.type !== 'partner') return null;
       const { data: a } = await supabase
         .from('finance_portal_client_assignments')
-        .select('id')
+        .select('id, permissions')
         .eq('finance_user_id', actor!.portalUserId)
         .eq('client_id', clientId)
         .maybeSingle();
       if (!a) return jsonResponse({ error: 'Not assigned to this client' }, 403, corsHeaders);
+      // Check messages permission — default to true for backward compatibility
+      const perms = (a.permissions || {}) as Record<string, any>;
+      const msgPerm = perms.messages;
+      if (msgPerm && msgPerm.view === false) {
+        return jsonResponse({ error: 'No messages permission for this client' }, 403, corsHeaders);
+      }
       return null;
     };
 
