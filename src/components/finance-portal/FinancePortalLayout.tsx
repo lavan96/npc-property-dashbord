@@ -206,13 +206,21 @@ export function FinancePortalLayout({ children }: { children?: ReactNode }) {
               transition={{ duration: 0.2 }}
               onClick={() => setMobileOpen(false)}
             />
-            {/* Drawer panel */}
+            {/* Drawer panel with swipe-to-close */}
             <motion.div
-              className="md:hidden fixed inset-y-0 left-0 z-50 w-72 bg-card border-r border-border shadow-2xl flex flex-col"
+              className="md:hidden fixed inset-y-0 left-0 z-50 w-72 bg-card border-r border-border shadow-2xl flex flex-col touch-pan-y"
               initial={{ x: '-100%' }}
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              drag="x"
+              dragConstraints={{ left: -288, right: 0 }}
+              dragElastic={0.1}
+              onDragEnd={(_e, info) => {
+                if (info.offset.x < -80 || info.velocity.x < -300) {
+                  setMobileOpen(false);
+                }
+              }}
             >
               {/* Header */}
               <div className="flex items-center justify-between p-4 border-b border-border">
