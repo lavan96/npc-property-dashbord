@@ -81,7 +81,7 @@ serve(async (req) => {
 
       const { data: portalUsers, error: pErr } = await supabase
         .from('finance_portal_users')
-        .select('id, finance_contact_id, email, is_active, invite_sent_at, invite_accepted_at, invite_token_expires_at, last_login_at, revoked_at, has_accepted_terms, has_completed_onboarding, created_at');
+        .select('id, finance_contact_id, email, is_active, invite_sent_at, invite_accepted_at, invite_token_expires_at, last_login_at, revoked_at, has_accepted_terms, has_completed_onboarding, terms_accepted_at, onboarding_completed_at, created_at');
 
       if (pErr) throw pErr;
 
