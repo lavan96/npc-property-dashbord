@@ -308,8 +308,50 @@ export const FINANCE_TABLE_CONFIGS: Record<FinanceTableKey, TableConfig> = {
       { key: 'date_of_birth', label: 'Date of Birth', type: 'date' },
     ],
   },
+
+  address_history: {
+    key: 'address_history',
+    table: 'client_address_history',
+    label: 'Address History',
+    singular: 'Address',
+    description: 'Current and previous residential addresses — 3 years of history required.',
+    primaryColumn: 'address',
+    secondaryColumn: 'living_situation',
+    fields: [
+      { key: 'address', label: 'Address', type: 'text', required: true },
+      { key: 'start_date', label: 'Start Date', type: 'date', required: true },
+      { key: 'end_date', label: 'End Date', type: 'date', helpText: 'Leave blank if current address' },
+      { key: 'is_current', label: 'Current address', type: 'boolean' },
+      { key: 'living_situation', label: 'Living Situation', type: 'select', options: [
+        { value: 'own_home', label: 'Own Home' },
+        { value: 'renting', label: 'Renting' },
+        { value: 'boarding', label: 'Boarding' },
+        { value: 'living_with_family', label: 'Living with Family' },
+        { value: 'company_housing', label: 'Company Housing' },
+        { value: 'other', label: 'Other' },
+      ]},
+      { key: 'residential_status', label: 'Residential Status', type: 'select', options: [
+        { value: 'australian_citizen', label: 'Australian Citizen' },
+        { value: 'permanent_resident', label: 'Permanent Resident' },
+        { value: 'temporary_visa', label: 'Temporary Visa' },
+        { value: 'other', label: 'Other' },
+      ]},
+      { key: 'contact_type', label: 'Applicant', type: 'select', options: [
+        { value: 'primary', label: 'Primary Applicant' },
+        { value: 'secondary', label: 'Secondary Applicant' },
+      ]},
+    ],
+    renderSummary: (r) => (
+      <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+        {r.living_situation && <Badge variant="outline">{r.living_situation.replace(/_/g, ' ')}</Badge>}
+        {r.start_date && <span>From {r.start_date}</span>}
+        {r.end_date && <span>to {r.end_date}</span>}
+        {r.is_current && <Badge variant="secondary" className="text-xs">current</Badge>}
+      </div>
+    ),
+  },
 };
 
 export const FINANCE_TABLE_KEYS: FinanceTableKey[] = [
-  'properties', 'income', 'expenses', 'assets', 'liabilities', 'employment', 'notes', 'contacts',
+  'properties', 'income', 'expenses', 'assets', 'liabilities', 'employment', 'address_history', 'notes', 'contacts',
 ];
