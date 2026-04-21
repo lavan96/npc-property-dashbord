@@ -1,17 +1,114 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, ArrowLeft, Mail, Phone, Lock } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  Loader2, ArrowLeft, Mail, Phone, Lock, Copy, Check,
+  Building2, DollarSign, CreditCard, Briefcase, PiggyBank,
+  FileText, Users, MapPin, StickyNote, FolderOpen,
+  Calculator, MessageSquare, ChevronRight, Shield, LockOpen
+} from 'lucide-react';
 import { FINANCE_TABLE_CONFIGS, FINANCE_TABLE_KEYS, FinanceTableKey } from '@/components/finance-portal/financeTableConfig';
 import { FinanceRecordList } from '@/components/finance-portal/FinanceRecordList';
 import { DocumentVaultPanel } from '@/components/finance-portal/DocumentVaultPanel';
 import { BorrowingCapacityPanel } from '@/components/finance-portal/BorrowingCapacityPanel';
 import { FinancePortalMessagesPanel } from '@/components/finance-portal/FinancePortalMessagesPanel';
+import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
+import { motion, AnimatePresence } from 'framer-motion';
+
+const TAB_ICONS: Record<string, any> = {
+  properties: Building2,
+  income: DollarSign,
+  expenses: CreditCard,
+  assets: PiggyBank,
+  liabilities: CreditCard,
+  employment: Briefcase,
+  notes: StickyNote,
+  contacts: Users,
+  address_history: MapPin,
+  documents: FolderOpen,
+  borrowing_capacity: Calculator,
+  messages: MessageSquare,
+};
+
+function getInitials(name?: string): string {
+  if (!name) return '?';
+  return name.split(' ').map(n => n[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+}
+
+function getAvatarColor(name?: string): string {
+  if (!name) return 'hsl(var(--primary))';
+  const hash = name.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+  const hues = [25, 45, 200, 260, 330, 150, 10, 280];
+  return `hsl(${hues[hash % hues.length]}, 55%, 50%)`;
+}
+
+function CopyButton({ text, label }: { text: string; label: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = useCallback(async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      toast.success(`${label} copied`);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error('Failed to copy');
+    }
+  }, [text, label]);
+
+  return (
+    <button
+      onClick={handleCopy}
+      className="p-1 rounded-md hover:bg-muted/60 transition-colors inline-flex items-center"
+      title={`Copy ${label}`}
+    >
+      {copied ? (
+        <Check className="h-3 w-3 text-emerald-500" />
+      ) : (
+        <Copy className="h-3 w-3 text-muted-foreground/50 hover:text-muted-foreground" />
+      )}
+    </button>
+  );
+}
+
+function ProfileSkeleton() {
+  return (
+    <div className="p-4 md:p-6 space-y-6 max-w-6xl mx-auto">
+      <Skeleton className="h-5 w-32" />
+      <div className="flex items-center gap-4">
+        <Skeleton className="h-16 w-16 rounded-full" />
+        <div className="space-y-2 flex-1">
+          <Skeleton className="h-6 w-48" />
+          <Skeleton className="h-4 w-64" />
+          <Skeleton className="h-4 w-40" />
+        </div>
+      </div>
+      <div className="flex gap-2 overflow-hidden">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-10 w-28 rounded-lg shrink-0" />
+        ))}
+      </div>
+      <Skeleton className="h-64 w-full rounded-xl" />
+    </div>
+  );
+}
+
+interface TabDef {
+  key: string;
+  label: string;
+  icon: any;
+  locked: boolean;
+  count?: number;
+}
 
 export default function FinancePortalClientProfile() {
   const { clientId } = useParams<{ clientId: string }>();
@@ -27,37 +124,71 @@ export default function FinancePortalClientProfile() {
         client_id: clientId,
       });
       if (error) throw new Error(error.message);
-      return data as { client: any; permissions: Record<string, { view: boolean; edit: boolean; delete: boolean }> };
+      return data as {
+        client: any;
+        permissions: Record<string, { view: boolean; edit: boolean; delete: boolean }>;
+        counts?: Record<string, number>;
+      };
     },
     enabled: !!clientId,
   });
 
   const permissions = data?.permissions || {};
-  const visibleTabs = useMemo(
-    () => FINANCE_TABLE_KEYS.filter(k => permissions[k]?.view),
-    [permissions]
-  );
-  // Documents permission defaults to true (view+edit) when assignment exists but key is missing,
-  // matching the edge function default. Hide only if explicitly { view: false }.
-  const docsVisible = permissions.documents ? !!permissions.documents.view : true;
-  const bcVisible = permissions.borrowing_capacity ? !!permissions.borrowing_capacity.view : true;
-  const messagesVisible = permissions.messages ? !!permissions.messages.view : true;
-  const defaultTab = initialTab || visibleTabs[0] || (docsVisible ? 'documents' : (bcVisible ? 'borrowing_capacity' : (messagesVisible ? 'messages' : '')));
+  const counts = data?.counts || {};
 
-  if (isLoading) {
-    return (
-      <div className="p-6"><div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div></div>
-    );
-  }
+  // Build tab definitions with icons, lock status, and counts
+  const allTabs = useMemo(() => {
+    const tabs: TabDef[] = [];
+
+    // Standard table tabs
+    FINANCE_TABLE_KEYS.forEach((k) => {
+      const hasView = permissions[k]?.view;
+      tabs.push({
+        key: k,
+        label: FINANCE_TABLE_CONFIGS[k].label,
+        icon: TAB_ICONS[k] || FileText,
+        locked: !hasView,
+        count: counts[k],
+      });
+    });
+
+    // Special tabs
+    const docsVisible = permissions.documents ? !!permissions.documents.view : true;
+    tabs.push({ key: 'documents', label: 'Documents', icon: FolderOpen, locked: !docsVisible, count: counts.documents });
+
+    const bcVisible = permissions.borrowing_capacity ? !!permissions.borrowing_capacity.view : true;
+    tabs.push({ key: 'borrowing_capacity', label: 'Borrowing Capacity', icon: Calculator, locked: !bcVisible });
+
+    const msgVisible = permissions.messages ? !!permissions.messages.view : true;
+    tabs.push({ key: 'messages', label: 'Messages', icon: MessageSquare, locked: !msgVisible, count: counts.messages });
+
+    return tabs;
+  }, [permissions, counts]);
+
+  const unlockedTabs = allTabs.filter(t => !t.locked);
+  const defaultTab = initialTab && unlockedTabs.some(t => t.key === initialTab)
+    ? initialTab
+    : unlockedTabs[0]?.key || '';
+
+  const [activeTab, setActiveTab] = useState(defaultTab);
+
+  // Update active tab when default changes
+  useMemo(() => {
+    if (!activeTab && defaultTab) setActiveTab(defaultTab);
+  }, [defaultTab]);
+
+  if (isLoading) return <ProfileSkeleton />;
 
   if (error || !data?.client) {
     const msg = (error as Error)?.message || 'Client not accessible';
     return (
       <div className="p-6 max-w-3xl mx-auto">
         <Card>
-          <CardContent className="py-12 text-center">
-            <Lock className="h-10 w-10 mx-auto text-muted-foreground opacity-50 mb-3" />
-            <p className="text-sm text-destructive">{msg}</p>
+          <CardContent className="py-16 text-center">
+            <div className="p-4 rounded-full bg-destructive/5 mx-auto w-fit mb-4">
+              <Lock className="h-10 w-10 text-destructive/40" />
+            </div>
+            <p className="text-sm text-destructive font-medium">{msg}</p>
             <Button asChild variant="outline" className="mt-4 gap-2">
               <Link to="/finance/clients"><ArrowLeft className="h-4 w-4" /> Back to clients</Link>
             </Button>
@@ -68,91 +199,168 @@ export default function FinancePortalClientProfile() {
   }
 
   const client = data.client;
+  const name = client.primary_contact_name || '—';
+  const avatarBg = getAvatarColor(name);
+  const status = (client.status || 'active').toLowerCase();
 
   return (
-    <div className="p-6 space-y-6 max-w-6xl mx-auto">
-      <div>
-        <Button variant="ghost" asChild size="sm" className="gap-1 mb-3 -ml-2">
-          <Link to="/finance/clients"><ArrowLeft className="h-4 w-4" /> Back to clients</Link>
-        </Button>
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-              <div>
-                <CardTitle className="text-2xl">
-                  {client.primary_contact_name}
-                  {client.secondary_contact_name && (
-                    <span className="text-base text-muted-foreground font-normal ml-2">
-                      & {client.secondary_contact_name}
-                    </span>
-                  )}
-                </CardTitle>
-                <CardDescription className="mt-2 space-y-1">
-                  {client.primary_contact_email && (
-                    <div className="flex items-center gap-2 text-sm"><Mail className="h-3.5 w-3.5" /> {client.primary_contact_email}</div>
-                  )}
-                  {client.primary_contact_phone && (
-                    <div className="flex items-center gap-2 text-sm"><Phone className="h-3.5 w-3.5" /> {client.primary_contact_phone}</div>
-                  )}
-                </CardDescription>
+    <div className="p-4 md:p-6 space-y-6 max-w-6xl mx-auto">
+      {/* Back button */}
+      <Button variant="ghost" asChild size="sm" className="gap-1.5 -ml-2 text-muted-foreground hover:text-foreground">
+        <Link to="/finance/clients"><ArrowLeft className="h-4 w-4" /> Back to clients</Link>
+      </Button>
+
+      {/* Profile Header */}
+      <Card className="overflow-hidden">
+        {/* Gold accent stripe */}
+        <div className="h-1 bg-gradient-to-r from-primary/80 via-primary to-primary/60" />
+        <CardContent className="pt-6 pb-5">
+          <div className="flex flex-col sm:flex-row gap-4 sm:gap-5">
+            {/* Large Avatar */}
+            <Avatar className="h-16 w-16 sm:h-20 sm:w-20 border-3 border-border/30 shrink-0 self-center sm:self-start">
+              <AvatarFallback
+                className="font-bold text-xl sm:text-2xl text-white"
+                style={{ backgroundColor: avatarBg }}
+              >
+                {getInitials(name)}
+              </AvatarFallback>
+            </Avatar>
+
+            {/* Info */}
+            <div className="flex-1 min-w-0 text-center sm:text-left">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
+                <h1 className="text-xl sm:text-2xl font-bold text-foreground truncate">{name}</h1>
+                {client.secondary_contact_name && (
+                  <span className="text-sm text-muted-foreground">& {client.secondary_contact_name}</span>
+                )}
+                <Badge variant="outline" className="capitalize w-fit mx-auto sm:mx-0">{status}</Badge>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {client.status && <Badge variant="secondary">{client.status}</Badge>}
-                <Badge variant="outline">{visibleTabs.length + (docsVisible ? 1 : 0) + (bcVisible ? 1 : 0) + (messagesVisible ? 1 : 0)} of 12 sections accessible</Badge>
+
+              {/* Contact info with copy buttons */}
+              <div className="mt-2 space-y-1">
+                {client.primary_contact_email && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground justify-center sm:justify-start">
+                    <Mail className="h-3.5 w-3.5 text-muted-foreground/60" />
+                    <span className="truncate">{client.primary_contact_email}</span>
+                    <CopyButton text={client.primary_contact_email} label="Email" />
+                  </div>
+                )}
+                {client.primary_contact_phone && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground justify-center sm:justify-start">
+                    <Phone className="h-3.5 w-3.5 text-muted-foreground/60" />
+                    <span>{client.primary_contact_phone}</span>
+                    <CopyButton text={client.primary_contact_phone} label="Phone" />
+                  </div>
+                )}
+              </div>
+
+              {/* Permission summary */}
+              <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground/60 justify-center sm:justify-start">
+                <Shield className="h-3 w-3" />
+                <span>{unlockedTabs.length} of {allTabs.length} sections accessible</span>
               </div>
             </div>
-          </CardHeader>
-        </Card>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
 
-      {visibleTabs.length === 0 && !docsVisible && !bcVisible && !messagesVisible ? (
+      {/* Scrollable Tab Bar */}
+      {unlockedTabs.length === 0 ? (
         <Card>
-          <CardContent className="py-12 text-center">
-            <Lock className="h-10 w-10 mx-auto text-muted-foreground opacity-50 mb-3" />
-            <p className="text-sm text-muted-foreground">
+          <CardContent className="py-16 text-center">
+            <div className="p-4 rounded-full bg-muted mx-auto w-fit mb-4">
+              <Lock className="h-10 w-10 text-muted-foreground/30" />
+            </div>
+            <p className="font-medium text-foreground mb-1">No accessible sections</p>
+            <p className="text-sm text-muted-foreground max-w-sm mx-auto">
               You have been assigned to this client but have no view permissions on any section. Contact your NPC manager.
             </p>
           </CardContent>
         </Card>
       ) : (
-        <Tabs defaultValue={defaultTab}>
-          <TabsList className="flex-wrap h-auto">
-            {visibleTabs.map(k => (
-              <TabsTrigger key={k} value={k} className="text-xs">
-                {FINANCE_TABLE_CONFIGS[k].label}
-              </TabsTrigger>
-            ))}
-            {docsVisible && (
-              <TabsTrigger value="documents" className="text-xs">Documents</TabsTrigger>
-            )}
-            {bcVisible && (
-              <TabsTrigger value="borrowing_capacity" className="text-xs">Borrowing Capacity</TabsTrigger>
-            )}
-            {messagesVisible && (
-              <TabsTrigger value="messages" className="text-xs">Messages</TabsTrigger>
-            )}
-          </TabsList>
-          {visibleTabs.map(k => (
-            <TabsContent key={k} value={k} className="mt-4">
-              <FinanceRecordList clientId={clientId!} config={FINANCE_TABLE_CONFIGS[k]} />
-            </TabsContent>
-          ))}
-          {docsVisible && (
-            <TabsContent value="documents" className="mt-4">
-              <DocumentVaultPanel clientId={clientId!} />
-            </TabsContent>
-          )}
-          {bcVisible && (
-            <TabsContent value="borrowing_capacity" className="mt-4">
-              <BorrowingCapacityPanel clientId={clientId!} />
-            </TabsContent>
-          )}
-          {messagesVisible && (
-            <TabsContent value="messages" className="mt-4">
-              <FinancePortalMessagesPanel clientId={clientId!} />
-            </TabsContent>
-          )}
-        </Tabs>
+        <>
+          <TooltipProvider delayDuration={300}>
+            <ScrollArea className="w-full">
+              <div className="flex gap-1.5 pb-2 px-0.5">
+                {allTabs.map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = activeTab === tab.key;
+                  const isLocked = tab.locked;
+
+                  const tabButton = (
+                    <button
+                      key={tab.key}
+                      onClick={() => !isLocked && setActiveTab(tab.key)}
+                      disabled={isLocked}
+                      className={cn(
+                        'flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all duration-200 shrink-0 border',
+                        isActive
+                          ? 'bg-primary text-primary-foreground border-primary shadow-md shadow-primary/20'
+                          : isLocked
+                            ? 'bg-muted/30 text-muted-foreground/40 border-border/30 cursor-not-allowed'
+                            : 'bg-card text-muted-foreground border-border/50 hover:border-primary/20 hover:text-foreground hover:bg-primary/5'
+                      )}
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">{tab.label}</span>
+                      {tab.count != null && tab.count > 0 && (
+                        <Badge
+                          variant={isActive ? 'secondary' : 'outline'}
+                          className={cn(
+                            'h-4 min-w-[16px] px-1 text-[9px] font-bold',
+                            isActive && 'bg-primary-foreground/20 text-primary-foreground border-0'
+                          )}
+                        >
+                          {tab.count}
+                        </Badge>
+                      )}
+                      {isLocked ? (
+                        <Lock className="h-3 w-3 opacity-50" />
+                      ) : (
+                        !isActive && <LockOpen className="h-3 w-3 opacity-30" />
+                      )}
+                    </button>
+                  );
+
+                  if (isLocked) {
+                    return (
+                      <Tooltip key={tab.key}>
+                        <TooltipTrigger asChild>{tabButton}</TooltipTrigger>
+                        <TooltipContent side="bottom" className="text-xs">
+                          <Lock className="h-3 w-3 inline mr-1" />
+                          No permission to view {tab.label}
+                        </TooltipContent>
+                      </Tooltip>
+                    );
+                  }
+                  return tabButton;
+                })}
+              </div>
+              <ScrollBar orientation="horizontal" className="invisible" />
+            </ScrollArea>
+          </TooltipProvider>
+
+          {/* Tab Content */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.15 }}
+            >
+              {FINANCE_TABLE_KEYS.includes(activeTab as FinanceTableKey) && (
+                <FinanceRecordList
+                  clientId={clientId!}
+                  config={FINANCE_TABLE_CONFIGS[activeTab as FinanceTableKey]}
+                />
+              )}
+              {activeTab === 'documents' && <DocumentVaultPanel clientId={clientId!} />}
+              {activeTab === 'borrowing_capacity' && <BorrowingCapacityPanel clientId={clientId!} />}
+              {activeTab === 'messages' && <FinancePortalMessagesPanel clientId={clientId!} />}
+            </motion.div>
+          </AnimatePresence>
+        </>
       )}
     </div>
   );
