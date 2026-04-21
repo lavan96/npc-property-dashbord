@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,11 +18,14 @@ const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'destructive' | '
 
 export default function FinancePortalEarnings() {
   const { invokeFinanceFunction } = useFinancePortalAuth();
+  const [searchParams] = useSearchParams();
+  const highlightLatest = searchParams.get('highlight') === 'latest';
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<'commissions' | 'statements'>('commissions');
+  const [tab, setTab] = useState<'commissions' | 'statements'>(highlightLatest ? 'commissions' : 'commissions');
   const [kpis, setKpis] = useState<any>(null);
   const [commissions, setCommissions] = useState<any[]>([]);
   const [statements, setStatements] = useState<any[]>([]);
+  const latestRowRef = useRef<HTMLTableRowElement>(null);
 
   const refresh = async () => {
     setLoading(true);
