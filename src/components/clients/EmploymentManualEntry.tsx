@@ -76,6 +76,12 @@ export function EmploymentManualEntry({ clientId, contacts, onComplete }: Employ
 
   const previousEmployment = useMemo(() => existingEmployment.filter((e: any) => !e.is_current), [existingEmployment]);
 
+  // 3-year coverage for primary contact employment
+  const primaryCoverage = useMemo(() => {
+    const primaryEmp = existingEmployment.filter((e: any) => e.contact_type === 'primary' && !e.additional_contact_id);
+    return calculateCoverage(primaryEmp);
+  }, [existingEmployment]);
+
   const updateField = useCallback((field: keyof EmploymentFormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   }, []);
@@ -254,6 +260,8 @@ export function EmploymentManualEntry({ clientId, contacts, onComplete }: Employ
 
   return (
     <div className="space-y-4">
+      <ThreeYearCoverageWarning coverage={primaryCoverage} label="Employment History" />
+
       {existingEmployment.length > 0 ? (
         <div className="space-y-2">
           {existingEmployment.map((emp: any) => {
