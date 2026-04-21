@@ -7,7 +7,6 @@
  *     metadata (impersonator_finance_user_id, is_readonly).
  *   - The token is consumed and cannot be reused.
  */
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
 
 const corsHeaders = {
@@ -23,7 +22,7 @@ function jsonResponse(data: any, status = 200) {
   });
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {

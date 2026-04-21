@@ -16,7 +16,6 @@
  *   - unread_count             (partner only — total unread for the badge)
  *   - archive_thread           (staff only)
  */
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
 import { verifyAuth, createCorsHeaders } from "../_shared/auth.ts";
 import { notifyFinancePortalAssignees } from "../_shared/finance-portal-notify.ts";
@@ -40,7 +39,7 @@ function jsonResponse(data: any, status = 200, corsHeaders: Record<string, strin
   });
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = {
     ...createCorsHeaders(origin),

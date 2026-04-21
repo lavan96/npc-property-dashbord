@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
@@ -7,7 +6,7 @@ function delay(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   // This function is called by pg_cron — no auth needed
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',

@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from '../_shared/auth.ts';
 
@@ -39,7 +38,7 @@ const DEFAULT_SELECTS: Record<TableName, string> = {
   property_comparisons: 'id, property_count, property_addresses, property_states, report_title, report_ids, created_at, analysis_summary, executive_summary, rankings, recommendations, financial_comparison, location_comparison, risk_comparison, red_flags',
 };
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   // IMPORTANT: Declare corsHeaders BEFORE try block so it's available in catch
   const origin = req.headers.get('origin') || '';
   const corsHeaders = createCorsHeaders(origin);
