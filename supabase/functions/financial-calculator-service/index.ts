@@ -184,16 +184,20 @@ async function calculateFinancialProjections(input: LoanCalculationInput, supaba
   const customCapitalGrowth = input.capitalGrowthRate ? input.capitalGrowthRate / 100 : null;
   const customRentGrowth = input.rentGrowthRate ? input.rentGrowthRate / 100 : null;
   
+  // Fetch live CPI projections from cached economic data
+  const cpiProjections = await fetchCpiProjections(supabase);
+  const customCpiGrowth = input.cpiGrowthRate ? input.cpiGrowthRate / 100 : null;
+  
   const scenarios = customCapitalGrowth !== null ? {
     // When custom rate provided, use it as the "moderate" scenario with ±2% for conservative/optimistic
-    conservative: generateProjections({ ...input, interestRate }, monthlyPayment, annualCosts, Math.max(0, customCapitalGrowth - 0.02), customRentGrowth || 0.025),
-    moderate: generateProjections({ ...input, interestRate }, monthlyPayment, annualCosts, customCapitalGrowth, customRentGrowth || 0.03),
-    optimistic: generateProjections({ ...input, interestRate }, monthlyPayment, annualCosts, customCapitalGrowth + 0.02, customRentGrowth || 0.035)
+    conservative: generateProjections({ ...input, interestRate }, monthlyPayment, annualCosts, Math.max(0, customCapitalGrowth - 0.02), customRentGrowth || 0.025, customCpiGrowth, cpiProjections),
+    moderate: generateProjections({ ...input, interestRate }, monthlyPayment, annualCosts, customCapitalGrowth, customRentGrowth || 0.03, customCpiGrowth, cpiProjections),
+    optimistic: generateProjections({ ...input, interestRate }, monthlyPayment, annualCosts, customCapitalGrowth + 0.02, customRentGrowth || 0.035, customCpiGrowth, cpiProjections)
   } : {
     // Default scenario-based rates when no custom rate provided
-    conservative: generateProjections({ ...input, interestRate }, monthlyPayment, annualCosts, 0.02, 0.02),
-    moderate: generateProjections({ ...input, interestRate }, monthlyPayment, annualCosts, 0.04, 0.03),
-    optimistic: generateProjections({ ...input, interestRate }, monthlyPayment, annualCosts, 0.06, 0.04)
+    conservative: generateProjections({ ...input, interestRate }, monthlyPayment, annualCosts, 0.02, 0.02, customCpiGrowth, cpiProjections),
+    moderate: generateProjections({ ...input, interestRate }, monthlyPayment, annualCosts, 0.04, 0.03, customCpiGrowth, cpiProjections),
+    optimistic: generateProjections({ ...input, interestRate }, monthlyPayment, annualCosts, 0.06, 0.04, customCpiGrowth, cpiProjections)
   };
 
   // Calculate key metrics
