@@ -39,6 +39,7 @@ interface RequestBody {
     deals?: boolean;
     attributions?: boolean;
     reminders?: boolean;
+    addressHistory?: boolean;
   };
   session_token?: string;
 }
