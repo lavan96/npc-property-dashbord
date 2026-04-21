@@ -22,7 +22,9 @@ interface LoanCalculationInput {
   // Capital growth rate - if provided, uses this instead of hardcoded scenarios
   // This allows researched capital growth from Perplexity to cascade into projections
   capitalGrowthRate?: number;
-  // Rent growth rate (CPI) - optional override
+  // CPI / expense growth rate - independent macro indicator, NOT tied to capital growth
+  cpiGrowthRate?: number;
+  // Rent growth rate - optional override (defaults to CPI-aligned)
   rentGrowthRate?: number;
 }
 
