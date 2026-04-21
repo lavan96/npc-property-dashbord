@@ -1,5 +1,4 @@
 // Batch 7E.2 — Generated documents (loan/cover/etc) + DocuSign envelope tracking
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from '../_shared/auth.ts';
 
@@ -11,7 +10,7 @@ interface Body {
   session_token?: string;
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   const cors = createCorsHeaders(req.headers.get('origin'));
   if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
 

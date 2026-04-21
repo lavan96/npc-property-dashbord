@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { createCorsHeaders, verifyAuth, createUnauthorizedResponse } from "../_shared/auth.ts";
 import { logApiUsage, estimateCost, extractOpenAIUsage } from "../_shared/logApiUsage.ts";
@@ -6902,7 +6901,7 @@ async function executeGetRecentListings(args: any) {
 //  MAIN HANDLER
 // ============================================================
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
   const cors = createCorsHeaders(origin);
   if (req.method === 'OPTIONS') return new Response(null, { headers: cors });

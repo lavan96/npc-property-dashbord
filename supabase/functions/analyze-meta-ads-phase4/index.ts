@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 import { callLLMRaw } from '../_shared/llmRouter.ts';
@@ -308,7 +307,7 @@ async function extractMarketEvents(_apiKey: string): Promise<any> {
 
 // ─── Main Handler ────────────────────────────────────────────────────────────
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   const corsHeaders = createCorsHeaders();
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 

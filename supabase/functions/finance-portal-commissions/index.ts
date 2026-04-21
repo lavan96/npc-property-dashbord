@@ -24,7 +24,6 @@
  *   Admin ops require a custom_users JWT (verifyAuth via Authorization).
  *   Partner ops require a finance portal session token in body.finance_session_token.
  */
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
 import { createCorsHeaders, verifyAuth } from "../_shared/auth.ts";
 
@@ -145,7 +144,7 @@ async function resolvePartnerFromSession(supabase: any, sessionToken?: string) {
 }
 
 // ── Server ───────────────────────────────────────────────────────────────────
-serve(async (req) => {
+Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = createCorsHeaders(origin);
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });

@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
@@ -59,7 +58,7 @@ function mapContentType(contentType: string | undefined): string {
   return 'text';
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }

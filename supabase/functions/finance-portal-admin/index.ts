@@ -14,7 +14,6 @@
  *  - update_default_permissions: Save the default template
  *  - get_activity_log:          Paged activity feed
  */
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
 import { createCorsHeaders, verifyAuth } from "../_shared/auth.ts";
 
@@ -45,7 +44,7 @@ function normalizePermissions(input: any): Record<string, { view: boolean; edit:
   return out;
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = createCorsHeaders(origin);
 
