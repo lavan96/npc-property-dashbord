@@ -67,6 +67,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
 export function FinancePortalLayout({ children }: { children?: ReactNode }) {
   const { user, signOut } = useFinancePortalAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleLogout = async () => {
