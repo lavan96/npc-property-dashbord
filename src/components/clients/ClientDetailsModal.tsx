@@ -66,6 +66,7 @@ import { ClientVownetForms } from './ClientVownetForms';
 import { PropertyManualEntry } from './PropertyManualEntry';
 import { PersonalDetailsManualEntry } from './PersonalDetailsManualEntry';
 import { EmploymentManualEntry } from './EmploymentManualEntry';
+import { AddressHistoryManualEntry } from './AddressHistoryManualEntry';
 import { useClientContacts } from './hooks/useClientContacts';
 import { IncomeManualEntry } from './IncomeManualEntry';
 import { AssetManualEntry } from './AssetManualEntry';
@@ -770,6 +771,7 @@ NPC Team`
 
             <TabsContent value="employment" className={cn("space-y-4 mt-4", !isMobile && "max-w-3xl mx-auto w-full")}>
               <EmploymentManualEntry clientId={client.id} contacts={contacts} onComplete={() => refetchClient()} />
+              <AddressHistoryManualEntry clientId={client.id} contacts={contacts} onComplete={() => refetchClient()} />
             </TabsContent>
 
             <TabsContent value="financials" className={cn("space-y-6 mt-4", !isMobile && "max-w-3xl mx-auto w-full")}>

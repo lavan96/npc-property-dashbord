@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,8 @@ import { Loader2, ChevronDown, ChevronRight, DollarSign, Briefcase, Edit, Trash2
 import { toast } from 'sonner';
 import { usePortalUpdateData } from '@/hooks/usePortalData';
 import { convertToAnnual, FREQUENCY_OPTIONS, formatCurrency } from '@/components/clients/income/incomeSourceTypes';
+import { ThreeYearCoverageWarning } from '@/components/clients/ThreeYearCoverageWarning';
+import { calculateCoverage } from '@/utils/threeYearCoverage';
 
 const employmentTypeOptions = [
   { value: 'permanent', label: 'Permanent' },
@@ -163,8 +165,11 @@ export function PortalEmploymentForm({ existingEmployment, onRefresh }: PortalEm
     (form.overtime_essential || 0) + (form.overtime_non_essential || 0) +
     (form.allowance || 0) + (form.other_taxable_income || 0);
 
+  const employmentCoverage = useMemo(() => calculateCoverage(existingEmployment), [existingEmployment]);
+
   return (
     <div className="space-y-4">
+      <ThreeYearCoverageWarning coverage={employmentCoverage} label="Employment History" />
       {/* Existing Records */}
       {existingEmployment.length > 0 ? (
         <div className="space-y-2">

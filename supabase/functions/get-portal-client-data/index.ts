@@ -227,6 +227,17 @@ serve(async (req) => {
       result.employment = employment || [];
     }
 
+    // Fetch address history
+    if (include.addressHistory || include.employment) {
+      const { data: addressHistory } = await supabase
+        .from('client_address_history')
+        .select('*')
+        .eq('client_id', clientId)
+        .order('is_current', { ascending: false })
+        .order('start_date', { ascending: false });
+      result.addressHistory = addressHistory || [];
+    }
+
     // Fetch income sources
     if (include.income) {
       const { data: income } = await supabase

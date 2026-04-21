@@ -15,6 +15,8 @@ import { EmploymentFormFields, EmploymentFormData } from './EmploymentFormFields
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { formatCurrency, convertToAnnual } from './income/incomeSourceTypes';
 import { ContactInfo, getContactTabLabel } from './hooks/useClientContacts';
+import { ThreeYearCoverageWarning } from './ThreeYearCoverageWarning';
+import { calculateCoverage } from '@/utils/threeYearCoverage';
 
 interface EmploymentManualEntryProps {
   clientId: string;
@@ -73,6 +75,12 @@ export function EmploymentManualEntry({ clientId, contacts, onComplete }: Employ
   }, [existingEmployment]);
 
   const previousEmployment = useMemo(() => existingEmployment.filter((e: any) => !e.is_current), [existingEmployment]);
+
+  // 3-year coverage for primary contact employment
+  const primaryCoverage = useMemo(() => {
+    const primaryEmp = existingEmployment.filter((e: any) => e.contact_type === 'primary' && !e.additional_contact_id);
+    return calculateCoverage(primaryEmp);
+  }, [existingEmployment]);
 
   const updateField = useCallback((field: keyof EmploymentFormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -252,6 +260,8 @@ export function EmploymentManualEntry({ clientId, contacts, onComplete }: Employ
 
   return (
     <div className="space-y-4">
+      <ThreeYearCoverageWarning coverage={primaryCoverage} label="Employment History" />
+
       {existingEmployment.length > 0 ? (
         <div className="space-y-2">
           {existingEmployment.map((emp: any) => {
@@ -345,13 +355,16 @@ export function EmploymentManualEntry({ clientId, contacts, onComplete }: Employ
 
               {/* Dynamic contact tabs */}
               {contacts.map(contact => {
-                const contactEmployment = getEmploymentForContact(contact).filter((e: any) => e.is_current);
+                const contactEmployment = getEmploymentForContact(contact);
+                const currentEmployment = contactEmployment.filter((e: any) => e.is_current);
+                const contactCoverage = calculateCoverage(contactEmployment);
                 return (
                   <TabsContent key={contact.id} value={contact.id} className="space-y-4 mt-4">
-                    {contactEmployment.length > 0 && (
+                    <ThreeYearCoverageWarning coverage={contactCoverage} label={`${contact.name} Employment`} />
+                    {currentEmployment.length > 0 && (
                       <div className="space-y-2">
                         <Label className="text-xs text-muted-foreground">Current Employment — {contact.name}</Label>
-                        {contactEmployment.map((emp: any) => (
+                        {currentEmployment.map((emp: any) => (
                           <EmploymentCard key={emp.id} employment={emp} />
                         ))}
                       </div>

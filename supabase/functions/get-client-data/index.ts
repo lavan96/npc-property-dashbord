@@ -39,6 +39,7 @@ interface RequestBody {
     deals?: boolean;
     attributions?: boolean;
     reminders?: boolean;
+    addressHistory?: boolean;
   };
   session_token?: string;
 }
@@ -234,6 +235,15 @@ serve(async (req) => {
         fetchPromises.push(
           supabase.from('client_employment').select('*').eq('client_id', id)
             .then(({ data }) => { clientResult.employment = data || []; })
+        );
+      }
+
+      if (include.addressHistory) {
+        fetchPromises.push(
+          supabase.from('client_address_history').select('*').eq('client_id', id)
+            .order('is_current', { ascending: false })
+            .order('start_date', { ascending: false })
+            .then(({ data }) => { clientResult.addressHistory = data || []; })
         );
       }
 
