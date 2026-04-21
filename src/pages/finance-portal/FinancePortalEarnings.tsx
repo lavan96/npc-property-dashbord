@@ -48,6 +48,13 @@ export default function FinancePortalEarnings() {
 
   useEffect(() => { void refresh(); }, []);
 
+  // Scroll to latest row when highlight=latest and data loads
+  useEffect(() => {
+    if (!loading && highlightLatest && latestRowRef.current) {
+      latestRowRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [loading, highlightLatest]);
+
   const downloadStatement = async (id: string, type: 'pdf' | 'csv') => {
     const { data, error } = await invokeFinanceFunction('finance-portal-commissions', {
       operation: 'partner_statement_pdf_url', statement_id: id,
