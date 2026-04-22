@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { PortalEmptyState } from '@/components/portal/PortalEmptyState';
+import { PortalPanel, PortalPanelContent, PortalPanelHeader, PortalPanelTitle } from '@/components/portal/PortalSurface';
 
 const SUPABASE_URL = "https://dduzbchuswwbefdunfct.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkdXpiY2h1c3d3YmVmZHVuZmN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0NDM4NzksImV4cCI6MjA3MTAxOTg3OX0.eSYU6fxIc3tBQuGLsdBRff0alBMkNfvv7OpW0efNjxk";
@@ -51,27 +53,27 @@ const reportTypes = [
     label: 'Portfolio Performance Review',
     description: 'A comprehensive analysis of your entire investment portfolio performance, equity growth, and projections.',
     icon: BarChart3,
-    color: 'border-emerald-200 bg-emerald-500/5 hover:bg-emerald-500/10',
-    activeColor: 'border-emerald-500 bg-emerald-500/10 ring-2 ring-emerald-500/20',
-    iconColor: 'text-emerald-600',
+    color: 'border-success/20 bg-success/10 hover:bg-success/15',
+    activeColor: 'border-success bg-success/15 ring-2 ring-success/20',
+    iconColor: 'text-success',
   },
   {
     value: 'borrowing_capacity',
     label: 'Borrowing Capacity Snapshot',
     description: 'An updated assessment of your current borrowing power based on income, expenses, and existing commitments.',
     icon: PiggyBank,
-    color: 'border-amber-200 bg-amber-500/5 hover:bg-amber-500/10',
-    activeColor: 'border-amber-500 bg-amber-500/10 ring-2 ring-amber-500/20',
-    iconColor: 'text-amber-600',
+    color: 'border-warning/20 bg-warning/10 hover:bg-warning/15',
+    activeColor: 'border-warning bg-warning/15 ring-2 ring-warning/20',
+    iconColor: 'text-warning',
   },
   {
     value: 'investment_property',
     label: 'Investment Property Report',
     description: 'Detailed investment analysis for a specific property — from your portfolio or a new property you\'re considering.',
     icon: Building2,
-    color: 'border-blue-200 bg-blue-500/5 hover:bg-blue-500/10',
-    activeColor: 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/20',
-    iconColor: 'text-blue-600',
+    color: 'border-primary/20 bg-primary/10 hover:bg-primary/15',
+    activeColor: 'border-primary bg-primary/15 ring-2 ring-primary/20',
+    iconColor: 'text-primary',
   },
 ];
 
@@ -229,12 +231,12 @@ export function PortalRequestReportForm({ properties, onSubmitted, onCancel }: P
 
   if (submitted && submittedSummary) {
     return (
-      <Card className="border-emerald-200 bg-emerald-500/5">
-        <CardContent className="py-8 text-center space-y-3">
-          <CheckCircle2 className="h-12 w-12 text-emerald-500 mx-auto" />
+      <PortalPanel className="border-success/20 bg-success/10">
+        <PortalPanelContent className="py-8 text-center space-y-3">
+          <CheckCircle2 className="mx-auto h-12 w-12 text-success" />
           <div>
-            <p className="text-sm font-semibold text-foreground">Request Submitted!</p>
-            <p className="text-xs text-muted-foreground mt-1">Your advisor will review this and prepare the report for you.</p>
+            <p className="text-sm font-semibold text-foreground">Request submitted</p>
+            <p className="mt-1 text-xs text-muted-foreground">Your advisor will review this and prepare the report for you.</p>
           </div>
           <div className="mx-auto max-w-xs rounded-lg border bg-background p-3 text-left space-y-1.5">
             <div className="flex items-center gap-2 text-xs">
@@ -254,25 +256,25 @@ export function PortalRequestReportForm({ properties, onSubmitted, onCancel }: P
               </div>
             )}
           </div>
-        </CardContent>
-      </Card>
+        </PortalPanelContent>
+      </PortalPanel>
     );
   }
 
   return (
-    <Card>
-      <CardHeader className="pb-4">
+    <PortalPanel>
+      <PortalPanelHeader className="pb-4">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2">
+          <PortalPanelTitle className="text-base">
             <Send className="h-4 w-4 text-primary" />
             Request a Report
-          </CardTitle>
+          </PortalPanelTitle>
           <Button variant="ghost" size="icon" onClick={onCancel} className="h-8 w-8">
             <X className="h-4 w-4" />
           </Button>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-5">
+      </PortalPanelHeader>
+      <PortalPanelContent className="space-y-5">
         {/* Report Type Selection */}
         <div className="space-y-2">
           <Label className="text-sm font-medium">What type of report do you need?</Label>
@@ -418,7 +420,7 @@ export function PortalRequestReportForm({ properties, onSubmitted, onCancel }: P
             )}
           </Button>
         </div>
-      </CardContent>
-    </Card>
+      </PortalPanelContent>
+    </PortalPanel>
   );
 }

@@ -17,7 +17,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useDropzone } from 'react-dropzone';
 import { useQueryClient } from '@tanstack/react-query';
-import { PortalEmptyState } from '@/components/finance-portal/PortalEmptyState';
+import { PortalEmptyState } from '@/components/portal/PortalEmptyState';
+import { PortalPanel, PortalPanelContent } from '@/components/portal/PortalSurface';
 
 function formatFileSize(bytes?: number | null): string {
   if (!bytes) return '—';
@@ -28,20 +29,20 @@ function formatFileSize(bytes?: number | null): string {
 
 function getFileIcon(fileType?: string | null) {
   if (!fileType) return <File className="h-5 w-5" />;
-  if (fileType.includes('pdf')) return <FileText className="h-5 w-5 text-red-500" />;
-  if (fileType.includes('image')) return <Image className="h-5 w-5 text-blue-500" />;
-  if (fileType.includes('sheet') || fileType.includes('excel') || fileType.includes('csv')) return <FileSpreadsheet className="h-5 w-5 text-green-500" />;
+  if (fileType.includes('pdf')) return <FileText className="h-5 w-5 text-destructive" />;
+  if (fileType.includes('image')) return <Image className="h-5 w-5 text-primary" />;
+  if (fileType.includes('sheet') || fileType.includes('excel') || fileType.includes('csv')) return <FileSpreadsheet className="h-5 w-5 text-success" />;
   return <FileIcon className="h-5 w-5 text-muted-foreground" />;
 }
 
 function getCategoryColor(category: string): string {
   const colors: Record<string, string> = {
-    'identification': 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-    'financial': 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400',
-    'property': 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
-    'legal': 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
-    'report': 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-400',
-    'general': 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400',
+    'identification': 'border border-primary/20 bg-primary/10 text-primary',
+    'financial': 'border border-success/20 bg-success/10 text-success',
+    'property': 'border border-warning/20 bg-warning/10 text-warning',
+    'legal': 'border border-border/70 bg-muted text-foreground',
+    'report': 'border border-primary/20 bg-primary/10 text-primary',
+    'general': 'border border-border/70 bg-muted text-muted-foreground',
   };
   return colors[category?.toLowerCase()] || colors.general;
 }
@@ -263,9 +264,9 @@ export default function PortalDocuments() {
               )}
 
               {uploadSuccess ? (
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-                  <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                  <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Files uploaded successfully!</p>
+                <div className="flex items-center gap-2 rounded-lg border border-success/20 bg-success/10 p-3">
+                  <CheckCircle className="h-5 w-5 text-success" />
+                  <p className="text-sm font-medium text-success">Files uploaded successfully!</p>
                 </div>
               ) : (
                 <Button
@@ -318,8 +319,8 @@ export default function PortalDocuments() {
           onAction={() => setUploadOpen(true)}
         />
       ) : (
-        <Card className="client-portal-soft-panel overflow-hidden">
-          <CardContent className="p-0">
+        <PortalPanel className="overflow-hidden">
+          <PortalPanelContent className="p-0">
             <div className="divide-y divide-border">
               {filtered.map((file: any) => (
                 <div key={file.id} className="px-5 py-4 hover:bg-muted/30 transition-colors flex items-center gap-4">
@@ -347,8 +348,8 @@ export default function PortalDocuments() {
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
+          </PortalPanelContent>
+        </PortalPanel>
       )}
 
       {filtered.length > 0 && (

@@ -11,6 +11,8 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { format } from 'date-fns';
 import { PortalPropertyForm } from '@/components/portal/PortalPropertyForm';
 import { toast } from 'sonner';
+import { PortalEmptyState } from '@/components/portal/PortalEmptyState';
+import { PortalPanel, PortalPanelContent, portalStatCardClassName } from '@/components/portal/PortalSurface';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -96,13 +98,13 @@ export default function PortalProperties() {
       {/* Summary Stats */}
       {properties.length > 0 && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="client-portal-stat-card">
+          <Card className={portalStatCardClassName()}>
             <CardContent className="pt-5 pb-4">
               <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Total Properties</p>
               <p className="text-2xl font-bold text-foreground">{properties.length}</p>
             </CardContent>
           </Card>
-          <Card className="client-portal-stat-card">
+          <Card className={portalStatCardClassName()}>
             <CardContent className="pt-5 pb-4">
               <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Portfolio Value</p>
               <p className="text-2xl font-bold text-foreground">
@@ -110,7 +112,7 @@ export default function PortalProperties() {
               </p>
             </CardContent>
           </Card>
-          <Card className="client-portal-stat-card">
+          <Card className={portalStatCardClassName()}>
             <CardContent className="pt-5 pb-4">
               <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Monthly Income</p>
               <p className="text-2xl font-bold text-primary">
@@ -118,7 +120,7 @@ export default function PortalProperties() {
               </p>
             </CardContent>
           </Card>
-          <Card className="client-portal-stat-card">
+          <Card className={portalStatCardClassName()}>
             <CardContent className="pt-5 pb-4">
               <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Total Loans</p>
               <p className="text-2xl font-bold text-foreground">
@@ -131,16 +133,14 @@ export default function PortalProperties() {
 
       {/* Property Cards */}
       {properties.length === 0 ? (
-        <Card className="client-portal-soft-panel">
-          <CardContent className="py-12 text-center">
-            <Home className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
-            <p className="text-muted-foreground">No properties in your portfolio yet.</p>
-            <Button onClick={() => setShowForm(true)} size="sm" className="mt-4">
-              <Plus className="h-4 w-4 mr-1.5" />
-              Add Your First Property
-            </Button>
-          </CardContent>
-        </Card>
+        <PortalEmptyState
+          className="client-portal-soft-panel"
+          icon={<Home className="h-8 w-8" />}
+          title="No properties in your portfolio yet"
+          description="Add your first property to start tracking values, loans, rental income, and cash flow in one place."
+          actionLabel="Add Your First Property"
+          onAction={() => setShowForm(true)}
+        />
       ) : (
         <Accordion type="multiple" className="space-y-3">
           {properties.map((prop: any) => (

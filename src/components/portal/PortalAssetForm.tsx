@@ -11,6 +11,8 @@ import { Plus, Loader2, Trash2, Edit, PiggyBank, Car, Wallet, Building, Trending
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { usePortalUpdateData } from '@/hooks/usePortalData';
+import { PortalEmptyState } from '@/components/portal/PortalEmptyState';
+import { portalPanelClassName, portalStatCardClassName } from '@/components/portal/PortalSurface';
 
 interface PortalAssetFormProps {
   existingAssets: any[];
@@ -135,15 +137,15 @@ export function PortalAssetForm({ existingAssets, onRefresh }: PortalAssetFormPr
     <div className="space-y-4">
       {existingAssets.length > 0 ? (
         <div className="space-y-3">
-          <Card>
+          <Card className={portalStatCardClassName()}>
             <CardContent className="pt-5 pb-4">
               <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Total Asset Value</p>
-              <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{fmt(totalValue)}</p>
+              <p className="text-xl font-bold text-success">{fmt(totalValue)}</p>
             </CardContent>
           </Card>
 
           {existingAssets.map((a) => (
-            <Card key={a.id}>
+            <Card key={a.id} className={portalPanelClassName()}>
               <CardContent className="pt-4 pb-3">
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
@@ -152,7 +154,7 @@ export function PortalAssetForm({ existingAssets, onRefresh }: PortalAssetFormPr
                       <span className="text-sm font-medium">{getAssetLabel(a)}</span>
                       <Badge variant="outline" className="text-xs">{getTypeLabel(a.asset_type)}</Badge>
                     </div>
-                    <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400 mt-1">{fmt(a.value || 0)}</p>
+                    <p className="text-sm font-medium text-success mt-1">{fmt(a.value || 0)}</p>
                     {a.institution_name && a.asset_type !== 'superfund' && (
                       <p className="text-xs text-muted-foreground">{a.institution_name}</p>
                     )}
@@ -171,12 +173,12 @@ export function PortalAssetForm({ existingAssets, onRefresh }: PortalAssetFormPr
           ))}
         </div>
       ) : (
-        <Card>
-          <CardContent className="py-8 text-center text-muted-foreground">
-            <PiggyBank className="h-10 w-10 mx-auto mb-3 text-muted-foreground/30" />
-            <p>No assets recorded yet.</p>
-          </CardContent>
-        </Card>
+        <PortalEmptyState
+          className="client-portal-soft-panel"
+          icon={<PiggyBank className="h-8 w-8" />}
+          title="No assets recorded yet"
+          description="Add your assets to keep your balance sheet complete and give your advisor a clearer financial picture."
+        />
       )}
 
       <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>

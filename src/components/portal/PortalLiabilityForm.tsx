@@ -11,6 +11,8 @@ import { Plus, Loader2, Trash2, Edit, CreditCard, Home, Car, GraduationCap, Doll
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { usePortalUpdateData } from '@/hooks/usePortalData';
+import { PortalEmptyState } from '@/components/portal/PortalEmptyState';
+import { portalPanelClassName, portalStatCardClassName } from '@/components/portal/PortalSurface';
 
 interface PortalLiabilityFormProps {
   existingLiabilities: any[];
@@ -126,13 +128,13 @@ export function PortalLiabilityForm({ existingLiabilities, onRefresh }: PortalLi
       {existingLiabilities.length > 0 ? (
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
-            <Card>
+            <Card className={portalStatCardClassName()}>
               <CardContent className="pt-5 pb-4">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Total Balance</p>
                 <p className="text-xl font-bold text-destructive">{fmt(totalBalance)}</p>
               </CardContent>
             </Card>
-            <Card>
+            <Card className={portalStatCardClassName()}>
               <CardContent className="pt-5 pb-4">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Monthly Repayments</p>
                 <p className="text-xl font-bold text-foreground">{fmt(totalRepayments)}</p>
@@ -141,7 +143,7 @@ export function PortalLiabilityForm({ existingLiabilities, onRefresh }: PortalLi
           </div>
 
           {existingLiabilities.map((l) => (
-            <Card key={l.id}>
+            <Card key={l.id} className={portalPanelClassName()}>
               <CardContent className="pt-4 pb-3">
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
@@ -189,12 +191,12 @@ export function PortalLiabilityForm({ existingLiabilities, onRefresh }: PortalLi
           ))}
         </div>
       ) : (
-        <Card>
-          <CardContent className="py-8 text-center text-muted-foreground">
-            <CreditCard className="h-10 w-10 mx-auto mb-3 text-muted-foreground/30" />
-            <p>No liabilities recorded yet.</p>
-          </CardContent>
-        </Card>
+        <PortalEmptyState
+          className="client-portal-soft-panel"
+          icon={<CreditCard className="h-8 w-8" />}
+          title="No liabilities recorded yet"
+          description="Add mortgages, loans, and cards to complete your financial profile and repayment picture."
+        />
       )}
 
       <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>

@@ -10,6 +10,8 @@ import { toast } from 'sonner';
 import { usePortalUpdateData } from '@/hooks/usePortalData';
 import { ThreeYearCoverageWarning } from '@/components/clients/ThreeYearCoverageWarning';
 import { calculateCoverage } from '@/utils/threeYearCoverage';
+import { PortalEmptyState } from '@/components/portal/PortalEmptyState';
+import { portalPanelClassName } from '@/components/portal/PortalSurface';
 
 const livingSituationOptions = [
   { value: 'own_home', label: 'Own Home' },
@@ -134,15 +136,15 @@ export function PortalAddressHistoryForm({ existingAddresses, onRefresh }: Porta
       {existingAddresses.length > 0 ? (
         <div className="space-y-2">
           {existingAddresses.map((addr: any) => (
-            <Card key={addr.id} className="group">
+            <Card key={addr.id} className={portalPanelClassName('group')}>
               <CardContent className="pt-4">
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
                       <span className="font-medium text-sm">{addr.address || 'Unknown Address'}</span>
-                      {addr.is_current && <span className="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 px-2 py-0.5 rounded">Current</span>}
-                      {!addr.is_current && <span className="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-2 py-0.5 rounded">Previous</span>}
+                       {addr.is_current && <span className="rounded-full border border-success/20 bg-success/10 px-2 py-0.5 text-[10px] text-success">Current</span>}
+                       {!addr.is_current && <span className="rounded-full border border-warning/20 bg-warning/10 px-2 py-0.5 text-[10px] text-warning">Previous</span>}
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {addr.living_situation?.replace(/_/g, ' ') || 'Not specified'} • From: {addr.start_date || 'N/A'}
@@ -163,14 +165,16 @@ export function PortalAddressHistoryForm({ existingAddresses, onRefresh }: Porta
           ))}
         </div>
       ) : (
-        <div className="text-center py-6 text-muted-foreground">
-          <MapPin className="h-10 w-10 mx-auto mb-3 text-muted-foreground/30" />
-          <p className="text-sm">No address records yet.</p>
-        </div>
+        <PortalEmptyState
+          className="client-portal-soft-panel"
+          icon={<MapPin className="h-8 w-8" />}
+          title="No address records yet"
+          description="Add your address history so your profile stays complete and ready for lender reviews."
+        />
       )}
 
       {showForm ? (
-        <Card className="border-primary/20">
+        <Card className={portalPanelClassName('border-primary/20')}>
           <CardContent className="pt-4 space-y-4">
             <p className="text-sm font-medium">{editingId ? 'Edit Address' : 'Add Address'}</p>
 

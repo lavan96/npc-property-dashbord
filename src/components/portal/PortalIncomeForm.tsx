@@ -11,6 +11,8 @@ import {
   getSourceTotalAnnual,
   formatCurrency,
 } from '@/components/clients/income/incomeSourceTypes';
+import { PortalEmptyState } from '@/components/portal/PortalEmptyState';
+import { portalPanelClassName } from '@/components/portal/PortalSurface';
 
 interface PortalIncomeFormProps {
   existingIncome: IncomeSource[];
@@ -77,13 +79,13 @@ export function PortalIncomeForm({ existingIncome, onRefresh }: PortalIncomeForm
     <div className="space-y-4">
       {/* Total Summary */}
       {existingIncome.length > 0 && (
-        <Card className="border-emerald-200 dark:border-emerald-900/30 bg-emerald-500/5">
+        <Card className={portalPanelClassName('border-success/20 bg-success/10')}>
           <CardContent className="pt-4">
             <div className="flex items-center gap-2 mb-1">
-              <DollarSign className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-              <span className="font-medium text-emerald-600 dark:text-emerald-400">Total Income</span>
+              <DollarSign className="h-4 w-4 text-success" />
+              <span className="font-medium text-success">Total Income</span>
             </div>
-            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(combinedTotal)}/year</p>
+            <p className="text-2xl font-bold text-success">{formatCurrency(combinedTotal)}/year</p>
             <p className="text-sm text-muted-foreground">
               {formatCurrency(combinedTotal / 12)}/month • {existingIncome.length} source{existingIncome.length !== 1 ? 's' : ''}
             </p>
@@ -127,10 +129,12 @@ export function PortalIncomeForm({ existingIncome, onRefresh }: PortalIncomeForm
       )}
 
       {existingIncome.length === 0 && (
-        <div className="text-center py-6 text-muted-foreground">
-          <DollarSign className="h-10 w-10 mx-auto mb-3 text-muted-foreground/30" />
-          <p className="text-sm">No income sources yet.</p>
-        </div>
+        <PortalEmptyState
+          className="client-portal-soft-panel"
+          icon={<DollarSign className="h-8 w-8" />}
+          title="No income sources yet"
+          description="Add income sources to keep your financial profile up to date for reporting and borrowing assessments."
+        />
       )}
 
       <Button variant="outline" size="sm" className="w-full" onClick={() => setIsAdding(true)}>
