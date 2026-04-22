@@ -10,6 +10,8 @@
  *   5. Audits to finance_portal_activity_log
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
+import { buildProvenance, logClientActivity } from "../_shared/client-data-provenance.ts";
+import { buildNoteDedupeKey, createSyncEvent, resolveSyncConflict, sha256Text, SYNC_CONFLICT_WINDOW_MS } from "../_shared/client-sync.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -42,6 +44,77 @@ function jsonResponse(data: any, status = 200) {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
+}
+
+async function prepareFinanceNotePayload(supabase: any, clientId: string, payload: Record<string, any>, portalUser: any) {
+  const now = new Date().toISOString();
+  const content = String(payload.content || '');
+  const noteType = String(payload.note_type || 'general');
+  const contentHash = await sha256Text(`${noteType}:${content}`);
+  const dedupeKey = buildNoteDedupeKey({ clientId, noteType, content });
+  const windowStart = new Date(Date.now() - SYNC_CONFLICT_WINDOW_MS).toISOString();
+
+  const { data: existing } = await supabase
+    .from('client_notes')
+    .select('id, source_surface, created_at, updated_at, version_group_id, version_number, content_hash')
+    .eq('client_id', clientId)
+    .eq('dedupe_key', dedupeKey)
+    .gte('created_at', windowStart)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const isDuplicate = !!existing?.content_hash && existing.content_hash === contentHash;
+  const resolution = isDuplicate
+    ? {
+        status: 'duplicate' as const,
+        versionGroupId: existing?.version_group_id || crypto.randomUUID(),
+        versionNumber: existing?.version_number || 1,
+        supersedesEntityId: null,
+        conflictReason: 'Identical note already exists from a recent sync window',
+        shouldSupersedeExisting: false,
+      }
+    : resolveSyncConflict({ existing, incomingSurface: 'finance_portal', incomingTimestamp: now });
+
+  const provenance = buildProvenance({
+    sourceSurface: 'finance_portal',
+    sourceActorType: 'finance_user',
+    sourceActorName: portalUser.email ?? null,
+    sourceReference: portalUser.id ?? null,
+    sourceDetails: { finance_contact_id: portalUser.finance_contact_id ?? null, updated_via: 'finance-portal-client-data' },
+  });
+
+  return {
+    payload: {
+      ...payload,
+      ...provenance,
+      content_hash: contentHash,
+      dedupe_key: dedupeKey,
+      sync_status: resolution.status,
+      last_synced_at: now,
+      last_sync_error: resolution.status === 'conflict' || resolution.status === 'duplicate' ? resolution.conflictReason : null,
+      version_group_id: resolution.versionGroupId,
+      version_number: resolution.versionNumber,
+      supersedes_note_id: resolution.supersedesEntityId,
+      source_details: {
+        ...(provenance.source_details || {}),
+        content_hash: contentHash,
+        dedupe_key: dedupeKey,
+        sync_conflict_reason: resolution.conflictReason,
+      },
+    },
+    syncMeta: {
+      syncStatus: resolution.status,
+      dedupeKey,
+      contentHash,
+      versionGroupId: resolution.versionGroupId,
+      versionNumber: resolution.versionNumber,
+      supersedesEntityId: resolution.supersedesEntityId,
+      conflictReason: resolution.conflictReason,
+      shouldSupersedeExisting: resolution.shouldSupersedeExisting,
+      existingId: existing?.id || null,
+    },
+  };
 }
 
 Deno.serve(async (req) => {
@@ -195,9 +268,71 @@ Deno.serve(async (req) => {
       if (!dbTable) return jsonResponse({ error: 'Unknown table' }, 400);
       if (!permissions[table_key]?.edit) return jsonResponse({ error: 'No edit permission for ' + table_key }, 403);
 
-      const insert = { ...(payload || {}), client_id };
+      let insert = { ...(payload || {}), client_id };
+      let syncMeta: any = null;
+      if (dbTable === 'client_notes') {
+        const prepared = await prepareFinanceNotePayload(supabase, client_id, insert, portalUser);
+        insert = { ...prepared.payload, client_id };
+        syncMeta = prepared.syncMeta;
+      }
       const { data, error } = await supabase.from(dbTable).insert(insert).select().maybeSingle();
       if (error) throw error;
+
+      if (dbTable === 'client_notes' && data) {
+        if (syncMeta?.shouldSupersedeExisting && syncMeta.existingId) {
+          await supabase
+            .from('client_notes')
+            .update({
+              sync_status: 'superseded',
+              last_synced_at: new Date().toISOString(),
+              last_sync_error: syncMeta.conflictReason,
+              supersedes_note_id: data.id,
+            })
+            .eq('id', syncMeta.existingId)
+            .eq('client_id', client_id);
+        }
+
+        await logClientActivity(supabase, {
+          clientId: client_id,
+          activityType: 'note_added',
+          title: 'Note added from finance portal',
+          description: typeof data.content === 'string' ? data.content.slice(0, 160) : null,
+          metadata: {
+            note_id: data.id,
+            note_type: data.note_type,
+            sync_status: data.sync_status,
+            conflict_reason: data.last_sync_error || null,
+          },
+          provenance: {
+            sourceSurface: 'finance_portal',
+            sourceActorType: 'finance_user',
+            sourceActorName: portalUser.email ?? null,
+            sourceReference: portalUser.id ?? null,
+            sourceDetails: { note_id: data.id },
+          },
+        });
+
+        await createSyncEvent(supabase, {
+          clientId: client_id,
+          entityId: data.id,
+          entityTable: 'client_notes',
+          entityType: 'note',
+          sourceSurface: 'finance_portal',
+          sourceActorType: 'finance_user',
+          sourceActorName: portalUser.email ?? null,
+          sourceReference: portalUser.id ?? null,
+          sourceDetails: { note_type: data.note_type, operation: 'create' },
+          syncStatus: syncMeta?.syncStatus || data.sync_status || 'synced',
+          dedupeKey: syncMeta?.dedupeKey || data.dedupe_key || null,
+          contentHash: syncMeta?.contentHash || data.content_hash || null,
+          propagatedTo: ['internal_dashboard', 'client_portal'],
+          versionGroupId: syncMeta?.versionGroupId || data.version_group_id || null,
+          versionNumber: syncMeta?.versionNumber || data.version_number || 1,
+          supersedesEntityId: syncMeta?.supersedesEntityId || data.supersedes_note_id || null,
+          conflictReason: syncMeta?.conflictReason || data.last_sync_error || null,
+        });
+      }
+
       await audit('create_record', table_key, data?.id || null, { fields: Object.keys(payload || {}) });
       return jsonResponse({ success: true, record: data });
     }
@@ -214,6 +349,23 @@ Deno.serve(async (req) => {
       delete updates.id;
       delete updates.client_id;
 
+      if (dbTable === 'client_notes') {
+        const provenance = buildProvenance({
+          sourceSurface: 'finance_portal',
+          sourceActorType: 'finance_user',
+          sourceActorName: portalUser.email ?? null,
+          sourceReference: portalUser.id ?? null,
+          sourceDetails: { finance_contact_id: portalUser.finance_contact_id ?? null, updated_via: 'finance-portal-client-data' },
+        });
+        Object.assign(updates, provenance, {
+          content_hash: await sha256Text(`${String(updates.note_type || 'general')}:${String(updates.content || '')}`),
+          dedupe_key: buildNoteDedupeKey({ clientId: client_id, noteType: String(updates.note_type || 'general'), content: String(updates.content || '') }),
+          sync_status: 'synced',
+          last_synced_at: new Date().toISOString(),
+          last_sync_error: null,
+        });
+      }
+
       const { data, error } = await supabase
         .from(dbTable)
         .update(updates)
@@ -222,6 +374,48 @@ Deno.serve(async (req) => {
         .select()
         .maybeSingle();
       if (error) throw error;
+
+      if (dbTable === 'client_notes' && data) {
+        await logClientActivity(supabase, {
+          clientId: client_id,
+          activityType: 'note_updated',
+          title: 'Note updated from finance portal',
+          description: typeof data.content === 'string' ? data.content.slice(0, 160) : null,
+          metadata: {
+            note_id: data.id,
+            note_type: data.note_type,
+            sync_status: data.sync_status,
+          },
+          provenance: {
+            sourceSurface: 'finance_portal',
+            sourceActorType: 'finance_user',
+            sourceActorName: portalUser.email ?? null,
+            sourceReference: portalUser.id ?? null,
+            sourceDetails: { note_id: data.id },
+          },
+        });
+
+        await createSyncEvent(supabase, {
+          clientId: client_id,
+          entityId: data.id,
+          entityTable: 'client_notes',
+          entityType: 'note',
+          sourceSurface: 'finance_portal',
+          sourceActorType: 'finance_user',
+          sourceActorName: portalUser.email ?? null,
+          sourceReference: portalUser.id ?? null,
+          sourceDetails: { note_type: data.note_type, operation: 'update' },
+          syncStatus: data.sync_status || 'synced',
+          dedupeKey: data.dedupe_key || null,
+          contentHash: data.content_hash || null,
+          propagatedTo: ['internal_dashboard', 'client_portal'],
+          versionGroupId: data.version_group_id || null,
+          versionNumber: data.version_number || 1,
+          supersedesEntityId: data.supersedes_note_id || null,
+          conflictReason: data.last_sync_error || null,
+        });
+      }
+
       await audit('update_record', table_key, record_id, { fields: Object.keys(updates) });
       return jsonResponse({ success: true, record: data });
     }
