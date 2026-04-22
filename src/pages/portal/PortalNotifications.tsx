@@ -21,10 +21,10 @@ const typeIcons: Record<string, any> = {
 };
 
 const typeStyles: Record<string, string> = {
-  info: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
-  success: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-  warning: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
-  action: 'bg-primary/10 text-primary',
+  info: 'border border-primary/10 bg-card text-primary',
+  success: 'border border-primary/20 bg-primary/10 text-primary',
+  warning: 'border border-primary/20 bg-primary/10 text-primary',
+  action: 'border border-primary/20 bg-primary/10 text-primary',
 };
 
 const categoryIcons: Record<string, any> = {
@@ -94,10 +94,9 @@ export default function PortalNotifications() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="client-portal-page-header flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground tracking-tight flex items-center gap-2">
+          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-foreground">
             <Bell className="h-6 w-6 text-primary" />
             Notifications
           </h1>
@@ -114,7 +113,7 @@ export default function PortalNotifications() {
               <Button
                 variant="outline"
                 size="sm"
-                className="gap-1.5 text-xs"
+                className="gap-1.5 rounded-xl text-xs shadow-sm shadow-primary/5"
                 onClick={handleMarkAllRead}
               >
                 <CheckCheck className="h-3.5 w-3.5" />
@@ -127,7 +126,7 @@ export default function PortalNotifications() {
 
       {/* Filter Tabs */}
       <Tabs value={filter} onValueChange={setFilter}>
-        <TabsList className="w-full flex flex-wrap">
+        <TabsList className="flex w-full flex-wrap rounded-2xl border border-border/60 bg-card/70 p-1 shadow-lg shadow-primary/5">
           <TabsTrigger value="all" className="flex-1">All</TabsTrigger>
           <TabsTrigger value="unread" className="flex-1">
             Unread {unreadCount > 0 && `(${unreadCount})`}
@@ -141,7 +140,7 @@ export default function PortalNotifications() {
 
       {/* Notification List */}
       {filtered.length === 0 ? (
-        <Card>
+        <Card className="client-portal-soft-panel">
           <CardContent className="py-16 text-center">
             <div className="p-4 rounded-full bg-muted/50 w-fit mx-auto mb-4">
               <BellOff className="h-10 w-10 text-muted-foreground/40" />
@@ -163,7 +162,7 @@ export default function PortalNotifications() {
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">
                 {group.label}
               </p>
-              <Card className="shadow-sm overflow-hidden">
+              <Card className="client-portal-soft-panel overflow-hidden">
                 <CardContent className="p-0">
                   <div className="divide-y divide-border">
                     {group.items.map((notif) => {
@@ -176,8 +175,8 @@ export default function PortalNotifications() {
                           key={notif.id}
                           className={`px-5 py-4 transition-colors flex items-start gap-4 cursor-pointer ${
                             !notif.is_read
-                              ? 'bg-primary/[0.02] hover:bg-primary/[0.04]'
-                              : 'hover:bg-muted/30'
+                              ? 'bg-primary/[0.04] hover:bg-primary/[0.07]'
+                              : 'hover:bg-accent/20'
                           }`}
                           onClick={() => handleNotifClick(notif)}
                           role="button"

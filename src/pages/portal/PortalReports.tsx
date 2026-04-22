@@ -24,10 +24,10 @@ function getSessionToken(): string | null {
 }
 
 const reportTypeConfig: Record<string, { label: string; icon: typeof FileText; color: string }> = {
-  investment: { label: 'Investment Report', icon: FileBarChart, color: 'bg-blue-500/10 text-blue-600' },
-  portfolio: { label: 'Portfolio Review', icon: BarChart3, color: 'bg-emerald-500/10 text-emerald-600' },
-  borrowing_capacity: { label: 'Borrowing Capacity', icon: PiggyBank, color: 'bg-amber-500/10 text-amber-600' },
-  cash_flow: { label: 'Cash Flow Analysis', icon: TrendingUp, color: 'bg-purple-500/10 text-purple-600' },
+  investment: { label: 'Investment Report', icon: FileBarChart, color: 'border border-primary/20 bg-primary/10 text-primary' },
+  portfolio: { label: 'Portfolio Review', icon: BarChart3, color: 'border border-primary/20 bg-primary/10 text-primary' },
+  borrowing_capacity: { label: 'Borrowing Capacity', icon: PiggyBank, color: 'border border-primary/20 bg-primary/10 text-primary' },
+  cash_flow: { label: 'Cash Flow Analysis', icon: TrendingUp, color: 'border border-primary/20 bg-primary/10 text-primary' },
 };
 
 function getReportConfig(type: string) {
@@ -43,10 +43,10 @@ const filterOptions = [
 ];
 
 const requestStatusConfig: Record<string, { label: string; icon: typeof Clock; color: string }> = {
-  pending: { label: 'Pending', icon: Clock, color: 'bg-amber-500/10 text-amber-600 border-amber-200' },
-  in_progress: { label: 'In Progress', icon: ArrowRight, color: 'bg-blue-500/10 text-blue-600 border-blue-200' },
-  completed: { label: 'Completed', icon: CheckCircle2, color: 'bg-emerald-500/10 text-emerald-600 border-emerald-200' },
-  declined: { label: 'Declined', icon: XCircle, color: 'bg-red-500/10 text-red-600 border-red-200' },
+  pending: { label: 'Pending', icon: Clock, color: 'border border-primary/20 bg-primary/10 text-primary' },
+  in_progress: { label: 'In Progress', icon: ArrowRight, color: 'border border-primary/20 bg-primary/10 text-primary' },
+  completed: { label: 'Completed', icon: CheckCircle2, color: 'border border-primary/20 bg-primary/10 text-primary' },
+  declined: { label: 'Declined', icon: XCircle, color: 'border border-destructive/30 bg-destructive/10 text-destructive' },
 };
 
 const requestTypeLabels: Record<string, string> = {
@@ -136,12 +136,12 @@ export default function PortalReports() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
+      <div className="client-portal-page-header flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Reports</h1>
           <p className="text-muted-foreground mt-1">View reports and request new analyses</p>
         </div>
-        <Button onClick={() => setShowRequestForm(true)} className="shrink-0">
+        <Button onClick={() => setShowRequestForm(true)} className="shrink-0 rounded-xl shadow-lg shadow-primary/10">
           <Plus className="h-4 w-4 mr-1.5" />
           Request Report
         </Button>
@@ -156,7 +156,7 @@ export default function PortalReports() {
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
+        <TabsList className="rounded-2xl border border-border/60 bg-card/70 p-1 shadow-lg shadow-primary/5">
           <TabsTrigger value="reports" className="text-xs sm:text-sm">
             <FileText className="h-3.5 w-3.5 mr-1.5" />
             My Reports
@@ -202,7 +202,7 @@ export default function PortalReports() {
           )}
 
           {filtered.length === 0 ? (
-            <Card>
+            <Card className="client-portal-soft-panel">
               <CardContent className="py-12 text-center">
                 <Inbox className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
                 <p className="text-muted-foreground">
@@ -221,7 +221,7 @@ export default function PortalReports() {
                 const Icon = config.icon;
                 const isDownloading = downloadingId === report.id;
                 return (
-                  <Card key={report.id} className="hover:shadow-md transition-shadow">
+                  <Card key={report.id} className="client-portal-soft-panel transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-primary/10">
                     <CardContent className="p-4 sm:p-5">
                       <div className="flex items-start gap-3 sm:gap-4">
                         <div className={`p-2.5 rounded-xl ${config.color} shrink-0`}>
@@ -288,7 +288,7 @@ export default function PortalReports() {
 
         <TabsContent value="requests" className="mt-4 space-y-4">
           {reportRequests.length === 0 ? (
-            <Card>
+            <Card className="client-portal-soft-panel">
               <CardContent className="py-12 text-center">
                 <Send className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
                 <p className="text-muted-foreground font-medium">No report requests yet</p>
@@ -305,7 +305,7 @@ export default function PortalReports() {
                 const statusConf = requestStatusConfig[req.status] || requestStatusConfig.pending;
                 const StatusIcon = statusConf.icon;
                 return (
-                  <Card key={req.id} className="hover:shadow-md transition-shadow">
+                  <Card key={req.id} className="client-portal-soft-panel transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-primary/10">
                     <CardContent className="p-4 sm:p-5">
                       <div className="flex items-start gap-3">
                         <div className={`p-2 rounded-xl ${statusConf.color} shrink-0`}>

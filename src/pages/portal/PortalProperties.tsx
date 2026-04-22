@@ -67,7 +67,7 @@ export default function PortalProperties() {
   if (showForm || editingProperty) {
     return (
       <div className="space-y-6">
-        <div>
+        <div className="client-portal-page-header">
           <h1 className="text-2xl font-bold text-foreground">{editingProperty ? 'Edit Property' : 'Add Property'}</h1>
           <p className="text-muted-foreground mt-1">Enter all property details below</p>
         </div>
@@ -82,12 +82,12 @@ export default function PortalProperties() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="client-portal-page-header flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Properties</h1>
           <p className="text-muted-foreground mt-1">Your investment property portfolio</p>
         </div>
-        <Button onClick={() => setShowForm(true)} size="sm">
+        <Button onClick={() => setShowForm(true)} size="sm" className="rounded-xl shadow-lg shadow-primary/10">
           <Plus className="h-4 w-4 mr-1.5" />
           Add Property
         </Button>
@@ -96,13 +96,13 @@ export default function PortalProperties() {
       {/* Summary Stats */}
       {properties.length > 0 && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card>
+          <Card className="client-portal-stat-card">
             <CardContent className="pt-5 pb-4">
               <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Total Properties</p>
               <p className="text-2xl font-bold text-foreground">{properties.length}</p>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="client-portal-stat-card">
             <CardContent className="pt-5 pb-4">
               <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Portfolio Value</p>
               <p className="text-2xl font-bold text-foreground">
@@ -110,15 +110,15 @@ export default function PortalProperties() {
               </p>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="client-portal-stat-card">
             <CardContent className="pt-5 pb-4">
               <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Monthly Income</p>
-              <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+              <p className="text-2xl font-bold text-primary">
                 {fmt(properties.reduce((sum: number, p: any) => sum + (p.monthly_rental_income || 0), 0))}
               </p>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="client-portal-stat-card">
             <CardContent className="pt-5 pb-4">
               <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Total Loans</p>
               <p className="text-2xl font-bold text-foreground">
@@ -131,7 +131,7 @@ export default function PortalProperties() {
 
       {/* Property Cards */}
       {properties.length === 0 ? (
-        <Card>
+        <Card className="client-portal-soft-panel">
           <CardContent className="py-12 text-center">
             <Home className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
             <p className="text-muted-foreground">No properties in your portfolio yet.</p>
@@ -144,7 +144,7 @@ export default function PortalProperties() {
       ) : (
         <Accordion type="multiple" className="space-y-3">
           {properties.map((prop: any) => (
-            <AccordionItem key={prop.id} value={prop.id} className="border rounded-lg bg-card">
+            <AccordionItem key={prop.id} value={prop.id} className="rounded-2xl border border-border/60 bg-card/85 shadow-lg shadow-primary/5">
               <AccordionTrigger className="px-5 py-4 hover:no-underline">
                 <div className="flex items-center gap-4 text-left w-full pr-4">
                   <div className="p-2.5 rounded-xl bg-primary/10 shrink-0">
@@ -160,7 +160,7 @@ export default function PortalProperties() {
                     </div>
                   </div>
                   {prop.net_monthly_cashflow != null && (
-                    <div className={`text-right shrink-0 ${prop.net_monthly_cashflow >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive'}`}>
+                      <div className={`text-right shrink-0 ${prop.net_monthly_cashflow >= 0 ? 'text-primary' : 'text-destructive'}`}>
                       <p className="text-sm font-bold">{fmt(prop.net_monthly_cashflow)}</p>
                       <p className="text-xs text-muted-foreground">net/mo</p>
                     </div>

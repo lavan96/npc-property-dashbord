@@ -86,22 +86,22 @@ export default function PortalMessages() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground tracking-tight flex items-center gap-2">
+      <div className="client-portal-page-header">
+        <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-foreground">
           <MessageSquare className="h-6 w-6 text-primary" />
           Messages
         </h1>
-        <p className="text-muted-foreground mt-1 text-sm">
+        <p className="mt-1 text-sm text-muted-foreground">
           Communicate directly with your advisor
         </p>
       </div>
 
-      <Card className="shadow-sm overflow-hidden flex flex-col" style={{ height: 'calc(100vh - 280px)', minHeight: '400px' }}>
+      <Card className="client-portal-soft-panel flex flex-col overflow-hidden" style={{ height: 'calc(100vh - 280px)', minHeight: '400px' }}>
         {/* Messages Area */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center">
-              <div className="p-4 rounded-full bg-primary/5 mb-4">
+                <div className="mb-4 rounded-full border border-primary/10 bg-primary/5 p-4 shadow-lg shadow-primary/5">
                 <MessageCircle className="h-10 w-10 text-primary/40" />
               </div>
               <p className="text-muted-foreground font-medium">Start a conversation</p>
@@ -119,7 +119,7 @@ export default function PortalMessages() {
                 >
                   <Avatar className="h-8 w-8 shrink-0">
                     <AvatarFallback className={`text-xs font-semibold ${
-                      isClient ? 'bg-primary/10 text-primary' : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                      isClient ? 'bg-primary/10 text-primary' : 'bg-card text-primary border border-primary/10'
                     }`}>
                       {isClient ? getInitials(displayName) : (
                         <Headphones className="h-3.5 w-3.5" />
@@ -130,7 +130,7 @@ export default function PortalMessages() {
                     <div className={`px-4 py-2.5 rounded-2xl text-sm ${
                       isClient
                         ? 'bg-primary text-primary-foreground rounded-br-md'
-                        : 'bg-muted text-foreground rounded-bl-md'
+                        : 'border border-border/60 bg-card/90 text-foreground rounded-bl-md shadow-sm shadow-primary/5'
                     }`}>
                       {msg.message}
                     </div>
@@ -145,7 +145,7 @@ export default function PortalMessages() {
         </div>
 
         {/* Input Area */}
-        <div className="border-t border-border bg-card p-4">
+        <div className="border-t border-border/60 bg-card/90 p-4 backdrop-blur-sm">
           <div className="flex items-center gap-2">
             <Input
               ref={inputRef}
