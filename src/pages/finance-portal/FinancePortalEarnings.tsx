@@ -1,20 +1,25 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
 import { toast } from 'sonner';
 import {
   RefreshCw, Download, DollarSign, Wallet, Hourglass,
   CalendarCheck, TrendingUp, TrendingDown, Minus,
-  FileText, FileSpreadsheet, Receipt, BarChart3
+  FileText, FileSpreadsheet, Receipt, BarChart3,
+  CalendarRange, Filter, X
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { PortalEmptyState } from '@/components/finance-portal/PortalEmptyState';
 
 const fmt = (n: number) =>
   `$${(Number(n) || 0).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -144,6 +149,29 @@ function KpiSkeleton() {
   );
 }
 
+const normalizeDate = (value?: string | null) => {
+  if (!value) return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const isWithinRange = (value: string | null | undefined, startDate: string, endDate: string) => {
+  const parsed = normalizeDate(value);
+  if (!parsed) return false;
+
+  if (startDate) {
+    const start = new Date(`${startDate}T00:00:00`);
+    if (parsed < start) return false;
+  }
+
+  if (endDate) {
+    const end = new Date(`${endDate}T23:59:59.999`);
+    if (parsed > end) return false;
+  }
+
+  return true;
+};
+
 export default function FinancePortalEarnings() {
   const { invokeFinanceFunction } = useFinancePortalAuth();
   const [searchParams] = useSearchParams();
@@ -153,6 +181,9 @@ export default function FinancePortalEarnings() {
   const [kpis, setKpis] = useState<any>(null);
   const [commissions, setCommissions] = useState<any[]>([]);
   const [statements, setStatements] = useState<any[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const latestRowRef = useRef<HTMLTableRowElement>(null);
 
   const refresh = async () => {
@@ -181,6 +212,32 @@ export default function FinancePortalEarnings() {
       latestRowRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   }, [loading, highlightLatest]);
+
+  const currentStatusOptions = useMemo(() => {
+    const source = tab === 'commissions' ? commissions : statements;
+    return Array.from(new Set(source.map((item) => item.status).filter(Boolean))).sort();
+  }, [commissions, statements, tab]);
+
+  const filteredCommissions = useMemo(() => commissions.filter((commission) => {
+    const statusMatches = statusFilter === 'all' || commission.status === statusFilter;
+    const dateMatches = isWithinRange(commission.created_at, startDate, endDate);
+    return statusMatches && dateMatches;
+  }), [commissions, statusFilter, startDate, endDate]);
+
+  const filteredStatements = useMemo(() => statements.filter((statement) => {
+    const statusMatches = statusFilter === 'all' || statement.status === statusFilter;
+    const dateMatches = isWithinRange(statement.issued_at || statement.period_end, startDate, endDate);
+    return statusMatches && dateMatches;
+  }), [statements, statusFilter, startDate, endDate]);
+
+  const activeResultsCount = tab === 'commissions' ? filteredCommissions.length : filteredStatements.length;
+  const hasActiveFilters = statusFilter !== 'all' || Boolean(startDate) || Boolean(endDate);
+
+  const clearFilters = () => {
+    setStatusFilter('all');
+    setStartDate('');
+    setEndDate('');
+  };
 
   const downloadStatement = async (id: string, type: 'pdf' | 'csv') => {
     const { data, error } = await invokeFinanceFunction('finance-portal-commissions', {
