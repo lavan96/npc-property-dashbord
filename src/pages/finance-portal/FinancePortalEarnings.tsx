@@ -539,44 +539,63 @@ export default function FinancePortalEarnings() {
                 </CardContent>
               </Card>
 
-              {/* Mobile Cards */}
-              <div className="sm:hidden space-y-2">
-                {commissions.length === 0 ? (
-                  <Card className="border-dashed">
-                    <CardContent className="py-12 text-center">
-                      <Receipt className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-                      <p className="text-sm text-muted-foreground">No commissions recorded yet</p>
-                    </CardContent>
-                  </Card>
+              {/* Mobile + tablet cards */}
+              <div className="space-y-3 lg:hidden">
+                {filteredCommissions.length === 0 ? (
+                  <PortalEmptyState
+                    icon={<Receipt className="h-8 w-8" />}
+                    title={hasActiveFilters ? 'No commissions match these filters' : 'No commissions recorded yet'}
+                    description={hasActiveFilters ? 'Try a different date range or status to find the commission you need.' : 'Commissions will appear here as readable stacked cards with the most important values first.'}
+                    actionLabel={hasActiveFilters ? 'Clear filters' : undefined}
+                    onAction={hasActiveFilters ? clearFilters : undefined}
+                  />
                 ) : (
-                  commissions.map((c, idx) => (
+                  filteredCommissions.map((c, idx) => (
                     <Card
                       key={c.id}
                       className={cn(
-                        'transition-all',
+                        'transition-all hover:shadow-md hover:shadow-primary/5',
                         highlightLatest && idx === 0 && 'border-primary/30 bg-primary/5'
                       )}
                     >
-                      <CardContent className="py-3 px-4 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium text-sm truncate">{c.client_name_snapshot || '\u2014'}</span>
-                          <div className="flex items-center gap-1.5">
+                      <CardContent className="space-y-4 p-4 sm:p-5">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 space-y-1">
+                            <p className="text-base font-semibold leading-tight text-foreground break-words">
+                              {c.client_name_snapshot || '—'}
+                            </p>
+                            <p className="text-xs text-muted-foreground break-words sm:text-sm">
+                              {c.deal_type_snapshot || 'Deal type unavailable'}
+                            </p>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-1.5">
                             <span className={cn('h-2 w-2 rounded-full', STATUS_DOT[c.status] || 'bg-zinc-400')} />
                             <Badge variant={STATUS_VARIANT[c.status] || 'outline'} className="text-[10px] capitalize">
                               {c.status}
                             </Badge>
                           </div>
                         </div>
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <span>{format(new Date(c.created_at), 'd MMM yyyy')}</span>
-                          <span>{c.trigger_event || ''}</span>
-                        </div>
-                        <div className="flex items-center justify-between pt-1 border-t border-border/50">
-                          <div className="text-xs text-muted-foreground">
-                            Basis {fmt(c.basis_amount)} \u00d7 {Number(c.rate_pct).toFixed(2)}%
+
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+                            <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Net</div>
+                            <div className="mt-1 text-lg font-semibold tabular-nums text-primary">{fmt(c.net_amount)}</div>
                           </div>
-                          <div className="font-semibold text-sm tabular-nums text-primary">
-                            {fmt(c.net_amount)}
+                          <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+                            <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Basis × rate</div>
+                            <div className="mt-1 text-sm font-medium text-foreground">{fmt(c.basis_amount)}</div>
+                            <div className="text-xs text-muted-foreground">{Number(c.rate_pct).toFixed(2)}% applied</div>
+                          </div>
+                        </div>
+
+                        <div className="grid gap-3 border-t border-border/50 pt-3 sm:grid-cols-2">
+                          <div>
+                            <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Created</div>
+                            <div className="mt-1 text-sm text-foreground">{format(new Date(c.created_at), 'd MMM yyyy')}</div>
+                          </div>
+                          <div>
+                            <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Trigger</div>
+                            <div className="mt-1 text-sm text-foreground break-words">{c.trigger_event || '—'}</div>
                           </div>
                         </div>
                       </CardContent>
@@ -667,53 +686,58 @@ export default function FinancePortalEarnings() {
                 </CardContent>
               </Card>
 
-              {/* Mobile Cards */}
-              <div className="sm:hidden space-y-2">
-                {statements.length === 0 ? (
-                  <Card className="border-dashed">
-                    <CardContent className="py-12 text-center">
-                      <FileText className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-                      <p className="text-sm text-muted-foreground">No statements issued yet</p>
-                    </CardContent>
-                  </Card>
+              {/* Mobile + tablet cards */}
+              <div className="space-y-3 lg:hidden">
+                {filteredStatements.length === 0 ? (
+                  <PortalEmptyState
+                    icon={<FileText className="h-8 w-8" />}
+                    title={hasActiveFilters ? 'No statements match these filters' : 'No statements issued yet'}
+                    description={hasActiveFilters ? 'Reset the filters or broaden the date range to see more statements.' : 'Statements will appear here as stacked cards with totals and downloads surfaced first.'}
+                    actionLabel={hasActiveFilters ? 'Clear filters' : undefined}
+                    onAction={hasActiveFilters ? clearFilters : undefined}
+                  />
                 ) : (
-                  statements.map((s) => (
-                    <Card key={s.id}>
-                      <CardContent className="py-3 px-4 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium tabular-nums">{s.period_start} \u2192 {s.period_end}</span>
-                          <div className="flex items-center gap-1.5">
+                  filteredStatements.map((s) => (
+                    <Card key={s.id} className="transition-all hover:shadow-md hover:shadow-primary/5">
+                      <CardContent className="space-y-4 p-4 sm:p-5">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 space-y-1">
+                            <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Period</div>
+                            <p className="text-base font-semibold leading-tight text-foreground break-words">
+                              {s.period_start} → {s.period_end}
+                            </p>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-1.5">
                             <span className={cn('h-2 w-2 rounded-full', STATUS_DOT[s.status] || 'bg-zinc-400')} />
                             <Badge variant={STATUS_VARIANT[s.status] || 'outline'} className="text-[10px] capitalize">
                               {s.status}
                             </Badge>
                           </div>
                         </div>
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <span>{s.line_count} line{s.line_count !== 1 ? 's' : ''}</span>
-                          <span>{s.issued_at ? format(new Date(s.issued_at), 'd MMM yyyy') : ''}</span>
+
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+                            <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Net total</div>
+                            <div className="mt-1 text-lg font-semibold tabular-nums text-primary">{fmt(s.total_net)}</div>
+                          </div>
+                          <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
+                            <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Lines & issued</div>
+                            <div className="mt-1 text-sm font-medium text-foreground">{s.line_count} line{s.line_count !== 1 ? 's' : ''}</div>
+                            <div className="text-xs text-muted-foreground">{s.issued_at ? format(new Date(s.issued_at), 'd MMM yyyy') : 'Not issued yet'}</div>
+                          </div>
                         </div>
-                        <div className="flex items-center justify-between pt-2 border-t border-border/50">
-                          <div className="font-semibold tabular-nums text-primary">{fmt(s.total_net)}</div>
-                          <div className="flex gap-1">
+
+                        <div className="border-t border-border/50 pt-3">
+                          <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Downloads</div>
+                          <div className="flex flex-wrap gap-2">
                             {s.pdf_storage_path && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => downloadStatement(s.id, 'pdf')}
-                                className="gap-1 rounded-lg text-xs h-8"
-                              >
+                              <Button size="sm" variant="outline" onClick={() => downloadStatement(s.id, 'pdf')} className="h-9 gap-1.5 rounded-lg text-xs focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                                 <FileText className="h-3.5 w-3.5 text-red-500" />
                                 PDF
                               </Button>
                             )}
                             {s.remittance_csv_path && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => downloadStatement(s.id, 'csv')}
-                                className="gap-1 rounded-lg text-xs h-8"
-                              >
+                              <Button size="sm" variant="outline" onClick={() => downloadStatement(s.id, 'csv')} className="h-9 gap-1.5 rounded-lg text-xs focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                                 <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-500" />
                                 CSV
                               </Button>
