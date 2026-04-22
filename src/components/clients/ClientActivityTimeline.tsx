@@ -18,6 +18,8 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { SyncStatusBadge } from '@/components/sync/SyncStatusBadge';
+import { getActorLabel, getConflictReason, getSurfaceLabel } from '@/lib/syncDisplay';
 
 interface ClientActivityTimelineProps {
   clientId: string;
@@ -136,10 +138,25 @@ export function ClientActivityTimeline({ clientId }: ClientActivityTimelineProps
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-sm">{activity.title}</p>
+                            <div className="mt-1 flex flex-wrap items-center gap-2">
+                              <SyncStatusBadge status={activity.sync_status} />
+                              {activity.source_surface && (
+                                <Badge variant="outline" className="text-xs">
+                                  {getSurfaceLabel(activity.source_surface)}
+                                </Badge>
+                              )}
+                            </div>
                             {activity.description && (
                               <p className="text-xs text-muted-foreground mt-1">
                                 {activity.description}
                               </p>
+                            )}
+                            {(getActorLabel(activity) || activity.metadata?.version_number || getConflictReason(activity)) && (
+                              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                                {getActorLabel(activity) && <span>By {getActorLabel(activity)}</span>}
+                                {activity.metadata?.version_number ? <span>v{activity.metadata.version_number}</span> : null}
+                                {getConflictReason(activity) ? <span className="text-warning">{getConflictReason(activity)}</span> : null}
+                              </div>
                             )}
                           </div>
                           <span className="text-xs text-muted-foreground whitespace-nowrap">
