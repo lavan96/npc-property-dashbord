@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePortalUpdateData } from '@/hooks/usePortalData';
+import { PortalEmptyState } from '@/components/portal/PortalEmptyState';
+import { portalPanelClassName, portalStatCardClassName } from '@/components/portal/PortalSurface';
 
 interface PortalExpenseFormProps {
   existingExpenses: any[];
@@ -146,13 +148,13 @@ export function PortalExpenseForm({ existingExpenses, onRefresh }: PortalExpense
       {existingExpenses.length > 0 ? (
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
-            <Card>
+            <Card className={portalStatCardClassName()}>
               <CardContent className="pt-5 pb-4">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Total Monthly</p>
                 <p className="text-xl font-bold text-destructive">{fmt(totalMonthly)}</p>
               </CardContent>
             </Card>
-            <Card>
+            <Card className={portalStatCardClassName()}>
               <CardContent className="pt-5 pb-4">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Items</p>
                 <p className="text-xl font-bold text-foreground">{existingExpenses.length}</p>
@@ -161,7 +163,7 @@ export function PortalExpenseForm({ existingExpenses, onRefresh }: PortalExpense
           </div>
 
           {existingExpenses.map((exp) => (
-            <Card key={exp.id}>
+            <Card key={exp.id} className={portalPanelClassName()}>
               <CardContent className="pt-4 pb-3">
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
@@ -191,13 +193,12 @@ export function PortalExpenseForm({ existingExpenses, onRefresh }: PortalExpense
           ))}
         </div>
       ) : (
-        <Card>
-          <CardContent className="py-8 text-center text-muted-foreground">
-            <Receipt className="h-10 w-10 mx-auto mb-3 text-muted-foreground/30" />
-            <p>No expenses recorded yet.</p>
-            <p className="text-xs mt-1">Add your living expenses for accurate borrowing capacity calculations</p>
-          </CardContent>
-        </Card>
+        <PortalEmptyState
+          className="client-portal-soft-panel"
+          icon={<Receipt className="h-8 w-8" />}
+          title="No expenses recorded yet"
+          description="Add your living expenses for more accurate borrowing capacity and cash flow calculations."
+        />
       )}
 
       <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
