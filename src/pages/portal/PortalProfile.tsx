@@ -110,9 +110,9 @@ export default function PortalProfile() {
   }
 
   return (
-    <div className="space-y-6">
+      <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="client-portal-page-header flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
           <Avatar className="h-14 w-14 border-2 border-primary/20 shadow-md hidden sm:flex">
             <AvatarFallback className="bg-primary/10 text-primary font-bold text-lg">
@@ -123,7 +123,7 @@ export default function PortalProfile() {
             <h1 className="text-2xl font-bold text-foreground tracking-tight">
               {displayName || 'My Profile'}
             </h1>
-            <p className="text-muted-foreground mt-0.5 text-sm flex items-center gap-1.5">
+            <p className="mt-0.5 flex items-center gap-1.5 text-sm text-muted-foreground">
               <Shield className="h-3.5 w-3.5" />
               View and update your personal details
             </p>
@@ -132,7 +132,7 @@ export default function PortalProfile() {
         <Button
           onClick={handleSave}
           disabled={!hasChanges || updateMutation.isPending}
-          className="gap-2 shadow-md"
+          className="gap-2 rounded-xl shadow-lg shadow-primary/10"
           size="lg"
         >
           {updateMutation.isPending ? (
@@ -147,8 +147,8 @@ export default function PortalProfile() {
       </div>
 
       {/* Primary Contact */}
-      <Card className="shadow-sm overflow-hidden">
-        <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent border-b border-border/50">
+      <Card className="client-portal-soft-panel overflow-hidden">
+        <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-primary/10 shadow-sm">
               <User className="h-5 w-5 text-primary" />
@@ -257,11 +257,11 @@ export default function PortalProfile() {
 
       {/* Secondary Contact */}
       {hasSecondary && (
-        <Card className="shadow-sm overflow-hidden">
-          <CardHeader className="bg-gradient-to-r from-blue-500/5 to-transparent border-b border-border/50">
+        <Card className="client-portal-soft-panel overflow-hidden">
+          <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-blue-500/10 shadow-sm">
-                <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <div className="rounded-xl bg-primary/10 p-2.5 shadow-sm">
+                <Users className="h-5 w-5 text-primary" />
               </div>
               <div>
                 <CardTitle className="text-base">Secondary Contact</CardTitle>
