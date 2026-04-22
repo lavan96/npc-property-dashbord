@@ -1,20 +1,25 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
 import { toast } from 'sonner';
 import {
   RefreshCw, Download, DollarSign, Wallet, Hourglass,
   CalendarCheck, TrendingUp, TrendingDown, Minus,
-  FileText, FileSpreadsheet, Receipt, BarChart3
+  FileText, FileSpreadsheet, Receipt, BarChart3,
+  CalendarRange, Filter, X
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { PortalEmptyState } from '@/components/finance-portal/PortalEmptyState';
 
 const fmt = (n: number) =>
   `$${(Number(n) || 0).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -144,6 +149,29 @@ function KpiSkeleton() {
   );
 }
 
+const normalizeDate = (value?: string | null) => {
+  if (!value) return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const isWithinRange = (value: string | null | undefined, startDate: string, endDate: string) => {
+  const parsed = normalizeDate(value);
+  if (!parsed) return false;
+
+  if (startDate) {
+    const start = new Date(`${startDate}T00:00:00`);
+    if (parsed < start) return false;
+  }
+
+  if (endDate) {
+    const end = new Date(`${endDate}T23:59:59.999`);
+    if (parsed > end) return false;
+  }
+
+  return true;
+};
+
 export default function FinancePortalEarnings() {
   const { invokeFinanceFunction } = useFinancePortalAuth();
   const [searchParams] = useSearchParams();
@@ -153,6 +181,9 @@ export default function FinancePortalEarnings() {
   const [kpis, setKpis] = useState<any>(null);
   const [commissions, setCommissions] = useState<any[]>([]);
   const [statements, setStatements] = useState<any[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const latestRowRef = useRef<HTMLTableRowElement>(null);
 
   const refresh = async () => {
@@ -181,6 +212,38 @@ export default function FinancePortalEarnings() {
       latestRowRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   }, [loading, highlightLatest]);
+
+  const currentStatusOptions = useMemo(() => {
+    const source = tab === 'commissions' ? commissions : statements;
+    return Array.from(new Set(source.map((item) => item.status).filter(Boolean))).sort();
+  }, [commissions, statements, tab]);
+
+  useEffect(() => {
+    if (statusFilter !== 'all' && !currentStatusOptions.includes(statusFilter)) {
+      setStatusFilter('all');
+    }
+  }, [currentStatusOptions, statusFilter]);
+
+  const filteredCommissions = useMemo(() => commissions.filter((commission) => {
+    const statusMatches = statusFilter === 'all' || commission.status === statusFilter;
+    const dateMatches = isWithinRange(commission.created_at, startDate, endDate);
+    return statusMatches && dateMatches;
+  }), [commissions, statusFilter, startDate, endDate]);
+
+  const filteredStatements = useMemo(() => statements.filter((statement) => {
+    const statusMatches = statusFilter === 'all' || statement.status === statusFilter;
+    const dateMatches = isWithinRange(statement.issued_at || statement.period_end, startDate, endDate);
+    return statusMatches && dateMatches;
+  }), [statements, statusFilter, startDate, endDate]);
+
+  const activeResultsCount = tab === 'commissions' ? filteredCommissions.length : filteredStatements.length;
+  const hasActiveFilters = statusFilter !== 'all' || Boolean(startDate) || Boolean(endDate);
+
+  const clearFilters = () => {
+    setStatusFilter('all');
+    setStartDate('');
+    setEndDate('');
+  };
 
   const downloadStatement = async (id: string, type: 'pdf' | 'csv') => {
     const { data, error } = await invokeFinanceFunction('finance-portal-commissions', {
@@ -270,41 +333,122 @@ export default function FinancePortalEarnings() {
         )}
       </div>
 
-      {/* Tab bar */}
-      <div className="flex gap-1 p-1 bg-muted/50 rounded-xl w-fit">
-        <button
-          onClick={() => setTab('commissions')}
-          className={cn(
-            'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200',
-            tab === 'commissions'
-              ? 'bg-card text-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground'
-          )}
-        >
-          <Receipt className="h-3.5 w-3.5" />
-          Commissions
-          <Badge variant={tab === 'commissions' ? 'secondary' : 'outline'} className="text-[10px] h-4 px-1.5">
-            {commissions.length}
+      <div className="space-y-4 rounded-2xl border border-border/60 bg-card/50 p-3 sm:p-4">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex flex-wrap gap-1 rounded-xl bg-muted/50 p-1">
+            <button
+              onClick={() => setTab('commissions')}
+              className={cn(
+                'flex min-h-11 items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                tab === 'commissions'
+                  ? 'bg-card text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <Receipt className="h-3.5 w-3.5" />
+              Commissions
+              <Badge variant={tab === 'commissions' ? 'secondary' : 'outline'} className="text-[10px] h-4 px-1.5">
+                {filteredCommissions.length}
+              </Badge>
+            </button>
+            <button
+              onClick={() => setTab('statements')}
+              className={cn(
+                'flex min-h-11 items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                tab === 'statements'
+                  ? 'bg-card text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <FileText className="h-3.5 w-3.5" />
+              Statements
+              <Badge variant={tab === 'statements' ? 'secondary' : 'outline'} className="text-[10px] h-4 px-1.5">
+                {filteredStatements.length}
+              </Badge>
+            </button>
+          </div>
+
+          <Badge variant="outline" className="h-8 w-fit gap-2 rounded-full border-primary/20 px-3 text-xs text-muted-foreground">
+            <Filter className="h-3.5 w-3.5 text-primary" />
+            {activeResultsCount} result{activeResultsCount === 1 ? '' : 's'}
           </Badge>
-        </button>
-        <button
-          onClick={() => setTab('statements')}
-          className={cn(
-            'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200',
-            tab === 'statements'
-              ? 'bg-card text-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground'
-          )}
-        >
-          <FileText className="h-3.5 w-3.5" />
-          Statements
-          <Badge variant={tab === 'statements' ? 'secondary' : 'outline'} className="text-[10px] h-4 px-1.5">
-            {statements.length}
-          </Badge>
-        </button>
+        </div>
+
+        <Card className="border-border/60 shadow-sm shadow-primary/5">
+          <CardContent className="space-y-4 p-4 sm:p-5">
+            <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-foreground">
+              <div className="flex items-center gap-2">
+                <CalendarRange className="h-4 w-4 text-primary" />
+                Filter {tab === 'commissions' ? 'commissions' : 'statements'}
+              </div>
+              {hasActiveFilters && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearFilters}
+                  className="h-8 gap-1 rounded-lg px-2 text-xs focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                  <X className="h-3.5 w-3.5" />
+                  Clear filters
+                </Button>
+              )}
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <div className="space-y-2">
+                <Label htmlFor="earnings-status-filter">Status</Label>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger id="earnings-status-filter" className="h-11 rounded-xl">
+                    <SelectValue placeholder="All statuses" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All statuses</SelectItem>
+                    {currentStatusOptions.map((status) => (
+                      <SelectItem key={status} value={status}>
+                        {status.charAt(0).toUpperCase() + status.slice(1)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="earnings-start-date">From</Label>
+                <Input
+                  id="earnings-start-date"
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="rounded-xl"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="earnings-end-date">To</Label>
+                <Input
+                  id="earnings-end-date"
+                  type="date"
+                  value={endDate}
+                  min={startDate || undefined}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="rounded-xl"
+                />
+              </div>
+
+              <div className="flex flex-col justify-end rounded-xl border border-dashed border-primary/20 bg-primary/5 px-4 py-3">
+                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Showing</span>
+                <span className="mt-1 text-lg font-semibold text-foreground">{activeResultsCount}</span>
+                <span className="text-xs text-muted-foreground">
+                  {tab === 'commissions' ? 'commission entries' : 'statement entries'} in range
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Tab Content */}
+      
       <AnimatePresence mode="wait">
         <motion.div
           key={tab}
@@ -329,7 +473,7 @@ export default function FinancePortalEarnings() {
           ) : tab === 'commissions' ? (
             <>
               {/* Desktop Table */}
-              <Card className="hidden sm:block">
+              <Card className="hidden lg:block">
                 <CardContent className="pt-6">
                   <Table>
                     <TableHeader>
@@ -344,17 +488,23 @@ export default function FinancePortalEarnings() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {commissions.length === 0 && (
+                      {filteredCommissions.length === 0 && (
                         <TableRow>
                           <TableCell colSpan={7} className="text-center text-muted-foreground py-12">
-                            <div className="flex flex-col items-center gap-2">
-                              <Receipt className="h-8 w-8 text-muted-foreground/30" />
-                              <span>No commissions recorded yet</span>
+                            <div className="mx-auto max-w-md">
+                              <PortalEmptyState
+                                icon={<Receipt className="h-8 w-8" />}
+                                title={hasActiveFilters ? 'No commissions match these filters' : 'No commissions recorded yet'}
+                                description={hasActiveFilters ? 'Adjust the status or date range to widen the results.' : 'New commission lines will appear here as client milestones are completed.'}
+                                actionLabel={hasActiveFilters ? 'Clear filters' : undefined}
+                                onAction={hasActiveFilters ? clearFilters : undefined}
+                                className="border-0 bg-transparent shadow-none"
+                              />
                             </div>
                           </TableCell>
                         </TableRow>
                       )}
-                      {commissions.map((c, idx) => (
+                      {filteredCommissions.map((c, idx) => (
                         <TableRow
                           key={c.id}
                           ref={idx === 0 ? latestRowRef : undefined}
@@ -438,7 +588,7 @@ export default function FinancePortalEarnings() {
           ) : (
             <>
               {/* Desktop Table */}
-              <Card className="hidden sm:block">
+              <Card className="hidden lg:block">
                 <CardContent className="pt-6">
                   <Table>
                     <TableHeader>
@@ -452,17 +602,23 @@ export default function FinancePortalEarnings() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {statements.length === 0 && (
+                      {filteredStatements.length === 0 && (
                         <TableRow>
                           <TableCell colSpan={6} className="text-center text-muted-foreground py-12">
-                            <div className="flex flex-col items-center gap-2">
-                              <FileText className="h-8 w-8 text-muted-foreground/30" />
-                              <span>No statements issued yet</span>
+                            <div className="mx-auto max-w-md">
+                              <PortalEmptyState
+                                icon={<FileText className="h-8 w-8" />}
+                                title={hasActiveFilters ? 'No statements match these filters' : 'No statements issued yet'}
+                                description={hasActiveFilters ? 'Try broadening the date range or switching the status filter.' : 'Monthly remittance statements and export files will appear here once issued.'}
+                                actionLabel={hasActiveFilters ? 'Clear filters' : undefined}
+                                onAction={hasActiveFilters ? clearFilters : undefined}
+                                className="border-0 bg-transparent shadow-none"
+                              />
                             </div>
                           </TableCell>
                         </TableRow>
                       )}
-                      {statements.map((s, idx) => (
+                      {filteredStatements.map((s, idx) => (
                         <TableRow key={s.id} className={cn(idx % 2 === 1 && 'bg-muted/30')}>
                           <TableCell className="text-sm tabular-nums">{s.period_start} \u2192 {s.period_end}</TableCell>
                           <TableCell className="text-right tabular-nums">{s.line_count}</TableCell>

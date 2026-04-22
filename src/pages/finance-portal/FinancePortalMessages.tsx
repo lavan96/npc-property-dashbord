@@ -9,6 +9,11 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { Drawer, DrawerContent } from '@/components/ui/drawer';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { PortalEmptyState } from '@/components/finance-portal/PortalEmptyState';
+import { FinanceMessagesThreadPanel, FinanceMessagesThreadPanelEmpty } from '@/components/finance-portal/FinanceMessagesThreadPanel';
 import {
   MessageSquare, ChevronRight, MessageCircle, Send, Inbox
 } from 'lucide-react';
@@ -55,8 +60,11 @@ function ThreadSkeleton() {
 export default function FinancePortalMessages() {
   const { invokeFinanceFunction } = useFinancePortalAuth();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [threads, setThreads] = useState<ThreadRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedThread, setSelectedThread] = useState<ThreadRow | null>(null);
+  const [threadOpen, setThreadOpen] = useState(false);
 
   const load = async () => {
     const { data } = await invokeFinanceFunction('finance-portal-messages', { operation: 'list_threads' });
@@ -72,6 +80,29 @@ export default function FinancePortalMessages() {
   }, []);
 
   const totalUnread = threads.reduce((sum, t) => sum + (t.unread_count_partner || 0), 0);
+
+  useEffect(() => {
+    if (!threads.length) {
+      setSelectedThread(null);
+      setThreadOpen(false);
+      return;
+    }
+
+    setSelectedThread((current) => current ? threads.find((t) => t.id === current.id) || threads[0] : current);
+  }, [threads]);
+
+  const openThread = (thread: ThreadRow) => {
+    setSelectedThread(thread);
+    setThreadOpen(true);
+  };
+
+  const threadPanel = selectedThread ? (
+    <FinanceMessagesThreadPanel
+      thread={selectedThread}
+      invoke={(fn, body) => invokeFinanceFunction(fn, body)}
+      onMessageSent={load}
+    />
+  ) : <FinanceMessagesThreadPanelEmpty />;
 
   return (
     <motion.div
@@ -108,35 +139,17 @@ export default function FinancePortalMessages() {
           ))}
         </div>
       ) : threads.length === 0 ? (
-        /* Illustrated empty state */
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="relative mb-6">
-              <div className="p-5 rounded-full bg-primary/5">
-                <Inbox className="h-12 w-12 text-primary/30" />
-              </div>
-              <div className="absolute -bottom-1 -right-1 p-1.5 rounded-full bg-card border border-border">
-                <Send className="h-4 w-4 text-muted-foreground/50" />
-              </div>
-            </div>
-            <h3 className="font-semibold text-lg text-foreground mb-1">No conversations yet</h3>
-            <p className="text-sm text-muted-foreground max-w-sm">
-              Open a client profile and use the Messages tab to start a conversation with the NPC team.
-            </p>
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-5 gap-2 rounded-xl"
-              onClick={() => navigate('/finance/clients')}
-            >
-              <MessageCircle className="h-3.5 w-3.5" />
-              Go to clients
-            </Button>
-          </CardContent>
-        </Card>
+        <PortalEmptyState
+          icon={<Inbox className="h-8 w-8" />}
+          title="No conversations yet"
+          description="Open a client profile and use the Messages tab to start a conversation with the NPC team."
+          actionLabel="Go to clients"
+          onAction={() => navigate('/finance/clients')}
+        />
       ) : (
-        <div className="space-y-2">
-          <AnimatePresence initial={false}>
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:items-start">
+          <div className="space-y-2">
+            <AnimatePresence initial={false}>
             {threads.map((t, idx) => {
               const name = t.clients?.primary_contact_name || 'Client';
               const hasUnread = t.unread_count_partner > 0;
@@ -150,7 +163,7 @@ export default function FinancePortalMessages() {
                   transition={{ duration: 0.15, delay: idx * 0.03 }}
                 >
                   <button
-                    onClick={() => navigate(`/finance/clients/${t.client_id}?tab=messages`)}
+                    onClick={() => openThread(t)}
                     className="w-full text-left group"
                   >
                     <div
@@ -222,8 +235,27 @@ export default function FinancePortalMessages() {
                 </motion.div>
               );
             })}
-          </AnimatePresence>
+            </AnimatePresence>
+          </div>
+
+          <div className="hidden lg:block lg:min-h-[640px]">
+            {threadPanel}
+          </div>
         </div>
+      )}
+
+      {isMobile ? (
+        <Drawer open={threadOpen} onOpenChange={setThreadOpen}>
+          <DrawerContent className="max-h-[92vh] border-border bg-background">
+            <div className="min-h-0">{threadPanel}</div>
+          </DrawerContent>
+        </Drawer>
+      ) : (
+        <Sheet open={threadOpen && !!selectedThread} onOpenChange={setThreadOpen}>
+          <SheetContent side="right" className="w-full border-border bg-background p-0 sm:max-w-2xl">
+            {threadPanel}
+          </SheetContent>
+        </Sheet>
       )}
     </motion.div>
   );
