@@ -64,6 +64,7 @@ interface ClientFilesProps {
 interface FailedUploadItem {
   id: string;
   file: File;
+  fileName: string;
   error: string;
 }
 
@@ -129,7 +130,7 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
     queryFn: () => fetchFilesSecure(clientId),
   });
 
-  const uploadFileMutation = useMutation({
+  const uploadFileMutation = useMutation<{ successes: any[]; failures: FailedUploadItem[] }, Error, { files: File[]; category: string; description: string }>({
     mutationFn: async ({ files, category, description }: { files: File[]; category: string; description: string }) => {
       setUploading(true);
 
@@ -180,13 +181,13 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
         const queueItem = queueItems[index];
         const error = result.reason?.message || 'Upload failed';
         setUploadQueue((prev) => prev.map((item) => item.id === queueItem.id ? { ...item, status: 'failed', progress: 100, error } : item));
-        return [{ id: queueItem.id, file: queueItem.file, error }];
+        return [{ id: queueItem.id, file: queueItem.file, fileName: queueItem.file.name, error }];
       });
 
       if (successes.length === 0) throw new Error(failures[0]?.error || 'Upload failed');
       return { successes: successes.map((item) => item.value.result), failures };
     },
-    onSuccess: (result: { successes: any[]; failures: { fileName: string; error: string }[] }) => {
+    onSuccess: (result: { successes: any[]; failures: FailedUploadItem[] }) => {
       queryClient.invalidateQueries({ queryKey: ['client-files', clientId] });
       logActivityDirect({
         actionType: 'client_file_uploaded',
@@ -199,8 +200,8 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
       } else {
         toast.warning(`${result.successes.length} uploaded, ${result.failures.length} failed`);
       }
-      setUploadFailures(result.failures as any);
-      setSelectedFiles((prev) => prev.filter((file) => result.failures.some((failure: any) => failure.file === file)));
+      setUploadFailures(result.failures);
+      setSelectedFiles((prev) => prev.filter((file) => result.failures.some((failure) => failure.file === file)));
       setDescription('');
     },
     onError: (error) => {
