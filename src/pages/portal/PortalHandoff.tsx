@@ -25,6 +25,7 @@ export default function PortalHandoff() {
   const ranRef = useRef(false);
 
   const token = searchParams.get('token');
+  const portalUserId = searchParams.get('portalUserId');
 
   useEffect(() => {
     if (ranRef.current) return; // StrictMode double-effect guard — token is single-use
@@ -46,7 +47,7 @@ export default function PortalHandoff() {
             'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
           },
           credentials: 'omit',
-          body: JSON.stringify({ token }),
+          body: JSON.stringify({ token, portal_user_id: portalUserId }),
         });
 
         const data = await response.json();

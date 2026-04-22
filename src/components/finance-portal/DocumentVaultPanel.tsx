@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ import {
 import { Loader2, Upload, Download, Trash2, FileText, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { useDropzone } from 'react-dropzone';
 import { SyncConflictDetailsPopover } from '@/components/sync/SyncConflictDetailsPopover';
 import { SyncStatusBadge } from '@/components/sync/SyncStatusBadge';
 import { getActorLabel, getConflictReason, getSurfaceLabel, getVersionNumber } from '@/lib/syncDisplay';
@@ -123,8 +124,16 @@ export function DocumentVaultPanel({ clientId }: DocumentVaultPanelProps) {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const handleUpload = async () => {
-    if (!uploadFile) {
+  const setSelectedUploadFile = useCallback((file: File | null) => {
+    setUploadFile(file);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }, []);
+
+  const handleUpload = async (fileOverride?: File) => {
+    const fileToUpload = fileOverride ?? uploadFile;
+    if (!fileToUpload) {
       toast.error('Please select a file');
       return;
     }
@@ -134,9 +143,9 @@ export function DocumentVaultPanel({ clientId }: DocumentVaultPanelProps) {
       const { data, error } = await invokeFinanceFunction('finance-portal-documents', {
         operation: 'request_upload',
         client_id: clientId,
-        filename: uploadFile.name,
-        mime_type: uploadFile.type || 'application/octet-stream',
-        file_size: uploadFile.size,
+        filename: fileToUpload.name,
+        mime_type: fileToUpload.type || 'application/octet-stream',
+        file_size: fileToUpload.size,
         category: uploadCategory,
         description: uploadDescription || null,
         visible_to_client: uploadVisibleToClient,
@@ -148,8 +157,8 @@ export function DocumentVaultPanel({ clientId }: DocumentVaultPanelProps) {
       // 2. PUT file to signed URL
       const putRes = await fetch(data.upload.signedUrl, {
         method: 'PUT',
-        headers: { 'Content-Type': uploadFile.type || 'application/octet-stream' },
-        body: uploadFile,
+        headers: { 'Content-Type': fileToUpload.type || 'application/octet-stream' },
+        body: fileToUpload,
       });
       if (!putRes.ok) {
         throw new Error(`Upload failed (${putRes.status})`);
@@ -176,6 +185,24 @@ export function DocumentVaultPanel({ clientId }: DocumentVaultPanelProps) {
       setUploading(false);
     }
   };
+
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    const nextFile = acceptedFiles[0];
+    if (!nextFile) return;
+    setSelectedUploadFile(nextFile);
+    if (uploadOpen) {
+      void handleUpload(nextFile);
+      return;
+    }
+    setUploadOpen(true);
+  }, [handleUpload, setSelectedUploadFile, uploadOpen]);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    maxFiles: 1,
+    maxSize: 25 * 1024 * 1024,
+    disabled: !permission.edit || uploading,
+  });
 
   const handleDownload = async (doc: DocumentRecord) => {
     const { data, error } = await invokeFinanceFunction('finance-portal-documents', {
@@ -255,7 +282,34 @@ export function DocumentVaultPanel({ clientId }: DocumentVaultPanelProps) {
           )}
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
+        {permission.edit && (
+          <div
+            {...getRootProps()}
+            className={[
+              'rounded-lg border-2 border-dashed px-4 py-6 text-center transition-colors cursor-pointer',
+              isDragActive ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50 hover:bg-accent/30',
+              uploading ? 'pointer-events-none opacity-60' : '',
+            ].join(' ')}
+          >
+            <input {...getInputProps()} />
+            <div className="flex flex-col items-center gap-2">
+              {uploading ? (
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              ) : (
+                <Upload className="h-6 w-6 text-muted-foreground" />
+              )}
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-foreground">
+                  {isDragActive ? 'Drop document to upload' : 'Drag and drop a document here'}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  or click to choose a file. Maximum size 25 MB.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -354,7 +408,7 @@ export function DocumentVaultPanel({ clientId }: DocumentVaultPanelProps) {
                 id="file"
                 type="file"
                 ref={fileInputRef}
-                onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+                onChange={(e) => setSelectedUploadFile(e.target.files?.[0] || null)}
                 disabled={uploading}
               />
               {uploadFile && (
@@ -403,7 +457,7 @@ export function DocumentVaultPanel({ clientId }: DocumentVaultPanelProps) {
             <Button variant="outline" onClick={() => setUploadOpen(false)} disabled={uploading}>
               Cancel
             </Button>
-            <Button onClick={handleUpload} disabled={uploading || !uploadFile}>
+            <Button onClick={() => void handleUpload()} disabled={uploading || !uploadFile}>
               {uploading
                 ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Uploading...</>
                 : <><Upload className="h-4 w-4 mr-2" /> Upload</>}

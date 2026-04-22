@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useEffect, useRef } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
@@ -13,7 +13,7 @@ import {
   Loader2, ArrowLeft, Mail, Phone, Lock, Copy, Check,
   Building2, DollarSign, CreditCard, Briefcase, PiggyBank,
   FileText, Users, MapPin, StickyNote, FolderOpen,
-  Calculator, MessageSquare, ChevronRight, Shield, LockOpen
+  Calculator, MessageSquare, ChevronRight, Shield, LockOpen, ChevronLeft
 } from 'lucide-react';
 import { FINANCE_TABLE_CONFIGS, FINANCE_TABLE_KEYS, FinanceTableKey } from '@/components/finance-portal/financeTableConfig';
 import { FinanceRecordList } from '@/components/finance-portal/FinanceRecordList';
@@ -72,7 +72,7 @@ function CopyButton({ text, label }: { text: string; label: string }) {
       title={`Copy ${label}`}
     >
       {copied ? (
-        <Check className="h-3 w-3 text-emerald-500" />
+        <Check className="h-3 w-3 text-success" />
       ) : (
         <Copy className="h-3 w-3 text-muted-foreground/50 hover:text-muted-foreground" />
       )}
@@ -171,11 +171,49 @@ export default function FinancePortalClientProfile() {
     : unlockedTabs[0]?.key || '';
 
   const [activeTab, setActiveTab] = useState(defaultTab);
+  const tabsScrollRef = useRef<HTMLDivElement | null>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
 
   // Update active tab when default changes
-  useMemo(() => {
+  useEffect(() => {
     if (!activeTab && defaultTab) setActiveTab(defaultTab);
   }, [defaultTab]);
+
+  const updateScrollState = useCallback(() => {
+    const node = tabsScrollRef.current;
+    if (!node) return;
+    setCanScrollLeft(node.scrollLeft > 4);
+    setCanScrollRight(node.scrollLeft + node.clientWidth < node.scrollWidth - 4);
+  }, []);
+
+  const scrollTabs = useCallback((direction: 'left' | 'right') => {
+    const node = tabsScrollRef.current;
+    if (!node) return;
+    node.scrollBy({ left: direction === 'left' ? -220 : 220, behavior: 'smooth' });
+  }, []);
+
+  useEffect(() => {
+    updateScrollState();
+    const node = tabsScrollRef.current;
+    if (!node) return;
+
+    const handleScroll = () => updateScrollState();
+    node.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', handleScroll);
+
+    return () => {
+      node.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleScroll);
+    };
+  }, [allTabs.length, updateScrollState]);
+
+  useEffect(() => {
+    const node = tabsScrollRef.current;
+    if (!node || !activeTab) return;
+    const activeButton = node.querySelector<HTMLButtonElement>(`button[data-tab-key="${activeTab}"]`);
+    activeButton?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+  }, [activeTab]);
 
   if (isLoading) return <ProfileSkeleton />;
 
@@ -280,8 +318,31 @@ export default function FinancePortalClientProfile() {
       ) : (
         <>
           <TooltipProvider delayDuration={300}>
-            <ScrollArea className="w-full">
-              <div className="flex gap-1.5 pb-2 px-0.5">
+            <div className="relative">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="absolute left-0 top-1/2 z-10 hidden -translate-y-1/2 md:inline-flex"
+                onClick={() => scrollTabs('left')}
+                disabled={!canScrollLeft}
+                aria-label="Scroll tabs left"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="absolute right-0 top-1/2 z-10 hidden -translate-y-1/2 md:inline-flex"
+                onClick={() => scrollTabs('right')}
+                disabled={!canScrollRight}
+                aria-label="Scroll tabs right"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              <ScrollArea className="w-full md:px-10">
+                <div ref={tabsScrollRef} className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-2 px-0.5">
                 {allTabs.map((tab) => {
                   const Icon = tab.icon;
                   const isActive = activeTab === tab.key;
@@ -290,6 +351,7 @@ export default function FinancePortalClientProfile() {
                   const tabButton = (
                     <button
                       key={tab.key}
+                      data-tab-key={tab.key}
                       onClick={() => !isLocked && setActiveTab(tab.key)}
                       disabled={isLocked}
                       className={cn(
@@ -335,9 +397,10 @@ export default function FinancePortalClientProfile() {
                   }
                   return tabButton;
                 })}
-              </div>
-              <ScrollBar orientation="horizontal" className="invisible" />
-            </ScrollArea>
+                </div>
+                <ScrollBar orientation="horizontal" className="invisible" />
+              </ScrollArea>
+            </div>
           </TooltipProvider>
 
           {/* Tab Content */}
