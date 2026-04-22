@@ -213,6 +213,12 @@ export default function FinancePortalEarnings() {
     }
   }, [loading, highlightLatest]);
 
+  useEffect(() => {
+    if (statusFilter !== 'all' && !currentStatusOptions.includes(statusFilter)) {
+      setStatusFilter('all');
+    }
+  }, [currentStatusOptions, statusFilter]);
+
   const currentStatusOptions = useMemo(() => {
     const source = tab === 'commissions' ? commissions : statements;
     return Array.from(new Set(source.map((item) => item.status).filter(Boolean))).sort();
@@ -327,41 +333,122 @@ export default function FinancePortalEarnings() {
         )}
       </div>
 
-      {/* Tab bar */}
-      <div className="flex gap-1 p-1 bg-muted/50 rounded-xl w-fit">
-        <button
-          onClick={() => setTab('commissions')}
-          className={cn(
-            'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200',
-            tab === 'commissions'
-              ? 'bg-card text-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground'
-          )}
-        >
-          <Receipt className="h-3.5 w-3.5" />
-          Commissions
-          <Badge variant={tab === 'commissions' ? 'secondary' : 'outline'} className="text-[10px] h-4 px-1.5">
-            {commissions.length}
+      <div className="space-y-4 rounded-2xl border border-border/60 bg-card/50 p-3 sm:p-4">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex flex-wrap gap-1 rounded-xl bg-muted/50 p-1">
+            <button
+              onClick={() => setTab('commissions')}
+              className={cn(
+                'flex min-h-11 items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                tab === 'commissions'
+                  ? 'bg-card text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <Receipt className="h-3.5 w-3.5" />
+              Commissions
+              <Badge variant={tab === 'commissions' ? 'secondary' : 'outline'} className="text-[10px] h-4 px-1.5">
+                {filteredCommissions.length}
+              </Badge>
+            </button>
+            <button
+              onClick={() => setTab('statements')}
+              className={cn(
+                'flex min-h-11 items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                tab === 'statements'
+                  ? 'bg-card text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <FileText className="h-3.5 w-3.5" />
+              Statements
+              <Badge variant={tab === 'statements' ? 'secondary' : 'outline'} className="text-[10px] h-4 px-1.5">
+                {filteredStatements.length}
+              </Badge>
+            </button>
+          </div>
+
+          <Badge variant="outline" className="h-8 w-fit gap-2 rounded-full border-primary/20 px-3 text-xs text-muted-foreground">
+            <Filter className="h-3.5 w-3.5 text-primary" />
+            {activeResultsCount} result{activeResultsCount === 1 ? '' : 's'}
           </Badge>
-        </button>
-        <button
-          onClick={() => setTab('statements')}
-          className={cn(
-            'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200',
-            tab === 'statements'
-              ? 'bg-card text-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground'
-          )}
-        >
-          <FileText className="h-3.5 w-3.5" />
-          Statements
-          <Badge variant={tab === 'statements' ? 'secondary' : 'outline'} className="text-[10px] h-4 px-1.5">
-            {statements.length}
-          </Badge>
-        </button>
+        </div>
+
+        <Card className="border-border/60 shadow-sm shadow-primary/5">
+          <CardContent className="space-y-4 p-4 sm:p-5">
+            <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-foreground">
+              <div className="flex items-center gap-2">
+                <CalendarRange className="h-4 w-4 text-primary" />
+                Filter {tab === 'commissions' ? 'commissions' : 'statements'}
+              </div>
+              {hasActiveFilters && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearFilters}
+                  className="h-8 gap-1 rounded-lg px-2 text-xs focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                  <X className="h-3.5 w-3.5" />
+                  Clear filters
+                </Button>
+              )}
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <div className="space-y-2">
+                <Label htmlFor="earnings-status-filter">Status</Label>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger id="earnings-status-filter" className="h-11 rounded-xl">
+                    <SelectValue placeholder="All statuses" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All statuses</SelectItem>
+                    {currentStatusOptions.map((status) => (
+                      <SelectItem key={status} value={status}>
+                        {status.charAt(0).toUpperCase() + status.slice(1)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="earnings-start-date">From</Label>
+                <Input
+                  id="earnings-start-date"
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="rounded-xl"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="earnings-end-date">To</Label>
+                <Input
+                  id="earnings-end-date"
+                  type="date"
+                  value={endDate}
+                  min={startDate || undefined}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="rounded-xl"
+                />
+              </div>
+
+              <div className="flex flex-col justify-end rounded-xl border border-dashed border-primary/20 bg-primary/5 px-4 py-3">
+                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Showing</span>
+                <span className="mt-1 text-lg font-semibold text-foreground">{activeResultsCount}</span>
+                <span className="text-xs text-muted-foreground">
+                  {tab === 'commissions' ? 'commission entries' : 'statement entries'} in range
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Tab Content */}
+      
       <AnimatePresence mode="wait">
         <motion.div
           key={tab}
