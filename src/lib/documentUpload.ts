@@ -112,6 +112,30 @@ export async function runTasksByMode<TItem, TResult>(
   return Promise.allSettled(items.map((item, index) => processor(item, index)));
 }
 
+export async function processFilesByMode<T>(
+  files: File[],
+  mode: UploadProcessingMode,
+  processor: (file: File, index: number) => Promise<T>,
+) {
+  const results = await runTasksByMode(files, mode, processor);
+  const successes: T[] = [];
+  const failures: UploadFailure[] = [];
+
+  results.forEach((result, index) => {
+    if (result.status === 'fulfilled') {
+      successes.push(result.value);
+      return;
+    }
+
+    failures.push({
+      fileName: files[index]?.name || `File ${index + 1}`,
+      error: result.reason?.message || 'Upload failed',
+    });
+  });
+
+  return { successes, failures };
+}
+
 function fileToBase64WithProgress(file: File | Blob, onProgress?: (progress: number) => void): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
