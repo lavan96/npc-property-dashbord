@@ -16,6 +16,8 @@ import {
 import { Loader2, Upload, Download, Trash2, FileText, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { SyncStatusBadge } from '@/components/sync/SyncStatusBadge';
+import { getActorLabel, getConflictReason, getSurfaceLabel } from '@/lib/syncDisplay';
 
 interface DocumentRecord {
   id: string;
@@ -29,6 +31,11 @@ interface DocumentRecord {
   visible_to_client: boolean;
   uploader_type: string;
   created_at: string;
+  sync_status?: string | null;
+  source_surface?: string | null;
+  source_actor_name?: string | null;
+  version_number?: number | null;
+  last_sync_error?: string | null;
 }
 
 interface Permission {
@@ -271,6 +278,8 @@ export function DocumentVaultPanel({ clientId }: DocumentVaultPanelProps) {
                     <Badge variant="secondary" className="text-xs">
                       {categoryLabel(doc.category)}
                     </Badge>
+                    <SyncStatusBadge status={doc.sync_status} />
+                    {doc.source_surface && <Badge variant="outline" className="text-xs">{getSurfaceLabel(doc.source_surface)}</Badge>}
                     {doc.visible_to_client && (
                       <Badge variant="outline" className="text-xs gap-1">
                         <Eye className="h-3 w-3" /> Visible to client
@@ -280,6 +289,11 @@ export function DocumentVaultPanel({ clientId }: DocumentVaultPanelProps) {
                   <p className="text-xs text-muted-foreground mt-1">
                     {formatBytes(doc.file_size)} • {format(new Date(doc.created_at), 'MMM d, yyyy h:mm a')}
                   </p>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                    {getActorLabel(doc) && <span>By {getActorLabel(doc)}</span>}
+                    {doc.version_number ? <span>v{doc.version_number}</span> : null}
+                    {getConflictReason(doc) ? <span className="text-warning">{getConflictReason(doc)}</span> : null}
+                  </div>
                   {doc.description && (
                     <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{doc.description}</p>
                   )}
