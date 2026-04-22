@@ -178,7 +178,7 @@ export function FinanceMessagesThread({ threadId, viewerSide, invoke, onMessageS
   };
 
   return (
-    <div className={cn('flex flex-col h-[600px] border border-border rounded-lg bg-card overflow-hidden', className)}>
+    <div className={cn('flex flex-col h-[600px] min-h-0 border border-border rounded-lg bg-card overflow-hidden', className)}>
       <ScrollArea className="flex-1 p-4" ref={scrollRef as any}>
         {loading ? (
           <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
