@@ -12,6 +12,8 @@ import { usePortalUpdateData } from '@/hooks/usePortalData';
 import { convertToAnnual, FREQUENCY_OPTIONS, formatCurrency } from '@/components/clients/income/incomeSourceTypes';
 import { ThreeYearCoverageWarning } from '@/components/clients/ThreeYearCoverageWarning';
 import { calculateCoverage } from '@/utils/threeYearCoverage';
+import { PortalEmptyState } from '@/components/portal/PortalEmptyState';
+import { portalPanelClassName } from '@/components/portal/PortalSurface';
 
 const employmentTypeOptions = [
   { value: 'permanent', label: 'Permanent' },
@@ -176,22 +178,22 @@ export function PortalEmploymentForm({ existingEmployment, onRefresh }: PortalEm
           {existingEmployment.map((emp: any) => {
             const income = getEmploymentIncome(emp);
             return (
-              <Card key={emp.id} className="group">
+              <Card key={emp.id} className={portalPanelClassName('group')}>
                 <CardContent className="pt-4">
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <Briefcase className="h-4 w-4 text-muted-foreground shrink-0" />
                         <span className="font-medium text-sm">{emp.employer_name || 'Unknown Employer'}</span>
-                        {emp.is_current && <span className="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 px-2 py-0.5 rounded">Current</span>}
-                        {!emp.is_current && <span className="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-2 py-0.5 rounded">Previous</span>}
+                        {emp.is_current && <span className="rounded-full border border-success/20 bg-success/10 px-2 py-0.5 text-[10px] text-success">Current</span>}
+                        {!emp.is_current && <span className="rounded-full border border-warning/20 bg-warning/10 px-2 py-0.5 text-[10px] text-warning">Previous</span>}
                       </div>
                       {emp.occupation_role && <p className="text-xs text-muted-foreground">{emp.occupation_role}</p>}
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {emp.employment_type} • Started: {emp.start_date || 'N/A'}
                       </p>
                       {income > 0 && (
-                        <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400 mt-1">{formatCurrency(income)}/yr</p>
+                        <p className="mt-1 text-sm font-medium text-success">{formatCurrency(income)}/yr</p>
                       )}
                     </div>
                     <div className="flex gap-1">
@@ -209,15 +211,17 @@ export function PortalEmploymentForm({ existingEmployment, onRefresh }: PortalEm
           })}
         </div>
       ) : (
-        <div className="text-center py-6 text-muted-foreground">
-          <Briefcase className="h-10 w-10 mx-auto mb-3 text-muted-foreground/30" />
-          <p className="text-sm">No employment records yet.</p>
-        </div>
+        <PortalEmptyState
+          className="client-portal-soft-panel"
+          icon={<Briefcase className="h-8 w-8" />}
+          title="No employment records yet"
+          description="Add your employment history so your profile is complete for lender reviews and serviceability checks."
+        />
       )}
 
       {/* Form */}
       {showForm ? (
-        <Card className="border-primary/20">
+        <Card className={portalPanelClassName('border-primary/20')}>
           <CardContent className="pt-4 space-y-4">
             <p className="text-sm font-medium">{editingId ? 'Edit Employment' : 'Add Employment'}</p>
 
