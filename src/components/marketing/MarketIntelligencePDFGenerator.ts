@@ -914,6 +914,92 @@ class MarketIntelPDFBuilder {
     this.y += panelHeight + 6;
   }
 
+  private extractCorrelationBullets(content: string, fallbackPrefix: string): string[] {
+    if (!content) return [];
+
+    const bullets = content
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .filter((line) => line.startsWith('- ') || line.startsWith('* ') || /^\d+\.\s/.test(line))
+      .map((line) => stripMarkdown(line.replace(/^[-*]\s/, '').replace(/^\d+\.\s/, '')))
+      .filter(Boolean);
+
+    if (bullets.length > 0) return bullets.slice(0, 4);
+
+    const sentences = stripMarkdown(content)
+      .split(/(?<=[.!?])\s+/)
+      .map((sentence) => sentence.trim())
+      .filter((sentence) => sentence.length > 40);
+
+    return sentences.slice(0, 4).map((sentence) => `${fallbackPrefix}: ${sentence}`);
+  }
+
+  private drawCorrelationHighlights(data: MarketIntelligenceReportData) {
+    const analysisDrivers = this.extractCorrelationBullets(data.correlationData?.aiAnalysis || '', 'Driver');
+    const researchHighlights = this.extractCorrelationBullets(data.correlationData?.perplexityResearch || '', 'Highlight');
+    const recentEvents = (data.marketEvents || []).slice(0, 3);
+
+    if (analysisDrivers.length === 0 && researchHighlights.length === 0 && recentEvents.length === 0) return;
+
+    this.addPage();
+    this.drawSectionHeader('Correlation Highlights');
+
+    const cards = [
+      {
+        title: 'Key Drivers',
+        accent: NAVY,
+        background: { r: 235, g: 242, b: 255 },
+        items: analysisDrivers.length ? analysisDrivers : ['AI correlation analysis will appear here once the model returns structured drivers.'],
+      },
+      {
+        title: 'Correlation Signals',
+        accent: GOLD,
+        background: GOLD_LIGHT_BG,
+        items: researchHighlights.length ? researchHighlights : ['Live market intelligence findings will appear here when source-backed highlights are available.'],
+      },
+    ];
+
+    const gap = 6;
+    const cardWidth = (this.contentWidth() - gap) / 2;
+    let cardTop = this.y;
+    let tallestCard = 0;
+
+    cards.forEach((card, index) => {
+      const x = this.margin + index * (cardWidth + gap);
+      const itemLines = card.items.flatMap((item) => this.doc.splitTextToSize(`• ${item}`, cardWidth - 12));
+      const cardHeight = Math.max(40, itemLines.length * 4.5 + 18);
+      tallestCard = Math.max(tallestCard, cardHeight);
+
+      this.doc.setFillColor(card.background.r, card.background.g, card.background.b);
+      this.doc.roundedRect(x, cardTop, cardWidth, cardHeight, 2, 2, 'F');
+      this.doc.setDrawColor(card.accent.r, card.accent.g, card.accent.b);
+      this.doc.setLineWidth(0.6);
+      this.doc.roundedRect(x, cardTop, cardWidth, cardHeight, 2, 2, 'S');
+      this.doc.setFillColor(card.accent.r, card.accent.g, card.accent.b);
+      this.doc.rect(x, cardTop, 3, cardHeight, 'F');
+
+      this.doc.setFont('helvetica', 'bold');
+      this.doc.setFontSize(9);
+      this.doc.setTextColor(card.accent.r, card.accent.g, card.accent.b);
+      this.doc.text(card.title.toUpperCase(), x + 8, cardTop + 7);
+
+      this.doc.setFont('helvetica', 'normal');
+      this.doc.setFontSize(8.5);
+      this.doc.setTextColor(DARK_TEXT.r, DARK_TEXT.g, DARK_TEXT.b);
+      this.doc.text(itemLines, x + 8, cardTop + 13);
+    });
+
+    this.y += tallestCard + 10;
+
+    if (recentEvents.length > 0) {
+      const summary = recentEvents
+        .map((event) => `${formatDate(event.date)} — ${event.event}: ${event.description}`)
+        .join('\n');
+      this.drawInsightCallout('Correlation Highlights', summary);
+    }
+  }
+
   // ─── Main Generation Method ────────────────────────────────────────
 
   async generate(data: MarketIntelligenceReportData): Promise<Blob> {
