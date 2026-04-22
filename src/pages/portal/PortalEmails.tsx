@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Mail, Search, Loader2, Inbox, Clock, AlertTriangle } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
+import { PortalEmptyState } from '@/components/finance-portal/PortalEmptyState';
 
 function extractName(sender: string): string {
   // "John Smith <john@email.com>" → "John Smith"
@@ -43,36 +44,34 @@ export default function PortalEmails() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="client-portal-page-header">
         <h1 className="text-2xl font-bold text-foreground">Correspondence</h1>
-        <p className="text-muted-foreground mt-1">Email communications related to your account</p>
+        <p className="mt-1 text-muted-foreground">Email communications related to your account</p>
       </div>
 
       {/* Search */}
       {emails.length > 0 && (
-        <div className="relative">
+        <div className="client-portal-soft-panel relative rounded-2xl p-4">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search emails by subject or sender..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
+            className="border-border/60 bg-background/70 pl-10"
           />
         </div>
       )}
 
       {/* Email List */}
       {filtered.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Inbox className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
-            <p className="text-muted-foreground">
-              {search ? 'No emails match your search.' : 'No correspondence found.'}
-            </p>
-          </CardContent>
-        </Card>
+        <PortalEmptyState
+          className="client-portal-soft-panel"
+          icon={<Inbox className="h-8 w-8" />}
+          title={search ? 'No emails match your search' : 'No correspondence found'}
+          description={search ? 'Try a broader subject or sender search to locate the conversation you need.' : 'Email communications related to your account will appear here when available.'}
+        />
       ) : (
-        <Card>
+        <Card className="client-portal-soft-panel overflow-hidden">
           <CardContent className="p-0">
             <div className="divide-y divide-border">
               {filtered.map((email: any) => (

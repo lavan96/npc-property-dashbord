@@ -47,17 +47,17 @@ export default function PortalLenders() {
   }
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 space-y-6 max-w-5xl">
-      <div>
+    <div className="container mx-auto max-w-5xl space-y-6 p-4 sm:p-6">
+      <div className="client-portal-page-header">
         <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight flex items-center gap-2">
-          <Landmark className="h-6 w-6" /> Your Lender Submissions
+          <Landmark className="h-6 w-6 text-primary" /> Your Lender Submissions
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
           Track your loan applications and view lender comparisons your broker has shared.
         </p>
       </div>
 
-      <Card>
+      <Card className="client-portal-soft-panel overflow-hidden">
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Loan applications</CardTitle>
           <CardDescription>Read-only view of your submissions across lenders.</CardDescription>
@@ -109,7 +109,7 @@ export default function PortalLenders() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="client-portal-soft-panel overflow-hidden">
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Scale className="h-4 w-4" /> Lender comparisons
