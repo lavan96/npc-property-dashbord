@@ -213,16 +213,16 @@ export default function FinancePortalEarnings() {
     }
   }, [loading, highlightLatest]);
 
+  const currentStatusOptions = useMemo(() => {
+    const source = tab === 'commissions' ? commissions : statements;
+    return Array.from(new Set(source.map((item) => item.status).filter(Boolean))).sort();
+  }, [commissions, statements, tab]);
+
   useEffect(() => {
     if (statusFilter !== 'all' && !currentStatusOptions.includes(statusFilter)) {
       setStatusFilter('all');
     }
   }, [currentStatusOptions, statusFilter]);
-
-  const currentStatusOptions = useMemo(() => {
-    const source = tab === 'commissions' ? commissions : statements;
-    return Array.from(new Set(source.map((item) => item.status).filter(Boolean))).sort();
-  }, [commissions, statements, tab]);
 
   const filteredCommissions = useMemo(() => commissions.filter((commission) => {
     const statusMatches = statusFilter === 'all' || commission.status === statusFilter;
