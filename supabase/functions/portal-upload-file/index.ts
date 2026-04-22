@@ -1,5 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
 import { createCorsHeaders } from "../_shared/auth.ts"
+import { buildProvenance, logClientActivity } from '../_shared/client-data-provenance.ts'
+import { buildDocumentDedupeKey, createSyncEvent, sha256Hex } from '../_shared/client-sync.ts'
 
 function extractPortalToken(headers: Headers, formData?: FormData): string | null {
   const headerToken = headers.get('x-portal-session-token');
@@ -68,8 +70,44 @@ Deno.serve(async (req) => {
       );
     }
 
-    const filePath = `${clientId}/portal-uploads/${Date.now()}-${file.name}`;
     const fileBuffer = await file.arrayBuffer();
+    const contentHash = await sha256Hex(fileBuffer);
+    const dedupeKey = buildDocumentDedupeKey({ clientId, filename: file.name, fileSize: file.size, category });
+
+    const { data: existingFile } = await supabase
+      .from('client_files')
+      .select('id, file_name, file_path, file_type, file_size, category, document_type, description, uploaded_at, content_hash, dedupe_key, version_group_id, version_number')
+      .eq('client_id', clientId)
+      .eq('content_hash', contentHash)
+      .order('uploaded_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (existingFile) {
+      await createSyncEvent(supabase, {
+        clientId,
+        entityId: existingFile.id,
+        entityTable: 'client_files',
+        entityType: 'document',
+        sourceSurface: 'client_portal',
+        sourceActorType: 'client_user',
+        sourceActorName: session.client_portal_users.email ?? null,
+        sourceReference: session.client_portal_users.id ?? null,
+        sourceDetails: { duplicate_upload: true, filename: file.name, category },
+        syncStatus: 'duplicate',
+        dedupeKey,
+        contentHash,
+        versionGroupId: existingFile.version_group_id,
+        versionNumber: existingFile.version_number,
+      });
+
+      return new Response(
+        JSON.stringify({ success: true, file: existingFile, duplicate: true }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const filePath = `${clientId}/portal-uploads/${Date.now()}-${file.name}`;
 
     // Upload to storage
     const { error: uploadError } = await supabase.storage
@@ -100,6 +138,18 @@ Deno.serve(async (req) => {
         document_type: 'portal_upload',
         description: `Uploaded via client portal`,
         uploaded_at: new Date().toISOString(),
+        content_hash: contentHash,
+        dedupe_key: dedupeKey,
+        version_group_id: crypto.randomUUID(),
+        version_number: 1,
+        sync_status: 'synced',
+        ...buildProvenance({
+          sourceSurface: 'client_portal',
+          sourceActorType: 'client_user',
+          sourceActorName: session.client_portal_users.email ?? null,
+          sourceReference: session.client_portal_users.id ?? null,
+          sourceDetails: { category, uploaded_via: 'portal_upload_file' },
+        }),
       })
       .select()
       .single();
@@ -111,6 +161,45 @@ Deno.serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    await logClientActivity(supabase, {
+      clientId,
+      activityType: 'file_uploaded',
+      title: `Document uploaded: ${file.name}`,
+      description: `Uploaded from the client portal`,
+      metadata: {
+        category,
+        file_size: file.size,
+        file_type: file.type,
+        file_id: fileRecord.id,
+        dedupe_key: dedupeKey,
+      },
+      provenance: {
+        sourceSurface: 'client_portal',
+        sourceActorType: 'client_user',
+        sourceActorName: session.client_portal_users.email ?? null,
+        sourceReference: session.client_portal_users.id ?? null,
+        sourceDetails: { file_id: fileRecord.id, category },
+      },
+    });
+
+    await createSyncEvent(supabase, {
+      clientId,
+      entityId: fileRecord.id,
+      entityTable: 'client_files',
+      entityType: 'document',
+      sourceSurface: 'client_portal',
+      sourceActorType: 'client_user',
+      sourceActorName: session.client_portal_users.email ?? null,
+      sourceReference: session.client_portal_users.id ?? null,
+      sourceDetails: { filename: file.name, category, storage_bucket: 'client-files' },
+      syncStatus: 'synced',
+      dedupeKey,
+      contentHash,
+      propagatedTo: ['internal_dashboard', 'finance_portal'],
+      versionGroupId: fileRecord.version_group_id,
+      versionNumber: fileRecord.version_number,
+    });
 
     return new Response(
       JSON.stringify({ success: true, file: fileRecord }),
