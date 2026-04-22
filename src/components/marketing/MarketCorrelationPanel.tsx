@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Activity, Brain, AlertTriangle, ExternalLink, Globe, ArrowUp, ArrowDown, Minus, Calendar } from 'lucide-react';
 import { EnhancedResearchRenderer, createMarkdownComponents } from './EnhancedResearchRenderer';
 import { MarketIntelligenceExportButton } from './MarketIntelligenceExportButton';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface MarketEvent {
   date: string;
@@ -33,6 +34,15 @@ const CATEGORY_CONFIG: Record<string, { label: string; emoji: string; color: str
   seasonal: { label: 'Seasonal', emoji: '📅', color: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/30' },
 };
 
+const REPORT_TYPE_OPTIONS = [
+  { value: 'market_pulse', label: 'Market Pulse' },
+  { value: 'full', label: 'Full Report' },
+  { value: 'finance_update', label: 'Finance & Lending' },
+  { value: 'strategy_insight', label: 'Strategy Insight' },
+  { value: 'hotspot_deep_dive', label: 'Hotspot Deep Dive' },
+  { value: 'myth_busting', label: 'Myth Busting' },
+] as const;
+
 function ImpactIcon({ impact }: { impact: string }) {
   if (impact === 'positive') return <ArrowUp className="h-3.5 w-3.5 text-emerald-500" />;
   if (impact === 'negative') return <ArrowDown className="h-3.5 w-3.5 text-red-500" />;
@@ -51,6 +61,7 @@ function isUpcoming(dateStr: string) {
 
 export function MarketCorrelationPanel({ marketEvents, perplexityResearch, citations, aiAnalysis, aiError, loading }: MarketCorrelationPanelProps) {
   const markdownComponents = useMemo(() => createMarkdownComponents(), []);
+  const [selectedReportType, setSelectedReportType] = useState<MarketIntelligenceExportButtonProps['reportType']>('market_pulse');
 
   if (loading) {
     return (
@@ -90,7 +101,23 @@ export function MarketCorrelationPanel({ marketEvents, perplexityResearch, citat
               How macro events impact your ad performance
             </CardDescription>
           </div>
-          <MarketIntelligenceExportButton reportType="market_pulse" />
+          <div className="flex items-center gap-2">
+            <div className="w-[180px]">
+              <Select value={selectedReportType} onValueChange={(value) => setSelectedReportType(value as MarketIntelligenceExportButtonProps['reportType'])}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Select report type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {REPORT_TYPE_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <MarketIntelligenceExportButton reportType={selectedReportType} reportContext="market_correlation" />
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-5">

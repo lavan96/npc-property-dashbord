@@ -39,6 +39,7 @@ export interface MarketIntelligenceReportData {
   reportPeriod: string;
   reportType?: string;
   reportTypeLabel?: string;
+  reportContext?: 'default' | 'market_correlation';
   audienceSegment?: string;
   executiveSummary: string;
   keyInsightsSnapshot?: string;
