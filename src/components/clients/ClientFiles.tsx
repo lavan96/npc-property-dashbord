@@ -30,6 +30,8 @@ import { useNotifications } from '@/contexts/NotificationsContext';
 import { secureStorageUpload, secureStorageDownload, secureStorageDelete } from '@/hooks/useSecureStorage';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
+import { SyncStatusBadge } from '@/components/sync/SyncStatusBadge';
+import { getActorLabel, getConflictReason, getSurfaceLabel } from '@/lib/syncDisplay';
 
 interface ClientFilesProps {
   clientId: string;
@@ -308,6 +310,10 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
                       <Badge className={categoryColors[file.category]}>
                         {file.category}
                       </Badge>
+                      <SyncStatusBadge status={file.sync_status} />
+                      {file.source_surface && (
+                        <Badge variant="outline" className="text-xs">{getSurfaceLabel(file.source_surface)}</Badge>
+                      )}
                       <span className="text-xs text-muted-foreground">
                         {formatFileSize(file.file_size)}
                       </span>
@@ -318,6 +324,11 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
                     {file.description && (
                       <p className="text-xs text-muted-foreground mt-1">{file.description}</p>
                     )}
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                      {getActorLabel(file) && <span>By {getActorLabel(file)}</span>}
+                      {file.version_number ? <span>v{file.version_number}</span> : null}
+                      {getConflictReason(file) ? <span className="text-warning">{getConflictReason(file)}</span> : null}
+                    </div>
                   </div>
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       {onSendEmail && (

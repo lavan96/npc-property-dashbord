@@ -340,7 +340,7 @@ Deno.serve(async (req) => {
     if (include.files) {
       const { data: files } = await supabase
         .from('client_files')
-        .select('id, file_name, file_path, file_type, file_size, category, document_type, description, uploaded_at')
+        .select('id, file_name, file_path, file_type, file_size, category, document_type, description, uploaded_at, source_surface, source_actor_name, sync_status, last_sync_error, version_number, dedupe_key')
         .eq('client_id', clientId)
         .order('uploaded_at', { ascending: false });
       result.files = files || [];

@@ -2,6 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from '../_shared/auth.ts';
 import { checkPermission } from '../_shared/permissions.ts';
 import { buildProvenance, logClientActivity } from '../_shared/client-data-provenance.ts';
+import { buildDocumentDedupeKey, buildNoteDedupeKey, createSyncEvent, resolveSyncConflict, sha256Text, SYNC_CONFLICT_WINDOW_MS } from '../_shared/client-sync.ts';
 
 type TableName = 'clients' | 'client_properties' | 'client_income' | 'client_expenses' |
                  'client_assets' | 'client_liabilities' | 'client_employment' |
@@ -70,6 +71,144 @@ function convertToAnnual(amount: number, frequency: string): number {
     case 'monthly': return amount * 12;
     default: return amount;
   }
+}
+
+async function prepareSharedSyncInsert(
+  supabase: any,
+  table: TableName,
+  clientId: string,
+  record: Record<string, any>,
+  provenance: Record<string, any>,
+  actor: { userId: string | null; username: string | null },
+) {
+  const now = new Date().toISOString();
+  const windowStart = new Date(Date.now() - SYNC_CONFLICT_WINDOW_MS).toISOString();
+
+  if (table === 'client_files') {
+    const dedupeKey = buildDocumentDedupeKey({
+      clientId,
+      filename: String(record.file_name || 'document'),
+      fileSize: Number(record.file_size || 0),
+      category: typeof record.category === 'string' ? record.category : null,
+    });
+
+    const { data: existing } = await supabase
+      .from('client_files')
+      .select('id, source_surface, uploaded_at, last_synced_at, version_group_id, version_number')
+      .eq('client_id', clientId)
+      .eq('dedupe_key', dedupeKey)
+      .gte('uploaded_at', windowStart)
+      .order('uploaded_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const resolution = resolveSyncConflict({
+      existing,
+      incomingSurface: 'internal_dashboard',
+      incomingTimestamp: now,
+    });
+
+    const conflictReason = existing ? resolution.conflictReason : null;
+    return {
+      record: {
+        ...record,
+        ...provenance,
+        dedupe_key: dedupeKey,
+        sync_status: resolution.status,
+        last_synced_at: now,
+        last_sync_error: resolution.status === 'conflict' ? conflictReason : null,
+        version_group_id: resolution.versionGroupId,
+        version_number: resolution.versionNumber,
+        supersedes_file_id: resolution.supersedesEntityId,
+        source_details: {
+          ...(provenance.source_details || {}),
+          dedupe_key: dedupeKey,
+          sync_conflict_reason: conflictReason,
+        },
+      },
+      syncMeta: {
+        syncStatus: resolution.status,
+        dedupeKey,
+        versionGroupId: resolution.versionGroupId,
+        versionNumber: resolution.versionNumber,
+        supersedesEntityId: resolution.supersedesEntityId,
+        conflictReason,
+        shouldSupersedeExisting: resolution.shouldSupersedeExisting,
+        existingId: existing?.id || null,
+        sourceActorName: actor.username,
+        sourceReference: actor.userId,
+      },
+    };
+  }
+
+  if (table === 'client_notes') {
+    const content = String(record.content || '');
+    const noteType = String(record.note_type || 'general');
+    const contentHash = await sha256Text(`${noteType}:${content}`);
+    const dedupeKey = buildNoteDedupeKey({ clientId, noteType, content });
+
+    const { data: existing } = await supabase
+      .from('client_notes')
+      .select('id, source_surface, created_at, updated_at, version_group_id, version_number, content_hash')
+      .eq('client_id', clientId)
+      .eq('dedupe_key', dedupeKey)
+      .gte('created_at', windowStart)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const isDuplicate = !!existing?.content_hash && existing.content_hash === contentHash;
+    const resolution = isDuplicate
+      ? {
+          status: 'duplicate' as const,
+          versionGroupId: existing?.version_group_id || crypto.randomUUID(),
+          versionNumber: existing?.version_number || 1,
+          supersedesEntityId: null,
+          conflictReason: 'Identical note already exists from a recent sync window',
+          shouldSupersedeExisting: false,
+        }
+      : resolveSyncConflict({
+          existing,
+          incomingSurface: 'internal_dashboard',
+          incomingTimestamp: now,
+        });
+
+    return {
+      record: {
+        ...record,
+        ...provenance,
+        content_hash: contentHash,
+        dedupe_key: dedupeKey,
+        sync_status: resolution.status,
+        last_synced_at: now,
+        last_sync_error: resolution.status === 'conflict' || resolution.status === 'duplicate' ? resolution.conflictReason : null,
+        version_group_id: resolution.versionGroupId,
+        version_number: resolution.versionNumber,
+        supersedes_note_id: resolution.supersedesEntityId,
+        source_details: {
+          ...(provenance.source_details || {}),
+          content_hash: contentHash,
+          dedupe_key: dedupeKey,
+          sync_conflict_reason: resolution.conflictReason,
+        },
+      },
+      syncMeta: {
+        syncStatus: resolution.status,
+        dedupeKey,
+        contentHash,
+        versionGroupId: resolution.versionGroupId,
+        versionNumber: resolution.versionNumber,
+        supersedesEntityId: resolution.supersedesEntityId,
+        conflictReason: resolution.conflictReason,
+        shouldSupersedeExisting: resolution.shouldSupersedeExisting,
+        existingId: existing?.id || null,
+        sourceActorName: actor.username,
+        sourceReference: actor.userId,
+      },
+    };
+  }
+
+  return { record, syncMeta: null };
 }
 
 /**
@@ -227,10 +366,16 @@ Deno.serve(async (req) => {
             : { ...data, client_id: clientId };
         }
 
-        if (table === 'client_files' || table === 'client_notes') {
+        const syncPlans = table === 'client_files' || table === 'client_notes'
+          ? await Promise.all((Array.isArray(insertData) ? insertData : [insertData]).map((item) =>
+              prepareSharedSyncInsert(supabase, table, clientId!, { ...item }, provenance, { userId: userId || null, username: username || null }),
+            ))
+          : null;
+
+        if (syncPlans) {
           insertData = Array.isArray(insertData)
-            ? insertData.map((item) => ({ ...item, ...provenance }))
-            : { ...insertData, ...provenance };
+            ? syncPlans.map((plan) => plan.record)
+            : syncPlans[0].record;
         }
 
         // Use .select() without .single() to handle both array and single inserts
@@ -241,6 +386,51 @@ Deno.serve(async (req) => {
 
         result = isArray ? inserted : inserted?.[0];
         error = insertError;
+
+        if (!error && syncPlans) {
+          const insertedRows = Array.isArray(result) ? result : [result];
+          await Promise.all(insertedRows.map(async (row: any, index: number) => {
+            const plan = syncPlans[index];
+            if (!row || !plan?.syncMeta) return;
+
+            if (plan.syncMeta.shouldSupersedeExisting && plan.syncMeta.existingId) {
+              const supersedeField = table === 'client_files' ? 'supersedes_file_id' : 'supersedes_note_id';
+              await supabase
+                .from(table)
+                .update({
+                  sync_status: 'superseded',
+                  last_synced_at: new Date().toISOString(),
+                  last_sync_error: plan.syncMeta.conflictReason,
+                  [supersedeField]: row.id,
+                })
+                .eq('id', plan.syncMeta.existingId)
+                .eq('client_id', clientId);
+            }
+
+            await createSyncEvent(supabase, {
+              clientId: clientId!,
+              entityId: row.id,
+              entityTable: table,
+              entityType: table === 'client_files' ? 'document' : 'note',
+              sourceSurface: 'internal_dashboard',
+              sourceActorType: 'internal_user',
+              sourceActorName: username || null,
+              sourceReference: userId || null,
+              sourceDetails: {
+                ...(row.source_details || {}),
+                operation: 'create',
+              },
+              syncStatus: plan.syncMeta.syncStatus,
+              dedupeKey: plan.syncMeta.dedupeKey,
+              contentHash: plan.syncMeta.contentHash || null,
+              propagatedTo: ['finance_portal', 'client_portal'],
+              versionGroupId: plan.syncMeta.versionGroupId,
+              versionNumber: plan.syncMeta.versionNumber,
+              supersedesEntityId: plan.syncMeta.supersedesEntityId,
+              conflictReason: plan.syncMeta.conflictReason,
+            });
+          }));
+        }
 
         // Update last_note_at on the client when a note is created
         if (!error && table === 'client_notes' && clientId) {
@@ -317,9 +507,34 @@ Deno.serve(async (req) => {
         // For clients table, use clientId as the record ID
         const idToUpdate = table === 'clients' ? clientId : recordId;
 
+        const updatePayload = { ...data } as Record<string, any>;
+        if (table === 'client_notes' || table === 'client_files') {
+          Object.assign(updatePayload, {
+            ...buildProvenance({
+              sourceSurface: 'internal_dashboard',
+              sourceActorType: 'internal_user',
+              sourceActorName: username || null,
+              sourceReference: userId || null,
+              sourceDetails: { auth_method: authMethod || 'unknown', updated_via: 'manage-client-data' },
+            }),
+            last_synced_at: new Date().toISOString(),
+            sync_status: 'synced',
+            last_sync_error: null,
+          });
+
+          if (table === 'client_notes') {
+            updatePayload.content_hash = await sha256Text(`${String(updatePayload.note_type || 'general')}:${String(updatePayload.content || '')}`);
+            updatePayload.dedupe_key = buildNoteDedupeKey({
+              clientId: clientId!,
+              noteType: String(updatePayload.note_type || 'general'),
+              content: String(updatePayload.content || ''),
+            });
+          }
+        }
+
         const { data: updated, error: updateError } = await supabase
           .from(table)
-          .update(data)
+          .update(updatePayload)
           .eq('id', idToUpdate)
           .select()
           .single();
@@ -494,7 +709,15 @@ Deno.serve(async (req) => {
           title: `${operation.charAt(0).toUpperCase() + operation.slice(1)}d ${table.replace('client_', '').replace('_', ' ')}`,
           description: `Record ${operation}d via secure API`,
           createdBy: userId,
-          metadata: { table, operation, recordId: recordId || result?.id },
+          metadata: {
+            table,
+            operation,
+            recordId: recordId || result?.id,
+            sync_status: result?.sync_status || null,
+            source_surface: result?.source_surface || 'internal_dashboard',
+            conflict_reason: result?.last_sync_error || result?.source_details?.sync_conflict_reason || null,
+            version_number: result?.version_number || null,
+          },
           provenance: {
             sourceSurface: 'internal_dashboard',
             sourceActorType: 'internal_user',

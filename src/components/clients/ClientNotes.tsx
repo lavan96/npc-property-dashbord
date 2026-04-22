@@ -17,6 +17,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { VoiceNoteRecorder } from './VoiceNoteRecorder';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
+import { SyncStatusBadge } from '@/components/sync/SyncStatusBadge';
+import { getActorLabel, getConflictReason, getSurfaceLabel } from '@/lib/syncDisplay';
 
 interface ClientNotesProps {
   clientId: string;
@@ -333,10 +335,14 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
               return (
                 <div key={note.id} className="p-3 border rounded-lg space-y-2 group">
                   <div className="flex items-center justify-between">
-                    <Badge variant="outline" className={getNoteColor(note.note_type)}>
-                      {getNoteIcon(note.note_type)}
-                      <span className="ml-1.5 capitalize">{note.note_type}</span>
-                    </Badge>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="outline" className={getNoteColor(note.note_type)}>
+                        {getNoteIcon(note.note_type)}
+                        <span className="ml-1.5 capitalize">{note.note_type}</span>
+                      </Badge>
+                      <SyncStatusBadge status={note.sync_status} />
+                      {note.source_surface && <Badge variant="outline" className="text-xs">{getSurfaceLabel(note.source_surface)}</Badge>}
+                    </div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-muted-foreground">
                         {format(new Date(note.created_at), 'MMM d, yyyy h:mm a')}
@@ -360,6 +366,11 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
                     </div>
                   </div>
                   <p className="text-sm whitespace-pre-wrap">{note.content}</p>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                    {getActorLabel(note) && <span>By {getActorLabel(note)}</span>}
+                    {note.version_number ? <span>v{note.version_number}</span> : null}
+                    {getConflictReason(note) ? <span className="text-warning">{getConflictReason(note)}</span> : null}
+                  </div>
                 </div>
               );
             })}

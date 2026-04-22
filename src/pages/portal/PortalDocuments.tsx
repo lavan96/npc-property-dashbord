@@ -19,6 +19,8 @@ import { useDropzone } from 'react-dropzone';
 import { useQueryClient } from '@tanstack/react-query';
 import { PortalEmptyState } from '@/components/portal/PortalEmptyState';
 import { PortalPanel, PortalPanelContent } from '@/components/portal/PortalSurface';
+import { SyncStatusBadge } from '@/components/sync/SyncStatusBadge';
+import { getActorLabel, getConflictReason, getSurfaceLabel } from '@/lib/syncDisplay';
 
 function formatFileSize(bytes?: number | null): string {
   if (!bytes) return '—';
@@ -331,10 +333,17 @@ export default function PortalDocuments() {
                     <p className="text-sm font-medium text-foreground truncate">{file.file_name}</p>
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
                       <Badge className={`text-xs ${getCategoryColor(file.category)}`}>{file.category}</Badge>
+                      <SyncStatusBadge status={file.sync_status} />
+                      <Badge variant="outline" className="text-xs">{getSurfaceLabel(file.source_surface)}</Badge>
                       {file.document_type && <span className="text-xs text-muted-foreground capitalize">{file.document_type.replace(/_/g, ' ')}</span>}
                       <span className="text-xs text-muted-foreground">{formatFileSize(file.file_size)}</span>
                     </div>
                     {file.description && <p className="text-xs text-muted-foreground mt-1 truncate">{file.description}</p>}
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                      {getActorLabel(file) && <span>By {getActorLabel(file)}</span>}
+                      {file.version_number ? <span>v{file.version_number}</span> : null}
+                      {getConflictReason(file) ? <span className="text-warning">{getConflictReason(file)}</span> : null}
+                    </div>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
                     <p className="text-xs text-muted-foreground hidden sm:block">
