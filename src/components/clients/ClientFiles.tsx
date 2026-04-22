@@ -32,7 +32,7 @@ import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { SyncConflictDetailsPopover } from '@/components/sync/SyncConflictDetailsPopover';
 import { SyncStatusBadge } from '@/components/sync/SyncStatusBadge';
-import { MAX_DOCUMENT_UPLOAD_FILES, processFilesByMode } from '@/lib/documentUpload';
+import { MAX_DOCUMENT_UPLOAD_FILES, processFilesByMode, type UploadProcessingMode } from '@/lib/documentUpload';
 import { getActorLabel, getConflictReason, getSurfaceLabel, getVersionNumber } from '@/lib/syncDisplay';
 
 interface ClientFilesProps {
@@ -78,6 +78,7 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
   const [uploading, setUploading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('general');
   const [description, setDescription] = useState('');
+  const [uploadMode, setUploadMode] = useState<UploadProcessingMode>('parallel');
   const queryClient = useQueryClient();
   const { addNotification } = useNotifications();
 
@@ -90,7 +91,7 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
     mutationFn: async ({ files, category, description }: { files: File[]; category: string; description: string }) => {
       setUploading(true);
 
-      const { successes, failures } = await processFilesByMode(files, 'parallel', async (file, index) => {
+      const { successes, failures } = await processFilesByMode(files, uploadMode, async (file, index) => {
         const fileName = `${clientId}/${Date.now()}_${index}_${file.name}`;
 
         const uploadResult = await secureStorageUpload('client-files', fileName, file, {
@@ -235,7 +236,7 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <Select value={selectedCategory} onValueChange={setSelectedCategory}>
               <SelectTrigger>
                 <SelectValue placeholder="Category" />
@@ -253,6 +254,15 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
+            <Select value={uploadMode} onValueChange={(value) => setUploadMode(value as UploadProcessingMode)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Processing mode" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="parallel">Parallel upload</SelectItem>
+                <SelectItem value="sequential">Sequential upload</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           
           <div
@@ -282,6 +292,9 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
                    Drag & drop or click to upload multiple files
                 </p>
                  <p className="text-xs text-muted-foreground">Max 10MB each • up to {MAX_DOCUMENT_UPLOAD_FILES} files</p>
+                 <p className="text-xs text-muted-foreground">
+                   {uploadMode === 'parallel' ? 'Files upload together for faster batches.' : 'Files upload one-by-one for steadier progress.'}
+                 </p>
               </div>
             )}
           </div>

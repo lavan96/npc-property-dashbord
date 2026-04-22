@@ -21,7 +21,7 @@ import { PortalEmptyState } from '@/components/portal/PortalEmptyState';
 import { PortalPanel, PortalPanelContent } from '@/components/portal/PortalSurface';
 import { SyncConflictDetailsPopover } from '@/components/sync/SyncConflictDetailsPopover';
 import { SyncStatusBadge } from '@/components/sync/SyncStatusBadge';
-import { MAX_DOCUMENT_UPLOAD_FILES, mergeFilesWithLimit, processFilesByMode } from '@/lib/documentUpload';
+import { MAX_DOCUMENT_UPLOAD_FILES, mergeFilesWithLimit, processFilesByMode, type UploadProcessingMode } from '@/lib/documentUpload';
 import { getActorLabel, getConflictReason, getSurfaceLabel, getVersionNumber } from '@/lib/syncDisplay';
 
 function formatFileSize(bytes?: number | null): string {
@@ -78,6 +78,7 @@ export default function PortalDocuments() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadCategory, setUploadCategory] = useState('general');
+  const [uploadMode, setUploadMode] = useState<UploadProcessingMode>('parallel');
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [uploadSuccess, setUploadSuccess] = useState(false);
 
@@ -130,7 +131,7 @@ export default function PortalDocuments() {
     try {
       const sessionToken = getSessionToken();
       const filesToUpload = [...uploadFiles];
-      const { successes, failures } = await processFilesByMode(filesToUpload, 'parallel', async (file, index) => {
+      const { successes, failures } = await processFilesByMode(filesToUpload, uploadMode, async (file, index) => {
         const filePath = `${user.client_id}/portal-uploads/${Date.now()}-${index}-${file.name}`;
 
         const formData = new FormData();
@@ -249,6 +250,19 @@ export default function PortalDocuments() {
                 </Select>
               </div>
 
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Processing</Label>
+                <Select value={uploadMode} onValueChange={(value) => setUploadMode(value as UploadProcessingMode)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="parallel">Parallel upload</SelectItem>
+                    <SelectItem value="sequential">Sequential upload</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div
                 {...getRootProps()}
                 className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${
@@ -264,6 +278,9 @@ export default function PortalDocuments() {
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
                   PDF, images, Word, Excel (max 10MB each, up to {MAX_DOCUMENT_UPLOAD_FILES} files)
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {uploadMode === 'parallel' ? 'Files upload together for faster batches.' : 'Files upload one-by-one for steadier progress.'}
                 </p>
               </div>
 
