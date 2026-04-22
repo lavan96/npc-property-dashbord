@@ -174,7 +174,14 @@ export default function FinancePortalClients() {
       if (error || !data?.success || !data?.token) {
         throw new Error(data?.error || error?.message || 'Failed to create handoff link');
       }
-      const url = `${window.location.origin}/client/handoff?token=${encodeURIComponent(data.token)}`;
+      if (!data?.target_portal_user_id) {
+        throw new Error('No client portal profile is linked to this client yet');
+      }
+
+      const url = new URL('/client/handoff', window.location.origin);
+      url.searchParams.set('token', data.token);
+      url.searchParams.set('portalUserId', data.target_portal_user_id);
+      url.searchParams.set('clientId', clientId);
       window.open(url, '_blank', 'noopener,noreferrer');
     } catch (e: any) {
       toast.error(e?.message || 'Could not open client portal view');
