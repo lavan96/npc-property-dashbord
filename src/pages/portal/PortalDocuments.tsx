@@ -1,16 +1,16 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { usePortalAuth } from '@/hooks/usePortalAuth';
 import { usePortalDocumentsData } from '@/hooks/usePortalData';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Progress } from '@/components/ui/progress';
 import {
   FileText, Search, Loader2, FolderOpen, Download, Upload,
-  File, Image, FileSpreadsheet, FileIcon, Plus, X, CheckCircle
+  File, Image, FileSpreadsheet, FileIcon, X, CheckCircle, RotateCcw, AlertCircle
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
@@ -21,8 +21,31 @@ import { PortalEmptyState } from '@/components/portal/PortalEmptyState';
 import { PortalPanel, PortalPanelContent } from '@/components/portal/PortalSurface';
 import { SyncConflictDetailsPopover } from '@/components/sync/SyncConflictDetailsPopover';
 import { SyncStatusBadge } from '@/components/sync/SyncStatusBadge';
-import { MAX_DOCUMENT_UPLOAD_FILES, mergeFilesWithLimit, processFilesByMode, type UploadProcessingMode } from '@/lib/documentUpload';
+import {
+  DOCUMENT_UPLOAD_ACCEPT,
+  MAX_DOCUMENT_BATCH_BYTES,
+  MAX_DOCUMENT_UPLOAD_FILES,
+  calculateTotalUploadSize,
+  createUploadQueueItems,
+  formatUploadBytes,
+  getOverallUploadProgress,
+  getPersistedUploadMode,
+  getRejectedFilesMessage,
+  mergeFilesWithLimit,
+  persistUploadMode,
+  runTasksByMode,
+  type UploadProcessingMode,
+  type UploadQueueItem,
+  uploadFormDataWithProgress,
+} from '@/lib/documentUpload';
 import { getActorLabel, getConflictReason, getSurfaceLabel, getVersionNumber } from '@/lib/syncDisplay';
+
+interface FailedUploadItem {
+  id: string;
+  file: File;
+  fileName: string;
+  error: string;
+}
 
 function formatFileSize(bytes?: number | null): string {
   if (!bytes) return '—';
@@ -41,12 +64,12 @@ function getFileIcon(fileType?: string | null) {
 
 function getCategoryColor(category: string): string {
   const colors: Record<string, string> = {
-    'identification': 'border border-primary/20 bg-primary/10 text-primary',
-    'financial': 'border border-success/20 bg-success/10 text-success',
-    'property': 'border border-warning/20 bg-warning/10 text-warning',
-    'legal': 'border border-border/70 bg-muted text-foreground',
-    'report': 'border border-primary/20 bg-primary/10 text-primary',
-    'general': 'border border-border/70 bg-muted text-muted-foreground',
+    identification: 'border border-primary/20 bg-primary/10 text-primary',
+    financial: 'border border-success/20 bg-success/10 text-success',
+    property: 'border border-warning/20 bg-warning/10 text-warning',
+    legal: 'border border-border/70 bg-muted text-foreground',
+    report: 'border border-primary/20 bg-primary/10 text-primary',
+    general: 'border border-border/70 bg-muted text-muted-foreground',
   };
   return colors[category?.toLowerCase()] || colors.general;
 }
@@ -59,18 +82,26 @@ const UPLOAD_CATEGORIES = [
   { value: 'general', label: 'General' },
 ];
 
-const SUPABASE_URL = "https://dduzbchuswwbefdunfct.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkdXpiY2h1c3d3YmVmZHVuZmN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0NDM4NzksImV4cCI6MjA3MTAxOTg3OX0.eSYU6fxIc3tBQuGLsdBRff0alBMkNfvv7OpW0efNjxk";
+const SUPABASE_URL = 'https://dduzbchuswwbefdunfct.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkdXpiY2h1c3d3YmVmZHVuZmN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0NDM4NzksImV4cCI6MjA3MTAxOTg3OX0.eSYU6fxIc3tBQuGLsdBRff0alBMkNfvv7OpW0efNjxk';
 const PORTAL_SESSION_KEY = 'portal_session_token';
+const PORTAL_UPLOAD_MODE_SCOPE = 'portal-documents';
 
 function getSessionToken(): string | null {
-  try { return sessionStorage.getItem(PORTAL_SESSION_KEY) || localStorage.getItem(PORTAL_SESSION_KEY); }
-  catch { try { return localStorage.getItem(PORTAL_SESSION_KEY); } catch { return null; } }
+  try {
+    return sessionStorage.getItem(PORTAL_SESSION_KEY) || localStorage.getItem(PORTAL_SESSION_KEY);
+  } catch {
+    try {
+      return localStorage.getItem(PORTAL_SESSION_KEY);
+    } catch {
+      return null;
+    }
+  }
 }
 
 export default function PortalDocuments() {
   const { user } = usePortalAuth();
-  const { data, isLoading, error } = usePortalDocumentsData();
+  const { data, isLoading } = usePortalDocumentsData();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -80,10 +111,23 @@ export default function PortalDocuments() {
   const [uploadCategory, setUploadCategory] = useState('general');
   const [uploadMode, setUploadMode] = useState<UploadProcessingMode>('parallel');
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
+  const [uploadQueue, setUploadQueue] = useState<UploadQueueItem[]>([]);
+  const [uploadFailures, setUploadFailures] = useState<FailedUploadItem[]>([]);
   const [uploadSuccess, setUploadSuccess] = useState(false);
 
   const files = data?.files || [];
   const categories = [...new Set(files.map((f: any) => f.category))].sort();
+  const totalUploadBytes = useMemo(() => calculateTotalUploadSize(uploadFiles), [uploadFiles]);
+  const overallUploadProgress = useMemo(() => getOverallUploadProgress(uploadQueue), [uploadQueue]);
+
+  useEffect(() => {
+    const savedMode = getPersistedUploadMode(PORTAL_UPLOAD_MODE_SCOPE, user?.id);
+    if (savedMode) setUploadMode(savedMode);
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (user?.id) persistUploadMode(PORTAL_UPLOAD_MODE_SCOPE, user.id, uploadMode);
+  }, [uploadMode, user?.id]);
 
   const filtered = files.filter((f: any) => {
     if (categoryFilter !== 'all' && f.category !== categoryFilter) return false;
@@ -94,93 +138,130 @@ export default function PortalDocuments() {
     return true;
   });
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
+  const updateQueueItem = useCallback((id: string, patch: Partial<UploadQueueItem>) => {
+    setUploadQueue((prev) => prev.map((item) => (item.id === id ? { ...item, ...patch } : item)));
+  }, []);
+
+  const onDrop = useCallback((acceptedFiles: File[], rejectedFiles: any[]) => {
+    if (rejectedFiles.length > 0) {
+      const rejection = getRejectedFilesMessage(rejectedFiles);
+      toast.error(rejection.title, { description: rejection.description });
+    }
+
+    if (!acceptedFiles.length) return;
+
     setUploadFiles((prev) => {
       const nextFiles = mergeFilesWithLimit(prev, acceptedFiles, MAX_DOCUMENT_UPLOAD_FILES);
       if (prev.length + acceptedFiles.length > MAX_DOCUMENT_UPLOAD_FILES) {
         toast.error(`You can upload up to ${MAX_DOCUMENT_UPLOAD_FILES} files at once.`);
       }
+      if (calculateTotalUploadSize(nextFiles) > MAX_DOCUMENT_BATCH_BYTES) {
+        toast.error('Selected files exceed the batch size limit.', {
+          description: `Keep the total under ${formatUploadBytes(MAX_DOCUMENT_BATCH_BYTES)}.`,
+        });
+        return prev;
+      }
       return nextFiles;
     });
+
+    setUploadFailures([]);
     setUploadSuccess(false);
   }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     maxFiles: MAX_DOCUMENT_UPLOAD_FILES,
-    maxSize: 10 * 1024 * 1024, // 10MB
-    accept: {
-      'application/pdf': ['.pdf'],
-      'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'],
-      'application/msword': ['.doc'],
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
-      'application/vnd.ms-excel': ['.xls'],
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
-      'text/csv': ['.csv'],
-    },
+    maxSize: 10 * 1024 * 1024,
+    accept: DOCUMENT_UPLOAD_ACCEPT,
+    disabled: uploading,
   });
 
   const removeUploadFile = (idx: number) => {
-    setUploadFiles(prev => prev.filter((_, i) => i !== idx));
+    setUploadFiles((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  const handleUpload = async () => {
-    if (!uploadFiles.length || !user?.client_id) return;
+  const executeUploadBatch = useCallback(async (filesToUpload: File[]) => {
+    if (!filesToUpload.length || !user?.client_id) return;
+    if (calculateTotalUploadSize(filesToUpload) > MAX_DOCUMENT_BATCH_BYTES) {
+      toast.error('Upload batch is too large.', {
+        description: `Keep the total under ${formatUploadBytes(MAX_DOCUMENT_BATCH_BYTES)}.`,
+      });
+      return;
+    }
+
+    const queueItems = createUploadQueueItems(filesToUpload);
+    setUploadQueue(queueItems);
+    setUploadFailures([]);
     setUploading(true);
 
     try {
       const sessionToken = getSessionToken();
-      const filesToUpload = [...uploadFiles];
-      const { successes, failures } = await processFilesByMode(filesToUpload, uploadMode, async (file, index) => {
-        const filePath = `${user.client_id}/portal-uploads/${Date.now()}-${index}-${file.name}`;
+      const results = await runTasksByMode(queueItems, uploadMode, async (queueItem, index) => {
+        updateQueueItem(queueItem.id, { status: 'uploading', progress: 1, error: undefined });
 
+        const filePath = `${user.client_id}/portal-uploads/${Date.now()}-${index}-${queueItem.file.name}`;
         const formData = new FormData();
-        formData.append('file', file);
+        formData.append('file', queueItem.file);
         formData.append('file_path', filePath);
         formData.append('category', uploadCategory);
         formData.append('portal_session_token', sessionToken || '');
 
-        const response = await fetch(`${SUPABASE_URL}/functions/v1/portal-upload-file`, {
-          method: 'POST',
+        const result = await uploadFormDataWithProgress<any>({
+          url: `${SUPABASE_URL}/functions/v1/portal-upload-file`,
           headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
             ...(sessionToken ? { 'x-portal-session-token': sessionToken } : {}),
           },
-          credentials: 'omit',
-          body: formData,
+          formData,
+          onProgress: (progress) => updateQueueItem(queueItem.id, { progress }),
         });
 
-        const result = await response.json();
-        if (!response.ok || !result.success) {
-          throw new Error(result.error || 'Upload failed');
-        }
-
-        return result.file;
+        if (!result?.success) throw new Error(result?.error || 'Upload failed');
+        updateQueueItem(queueItem.id, { status: 'success', progress: 100 });
+        return { id: queueItem.id, file: queueItem.file, result };
       });
 
-      if (successes.length > 0) {
+      const failures = results.flatMap((result, index) => {
+        if (result.status === 'fulfilled') return [];
+        const queueItem = queueItems[index];
+        const error = result.reason?.message || 'Upload failed';
+        updateQueueItem(queueItem.id, { status: 'failed', progress: 100, error });
+        return [{ id: queueItem.id, file: queueItem.file, fileName: queueItem.file.name, error }];
+      });
+
+      const successCount = results.filter((result) => result.status === 'fulfilled').length;
+      setUploadFailures(failures);
+
+      if (successCount > 0) {
         setUploadSuccess(true);
-        setUploadFiles([]);
+        setUploadFiles((prev) => prev.filter((file) => failures.some((failure) => failure.file === file)));
+        queryClient.invalidateQueries({ queryKey: ['portal-client-data'] });
       }
-      queryClient.invalidateQueries({ queryKey: ['portal-client-data'] });
-      if (successes.length > 0 && failures.length === 0) {
-        toast.success(`${successes.length} file(s) uploaded successfully`);
+
+      if (successCount > 0 && failures.length === 0) {
+        toast.success(`${successCount} file(s) uploaded successfully`);
         setTimeout(() => {
           setUploadOpen(false);
           setUploadSuccess(false);
+          setUploadQueue([]);
         }, 1500);
-      } else if (successes.length > 0) {
-        toast.warning(`${successes.length} uploaded, ${failures.length} failed`);
-      } else {
-        throw new Error(failures[0]?.error || 'Failed to upload files');
+      } else if (successCount > 0) {
+        toast.warning(`${successCount} uploaded, ${failures.length} failed`);
+      } else if (failures.length > 0) {
+        toast.error('Upload failed', { description: failures[0].error });
       }
-    } catch (err: any) {
-      console.error('Upload error:', err);
-      toast.error(err.message || 'Failed to upload files');
     } finally {
       setUploading(false);
     }
+  }, [queryClient, updateQueueItem, uploadCategory, uploadMode, user?.client_id]);
+
+  const handleUpload = async () => {
+    await executeUploadBatch(uploadFiles);
+  };
+
+  const retryFailedUploads = async () => {
+    await executeUploadBatch(uploadFailures.map((item) => item.file));
   };
 
   const handleDownload = async (file: any) => {
@@ -221,7 +302,17 @@ export default function PortalDocuments() {
           <h1 className="text-2xl font-bold text-foreground">Documents</h1>
           <p className="text-muted-foreground mt-1">Your uploaded documents and files</p>
         </div>
-        <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
+        <Dialog
+          open={uploadOpen}
+          onOpenChange={(open) => {
+            setUploadOpen(open);
+            if (!open) {
+              setUploadQueue([]);
+              setUploadFailures([]);
+              setUploadSuccess(false);
+            }
+          }}
+        >
           <DialogTrigger asChild>
             <Button className="gap-2 shadow-md">
               <Upload className="h-4 w-4" />
@@ -243,7 +334,7 @@ export default function PortalDocuments() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {UPLOAD_CATEGORIES.map(c => (
+                    {UPLOAD_CATEGORIES.map((c) => (
                       <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
                     ))}
                   </SelectContent>
@@ -263,13 +354,23 @@ export default function PortalDocuments() {
                 </Select>
               </div>
 
+              <div className="rounded-lg border border-border/70 bg-muted/30 p-3">
+                <div className="flex items-center justify-between gap-3 text-sm">
+                  <span className="font-medium text-foreground">Batch size</span>
+                  <span className={totalUploadBytes > MAX_DOCUMENT_BATCH_BYTES ? 'text-destructive' : 'text-muted-foreground'}>
+                    {formatUploadBytes(totalUploadBytes)} / {formatUploadBytes(MAX_DOCUMENT_BATCH_BYTES)}
+                  </span>
+                </div>
+                <Progress value={Math.min(100, (totalUploadBytes / MAX_DOCUMENT_BATCH_BYTES) * 100)} className="mt-2 h-2" />
+              </div>
+
               <div
                 {...getRootProps()}
                 className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${
                   isDragActive
                     ? 'border-primary bg-primary/5'
                     : 'border-border hover:border-primary/50 hover:bg-muted/30'
-                }`}
+                } ${uploading ? 'pointer-events-none opacity-60' : ''}`}
               >
                 <input {...getInputProps()} />
                 <Upload className="h-8 w-8 text-muted-foreground/40 mx-auto mb-3" />
@@ -282,22 +383,75 @@ export default function PortalDocuments() {
                 <p className="text-xs text-muted-foreground mt-1">
                   {uploadMode === 'parallel' ? 'Files upload together for faster batches.' : 'Files upload one-by-one for steadier progress.'}
                 </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Batch total must stay under {formatUploadBytes(MAX_DOCUMENT_BATCH_BYTES)}.
+                </p>
               </div>
 
               {uploadFiles.length > 0 && (
                 <div className="space-y-2">
                   {uploadFiles.map((file, idx) => (
-                    <div key={idx} className="flex items-center gap-3 p-2.5 rounded-lg bg-muted/30 border border-border/50">
+                    <div key={`${file.name}-${file.lastModified}-${idx}`} className="flex items-center gap-3 p-2.5 rounded-lg bg-muted/30 border border-border/50">
                       {getFileIcon(file.type)}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{file.name}</p>
                         <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
                       </div>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => removeUploadFile(idx)}>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => removeUploadFile(idx)} disabled={uploading}>
                         <X className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                   ))}
+                </div>
+              )}
+
+              {uploadQueue.length > 0 && (
+                <div className="space-y-3 rounded-lg border border-border/70 bg-muted/20 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Upload progress</p>
+                      <p className="text-xs text-muted-foreground">Overall progress across the current batch.</p>
+                    </div>
+                    <span className="text-sm font-medium text-foreground">{overallUploadProgress}%</span>
+                  </div>
+                  <Progress value={overallUploadProgress} className="h-2" />
+                  <div className="space-y-2">
+                    {uploadQueue.map((item) => (
+                      <div key={item.id} className="rounded-lg border border-border/60 bg-background/80 p-2.5">
+                        <div className="flex items-center justify-between gap-3 text-sm">
+                          <span className="truncate font-medium text-foreground">{item.file.name}</span>
+                          <span className="text-xs text-muted-foreground">{item.status}</span>
+                        </div>
+                        <Progress value={item.progress} className="mt-2 h-1.5" />
+                        {item.error ? <p className="mt-2 text-xs text-destructive">{item.error}</p> : null}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {uploadFailures.length > 0 && (
+                <div className="space-y-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="mt-0.5 h-4 w-4 text-destructive" />
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Failed uploads</p>
+                        <p className="text-xs text-muted-foreground">Review errors and retry only the failed files.</p>
+                      </div>
+                    </div>
+                    <Button type="button" variant="outline" size="sm" className="gap-2" onClick={retryFailedUploads} disabled={uploading}>
+                      <RotateCcw className="h-3.5 w-3.5" /> Retry failed
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    {uploadFailures.map((failure) => (
+                      <div key={failure.id} className="rounded-lg border border-destructive/20 bg-background/90 p-2.5">
+                        <p className="text-sm font-medium text-foreground">{failure.fileName}</p>
+                        <p className="mt-1 text-xs text-destructive">{failure.error}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -309,14 +463,10 @@ export default function PortalDocuments() {
               ) : (
                 <Button
                   onClick={handleUpload}
-                  disabled={uploadFiles.length === 0 || uploading}
+                  disabled={uploadFiles.length === 0 || uploading || totalUploadBytes > MAX_DOCUMENT_BATCH_BYTES}
                   className="w-full gap-2"
                 >
-                  {uploading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Upload className="h-4 w-4" />
-                  )}
+                  {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
                   {uploading ? 'Uploading...' : `Upload ${uploadFiles.length} file(s)`}
                 </Button>
               )}
@@ -325,7 +475,6 @@ export default function PortalDocuments() {
         </Dialog>
       </div>
 
-      {/* Filters */}
       {files.length > 0 && (
         <div className="client-portal-soft-panel flex flex-col gap-3 rounded-2xl p-4 sm:flex-row">
           <div className="relative flex-1">
@@ -346,7 +495,6 @@ export default function PortalDocuments() {
         </div>
       )}
 
-      {/* Documents List */}
       {filtered.length === 0 ? (
         <PortalEmptyState
           className="client-portal-soft-panel"
