@@ -5865,52 +5865,106 @@ export type Database = {
         Row: {
           category: string
           client_id: string
+          conflict_group: string | null
+          conflict_reason: string | null
+          content_hash: string | null
           created_at: string
+          dedupe_key: string | null
           deleted_at: string | null
           description: string | null
           file_size: number
           id: string
+          last_synced_at: string | null
           mime_type: string
           original_filename: string
+          source_actor_name: string | null
+          source_actor_type:
+            | Database["public"]["Enums"]["record_source_actor_type"]
+            | null
+          source_details: Json
+          source_reference: string | null
+          source_surface:
+            | Database["public"]["Enums"]["record_source_surface"]
+            | null
           storage_path: string
+          supersedes_entity_id: string | null
+          sync_status: Database["public"]["Enums"]["sync_status_type"]
           updated_at: string
           uploaded_by_finance_user_id: string | null
           uploaded_by_internal_user_id: string | null
           uploader_type: string
+          version_group_id: string | null
+          version_number: number
           visible_to_client: boolean
         }
         Insert: {
           category?: string
           client_id: string
+          conflict_group?: string | null
+          conflict_reason?: string | null
+          content_hash?: string | null
           created_at?: string
+          dedupe_key?: string | null
           deleted_at?: string | null
           description?: string | null
           file_size?: number
           id?: string
+          last_synced_at?: string | null
           mime_type?: string
           original_filename: string
+          source_actor_name?: string | null
+          source_actor_type?:
+            | Database["public"]["Enums"]["record_source_actor_type"]
+            | null
+          source_details?: Json
+          source_reference?: string | null
+          source_surface?:
+            | Database["public"]["Enums"]["record_source_surface"]
+            | null
           storage_path: string
+          supersedes_entity_id?: string | null
+          sync_status?: Database["public"]["Enums"]["sync_status_type"]
           updated_at?: string
           uploaded_by_finance_user_id?: string | null
           uploaded_by_internal_user_id?: string | null
           uploader_type?: string
+          version_group_id?: string | null
+          version_number?: number
           visible_to_client?: boolean
         }
         Update: {
           category?: string
           client_id?: string
+          conflict_group?: string | null
+          conflict_reason?: string | null
+          content_hash?: string | null
           created_at?: string
+          dedupe_key?: string | null
           deleted_at?: string | null
           description?: string | null
           file_size?: number
           id?: string
+          last_synced_at?: string | null
           mime_type?: string
           original_filename?: string
+          source_actor_name?: string | null
+          source_actor_type?:
+            | Database["public"]["Enums"]["record_source_actor_type"]
+            | null
+          source_details?: Json
+          source_reference?: string | null
+          source_surface?:
+            | Database["public"]["Enums"]["record_source_surface"]
+            | null
           storage_path?: string
+          supersedes_entity_id?: string | null
+          sync_status?: Database["public"]["Enums"]["sync_status_type"]
           updated_at?: string
           uploaded_by_finance_user_id?: string | null
           uploaded_by_internal_user_id?: string | null
           uploader_type?: string
+          version_group_id?: string | null
+          version_number?: number
           visible_to_client?: boolean
         }
         Relationships: [
