@@ -129,6 +129,7 @@ Deno.serve(async (req) => {
       token,
       expires_at: expiresAt.toISOString(),
       target_email: targetPortalUser.email,
+      target_portal_user_id: targetPortalUser.id,
       readonly: !!readonly,
     });
   } catch (err: any) {
