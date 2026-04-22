@@ -19,8 +19,9 @@ import { useDropzone } from 'react-dropzone';
 import { useQueryClient } from '@tanstack/react-query';
 import { PortalEmptyState } from '@/components/portal/PortalEmptyState';
 import { PortalPanel, PortalPanelContent } from '@/components/portal/PortalSurface';
+import { SyncConflictDetailsPopover } from '@/components/sync/SyncConflictDetailsPopover';
 import { SyncStatusBadge } from '@/components/sync/SyncStatusBadge';
-import { getActorLabel, getConflictReason, getSurfaceLabel } from '@/lib/syncDisplay';
+import { getActorLabel, getConflictReason, getSurfaceLabel, getVersionNumber } from '@/lib/syncDisplay';
 
 function formatFileSize(bytes?: number | null): string {
   if (!bytes) return '—';
@@ -341,8 +342,9 @@ export default function PortalDocuments() {
                     {file.description && <p className="text-xs text-muted-foreground mt-1 truncate">{file.description}</p>}
                     <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                       {getActorLabel(file) && <span>By {getActorLabel(file)}</span>}
-                      {file.version_number ? <span>v{file.version_number}</span> : null}
+                      {getVersionNumber(file) ? <span>v{getVersionNumber(file)}</span> : null}
                       {getConflictReason(file) ? <span className="text-warning">{getConflictReason(file)}</span> : null}
+                      <SyncConflictDetailsPopover record={file} />
                     </div>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">

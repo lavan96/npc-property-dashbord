@@ -30,8 +30,9 @@ import { useNotifications } from '@/contexts/NotificationsContext';
 import { secureStorageUpload, secureStorageDownload, secureStorageDelete } from '@/hooks/useSecureStorage';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
+import { SyncConflictDetailsPopover } from '@/components/sync/SyncConflictDetailsPopover';
 import { SyncStatusBadge } from '@/components/sync/SyncStatusBadge';
-import { getActorLabel, getConflictReason, getSurfaceLabel } from '@/lib/syncDisplay';
+import { getActorLabel, getConflictReason, getSurfaceLabel, getVersionNumber } from '@/lib/syncDisplay';
 
 interface ClientFilesProps {
   clientId: string;
@@ -326,8 +327,9 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
                     )}
                     <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                       {getActorLabel(file) && <span>By {getActorLabel(file)}</span>}
-                      {file.version_number ? <span>v{file.version_number}</span> : null}
+                      {getVersionNumber(file) ? <span>v{getVersionNumber(file)}</span> : null}
                       {getConflictReason(file) ? <span className="text-warning">{getConflictReason(file)}</span> : null}
+                      <SyncConflictDetailsPopover record={file} />
                     </div>
                   </div>
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
