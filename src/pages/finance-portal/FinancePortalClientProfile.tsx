@@ -72,7 +72,7 @@ function CopyButton({ text, label }: { text: string; label: string }) {
       title={`Copy ${label}`}
     >
       {copied ? (
-        <Check className="h-3 w-3 text-emerald-500" />
+        <Check className="h-3 w-3 text-success" />
       ) : (
         <Copy className="h-3 w-3 text-muted-foreground/50 hover:text-muted-foreground" />
       )}
@@ -176,7 +176,7 @@ export default function FinancePortalClientProfile() {
   const [canScrollRight, setCanScrollRight] = useState(false);
 
   // Update active tab when default changes
-  useMemo(() => {
+  useEffect(() => {
     if (!activeTab && defaultTab) setActiveTab(defaultTab);
   }, [defaultTab]);
 
