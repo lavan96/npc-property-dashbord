@@ -163,6 +163,94 @@ Clean, modern admin dashboard with confidence-based color coding
 
 /* ChatGPT-grade Markdown Styling for Report Q&A */
 @layer components {
+  .client-portal-theme {
+    @apply relative min-h-screen bg-background text-foreground;
+    background-image:
+      radial-gradient(circle at top left, hsl(var(--primary) / 0.14), transparent 28%),
+      radial-gradient(circle at top right, hsl(var(--primary) / 0.08), transparent 24%),
+      linear-gradient(180deg, hsl(var(--background)), hsl(var(--background)) 40%, hsl(var(--card)) 100%);
+  }
+
+  .client-portal-theme::before {
+    content: "";
+    @apply pointer-events-none absolute inset-0 opacity-40;
+    background-image: linear-gradient(hsl(var(--border) / 0.14) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--border) / 0.1) 1px, transparent 1px);
+    background-size: 32px 32px;
+    mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.45), transparent 70%);
+  }
+
+  .client-portal-sidebar {
+    @apply border-border/70 bg-card/80 backdrop-blur-xl shadow-2xl shadow-primary/5;
+  }
+
+  .client-portal-topbar {
+    @apply border-border/70 bg-card/85 backdrop-blur-xl shadow-sm shadow-primary/5;
+  }
+
+  .client-portal-main {
+    @apply relative;
+  }
+
+  .client-portal-main::before {
+    content: "";
+    @apply pointer-events-none absolute inset-x-0 top-0 h-56;
+    background: linear-gradient(180deg, hsl(var(--primary) / 0.08), transparent);
+  }
+
+  .client-portal-content {
+    @apply relative mx-auto w-full max-w-6xl px-4 py-5 md:px-8 md:py-8 lg:px-10 lg:py-10;
+  }
+
+  .client-portal-content > * {
+    @apply relative z-10;
+  }
+
+  .client-portal-theme .border.bg-card {
+    border-color: hsl(var(--border) / 0.6);
+    background-color: hsl(var(--card) / 0.85);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 14px 36px -22px hsl(var(--primary) / 0.2);
+  }
+
+  .client-portal-theme input,
+  .client-portal-theme textarea,
+  .client-portal-theme button[role="combobox"] {
+    @apply border-border/60 bg-background/80 shadow-sm shadow-primary/5 focus-visible:ring-ring/80 focus-visible:ring-offset-background;
+  }
+
+  .client-portal-theme [data-radix-popper-content-wrapper] [role="listbox"],
+  .client-portal-theme [data-radix-popper-content-wrapper] [data-radix-select-content] {
+    @apply border-border/70 bg-popover/95 backdrop-blur-xl shadow-2xl shadow-primary/10;
+  }
+
+  .client-portal-page-header {
+    @apply relative overflow-hidden rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/10 via-primary/5 to-card p-6 shadow-xl shadow-primary/5 md:p-8;
+  }
+
+  .client-portal-page-header::after {
+    content: "";
+    @apply pointer-events-none absolute right-0 top-0 h-40 w-40 rounded-full blur-3xl;
+    background: hsl(var(--primary) / 0.12);
+    transform: translate(20%, -35%);
+  }
+
+  .client-portal-section-title {
+    @apply flex items-center gap-2 text-lg font-semibold tracking-tight text-foreground;
+  }
+
+  .client-portal-soft-panel {
+    @apply rounded-2xl border border-border/60 bg-card/75 shadow-lg shadow-primary/5 backdrop-blur-sm;
+  }
+
+  .client-portal-stat-card {
+    @apply relative overflow-hidden rounded-2xl border border-border/60 bg-card/90 shadow-lg shadow-primary/5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-primary/10;
+  }
+
+  .client-portal-theme a:focus-visible,
+  .client-portal-theme button:focus-visible {
+    @apply rounded-xl ring-2 ring-ring ring-offset-2 ring-offset-background outline-none;
+  }
+
   .qa-markdown {
     @apply text-sm leading-relaxed;
   }

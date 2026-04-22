@@ -85,11 +85,11 @@ export function PortalLayout() {
 
   return (
     <PortalNotificationProvider>
-    <div className="min-h-screen bg-muted/30 flex">
+    <div className="client-portal-theme flex min-h-screen">
       {/* Sidebar - Desktop */}
-      <aside className="hidden md:flex w-72 flex-col border-r border-border bg-card shadow-sm">
+      <aside className="client-portal-sidebar hidden w-72 flex-col border-r md:flex">
         {/* Logo Area */}
-        <div className="p-6 pb-4 flex items-center justify-between">
+        <div className="flex items-center justify-between p-6 pb-4">
           <div>
             {settings.authLogo ? (
               <img src={settings.authLogo} alt={settings.companyName} className="h-10 max-w-[200px] object-contain" />
@@ -111,7 +111,7 @@ export function PortalLayout() {
 
         {/* User Profile Card */}
         <div className="px-4 py-4">
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/10">
+          <div className="flex items-center gap-3 rounded-2xl border border-primary/15 bg-gradient-to-r from-primary/10 via-primary/5 to-card/90 p-3 shadow-lg shadow-primary/5">
             <Avatar className="h-10 w-10 border-2 border-primary/20">
               <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
                 {getInitials(displayName)}
@@ -134,10 +134,10 @@ export function PortalLayout() {
                 end={item.end}
                 data-tour={item.tourId}
                 className={({ isActive }) => cn(
-                  'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200',
+                  'flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200 focus-visible:ring-ring/80',
                   isActive
-                    ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+                    ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
+                    : 'text-muted-foreground hover:bg-accent/40 hover:text-foreground'
                 )}
               >
                 <item.icon className="h-[18px] w-[18px]" />
@@ -167,7 +167,7 @@ export function PortalLayout() {
       </aside>
 
       {/* Mobile Header */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-xl border-b border-border px-4 py-3 flex items-center justify-between shadow-sm">
+      <div className="client-portal-topbar fixed left-0 right-0 top-0 z-50 flex items-center justify-between border-b px-4 py-3 md:hidden">
         <div className="flex items-center gap-2.5">
           <div className="p-1.5 rounded-lg bg-primary/10">
             <Building2 className="h-5 w-5 text-primary" />
@@ -189,9 +189,9 @@ export function PortalLayout() {
 
       {/* Mobile Nav Overlay */}
       {mobileOpen && (
-        <div className="md:hidden fixed inset-0 z-40 bg-background/80 backdrop-blur-sm" onClick={() => setMobileOpen(false)}>
-          <div className="absolute top-14 left-0 right-0 bg-card border-b border-border shadow-xl rounded-b-2xl p-4 animate-in slide-in-from-top-2" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center gap-3 p-3 mb-3 rounded-xl bg-primary/5 border border-primary/10">
+        <div className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm md:hidden" onClick={() => setMobileOpen(false)}>
+          <div className="absolute left-0 right-0 top-14 animate-in slide-in-from-top-2 rounded-b-3xl border-b border-border/70 bg-card/95 p-4 shadow-2xl shadow-primary/10 backdrop-blur-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-3 flex items-center gap-3 rounded-2xl border border-primary/15 bg-gradient-to-r from-primary/10 via-primary/5 to-card/90 p-3 shadow-lg shadow-primary/5">
               <Avatar className="h-9 w-9 border border-primary/20">
                 <AvatarFallback className="bg-primary/10 text-primary font-semibold text-xs">
                   {getInitials(displayName)}
@@ -210,10 +210,10 @@ export function PortalLayout() {
                   end={item.end}
                   onClick={() => setMobileOpen(false)}
                   className={({ isActive }) => cn(
-                    'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all',
+                     'flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all focus-visible:ring-ring/80',
                     isActive
                       ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+                        : 'text-muted-foreground hover:bg-accent/40 hover:text-foreground'
                   )}
                 >
                   <item.icon className="h-[18px] w-[18px]" />
@@ -236,9 +236,9 @@ export function PortalLayout() {
       )}
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto md:pt-0 pt-14">
+      <main className="client-portal-main flex-1 overflow-auto pt-14 md:pt-0">
         <PortalImpersonationBanner />
-        <div className="p-4 md:p-8 lg:p-10 max-w-6xl mx-auto">
+        <div className="client-portal-content">
           <Outlet />
         </div>
       </main>

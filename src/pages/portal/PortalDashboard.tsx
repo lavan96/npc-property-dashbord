@@ -13,11 +13,11 @@ import {
 import { Link } from 'react-router-dom';
 
 const quickLinks = [
-  { to: '/client/profile', icon: User, label: 'My Profile', desc: 'View and update your personal details', color: 'from-blue-500/10 to-indigo-500/10' },
-  { to: '/client/properties', icon: Building2, label: 'Properties', desc: 'View your property portfolio', color: 'from-emerald-500/10 to-teal-500/10' },
-  { to: '/client/employment', icon: Briefcase, label: 'Employment & Finances', desc: 'Employment and income details', color: 'from-amber-500/10 to-orange-500/10' },
-  { to: '/client/reports', icon: FileText, label: 'Reports', desc: 'View reports shared by your advisor', color: 'from-purple-500/10 to-fuchsia-500/10' },
-  { to: '/client/documents', icon: FileText, label: 'Documents', desc: 'Access your uploaded documents', color: 'from-rose-500/10 to-pink-500/10' },
+  { to: '/client/profile', icon: User, label: 'My Profile', desc: 'View and update your personal details' },
+  { to: '/client/properties', icon: Building2, label: 'Properties', desc: 'View your property portfolio' },
+  { to: '/client/employment', icon: Briefcase, label: 'Employment & Finances', desc: 'Employment and income details' },
+  { to: '/client/reports', icon: FileText, label: 'Reports', desc: 'View reports shared by your advisor' },
+  { to: '/client/documents', icon: FileText, label: 'Documents', desc: 'Access your uploaded documents' },
 ];
 
 function formatCurrency(val?: number | null): string {
@@ -59,8 +59,7 @@ export default function PortalDashboard() {
   return (
     <div className="space-y-8">
       {/* Welcome Header */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/10 p-6 md:p-8">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full -translate-y-1/2 translate-x-1/3 blur-3xl" />
+      <div className="client-portal-page-header">
         <div className="relative flex items-start gap-4">
           <Avatar className="h-14 w-14 border-2 border-primary/20 shadow-lg hidden sm:flex">
             <AvatarFallback className="bg-primary/10 text-primary font-bold text-lg">
@@ -84,13 +83,13 @@ export default function PortalDashboard() {
 
       {isLoading ? (
         <div className="flex items-center justify-center py-16">
-          <div className="flex flex-col items-center gap-3">
+          <div className="flex flex-col items-center gap-3 rounded-2xl border border-border/60 bg-card/70 px-6 py-7 shadow-lg shadow-primary/5">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="text-sm text-muted-foreground">Loading your dashboard...</p>
           </div>
         </div>
       ) : error ? (
-        <Card className="border-destructive/20 bg-destructive/5">
+            <Card className="border-destructive/20 bg-destructive/5 shadow-lg shadow-primary/5">
           <CardContent className="py-8 text-center">
             <p className="text-destructive font-medium">Unable to load your data.</p>
             <p className="text-muted-foreground text-sm mt-1">Please try refreshing the page.</p>
@@ -106,12 +105,12 @@ export default function PortalDashboard() {
               { label: 'Rental Income', value: formatCurrency(client?.total_monthly_rental_income), suffix: '/mo', icon: TrendingUp, gradient: 'from-blue-500/10 to-blue-500/5', iconColor: 'text-blue-600 dark:text-blue-400' },
               { label: 'Net Cash Flow', value: formatCurrency(client?.net_monthly_cash_flow), suffix: '/mo', icon: Briefcase, gradient: 'from-purple-500/10 to-purple-500/5', iconColor: 'text-purple-600 dark:text-purple-400' },
             ].map((stat) => (
-              <Card key={stat.label} className="overflow-hidden border-0 shadow-sm hover:shadow-md transition-shadow">
+              <Card key={stat.label} className="client-portal-stat-card">
                 <CardContent className="pt-6 relative">
-                  <div className={`absolute inset-0 bg-gradient-to-br ${stat.gradient} opacity-50`} />
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent opacity-80" />
                   <div className="relative flex items-center gap-3">
                     <div className="p-2.5 rounded-xl bg-background/80 shadow-sm">
-                      <stat.icon className={`h-5 w-5 ${stat.iconColor}`} />
+                      <stat.icon className="h-5 w-5 text-primary" />
                     </div>
                     <div>
                       <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">{stat.label}</p>
@@ -128,9 +127,9 @@ export default function PortalDashboard() {
 
           {/* Active Deals */}
           {deals.length > 0 && (
-            <Card className="shadow-sm">
+            <Card className="client-portal-soft-panel">
               <CardHeader className="pb-3">
-                <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                <CardTitle className="client-portal-section-title text-lg">
                   <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
                   Active Deals
                 </CardTitle>
@@ -138,7 +137,7 @@ export default function PortalDashboard() {
               <CardContent>
                 <div className="space-y-2">
                   {deals.slice(0, 5).map((deal: any) => (
-                    <div key={deal.id} className="flex items-center justify-between py-3 px-4 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors border border-transparent hover:border-border">
+                    <div key={deal.id} className="flex items-center justify-between rounded-xl border border-border/50 bg-background/50 px-4 py-3 transition-colors hover:border-primary/20 hover:bg-accent/20">
                       <div className="space-y-1">
                         <p className="font-medium text-sm text-foreground">{deal.property_address || 'New Deal'}</p>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -161,9 +160,9 @@ export default function PortalDashboard() {
 
           {/* Properties Preview */}
           {properties.length > 0 && (
-            <Card className="shadow-sm">
+            <Card className="client-portal-soft-panel">
               <CardHeader className="flex flex-row items-center justify-between pb-3">
-                <CardTitle className="text-lg font-semibold">Your Properties</CardTitle>
+                <CardTitle className="client-portal-section-title text-lg">Your Properties</CardTitle>
                 <Link to="/client/properties" className="text-sm text-primary hover:text-primary/80 font-medium flex items-center gap-1 transition-colors">
                   View all <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
@@ -171,7 +170,7 @@ export default function PortalDashboard() {
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {properties.slice(0, 4).map((prop: any) => (
-                    <div key={prop.id} className="p-4 rounded-xl border border-border bg-card hover:shadow-md hover:border-primary/20 transition-all duration-200 group">
+                    <div key={prop.id} className="group rounded-2xl border border-border/60 bg-background/50 p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-lg hover:shadow-primary/5">
                       <div className="flex items-start gap-3">
                         <div className="p-2.5 rounded-xl bg-primary/10 shrink-0 group-hover:bg-primary/15 transition-colors">
                           <Building2 className="h-4 w-4 text-primary" />
@@ -183,7 +182,7 @@ export default function PortalDashboard() {
                             {prop.value && <span>• {formatCurrency(prop.value)}</span>}
                           </div>
                           {prop.monthly_rental_income && (
-                            <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1.5 font-medium">
+                            <p className="mt-1.5 text-xs font-medium text-primary">
                               {formatCurrency(prop.monthly_rental_income)}/mo rental
                             </p>
                           )}
@@ -201,12 +200,12 @@ export default function PortalDashboard() {
 
           {/* Quick Links */}
           <div>
-            <h2 className="text-lg font-semibold text-foreground mb-4">Quick Access</h2>
+            <h2 className="client-portal-section-title mb-4">Quick Access</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {quickLinks.map((link) => (
                 <Link key={link.to} to={link.to}>
-                  <Card className="hover:shadow-lg transition-all duration-300 cursor-pointer h-full hover:border-primary/20 hover:-translate-y-0.5 group overflow-hidden border-0 shadow-sm">
-                    <div className={`absolute inset-0 bg-gradient-to-br ${link.color} opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
+                  <Card className="client-portal-stat-card h-full cursor-pointer overflow-hidden border group">
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
                     <CardHeader className="pb-2 relative">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">

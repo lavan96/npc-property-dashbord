@@ -64,8 +64,8 @@ function StatusBadge({ status, startTime }: { status: string; startTime: string 
   if (status === 'cancelled') return <Badge variant="destructive" className="text-[10px]">Cancelled</Badge>;
   if (status === 'noshow' || status === 'no_show') return <Badge variant="destructive" className="text-[10px]">No Show</Badge>;
   if (isPast(start) && status !== 'cancelled') return <Badge variant="secondary" className="text-[10px]">Completed</Badge>;
-  if (isToday(start)) return <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-[10px]">Today</Badge>;
-  if (isFuture(start)) return <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[10px]">Upcoming</Badge>;
+  if (isToday(start)) return <Badge className="border-primary/20 bg-primary/10 text-[10px] text-primary">Today</Badge>;
+  if (isFuture(start)) return <Badge className="border-primary/20 bg-primary/10 text-[10px] text-primary">Upcoming</Badge>;
   return <Badge variant="outline" className="text-[10px]">{status}</Badge>;
 }
 
@@ -100,18 +100,18 @@ export default function PortalAppointments() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="client-portal-page-header flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">My Appointments</h1>
           <p className="text-sm text-muted-foreground mt-1">View your scheduled and past appointments</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isRefetching}>
+          <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isRefetching} className="rounded-xl shadow-sm shadow-primary/5">
             <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isRefetching ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
           <Link to="/client/booking">
-            <Button size="sm">
+            <Button size="sm" className="rounded-xl shadow-lg shadow-primary/10">
               <CalendarCheck className="h-3.5 w-3.5 mr-1.5" />
               Book New
             </Button>
@@ -124,7 +124,7 @@ export default function PortalAppointments() {
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
         </div>
       ) : error ? (
-        <Card>
+        <Card className="client-portal-soft-panel">
           <CardContent className="py-10 text-center">
             <p className="text-sm text-destructive mb-3">{(error as Error).message}</p>
             <Button variant="outline" size="sm" onClick={() => refetch()}>
@@ -133,7 +133,7 @@ export default function PortalAppointments() {
           </CardContent>
         </Card>
       ) : appointments.length === 0 ? (
-        <Card>
+        <Card className="client-portal-soft-panel">
           <CardContent className="py-16 text-center">
             <Inbox className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
             <p className="text-sm font-medium text-foreground mb-1">No appointments yet</p>
@@ -151,7 +151,7 @@ export default function PortalAppointments() {
           {/* Upcoming */}
           {upcoming.length > 0 && (
             <div className="space-y-3">
-              <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <h2 className="client-portal-section-title text-sm">
                 <CalendarCheck className="h-4 w-4 text-primary" />
                 Upcoming ({upcoming.length})
               </h2>
@@ -168,7 +168,7 @@ export default function PortalAppointments() {
           {/* Past */}
           {past.length > 0 && (
             <div className="space-y-3">
-              <h2 className="text-sm font-semibold text-muted-foreground">Past Appointments ({past.length})</h2>
+              <h2 className="client-portal-section-title text-sm text-muted-foreground">Past Appointments ({past.length})</h2>
               <div className="space-y-2">
                 {past.map((apt: Appointment) => (
                   <AppointmentCard key={apt.id} appointment={apt} muted />
@@ -192,10 +192,10 @@ function AppointmentCard({ appointment: apt, muted }: { appointment: Appointment
   const status = apt.status || apt.appointmentStatus || 'confirmed';
 
   return (
-    <Card className={muted ? 'opacity-60' : ''}>
+    <Card className={muted ? 'client-portal-soft-panel opacity-60' : 'client-portal-soft-panel'}>
       <CardContent className="p-4">
         <div className="flex items-start gap-3">
-          <div className={`p-2.5 rounded-xl shrink-0 ${muted ? 'bg-muted' : 'bg-primary/10'}`}>
+          <div className={`shrink-0 rounded-xl p-2.5 ${muted ? 'bg-muted' : 'bg-primary/10 shadow-sm shadow-primary/10'}`}>
             <CalendarDays className={`h-4 w-4 ${muted ? 'text-muted-foreground' : 'text-primary'}`} />
           </div>
           <div className="flex-1 min-w-0">
