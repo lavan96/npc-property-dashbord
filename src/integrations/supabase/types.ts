@@ -2087,6 +2087,11 @@ export type Database = {
           description: string | null
           id: string
           metadata: Json | null
+          source_actor_name: string | null
+          source_actor_type: Database["public"]["Enums"]["record_source_actor_type"]
+          source_details: Json
+          source_reference: string | null
+          source_surface: Database["public"]["Enums"]["record_source_surface"]
           title: string
         }
         Insert: {
@@ -2097,6 +2102,11 @@ export type Database = {
           description?: string | null
           id?: string
           metadata?: Json | null
+          source_actor_name?: string | null
+          source_actor_type?: Database["public"]["Enums"]["record_source_actor_type"]
+          source_details?: Json
+          source_reference?: string | null
+          source_surface?: Database["public"]["Enums"]["record_source_surface"]
           title: string
         }
         Update: {
@@ -2107,6 +2117,11 @@ export type Database = {
           description?: string | null
           id?: string
           metadata?: Json | null
+          source_actor_name?: string | null
+          source_actor_type?: Database["public"]["Enums"]["record_source_actor_type"]
+          source_details?: Json
+          source_reference?: string | null
+          source_surface?: Database["public"]["Enums"]["record_source_surface"]
           title?: string
         }
         Relationships: [
@@ -2682,6 +2697,11 @@ export type Database = {
           id: string
           is_vownet_form: boolean | null
           report_type: string | null
+          source_actor_name: string | null
+          source_actor_type: Database["public"]["Enums"]["record_source_actor_type"]
+          source_details: Json
+          source_reference: string | null
+          source_surface: Database["public"]["Enums"]["record_source_surface"]
           uploaded_at: string
           uploaded_by: string | null
         }
@@ -2697,6 +2717,11 @@ export type Database = {
           id?: string
           is_vownet_form?: boolean | null
           report_type?: string | null
+          source_actor_name?: string | null
+          source_actor_type?: Database["public"]["Enums"]["record_source_actor_type"]
+          source_details?: Json
+          source_reference?: string | null
+          source_surface?: Database["public"]["Enums"]["record_source_surface"]
           uploaded_at?: string
           uploaded_by?: string | null
         }
@@ -2712,6 +2737,11 @@ export type Database = {
           id?: string
           is_vownet_form?: boolean | null
           report_type?: string | null
+          source_actor_name?: string | null
+          source_actor_type?: Database["public"]["Enums"]["record_source_actor_type"]
+          source_details?: Json
+          source_reference?: string | null
+          source_surface?: Database["public"]["Enums"]["record_source_surface"]
           uploaded_at?: string
           uploaded_by?: string | null
         }
@@ -2994,6 +3024,11 @@ export type Database = {
           ghl_note_id: string | null
           id: string
           note_type: string
+          source_actor_name: string | null
+          source_actor_type: Database["public"]["Enums"]["record_source_actor_type"]
+          source_details: Json
+          source_reference: string | null
+          source_surface: Database["public"]["Enums"]["record_source_surface"]
           updated_at: string
         }
         Insert: {
@@ -3004,6 +3039,11 @@ export type Database = {
           ghl_note_id?: string | null
           id?: string
           note_type?: string
+          source_actor_name?: string | null
+          source_actor_type?: Database["public"]["Enums"]["record_source_actor_type"]
+          source_details?: Json
+          source_reference?: string | null
+          source_surface?: Database["public"]["Enums"]["record_source_surface"]
           updated_at?: string
         }
         Update: {
@@ -3014,6 +3054,11 @@ export type Database = {
           ghl_note_id?: string | null
           id?: string
           note_type?: string
+          source_actor_name?: string | null
+          source_actor_type?: Database["public"]["Enums"]["record_source_actor_type"]
+          source_details?: Json
+          source_reference?: string | null
+          source_surface?: Database["public"]["Enums"]["record_source_surface"]
           updated_at?: string
         }
         Relationships: [
@@ -10008,6 +10053,17 @@ export type Database = {
         | "portfolio_review"
         | "borrowing_capacity"
         | "investment_property"
+      record_source_actor_type:
+        | "internal_user"
+        | "finance_user"
+        | "client_user"
+        | "system"
+      record_source_surface:
+        | "internal_dashboard"
+        | "finance_portal"
+        | "client_portal"
+        | "automation"
+        | "external_system"
       report_category_enum:
         | "investment"
         | "comparison"
@@ -10379,6 +10435,19 @@ export const Constants = {
         "portfolio_review",
         "borrowing_capacity",
         "investment_property",
+      ],
+      record_source_actor_type: [
+        "internal_user",
+        "finance_user",
+        "client_user",
+        "system",
+      ],
+      record_source_surface: [
+        "internal_dashboard",
+        "finance_portal",
+        "client_portal",
+        "automation",
+        "external_system",
       ],
       report_category_enum: [
         "investment",
