@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Progress } from '@/components/ui/progress';
 import { 
   FileUp, 
   File, 
@@ -21,7 +22,9 @@ import {
   Trash2,
   Loader2,
   Upload,
-  Send
+  Send,
+  RotateCcw,
+  AlertCircle
 } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { format } from 'date-fns';
@@ -30,10 +33,28 @@ import { useNotifications } from '@/contexts/NotificationsContext';
 import { secureStorageUpload, secureStorageDownload, secureStorageDelete } from '@/hooks/useSecureStorage';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
+import { useAuth } from '@/hooks/useAuth';
 import { SyncConflictDetailsPopover } from '@/components/sync/SyncConflictDetailsPopover';
 import { SyncStatusBadge } from '@/components/sync/SyncStatusBadge';
-import { MAX_DOCUMENT_UPLOAD_FILES, processFilesByMode, type UploadProcessingMode } from '@/lib/documentUpload';
+import {
+  DOCUMENT_UPLOAD_ACCEPT,
+  MAX_DOCUMENT_BATCH_BYTES,
+  MAX_DOCUMENT_UPLOAD_FILES,
+  calculateTotalUploadSize,
+  createUploadQueueItems,
+  formatUploadBytes,
+  getOverallUploadProgress,
+  getPersistedUploadMode,
+  getRejectedFilesMessage,
+  persistUploadMode,
+  runTasksByMode,
+  type UploadProcessingMode,
+  type UploadQueueItem,
+  uploadSecureStorageFileWithProgress,
+} from '@/lib/documentUpload';
 import { getActorLabel, getConflictReason, getSurfaceLabel, getVersionNumber } from '@/lib/syncDisplay';
+
+const DASHBOARD_UPLOAD_MODE_SCOPE = 'dashboard-client-files';
 
 interface ClientFilesProps {
   clientId: string;
@@ -79,8 +100,23 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
   const [selectedCategory, setSelectedCategory] = useState('general');
   const [description, setDescription] = useState('');
   const [uploadMode, setUploadMode] = useState<UploadProcessingMode>('parallel');
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [uploadQueue, setUploadQueue] = useState<UploadQueueItem[]>([]);
+  const [uploadFailures, setUploadFailures] = useState<Array<{ id: string; file: File; error: string }>>([]);
   const queryClient = useQueryClient();
   const { addNotification } = useNotifications();
+  const { user } = useAuth();
+  const totalUploadBytes = useMemo(() => calculateTotalUploadSize(selectedFiles), [selectedFiles]);
+  const overallUploadProgress = useMemo(() => getOverallUploadProgress(uploadQueue), [uploadQueue]);
+
+  useEffect(() => {
+    const savedMode = getPersistedUploadMode(DASHBOARD_UPLOAD_MODE_SCOPE, user?.id);
+    if (savedMode) setUploadMode(savedMode);
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (user?.id) persistUploadMode(DASHBOARD_UPLOAD_MODE_SCOPE, user.id, uploadMode);
+  }, [uploadMode, user?.id]);
 
   const { data: files = [], isLoading } = useQuery({
     queryKey: ['client-files', clientId],
@@ -91,20 +127,29 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
     mutationFn: async ({ files, category, description }: { files: File[]; category: string; description: string }) => {
       setUploading(true);
 
-      const { successes, failures } = await processFilesByMode(files, uploadMode, async (file, index) => {
-        const fileName = `${clientId}/${Date.now()}_${index}_${file.name}`;
+      const queueItems = createUploadQueueItems(files);
+      setUploadQueue(queueItems);
+      setUploadFailures([]);
 
-        const uploadResult = await secureStorageUpload('client-files', fileName, file, {
-          contentType: file.type
+      const results = await runTasksByMode(queueItems, uploadMode, async (queueItem, index) => {
+        setUploadQueue((prev) => prev.map((item) => item.id === queueItem.id ? { ...item, status: 'uploading', progress: 1, error: undefined } : item));
+        const fileName = `${clientId}/${Date.now()}_${index}_${queueItem.file.name}`;
+
+        const uploadResult = await uploadSecureStorageFileWithProgress({
+          bucket: 'client-files',
+          path: fileName,
+          file: queueItem.file,
+          contentType: queueItem.file.type,
+          onProgress: (progress) => {
+            setUploadQueue((prev) => prev.map((item) => item.id === queueItem.id ? { ...item, progress } : item));
+          },
         });
 
-        if (!uploadResult.success) throw new Error(uploadResult.error || 'Upload failed');
-
         const payload = {
-          file_name: file.name,
+          file_name: queueItem.file.name,
           file_path: uploadResult.path || fileName,
-          file_type: file.type,
-          file_size: file.size,
+          file_type: queueItem.file.type,
+          file_size: queueItem.file.size,
           category,
           description: description || null,
         };
@@ -118,11 +163,22 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
 
         if (error) throw new Error(error.message);
         if (!data?.success) throw new Error(data?.error || 'Failed to save file record');
-        return data.result;
+
+        setUploadQueue((prev) => prev.map((item) => item.id === queueItem.id ? { ...item, status: 'success', progress: 100 } : item));
+        return { id: queueItem.id, file: queueItem.file, result: data.result };
+      });
+
+      const successes = results.filter((result): result is PromiseFulfilledResult<{ id: string; file: File; result: any }> => result.status === 'fulfilled');
+      const failures = results.flatMap((result, index) => {
+        if (result.status === 'fulfilled') return [];
+        const queueItem = queueItems[index];
+        const error = result.reason?.message || 'Upload failed';
+        setUploadQueue((prev) => prev.map((item) => item.id === queueItem.id ? { ...item, status: 'failed', progress: 100, error } : item));
+        return [{ id: queueItem.id, file: queueItem.file, error }];
       });
 
       if (successes.length === 0) throw new Error(failures[0]?.error || 'Upload failed');
-      return { successes, failures };
+      return { successes: successes.map((item) => item.value.result), failures };
     },
     onSuccess: (result: { successes: any[]; failures: { fileName: string; error: string }[] }) => {
       queryClient.invalidateQueries({ queryKey: ['client-files', clientId] });
@@ -137,6 +193,8 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
       } else {
         toast.warning(`${result.successes.length} uploaded, ${result.failures.length} failed`);
       }
+      setUploadFailures(result.failures as any);
+      setSelectedFiles((prev) => prev.filter((file) => result.failures.some((failure: any) => failure.file === file)));
       setDescription('');
     },
     onError: (error) => {
@@ -179,20 +237,49 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
   });
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
-    if (acceptedFiles.length > 0) {
-      uploadFileMutation.mutate({
-        files: acceptedFiles.slice(0, MAX_DOCUMENT_UPLOAD_FILES),
-        category: selectedCategory,
-        description
+    const nextFiles = acceptedFiles.slice(0, MAX_DOCUMENT_UPLOAD_FILES);
+    if (!nextFiles.length) return;
+    if (calculateTotalUploadSize(nextFiles) > MAX_DOCUMENT_BATCH_BYTES) {
+      toast.error('Selected files exceed the batch size limit.', {
+        description: `Keep the total under ${formatUploadBytes(MAX_DOCUMENT_BATCH_BYTES)}.`,
       });
+      return;
     }
-  }, [selectedCategory, description, uploadFileMutation]);
+    setSelectedFiles(nextFiles);
+    setUploadFailures([]);
+  }, []);
+
+  const onDropRejected = useCallback((rejections: any[]) => {
+    if (!rejections.length) return;
+    const rejection = getRejectedFilesMessage(rejections);
+    toast.error(rejection.title, { description: rejection.description });
+  }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
+    onDropRejected,
     maxFiles: MAX_DOCUMENT_UPLOAD_FILES,
     maxSize: 10 * 1024 * 1024, // 10MB
+    accept: DOCUMENT_UPLOAD_ACCEPT,
   });
+
+  const handleUpload = () => {
+    if (!selectedFiles.length) return;
+    uploadFileMutation.mutate({ files: selectedFiles, category: selectedCategory, description });
+  };
+
+  const retryFailedUploads = () => {
+    if (!uploadFailures.length) return;
+    uploadFileMutation.mutate({
+      files: uploadFailures.map((item) => item.file),
+      category: selectedCategory,
+      description,
+    });
+  };
+
+  const removeSelectedFile = (index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const downloadFile = async (file: { file_path: string; file_name: string }) => {
     const result = await secureStorageDownload('client-files', file.file_path);
@@ -264,6 +351,16 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
               </SelectContent>
             </Select>
           </div>
+
+          <div className="rounded-lg border border-border/70 bg-muted/30 p-3">
+            <div className="flex items-center justify-between gap-3 text-sm">
+              <span className="font-medium text-foreground">Batch size</span>
+              <span className={totalUploadBytes > MAX_DOCUMENT_BATCH_BYTES ? 'text-destructive' : 'text-muted-foreground'}>
+                {formatUploadBytes(totalUploadBytes)} / {formatUploadBytes(MAX_DOCUMENT_BATCH_BYTES)}
+              </span>
+            </div>
+            <Progress value={Math.min(100, (totalUploadBytes / MAX_DOCUMENT_BATCH_BYTES) * 100)} className="mt-2 h-2" />
+          </div>
           
           <div
             {...getRootProps()}
@@ -295,9 +392,81 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
                  <p className="text-xs text-muted-foreground">
                    {uploadMode === 'parallel' ? 'Files upload together for faster batches.' : 'Files upload one-by-one for steadier progress.'}
                  </p>
+                 <p className="text-xs text-muted-foreground">Batch total must stay under {formatUploadBytes(MAX_DOCUMENT_BATCH_BYTES)}.</p>
               </div>
             )}
           </div>
+
+          {selectedFiles.length > 0 && (
+            <div className="space-y-2">
+              {selectedFiles.map((file, index) => (
+                <div key={`${file.name}-${file.lastModified}-${index}`} className="flex items-center gap-3 rounded-lg border border-border/60 bg-muted/20 p-2.5">
+                  <div className="flex-1 min-w-0">
+                    <p className="truncate text-sm font-medium text-foreground">{file.name}</p>
+                    <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
+                  </div>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeSelectedFile(index)} disabled={uploading}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {uploadQueue.length > 0 && (
+            <div className="space-y-3 rounded-lg border border-border/70 bg-muted/20 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Upload progress</p>
+                  <p className="text-xs text-muted-foreground">Overall progress across the current batch.</p>
+                </div>
+                <span className="text-sm font-medium text-foreground">{overallUploadProgress}%</span>
+              </div>
+              <Progress value={overallUploadProgress} className="h-2" />
+              <div className="space-y-2">
+                {uploadQueue.map((item) => (
+                  <div key={item.id} className="rounded-lg border border-border/60 bg-background/80 p-2.5">
+                    <div className="flex items-center justify-between gap-3 text-sm">
+                      <span className="truncate font-medium text-foreground">{item.file.name}</span>
+                      <span className="text-xs text-muted-foreground">{item.status}</span>
+                    </div>
+                    <Progress value={item.progress} className="mt-2 h-1.5" />
+                    {item.error ? <p className="mt-2 text-xs text-destructive">{item.error}</p> : null}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {uploadFailures.length > 0 && (
+            <div className="space-y-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="mt-0.5 h-4 w-4 text-destructive" />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Failed uploads</p>
+                    <p className="text-xs text-muted-foreground">Review errors and retry only the failed files.</p>
+                  </div>
+                </div>
+                <Button type="button" variant="outline" size="sm" className="gap-2" onClick={retryFailedUploads} disabled={uploading}>
+                  <RotateCcw className="h-3.5 w-3.5" /> Retry failed
+                </Button>
+              </div>
+              <div className="space-y-2">
+                {uploadFailures.map((failure) => (
+                  <div key={failure.id} className="rounded-lg border border-destructive/20 bg-background/90 p-2.5">
+                    <p className="text-sm font-medium text-foreground">{failure.file.name}</p>
+                    <p className="mt-1 text-xs text-destructive">{failure.error}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <Button onClick={handleUpload} disabled={uploading || selectedFiles.length === 0} className="w-full gap-2">
+            {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+            {uploading ? 'Uploading...' : `Upload ${selectedFiles.length} file(s)`}
+          </Button>
         </CardContent>
       </Card>
 
