@@ -16,8 +16,9 @@ import {
 import { Loader2, Upload, Download, Trash2, FileText, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { SyncConflictDetailsPopover } from '@/components/sync/SyncConflictDetailsPopover';
 import { SyncStatusBadge } from '@/components/sync/SyncStatusBadge';
-import { getActorLabel, getConflictReason, getSurfaceLabel } from '@/lib/syncDisplay';
+import { getActorLabel, getConflictReason, getSurfaceLabel, getVersionNumber } from '@/lib/syncDisplay';
 
 interface DocumentRecord {
   id: string;
@@ -35,6 +36,10 @@ interface DocumentRecord {
   source_surface?: string | null;
   source_actor_name?: string | null;
   version_number?: number | null;
+  version_group_id?: string | null;
+  supersedes_entity_id?: string | null;
+  conflict_reason?: string | null;
+  source_details?: Record<string, unknown> | null;
   last_sync_error?: string | null;
 }
 
@@ -291,8 +296,9 @@ export function DocumentVaultPanel({ clientId }: DocumentVaultPanelProps) {
                   </p>
                   <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                     {getActorLabel(doc) && <span>By {getActorLabel(doc)}</span>}
-                    {doc.version_number ? <span>v{doc.version_number}</span> : null}
+                    {getVersionNumber(doc) ? <span>v{getVersionNumber(doc)}</span> : null}
                     {getConflictReason(doc) ? <span className="text-warning">{getConflictReason(doc)}</span> : null}
+                    <SyncConflictDetailsPopover record={doc} />
                   </div>
                   {doc.description && (
                     <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{doc.description}</p>
