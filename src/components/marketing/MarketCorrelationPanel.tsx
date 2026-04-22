@@ -118,7 +118,15 @@ export function MarketCorrelationPanel({ marketEvents, perplexityResearch, citat
                 </SelectContent>
               </Select>
             </div>
-            <MarketIntelligenceExportButton reportType={selectedReportType} reportContext="market_correlation" />
+            <MarketIntelligenceExportButton
+              reportType={selectedReportType}
+              reportContext="market_correlation"
+              correlationData={{
+                aiAnalysis,
+                perplexityResearch,
+                citations,
+              }}
+            />
           </div>
         </div>
       </CardHeader>

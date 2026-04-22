@@ -12,6 +12,11 @@ import { MarketIntelligenceHistoryModal } from './MarketIntelligenceHistoryModal
 interface MarketIntelligenceExportButtonProps {
   reportType?: 'full' | 'market_pulse' | 'hotspot_deep_dive' | 'strategy_insight' | 'finance_update' | 'deal_breakdown' | 'myth_busting' | 'development_spotlight';
   reportContext?: 'default' | 'market_correlation';
+  correlationData?: {
+    aiAnalysis?: string;
+    perplexityResearch?: string;
+    citations?: string[];
+  };
 }
 
 type GenerationState =
@@ -19,7 +24,7 @@ type GenerationState =
   | { status: 'success'; fileName: string; downloadUrl: string }
   | { status: 'error'; message: string };
 
-export function MarketIntelligenceExportButton({ reportType = 'full', reportContext = 'default' }: MarketIntelligenceExportButtonProps) {
+export function MarketIntelligenceExportButton({ reportType = 'full', reportContext = 'default', correlationData }: MarketIntelligenceExportButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState('');
   const [includeNpcStrategy, setIncludeNpcStrategy] = useState(true);
@@ -63,6 +68,7 @@ export function MarketIntelligenceExportButton({ reportType = 'full', reportCont
       const pdfBlob = await generateMarketIntelligencePDF({
         ...reportData,
         reportContext,
+        correlationData,
       });
 
       const url = URL.createObjectURL(pdfBlob);
