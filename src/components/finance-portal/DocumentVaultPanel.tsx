@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ import {
 import { Loader2, Upload, Download, Trash2, FileText, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { useDropzone } from 'react-dropzone';
 import { SyncConflictDetailsPopover } from '@/components/sync/SyncConflictDetailsPopover';
 import { SyncStatusBadge } from '@/components/sync/SyncStatusBadge';
 import { getActorLabel, getConflictReason, getSurfaceLabel, getVersionNumber } from '@/lib/syncDisplay';
@@ -123,8 +124,16 @@ export function DocumentVaultPanel({ clientId }: DocumentVaultPanelProps) {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const handleUpload = async () => {
-    if (!uploadFile) {
+  const setSelectedUploadFile = useCallback((file: File | null) => {
+    setUploadFile(file);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }, []);
+
+  const handleUpload = async (fileOverride?: File) => {
+    const fileToUpload = fileOverride ?? uploadFile;
+    if (!fileToUpload) {
       toast.error('Please select a file');
       return;
     }
@@ -134,9 +143,9 @@ export function DocumentVaultPanel({ clientId }: DocumentVaultPanelProps) {
       const { data, error } = await invokeFinanceFunction('finance-portal-documents', {
         operation: 'request_upload',
         client_id: clientId,
-        filename: uploadFile.name,
-        mime_type: uploadFile.type || 'application/octet-stream',
-        file_size: uploadFile.size,
+        filename: fileToUpload.name,
+        mime_type: fileToUpload.type || 'application/octet-stream',
+        file_size: fileToUpload.size,
         category: uploadCategory,
         description: uploadDescription || null,
         visible_to_client: uploadVisibleToClient,
@@ -148,8 +157,8 @@ export function DocumentVaultPanel({ clientId }: DocumentVaultPanelProps) {
       // 2. PUT file to signed URL
       const putRes = await fetch(data.upload.signedUrl, {
         method: 'PUT',
-        headers: { 'Content-Type': uploadFile.type || 'application/octet-stream' },
-        body: uploadFile,
+        headers: { 'Content-Type': fileToUpload.type || 'application/octet-stream' },
+        body: fileToUpload,
       });
       if (!putRes.ok) {
         throw new Error(`Upload failed (${putRes.status})`);
@@ -176,6 +185,24 @@ export function DocumentVaultPanel({ clientId }: DocumentVaultPanelProps) {
       setUploading(false);
     }
   };
+
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    const nextFile = acceptedFiles[0];
+    if (!nextFile) return;
+    setSelectedUploadFile(nextFile);
+    if (uploadOpen) {
+      void handleUpload(nextFile);
+      return;
+    }
+    setUploadOpen(true);
+  }, [handleUpload, setSelectedUploadFile, uploadOpen]);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    maxFiles: 1,
+    maxSize: 25 * 1024 * 1024,
+    disabled: !permission.edit || uploading,
+  });
 
   const handleDownload = async (doc: DocumentRecord) => {
     const { data, error } = await invokeFinanceFunction('finance-portal-documents', {
