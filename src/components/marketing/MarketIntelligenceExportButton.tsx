@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { FileText, Loader2, History, Settings2 } from 'lucide-react';
+import { FileText, Loader2, History, Settings2, CheckCircle2, AlertCircle, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { generateMarketIntelligencePDF, type MarketIntelligenceReportData } from './MarketIntelligencePDFGenerator';
@@ -11,15 +11,40 @@ import { MarketIntelligenceHistoryModal } from './MarketIntelligenceHistoryModal
 
 interface MarketIntelligenceExportButtonProps {
   reportType?: 'full' | 'market_pulse' | 'hotspot_deep_dive' | 'strategy_insight' | 'finance_update' | 'deal_breakdown' | 'myth_busting' | 'development_spotlight';
+  reportContext?: 'default' | 'market_correlation';
+  correlationData?: {
+    aiAnalysis?: string;
+    perplexityResearch?: string;
+    citations?: string[];
+  };
 }
 
-export function MarketIntelligenceExportButton({ reportType = 'full' }: MarketIntelligenceExportButtonProps) {
+type GenerationState =
+  | { status: 'idle' }
+  | { status: 'success'; fileName: string; downloadUrl: string }
+  | { status: 'error'; message: string };
+
+export function MarketIntelligenceExportButton({ reportType = 'full', reportContext = 'default', correlationData }: MarketIntelligenceExportButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState('');
   const [includeNpcStrategy, setIncludeNpcStrategy] = useState(true);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [generationState, setGenerationState] = useState<GenerationState>({ status: 'idle' });
+
+  useEffect(() => {
+    return () => {
+      if (generationState.status === 'success') {
+        URL.revokeObjectURL(generationState.downloadUrl);
+      }
+    };
+  }, [generationState]);
 
   const handleGenerate = async () => {
+    if (generationState.status === 'success') {
+      URL.revokeObjectURL(generationState.downloadUrl);
+    }
+
+    setGenerationState({ status: 'idle' });
     setIsGenerating(true);
     setProgress('Fetching live market data...');
     const toastId = toast.loading('Generating Market Intelligence Report...', {
@@ -40,26 +65,34 @@ export function MarketIntelligenceExportButton({ reportType = 'full' }: MarketIn
       const reportData: MarketIntelligenceReportData = data.reportData;
 
       setProgress('Building premium PDF report...');
-      const pdfBlob = await generateMarketIntelligencePDF(reportData);
+      const pdfBlob = await generateMarketIntelligencePDF({
+        ...reportData,
+        reportContext,
+        correlationData,
+      });
 
       const url = URL.createObjectURL(pdfBlob);
+      const fileName = `Market_Intelligence_Report_${reportData.reportPeriod.replace(/\s+/g, '_')}.pdf`;
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Market_Intelligence_Report_${reportData.reportPeriod.replace(/\s+/g, '_')}.pdf`;
+      a.download = fileName;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+
+      setGenerationState({ status: 'success', fileName, downloadUrl: url });
 
       toast.success('Market Intelligence Report generated!', {
         id: toastId,
-        description: `${reportData.reportPeriod} — PDF downloaded successfully.`,
+        description: `${reportData.reportPeriod} — download ready below.`,
       });
     } catch (err) {
       console.error('Market Intelligence Report generation failed:', err);
+      const message = err instanceof Error ? err.message : 'An unexpected error occurred.';
+      setGenerationState({ status: 'error', message });
       toast.error('Report generation failed', {
         id: toastId,
-        description: err instanceof Error ? err.message : 'An unexpected error occurred.',
+        description: message,
       });
     } finally {
       setIsGenerating(false);
@@ -68,61 +101,91 @@ export function MarketIntelligenceExportButton({ reportType = 'full' }: MarketIn
   };
 
   return (
-    <div className="flex items-center gap-1.5">
-      <Button
-        onClick={handleGenerate}
-        disabled={isGenerating}
-        variant="outline"
-        size="sm"
-        className="gap-2 border-primary/30 text-primary hover:bg-primary/5"
-      >
-        {isGenerating ? (
-          <>
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            <span className="text-xs">{progress || 'Generating...'}</span>
-          </>
-        ) : (
-          <>
-            <FileText className="h-3.5 w-3.5" />
-            <span className="text-xs">Generate Report</span>
-          </>
-        )}
-      </Button>
+    <div className="space-y-2">
+      <div className="flex items-center gap-1.5">
+        <Button
+          onClick={handleGenerate}
+          disabled={isGenerating}
+          variant="outline"
+          size="sm"
+          className="gap-2 border-primary/30 text-primary hover:bg-primary/5"
+        >
+          {isGenerating ? (
+            <>
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <span className="text-xs">{progress || 'Generating...'}</span>
+            </>
+          ) : (
+            <>
+              <FileText className="h-3.5 w-3.5" />
+              <span className="text-xs">Generate Report</span>
+            </>
+          )}
+        </Button>
 
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8" disabled={isGenerating}>
-            <Settings2 className="h-3.5 w-3.5" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-72" align="end">
-          <div className="space-y-3">
-            <p className="text-sm font-medium">Report Options</p>
-            <div className="flex items-center justify-between gap-3">
-              <Label htmlFor="npc-strategy-toggle" className="text-xs leading-tight cursor-pointer">
-                Include NPC Strategic Approach
-                <span className="block text-muted-foreground text-[10px] mt-0.5">
-                  Proprietary methodology section
-                </span>
-              </Label>
-              <Switch
-                id="npc-strategy-toggle"
-                checked={includeNpcStrategy}
-                onCheckedChange={setIncludeNpcStrategy}
-              />
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8" disabled={isGenerating}>
+              <Settings2 className="h-3.5 w-3.5" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-72" align="end">
+            <div className="space-y-3">
+              <p className="text-sm font-medium">Report Options</p>
+              <div className="flex items-center justify-between gap-3">
+                <Label htmlFor="npc-strategy-toggle" className="text-xs leading-tight cursor-pointer">
+                  Include NPC Strategic Approach
+                  <span className="mt-0.5 block text-[10px] text-muted-foreground">
+                    Proprietary methodology section
+                  </span>
+                </Label>
+                <Switch
+                  id="npc-strategy-toggle"
+                  checked={includeNpcStrategy}
+                  onCheckedChange={setIncludeNpcStrategy}
+                />
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => setHistoryOpen(true)}
+        >
+          <History className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+
+      {generationState.status === 'success' && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-primary/20 bg-primary/5 px-3 py-2">
+          <div className="flex min-w-0 items-start gap-2">
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-foreground">Report generated successfully</p>
+              <p className="truncate text-[11px] text-muted-foreground">{generationState.fileName}</p>
             </div>
           </div>
-        </PopoverContent>
-      </Popover>
+          <Button asChild variant="outline" size="sm" className="gap-2">
+            <a href={generationState.downloadUrl} download={generationState.fileName}>
+              <Download className="h-3.5 w-3.5" />
+              Download PDF
+            </a>
+          </Button>
+        </div>
+      )}
 
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8"
-        onClick={() => setHistoryOpen(true)}
-      >
-        <History className="h-3.5 w-3.5" />
-      </Button>
+      {generationState.status === 'error' && (
+        <div className="flex items-start gap-2 rounded-md border border-destructive/25 bg-destructive/5 px-3 py-2">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+          <div>
+            <p className="text-xs font-medium text-foreground">Report generation failed</p>
+            <p className="text-[11px] text-muted-foreground">{generationState.message}</p>
+          </div>
+        </div>
+      )}
 
       <MarketIntelligenceHistoryModal
         open={historyOpen}
