@@ -205,10 +205,11 @@ Clean, modern admin dashboard with confidence-based color coding
     @apply relative z-10;
   }
 
-  .client-portal-theme .rounded-lg.border.bg-card,
-  .client-portal-theme .rounded-xl.border.bg-card,
-  .client-portal-theme .rounded-2xl.border.bg-card {
-    @apply border-border/60 bg-card/85 backdrop-blur-sm shadow-lg shadow-primary/5;
+  .client-portal-theme .border.bg-card {
+    border-color: hsl(var(--border) / 0.6);
+    background-color: hsl(var(--card) / 0.85);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 14px 36px -22px hsl(var(--primary) / 0.2);
   }
 
   .client-portal-theme input,
