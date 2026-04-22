@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -14,7 +15,7 @@ import {
   RefreshCw, Download, DollarSign, Wallet, Hourglass,
   CalendarCheck, TrendingUp, TrendingDown, Minus,
   FileText, FileSpreadsheet, Receipt, BarChart3,
-  CalendarRange, Filter, X
+  CalendarRange, Filter, X, ChevronRight, ListTree
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -172,6 +173,55 @@ const isWithinRange = (value: string | null | undefined, startDate: string, endD
   return true;
 };
 
+const buildNoResultsDescription = ({
+  statusFilter,
+  startDate,
+  endDate,
+  subject,
+}: {
+  statusFilter: string;
+  startDate: string;
+  endDate: string;
+  subject: 'commissions' | 'statements';
+}) => {
+  const filters: string[] = [];
+  if (statusFilter !== 'all') filters.push(`status set to ${statusFilter}`);
+  if (startDate && endDate) filters.push(`date range from ${startDate} to ${endDate}`);
+  else if (startDate) filters.push(`dates after ${startDate}`);
+  else if (endDate) filters.push(`dates before ${endDate}`);
+
+  if (filters.length === 0) {
+    return `No ${subject} have been recorded yet.`;
+  }
+
+  return `No ${subject} match your ${filters.join(' and ')}.`;
+};
+
+function MobileEarningsCardSkeleton() {
+  return (
+    <Card>
+      <CardContent className="space-y-4 p-4 sm:p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1 space-y-2">
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-4 w-28" />
+          </div>
+          <Skeleton className="h-5 w-20 rounded-full" />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Skeleton className="h-20 rounded-xl" />
+          <Skeleton className="h-20 rounded-xl" />
+        </div>
+        <div className="grid gap-3 pt-2 sm:grid-cols-2">
+          <Skeleton className="h-12 rounded-xl" />
+          <Skeleton className="h-12 rounded-xl" />
+        </div>
+        <Skeleton className="h-10 w-32 rounded-lg" />
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function FinancePortalEarnings() {
   const { invokeFinanceFunction } = useFinancePortalAuth();
   const [searchParams] = useSearchParams();
@@ -184,6 +234,12 @@ export default function FinancePortalEarnings() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailType, setDetailType] = useState<'commission' | 'statement' | null>(null);
+  const [selectedCommission, setSelectedCommission] = useState<any | null>(null);
+  const [selectedStatement, setSelectedStatement] = useState<any | null>(null);
+  const [statementLines, setStatementLines] = useState<any[]>([]);
   const latestRowRef = useRef<HTMLTableRowElement>(null);
 
   const refresh = async () => {
@@ -256,6 +312,39 @@ export default function FinancePortalEarnings() {
     }
     const url = type === 'pdf' ? data?.pdf_url : data?.csv_url;
     if (url) window.open(url, '_blank', 'noopener');
+  };
+
+  const openCommissionDetails = (commission: any) => {
+    setDetailType('commission');
+    setSelectedCommission(commission);
+    setSelectedStatement(null);
+    setStatementLines([]);
+    setDetailLoading(false);
+    setDetailOpen(true);
+  };
+
+  const openStatementDetails = async (statement: any) => {
+    setDetailType('statement');
+    setSelectedStatement(statement);
+    setSelectedCommission(null);
+    setStatementLines([]);
+    setDetailLoading(true);
+    setDetailOpen(true);
+
+    const { data, error } = await invokeFinanceFunction('finance-portal-commissions', {
+      operation: 'partner_statement_detail',
+      statement_id: statement.id,
+    });
+
+    if (error) {
+      toast.error(error.message || 'Could not load statement details');
+      setDetailLoading(false);
+      return;
+    }
+
+    setSelectedStatement(data?.statement || statement);
+    setStatementLines(data?.lines || []);
+    setDetailLoading(false);
   };
 
   return (
@@ -458,18 +547,23 @@ export default function FinancePortalEarnings() {
           transition={{ duration: 0.15 }}
         >
           {loading ? (
-            <Card>
-              <CardContent className="pt-6 space-y-3">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="flex items-center gap-4">
-                    <Skeleton className="h-4 w-20" />
-                    <Skeleton className="h-4 w-32 flex-1" />
-                    <Skeleton className="h-4 w-16" />
-                    <Skeleton className="h-5 w-14 rounded-full" />
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
+            <>
+              <Card className="hidden lg:block">
+                <CardContent className="pt-6 space-y-3">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="flex items-center gap-4">
+                      <Skeleton className="h-4 w-20" />
+                      <Skeleton className="h-4 w-32 flex-1" />
+                      <Skeleton className="h-4 w-16" />
+                      <Skeleton className="h-5 w-14 rounded-full" />
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+              <div className="space-y-3 lg:hidden">
+                {Array.from({ length: 3 }).map((_, i) => <MobileEarningsCardSkeleton key={i} />)}
+              </div>
+            </>
           ) : tab === 'commissions' ? (
             <>
               {/* Desktop Table */}
@@ -545,7 +639,7 @@ export default function FinancePortalEarnings() {
                   <PortalEmptyState
                     icon={<Receipt className="h-8 w-8" />}
                     title={hasActiveFilters ? 'No commissions match these filters' : 'No commissions recorded yet'}
-                    description={hasActiveFilters ? 'Try a different date range or status to find the commission you need.' : 'Commissions will appear here as readable stacked cards with the most important values first.'}
+                    description={hasActiveFilters ? buildNoResultsDescription({ statusFilter, startDate, endDate, subject: 'commissions' }) : 'Commissions will appear here as readable stacked cards with the most important values first.'}
                     actionLabel={hasActiveFilters ? 'Clear filters' : undefined}
                     onAction={hasActiveFilters ? clearFilters : undefined}
                   />
@@ -598,6 +692,16 @@ export default function FinancePortalEarnings() {
                             <div className="mt-1 text-sm text-foreground break-words">{c.trigger_event || '—'}</div>
                           </div>
                         </div>
+
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => openCommissionDetails(c)}
+                          className="h-10 w-full justify-between rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        >
+                          Open details
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
                       </CardContent>
                     </Card>
                   ))
@@ -692,7 +796,7 @@ export default function FinancePortalEarnings() {
                   <PortalEmptyState
                     icon={<FileText className="h-8 w-8" />}
                     title={hasActiveFilters ? 'No statements match these filters' : 'No statements issued yet'}
-                    description={hasActiveFilters ? 'Reset the filters or broaden the date range to see more statements.' : 'Statements will appear here as stacked cards with totals and downloads surfaced first.'}
+                    description={hasActiveFilters ? buildNoResultsDescription({ statusFilter, startDate, endDate, subject: 'statements' }) : 'Statements will appear here as stacked cards with totals and downloads surfaced first.'}
                     actionLabel={hasActiveFilters ? 'Clear filters' : undefined}
                     onAction={hasActiveFilters ? clearFilters : undefined}
                   />
@@ -744,6 +848,16 @@ export default function FinancePortalEarnings() {
                             )}
                           </div>
                         </div>
+
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => openStatementDetails(s)}
+                          className="h-10 w-full justify-between rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        >
+                          Open details
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
                       </CardContent>
                     </Card>
                   ))
@@ -753,6 +867,69 @@ export default function FinancePortalEarnings() {
           )}
         </motion.div>
       </AnimatePresence>
+
+      <Drawer open={detailOpen} onOpenChange={setDetailOpen}>
+        <DrawerContent className="max-h-[92vh] border-border bg-background">
+          <DrawerHeader className="border-b border-border text-left">
+            <DrawerTitle>{detailType === 'commission' ? 'Commission details' : 'Statement details'}</DrawerTitle>
+            <DrawerDescription>
+              {detailType === 'commission'
+                ? 'Full commission breakdown and related metadata.'
+                : 'Statement summary and included line items.'}
+            </DrawerDescription>
+          </DrawerHeader>
+
+          <div className="space-y-4 overflow-y-auto p-4 pb-8">
+            {detailType === 'commission' && selectedCommission && (
+              <>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Card><CardContent className="space-y-2 p-4"><div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Client</div><div className="text-base font-semibold text-foreground">{selectedCommission.client_name_snapshot || '—'}</div><div className="text-sm text-muted-foreground">{selectedCommission.deal_type_snapshot || 'Deal type unavailable'}</div></CardContent></Card>
+                  <Card><CardContent className="space-y-2 p-4"><div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Status</div><div className="flex items-center gap-2"><span className={cn('h-2 w-2 rounded-full', STATUS_DOT[selectedCommission.status] || 'bg-zinc-400')} /><Badge variant={STATUS_VARIANT[selectedCommission.status] || 'outline'} className="capitalize">{selectedCommission.status}</Badge></div><div className="text-sm text-muted-foreground">Created {format(new Date(selectedCommission.created_at), 'd MMM yyyy')}</div></CardContent></Card>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <Card><CardContent className="p-4"><div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Gross</div><div className="mt-1 text-lg font-semibold text-foreground">{fmt(selectedCommission.gross_amount)}</div></CardContent></Card>
+                  <Card><CardContent className="p-4"><div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">GST</div><div className="mt-1 text-lg font-semibold text-foreground">{fmt(selectedCommission.gst_amount)}</div></CardContent></Card>
+                  <Card><CardContent className="p-4"><div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Net</div><div className="mt-1 text-lg font-semibold text-primary">{fmt(selectedCommission.net_amount)}</div></CardContent></Card>
+                </div>
+                <Card><CardContent className="space-y-3 p-4"><div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Breakdown</div><div className="grid gap-3 sm:grid-cols-2"><div><div className="text-xs text-muted-foreground">Trigger</div><div className="mt-1 text-sm text-foreground break-words">{selectedCommission.trigger_event || '—'}</div></div><div><div className="text-xs text-muted-foreground">Commission basis</div><div className="mt-1 text-sm text-foreground break-words">{selectedCommission.commission_basis || '—'}</div></div><div><div className="text-xs text-muted-foreground">Basis amount</div><div className="mt-1 text-sm text-foreground">{fmt(selectedCommission.basis_amount)}</div></div><div><div className="text-xs text-muted-foreground">Rate</div><div className="mt-1 text-sm text-foreground">{Number(selectedCommission.rate_pct || 0).toFixed(2)}%</div></div><div><div className="text-xs text-muted-foreground">Invoice ref</div><div className="mt-1 text-sm text-foreground break-words">{selectedCommission.invoice_ref || '—'}</div></div><div><div className="text-xs text-muted-foreground">Paid at</div><div className="mt-1 text-sm text-foreground">{selectedCommission.paid_at ? format(new Date(selectedCommission.paid_at), 'd MMM yyyy') : '—'}</div></div></div>{selectedCommission.notes && <div><div className="text-xs text-muted-foreground">Notes</div><div className="mt-1 text-sm text-foreground break-words">{selectedCommission.notes}</div></div>}</CardContent></Card>
+              </>
+            )}
+
+            {detailType === 'statement' && selectedStatement && (
+              <>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Card><CardContent className="space-y-2 p-4"><div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Statement period</div><div className="text-base font-semibold text-foreground">{selectedStatement.period_start} → {selectedStatement.period_end}</div><div className="text-sm text-muted-foreground">Issued {selectedStatement.issued_at ? format(new Date(selectedStatement.issued_at), 'd MMM yyyy') : 'Not issued yet'}</div></CardContent></Card>
+                  <Card><CardContent className="space-y-2 p-4"><div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Status</div><div className="flex items-center gap-2"><span className={cn('h-2 w-2 rounded-full', STATUS_DOT[selectedStatement.status] || 'bg-zinc-400')} /><Badge variant={STATUS_VARIANT[selectedStatement.status] || 'outline'} className="capitalize">{selectedStatement.status}</Badge></div><div className="text-sm text-muted-foreground">{selectedStatement.line_count} line{selectedStatement.line_count !== 1 ? 's' : ''}</div></CardContent></Card>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <Card><CardContent className="p-4"><div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Gross total</div><div className="mt-1 text-lg font-semibold text-foreground">{fmt(selectedStatement.total_gross)}</div></CardContent></Card>
+                  <Card><CardContent className="p-4"><div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">GST total</div><div className="mt-1 text-lg font-semibold text-foreground">{fmt(selectedStatement.total_gst)}</div></CardContent></Card>
+                  <Card><CardContent className="p-4"><div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Net total</div><div className="mt-1 text-lg font-semibold text-primary">{fmt(selectedStatement.total_net)}</div></CardContent></Card>
+                </div>
+                <Card>
+                  <CardContent className="space-y-4 p-4">
+                    <div className="flex items-center gap-2 text-sm font-medium text-foreground"><ListTree className="h-4 w-4 text-primary" /> Included line items</div>
+                    {detailLoading ? (
+                      <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-xl" />)}</div>
+                    ) : statementLines.length === 0 ? (
+                      <PortalEmptyState icon={<ListTree className="h-8 w-8" />} title="No line items found" description="This statement does not have any line items available yet." className="border-0 shadow-none" />
+                    ) : (
+                      <div className="space-y-3">
+                        {statementLines.map((line) => (
+                          <div key={line.id} className="rounded-xl border border-border/60 bg-muted/20 p-3">
+                            <div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="font-medium text-foreground break-words">{line.client_name_snapshot || '—'}</div><div className="text-xs text-muted-foreground break-words">{line.deal_type_snapshot || 'Deal type unavailable'}</div></div><div className="text-right"><div className="text-sm font-semibold text-primary">{fmt(line.net_snapshot || 0)}</div><div className="text-[11px] text-muted-foreground">{line.rate_pct_snapshot != null ? `${Number(line.rate_pct_snapshot).toFixed(2)}%` : '—'}</div></div></div>
+                            <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2"><div><div className="text-[11px] uppercase tracking-wide text-muted-foreground">Trigger</div><div className="mt-1 break-words text-foreground">{line.trigger_event_snapshot || '—'}</div></div><div><div className="text-[11px] uppercase tracking-wide text-muted-foreground">Accrual date</div><div className="mt-1 text-foreground">{line.accrual_date ? format(new Date(line.accrual_date), 'd MMM yyyy') : '—'}</div></div><div><div className="text-[11px] uppercase tracking-wide text-muted-foreground">Basis</div><div className="mt-1 text-foreground">{line.basis_snapshot ? fmt(line.basis_snapshot) : '—'}</div></div><div><div className="text-[11px] uppercase tracking-wide text-muted-foreground">Gross / GST</div><div className="mt-1 text-foreground">{fmt(line.gross_snapshot || 0)} / {fmt(line.gst_snapshot || 0)}</div></div></div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </>
+            )}
+          </div>
+        </DrawerContent>
+      </Drawer>
     </motion.div>
   );
 }
