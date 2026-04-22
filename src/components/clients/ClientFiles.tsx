@@ -32,6 +32,7 @@ import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { SyncConflictDetailsPopover } from '@/components/sync/SyncConflictDetailsPopover';
 import { SyncStatusBadge } from '@/components/sync/SyncStatusBadge';
+import { MAX_DOCUMENT_UPLOAD_FILES, processFilesByMode, type UploadProcessingMode } from '@/lib/documentUpload';
 import { getActorLabel, getConflictReason, getSurfaceLabel, getVersionNumber } from '@/lib/syncDisplay';
 
 interface ClientFilesProps {
@@ -77,6 +78,7 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
   const [uploading, setUploading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('general');
   const [description, setDescription] = useState('');
+  const [uploadMode, setUploadMode] = useState<UploadProcessingMode>('parallel');
   const queryClient = useQueryClient();
   const { addNotification } = useNotifications();
 
@@ -86,39 +88,43 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
   });
 
   const uploadFileMutation = useMutation({
-    mutationFn: async ({ file, category, description }: { file: File; category: string; description: string }) => {
+    mutationFn: async ({ files, category, description }: { files: File[]; category: string; description: string }) => {
       setUploading(true);
-      
-      // Upload to secure storage via Edge Function
-      const fileName = `${clientId}/${Date.now()}_${file.name}`;
-      
-      const uploadResult = await secureStorageUpload('client-files', fileName, file, {
-        contentType: file.type
+
+      const { successes, failures } = await processFilesByMode(files, uploadMode, async (file, index) => {
+        const fileName = `${clientId}/${Date.now()}_${index}_${file.name}`;
+
+        const uploadResult = await secureStorageUpload('client-files', fileName, file, {
+          contentType: file.type
+        });
+
+        if (!uploadResult.success) throw new Error(uploadResult.error || 'Upload failed');
+
+        const payload = {
+          file_name: file.name,
+          file_path: uploadResult.path || fileName,
+          file_type: file.type,
+          file_size: file.size,
+          category,
+          description: description || null,
+        };
+
+        const { data, error } = await invokeSecureFunction('manage-client-data', {
+          operation: 'create',
+          table: 'client_files',
+          clientId,
+          data: payload,
+        });
+
+        if (error) throw new Error(error.message);
+        if (!data?.success) throw new Error(data?.error || 'Failed to save file record');
+        return data.result;
       });
 
-      if (!uploadResult.success) throw new Error(uploadResult.error || 'Upload failed');
-
-      const payload = {
-        file_name: file.name,
-        file_path: uploadResult.path || fileName,
-        file_type: file.type,
-        file_size: file.size,
-        category,
-        description: description || null,
-      };
-
-      const { data, error } = await invokeSecureFunction('manage-client-data', {
-        operation: 'create',
-        table: 'client_files',
-        clientId,
-        data: payload,
-      });
-
-      if (error) throw new Error(error.message);
-      if (!data?.success) throw new Error(data?.error || 'Failed to save file record');
-      return data.result;
+      if (successes.length === 0) throw new Error(failures[0]?.error || 'Upload failed');
+      return { successes, failures };
     },
-    onSuccess: (result: any) => {
+    onSuccess: (result: { successes: any[]; failures: { fileName: string; error: string }[] }) => {
       queryClient.invalidateQueries({ queryKey: ['client-files', clientId] });
       logActivityDirect({
         actionType: 'client_file_uploaded',
@@ -126,7 +132,11 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
         entityId: clientId,
         metadata: { category: selectedCategory }
       });
-      toast.success('File uploaded successfully');
+      if (result.failures.length === 0) {
+        toast.success(`${result.successes.length} file(s) uploaded successfully`);
+      } else {
+        toast.warning(`${result.successes.length} uploaded, ${result.failures.length} failed`);
+      }
       setDescription('');
     },
     onError: (error) => {
@@ -171,7 +181,7 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
       uploadFileMutation.mutate({
-        file: acceptedFiles[0],
+        files: acceptedFiles.slice(0, MAX_DOCUMENT_UPLOAD_FILES),
         category: selectedCategory,
         description
       });
@@ -180,7 +190,7 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    maxFiles: 1,
+    maxFiles: MAX_DOCUMENT_UPLOAD_FILES,
     maxSize: 10 * 1024 * 1024, // 10MB
   });
 
@@ -222,11 +232,11 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <FileUp className="h-4 w-4" />
-            Upload File
+            Upload Files
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <Select value={selectedCategory} onValueChange={setSelectedCategory}>
               <SelectTrigger>
                 <SelectValue placeholder="Category" />
@@ -244,6 +254,15 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
+            <Select value={uploadMode} onValueChange={(value) => setUploadMode(value as UploadProcessingMode)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Processing mode" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="parallel">Parallel upload</SelectItem>
+                <SelectItem value="sequential">Sequential upload</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           
           <div
@@ -264,15 +283,18 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
             ) : isDragActive ? (
               <div className="flex flex-col items-center gap-2">
                 <Upload className="h-8 w-8 text-primary" />
-                <p className="text-sm text-primary">Drop file here</p>
+                 <p className="text-sm text-primary">Drop files here</p>
               </div>
             ) : (
               <div className="flex flex-col items-center gap-2">
                 <Upload className="h-8 w-8 text-muted-foreground" />
                 <p className="text-sm text-muted-foreground">
-                  Drag & drop or click to upload
+                   Drag & drop or click to upload multiple files
                 </p>
-                <p className="text-xs text-muted-foreground">Max 10MB</p>
+                 <p className="text-xs text-muted-foreground">Max 10MB each • up to {MAX_DOCUMENT_UPLOAD_FILES} files</p>
+                 <p className="text-xs text-muted-foreground">
+                   {uploadMode === 'parallel' ? 'Files upload together for faster batches.' : 'Files upload one-by-one for steadier progress.'}
+                 </p>
               </div>
             )}
           </div>

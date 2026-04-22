@@ -21,6 +21,7 @@ import { PortalEmptyState } from '@/components/portal/PortalEmptyState';
 import { PortalPanel, PortalPanelContent } from '@/components/portal/PortalSurface';
 import { SyncConflictDetailsPopover } from '@/components/sync/SyncConflictDetailsPopover';
 import { SyncStatusBadge } from '@/components/sync/SyncStatusBadge';
+import { MAX_DOCUMENT_UPLOAD_FILES, mergeFilesWithLimit, processFilesByMode, type UploadProcessingMode } from '@/lib/documentUpload';
 import { getActorLabel, getConflictReason, getSurfaceLabel, getVersionNumber } from '@/lib/syncDisplay';
 
 function formatFileSize(bytes?: number | null): string {
@@ -77,6 +78,7 @@ export default function PortalDocuments() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadCategory, setUploadCategory] = useState('general');
+  const [uploadMode, setUploadMode] = useState<UploadProcessingMode>('parallel');
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [uploadSuccess, setUploadSuccess] = useState(false);
 
@@ -93,12 +95,19 @@ export default function PortalDocuments() {
   });
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
-    setUploadFiles(prev => [...prev, ...acceptedFiles].slice(0, 5));
+    setUploadFiles((prev) => {
+      const nextFiles = mergeFilesWithLimit(prev, acceptedFiles, MAX_DOCUMENT_UPLOAD_FILES);
+      if (prev.length + acceptedFiles.length > MAX_DOCUMENT_UPLOAD_FILES) {
+        toast.error(`You can upload up to ${MAX_DOCUMENT_UPLOAD_FILES} files at once.`);
+      }
+      return nextFiles;
+    });
     setUploadSuccess(false);
   }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
+    maxFiles: MAX_DOCUMENT_UPLOAD_FILES,
     maxSize: 10 * 1024 * 1024, // 10MB
     accept: {
       'application/pdf': ['.pdf'],
@@ -121,10 +130,10 @@ export default function PortalDocuments() {
 
     try {
       const sessionToken = getSessionToken();
-      for (const file of uploadFiles) {
-        const filePath = `${user.client_id}/portal-uploads/${Date.now()}-${file.name}`;
+      const filesToUpload = [...uploadFiles];
+      const { successes, failures } = await processFilesByMode(filesToUpload, uploadMode, async (file, index) => {
+        const filePath = `${user.client_id}/portal-uploads/${Date.now()}-${index}-${file.name}`;
 
-        // Upload via edge function
         const formData = new FormData();
         formData.append('file', file);
         formData.append('file_path', filePath);
@@ -146,16 +155,26 @@ export default function PortalDocuments() {
         if (!response.ok || !result.success) {
           throw new Error(result.error || 'Upload failed');
         }
-      }
 
-      setUploadSuccess(true);
-      setUploadFiles([]);
+        return result.file;
+      });
+
+      if (successes.length > 0) {
+        setUploadSuccess(true);
+        setUploadFiles([]);
+      }
       queryClient.invalidateQueries({ queryKey: ['portal-client-data'] });
-      toast.success(`${uploadFiles.length} file(s) uploaded successfully`);
-      setTimeout(() => {
-        setUploadOpen(false);
-        setUploadSuccess(false);
-      }, 1500);
+      if (successes.length > 0 && failures.length === 0) {
+        toast.success(`${successes.length} file(s) uploaded successfully`);
+        setTimeout(() => {
+          setUploadOpen(false);
+          setUploadSuccess(false);
+        }, 1500);
+      } else if (successes.length > 0) {
+        toast.warning(`${successes.length} uploaded, ${failures.length} failed`);
+      } else {
+        throw new Error(failures[0]?.error || 'Failed to upload files');
+      }
     } catch (err: any) {
       console.error('Upload error:', err);
       toast.error(err.message || 'Failed to upload files');
@@ -231,6 +250,19 @@ export default function PortalDocuments() {
                 </Select>
               </div>
 
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Processing</Label>
+                <Select value={uploadMode} onValueChange={(value) => setUploadMode(value as UploadProcessingMode)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="parallel">Parallel upload</SelectItem>
+                    <SelectItem value="sequential">Sequential upload</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div
                 {...getRootProps()}
                 className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${
@@ -245,7 +277,10 @@ export default function PortalDocuments() {
                   {isDragActive ? 'Drop files here' : 'Drag & drop files, or click to browse'}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  PDF, images, Word, Excel (max 10MB each, up to 5 files)
+                  PDF, images, Word, Excel (max 10MB each, up to {MAX_DOCUMENT_UPLOAD_FILES} files)
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {uploadMode === 'parallel' ? 'Files upload together for faster batches.' : 'Files upload one-by-one for steadier progress.'}
                 </p>
               </div>
 
