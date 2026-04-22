@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -14,7 +15,7 @@ import {
   RefreshCw, Download, DollarSign, Wallet, Hourglass,
   CalendarCheck, TrendingUp, TrendingDown, Minus,
   FileText, FileSpreadsheet, Receipt, BarChart3,
-  CalendarRange, Filter, X
+  CalendarRange, Filter, X, ChevronRight, ListTree
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -172,6 +173,55 @@ const isWithinRange = (value: string | null | undefined, startDate: string, endD
   return true;
 };
 
+const buildNoResultsDescription = ({
+  statusFilter,
+  startDate,
+  endDate,
+  subject,
+}: {
+  statusFilter: string;
+  startDate: string;
+  endDate: string;
+  subject: 'commissions' | 'statements';
+}) => {
+  const filters: string[] = [];
+  if (statusFilter !== 'all') filters.push(`status set to ${statusFilter}`);
+  if (startDate && endDate) filters.push(`date range from ${startDate} to ${endDate}`);
+  else if (startDate) filters.push(`dates after ${startDate}`);
+  else if (endDate) filters.push(`dates before ${endDate}`);
+
+  if (filters.length === 0) {
+    return `No ${subject} have been recorded yet.`;
+  }
+
+  return `No ${subject} match your ${filters.join(' and ')}.`;
+};
+
+function MobileEarningsCardSkeleton() {
+  return (
+    <Card>
+      <CardContent className="space-y-4 p-4 sm:p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1 space-y-2">
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-4 w-28" />
+          </div>
+          <Skeleton className="h-5 w-20 rounded-full" />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Skeleton className="h-20 rounded-xl" />
+          <Skeleton className="h-20 rounded-xl" />
+        </div>
+        <div className="grid gap-3 pt-2 sm:grid-cols-2">
+          <Skeleton className="h-12 rounded-xl" />
+          <Skeleton className="h-12 rounded-xl" />
+        </div>
+        <Skeleton className="h-10 w-32 rounded-lg" />
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function FinancePortalEarnings() {
   const { invokeFinanceFunction } = useFinancePortalAuth();
   const [searchParams] = useSearchParams();
@@ -184,6 +234,12 @@ export default function FinancePortalEarnings() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailType, setDetailType] = useState<'commission' | 'statement' | null>(null);
+  const [selectedCommission, setSelectedCommission] = useState<any | null>(null);
+  const [selectedStatement, setSelectedStatement] = useState<any | null>(null);
+  const [statementLines, setStatementLines] = useState<any[]>([]);
   const latestRowRef = useRef<HTMLTableRowElement>(null);
 
   const refresh = async () => {
@@ -256,6 +312,39 @@ export default function FinancePortalEarnings() {
     }
     const url = type === 'pdf' ? data?.pdf_url : data?.csv_url;
     if (url) window.open(url, '_blank', 'noopener');
+  };
+
+  const openCommissionDetails = (commission: any) => {
+    setDetailType('commission');
+    setSelectedCommission(commission);
+    setSelectedStatement(null);
+    setStatementLines([]);
+    setDetailLoading(false);
+    setDetailOpen(true);
+  };
+
+  const openStatementDetails = async (statement: any) => {
+    setDetailType('statement');
+    setSelectedStatement(statement);
+    setSelectedCommission(null);
+    setStatementLines([]);
+    setDetailLoading(true);
+    setDetailOpen(true);
+
+    const { data, error } = await invokeFinanceFunction('finance-portal-commissions', {
+      operation: 'partner_statement_detail',
+      statement_id: statement.id,
+    });
+
+    if (error) {
+      toast.error(error.message || 'Could not load statement details');
+      setDetailLoading(false);
+      return;
+    }
+
+    setSelectedStatement(data?.statement || statement);
+    setStatementLines(data?.lines || []);
+    setDetailLoading(false);
   };
 
   return (
