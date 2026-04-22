@@ -181,14 +181,14 @@ function PortalBuildProgress({ payments }: { payments: PortalBuildPayment[] }) {
           return (
             <div
               key={payment.id}
-              className={`flex items-center gap-3 p-2.5 rounded-lg border transition-colors ${
+              className={`flex items-center gap-3 rounded-lg border p-2.5 transition-colors ${
                 isComplete
-                  ? 'bg-emerald-500/5 border-emerald-500/20'
-                  : 'bg-muted/30 border-border/50'
+                  ? 'border-primary/20 bg-primary/5'
+                  : 'border-border/50 bg-muted/30'
               }`}
             >
-              <div className={`h-6 w-6 rounded-full flex items-center justify-center shrink-0 ${
-                isComplete ? 'bg-emerald-500 text-white' : 'bg-muted text-muted-foreground/50'
+              <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
+                isComplete ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground/50'
               }`}>
                 {isComplete ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Circle className="h-3.5 w-3.5" />}
               </div>
@@ -197,7 +197,7 @@ function PortalBuildProgress({ payments }: { payments: PortalBuildPayment[] }) {
                   {payment.stage_name}
                 </p>
                 {isComplete && payment.paid_to_builder_date && (
-                  <p className="text-xs text-emerald-600">Completed {formatDate(payment.paid_to_builder_date)}</p>
+                  <p className="text-xs text-primary">Completed {formatDate(payment.paid_to_builder_date)}</p>
                 )}
               </div>
               <div className="text-right shrink-0">
@@ -312,11 +312,11 @@ function DealProgressCard({ deal }: { deal: PortalDeal }) {
   const DealIcon = config.icon;
 
   return (
-    <Card className="shadow-sm overflow-hidden">
-      <CardHeader className={`pb-4 bg-gradient-to-r ${config.gradient} border-b border-border/50`}>
+    <Card className="client-portal-soft-panel overflow-hidden shadow-lg shadow-primary/5">
+      <CardHeader className={`border-b border-border/50 bg-gradient-to-r ${config.gradient} pb-4`}>
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-primary/10 shadow-sm">
+            <div className="rounded-xl bg-primary/10 p-2.5 shadow-sm shadow-primary/10">
               <DealIcon className="h-5 w-5 text-primary" />
             </div>
             <div>
@@ -327,7 +327,7 @@ function DealProgressCard({ deal }: { deal: PortalDeal }) {
               </CardDescription>
             </div>
           </div>
-          <Badge variant="secondary" className="text-xs">
+          <Badge variant="secondary" className="border-primary/20 bg-primary/10 text-xs text-primary">
             {deal.current_stage || 'New'}
           </Badge>
         </div>
@@ -347,7 +347,7 @@ function DealProgressCard({ deal }: { deal: PortalDeal }) {
         {/* Stages & Build in tabs for H&L, or just stages otherwise */}
         {hasBuildProgress ? (
           <Tabs defaultValue="stages" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-2 bg-muted/50">
               <TabsTrigger value="stages" className="text-xs">
                 Acquisition Stages
               </TabsTrigger>
@@ -398,7 +398,7 @@ export default function PortalDealProgress() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="client-portal-page-header">
         <h1 className="text-2xl font-bold text-foreground tracking-tight flex items-center gap-2">
           <TrendingUp className="h-6 w-6 text-primary" />
           Deal Progress
@@ -409,17 +409,12 @@ export default function PortalDealProgress() {
       </div>
 
       {deals.length === 0 ? (
-        <Card>
-          <CardContent className="py-16 text-center">
-            <div className="p-4 rounded-full bg-muted/50 w-fit mx-auto mb-4">
-              <Building2 className="h-10 w-10 text-muted-foreground/40" />
-            </div>
-            <p className="text-muted-foreground font-medium">No active deals</p>
-            <p className="text-sm text-muted-foreground/70 mt-1">
-              When you have active property deals, their progress will appear here.
-            </p>
-          </CardContent>
-        </Card>
+        <PortalEmptyState
+          className="client-portal-soft-panel"
+          icon={<Building2 className="h-8 w-8" />}
+          title="No active deals"
+          description="When you have active property deals, their progress will appear here."
+        />
       ) : (
         <div className="space-y-4">
           {deals.map((deal) => (
