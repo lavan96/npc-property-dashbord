@@ -13,6 +13,35 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
 import { buildProvenance, logClientActivity } from "../_shared/client-data-provenance.ts";
 import { buildNoteDedupeKey, createSyncEvent, resolveSyncConflict, sha256Text, SYNC_CONFLICT_WINDOW_MS } from "../_shared/client-sync.ts";
 
+const CREATE_CLIENT_PERMISSION_TABLES = [
+  'properties', 'income', 'expenses', 'assets', 'liabilities', 'employment', 'address_history', 'notes', 'contacts', 'documents', 'borrowing_capacity', 'messages',
+] as const;
+
+const EMPTY_ASSIGNMENT_PERMISSIONS = CREATE_CLIENT_PERMISSION_TABLES.reduce((acc, key) => {
+  acc[key] = { view: false, edit: false, delete: false };
+  return acc;
+}, {} as Record<string, { view: boolean; edit: boolean; delete: boolean }>);
+
+function normalizeAssignmentPermissions(input: any) {
+  const out = JSON.parse(JSON.stringify(EMPTY_ASSIGNMENT_PERMISSIONS));
+  if (!input || typeof input !== 'object') return out;
+  for (const key of CREATE_CLIENT_PERMISSION_TABLES) {
+    const permission = input[key];
+    if (permission && typeof permission === 'object') {
+      out[key] = {
+        view: !!permission.view,
+        edit: !!permission.edit,
+        delete: !!permission.delete,
+      };
+    }
+  }
+  return out;
+}
+
+function extractPrimaryName(payload: Record<string, any>) {
+  return [payload.primary_first_name, payload.primary_surname].filter(Boolean).join(' ').trim() || 'New client';
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-finance-session-token, x-session-token',
@@ -147,6 +176,141 @@ Deno.serve(async (req) => {
     const { operation } = body;
     if (!operation) return jsonResponse({ error: 'operation required' }, 400);
 
+    if (operation === 'create_client') {
+      const payload = body?.payload;
+      if (!payload || typeof payload !== 'object') return jsonResponse({ error: 'payload required' }, 400);
+
+      const primary_first_name = String(payload.primary_first_name || '').trim();
+      const primary_surname = String(payload.primary_surname || '').trim();
+      if (!primary_first_name || !primary_surname) {
+        return jsonResponse({ error: 'Primary first name and surname are required' }, 400);
+      }
+
+      const { data: defaultPermsRow } = await supabase
+        .from('finance_portal_default_permissions')
+        .select('permissions')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const assignmentPermissions = normalizeAssignmentPermissions(defaultPermsRow?.permissions);
+      const provenance = buildProvenance({
+        sourceSurface: 'finance_portal',
+        sourceActorType: 'finance_user',
+        sourceActorName: portalUser.email ?? null,
+        sourceReference: portalUser.id ?? null,
+        sourceDetails: {
+          finance_contact_id: portalUser.finance_contact_id ?? null,
+          created_via: 'finance-portal-client-data',
+          intake_method: body?.intake_method || 'manual',
+          ingestion_file_name: body?.ingestion_file_name || null,
+        },
+      });
+
+      const clientInsert = {
+        primary_first_name,
+        primary_surname,
+        primary_email: String(payload.primary_email || '').trim() || null,
+        primary_mobile: String(payload.primary_mobile || '').trim() || null,
+        secondary_first_name: String(payload.secondary_first_name || '').trim() || null,
+        secondary_surname: String(payload.secondary_surname || '').trim() || null,
+        current_address: String(payload.current_address || '').trim() || null,
+        country: String(payload.country || '').trim() || 'Australia',
+        deal_status: String(payload.deal_status || '').trim() || 'lead',
+        total_portfolio_value: Number(payload.total_portfolio_value || 0),
+        total_debt: Number(payload.total_debt || 0),
+        total_monthly_income: Number(payload.total_monthly_income || 0),
+        total_monthly_expenditure: Number(payload.total_monthly_expenditure || 0),
+        total_monthly_rental_income: Number(payload.total_monthly_rental_income || 0),
+        net_monthly_cash_flow: Number(payload.net_monthly_cash_flow || 0),
+        finance_contact_id: portalUser.finance_contact_id || null,
+        ghl_sync_status: 'pending',
+        ...provenance,
+      };
+
+      const { data: createdClient, error: clientError } = await supabase
+        .from('clients')
+        .insert(clientInsert)
+        .select('*')
+        .single();
+      if (clientError) throw clientError;
+
+      const { error: assignmentError } = await supabase
+        .from('finance_portal_client_assignments')
+        .upsert({
+          finance_user_id: portalUser.id,
+          client_id: createdClient.id,
+          permissions: assignmentPermissions,
+          auto_linked: true,
+          auto_link_source: 'finance_portal_created',
+          assigned_by: null,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'finance_user_id,client_id' });
+      if (assignmentError) throw assignmentError;
+
+      await logClientActivity(supabase, {
+        clientId: createdClient.id,
+        activityType: 'client_created',
+        title: 'Client created from finance portal',
+        description: `Created by finance partner ${portalUser.email ?? 'Unknown finance partner'}`,
+        metadata: {
+          intake_method: body?.intake_method || 'manual',
+          ingestion_file_name: body?.ingestion_file_name || null,
+          sync_to_ghl: body?.sync_to_ghl !== false,
+        },
+        provenance: {
+          sourceSurface: 'finance_portal',
+          sourceActorType: 'finance_user',
+          sourceActorName: portalUser.email ?? null,
+          sourceReference: portalUser.id ?? null,
+          sourceDetails: { finance_contact_id: portalUser.finance_contact_id ?? null },
+        },
+      });
+
+      await auditClientCreation(supabase, {
+        portalUser,
+        clientId: createdClient.id,
+        clientName: extractPrimaryName(createdClient),
+        intakeMethod: body?.intake_method || 'manual',
+        ingestionFileName: body?.ingestion_file_name || null,
+      });
+
+      let ghlSync: { success: boolean; error?: string | null } = { success: false, error: null };
+      if (body?.sync_to_ghl !== false) {
+        try {
+          const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/sync-client-to-ghl`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': Deno.env.get('SUPABASE_ANON_KEY') || '',
+              'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+            },
+            body: JSON.stringify({
+              clientId: createdClient.id,
+              source: 'finance_portal',
+              sourceActorId: portalUser.id,
+            }),
+          });
+
+          const syncData = await response.json().catch(() => ({}));
+          if (!response.ok || !syncData?.success) {
+            ghlSync = { success: false, error: syncData?.error || `HTTP ${response.status}` };
+          } else {
+            ghlSync = { success: true, error: null };
+          }
+        } catch (error) {
+          ghlSync = { success: false, error: error instanceof Error ? error.message : 'Failed to sync client to GHL' };
+        }
+      }
+
+      return jsonResponse({
+        success: true,
+        client: createdClient,
+        assignment_permissions: assignmentPermissions,
+        ghl_sync: ghlSync,
+      });
+    }
+
     // ── list_assigned_clients ──
     if (operation === 'list_assigned_clients') {
       const { data: assignments, error: aErr } = await supabase
@@ -222,6 +386,31 @@ Deno.serve(async (req) => {
         console.error('[finance-portal-client-data] audit failed', e);
       }
     };
+
+    async function auditClientCreation(
+      sb: any,
+      input: { portalUser: any; clientId: string; clientName: string; intakeMethod: string; ingestionFileName?: string | null }
+    ) {
+      try {
+        await sb.from('finance_portal_activity_log').insert({
+          finance_user_id: input.portalUser.id,
+          client_id: input.clientId,
+          actor_user_id: null,
+          actor_type: 'finance_partner',
+          action: 'client_created',
+          entity_type: 'client',
+          entity_id: input.clientId,
+          metadata: {
+            finance_email: input.portalUser.email,
+            client_name: input.clientName,
+            intake_method: input.intakeMethod,
+            ingestion_file_name: input.ingestionFileName || null,
+          },
+        });
+      } catch (error) {
+        console.error('[finance-portal-client-data] client creation audit failed', error);
+      }
+    }
 
     // ── get_client_summary ──
     if (operation === 'get_client_summary') {
