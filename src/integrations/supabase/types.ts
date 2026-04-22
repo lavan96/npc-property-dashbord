@@ -2085,13 +2085,24 @@ export type Database = {
           created_at: string
           created_by: string | null
           description: string | null
+          event_timestamp: string
           id: string
+          last_sync_error: string | null
+          last_synced_at: string | null
           metadata: Json | null
+          related_record_id: string | null
+          related_record_table: string | null
           source_actor_name: string | null
           source_actor_type: Database["public"]["Enums"]["record_source_actor_type"]
           source_details: Json
           source_reference: string | null
           source_surface: Database["public"]["Enums"]["record_source_surface"]
+          sync_origin_id: string | null
+          sync_origin_surface:
+            | Database["public"]["Enums"]["record_source_surface"]
+            | null
+          sync_origin_table: string | null
+          sync_status: Database["public"]["Enums"]["sync_status_type"]
           title: string
         }
         Insert: {
@@ -2100,13 +2111,24 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          event_timestamp?: string
           id?: string
+          last_sync_error?: string | null
+          last_synced_at?: string | null
           metadata?: Json | null
+          related_record_id?: string | null
+          related_record_table?: string | null
           source_actor_name?: string | null
           source_actor_type?: Database["public"]["Enums"]["record_source_actor_type"]
           source_details?: Json
           source_reference?: string | null
           source_surface?: Database["public"]["Enums"]["record_source_surface"]
+          sync_origin_id?: string | null
+          sync_origin_surface?:
+            | Database["public"]["Enums"]["record_source_surface"]
+            | null
+          sync_origin_table?: string | null
+          sync_status?: Database["public"]["Enums"]["sync_status_type"]
           title: string
         }
         Update: {
@@ -2115,13 +2137,24 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          event_timestamp?: string
           id?: string
+          last_sync_error?: string | null
+          last_synced_at?: string | null
           metadata?: Json | null
+          related_record_id?: string | null
+          related_record_table?: string | null
           source_actor_name?: string | null
           source_actor_type?: Database["public"]["Enums"]["record_source_actor_type"]
           source_details?: Json
           source_reference?: string | null
           source_surface?: Database["public"]["Enums"]["record_source_surface"]
+          sync_origin_id?: string | null
+          sync_origin_surface?:
+            | Database["public"]["Enums"]["record_source_surface"]
+            | null
+          sync_origin_table?: string | null
+          sync_status?: Database["public"]["Enums"]["sync_status_type"]
           title?: string
         }
         Relationships: [
@@ -2688,6 +2721,8 @@ export type Database = {
         Row: {
           category: string
           client_id: string
+          content_hash: string | null
+          dedupe_key: string | null
           description: string | null
           document_type: string | null
           file_name: string
@@ -2696,18 +2731,31 @@ export type Database = {
           file_type: string | null
           id: string
           is_vownet_form: boolean | null
+          last_sync_error: string | null
+          last_synced_at: string | null
           report_type: string | null
           source_actor_name: string | null
           source_actor_type: Database["public"]["Enums"]["record_source_actor_type"]
           source_details: Json
           source_reference: string | null
           source_surface: Database["public"]["Enums"]["record_source_surface"]
+          supersedes_file_id: string | null
+          sync_origin_id: string | null
+          sync_origin_surface:
+            | Database["public"]["Enums"]["record_source_surface"]
+            | null
+          sync_origin_table: string | null
+          sync_status: Database["public"]["Enums"]["sync_status_type"]
           uploaded_at: string
           uploaded_by: string | null
+          version_group_id: string | null
+          version_number: number
         }
         Insert: {
           category?: string
           client_id: string
+          content_hash?: string | null
+          dedupe_key?: string | null
           description?: string | null
           document_type?: string | null
           file_name: string
@@ -2716,18 +2764,31 @@ export type Database = {
           file_type?: string | null
           id?: string
           is_vownet_form?: boolean | null
+          last_sync_error?: string | null
+          last_synced_at?: string | null
           report_type?: string | null
           source_actor_name?: string | null
           source_actor_type?: Database["public"]["Enums"]["record_source_actor_type"]
           source_details?: Json
           source_reference?: string | null
           source_surface?: Database["public"]["Enums"]["record_source_surface"]
+          supersedes_file_id?: string | null
+          sync_origin_id?: string | null
+          sync_origin_surface?:
+            | Database["public"]["Enums"]["record_source_surface"]
+            | null
+          sync_origin_table?: string | null
+          sync_status?: Database["public"]["Enums"]["sync_status_type"]
           uploaded_at?: string
           uploaded_by?: string | null
+          version_group_id?: string | null
+          version_number?: number
         }
         Update: {
           category?: string
           client_id?: string
+          content_hash?: string | null
+          dedupe_key?: string | null
           description?: string | null
           document_type?: string | null
           file_name?: string
@@ -2736,14 +2797,25 @@ export type Database = {
           file_type?: string | null
           id?: string
           is_vownet_form?: boolean | null
+          last_sync_error?: string | null
+          last_synced_at?: string | null
           report_type?: string | null
           source_actor_name?: string | null
           source_actor_type?: Database["public"]["Enums"]["record_source_actor_type"]
           source_details?: Json
           source_reference?: string | null
           source_surface?: Database["public"]["Enums"]["record_source_surface"]
+          supersedes_file_id?: string | null
+          sync_origin_id?: string | null
+          sync_origin_surface?:
+            | Database["public"]["Enums"]["record_source_surface"]
+            | null
+          sync_origin_table?: string | null
+          sync_status?: Database["public"]["Enums"]["sync_status_type"]
           uploaded_at?: string
           uploaded_by?: string | null
+          version_group_id?: string | null
+          version_number?: number
         }
         Relationships: [
           {
@@ -3019,47 +3091,86 @@ export type Database = {
         Row: {
           client_id: string
           content: string
+          content_hash: string | null
           created_at: string
           created_by: string | null
+          dedupe_key: string | null
           ghl_note_id: string | null
           id: string
+          last_sync_error: string | null
+          last_synced_at: string | null
           note_type: string
           source_actor_name: string | null
           source_actor_type: Database["public"]["Enums"]["record_source_actor_type"]
           source_details: Json
           source_reference: string | null
           source_surface: Database["public"]["Enums"]["record_source_surface"]
+          supersedes_note_id: string | null
+          sync_origin_id: string | null
+          sync_origin_surface:
+            | Database["public"]["Enums"]["record_source_surface"]
+            | null
+          sync_origin_table: string | null
+          sync_status: Database["public"]["Enums"]["sync_status_type"]
           updated_at: string
+          version_group_id: string | null
+          version_number: number
         }
         Insert: {
           client_id: string
           content: string
+          content_hash?: string | null
           created_at?: string
           created_by?: string | null
+          dedupe_key?: string | null
           ghl_note_id?: string | null
           id?: string
+          last_sync_error?: string | null
+          last_synced_at?: string | null
           note_type?: string
           source_actor_name?: string | null
           source_actor_type?: Database["public"]["Enums"]["record_source_actor_type"]
           source_details?: Json
           source_reference?: string | null
           source_surface?: Database["public"]["Enums"]["record_source_surface"]
+          supersedes_note_id?: string | null
+          sync_origin_id?: string | null
+          sync_origin_surface?:
+            | Database["public"]["Enums"]["record_source_surface"]
+            | null
+          sync_origin_table?: string | null
+          sync_status?: Database["public"]["Enums"]["sync_status_type"]
           updated_at?: string
+          version_group_id?: string | null
+          version_number?: number
         }
         Update: {
           client_id?: string
           content?: string
+          content_hash?: string | null
           created_at?: string
           created_by?: string | null
+          dedupe_key?: string | null
           ghl_note_id?: string | null
           id?: string
+          last_sync_error?: string | null
+          last_synced_at?: string | null
           note_type?: string
           source_actor_name?: string | null
           source_actor_type?: Database["public"]["Enums"]["record_source_actor_type"]
           source_details?: Json
           source_reference?: string | null
           source_surface?: Database["public"]["Enums"]["record_source_surface"]
+          supersedes_note_id?: string | null
+          sync_origin_id?: string | null
+          sync_origin_surface?:
+            | Database["public"]["Enums"]["record_source_surface"]
+            | null
+          sync_origin_table?: string | null
+          sync_status?: Database["public"]["Enums"]["sync_status_type"]
           updated_at?: string
+          version_group_id?: string | null
+          version_number?: number
         }
         Relationships: [
           {
@@ -3673,6 +3784,86 @@ export type Database = {
             foreignKeyName: "client_scores_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_sync_events: {
+        Row: {
+          client_id: string
+          conflict_group: string | null
+          conflict_reason: string | null
+          content_hash: string | null
+          created_at: string
+          dedupe_key: string | null
+          entity_id: string
+          entity_table: string
+          entity_type: string
+          id: string
+          propagated_to: Json
+          source_actor_name: string | null
+          source_actor_type: Database["public"]["Enums"]["record_source_actor_type"]
+          source_details: Json
+          source_reference: string | null
+          source_surface: Database["public"]["Enums"]["record_source_surface"]
+          supersedes_entity_id: string | null
+          sync_status: Database["public"]["Enums"]["sync_status_type"]
+          updated_at: string
+          version_group_id: string | null
+          version_number: number
+        }
+        Insert: {
+          client_id: string
+          conflict_group?: string | null
+          conflict_reason?: string | null
+          content_hash?: string | null
+          created_at?: string
+          dedupe_key?: string | null
+          entity_id: string
+          entity_table: string
+          entity_type: string
+          id?: string
+          propagated_to?: Json
+          source_actor_name?: string | null
+          source_actor_type: Database["public"]["Enums"]["record_source_actor_type"]
+          source_details?: Json
+          source_reference?: string | null
+          source_surface: Database["public"]["Enums"]["record_source_surface"]
+          supersedes_entity_id?: string | null
+          sync_status?: Database["public"]["Enums"]["sync_status_type"]
+          updated_at?: string
+          version_group_id?: string | null
+          version_number?: number
+        }
+        Update: {
+          client_id?: string
+          conflict_group?: string | null
+          conflict_reason?: string | null
+          content_hash?: string | null
+          created_at?: string
+          dedupe_key?: string | null
+          entity_id?: string
+          entity_table?: string
+          entity_type?: string
+          id?: string
+          propagated_to?: Json
+          source_actor_name?: string | null
+          source_actor_type?: Database["public"]["Enums"]["record_source_actor_type"]
+          source_details?: Json
+          source_reference?: string | null
+          source_surface?: Database["public"]["Enums"]["record_source_surface"]
+          supersedes_entity_id?: string | null
+          sync_status?: Database["public"]["Enums"]["sync_status_type"]
+          updated_at?: string
+          version_group_id?: string | null
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_sync_events_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
@@ -10074,6 +10265,12 @@ export type Database = {
         | "statewide"
       report_tier_enum: "compass" | "executive" | "snapshot"
       signature_method: "docusign" | "wet" | "portal_consent" | "email_consent"
+      sync_status_type:
+        | "local"
+        | "synced"
+        | "duplicate"
+        | "superseded"
+        | "conflict"
       template_doc_type:
         | "loan_application"
         | "supporting_docs_cover"
@@ -10460,6 +10657,13 @@ export const Constants = {
       ],
       report_tier_enum: ["compass", "executive", "snapshot"],
       signature_method: ["docusign", "wet", "portal_consent", "email_consent"],
+      sync_status_type: [
+        "local",
+        "synced",
+        "duplicate",
+        "superseded",
+        "conflict",
+      ],
       template_doc_type: [
         "loan_application",
         "supporting_docs_cover",
