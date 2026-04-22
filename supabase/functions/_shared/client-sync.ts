@@ -1,5 +1,18 @@
 export type SyncSurface = 'internal_dashboard' | 'finance_portal' | 'client_portal' | 'automation' | 'external_system';
 
+export type SyncActorType = 'internal_user' | 'finance_user' | 'client_user' | 'system';
+export type SyncStatus = 'local' | 'synced' | 'duplicate' | 'superseded' | 'conflict';
+
+const SURFACE_PRIORITY: Record<SyncSurface, number> = {
+  internal_dashboard: 5,
+  finance_portal: 4,
+  client_portal: 3,
+  automation: 2,
+  external_system: 1,
+};
+
+export const SYNC_CONFLICT_WINDOW_MS = 10 * 60 * 1000;
+
 function toHex(buffer: ArrayBuffer) {
   return Array.from(new Uint8Array(buffer))
     .map((byte) => byte.toString(16).padStart(2, '0'))
@@ -22,6 +35,67 @@ export function buildDocumentDedupeKey(input: {
   return `${input.clientId}:${normalizedCategory}:${input.fileSize}:${normalizedName}`;
 }
 
+export function buildNoteDedupeKey(input: {
+  clientId: string;
+  noteType?: string | null;
+  content: string;
+}) {
+  const normalizedType = (input.noteType || 'general').trim().toLowerCase();
+  const normalizedContent = input.content.trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 120);
+  return `${input.clientId}:${normalizedType}:${normalizedContent}`;
+}
+
+export async function sha256Text(value: string) {
+  return sha256Hex(new TextEncoder().encode(value).buffer);
+}
+
+export function resolveSyncConflict(input: {
+  existing?: {
+    id: string;
+    source_surface?: SyncSurface | null;
+    uploaded_at?: string | null;
+    created_at?: string | null;
+    updated_at?: string | null;
+    version_group_id?: string | null;
+    version_number?: number | null;
+  } | null;
+  incomingSurface: SyncSurface;
+  incomingTimestamp?: string | null;
+}) {
+  const existing = input.existing;
+  if (!existing) {
+    return {
+      status: 'synced' as SyncStatus,
+      versionGroupId: crypto.randomUUID(),
+      versionNumber: 1,
+      supersedesEntityId: null,
+      conflictReason: null,
+      shouldSupersedeExisting: false,
+    };
+  }
+
+  const existingSurface = (existing.source_surface || 'external_system') as SyncSurface;
+  const existingPriority = SURFACE_PRIORITY[existingSurface] || 0;
+  const incomingPriority = SURFACE_PRIORITY[input.incomingSurface] || 0;
+  const existingTimestamp = new Date(existing.updated_at || existing.uploaded_at || existing.created_at || 0).getTime();
+  const incomingTimestamp = new Date(input.incomingTimestamp || Date.now()).getTime();
+
+  const incomingWins = incomingPriority > existingPriority
+    || (incomingPriority === existingPriority && incomingTimestamp >= existingTimestamp);
+
+  const winner = incomingWins ? input.incomingSurface : existingSurface;
+  const loser = incomingWins ? existingSurface : input.incomingSurface;
+
+  return {
+    status: incomingWins ? ('synced' as SyncStatus) : ('conflict' as SyncStatus),
+    versionGroupId: existing.version_group_id || crypto.randomUUID(),
+    versionNumber: (existing.version_number || 1) + 1,
+    supersedesEntityId: incomingWins ? existing.id : null,
+    conflictReason: `Conflict resolved in favour of ${winner.replace(/_/g, ' ')} over ${loser.replace(/_/g, ' ')}`,
+    shouldSupersedeExisting: incomingWins,
+  };
+}
+
 export async function createSyncEvent(
   supabase: any,
   input: {
@@ -30,11 +104,11 @@ export async function createSyncEvent(
     entityTable: string;
     entityType: string;
     sourceSurface: SyncSurface;
-    sourceActorType: 'internal_user' | 'finance_user' | 'client_user' | 'system';
+    sourceActorType: SyncActorType;
     sourceActorName?: string | null;
     sourceReference?: string | null;
     sourceDetails?: Record<string, unknown>;
-    syncStatus?: 'local' | 'synced' | 'duplicate' | 'superseded' | 'conflict';
+    syncStatus?: SyncStatus;
     dedupeKey?: string | null;
     contentHash?: string | null;
     propagatedTo?: unknown[];
