@@ -40,6 +40,11 @@ export interface MarketIntelligenceReportData {
   reportType?: string;
   reportTypeLabel?: string;
   reportContext?: 'default' | 'market_correlation';
+  correlationData?: {
+    aiAnalysis?: string;
+    perplexityResearch?: string;
+    citations?: string[];
+  };
   audienceSegment?: string;
   executiveSummary: string;
   keyInsightsSnapshot?: string;
@@ -297,6 +302,7 @@ class MarketIntelPDFBuilder {
 
     let idx = 2;
     if (layers.includes('key_insights')) tocItems.push({ num: String(idx++).padStart(2, '0'), title: 'Key Insights Snapshot' });
+    if (data.reportContext === 'market_correlation') tocItems.push({ num: String(idx++).padStart(2, '0'), title: 'Correlation Highlights' });
     if (layers.includes('layer1')) tocItems.push({ num: String(idx++).padStart(2, '0'), title: 'RBA & Interest Rate Analysis' });
     if (layers.includes('layer2')) tocItems.push({ num: String(idx++).padStart(2, '0'), title: 'Housing Market Pulse' });
     if (layers.includes('layer3')) tocItems.push({ num: String(idx++).padStart(2, '0'), title: 'Consumer & Investor Sentiment' });
@@ -929,6 +935,10 @@ class MarketIntelPDFBuilder {
     // Key Insights Snapshot (branded cards)
     if (layers.includes('key_insights') && data.keyInsightsSnapshot) {
       this.drawKeyInsightsSnapshot(data.keyInsightsSnapshot);
+    }
+
+    if (data.reportContext === 'market_correlation') {
+      this.drawCorrelationHighlights(data);
     }
 
     // Layer 1: RBA
