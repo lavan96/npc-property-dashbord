@@ -18,8 +18,9 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { SyncConflictDetailsPopover } from '@/components/sync/SyncConflictDetailsPopover';
 import { SyncStatusBadge } from '@/components/sync/SyncStatusBadge';
-import { getActorLabel, getConflictReason, getSurfaceLabel } from '@/lib/syncDisplay';
+import { getActorLabel, getConflictReason, getSurfaceLabel, getVersionNumber } from '@/lib/syncDisplay';
 
 interface ClientActivityTimelineProps {
   clientId: string;
@@ -151,11 +152,12 @@ export function ClientActivityTimeline({ clientId }: ClientActivityTimelineProps
                                 {activity.description}
                               </p>
                             )}
-                            {(getActorLabel(activity) || activity.metadata?.version_number || getConflictReason(activity)) && (
+                            {(getActorLabel(activity) || getVersionNumber(activity) || getConflictReason(activity)) && (
                               <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                                 {getActorLabel(activity) && <span>By {getActorLabel(activity)}</span>}
-                                {activity.metadata?.version_number ? <span>v{activity.metadata.version_number}</span> : null}
+                                {getVersionNumber(activity) ? <span>v{getVersionNumber(activity)}</span> : null}
                                 {getConflictReason(activity) ? <span className="text-warning">{getConflictReason(activity)}</span> : null}
+                                <SyncConflictDetailsPopover record={activity} />
                               </div>
                             )}
                           </div>
