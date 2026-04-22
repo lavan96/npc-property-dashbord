@@ -30,7 +30,7 @@ import { useDropzone } from 'react-dropzone';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useNotifications } from '@/contexts/NotificationsContext';
-import { secureStorageUpload, secureStorageDownload, secureStorageDelete } from '@/hooks/useSecureStorage';
+import { secureStorageDownload, secureStorageDelete } from '@/hooks/useSecureStorage';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { useAuth } from '@/hooks/useAuth';
@@ -59,6 +59,12 @@ const DASHBOARD_UPLOAD_MODE_SCOPE = 'dashboard-client-files';
 interface ClientFilesProps {
   clientId: string;
   onSendEmail?: (file: { id: string; file_name: string; file_path: string }) => void;
+}
+
+interface FailedUploadItem {
+  id: string;
+  file: File;
+  error: string;
 }
 
 const fileCategories = [
@@ -102,7 +108,7 @@ export function ClientFiles({ clientId, onSendEmail }: ClientFilesProps) {
   const [uploadMode, setUploadMode] = useState<UploadProcessingMode>('parallel');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploadQueue, setUploadQueue] = useState<UploadQueueItem[]>([]);
-  const [uploadFailures, setUploadFailures] = useState<Array<{ id: string; file: File; error: string }>>([]);
+  const [uploadFailures, setUploadFailures] = useState<FailedUploadItem[]>([]);
   const queryClient = useQueryClient();
   const { addNotification } = useNotifications();
   const { user } = useAuth();
