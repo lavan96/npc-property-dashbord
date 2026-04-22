@@ -7,6 +7,8 @@ import { Loader2, Plus, X, MapPin, CheckCircle2, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePortalUpdateData } from '@/hooks/usePortalData';
 import { formatNumberWithCommas, removeCommas } from '@/hooks/useFormattedNumber';
+import { PortalPanel, PortalPanelContent, PortalPanelHeader, PortalPanelTitle } from '@/components/portal/PortalSurface';
+import { PortalEmptyState } from '@/components/portal/PortalEmptyState';
 
 const SUPABASE_URL = "https://dduzbchuswwbefdunfct.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkdXpiY2h1c3d3YmVmZHVuZmN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0NDM4NzksImV4cCI6MjA3MTAxOTg3OX0.eSYU6fxIc3tBQuGLsdBRff0alBMkNfvv7OpW0efNjxk";
@@ -131,32 +133,29 @@ export function PortalAddPropertyForm({ onSubmitted, onCancel }: Props) {
 
   if (submitted) {
     return (
-      <Card className="border-emerald-200 bg-emerald-500/5">
-        <CardContent className="py-8 text-center">
-          <CheckCircle2 className="h-12 w-12 text-emerald-500 mx-auto mb-3" />
-          <p className="text-sm font-semibold text-foreground">Property Added!</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Your property has been added to your portfolio.
-          </p>
-        </CardContent>
-      </Card>
+      <PortalEmptyState
+        className="client-portal-soft-panel"
+        icon={<CheckCircle2 className="h-8 w-8" />}
+        title="Property added"
+        description="Your property has been added to your portfolio and will appear in your list shortly."
+      />
     );
   }
 
   return (
-    <Card>
-      <CardHeader className="pb-4">
+    <PortalPanel>
+      <PortalPanelHeader className="pb-4">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2">
+          <PortalPanelTitle className="text-base">
             <Plus className="h-4 w-4 text-primary" />
             Add Property
-          </CardTitle>
+          </PortalPanelTitle>
           <Button variant="ghost" size="icon" onClick={onCancel} className="h-8 w-8">
             <X className="h-4 w-4" />
           </Button>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-5">
+      </PortalPanelHeader>
+      <PortalPanelContent className="space-y-5">
         {/* Address with Google Places Autocomplete */}
         <div className="relative" ref={wrapperRef}>
           <Label className="text-sm font-medium">Property Address *</Label>
@@ -254,7 +253,7 @@ export function PortalAddPropertyForm({ onSubmitted, onCancel }: Props) {
             )}
           </Button>
         </div>
-      </CardContent>
-    </Card>
+      </PortalPanelContent>
+    </PortalPanel>
   );
 }
