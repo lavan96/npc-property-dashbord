@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import { formatDistanceToNow, isToday, isYesterday, isThisWeek, format } from 'date-fns';
 import { toast } from 'sonner';
+import { PortalEmptyState } from '@/components/portal/PortalEmptyState';
+import { PortalPanel, PortalPanelContent, portalPanelClassName } from '@/components/portal/PortalSurface';
 
 const typeIcons: Record<string, any> = {
   info: Info,
@@ -140,21 +142,14 @@ export default function PortalNotifications() {
 
       {/* Notification List */}
       {filtered.length === 0 ? (
-        <Card className="client-portal-soft-panel">
-          <CardContent className="py-16 text-center">
-            <div className="p-4 rounded-full bg-muted/50 w-fit mx-auto mb-4">
-              <BellOff className="h-10 w-10 text-muted-foreground/40" />
-            </div>
-            <p className="text-muted-foreground font-medium">
-              {filter === 'unread' ? 'All caught up!' : 'No notifications yet'}
-            </p>
-            <p className="text-sm text-muted-foreground/70 mt-1">
-              {filter === 'unread'
-                ? "You've read all your notifications."
-                : "You'll see updates about your deals, documents, and account here."}
-            </p>
-          </CardContent>
-        </Card>
+        <PortalEmptyState
+          className="client-portal-soft-panel"
+          icon={<BellOff className="h-8 w-8" />}
+          title={filter === 'unread' ? 'All caught up' : 'No notifications yet'}
+          description={filter === 'unread'
+            ? "You've read everything in your inbox."
+            : "You'll see updates about your deals, documents, appointments, and account here."}
+        />
       ) : (
         <div className="space-y-4">
           {groups.map((group) => (
@@ -162,8 +157,8 @@ export default function PortalNotifications() {
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">
                 {group.label}
               </p>
-              <Card className="client-portal-soft-panel overflow-hidden">
-                <CardContent className="p-0">
+              <PortalPanel className="overflow-hidden">
+                <PortalPanelContent className="p-0">
                   <div className="divide-y divide-border">
                     {group.items.map((notif) => {
                       const TypeIcon = typeIcons[notif.type] || Info;
@@ -221,8 +216,8 @@ export default function PortalNotifications() {
                       );
                     })}
                   </div>
-                </CardContent>
-              </Card>
+                </PortalPanelContent>
+              </PortalPanel>
             </div>
           ))}
         </div>

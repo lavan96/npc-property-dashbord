@@ -10,6 +10,8 @@ import {
 } from 'lucide-react';
 import { format, parseISO, isPast, isFuture, isToday, formatDistanceToNow } from 'date-fns';
 import { Link } from 'react-router-dom';
+import { PortalEmptyState } from '@/components/portal/PortalEmptyState';
+import { PortalPanel, PortalPanelContent, portalPanelClassName } from '@/components/portal/PortalSurface';
 
 const SUPABASE_URL = "https://dduzbchuswwbefdunfct.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkdXpiY2h1c3d3YmVmZHVuZmN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0NDM4NzksImV4cCI6MjA3MTAxOTg3OX0.eSYU6fxIc3tBQuGLsdBRff0alBMkNfvv7OpW0efNjxk";
@@ -124,28 +126,23 @@ export default function PortalAppointments() {
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
         </div>
       ) : error ? (
-        <Card className="client-portal-soft-panel">
-          <CardContent className="py-10 text-center">
+        <PortalPanel>
+          <PortalPanelContent className="py-10 text-center">
             <p className="text-sm text-destructive mb-3">{(error as Error).message}</p>
             <Button variant="outline" size="sm" onClick={() => refetch()}>
               <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Retry
             </Button>
-          </CardContent>
-        </Card>
+          </PortalPanelContent>
+        </PortalPanel>
       ) : appointments.length === 0 ? (
-        <Card className="client-portal-soft-panel">
-          <CardContent className="py-16 text-center">
-            <Inbox className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-            <p className="text-sm font-medium text-foreground mb-1">No appointments yet</p>
-            <p className="text-xs text-muted-foreground mb-4">Book your first appointment to get started.</p>
-            <Link to="/client/booking">
-              <Button size="sm">
-                <CalendarCheck className="h-3.5 w-3.5 mr-1.5" />
-                Book Appointment
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
+        <PortalEmptyState
+          className="client-portal-soft-panel"
+          icon={<Inbox className="h-8 w-8" />}
+          title="No appointments yet"
+          description="Book your first appointment to get started with your advisory team."
+          actionLabel="Book Appointment"
+          onAction={() => { window.location.href = '/client/booking'; }}
+        />
       ) : (
         <>
           {/* Upcoming */}
@@ -192,8 +189,8 @@ function AppointmentCard({ appointment: apt, muted }: { appointment: Appointment
   const status = apt.status || apt.appointmentStatus || 'confirmed';
 
   return (
-    <Card className={muted ? 'client-portal-soft-panel opacity-60' : 'client-portal-soft-panel'}>
-      <CardContent className="p-4">
+    <PortalPanel className={muted ? 'opacity-60' : undefined}>
+      <PortalPanelContent className="p-4">
         <div className="flex items-start gap-3">
           <div className={`shrink-0 rounded-xl p-2.5 ${muted ? 'bg-muted' : 'bg-primary/10 shadow-sm shadow-primary/10'}`}>
             <CalendarDays className={`h-4 w-4 ${muted ? 'text-muted-foreground' : 'text-primary'}`} />
@@ -224,7 +221,7 @@ function AppointmentCard({ appointment: apt, muted }: { appointment: Appointment
             </p>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </PortalPanelContent>
+    </PortalPanel>
   );
 }
