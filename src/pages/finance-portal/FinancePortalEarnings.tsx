@@ -222,6 +222,37 @@ function MobileEarningsCardSkeleton() {
   );
 }
 
+function DetailSubtotalStrip({
+  gross,
+  gst,
+  net,
+  className,
+}: {
+  gross: number;
+  gst: number;
+  net: number;
+  className?: string;
+}) {
+  return (
+    <div className={cn('rounded-2xl border border-primary/20 bg-primary/5 p-3 sm:p-4', className)}>
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+        <div className="rounded-xl border border-border/60 bg-background/80 px-3 py-2.5">
+          <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground sm:text-[11px]">Gross</div>
+          <div className="mt-1 break-words text-sm font-semibold tabular-nums text-foreground sm:text-base">{fmt(gross)}</div>
+        </div>
+        <div className="rounded-xl border border-border/60 bg-background/80 px-3 py-2.5">
+          <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground sm:text-[11px]">GST</div>
+          <div className="mt-1 break-words text-sm font-semibold tabular-nums text-foreground sm:text-base">{fmt(gst)}</div>
+        </div>
+        <div className="rounded-xl border border-primary/20 bg-primary/10 px-3 py-2.5">
+          <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground sm:text-[11px]">Net</div>
+          <div className="mt-1 break-words text-sm font-semibold tabular-nums text-primary sm:text-base">{fmt(net)}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function FinancePortalEarnings() {
   const { invokeFinanceFunction } = useFinancePortalAuth();
   const [searchParams] = useSearchParams();
