@@ -5,6 +5,8 @@
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
 import { notifyFinancePortalAssignees } from "../_shared/finance-portal-notify.ts";
+import { buildProvenance, logClientActivity, mergeSourceDetails } from "../_shared/client-data-provenance.ts";
+import { buildDocumentDedupeKey, createSyncEvent, resolveSyncConflict } from "../_shared/client-sync.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -120,6 +122,31 @@ Deno.serve(async (req) => {
       if (typeof file_size !== 'number' || file_size <= 0) return jsonResponse({ error: 'file_size required' }, 400);
       if (file_size > MAX_FILE_SIZE) return jsonResponse({ error: `File exceeds ${MAX_FILE_SIZE} bytes` }, 400);
       const cat = ALLOWED_CATEGORIES.includes(category) ? category : 'other';
+      const dedupeKey = buildDocumentDedupeKey({ clientId: client_id, filename, fileSize: file_size, category: cat });
+
+      const { data: existingDoc } = await supabase
+        .from('finance_portal_documents')
+        .select('id, source_surface, created_at, updated_at, version_group_id, version_number, content_hash, dedupe_key, source_details')
+        .eq('client_id', client_id)
+        .eq('dedupe_key', dedupeKey)
+        .is('deleted_at', null)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const conflict = resolveSyncConflict({
+        existing: existingDoc,
+        incomingSurface: 'finance_portal',
+        incomingTimestamp: new Date().toISOString(),
+      });
+      const sourceDetails = mergeSourceDetails(existingDoc?.source_details, {
+        category: cat,
+        uploaded_via: 'finance-portal-documents',
+        filename,
+        duplicate_candidate: Boolean(existingDoc),
+        superseded_by_entity_id: conflict.shouldSupersedeExisting ? null : existingDoc?.id ?? null,
+        superseded_by_version_number: conflict.shouldSupersedeExisting ? null : conflict.versionNumber,
+      });
 
       // Generate storage path: client_id/<uuid>-<safe filename>
       const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 100);
@@ -140,10 +167,40 @@ Deno.serve(async (req) => {
           mime_type,
           description: description || null,
           visible_to_client: !!visible_to_client,
+          dedupe_key: dedupeKey,
+          sync_status: conflict.status,
+          version_group_id: conflict.versionGroupId,
+          version_number: conflict.versionNumber,
+          supersedes_entity_id: conflict.supersedesEntityId,
+          conflict_reason: conflict.conflictReason,
+          conflict_group: conflict.status === 'conflict' ? dedupeKey : null,
+          last_synced_at: new Date().toISOString(),
+          ...buildProvenance({
+            sourceSurface: 'finance_portal',
+            sourceActorType: 'finance_user',
+            sourceActorName: portalUser.email ?? null,
+            sourceReference: portalUser.id,
+            sourceDetails,
+          }),
         })
         .select()
         .maybeSingle();
       if (insErr) throw insErr;
+
+      if (existingDoc && conflict.shouldSupersedeExisting) {
+        await supabase
+          .from('finance_portal_documents')
+          .update({
+            sync_status: 'superseded',
+            conflict_reason: conflict.conflictReason,
+            source_details: mergeSourceDetails(existingDoc.source_details, {
+              superseded_by_entity_id: docRow!.id,
+              superseded_by_version_number: docRow!.version_number,
+            }),
+            last_synced_at: new Date().toISOString(),
+          })
+          .eq('id', existingDoc.id);
+      }
 
       // Create signed upload URL
       const { data: signed, error: signErr } = await supabase.storage
@@ -156,6 +213,25 @@ Deno.serve(async (req) => {
       }
 
       await audit('request_upload', docRow!.id, { filename, category: cat, file_size });
+      await createSyncEvent(supabase, {
+        clientId: client_id,
+        entityId: docRow!.id,
+        entityTable: 'finance_portal_documents',
+        entityType: 'document',
+        sourceSurface: 'finance_portal',
+        sourceActorType: 'finance_user',
+        sourceActorName: portalUser.email ?? null,
+        sourceReference: portalUser.id,
+        sourceDetails: { filename, category: cat, storage_bucket: BUCKET },
+        syncStatus: conflict.status,
+        dedupeKey,
+        versionGroupId: docRow!.version_group_id,
+        versionNumber: docRow!.version_number,
+        supersedesEntityId: docRow!.supersedes_entity_id,
+        conflictReason: docRow!.conflict_reason,
+        conflictGroup: docRow!.conflict_group,
+        propagatedTo: ['internal_dashboard', 'client_portal'],
+      });
       return jsonResponse({
         success: true,
         document: docRow,
@@ -198,6 +274,37 @@ Deno.serve(async (req) => {
         exclude_portal_user_id: portalUser.id,
       });
 
+      await logClientActivity(supabase, {
+        clientId: client_id,
+        activityType: 'file_uploaded',
+        title: `Document uploaded: ${doc.original_filename}`,
+        description: 'Uploaded from the finance portal',
+        metadata: {
+          file_id: doc.id,
+          category: doc.category,
+          version_number: doc.version_number,
+          version_group_id: doc.version_group_id,
+          sync_status: doc.sync_status,
+          conflict_reason: doc.conflict_reason,
+          supersedes_entity_id: doc.supersedes_entity_id,
+          dedupe_key: doc.dedupe_key,
+        },
+        provenance: {
+          sourceSurface: 'finance_portal',
+          sourceActorType: 'finance_user',
+          sourceActorName: portalUser.email ?? null,
+          sourceReference: portalUser.id,
+          sourceDetails: {
+            file_id: doc.id,
+            category: doc.category,
+            version_number: doc.version_number,
+            version_group_id: doc.version_group_id,
+            supersedes_entity_id: doc.supersedes_entity_id,
+            conflict_reason: doc.conflict_reason,
+          },
+        },
+      });
+
       await audit('confirm_upload', doc.id, { filename: doc.original_filename, notified: notifyResult.inserted });
       return jsonResponse({ success: true, document: doc, notified: notifyResult.inserted });
     }
@@ -236,6 +343,14 @@ Deno.serve(async (req) => {
       if (typeof payload?.category === 'string' && ALLOWED_CATEGORIES.includes(payload.category)) updates.category = payload.category;
       if (typeof payload?.description === 'string') updates.description = payload.description;
       if (typeof payload?.visible_to_client === 'boolean') updates.visible_to_client = payload.visible_to_client;
+      updates.last_synced_at = new Date().toISOString();
+      Object.assign(updates, buildProvenance({
+        sourceSurface: 'finance_portal',
+        sourceActorType: 'finance_user',
+        sourceActorName: portalUser.email ?? null,
+        sourceReference: portalUser.id,
+        sourceDetails: { updated_via: 'finance-portal-documents' },
+      }));
 
       const { data, error } = await supabase
         .from('finance_portal_documents')
