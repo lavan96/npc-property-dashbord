@@ -46,32 +46,32 @@ export default function PortalEmployment() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="client-portal-page-header">
         <h1 className="text-2xl font-bold text-foreground">Employment & Finances</h1>
         <p className="text-muted-foreground mt-1">Manage your employment, income, expenses, assets, and liabilities</p>
       </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
+        <Card className="client-portal-stat-card">
           <CardContent className="pt-5 pb-4">
             <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Monthly Income</p>
-            <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{fmt(client?.total_monthly_income || totalMonthlyIncome)}</p>
+            <p className="text-xl font-bold text-primary">{fmt(client?.total_monthly_income || totalMonthlyIncome)}</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="client-portal-stat-card">
           <CardContent className="pt-5 pb-4">
             <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Monthly Expenses</p>
             <p className="text-xl font-bold text-destructive">{fmt(client?.total_monthly_expenditure || totalMonthlyExpenses)}</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="client-portal-stat-card">
           <CardContent className="pt-5 pb-4">
             <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Total Assets</p>
-            <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{fmt(totalAssets)}</p>
+            <p className="text-xl font-bold text-primary">{fmt(totalAssets)}</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="client-portal-stat-card">
           <CardContent className="pt-5 pb-4">
             <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Total Liabilities</p>
             <p className="text-xl font-bold text-destructive">{fmt(totalLiabilities)}</p>
@@ -80,7 +80,7 @@ export default function PortalEmployment() {
       </div>
 
       <Tabs defaultValue="employment" className="space-y-4">
-        <TabsList className="w-full flex flex-wrap">
+        <TabsList className="flex w-full flex-wrap rounded-2xl border border-border/60 bg-card/70 p-1 shadow-lg shadow-primary/5">
           <TabsTrigger value="employment" className="flex-1 gap-1.5 text-xs sm:text-sm">
             <Briefcase className="h-4 w-4" />
             <span className="hidden sm:inline">Employment</span>
