@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from '../_shared/auth.ts';
 import { checkPermission } from '../_shared/permissions.ts';
+import { buildProvenance, logClientActivity } from '../_shared/client-data-provenance.ts';
 
 type TableName = 'clients' | 'client_properties' | 'client_income' | 'client_expenses' |
                  'client_assets' | 'client_liabilities' | 'client_employment' |
@@ -208,6 +209,14 @@ Deno.serve(async (req) => {
         const isArray = Array.isArray(data);
         let insertData: Record<string, any> | Record<string, any>[];
         
+        const provenance = buildProvenance({
+          sourceSurface: 'internal_dashboard',
+          sourceActorType: 'internal_user',
+          sourceActorName: username || null,
+          sourceReference: userId || null,
+          sourceDetails: { auth_method: authMethod || 'unknown' },
+        });
+
         if (STANDALONE_TABLES.includes(table)) {
           // For standalone tables, use data as-is
           insertData = data;
@@ -216,6 +225,12 @@ Deno.serve(async (req) => {
           insertData = isArray 
             ? data.map((item: Record<string, any>) => ({ ...item, client_id: clientId }))
             : { ...data, client_id: clientId };
+        }
+
+        if (table === 'client_files' || table === 'client_notes') {
+          insertData = Array.isArray(insertData)
+            ? insertData.map((item) => ({ ...item, ...provenance }))
+            : { ...insertData, ...provenance };
         }
 
         // Use .select() without .single() to handle both array and single inserts
@@ -473,13 +488,20 @@ Deno.serve(async (req) => {
     // Log the activity (only for client-related tables)
     if (clientId && !['report_qa_messages', 'report_qa_conversations'].includes(table)) {
       try {
-        await supabase.from('client_activities').insert({
-          client_id: clientId,
-          activity_type: `${table}_${operation}`,
+        await logClientActivity(supabase, {
+          clientId,
+          activityType: `${table}_${operation}`,
           title: `${operation.charAt(0).toUpperCase() + operation.slice(1)}d ${table.replace('client_', '').replace('_', ' ')}`,
           description: `Record ${operation}d via secure API`,
-          created_by: userId,
+          createdBy: userId,
           metadata: { table, operation, recordId: recordId || result?.id },
+          provenance: {
+            sourceSurface: 'internal_dashboard',
+            sourceActorType: 'internal_user',
+            sourceActorName: username || null,
+            sourceReference: userId || null,
+            sourceDetails: { auth_method: authMethod || 'unknown' },
+          },
         });
       } catch (logError) {
         console.warn('Failed to log activity:', logError);
