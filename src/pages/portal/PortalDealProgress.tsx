@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PortalEmptyState } from '@/components/finance-portal/PortalEmptyState';
 import {
   Loader2, Building2, CheckCircle2, Circle, Clock,
   TrendingUp, CalendarDays, DollarSign, Home, RefreshCw,
@@ -63,8 +64,8 @@ interface PortalDeal {
 
 const DEAL_TYPE_CONFIG: Record<string, { label: string; icon: React.ElementType; gradient: string }> = {
   existing_property: { label: 'Existing Property', icon: Building2, gradient: 'from-primary/8 to-transparent' },
-  house_and_land: { label: 'House & Land', icon: Home, gradient: 'from-emerald-500/8 to-transparent' },
-  refinance: { label: 'Refinance', icon: RefreshCw, gradient: 'from-blue-500/8 to-transparent' },
+  house_and_land: { label: 'House & Land', icon: Home, gradient: 'from-primary/10 via-primary/5 to-transparent' },
+  refinance: { label: 'Refinance', icon: RefreshCw, gradient: 'from-primary/12 via-primary/5 to-transparent' },
 };
 
 function formatCurrency(val?: number | null): string {
@@ -96,7 +97,7 @@ function PortalStageTimeline({ stages }: { stages: PortalDealStage[] }) {
             <div className="flex flex-col items-center">
               <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 transition-all ${
                 isCompleted
-                  ? 'bg-emerald-500 text-white shadow-sm shadow-emerald-500/20'
+                  ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/20'
                   : isCurrent
                     ? 'bg-primary text-primary-foreground shadow-md shadow-primary/30 ring-4 ring-primary/10'
                     : isSkipped
@@ -114,7 +115,7 @@ function PortalStageTimeline({ stages }: { stages: PortalDealStage[] }) {
                 )}
               </div>
               {!isLast && (
-                <div className={`w-0.5 flex-1 min-h-[12px] ${isCompleted ? 'bg-emerald-500/50' : 'bg-border'}`} />
+                <div className={`w-0.5 flex-1 min-h-[12px] ${isCompleted ? 'bg-primary/50' : 'bg-border'}`} />
               )}
             </div>
 
@@ -136,7 +137,7 @@ function PortalStageTimeline({ stages }: { stages: PortalDealStage[] }) {
                 <p className="text-xs text-primary mt-0.5 font-medium">Current Stage</p>
               )}
               {isCompleted && stage.completed_at && (
-                <p className="text-xs text-emerald-600 mt-0.5">
+                  <p className="mt-0.5 text-xs text-primary">
                   Completed {formatDate(stage.completed_at)}
                 </p>
               )}
