@@ -90,7 +90,7 @@ export function MarketCorrelationPanel({ marketEvents, perplexityResearch, citat
               How macro events impact your ad performance
             </CardDescription>
           </div>
-          <MarketIntelligenceExportButton />
+          <MarketIntelligenceExportButton reportType="market_pulse" />
         </div>
       </CardHeader>
       <CardContent className="space-y-5">
