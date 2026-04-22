@@ -473,7 +473,7 @@ export default function FinancePortalEarnings() {
           ) : tab === 'commissions' ? (
             <>
               {/* Desktop Table */}
-              <Card className="hidden sm:block">
+              <Card className="hidden lg:block">
                 <CardContent className="pt-6">
                   <Table>
                     <TableHeader>
@@ -488,17 +488,23 @@ export default function FinancePortalEarnings() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {commissions.length === 0 && (
+                      {filteredCommissions.length === 0 && (
                         <TableRow>
                           <TableCell colSpan={7} className="text-center text-muted-foreground py-12">
-                            <div className="flex flex-col items-center gap-2">
-                              <Receipt className="h-8 w-8 text-muted-foreground/30" />
-                              <span>No commissions recorded yet</span>
+                            <div className="mx-auto max-w-md">
+                              <PortalEmptyState
+                                icon={<Receipt className="h-8 w-8" />}
+                                title={hasActiveFilters ? 'No commissions match these filters' : 'No commissions recorded yet'}
+                                description={hasActiveFilters ? 'Adjust the status or date range to widen the results.' : 'New commission lines will appear here as client milestones are completed.'}
+                                actionLabel={hasActiveFilters ? 'Clear filters' : undefined}
+                                onAction={hasActiveFilters ? clearFilters : undefined}
+                                className="border-0 bg-transparent shadow-none"
+                              />
                             </div>
                           </TableCell>
                         </TableRow>
                       )}
-                      {commissions.map((c, idx) => (
+                      {filteredCommissions.map((c, idx) => (
                         <TableRow
                           key={c.id}
                           ref={idx === 0 ? latestRowRef : undefined}
@@ -582,7 +588,7 @@ export default function FinancePortalEarnings() {
           ) : (
             <>
               {/* Desktop Table */}
-              <Card className="hidden sm:block">
+              <Card className="hidden lg:block">
                 <CardContent className="pt-6">
                   <Table>
                     <TableHeader>
@@ -596,17 +602,23 @@ export default function FinancePortalEarnings() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {statements.length === 0 && (
+                      {filteredStatements.length === 0 && (
                         <TableRow>
                           <TableCell colSpan={6} className="text-center text-muted-foreground py-12">
-                            <div className="flex flex-col items-center gap-2">
-                              <FileText className="h-8 w-8 text-muted-foreground/30" />
-                              <span>No statements issued yet</span>
+                            <div className="mx-auto max-w-md">
+                              <PortalEmptyState
+                                icon={<FileText className="h-8 w-8" />}
+                                title={hasActiveFilters ? 'No statements match these filters' : 'No statements issued yet'}
+                                description={hasActiveFilters ? 'Try broadening the date range or switching the status filter.' : 'Monthly remittance statements and export files will appear here once issued.'}
+                                actionLabel={hasActiveFilters ? 'Clear filters' : undefined}
+                                onAction={hasActiveFilters ? clearFilters : undefined}
+                                className="border-0 bg-transparent shadow-none"
+                              />
                             </div>
                           </TableCell>
                         </TableRow>
                       )}
-                      {statements.map((s, idx) => (
+                      {filteredStatements.map((s, idx) => (
                         <TableRow key={s.id} className={cn(idx % 2 === 1 && 'bg-muted/30')}>
                           <TableCell className="text-sm tabular-nums">{s.period_start} \u2192 {s.period_end}</TableCell>
                           <TableCell className="text-right tabular-nums">{s.line_count}</TableCell>
