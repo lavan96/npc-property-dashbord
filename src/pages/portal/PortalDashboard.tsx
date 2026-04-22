@@ -11,6 +11,7 @@ import {
   Sparkles, ChevronRight
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { PortalPanel, PortalPanelContent, PortalPanelHeader, PortalPanelTitle, portalStatCardClassName } from '@/components/portal/PortalSurface';
 
 const quickLinks = [
   { to: '/client/profile', icon: User, label: 'My Profile', desc: 'View and update your personal details' },
@@ -28,13 +29,13 @@ function formatCurrency(val?: number | null): string {
 function getDealStageBadge(stage?: string) {
   if (!stage) return null;
   const colors: Record<string, string> = {
-    'New Lead': 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-    'Initial Consultation': 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
-    'Pre-Approval': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-    'Property Search': 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400',
-    'Under Contract': 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
-    'Settlement': 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400',
-    'Settled': 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+    'New Lead': 'border border-border/70 bg-muted text-muted-foreground',
+    'Initial Consultation': 'border border-primary/20 bg-primary/10 text-primary',
+    'Pre-Approval': 'border border-warning/20 bg-warning/10 text-warning',
+    'Property Search': 'border border-primary/20 bg-primary/10 text-primary',
+    'Under Contract': 'border border-warning/20 bg-warning/10 text-warning',
+    'Settlement': 'border border-success/20 bg-success/10 text-success',
+    'Settled': 'border border-success/20 bg-success/10 text-success',
   };
   return <Badge className={colors[stage] || 'bg-muted text-muted-foreground'}>{stage}</Badge>;
 }
@@ -105,7 +106,7 @@ export default function PortalDashboard() {
               { label: 'Rental Income', value: formatCurrency(client?.total_monthly_rental_income), suffix: '/mo', icon: TrendingUp, gradient: 'from-blue-500/10 to-blue-500/5', iconColor: 'text-blue-600 dark:text-blue-400' },
               { label: 'Net Cash Flow', value: formatCurrency(client?.net_monthly_cash_flow), suffix: '/mo', icon: Briefcase, gradient: 'from-purple-500/10 to-purple-500/5', iconColor: 'text-purple-600 dark:text-purple-400' },
             ].map((stat) => (
-              <Card key={stat.label} className="client-portal-stat-card">
+              <Card key={stat.label} className={portalStatCardClassName()}>
                 <CardContent className="pt-6 relative">
                   <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent opacity-80" />
                   <div className="relative flex items-center gap-3">
@@ -127,14 +128,14 @@ export default function PortalDashboard() {
 
           {/* Active Deals */}
           {deals.length > 0 && (
-            <Card className="client-portal-soft-panel">
-              <CardHeader className="pb-3">
-                <CardTitle className="client-portal-section-title text-lg">
+            <PortalPanel>
+              <PortalPanelHeader className="pb-3">
+                <PortalPanelTitle className="text-lg">
                   <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
                   Active Deals
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
+                </PortalPanelTitle>
+              </PortalPanelHeader>
+              <PortalPanelContent>
                 <div className="space-y-2">
                   {deals.slice(0, 5).map((deal: any) => (
                     <div key={deal.id} className="flex items-center justify-between rounded-xl border border-border/50 bg-background/50 px-4 py-3 transition-colors hover:border-primary/20 hover:bg-accent/20">
@@ -154,20 +155,20 @@ export default function PortalDashboard() {
                     </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
+              </PortalPanelContent>
+            </PortalPanel>
           )}
 
           {/* Properties Preview */}
           {properties.length > 0 && (
-            <Card className="client-portal-soft-panel">
-              <CardHeader className="flex flex-row items-center justify-between pb-3">
-                <CardTitle className="client-portal-section-title text-lg">Your Properties</CardTitle>
+            <PortalPanel>
+              <PortalPanelHeader className="flex flex-row items-center justify-between pb-3">
+                <PortalPanelTitle className="text-lg">Your Properties</PortalPanelTitle>
                 <Link to="/client/properties" className="text-sm text-primary hover:text-primary/80 font-medium flex items-center gap-1 transition-colors">
                   View all <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
-              </CardHeader>
-              <CardContent>
+              </PortalPanelHeader>
+              <PortalPanelContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {properties.slice(0, 4).map((prop: any) => (
                     <div key={prop.id} className="group rounded-2xl border border-border/60 bg-background/50 p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-lg hover:shadow-primary/5">
@@ -192,8 +193,8 @@ export default function PortalDashboard() {
                     </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
+              </PortalPanelContent>
+            </PortalPanel>
           )}
 
           <Separator />
