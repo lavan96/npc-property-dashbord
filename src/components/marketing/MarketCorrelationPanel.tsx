@@ -43,6 +43,8 @@ const REPORT_TYPE_OPTIONS = [
   { value: 'myth_busting', label: 'Myth Busting' },
 ] as const;
 
+type MarketCorrelationReportType = (typeof REPORT_TYPE_OPTIONS)[number]['value'];
+
 function ImpactIcon({ impact }: { impact: string }) {
   if (impact === 'positive') return <ArrowUp className="h-3.5 w-3.5 text-emerald-500" />;
   if (impact === 'negative') return <ArrowDown className="h-3.5 w-3.5 text-red-500" />;
@@ -61,7 +63,7 @@ function isUpcoming(dateStr: string) {
 
 export function MarketCorrelationPanel({ marketEvents, perplexityResearch, citations, aiAnalysis, aiError, loading }: MarketCorrelationPanelProps) {
   const markdownComponents = useMemo(() => createMarkdownComponents(), []);
-  const [selectedReportType, setSelectedReportType] = useState<MarketIntelligenceExportButtonProps['reportType']>('market_pulse');
+  const [selectedReportType, setSelectedReportType] = useState<MarketCorrelationReportType>('market_pulse');
 
   if (loading) {
     return (
@@ -103,7 +105,7 @@ export function MarketCorrelationPanel({ marketEvents, perplexityResearch, citat
           </div>
           <div className="flex items-center gap-2">
             <div className="w-[180px]">
-              <Select value={selectedReportType} onValueChange={(value) => setSelectedReportType(value as MarketIntelligenceExportButtonProps['reportType'])}>
+              <Select value={selectedReportType} onValueChange={(value) => setSelectedReportType(value as MarketCorrelationReportType)}>
                 <SelectTrigger className="h-8 text-xs">
                   <SelectValue placeholder="Select report type" />
                 </SelectTrigger>
