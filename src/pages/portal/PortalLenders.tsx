@@ -3,6 +3,8 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Landmark, Scale, ChevronRight } from 'lucide-react';
 import { usePortalLendersData } from '@/hooks/usePortalData';
 import { cn } from '@/lib/utils';
+import { PortalEmptyState } from '@/components/portal/PortalEmptyState';
+import { PortalPanel, PortalPanelContent, PortalPanelHeader, PortalPanelTitle } from '@/components/portal/PortalSurface';
 
 const STATUS_LABEL: Record<string, string> = {
   draft: 'Draft',
@@ -18,8 +20,8 @@ const STATUS_LABEL: Record<string, string> = {
 
 const STATUS_VARIANT: Record<string, string> = {
   draft: 'bg-muted text-muted-foreground',
-  pre_assessment: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
-  submitted: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+  pre_assessment: 'bg-primary/10 text-primary',
+  submitted: 'bg-warning/15 text-warning',
   conditional_approval: 'bg-primary/10 text-primary',
   unconditional_approval: 'bg-primary/15 text-primary',
   loan_docs_issued: 'bg-primary/20 text-primary',
@@ -57,16 +59,19 @@ export default function PortalLenders() {
         </p>
       </div>
 
-      <Card className="client-portal-soft-panel overflow-hidden">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Loan applications</CardTitle>
+      <PortalPanel className="overflow-hidden">
+        <PortalPanelHeader className="pb-3">
+          <PortalPanelTitle className="text-base">Loan applications</PortalPanelTitle>
           <CardDescription>Read-only view of your submissions across lenders.</CardDescription>
-        </CardHeader>
-        <CardContent className="p-0">
+        </PortalPanelHeader>
+        <PortalPanelContent className="p-0">
           {submissions.length === 0 ? (
-            <div className="p-8 text-center text-sm text-muted-foreground">
-              No active submissions yet. Your broker will share progress here.
-            </div>
+            <PortalEmptyState
+              className="rounded-none border-0 shadow-none"
+              icon={<Landmark className="h-8 w-8" />}
+              title="No active submissions yet"
+              description="Your broker will share loan application progress here as each lender submission moves forward."
+            />
           ) : (
             <div className="divide-y divide-border">
               {submissions.map(s => {
@@ -106,21 +111,24 @@ export default function PortalLenders() {
               })}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </PortalPanelContent>
+      </PortalPanel>
 
-      <Card className="client-portal-soft-panel overflow-hidden">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
+      <PortalPanel className="overflow-hidden">
+        <PortalPanelHeader className="pb-3">
+          <PortalPanelTitle className="text-base flex items-center gap-2">
             <Scale className="h-4 w-4" /> Lender comparisons
-          </CardTitle>
+          </PortalPanelTitle>
           <CardDescription>Comparison snapshots your broker has shared with you.</CardDescription>
-        </CardHeader>
-        <CardContent className="p-0">
+        </PortalPanelHeader>
+        <PortalPanelContent className="p-0">
           {comparisons.length === 0 ? (
-            <div className="p-8 text-center text-sm text-muted-foreground">
-              No comparisons shared yet.
-            </div>
+            <PortalEmptyState
+              className="rounded-none border-0 shadow-none"
+              icon={<Scale className="h-8 w-8" />}
+              title="No comparisons shared yet"
+              description="Comparison snapshots from your broker will appear here when they are ready for review."
+            />
           ) : (
             <div className="divide-y divide-border">
               {comparisons.map(sheet => (
@@ -145,8 +153,8 @@ export default function PortalLenders() {
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </PortalPanelContent>
+      </PortalPanel>
     </div>
   );
 }

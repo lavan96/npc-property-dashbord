@@ -13,6 +13,8 @@ import {
 import { format, formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import { PortalRequestReportForm } from '@/components/portal/PortalRequestReportForm';
+import { PortalEmptyState } from '@/components/portal/PortalEmptyState';
+import { PortalPanel, PortalPanelContent } from '@/components/portal/PortalSurface';
 
 const SUPABASE_URL = "https://dduzbchuswwbefdunfct.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkdXpiY2h1c3d3YmVmZHVuZmN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0NDM4NzksImV4cCI6MjA3MTAxOTg3OX0.eSYU6fxIc3tBQuGLsdBRff0alBMkNfvv7OpW0efNjxk";
@@ -202,18 +204,16 @@ export default function PortalReports() {
           )}
 
           {filtered.length === 0 ? (
-            <Card className="client-portal-soft-panel">
-              <CardContent className="py-12 text-center">
-                <Inbox className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
-                <p className="text-muted-foreground">
-                  {search || typeFilter !== 'all' ? 'No reports match your filters.' : 'No reports have been shared with you yet.'}
-                </p>
-                <Button variant="outline" size="sm" className="mt-4" onClick={() => setShowRequestForm(true)}>
-                  <Plus className="h-3.5 w-3.5 mr-1.5" />
-                  Request a Report
-                </Button>
-              </CardContent>
-            </Card>
+            <PortalEmptyState
+              className="client-portal-soft-panel"
+              icon={<Inbox className="h-8 w-8" />}
+              title={search || typeFilter !== 'all' ? 'No reports match your filters' : 'No reports shared yet'}
+              description={search || typeFilter !== 'all'
+                ? 'Try a broader search term or switch the selected report type.'
+                : 'Published reports from your advisor will appear here as they become available.'}
+              actionLabel="Request a Report"
+              onAction={() => setShowRequestForm(true)}
+            />
           ) : (
             <div className="space-y-3">
               {filtered.map((report: any) => {
@@ -221,8 +221,8 @@ export default function PortalReports() {
                 const Icon = config.icon;
                 const isDownloading = downloadingId === report.id;
                 return (
-                  <Card key={report.id} className="client-portal-soft-panel transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-primary/10">
-                    <CardContent className="p-4 sm:p-5">
+                    <PortalPanel key={report.id} className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-primary/10">
+                      <PortalPanelContent className="p-4 sm:p-5">
                       <div className="flex items-start gap-3 sm:gap-4">
                         <div className={`p-2.5 rounded-xl ${config.color} shrink-0`}>
                           <Icon className="h-5 w-5" />
@@ -273,8 +273,8 @@ export default function PortalReports() {
                           </div>
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
+                      </PortalPanelContent>
+                    </PortalPanel>
                 );
               })}
             </div>
@@ -288,25 +288,22 @@ export default function PortalReports() {
 
         <TabsContent value="requests" className="mt-4 space-y-4">
           {reportRequests.length === 0 ? (
-            <Card className="client-portal-soft-panel">
-              <CardContent className="py-12 text-center">
-                <Send className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
-                <p className="text-muted-foreground font-medium">No report requests yet</p>
-                <p className="text-xs text-muted-foreground mt-1">Request a portfolio review, borrowing capacity snapshot, or investment property report</p>
-                <Button variant="outline" size="sm" className="mt-4" onClick={() => setShowRequestForm(true)}>
-                  <Plus className="h-3.5 w-3.5 mr-1.5" />
-                  Make Your First Request
-                </Button>
-              </CardContent>
-            </Card>
+            <PortalEmptyState
+              className="client-portal-soft-panel"
+              icon={<Send className="h-8 w-8" />}
+              title="No report requests yet"
+              description="Request a portfolio review, borrowing capacity snapshot, or investment property report when you need a fresh analysis."
+              actionLabel="Make Your First Request"
+              onAction={() => setShowRequestForm(true)}
+            />
           ) : (
             <div className="space-y-3">
               {reportRequests.map((req: any) => {
                 const statusConf = requestStatusConfig[req.status] || requestStatusConfig.pending;
                 const StatusIcon = statusConf.icon;
                 return (
-                  <Card key={req.id} className="client-portal-soft-panel transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-primary/10">
-                    <CardContent className="p-4 sm:p-5">
+                  <PortalPanel key={req.id} className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-primary/10">
+                    <PortalPanelContent className="p-4 sm:p-5">
                       <div className="flex items-start gap-3">
                         <div className={`p-2 rounded-xl ${statusConf.color} shrink-0`}>
                           <StatusIcon className="h-4 w-4" />
@@ -344,8 +341,8 @@ export default function PortalReports() {
                           </div>
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
+                    </PortalPanelContent>
+                  </PortalPanel>
                 );
               })}
             </div>
