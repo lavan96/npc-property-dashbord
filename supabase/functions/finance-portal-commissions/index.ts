@@ -531,6 +531,31 @@ Deno.serve(async (req) => {
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
+    if (operation === 'partner_statement_detail') {
+      const { statement_id } = body;
+      const { data: stmt, error: stmtErr } = await supabase.from('finance_partner_statements')
+        .select('*')
+        .eq('id', statement_id)
+        .eq('finance_contact_id', partner.finance_contact_id)
+        .neq('status', 'draft')
+        .maybeSingle();
+      if (stmtErr) throw stmtErr;
+      if (!stmt) {
+        return new Response(JSON.stringify({ error: 'Not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      const { data: lines, error: linesErr } = await supabase.from('finance_partner_statement_lines')
+        .select('*')
+        .eq('statement_id', statement_id)
+        .order('accrual_date', { ascending: false, nullsFirst: false })
+        .order('created_at', { ascending: false });
+      if (linesErr) throw linesErr;
+
+      return new Response(JSON.stringify({ success: true, statement: stmt, lines: lines || [] }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     if (operation === 'partner_statement_pdf_url') {
       const { statement_id } = body;
       const { data: stmt } = await supabase.from('finance_partner_statements')
