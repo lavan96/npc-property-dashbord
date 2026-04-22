@@ -9,7 +9,7 @@
  *   4. Performs the action with the service role
  *   5. Audits to finance_portal_activity_log
  */
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
+import { createClient } from "npm:@supabase/supabase-js@2.55.0";
 import { buildProvenance, logClientActivity } from "../_shared/client-data-provenance.ts";
 import { buildNoteDedupeKey, createSyncEvent, resolveSyncConflict, sha256Text, SYNC_CONFLICT_WINDOW_MS } from "../_shared/client-sync.ts";
 
