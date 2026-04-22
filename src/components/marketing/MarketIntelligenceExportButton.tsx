@@ -9,7 +9,11 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { MarketIntelligenceHistoryModal } from './MarketIntelligenceHistoryModal';
 
-export function MarketIntelligenceExportButton() {
+interface MarketIntelligenceExportButtonProps {
+  reportType?: 'full' | 'market_pulse' | 'hotspot_deep_dive' | 'strategy_insight' | 'finance_update' | 'deal_breakdown' | 'myth_busting' | 'development_spotlight';
+}
+
+export function MarketIntelligenceExportButton({ reportType = 'full' }: MarketIntelligenceExportButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState('');
   const [includeNpcStrategy, setIncludeNpcStrategy] = useState(true);
@@ -25,7 +29,7 @@ export function MarketIntelligenceExportButton() {
     try {
       setProgress('Analysing RBA, housing, sentiment & economic data...');
       const { data, error } = await invokeSecureFunction('generate-market-intelligence-report', {
-        report_type: 'full',
+        report_type: reportType,
         audience_segment: 'general',
         include_npc_strategy: includeNpcStrategy,
       });
