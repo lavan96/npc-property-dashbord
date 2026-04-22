@@ -78,9 +78,9 @@ export default function PortalHandoff() {
   }, [token]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-6">
-      <Card className="max-w-md w-full">
-        <CardHeader>
+    <div className="client-portal-theme min-h-screen flex items-center justify-center bg-background p-6">
+      <Card className="client-portal-soft-panel max-w-md w-full overflow-hidden">
+        <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent">
           <CardTitle className="flex items-center gap-2">
             {status === 'pending' && <Loader2 className="h-5 w-5 animate-spin text-primary" />}
             {status === 'success' && <ShieldCheck className="h-5 w-5 text-success" />}
@@ -106,7 +106,7 @@ export default function PortalHandoff() {
         </CardHeader>
         <CardContent className="space-y-3">
           {status === 'success' && (
-            <div className="text-xs text-muted-foreground border rounded-md p-3 bg-muted/40">
+            <div className="rounded-md border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground">
               All actions taken in this session are audited and attributed to you.
             </div>
           )}

@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
+import { PortalEmptyState } from '@/components/finance-portal/PortalEmptyState';
 import {
   Loader2, TrendingUp, TrendingDown, DollarSign,
   Home, PieChart, BarChart3, Percent, Building2
@@ -51,7 +52,7 @@ export default function PortalPropertyInsights() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="client-portal-page-header">
         <h1 className="text-2xl font-bold text-foreground tracking-tight flex items-center gap-2">
           <BarChart3 className="h-6 w-6 text-primary" />
           Property Insights
@@ -62,28 +63,23 @@ export default function PortalPropertyInsights() {
       </div>
 
       {properties.length === 0 ? (
-        <Card>
-          <CardContent className="py-16 text-center">
-            <div className="p-4 rounded-full bg-muted/50 w-fit mx-auto mb-4">
-              <PieChart className="h-10 w-10 text-muted-foreground/40" />
-            </div>
-            <p className="text-muted-foreground font-medium">No property data available</p>
-            <p className="text-sm text-muted-foreground/70 mt-1">
-              Insights will appear once properties are added to your portfolio.
-            </p>
-          </CardContent>
-        </Card>
+        <PortalEmptyState
+          className="client-portal-soft-panel"
+          icon={<PieChart className="h-8 w-8" />}
+          title="No property data available"
+          description="Insights will appear once properties are added to your portfolio."
+        />
       ) : (
         <>
           {/* Portfolio Summary */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
               { label: 'Total Value', value: fmt(totalValue), icon: DollarSign, color: 'text-foreground', gradient: 'from-primary/10 to-primary/5' },
-              { label: 'Total Equity', value: fmt(totalEquity), icon: TrendingUp, color: 'text-emerald-600 dark:text-emerald-400', gradient: 'from-emerald-500/10 to-emerald-500/5' },
-              { label: 'Average LVR', value: pct(avgLVR), icon: Percent, color: avgLVR > 80 ? 'text-destructive' : 'text-foreground', gradient: 'from-blue-500/10 to-blue-500/5' },
-              { label: 'Gross Yield', value: pct(grossYield), icon: BarChart3, color: 'text-purple-600 dark:text-purple-400', gradient: 'from-purple-500/10 to-purple-500/5' },
+              { label: 'Total Equity', value: fmt(totalEquity), icon: TrendingUp, color: 'text-primary', gradient: 'from-primary/12 to-primary/5' },
+              { label: 'Average LVR', value: pct(avgLVR), icon: Percent, color: avgLVR > 80 ? 'text-destructive' : 'text-foreground', gradient: 'from-primary/10 to-primary/5' },
+              { label: 'Gross Yield', value: pct(grossYield), icon: BarChart3, color: 'text-primary', gradient: 'from-primary/10 to-primary/5' },
             ].map((stat) => (
-              <Card key={stat.label} className="overflow-hidden border-0 shadow-sm">
+              <Card key={stat.label} className="client-portal-stat-card overflow-hidden border-0 shadow-sm">
                 <CardContent className="pt-6 relative">
                   <div className={`absolute inset-0 bg-gradient-to-br ${stat.gradient} opacity-50`} />
                   <div className="relative">
@@ -99,7 +95,7 @@ export default function PortalPropertyInsights() {
           </div>
 
           {/* Cash Flow Analysis */}
-          <Card className="shadow-sm">
+            <Card className="client-portal-soft-panel shadow-lg shadow-primary/5">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <DollarSign className="h-5 w-5 text-primary" />
@@ -108,9 +104,9 @@ export default function PortalPropertyInsights() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-3 gap-4">
-                <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/10 text-center">
+                <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-center">
                   <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Income</p>
-                  <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400 mt-1">{fmt(totalMonthlyRent)}</p>
+                  <p className="mt-1 text-lg font-bold text-primary">{fmt(totalMonthlyRent)}</p>
                 </div>
                 <div className="p-4 rounded-xl bg-destructive/5 border border-destructive/10 text-center">
                   <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Expenses</p>
@@ -118,11 +114,11 @@ export default function PortalPropertyInsights() {
                 </div>
                 <div className={`p-4 rounded-xl border text-center ${
                   netCashflow >= 0 
-                    ? 'bg-emerald-500/5 border-emerald-500/10' 
+                    ? 'bg-primary/5 border-primary/20' 
                     : 'bg-destructive/5 border-destructive/10'
                 }`}>
                   <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Net</p>
-                  <p className={`text-lg font-bold mt-1 ${netCashflow >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive'}`}>
+                  <p className={`mt-1 text-lg font-bold ${netCashflow >= 0 ? 'text-primary' : 'text-destructive'}`}>
                     {fmt(netCashflow)}
                   </p>
                 </div>
@@ -131,7 +127,7 @@ export default function PortalPropertyInsights() {
           </Card>
 
           {/* Per-Property Equity Breakdown */}
-          <Card className="shadow-sm">
+          <Card className="client-portal-soft-panel shadow-lg shadow-primary/5">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Building2 className="h-5 w-5 text-primary" />
@@ -154,7 +150,7 @@ export default function PortalPropertyInsights() {
                         <p className="text-sm font-medium text-foreground truncate">{prop.address}</p>
                       </div>
                       <div className="flex items-center gap-3 shrink-0 text-sm">
-                        <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{fmt(propEquity)}</span>
+                        <span className="font-semibold text-primary">{fmt(propEquity)}</span>
                         <Badge variant={propLVR > 80 ? 'destructive' : 'secondary'} className="text-xs">
                           {pct(propLVR)} LVR
                         </Badge>
