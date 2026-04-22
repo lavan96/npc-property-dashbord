@@ -17,6 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useDropzone } from 'react-dropzone';
 import { useQueryClient } from '@tanstack/react-query';
+import { PortalEmptyState } from '@/components/finance-portal/PortalEmptyState';
 
 function formatFileSize(bytes?: number | null): string {
   if (!bytes) return '—';
@@ -192,7 +193,7 @@ export default function PortalDocuments() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="client-portal-page-header flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Documents</h1>
           <p className="text-muted-foreground mt-1">Your uploaded documents and files</p>
@@ -204,7 +205,7 @@ export default function PortalDocuments() {
               Upload Files
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-lg">
+          <DialogContent className="sm:max-w-lg client-portal-soft-panel border-border/70">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Upload className="h-5 w-5 text-primary" />
@@ -287,7 +288,7 @@ export default function PortalDocuments() {
 
       {/* Filters */}
       {files.length > 0 && (
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="client-portal-soft-panel flex flex-col gap-3 rounded-2xl p-4 sm:flex-row">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input placeholder="Search documents..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
@@ -308,20 +309,16 @@ export default function PortalDocuments() {
 
       {/* Documents List */}
       {filtered.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <FolderOpen className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
-            <p className="text-muted-foreground">
-              {search || categoryFilter !== 'all' ? 'No documents match your filters.' : 'No documents uploaded yet.'}
-            </p>
-            <Button variant="outline" className="mt-4 gap-2" onClick={() => setUploadOpen(true)}>
-              <Plus className="h-4 w-4" />
-              Upload your first document
-            </Button>
-          </CardContent>
-        </Card>
+        <PortalEmptyState
+          className="client-portal-soft-panel"
+          icon={<FolderOpen className="h-8 w-8" />}
+          title={search || categoryFilter !== 'all' ? 'No documents match your filters' : 'No documents uploaded yet'}
+          description={search || categoryFilter !== 'all' ? 'Try broadening your search or changing the selected category.' : 'Upload your first document to keep key files in one secure place.'}
+          actionLabel="Upload your first document"
+          onAction={() => setUploadOpen(true)}
+        />
       ) : (
-        <Card>
+        <Card className="client-portal-soft-panel overflow-hidden">
           <CardContent className="p-0">
             <div className="divide-y divide-border">
               {filtered.map((file: any) => (

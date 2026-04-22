@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { PortalEmptyState } from '@/components/finance-portal/PortalEmptyState';
 import { cn } from '@/lib/utils';
 import {
   CalendarDays, Clock, CheckCircle2, Loader2, ArrowRight,
@@ -214,17 +215,16 @@ export default function PortalBooking() {
   if (bookingCalendars.length === 0) {
     return (
       <div className="space-y-6">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Book Appointment</h2>
-          <p className="text-muted-foreground mt-1">Schedule a consultation with our team</p>
+        <div className="client-portal-page-header">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Book Appointment</h1>
+          <p className="mt-1 text-muted-foreground">Schedule a consultation with our team</p>
         </div>
-        <Card>
-          <CardContent className="py-12 text-center">
-            <CalendarDays className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground">Appointment booking is not currently available.</p>
-            <p className="text-sm text-muted-foreground mt-1">Please contact your advisor directly to schedule a meeting.</p>
-          </CardContent>
-        </Card>
+        <PortalEmptyState
+          className="client-portal-soft-panel"
+          icon={<CalendarDays className="h-8 w-8" />}
+          title="Appointment booking is not currently available"
+          description="Please contact your advisor directly to schedule a meeting."
+        />
       </div>
     );
   }
@@ -241,9 +241,9 @@ export default function PortalBooking() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">Book Appointment</h2>
-        <p className="text-muted-foreground mt-1">{introText}</p>
+      <div className="client-portal-page-header">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">Book Appointment</h1>
+        <p className="mt-1 text-muted-foreground">{introText}</p>
       </div>
 
       {/* Progress Steps */}
@@ -269,16 +269,16 @@ export default function PortalBooking() {
 
       {/* Success State */}
       {step === 'success' && selectedSlot && (
-        <Card className="border-green-500/30 bg-green-500/5">
+        <Card className="client-portal-soft-panel border-success/30 bg-success/5">
           <CardContent className="py-10 text-center space-y-4">
-            <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center mx-auto">
-              <CheckCircle2 className="h-8 w-8 text-green-500" />
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-success/10">
+              <CheckCircle2 className="h-8 w-8 text-success" />
             </div>
             <div>
               <h3 className="text-xl font-bold text-foreground">Booking Confirmed!</h3>
               <p className="text-muted-foreground mt-1">Your appointment has been scheduled successfully.</p>
             </div>
-            <div className="inline-flex items-center gap-3 bg-card border border-border rounded-xl px-6 py-4">
+            <div className="inline-flex items-center gap-3 rounded-xl border border-border/60 bg-card/80 px-6 py-4 shadow-sm shadow-primary/5">
               <CalendarCheck className="h-5 w-5 text-primary" />
               <div className="text-left">
                 <p className="font-semibold text-foreground">
@@ -304,7 +304,7 @@ export default function PortalBooking() {
 
       {/* Calendar Selection (only when multiple calendars) */}
       {step === 'calendar' && bookingCalendars.length > 1 && (
-        <Card>
+        <Card className="client-portal-soft-panel overflow-hidden">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <List className="h-5 w-5 text-primary" />
@@ -341,7 +341,7 @@ export default function PortalBooking() {
 
       {/* Date Selection */}
       {step === 'date' && (
-        <Card>
+        <Card className="client-portal-soft-panel overflow-hidden">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -374,7 +374,7 @@ export default function PortalBooking() {
 
       {/* Time Selection */}
       {step === 'time' && selectedDate && (
-        <Card>
+        <Card className="client-portal-soft-panel overflow-hidden">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -437,7 +437,7 @@ export default function PortalBooking() {
 
       {/* Confirmation */}
       {step === 'confirm' && selectedSlot && selectedDate && (
-        <Card>
+        <Card className="client-portal-soft-panel overflow-hidden">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-lg">

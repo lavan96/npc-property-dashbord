@@ -127,9 +127,9 @@ export default function PortalAcceptInvite() {
 
   if (!token || !inviteValid) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
+      <div className="client-portal-theme min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="client-portal-soft-panel w-full max-w-md overflow-hidden">
+          <CardHeader className="border-b border-border/50 bg-gradient-to-r from-destructive/10 via-destructive/5 to-transparent text-center">
             <div className="flex justify-center mb-4">
               <AlertCircle className="h-16 w-16 text-destructive" />
             </div>
@@ -152,11 +152,11 @@ export default function PortalAcceptInvite() {
 
   if (alreadyActive) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
+      <div className="client-portal-theme min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="client-portal-soft-panel w-full max-w-md overflow-hidden">
+          <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent text-center">
             <div className="flex justify-center mb-4">
-              <CheckCircle className="h-16 w-16 text-green-500" />
+                <CheckCircle className="h-16 w-16 text-primary" />
             </div>
             <CardTitle className="text-2xl">Already Activated</CardTitle>
             <CardDescription>Your account is already active. You can log in with your existing password.</CardDescription>
@@ -170,8 +170,8 @@ export default function PortalAcceptInvite() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
+    <div className="client-portal-theme min-h-screen flex items-center justify-center bg-background p-4">
+      <Card className="client-portal-soft-panel w-full max-w-md overflow-hidden">
         <CardHeader className="space-y-2 text-center">
           <div className="flex justify-center mb-4">
             {settings.authLogo ? (
@@ -198,8 +198,8 @@ export default function PortalAcceptInvite() {
             </Alert>
           )}
           {success ? (
-            <Alert className="border-green-500">
-              <CheckCircle className="h-4 w-4 text-green-500" />
+            <Alert className="border-primary/30 bg-primary/5 text-primary">
+              <CheckCircle className="h-4 w-4 text-primary" />
               <AlertDescription>Account activated! Redirecting to your portal...</AlertDescription>
             </Alert>
           ) : (
