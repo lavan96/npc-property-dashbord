@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Database, AlertCircle, CheckCircle, Shield } from 'lucide-react';
+import { BrandLogo } from '@/components/branding/BrandAssets';
 
 interface InviteData {
   email: string;
@@ -107,7 +108,7 @@ export default function AcceptInvite() {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-4">
           {settings.authLogo ? (
-            <img src={settings.authLogo} alt={settings.companyName} className="h-20 max-w-[280px] mx-auto object-contain animate-pulse" />
+            <BrandLogo slot="auth" className="mx-auto h-20 max-w-[280px] object-contain animate-pulse" fallbackClassName="mx-auto h-16 w-16" />
           ) : (
             <Database className="h-16 w-16 text-primary mx-auto animate-pulse" />
           )}
@@ -164,7 +165,7 @@ export default function AcceptInvite() {
         <CardHeader className="space-y-2 text-center">
           <div className="flex justify-center mb-4">
             {settings.authLogo ? (
-              <img src={settings.authLogo} alt={settings.companyName} className="h-20 max-w-[280px] object-contain" />
+              <BrandLogo slot="auth" className="h-20 max-w-[280px] object-contain" fallbackClassName="h-16 w-16" />
             ) : (
               <Database className="h-16 w-16 text-primary" />
             )}

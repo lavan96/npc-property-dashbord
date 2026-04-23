@@ -11,7 +11,7 @@ import { validatePassword } from '@/utils/passwordValidation';
 import { PasswordStrengthMeter } from '@/components/ui/password-strength-meter';
 import { toast } from 'sonner';
 import { useWhiteLabel } from '@/contexts/WhiteLabelContext';
-import { Building2 } from 'lucide-react';
+import { BrandLogo } from '@/components/branding/BrandAssets';
 
 export default function FinancePortalChangePassword() {
   const { user, changePassword, signOut } = useFinancePortalAuth();
@@ -50,7 +50,7 @@ export default function FinancePortalChangePassword() {
         <CardHeader className="text-center space-y-3">
           <div className="flex justify-center mb-2">
             {settings.authLogo ? (
-              <img src={settings.authLogo} alt={settings.companyName} className="h-16 max-w-[240px] object-contain" />
+              <BrandLogo slot="auth" className="h-16 max-w-[240px] object-contain" fallbackClassName="h-14 w-14" />
             ) : (
               <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
                 <ShieldCheck className="h-7 w-7 text-primary" />

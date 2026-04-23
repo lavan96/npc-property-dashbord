@@ -12,6 +12,7 @@ import { validatePassword } from '@/utils/passwordValidation';
 import { PasswordStrengthMeter } from '@/components/ui/password-strength-meter';
 import { useWhiteLabel } from '@/contexts/WhiteLabelContext';
 import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
+import { BrandLogo } from '@/components/branding/BrandAssets';
 
 const SUPABASE_URL = "https://dduzbchuswwbefdunfct.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkdXpiY2h1c3d3YmVmZHVuZmN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0NDM4NzksImV4cCI6MjA3MTAxOTg3OX0.eSYU6fxIc3tBQuGLsdBRff0alBMkNfvv7OpW0efNjxk";
@@ -118,7 +119,7 @@ export default function FinancePortalAcceptInvite() {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-4">
           {settings.authLogo ? (
-            <img src={settings.authLogo} alt={settings.companyName} className="h-16 max-w-[240px] object-contain mx-auto" />
+            <BrandLogo slot="auth" className="mx-auto h-16 max-w-[240px] object-contain" fallbackClassName="mx-auto h-12 w-12" />
           ) : (
             <Building2 className="h-12 w-12 text-primary mx-auto" />
           )}
@@ -181,7 +182,7 @@ export default function FinancePortalAcceptInvite() {
         <CardHeader className="text-center space-y-3">
           <div className="flex justify-center mb-2">
             {settings.authLogo ? (
-              <img src={settings.authLogo} alt={settings.companyName} className="h-16 max-w-[240px] object-contain" />
+              <BrandLogo slot="auth" className="h-16 max-w-[240px] object-contain" fallbackClassName="h-14 w-14" />
             ) : (
               <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
                 <Building2 className="h-7 w-7 text-primary" />
