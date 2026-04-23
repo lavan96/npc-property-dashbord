@@ -385,6 +385,56 @@ export default function Conversations() {
     return format(d, 'dd/MM/yy');
   };
 
+  const handleExportConversationsCSV = () => {
+    const escapeCSV = (value: string) => `"${value.replace(/"/g, '""')}"`;
+    const headers = [
+      'First Name',
+      'Last Name',
+      'Email',
+      'Phone',
+      'Tags',
+      'Source',
+      'Contact ID',
+      'Conversation ID',
+      'Channel',
+      'Last Message',
+      'Last Message Date',
+      'Unread Count',
+    ];
+
+    const rows = filteredConversations.map((conversation) => {
+      const [firstName = '', ...rest] = (conversation.client_name || '').split(' ');
+      return [
+        firstName,
+        rest.join(' '),
+        conversation.client_email || '',
+        '',
+        'Conversation Export',
+        'GHL Conversations',
+        conversation.ghl_contact_id || '',
+        conversation.ghl_conversation_id || '',
+        normalizeChannel(conversation.channel_type),
+        conversation.last_message_body || '',
+        conversation.last_message_date ? format(new Date(conversation.last_message_date), 'yyyy-MM-dd HH:mm:ss') : '',
+        String(conversation.unread_count || 0),
+      ];
+    });
+
+    const csvContent = [headers, ...rows]
+      .map((row) => row.map((cell) => escapeCSV(cell)).join(','))
+      .join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `ghl-conversations-export-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+
+    toast.success(`Exported ${filteredConversations.length} conversations to GHL-ready CSV`);
+  };
+
   const handleSelectConversation = async (conv: ConversationRow) => {
     setSelectedId(conv.id);
     setSearchParams({ id: conv.id });
@@ -450,15 +500,30 @@ export default function Conversations() {
             <Badge variant="secondary" className="text-xs">{conversations.length}</Badge>
           )}
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleSyncAndRefresh}
-          disabled={isSyncing || loadingConversations}
-        >
-          <RefreshCw className={cn('h-3.5 w-3.5 mr-1.5', (isSyncing || loadingConversations) && 'animate-spin')} />
-          {isSyncing ? 'Syncing...' : 'Sync'}
-        </Button>
+        <div className="flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleExportConversationsCSV}>
+                Export current view as GHL CSV
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSyncAndRefresh}
+            disabled={isSyncing || loadingConversations}
+          >
+            <RefreshCw className={cn('h-3.5 w-3.5 mr-1.5', (isSyncing || loadingConversations) && 'animate-spin')} />
+            {isSyncing ? 'Syncing...' : 'Sync'}
+          </Button>
+        </div>
       </div>
 
       {/* Main content area */}

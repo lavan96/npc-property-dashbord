@@ -138,16 +138,19 @@ export function ClientBulkActions({
   };
 
   const handleExportCSV = () => {
-    const headers = ['First Name', 'Last Name', 'Email', 'Phone', 'Portfolio Value', 'Total Debt', 'Net Cash Flow', 'Properties', 'GHL Status'];
+    const headers = ['First Name', 'Last Name', 'Email', 'Phone', 'Tags', 'Source', 'Portfolio Value', 'Total Debt', 'Net Cash Flow', 'Properties', 'GHL Contact ID', 'GHL Status'];
     const rows = selectedClientData.map(c => [
       c.primary_first_name,
       c.primary_surname,
       c.primary_email || '',
       c.primary_mobile || '',
+      'NPC Export',
+      'Dashboard Export',
       c.total_portfolio_value?.toString() || '0',
       c.total_debt?.toString() || '0',
       c.net_monthly_cash_flow?.toString() || '0',
       (c.client_properties?.length || 0).toString(),
+      c.id,
       c.ghl_sync_status || 'not_synced'
     ]);
 
