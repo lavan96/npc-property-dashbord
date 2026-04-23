@@ -32,7 +32,7 @@ export function MobileNav() {
         <button
           onClick={() => setIsCollapsed(prev => !prev)}
             className={cn(
-              'dashboard-mobile-nav-toggle flex items-center justify-center',
+              'dashboard-mobile-nav-toggle flex items-center justify-center rounded-t-xl',
               'h-5 w-10 rounded-t-xl border border-b-0 border-b-transparent',
               'hover:text-foreground transition-all duration-300 ease-out active:scale-95'
             )}
@@ -53,20 +53,20 @@ export function MobileNav() {
             isCollapsed ? 'max-h-0 border-t-0' : 'max-h-20'
           )}
       >
-        <div className="flex items-center justify-around h-16 px-2">
+        <div className="flex h-16 items-center justify-around gap-1 px-2">
           {mobileNavItems.map((item) => (
             <NavLink
               key={item.url}
               to={item.url}
               className={cn(
-                'dashboard-mobile-nav-item active:scale-90 mx-0.5 relative',
+                'dashboard-mobile-nav-item mx-0.5 relative active:scale-90',
                 isActive(item.url)
                   ? 'dashboard-mobile-nav-item-active'
                   : 'text-muted-foreground hover:text-foreground'
               )}
             >
               <div className={cn(
-                'relative rounded-lg p-1 transition-all duration-200',
+                'relative rounded-xl p-1.5 transition-all duration-200',
                 isActive(item.url) && 'dashboard-chip-accent'
               )}>
                 <item.icon className={cn(
@@ -91,14 +91,14 @@ export function MobileNav() {
             <SheetTrigger asChild>
               <button
                 className={cn(
-                  'dashboard-mobile-nav-item active:scale-90 mx-0.5 relative',
+                  'dashboard-mobile-nav-item mx-0.5 relative active:scale-90',
                   isMoreActive
                     ? 'dashboard-mobile-nav-item-active'
                     : 'text-muted-foreground hover:text-foreground'
                 )}
               >
                 <div className={cn(
-                  'relative rounded-lg p-1 transition-all duration-200',
+                  'relative rounded-xl p-1.5 transition-all duration-200',
                   isMoreActive && 'dashboard-chip-accent'
                 )}>
                   <MoreHorizontal className={cn(
