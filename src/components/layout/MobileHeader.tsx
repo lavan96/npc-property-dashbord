@@ -15,7 +15,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useSearch } from '@/contexts/SearchContext';
 import { useAuth } from '@/hooks/useAuth';
-import { useWhiteLabel } from '@/contexts/WhiteLabelContext';
 import { NotificationsDropdown } from './NotificationsDropdown';
 import { MobileSidebar } from './MobileSidebar';
 import { BrandLockup } from '@/components/branding/BrandAssets';
@@ -31,7 +30,6 @@ interface MobileHeaderProps {
 export function MobileHeader({ theme, isDark, onCycleTheme }: MobileHeaderProps) {
   const { globalSearchQuery, setGlobalSearchQuery } = useSearch();
   const { user, signOut } = useAuth();
-  const { settings } = useWhiteLabel();
   const navigate = useNavigate();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);

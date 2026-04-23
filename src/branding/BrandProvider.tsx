@@ -47,6 +47,13 @@ function mapDatabaseSettings(data: Record<string, unknown>): WhiteLabelSettings 
   };
 }
 
+function applyResolvedTheme(themeMode: ThemeMode, resolvedTokens: ReturnType<typeof resolveBrandTokens>) {
+  const resolvedTheme = themeMode === 'system' ? getSystemTheme() : themeMode;
+  document.documentElement.classList.toggle('dark', resolvedTheme === 'dark');
+  applyBrandTokenMap(resolvedTheme === 'dark' ? resolvedTokens.dark : resolvedTokens.light);
+  return resolvedTheme;
+}
+
 export function BrandProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<WhiteLabelSettings>(defaultBrandConfig);
   const [isLoading, setIsLoading] = useState(true);
@@ -92,10 +99,8 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const applyTheme = (nextTheme: ThemeMode) => {
-      const resolvedTheme = nextTheme === 'system' ? getSystemTheme() : nextTheme;
+      const resolvedTheme = applyResolvedTheme(nextTheme, resolvedTokens);
       setCurrentTheme(resolvedTheme);
-      document.documentElement.classList.toggle('dark', resolvedTheme === 'dark');
-      applyBrandTokenMap(resolvedTheme === 'dark' ? resolvedTokens.dark : resolvedTokens.light);
     };
 
     applyTheme(theme);

@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import type { BrandConfig, BrandTokenMap } from '@/branding/brand-types';
 import { resolveBrandTokens } from '@/branding/token-resolver';
 import { getBrandAssetSrc } from '@/branding/brand-assets';
-import { BrandLogo } from './BrandAssets';
+import { BrandFavicon, BrandLogo, BrandMark } from './BrandAssets';
 
 interface BrandPreviewShowcaseProps {
   settings: BrandConfig;
@@ -125,20 +125,18 @@ export function BrandPreviewShowcase({ settings }: BrandPreviewShowcaseProps) {
         <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-lg">
           <div className="rounded-2xl border border-border/60 bg-background p-4">
             <div className="flex items-center gap-3">
-              {faviconSrc ? (
-                <img src={faviconSrc} alt={`${settings.companyName} favicon`} className="h-8 w-8 rounded-lg object-contain" />
-              ) : (
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <Globe className="h-4 w-4" />
-                </div>
-              )}
+               {faviconSrc ? <BrandFavicon settings={settings} alt={`${settings.companyName} favicon`} /> : (
+                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                   <Globe className="h-4 w-4" />
+                 </div>
+               )}
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-foreground">{settings.companyName} Dashboard</p>
                 <p className="text-xs text-muted-foreground">Browser tab + favicon auto-fill preview</p>
               </div>
             </div>
             <div className="mt-4 rounded-xl border border-border/60 bg-muted/40 p-3 text-xs text-muted-foreground">
-              <Monitor className="mb-2 h-4 w-4 text-primary" />
+               <div className="mb-2"><BrandMark settings={settings} slot="sidebar-icon" className="h-4 w-4 object-contain" fallbackClassName="h-4 w-4 rounded" /></div>
               The favicon slot falls back to your sidebar icon or primary logo if a dedicated favicon has not been uploaded yet.
             </div>
           </div>
