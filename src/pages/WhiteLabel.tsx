@@ -827,7 +827,12 @@ export default function WhiteLabel() {
               <Save className="mr-2 h-4 w-4" />
               Save draft
             </Button>
-            <Button variant="outline" onClick={() => setDraftSettings(settings)} disabled={!hasChanges}>Discard</Button>
+            <Button variant="outline" onClick={() => {
+              setDraftSettings(settings);
+              draftHistoryRef.current = [];
+              clearPersistedDraft();
+              setLastDraftSavedAt(null);
+            }} disabled={!hasChanges}>Discard</Button>
             <Button variant="outline" onClick={() => setShowResetPrompt(true)} disabled={!canEditWhiteLabel}>Reset to defaults</Button>
             <Button onClick={handleSaveBranding} disabled={!canSaveBranding}>
               <Check className="mr-2 h-4 w-4" />
