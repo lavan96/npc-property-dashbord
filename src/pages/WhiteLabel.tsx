@@ -20,6 +20,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Upload, 
@@ -49,8 +57,16 @@ import { toast } from 'sonner';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { secureStorageUpload } from '@/hooks/useSecureStorage';
 import { defaultBrandConfig, defaultEmailSignature } from '@/branding/brand-defaults';
-import { getBrandAccessibilityChecks } from '@/branding/accessibility';
+import { getBrandAccessibilityChecks, getBrandImpactPreview } from '@/branding/accessibility';
 import { getBrandAssetSrc, type BrandAssetSlot } from '@/branding/brand-assets';
+import {
+  clearPersistedDraft,
+  loadPersistedDraft,
+  loadStoredBrandPresets,
+  savePersistedDraft,
+  saveStoredBrandPresets,
+  type StoredBrandPreset,
+} from '@/branding/brand-draft-storage';
 import { BrandPreviewShowcase } from '@/components/branding/BrandPreviewShowcase';
 import { BrandAccessibilityPanel } from '@/components/branding/BrandAccessibilityPanel';
 
@@ -60,6 +76,13 @@ type AssetValidationState = {
   status: 'idle' | 'validating' | 'valid' | 'invalid';
   detail: string;
   src: string | null;
+  meta?: {
+    width: number;
+    height: number;
+    aspectRatio: number;
+    recommendation: string;
+    compatibility: 'wide' | 'square' | 'flex';
+  };
 };
 
 const BRAND_SLOT_LABELS: Record<BrandAssetSlot, string> = {
@@ -70,35 +93,34 @@ const BRAND_SLOT_LABELS: Record<BrandAssetSlot, string> = {
 };
 
 const BRAND_SLOT_ORDER: BrandAssetSlot[] = ['auth', 'sidebar', 'sidebar-icon', 'favicon'];
-const WHITE_LABEL_DRAFT_STORAGE_KEY = 'white-label-editor-draft-v1';
-
-function savePersistedDraft(settings: WhiteLabelSettings) {
-  localStorage.setItem(
-    WHITE_LABEL_DRAFT_STORAGE_KEY,
-    JSON.stringify({ settings, savedAt: new Date().toISOString() })
-  );
-}
-
-function loadPersistedDraft(): { settings: WhiteLabelSettings; savedAt: string } | null {
-  const raw = localStorage.getItem(WHITE_LABEL_DRAFT_STORAGE_KEY);
-  if (!raw) return null;
-
-  try {
-    return JSON.parse(raw) as { settings: WhiteLabelSettings; savedAt: string };
-  } catch {
-    localStorage.removeItem(WHITE_LABEL_DRAFT_STORAGE_KEY);
-    return null;
-  }
-}
-
-function clearPersistedDraft() {
-  localStorage.removeItem(WHITE_LABEL_DRAFT_STORAGE_KEY);
-}
 
 function createDefaultDraft() {
   return {
     ...defaultBrandConfig,
     emailSignature: { ...defaultEmailSignature },
+  };
+}
+
+function getAssetRecommendation(slot: BrandAssetSlot, width: number, height: number) {
+  const aspectRatio = width / Math.max(height, 1);
+
+  if (slot === 'auth' || slot === 'sidebar') {
+    return {
+      recommendation: aspectRatio >= 2 ? 'Wide lockup fits this slot well.' : 'Use a wider lockup for cleaner horizontal placement.',
+      compatibility: (aspectRatio >= 2 ? 'wide' : 'flex') as const,
+    };
+  }
+
+  if (slot === 'sidebar-icon' || slot === 'favicon') {
+    return {
+      recommendation: aspectRatio >= 0.85 && aspectRatio <= 1.15 ? 'Square mark is ideal for this slot.' : 'Use a square brand mark for better balance in this slot.',
+      compatibility: (aspectRatio >= 0.85 && aspectRatio <= 1.15 ? 'square' : 'flex') as const,
+    };
+  }
+
+  return {
+    recommendation: 'Asset dimensions are acceptable for this surface.',
+    compatibility: 'flex' as const,
   };
 }
 
