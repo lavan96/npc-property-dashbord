@@ -306,10 +306,26 @@ Clean, modern admin dashboard with confidence-based color coding
 
   .dashboard-sidebar-surface {
     @apply dashboard-surface-panel-strong;
+    background-color: hsl(var(--dashboard-surface-elevated) / 0.94);
   }
 
   .dashboard-topbar-surface {
     @apply dashboard-surface-panel;
+    border-color: hsl(var(--dashboard-border-soft) / 0.82);
+    background-color: hsl(var(--dashboard-surface) / 0.88);
+  }
+
+  .dashboard-topbar-inner {
+    @apply flex min-h-14 items-center justify-between gap-3 px-3 py-2 sm:px-4 md:min-h-[72px] md:gap-4 md:px-6;
+  }
+
+  .dashboard-sidebar-header {
+    @apply dashboard-divider border-b;
+    background: linear-gradient(180deg, hsl(var(--dashboard-primary-soft) / 0.42), transparent 120%);
+  }
+
+  .dashboard-section-label {
+    @apply px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground;
   }
 
   .dashboard-main {
@@ -339,17 +355,27 @@ Clean, modern admin dashboard with confidence-based color coding
   }
 
   .dashboard-mobile-sheet {
-    @apply dashboard-surface-panel-strong;
+    @apply dashboard-sidebar-surface;
+    border-color: hsl(var(--dashboard-border-strong) / 0.78);
   }
 
   .dashboard-mobile-nav {
-    @apply dashboard-surface-panel;
-    box-shadow: 0 -8px 30px -18px hsl(var(--primary) / 0.35);
+    @apply dashboard-topbar-surface;
+    border-top-color: hsl(var(--dashboard-border-strong) / 0.72);
+    box-shadow: 0 -12px 34px -22px hsl(var(--primary) / 0.42);
   }
 
   .dashboard-mobile-nav-toggle {
     @apply dashboard-surface-control text-muted-foreground;
     box-shadow: 0 -6px 24px -16px hsl(var(--primary) / 0.3);
+  }
+
+  .dashboard-mobile-nav-item {
+    @apply flex flex-1 flex-col items-center justify-center rounded-xl px-1.5 py-2 transition-all duration-200;
+  }
+
+  .dashboard-mobile-nav-item-active {
+    color: hsl(var(--primary));
   }
 
   .dashboard-page-frame {

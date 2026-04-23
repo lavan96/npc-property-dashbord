@@ -118,9 +118,9 @@ export function MobileSidebar({ onNavigate }: MobileSidebarProps) {
   };
 
   return (
-      <div className="dashboard-sidebar-surface flex h-full flex-col">
+      <div className="dashboard-sidebar-surface flex h-full flex-col overflow-hidden">
       {/* Header */}
-      <div className="dashboard-divider flex items-center gap-3 border-b p-4">
+      <div className="dashboard-sidebar-header flex items-center gap-3 p-4">
         {settings.sidebarLogo ? (
           <img 
             src={settings.sidebarLogo} 
@@ -143,7 +143,7 @@ export function MobileSidebar({ onNavigate }: MobileSidebarProps) {
         <div className="p-2">
           {/* Main Navigation */}
           <div className="mb-4">
-            <p className="px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            <p className="dashboard-section-label">
               Dashboard
             </p>
             <div className="space-y-0.5">
@@ -171,9 +171,9 @@ export function MobileSidebar({ onNavigate }: MobileSidebarProps) {
           {/* Admin Section */}
           {visibleAdminItems.length > 0 && (
             <>
-              <Separator className="my-2" />
+              <Separator className="my-2 bg-border/60" />
               <div>
-            <p className="px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            <p className="dashboard-section-label">
                   Administration
                 </p>
                 <div className="space-y-0.5">

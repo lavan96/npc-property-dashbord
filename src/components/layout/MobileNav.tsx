@@ -59,10 +59,9 @@ export function MobileNav() {
               key={item.url}
               to={item.url}
               className={cn(
-                'flex flex-1 flex-col items-center justify-center rounded-xl px-1 py-2 transition-all duration-200',
-                'active:scale-90 mx-0.5 relative',
+                'dashboard-mobile-nav-item active:scale-90 mx-0.5 relative',
                 isActive(item.url)
-                  ? 'text-primary'
+                  ? 'dashboard-mobile-nav-item-active'
                   : 'text-muted-foreground hover:text-foreground'
               )}
             >
@@ -92,10 +91,9 @@ export function MobileNav() {
             <SheetTrigger asChild>
               <button
                 className={cn(
-                  'flex flex-1 flex-col items-center justify-center rounded-xl px-1 py-2 transition-all duration-200',
-                  'active:scale-90 mx-0.5 relative',
+                  'dashboard-mobile-nav-item active:scale-90 mx-0.5 relative',
                   isMoreActive
-                    ? 'text-primary'
+                    ? 'dashboard-mobile-nav-item-active'
                     : 'text-muted-foreground hover:text-foreground'
                 )}
               >
