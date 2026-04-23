@@ -42,6 +42,7 @@ import { useWhiteLabel } from '@/contexts/WhiteLabelContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { BrandLockup } from '@/components/branding/BrandAssets';
 
 interface MobileSidebarProps {
   onNavigate?: () => void;
@@ -121,23 +122,15 @@ export function MobileSidebar({ onNavigate }: MobileSidebarProps) {
       <div className="dashboard-sidebar-surface flex h-full flex-col overflow-hidden">
       {/* Header */}
       <div className="dashboard-sidebar-header p-4">
-        <div className="dashboard-brand-lockup">
-          {settings.sidebarLogo ? (
-          <img 
-            src={settings.sidebarLogo} 
-            alt={settings.companyName} 
-            className="h-8 max-w-[100px] object-contain"
-          />
-        ) : (
-          <Database className="h-7 w-7 text-primary" />
-        )}
-        <div className="dashboard-brand-meta">
-          <span className="font-semibold text-foreground truncate text-sm">
-            {settings.companyName}
-          </span>
-          <span className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Internal dashboard</span>
-        </div>
-        </div>
+        <BrandLockup
+          slot="sidebar"
+          meta="Internal dashboard"
+          className="dashboard-brand-lockup"
+          logoClassName="h-8 max-w-[100px] object-contain"
+          fallbackClassName="h-8 w-8"
+          companyClassName="text-sm"
+          metaClassName="tracking-[0.16em]"
+        />
       </div>
 
       {/* Navigation */}

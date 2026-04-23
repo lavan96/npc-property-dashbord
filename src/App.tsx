@@ -9,7 +9,7 @@ import { ThemeProvider } from "next-themes";
 import { SearchProvider } from "@/contexts/SearchContext";
 import { NotificationsProvider } from "@/contexts/NotificationsContext";
 import { ComparisonProvider } from "@/contexts/ComparisonContext";
-import { WhiteLabelProvider } from "@/contexts/WhiteLabelContext";
+import { BrandProvider } from "@/branding/BrandProvider";
 import { AuthProvider } from "@/hooks/useAuth";
 import { PermissionsProvider } from "@/hooks/usePermissions";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -143,7 +143,7 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <TooltipProvider>
-        <WhiteLabelProvider>
+        <BrandProvider>
           <AuthProvider>
             <PermissionsProvider>
               <BrowserRouter>
@@ -304,7 +304,7 @@ const App = () => (
               </BrowserRouter>
             </PermissionsProvider>
           </AuthProvider>
-        </WhiteLabelProvider>
+        </BrandProvider>
       </TooltipProvider>
     </ThemeProvider>
   </QueryClientProvider>

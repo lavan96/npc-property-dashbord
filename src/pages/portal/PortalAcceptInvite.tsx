@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Building2, CheckCircle, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { validatePassword } from '@/utils/passwordValidation';
 import { PasswordStrengthMeter } from '@/components/ui/password-strength-meter';
+import { BrandLogo } from '@/components/branding/BrandAssets';
 
 const SUPABASE_URL = "https://dduzbchuswwbefdunfct.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkdXpiY2h1c3d3YmVmZHVuZmN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0NDM4NzksImV4cCI6MjA3MTAxOTg3OX0.eSYU6fxIc3tBQuGLsdBRff0alBMkNfvv7OpW0efNjxk";
@@ -175,7 +176,7 @@ export default function PortalAcceptInvite() {
         <CardHeader className="space-y-2 text-center">
           <div className="flex justify-center mb-4">
             {settings.authLogo ? (
-              <img src={settings.authLogo} alt={settings.companyName} className="h-20 max-w-[280px] object-contain" />
+              <BrandLogo slot="auth" className="h-20 max-w-[280px] object-contain" fallbackClassName="h-16 w-16" />
             ) : (
               <Building2 className="h-16 w-16 text-primary" />
             )}

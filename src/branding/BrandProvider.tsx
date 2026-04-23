@@ -5,6 +5,7 @@ import {
   defaultBrandConfig,
   defaultEmailSignature,
 } from './brand-defaults';
+import { getBrandAssetSrc } from './brand-assets';
 import { applyBrandTokenMap, resolveBrandTokens } from './token-resolver';
 import type { BrandContextValue, ThemeMode, WhiteLabelSettings } from './brand-types';
 
@@ -109,19 +110,20 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
   }, [resolvedTokens, theme]);
 
   useEffect(() => {
-    if (!settings.favicon) return;
+    const favicon = getBrandAssetSrc(settings, 'favicon');
+    if (!favicon) return;
 
     const link = document.querySelector("link[rel~='icon']") as HTMLLinkElement | null;
     if (link) {
-      link.href = settings.favicon;
+      link.href = favicon;
       return;
     }
 
     const newLink = document.createElement('link');
     newLink.rel = 'icon';
-    newLink.href = settings.favicon;
+    newLink.href = favicon;
     document.head.appendChild(newLink);
-  }, [settings.favicon]);
+  }, [settings]);
 
   useEffect(() => {
     if (settings.companyName) {
