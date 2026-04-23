@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { unstable_useBlocker as useBlocker } from 'react-router-dom';
 import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,6 +10,17 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Upload, 
   Image as ImageIcon, 
@@ -36,8 +48,55 @@ import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { secureStorageUpload } from '@/hooks/useSecureStorage';
 import { defaultBrandConfig, defaultEmailSignature } from '@/branding/brand-defaults';
 import { getBrandAccessibilityChecks } from '@/branding/accessibility';
+import { getBrandAssetSrc, type BrandAssetSlot } from '@/branding/brand-assets';
 import { BrandPreviewShowcase } from '@/components/branding/BrandPreviewShowcase';
 import { BrandAccessibilityPanel } from '@/components/branding/BrandAccessibilityPanel';
+
+type SurfacePreview = 'auth' | 'sidebar' | 'browser';
+
+type AssetValidationState = {
+  status: 'idle' | 'validating' | 'valid' | 'invalid';
+  detail: string;
+  src: string | null;
+};
+
+const BRAND_SLOT_LABELS: Record<BrandAssetSlot, string> = {
+  auth: 'Auth slot',
+  sidebar: 'Sidebar slot',
+  'sidebar-icon': 'Sidebar icon slot',
+  favicon: 'Browser tab slot',
+};
+
+const BRAND_SLOT_ORDER: BrandAssetSlot[] = ['auth', 'sidebar', 'sidebar-icon', 'favicon'];
+
+function createDefaultDraft() {
+  return {
+    ...defaultBrandConfig,
+    emailSignature: { ...defaultEmailSignature },
+  };
+}
+
+function getResolvedAssetField(settings: typeof defaultBrandConfig, slot: BrandAssetSlot, resolvedSrc: string | null) {
+  if (!resolvedSrc) return null;
+
+  const sources: Array<{ key: BrandAssetSlot; value: string | null }> = [
+    { key: 'auth', value: settings.authLogo },
+    { key: 'sidebar', value: settings.sidebarLogo },
+    { key: 'sidebar-icon', value: settings.sidebarIcon },
+    { key: 'favicon', value: settings.favicon },
+  ];
+
+  return sources.find((source) => source.value === resolvedSrc)?.key ?? slot;
+}
+
+function validateImageAsset(src: string) {
+  return new Promise<boolean>((resolve) => {
+    const image = new Image();
+    image.onload = () => resolve(true);
+    image.onerror = () => resolve(false);
+    image.src = src;
+  });
+}
 
 interface LogoUploadCardProps {
   title: string;
