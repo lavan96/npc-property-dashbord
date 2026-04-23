@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,6 +34,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { secureStorageUpload } from '@/hooks/useSecureStorage';
+import { defaultBrandConfig, defaultEmailSignature } from '@/branding/brand-defaults';
+import { getBrandAccessibilityChecks } from '@/branding/accessibility';
+import { BrandPreviewShowcase } from '@/components/branding/BrandPreviewShowcase';
+import { BrandAccessibilityPanel } from '@/components/branding/BrandAccessibilityPanel';
 
 interface LogoUploadCardProps {
   title: string;
@@ -433,7 +437,26 @@ function EmailBannerUpload({ currentBanner, onUpload, onRemove }: EmailBannerUpl
 export default function WhiteLabel() {
   const { settings, updateSettings, isLoading, currentTheme } = useWhiteLabel();
   const { canEdit: canEditWhiteLabel } = useModulePermissions('white_label');
-  const [companyName, setCompanyName] = useState(settings.companyName);
+  const [draftSettings, setDraftSettings] = useState(settings);
+
+  useEffect(() => {
+    setDraftSettings(settings);
+  }, [settings]);
+
+  const updateDraftSettings = useCallback((newSettings: Partial<typeof settings>) => {
+    setDraftSettings((prev) => ({
+      ...prev,
+      ...newSettings,
+      emailSignature: {
+        ...prev.emailSignature,
+        ...(newSettings.emailSignature || {}),
+      },
+    }));
+  }, []);
+
+  const hasChanges = useMemo(() => JSON.stringify(draftSettings) !== JSON.stringify(settings), [draftSettings, settings]);
+  const accessibilityChecks = useMemo(() => getBrandAccessibilityChecks(draftSettings), [draftSettings]);
+  const hasCriticalChecks = accessibilityChecks.some((check) => check.status === 'critical');
 
   const themeOptions: { value: ThemeMode; label: string; icon: React.ReactNode; description: string }[] = [
     { value: 'light', label: 'Light', icon: <Sun className="h-4 w-4" />, description: 'Always use light theme' },
@@ -441,14 +464,25 @@ export default function WhiteLabel() {
     { value: 'system', label: 'System', icon: <Laptop className="h-4 w-4" />, description: 'Follow device settings' },
   ];
 
-  const handleCompanyNameSave = () => {
-    updateSettings({ companyName });
-    toast.success('Company name updated');
+  const handleSaveBranding = () => {
+    if (hasCriticalChecks) {
+      toast.error('Resolve the critical brand checks before saving');
+      return;
+    }
+
+    updateSettings(draftSettings);
+    toast.success('Branding settings saved');
     logActivityDirect({
       actionType: 'whitelabel_settings_updated',
       entityType: 'whitelabel_settings',
-      entityName: 'Company Name',
-      metadata: { companyName }
+      entityName: 'Brand System',
+      metadata: {
+        companyName: draftSettings.companyName,
+        hasAuthLogo: Boolean(draftSettings.authLogo),
+        hasSidebarLogo: Boolean(draftSettings.sidebarLogo),
+        hasSidebarIcon: Boolean(draftSettings.sidebarIcon),
+        hasFavicon: Boolean(draftSettings.favicon),
+      }
     });
   };
 
@@ -475,6 +509,24 @@ export default function WhiteLabel() {
         </Badge>
       </div>
 
+      <Card className="dashboard-panel border-primary/15">
+        <CardContent className="flex flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-foreground">Brand System Draft</p>
+            <p className="text-sm text-muted-foreground">All branding inputs now flow through a single brand resolver before they are committed globally.</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline">{hasChanges ? 'Unsaved changes' : 'In sync'}</Badge>
+            {hasCriticalChecks && <Badge variant="outline" className="border-destructive/40 text-destructive">Critical issues</Badge>}
+            <Button variant="outline" onClick={() => setDraftSettings(settings)} disabled={!hasChanges}>Discard</Button>
+            <Button onClick={handleSaveBranding} disabled={!hasChanges || !canEditWhiteLabel || hasCriticalChecks}>
+              <Check className="mr-2 h-4 w-4" />
+              Save brand changes
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <Alert>
         <AlertCircle className="h-4 w-4" />
         <AlertTitle>How it works</AlertTitle>
@@ -499,15 +551,12 @@ export default function WhiteLabel() {
         <CardContent>
           <div className="flex flex-col gap-2 sm:flex-row">
             <Input
-              value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
+              value={draftSettings.companyName}
+              onChange={(e) => updateDraftSettings({ companyName: e.target.value })}
               placeholder="Enter company name"
               className="sm:max-w-sm"
             />
-            <Button onClick={handleCompanyNameSave} disabled={companyName === settings.companyName} className="min-h-[44px] sm:min-h-0 shrink-0">
-              <Check className="h-4 w-4 mr-2" />
-              Save
-            </Button>
+            <Badge variant="outline" className="min-h-[44px] sm:min-h-0 shrink-0">Browser tab + shell brand name</Badge>
           </div>
         </CardContent>
       </Card>
@@ -535,10 +584,10 @@ export default function WhiteLabel() {
                 <div className="relative">
                   <input
                     type="color"
-                    value={settings.primaryColor ? hslToHex(settings.primaryColor) : '#D4A017'}
+                     value={draftSettings.primaryColor ? hslToHex(draftSettings.primaryColor) : '#D4A017'}
                     onChange={(e) => {
                       const hsl = hexToHsl(e.target.value);
-                      updateSettings({ primaryColor: hsl });
+                       updateDraftSettings({ primaryColor: hsl });
                     }}
                     className="w-12 h-12 rounded-lg cursor-pointer border-2 border-border overflow-hidden"
                     style={{ padding: 0 }}
@@ -546,19 +595,18 @@ export default function WhiteLabel() {
                 </div>
                 <div className="flex-1 space-y-1">
                   <div className="text-sm font-mono">
-                    {settings.primaryColor ? hslToHex(settings.primaryColor) : '#D4A017'}
+                    {draftSettings.primaryColor ? hslToHex(draftSettings.primaryColor) : '#D4A017'}
                   </div>
                   <div className="text-xs text-muted-foreground font-mono">
-                    hsl({settings.primaryColor || '43 74% 49%'})
+                    hsl({draftSettings.primaryColor || '43 74% 49%'})
                   </div>
                 </div>
-                {settings.primaryColor && (
+                {draftSettings.primaryColor && (
                   <Button 
                     variant="ghost" 
                     size="sm"
                     onClick={() => {
-                      updateSettings({ primaryColor: null });
-                      toast.success('Primary color reset to default');
+                      updateDraftSettings({ primaryColor: null });
                     }}
                   >
                     Reset
@@ -569,22 +617,22 @@ export default function WhiteLabel() {
               <div className="flex gap-2 pt-2">
                 <div 
                   className="h-8 w-8 rounded-md border"
-                  style={{ backgroundColor: `hsl(${settings.primaryColor || '43 74% 49%'})` }}
+                   style={{ backgroundColor: `hsl(${draftSettings.primaryColor || '43 74% 49%'})` }}
                   title="Primary"
                 />
                 <div 
                   className="h-8 w-8 rounded-md border"
-                  style={{ backgroundColor: `hsl(${settings.primaryColor || '43 74% 49%'} / 0.8)` }}
+                   style={{ backgroundColor: `hsl(${draftSettings.primaryColor || '43 74% 49%'} / 0.8)` }}
                   title="80%"
                 />
                 <div 
                   className="h-8 w-8 rounded-md border"
-                  style={{ backgroundColor: `hsl(${settings.primaryColor || '43 74% 49%'} / 0.5)` }}
+                   style={{ backgroundColor: `hsl(${draftSettings.primaryColor || '43 74% 49%'} / 0.5)` }}
                   title="50%"
                 />
                 <div 
                   className="h-8 w-8 rounded-md border"
-                  style={{ backgroundColor: `hsl(${settings.primaryColor || '43 74% 49%'} / 0.2)` }}
+                   style={{ backgroundColor: `hsl(${draftSettings.primaryColor || '43 74% 49%'} / 0.2)` }}
                   title="20%"
                 />
               </div>
@@ -600,10 +648,10 @@ export default function WhiteLabel() {
                 <div className="relative">
                   <input
                     type="color"
-                    value={settings.accentColor ? hslToHex(settings.accentColor) : '#D4A017'}
+                     value={draftSettings.accentColor ? hslToHex(draftSettings.accentColor) : '#D4A017'}
                     onChange={(e) => {
                       const hsl = hexToHsl(e.target.value);
-                      updateSettings({ accentColor: hsl });
+                       updateDraftSettings({ accentColor: hsl });
                     }}
                     className="w-12 h-12 rounded-lg cursor-pointer border-2 border-border overflow-hidden"
                     style={{ padding: 0 }}
@@ -611,19 +659,18 @@ export default function WhiteLabel() {
                 </div>
                 <div className="flex-1 space-y-1">
                   <div className="text-sm font-mono">
-                    {settings.accentColor ? hslToHex(settings.accentColor) : '#D4A017'}
+                    {draftSettings.accentColor ? hslToHex(draftSettings.accentColor) : '#D4A017'}
                   </div>
                   <div className="text-xs text-muted-foreground font-mono">
-                    hsl({settings.accentColor || '43 74% 49%'})
+                    hsl({draftSettings.accentColor || '43 74% 49%'})
                   </div>
                 </div>
-                {settings.accentColor && (
+                {draftSettings.accentColor && (
                   <Button 
                     variant="ghost" 
                     size="sm"
                     onClick={() => {
-                      updateSettings({ accentColor: null });
-                      toast.success('Accent color reset to default');
+                      updateDraftSettings({ accentColor: null });
                     }}
                   >
                     Reset
@@ -634,22 +681,22 @@ export default function WhiteLabel() {
               <div className="flex gap-2 pt-2">
                 <div 
                   className="h-8 w-8 rounded-md border"
-                  style={{ backgroundColor: `hsl(${settings.accentColor || '43 74% 49%'})` }}
+                   style={{ backgroundColor: `hsl(${draftSettings.accentColor || '43 74% 49%'})` }}
                   title="Accent"
                 />
                 <div 
                   className="h-8 w-8 rounded-md border"
-                  style={{ backgroundColor: `hsl(${settings.accentColor || '43 74% 49%'} / 0.8)` }}
+                   style={{ backgroundColor: `hsl(${draftSettings.accentColor || '43 74% 49%'} / 0.8)` }}
                   title="80%"
                 />
                 <div 
                   className="h-8 w-8 rounded-md border"
-                  style={{ backgroundColor: `hsl(${settings.accentColor || '43 74% 49%'} / 0.5)` }}
+                   style={{ backgroundColor: `hsl(${draftSettings.accentColor || '43 74% 49%'} / 0.5)` }}
                   title="50%"
                 />
                 <div 
                   className="h-8 w-8 rounded-md border"
-                  style={{ backgroundColor: `hsl(${settings.accentColor || '43 74% 49%'} / 0.2)` }}
+                   style={{ backgroundColor: `hsl(${draftSettings.accentColor || '43 74% 49%'} / 0.2)` }}
                   title="20%"
                 />
               </div>
@@ -674,23 +721,22 @@ export default function WhiteLabel() {
             {themeOptions.map((option) => (
               <button
                 key={option.value}
-                onClick={() => {
-                  updateSettings({ darkModeDefault: option.value });
+                   onClick={() => {
+                    updateDraftSettings({ darkModeDefault: option.value });
                   logActivityDirect({
                     actionType: 'whitelabel_theme_changed',
                     entityType: 'whitelabel_settings',
                     metadata: { theme: option.value }
                   });
-                  toast.success(`Theme set to ${option.label}`);
                 }}
                 className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all hover:border-primary/50 ${
-                  settings.darkModeDefault === option.value
+                   draftSettings.darkModeDefault === option.value
                     ? 'border-primary bg-primary/5'
                     : 'border-border'
                 }`}
               >
                 <div className={`p-3 rounded-full ${
-                  settings.darkModeDefault === option.value
+                   draftSettings.darkModeDefault === option.value
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-muted text-muted-foreground'
                 }`}>
@@ -704,7 +750,7 @@ export default function WhiteLabel() {
             ))}
           </div>
           <p className="text-xs text-muted-foreground mt-4">
-            Current theme: <span className="font-medium capitalize">{currentTheme}</span>
+            Runtime theme: <span className="font-medium capitalize">{currentTheme}</span>
           </p>
         </CardContent>
       </Card>
@@ -715,42 +761,62 @@ export default function WhiteLabel() {
           title="Auth Page Logo"
           description="Displayed prominently on the login page (recommended: wide format)"
           icon={<LogIn className="h-5 w-5 text-primary" />}
-          currentLogo={settings.authLogo}
+          currentLogo={draftSettings.authLogo}
           logoType="auth"
-          onUpload={(url) => { updateSettings({ authLogo: url }); logActivityDirect({ actionType: 'whitelabel_logo_uploaded', entityType: 'whitelabel_settings', metadata: { logo_type: 'auth' } }); }}
-          onRemove={() => { updateSettings({ authLogo: null }); logActivityDirect({ actionType: 'whitelabel_logo_removed', entityType: 'whitelabel_settings', metadata: { logo_type: 'auth' } }); }}
+          onUpload={(url) => { updateDraftSettings({ authLogo: url }); logActivityDirect({ actionType: 'whitelabel_logo_uploaded', entityType: 'whitelabel_settings', metadata: { logo_type: 'auth' } }); }}
+          onRemove={() => { updateDraftSettings({ authLogo: null }); logActivityDirect({ actionType: 'whitelabel_logo_removed', entityType: 'whitelabel_settings', metadata: { logo_type: 'auth' } }); }}
         />
 
         <LogoUploadCard
           title="Sidebar Logo"
           description="Displayed in the expanded sidebar (recommended: horizontal)"
           icon={<PanelLeft className="h-5 w-5 text-primary" />}
-          currentLogo={settings.sidebarLogo}
+          currentLogo={draftSettings.sidebarLogo}
           logoType="sidebar"
-          onUpload={(url) => { updateSettings({ sidebarLogo: url }); logActivityDirect({ actionType: 'whitelabel_logo_uploaded', entityType: 'whitelabel_settings', metadata: { logo_type: 'sidebar' } }); }}
-          onRemove={() => { updateSettings({ sidebarLogo: null }); logActivityDirect({ actionType: 'whitelabel_logo_removed', entityType: 'whitelabel_settings', metadata: { logo_type: 'sidebar' } }); }}
+          onUpload={(url) => { updateDraftSettings({ sidebarLogo: url }); logActivityDirect({ actionType: 'whitelabel_logo_uploaded', entityType: 'whitelabel_settings', metadata: { logo_type: 'sidebar' } }); }}
+          onRemove={() => { updateDraftSettings({ sidebarLogo: null }); logActivityDirect({ actionType: 'whitelabel_logo_removed', entityType: 'whitelabel_settings', metadata: { logo_type: 'sidebar' } }); }}
         />
 
         <LogoUploadCard
           title="Collapsed Sidebar Icon"
           description="Shown when sidebar is minimized (recommended: square, 32x32)"
           icon={<Minimize2 className="h-5 w-5 text-primary" />}
-          currentLogo={settings.sidebarIcon}
+          currentLogo={draftSettings.sidebarIcon}
           logoType="sidebar-icon"
-          onUpload={(url) => { updateSettings({ sidebarIcon: url }); logActivityDirect({ actionType: 'whitelabel_logo_uploaded', entityType: 'whitelabel_settings', metadata: { logo_type: 'sidebar-icon' } }); }}
-          onRemove={() => { updateSettings({ sidebarIcon: null }); logActivityDirect({ actionType: 'whitelabel_logo_removed', entityType: 'whitelabel_settings', metadata: { logo_type: 'sidebar-icon' } }); }}
+          onUpload={(url) => { updateDraftSettings({ sidebarIcon: url }); logActivityDirect({ actionType: 'whitelabel_logo_uploaded', entityType: 'whitelabel_settings', metadata: { logo_type: 'sidebar-icon' } }); }}
+          onRemove={() => { updateDraftSettings({ sidebarIcon: null }); logActivityDirect({ actionType: 'whitelabel_logo_removed', entityType: 'whitelabel_settings', metadata: { logo_type: 'sidebar-icon' } }); }}
         />
 
         <LogoUploadCard
           title="Favicon"
           description="Browser tab icon (recommended: square, 32x32)"
           icon={<Globe className="h-5 w-5 text-primary" />}
-          currentLogo={settings.favicon}
+          currentLogo={draftSettings.favicon}
           logoType="favicon"
-          onUpload={(url) => { updateSettings({ favicon: url }); logActivityDirect({ actionType: 'whitelabel_logo_uploaded', entityType: 'whitelabel_settings', metadata: { logo_type: 'favicon' } }); }}
-          onRemove={() => { updateSettings({ favicon: null }); logActivityDirect({ actionType: 'whitelabel_logo_removed', entityType: 'whitelabel_settings', metadata: { logo_type: 'favicon' } }); }}
+          onUpload={(url) => { updateDraftSettings({ favicon: url }); logActivityDirect({ actionType: 'whitelabel_logo_uploaded', entityType: 'whitelabel_settings', metadata: { logo_type: 'favicon' } }); }}
+          onRemove={() => { updateDraftSettings({ favicon: null }); logActivityDirect({ actionType: 'whitelabel_logo_removed', entityType: 'whitelabel_settings', metadata: { logo_type: 'favicon' } }); }}
         />
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Live Multi-Surface Preview</CardTitle>
+          <CardDescription>Review dashboard, portal, finance, and browser-slot branding before saving.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <BrandPreviewShowcase settings={draftSettings} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Accessibility & Brand Health</CardTitle>
+          <CardDescription>Contrast and slot coverage are validated against your current draft before it can be saved globally.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <BrandAccessibilityPanel checks={accessibilityChecks} />
+        </CardContent>
+      </Card>
 
       {/* Preview Section */}
       <Card>
@@ -764,15 +830,15 @@ export default function WhiteLabel() {
             <div className="space-y-2">
               <Label className="text-sm font-medium">Login Page</Label>
               <div className="border rounded-lg p-6 bg-background flex flex-col items-center gap-4">
-                {settings.authLogo ? (
-                  <img src={settings.authLogo} alt="Auth logo preview" className="h-12 object-contain" />
+                {draftSettings.authLogo ? (
+                  <img src={draftSettings.authLogo} alt="Auth logo preview" className="h-12 object-contain" />
                 ) : (
                   <div className="h-12 w-12 bg-primary rounded-lg flex items-center justify-center">
                     <Monitor className="h-6 w-6 text-primary-foreground" />
                   </div>
                 )}
                 <div className="text-center">
-                  <p className="font-semibold">{settings.companyName} Dashboard</p>
+                  <p className="font-semibold">{draftSettings.companyName} Dashboard</p>
                   <p className="text-sm text-muted-foreground">Sign in to continue</p>
                 </div>
               </div>
@@ -783,15 +849,15 @@ export default function WhiteLabel() {
               <Label className="text-sm font-medium">Sidebar (Expanded)</Label>
               <div className="border rounded-lg bg-card overflow-hidden">
                 <div className="p-4 border-b flex items-center gap-3">
-                  {settings.sidebarLogo ? (
-                    <img src={settings.sidebarLogo} alt="Sidebar logo preview" className="h-10 max-w-[100px] object-contain" />
+                  {draftSettings.sidebarLogo ? (
+                    <img src={draftSettings.sidebarLogo} alt="Sidebar logo preview" className="h-10 max-w-[100px] object-contain" />
                   ) : (
                     <div className="h-8 w-8 bg-primary rounded flex items-center justify-center">
                       <PanelLeft className="h-5 w-5 text-primary-foreground" />
                     </div>
                   )}
                   <div className="flex flex-col">
-                    <span className="font-semibold text-sm">{settings.companyName}</span>
+                     <span className="font-semibold text-sm">{draftSettings.companyName}</span>
                     <span className="text-xs text-muted-foreground">Intake Dashboard</span>
                   </div>
                 </div>
@@ -810,9 +876,9 @@ export default function WhiteLabel() {
               <Label className="text-sm font-medium">Sidebar (Collapsed)</Label>
               <div className="border rounded-lg bg-card overflow-hidden w-16">
                 <div className="p-3 border-b flex items-center justify-center">
-                  {(settings.sidebarIcon || settings.sidebarLogo) ? (
+                   {(draftSettings.sidebarIcon || draftSettings.sidebarLogo) ? (
                     <img 
-                      src={settings.sidebarIcon || settings.sidebarLogo || ''} 
+                       src={draftSettings.sidebarIcon || draftSettings.sidebarLogo || ''} 
                       alt="Sidebar icon preview" 
                       className="h-8 w-8 object-contain" 
                     />
@@ -859,12 +925,12 @@ export default function WhiteLabel() {
         </CardHeader>
         <CardContent>
           <EmailBannerUpload
-            currentBanner={settings.emailSignature.banner}
+            currentBanner={draftSettings.emailSignature.banner}
             onUpload={(url) => updateSettings({ 
-              emailSignature: { ...settings.emailSignature, banner: url } 
+              emailSignature: { ...draftSettings.emailSignature, banner: url } 
             })}
             onRemove={() => updateSettings({ 
-              emailSignature: { ...settings.emailSignature, banner: null } 
+              emailSignature: { ...draftSettings.emailSignature, banner: null } 
             })}
           />
         </CardContent>
@@ -887,9 +953,9 @@ export default function WhiteLabel() {
               <Label htmlFor="sig-name">Name</Label>
               <Input
                 id="sig-name"
-                value={settings.emailSignature.name}
-                onChange={(e) => updateSettings({ 
-                  emailSignature: { ...settings.emailSignature, name: e.target.value } 
+                value={draftSettings.emailSignature.name}
+                onChange={(e) => updateDraftSettings({ 
+                  emailSignature: { ...draftSettings.emailSignature, name: e.target.value } 
                 })}
                 placeholder="John Smith"
               />
@@ -898,9 +964,9 @@ export default function WhiteLabel() {
               <Label htmlFor="sig-title">Title / Role</Label>
               <Input
                 id="sig-title"
-                value={settings.emailSignature.title}
-                onChange={(e) => updateSettings({ 
-                  emailSignature: { ...settings.emailSignature, title: e.target.value } 
+                value={draftSettings.emailSignature.title}
+                onChange={(e) => updateDraftSettings({ 
+                  emailSignature: { ...draftSettings.emailSignature, title: e.target.value } 
                 })}
                 placeholder="Property Investment Specialist"
               />
@@ -909,9 +975,9 @@ export default function WhiteLabel() {
               <Label htmlFor="sig-phone">Phone Number</Label>
               <Input
                 id="sig-phone"
-                value={settings.emailSignature.phone}
-                onChange={(e) => updateSettings({ 
-                  emailSignature: { ...settings.emailSignature, phone: e.target.value } 
+                value={draftSettings.emailSignature.phone}
+                onChange={(e) => updateDraftSettings({ 
+                  emailSignature: { ...draftSettings.emailSignature, phone: e.target.value } 
                 })}
                 placeholder="+61 400 000 000"
               />
@@ -921,9 +987,9 @@ export default function WhiteLabel() {
               <Input
                 id="sig-email"
                 type="email"
-                value={settings.emailSignature.email}
-                onChange={(e) => updateSettings({ 
-                  emailSignature: { ...settings.emailSignature, email: e.target.value } 
+                value={draftSettings.emailSignature.email}
+                onChange={(e) => updateDraftSettings({ 
+                  emailSignature: { ...draftSettings.emailSignature, email: e.target.value } 
                 })}
                 placeholder="contact@npcservices.com.au"
               />
@@ -932,9 +998,9 @@ export default function WhiteLabel() {
               <Label htmlFor="sig-website">Website</Label>
               <Input
                 id="sig-website"
-                value={settings.emailSignature.website}
-                onChange={(e) => updateSettings({ 
-                  emailSignature: { ...settings.emailSignature, website: e.target.value } 
+                value={draftSettings.emailSignature.website}
+                onChange={(e) => updateDraftSettings({ 
+                  emailSignature: { ...draftSettings.emailSignature, website: e.target.value } 
                 })}
                 placeholder="www.npcservices.com.au"
               />
@@ -943,9 +1009,9 @@ export default function WhiteLabel() {
               <Label htmlFor="sig-address">Address</Label>
               <Input
                 id="sig-address"
-                value={settings.emailSignature.address}
-                onChange={(e) => updateSettings({ 
-                  emailSignature: { ...settings.emailSignature, address: e.target.value } 
+                value={draftSettings.emailSignature.address}
+                onChange={(e) => updateDraftSettings({ 
+                  emailSignature: { ...draftSettings.emailSignature, address: e.target.value } 
                 })}
                 placeholder="123 Business St, Sydney NSW 2000"
               />
@@ -956,9 +1022,9 @@ export default function WhiteLabel() {
             <Label htmlFor="sig-disclaimer">Disclaimer / Legal Text</Label>
             <Textarea
               id="sig-disclaimer"
-              value={settings.emailSignature.disclaimer}
-              onChange={(e) => updateSettings({ 
-                emailSignature: { ...settings.emailSignature, disclaimer: e.target.value } 
+              value={draftSettings.emailSignature.disclaimer}
+              onChange={(e) => updateDraftSettings({ 
+                emailSignature: { ...draftSettings.emailSignature, disclaimer: e.target.value } 
               })}
               placeholder="Legal disclaimer text..."
               rows={4}
@@ -972,26 +1038,26 @@ export default function WhiteLabel() {
           <div className="space-y-2 pt-4 border-t">
             <Label className="text-sm font-medium">Email Signature Preview</Label>
             <div className="border rounded-lg p-4 bg-background">
-              {settings.emailSignature.banner && (
+              {draftSettings.emailSignature.banner && (
                 <img 
-                  src={settings.emailSignature.banner} 
+                  src={draftSettings.emailSignature.banner} 
                   alt="Email banner" 
                   className="max-h-20 mb-4 object-contain"
                 />
               )}
               <div className="space-y-1">
-                <p className="font-semibold text-foreground">{settings.emailSignature.name || 'Your Name'}</p>
-                <p className="text-sm text-muted-foreground">{settings.emailSignature.title || 'Your Title'}</p>
+                <p className="font-semibold text-foreground">{draftSettings.emailSignature.name || 'Your Name'}</p>
+                <p className="text-sm text-muted-foreground">{draftSettings.emailSignature.title || 'Your Title'}</p>
                 <div className="text-sm text-muted-foreground space-y-0.5 pt-2">
-                  {settings.emailSignature.phone && <p>📞 {settings.emailSignature.phone}</p>}
-                  {settings.emailSignature.email && <p>✉️ {settings.emailSignature.email}</p>}
-                  {settings.emailSignature.website && <p>🌐 {settings.emailSignature.website}</p>}
-                  {settings.emailSignature.address && <p>📍 {settings.emailSignature.address}</p>}
+                  {draftSettings.emailSignature.phone && <p>📞 {draftSettings.emailSignature.phone}</p>}
+                  {draftSettings.emailSignature.email && <p>✉️ {draftSettings.emailSignature.email}</p>}
+                  {draftSettings.emailSignature.website && <p>🌐 {draftSettings.emailSignature.website}</p>}
+                  {draftSettings.emailSignature.address && <p>📍 {draftSettings.emailSignature.address}</p>}
                 </div>
               </div>
-              {settings.emailSignature.disclaimer && (
+              {draftSettings.emailSignature.disclaimer && (
                 <p className="text-xs text-muted-foreground mt-4 pt-4 border-t italic">
-                  {settings.emailSignature.disclaimer}
+                  {draftSettings.emailSignature.disclaimer}
                 </p>
               )}
             </div>
@@ -1012,26 +1078,10 @@ export default function WhiteLabel() {
             variant="destructive" 
             onClick={() => {
               updateSettings({
-                authLogo: null,
-                sidebarLogo: null,
-                sidebarIcon: null,
-                favicon: null,
-                companyName: 'NPC Property',
-                primaryColor: null,
-                accentColor: null,
-                darkModeDefault: 'light',
-                emailSignature: {
-                  banner: null,
-                  name: 'NPC Property Services',
-                  title: 'Property Investment Specialist',
-                  phone: '',
-                  email: '',
-                  website: '',
-                  address: '',
-                  disclaimer: 'This email and any attachments are confidential and may be privileged. If you are not the intended recipient, please notify the sender immediately and delete this message.',
-                },
+                ...defaultBrandConfig,
+                emailSignature: defaultEmailSignature,
               });
-              setCompanyName('NPC Property');
+              setDraftSettings({ ...defaultBrandConfig, emailSignature: defaultEmailSignature });
               toast.success('Branding reset to defaults');
             }}
           >
