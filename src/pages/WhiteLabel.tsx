@@ -533,6 +533,7 @@ export default function WhiteLabel() {
   const [showLeavePrompt, setShowLeavePrompt] = useState(false);
   const [showResetPrompt, setShowResetPrompt] = useState(false);
   const [lastDraftSavedAt, setLastDraftSavedAt] = useState<string | null>(null);
+  const [availablePersistedDraft, setAvailablePersistedDraft] = useState<{ settings: WhiteLabelSettings; savedAt: string } | null>(null);
   const pendingNavigation = useRef<{ proceed: () => void; reset: () => void } | null>(null);
   const draftHistoryRef = useRef<WhiteLabelSettings[]>([]);
   const isApplyingHistoryRef = useRef(false);
@@ -540,10 +541,14 @@ export default function WhiteLabel() {
   useEffect(() => {
     const persistedDraft = loadPersistedDraft();
     if (persistedDraft) {
-      setDraftSettings(persistedDraft.settings);
-      setLastDraftSavedAt(persistedDraft.savedAt);
-      draftHistoryRef.current = [];
-      return;
+      const matchesLiveSettings = JSON.stringify(persistedDraft.settings) === JSON.stringify(settings);
+
+      if (matchesLiveSettings) {
+        clearPersistedDraft();
+        setAvailablePersistedDraft(null);
+      } else {
+        setAvailablePersistedDraft(persistedDraft);
+      }
     }
 
     setDraftSettings(settings);
@@ -665,10 +670,22 @@ export default function WhiteLabel() {
   const canUndoLastChange = draftHistoryRef.current.length > 0;
 
   const handleSaveDraft = useCallback(() => {
+    const savedAt = new Date().toISOString();
     savePersistedDraft(draftSettings);
-    setLastDraftSavedAt(new Date().toISOString());
+    setLastDraftSavedAt(savedAt);
+    setAvailablePersistedDraft({ settings: draftSettings, savedAt });
     toast.success('Draft saved', { description: 'Your draft was saved locally without changing live branding.' });
   }, [draftSettings]);
+
+  const handleRestoreSavedDraft = useCallback(() => {
+    if (!availablePersistedDraft) return;
+
+    draftHistoryRef.current = [];
+    setDraftSettings(availablePersistedDraft.settings);
+    setLastDraftSavedAt(availablePersistedDraft.savedAt);
+    setAvailablePersistedDraft(null);
+    toast.success('Saved local draft restored');
+  }, [availablePersistedDraft]);
 
   const handleUndoLastChange = useCallback(() => {
     const previousDraft = draftHistoryRef.current.at(-1);
@@ -726,6 +743,7 @@ export default function WhiteLabel() {
     updateSettings(draftSettings);
     clearPersistedDraft();
     setLastDraftSavedAt(null);
+    setAvailablePersistedDraft(null);
     draftHistoryRef.current = [];
     toast.success('Branding settings saved');
     logActivityDirect({
