@@ -1,0 +1,49 @@
+import type { Dispatch, SetStateAction } from 'react';
+
+export type ThemeMode = 'light' | 'dark' | 'system';
+
+export interface EmailSignatureSettings {
+  banner: string | null;
+  name: string;
+  title: string;
+  phone: string;
+  email: string;
+  website: string;
+  address: string;
+  disclaimer: string;
+}
+
+export interface BrandConfig {
+  id?: string;
+  authLogo: string | null;
+  sidebarLogo: string | null;
+  sidebarIcon: string | null;
+  favicon: string | null;
+  companyName: string;
+  primaryColor: string | null;
+  accentColor: string | null;
+  darkModeDefault: ThemeMode;
+  emailSignature: EmailSignatureSettings;
+}
+
+export type WhiteLabelSettings = BrandConfig;
+
+export type BrandTokenName = `--${string}`;
+
+export type BrandTokenMap = Record<BrandTokenName, string>;
+
+export interface ResolvedBrandTokens {
+  light: BrandTokenMap;
+  dark: BrandTokenMap;
+}
+
+export interface BrandContextValue {
+  settings: WhiteLabelSettings;
+  updateSettings: (newSettings: Partial<WhiteLabelSettings>) => void;
+  isLoading: boolean;
+  currentTheme: 'light' | 'dark';
+  theme: ThemeMode;
+  isDark: boolean;
+  setTheme: Dispatch<SetStateAction<ThemeMode>>;
+  resolvedTokens: ResolvedBrandTokens;
+}
