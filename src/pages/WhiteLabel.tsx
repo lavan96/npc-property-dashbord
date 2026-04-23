@@ -497,6 +497,15 @@ export default function WhiteLabel() {
   const { settings, updateSettings, isLoading, currentTheme } = useWhiteLabel();
   const { canEdit: canEditWhiteLabel } = useModulePermissions('white_label');
   const [draftSettings, setDraftSettings] = useState(settings);
+  const [activeSurfacePreview, setActiveSurfacePreview] = useState<SurfacePreview>('auth');
+  const [assetValidation, setAssetValidation] = useState<Record<BrandAssetSlot, AssetValidationState>>({
+    auth: { status: 'idle', detail: 'Waiting for validation.', src: null },
+    sidebar: { status: 'idle', detail: 'Waiting for validation.', src: null },
+    'sidebar-icon': { status: 'idle', detail: 'Waiting for validation.', src: null },
+    favicon: { status: 'idle', detail: 'Waiting for validation.', src: null },
+  });
+  const [showLeavePrompt, setShowLeavePrompt] = useState(false);
+  const pendingNavigation = useRef<{ proceed: () => void; reset: () => void } | null>(null);
 
   useEffect(() => {
     setDraftSettings(settings);
@@ -516,6 +525,113 @@ export default function WhiteLabel() {
   const hasChanges = useMemo(() => JSON.stringify(draftSettings) !== JSON.stringify(settings), [draftSettings, settings]);
   const accessibilityChecks = useMemo(() => getBrandAccessibilityChecks(draftSettings), [draftSettings]);
   const hasCriticalChecks = accessibilityChecks.some((check) => check.status === 'critical');
+  const blocker = useBlocker(hasChanges);
+
+  useEffect(() => {
+    if (blocker.state === 'blocked') {
+      pendingNavigation.current = {
+        proceed: blocker.proceed,
+        reset: blocker.reset,
+      };
+      setShowLeavePrompt(true);
+    }
+  }, [blocker]);
+
+  useEffect(() => {
+    if (!hasChanges) return;
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasChanges]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const runAssetValidation = async () => {
+      const validatingState = BRAND_SLOT_ORDER.reduce((acc, slot) => {
+        const src = getBrandAssetSrc(draftSettings, slot);
+        const resolvedFrom = getResolvedAssetField(draftSettings, slot, src);
+        acc[slot] = {
+          status: src ? 'validating' : 'invalid',
+          detail: src
+            ? `Checking ${BRAND_SLOT_LABELS[slot].toLowerCase()} asset${resolvedFrom && resolvedFrom !== slot ? ` via ${BRAND_SLOT_LABELS[resolvedFrom].toLowerCase()} fallback` : ''}.`
+            : `Upload an asset for ${BRAND_SLOT_LABELS[slot].toLowerCase()} before saving.`,
+          src,
+        };
+        return acc;
+      }, {} as Record<BrandAssetSlot, AssetValidationState>);
+
+      if (!cancelled) {
+        setAssetValidation(validatingState);
+      }
+
+      const results = await Promise.all(
+        BRAND_SLOT_ORDER.map(async (slot) => {
+          const src = getBrandAssetSrc(draftSettings, slot);
+          const resolvedFrom = getResolvedAssetField(draftSettings, slot, src);
+
+          if (!src) {
+            return [slot, {
+              status: 'invalid',
+              detail: `Upload an asset for ${BRAND_SLOT_LABELS[slot].toLowerCase()} before saving.`,
+              src,
+            }] as const;
+          }
+
+          const isValid = await validateImageAsset(src);
+          return [slot, {
+            status: isValid ? 'valid' : 'invalid',
+            detail: isValid
+              ? `${BRAND_SLOT_LABELS[slot]} is loading correctly${resolvedFrom && resolvedFrom !== slot ? ` using ${BRAND_SLOT_LABELS[resolvedFrom].toLowerCase()} fallback` : ''}.`
+              : `${BRAND_SLOT_LABELS[slot]} could not be loaded. Re-upload the asset before saving.`,
+            src,
+          }] as const;
+        })
+      );
+
+      if (!cancelled) {
+        setAssetValidation(Object.fromEntries(results) as Record<BrandAssetSlot, AssetValidationState>);
+      }
+    };
+
+    void runAssetValidation();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [draftSettings]);
+
+  const hasInvalidAssets = useMemo(
+    () => BRAND_SLOT_ORDER.some((slot) => assetValidation[slot].status !== 'valid'),
+    [assetValidation]
+  );
+  const isValidatingAssets = useMemo(
+    () => BRAND_SLOT_ORDER.some((slot) => assetValidation[slot].status === 'validating'),
+    [assetValidation]
+  );
+  const canSaveBranding = hasChanges && canEditWhiteLabel && !hasCriticalChecks && !hasInvalidAssets && !isValidatingAssets;
+
+  const handleResetDraft = useCallback(() => {
+    setDraftSettings(createDefaultDraft());
+    toast.success('Draft reset to brand defaults');
+  }, []);
+
+  const handleKeepEditing = useCallback(() => {
+    pendingNavigation.current?.reset();
+    pendingNavigation.current = null;
+    setShowLeavePrompt(false);
+  }, []);
+
+  const handleDiscardAndLeave = useCallback(() => {
+    pendingNavigation.current?.proceed();
+    pendingNavigation.current = null;
+    setShowLeavePrompt(false);
+  }, []);
 
   const themeOptions: { value: ThemeMode; label: string; icon: React.ReactNode; description: string }[] = [
     { value: 'light', label: 'Light', icon: <Sun className="h-4 w-4" />, description: 'Always use light theme' },
@@ -526,6 +642,11 @@ export default function WhiteLabel() {
   const handleSaveBranding = () => {
     if (hasCriticalChecks) {
       toast.error('Resolve the critical brand checks before saving');
+      return;
+    }
+
+    if (isValidatingAssets || hasInvalidAssets) {
+      toast.error('Resolve the brand asset validation checks before saving');
       return;
     }
 
