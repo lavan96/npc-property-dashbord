@@ -16,6 +16,12 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
 import { 
   Search, 
@@ -687,6 +693,62 @@ export default function ClientTracker() {
     return `${diffHours}h ago`;
   };
 
+  const handleExportTrackerCSV = () => {
+    const escapeCSV = (value: string) => `"${value.replace(/"/g, '""')}"`;
+    const headers = [
+      'First Name',
+      'Last Name',
+      'Email',
+      'Phone',
+      'Pipeline',
+      'Stage',
+      'Opportunity Status',
+      'Follow Up Date',
+      'Borrowing Capacity',
+      'Proposed Rental Income',
+      'Equity Release',
+      'Pipeline Notes',
+      'GHL Contact ID',
+      'GHL Opportunity ID',
+    ];
+
+    const rows = filteredClients.map((client) => {
+      const stageInfo = getStageInfo(client.current_stage_id, client.pipeline_status);
+      const pipeline = pipelines.find((item) => item.id === client.current_pipeline_id);
+
+      return [
+        client.primary_first_name || '',
+        client.primary_surname || '',
+        client.primary_email || '',
+        client.primary_mobile || '',
+        pipeline?.name || '',
+        stageInfo.name || '',
+        client.opportunity_status || '',
+        client.follow_up_date ? format(new Date(client.follow_up_date), 'yyyy-MM-dd') : '',
+        client.borrowing_capacity?.toString() || '',
+        client.proposed_rental_income?.toString() || '',
+        client.equity_release?.toString() || '',
+        client.pipeline_notes || '',
+        client.ghl_contact_id || '',
+        client.ghl_opportunity_id || '',
+      ];
+    });
+
+    const csvContent = [headers, ...rows]
+      .map((row) => row.map((cell) => escapeCSV(cell)).join(','))
+      .join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `client-tracker-ghl-export-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+
+    toast.success(`Exported ${filteredClients.length} tracker records to GHL-ready CSV`);
+  };
+
   // Helper for event status colors
   const getEventStatusColor = (status: string, appointmentStatus?: string) => {
     const effectiveStatus = appointmentStatus || status;
@@ -836,6 +898,20 @@ export default function ClientTracker() {
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
             </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Download className="h-4 w-4 mr-2" />
+                  Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleExportTrackerCSV}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Export current view as GHL CSV
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         )}
       </div>

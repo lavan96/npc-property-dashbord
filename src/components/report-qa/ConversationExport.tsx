@@ -85,6 +85,33 @@ export function ConversationExport({ messages, title, reportNames, conversationI
     });
   };
 
+  const exportAsCSV = () => {
+    const escapeCSV = (value: string) => `"${value.replace(/"/g, '""')}"`;
+    const headers = ['Conversation Title', 'Reports', 'Exported At', 'Timestamp', 'Role', 'Content'];
+    const exportedAt = new Date().toLocaleString();
+
+    const rows = messages.map((message) => [
+      title,
+      reportNames.join(', '),
+      exportedAt,
+      message.timestamp.toLocaleString(),
+      message.role === 'user' ? 'User' : 'Assistant',
+      message.content,
+    ]);
+
+    const csvContent = [headers, ...rows]
+      .map((row) => row.map((cell) => escapeCSV(cell)).join(','))
+      .join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    downloadBlob(blob, `${sanitizeFilename(title)}.csv`);
+
+    toast({
+      title: 'Exported',
+      description: 'Conversation saved as CSV file',
+    });
+  };
+
   const downloadBlob = (blob: Blob, filename: string) => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -120,6 +147,10 @@ export function ConversationExport({ messages, title, reportNames, conversationI
           <DropdownMenuItem onClick={exportAsText}>
             <FileText className="h-4 w-4 mr-2" />
             Export Raw Transcript (.txt)
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={exportAsCSV}>
+            <FileDown className="h-4 w-4 mr-2" />
+            Export for CSV (.csv)
           </DropdownMenuItem>
           <DropdownMenuItem onClick={exportAsMarkdown}>
             <FileDown className="h-4 w-4 mr-2" />
