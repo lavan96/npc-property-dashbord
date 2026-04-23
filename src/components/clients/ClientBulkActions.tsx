@@ -22,6 +22,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { GHLExportDialog } from '@/components/shared/GHLExportDialog';
 
 interface Client {
   id: string;
@@ -52,9 +53,38 @@ export function ClientBulkActions({
   const [isSyncing, setIsSyncing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
 
   const selectedCount = selectedClients.length;
   const selectedClientData = clients.filter(c => selectedClients.includes(c.id));
+  const ghlExportFields = [
+    { key: 'first_name', label: 'First Name' },
+    { key: 'last_name', label: 'Last Name' },
+    { key: 'email', label: 'Email' },
+    { key: 'phone', label: 'Phone' },
+    { key: 'tags', label: 'Tags' },
+    { key: 'source', label: 'Source' },
+    { key: 'portfolio_value', label: 'Portfolio Value' },
+    { key: 'total_debt', label: 'Total Debt' },
+    { key: 'net_cash_flow', label: 'Net Cash Flow' },
+    { key: 'properties', label: 'Properties' },
+    { key: 'ghl_contact_id', label: 'GHL Contact ID' },
+    { key: 'ghl_status', label: 'GHL Status' },
+  ];
+  const ghlExportRecords = selectedClientData.map((client) => ({
+    first_name: client.primary_first_name || '',
+    last_name: client.primary_surname || '',
+    email: client.primary_email || '',
+    phone: client.primary_mobile || '',
+    tags: 'NPC Export',
+    source: 'Dashboard Export',
+    portfolio_value: client.total_portfolio_value?.toString() || '0',
+    total_debt: client.total_debt?.toString() || '0',
+    net_cash_flow: client.net_monthly_cash_flow?.toString() || '0',
+    properties: (client.client_properties?.length || 0).toString(),
+    ghl_contact_id: client.id,
+    ghl_status: client.ghl_sync_status || 'not_synced',
+  }));
 
   const handleBulkSync = async () => {
     setIsSyncing(true);
@@ -229,7 +259,11 @@ export function ClientBulkActions({
           <DropdownMenuContent>
             <DropdownMenuItem onClick={handleExportCSV}>
               <FileSpreadsheet className="h-4 w-4 mr-2" />
-              Export as GHL CSV
+              Quick CSV Export
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setShowExportDialog(true)}>
+              <Download className="h-4 w-4 mr-2" />
+              Mapped GHL Export
             </DropdownMenuItem>
             <DropdownMenuItem onClick={handleExportJSON}>
               <Download className="h-4 w-4 mr-2" />
@@ -271,6 +305,18 @@ export function ClientBulkActions({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <GHLExportDialog
+        open={showExportDialog}
+        onOpenChange={setShowExportDialog}
+        title="Export clients for GHL"
+        description="Map your client fields to GoHighLevel import headers before exporting as CSV or XLSX."
+        fields={ghlExportFields}
+        records={ghlExportRecords}
+        fileBaseName={`clients-ghl-export-${new Date().toISOString().split('T')[0]}`}
+        sheetName="Clients Export"
+        onExported={(format, count) => toast.success(`Exported ${count} clients to ${format.toUpperCase()}`)}
+      />
     </>
   );
 }
