@@ -2,16 +2,19 @@ import { Globe, Building2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useBrand } from '@/branding/useTokens';
 import { getBrandAssetSrc, type BrandAssetSlot } from '@/branding/brand-assets';
+import type { WhiteLabelSettings } from '@/branding/brand-types';
 
 interface BrandLogoProps {
   slot: BrandAssetSlot;
   alt?: string;
   className?: string;
   fallbackClassName?: string;
+  settings?: WhiteLabelSettings;
 }
 
-export function BrandLogo({ slot, alt, className, fallbackClassName }: BrandLogoProps) {
-  const { settings } = useBrand();
+export function BrandLogo({ slot, alt, className, fallbackClassName, settings: settingsOverride }: BrandLogoProps) {
+  const { settings: brandSettings } = useBrand();
+  const settings = settingsOverride ?? brandSettings;
   const src = getBrandAssetSrc(settings, slot);
 
   if (src) {
@@ -33,6 +36,7 @@ interface BrandMarkProps {
   alt?: string;
   className?: string;
   fallbackClassName?: string;
+  settings?: WhiteLabelSettings;
 }
 
 export function BrandMark({
@@ -40,22 +44,25 @@ export function BrandMark({
   alt,
   className = 'h-10 w-10 object-contain',
   fallbackClassName = 'h-10 w-10',
+  settings,
 }: BrandMarkProps) {
-  return <BrandLogo slot={slot} alt={alt} className={className} fallbackClassName={fallbackClassName} />;
+  return <BrandLogo slot={slot} alt={alt} className={className} fallbackClassName={fallbackClassName} settings={settings} />;
 }
 
 interface BrandFaviconProps {
   alt?: string;
   className?: string;
   fallbackClassName?: string;
+  settings?: WhiteLabelSettings;
 }
 
 export function BrandFavicon({
   alt,
   className = 'h-8 w-8 rounded-lg object-contain',
   fallbackClassName = 'h-8 w-8 rounded-lg',
+  settings,
 }: BrandFaviconProps) {
-  return <BrandLogo slot="favicon" alt={alt} className={className} fallbackClassName={fallbackClassName} />;
+  return <BrandLogo slot="favicon" alt={alt} className={className} fallbackClassName={fallbackClassName} settings={settings} />;
 }
 
 interface BrandLockupProps {
@@ -66,6 +73,7 @@ interface BrandLockupProps {
   fallbackClassName?: string;
   companyClassName?: string;
   metaClassName?: string;
+  settings?: WhiteLabelSettings;
 }
 
 export function BrandLockup({
@@ -76,8 +84,10 @@ export function BrandLockup({
   fallbackClassName,
   companyClassName,
   metaClassName,
+  settings: settingsOverride,
 }: BrandLockupProps) {
-  const { settings } = useBrand();
+  const { settings: brandSettings } = useBrand();
+  const settings = settingsOverride ?? brandSettings;
 
   return (
     <div className={cn('flex items-center gap-3', className)}>
@@ -86,6 +96,7 @@ export function BrandLockup({
         alt={settings.companyName}
         className={logoClassName}
         fallbackClassName={fallbackClassName}
+        settings={settings}
       />
       <div className="min-w-0">
         <p className={cn('truncate font-semibold text-foreground', companyClassName)}>{settings.companyName}</p>
