@@ -25,13 +25,13 @@ export function KPICard({
   compact = false 
 }: KPICardProps) {
   return (
-    <Card className={cn("", className)}>
+    <Card className={cn("dashboard-kpi-card border-0", className)}>
       <CardHeader className={cn(
         "flex flex-row items-center justify-between space-y-0",
         compact ? "pb-1 pt-3 px-3" : "pb-2"
       )}>
         <CardTitle className={cn(
-          "font-medium text-muted-foreground",
+          "dashboard-kpi-title font-medium",
           compact ? "text-xs" : "text-sm"
         )}>
           {title}
@@ -47,7 +47,7 @@ export function KPICard({
       </CardHeader>
       <CardContent className={compact ? "pb-3 px-3" : ""}>
         <div className={cn(
-          "font-bold text-foreground",
+          "dashboard-kpi-value",
           compact ? "text-lg" : "text-2xl"
         )}>
           {value}
@@ -59,13 +59,13 @@ export function KPICard({
         )}
         {trend && (
           <div className={cn(
-            "flex items-center text-xs mt-1",
-            trend.isPositive ? "text-success" : "text-destructive"
+            "dashboard-trend-chip mt-2",
+            trend.isPositive ? "dashboard-trend-chip-positive" : "dashboard-trend-chip-negative"
           )}>
             <span>
               {trend.isPositive ? "+" : ""}{trend.value}%
             </span>
-            <span className="text-muted-foreground ml-1">from last period</span>
+            <span className="text-current/80">from last period</span>
           </div>
         )}
       </CardContent>

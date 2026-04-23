@@ -126,7 +126,7 @@ export function DashboardSidebar() {
       <SidebarContent>
         {/* Brand */}
         <div className={`dashboard-sidebar-header ${isCollapsed ? 'p-3' : 'p-6'}`}>
-          <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
+          <div className={isCollapsed ? 'flex items-center justify-center' : 'dashboard-brand-lockup'}>
             {currentLogo ? (
               <img 
                 src={currentLogo} 
@@ -137,7 +137,7 @@ export function DashboardSidebar() {
               <Database className={`text-primary ${isCollapsed ? 'h-6 w-6' : 'h-8 w-8'}`} />
             )}
             {!isCollapsed && (
-              <div className="flex flex-col min-w-0">
+              <div className="dashboard-brand-meta">
                 <span className="font-semibold text-foreground truncate">{settings.companyName}</span>
                 <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Intake Dashboard</span>
               </div>

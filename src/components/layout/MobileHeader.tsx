@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Menu, Search, X, LogOut, Settings, Moon, Sun, User } from 'lucide-react';
+import { Menu, Search, X, LogOut, Settings, Moon, Sun } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -18,7 +18,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { useWhiteLabel } from '@/contexts/WhiteLabelContext';
 import { NotificationsDropdown } from './NotificationsDropdown';
 import { MobileSidebar } from './MobileSidebar';
-import { cn } from '@/lib/utils';
 import { Database } from 'lucide-react';
 
 type Theme = 'light' | 'dark' | 'system';
@@ -72,13 +71,13 @@ export function MobileHeader({ theme, isDark, onCycleTheme }: MobileHeaderProps)
     <>
       {/* Search Overlay */}
       {isSearchOpen && (
-        <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-xl">
+        <div className="dashboard-mobile-search-overlay fixed inset-0 z-50">
           <div className="dashboard-topbar-surface flex items-center gap-2 p-3">
             <Button 
               variant="ghost" 
               size="icon" 
               onClick={() => setIsSearchOpen(false)}
-              className="shrink-0"
+               className="dashboard-icon-button h-11 w-11 shrink-0"
             >
               <X className="h-5 w-5" />
             </Button>
@@ -88,13 +87,14 @@ export function MobileHeader({ theme, isDark, onCycleTheme }: MobileHeaderProps)
               value={globalSearchQuery}
               onChange={handleSearchChange}
               onKeyDown={(e) => e.key === 'Enter' && handleSearchSubmit()}
-              className="flex-1"
+              className="dashboard-input-control h-11 flex-1 border-0"
               autoFocus
             />
             <Button 
               variant="default" 
               size="sm"
               onClick={handleSearchSubmit}
+              className="rounded-xl"
             >
               Search
             </Button>
@@ -130,7 +130,7 @@ export function MobileHeader({ theme, isDark, onCycleTheme }: MobileHeaderProps)
           <div className="flex items-center gap-2">
             <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="dashboard-surface-control h-11 w-11 rounded-xl shrink-0">
+                <Button variant="ghost" size="icon" className="dashboard-icon-button h-11 w-11 shrink-0">
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
@@ -139,7 +139,7 @@ export function MobileHeader({ theme, isDark, onCycleTheme }: MobileHeaderProps)
               </SheetContent>
             </Sheet>
             
-            <div className="flex items-center gap-2">
+            <div className="dashboard-brand-lockup">
               {settings.sidebarIcon || settings.sidebarLogo ? (
                 <img 
                   src={settings.sidebarIcon || settings.sidebarLogo} 
@@ -149,9 +149,12 @@ export function MobileHeader({ theme, isDark, onCycleTheme }: MobileHeaderProps)
               ) : (
                 <Database className="h-6 w-6 text-primary" />
               )}
-              <span className="max-w-[132px] truncate text-sm font-semibold text-foreground">
-                {settings.companyName}
-              </span>
+              <div className="dashboard-brand-meta">
+                <span className="max-w-[132px] truncate text-sm font-semibold text-foreground">
+                  {settings.companyName}
+                </span>
+                <span className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Command centre</span>
+              </div>
             </div>
           </div>
 
@@ -161,7 +164,7 @@ export function MobileHeader({ theme, isDark, onCycleTheme }: MobileHeaderProps)
               variant="ghost" 
               size="icon" 
               onClick={() => setIsSearchOpen(true)}
-              className="dashboard-surface-control h-11 w-11 rounded-xl"
+              className="dashboard-icon-button h-11 w-11"
             >
               <Search className="h-5 w-5" />
             </Button>
@@ -170,7 +173,7 @@ export function MobileHeader({ theme, isDark, onCycleTheme }: MobileHeaderProps)
               variant="ghost"
               size="icon"
               onClick={onCycleTheme}
-              className="dashboard-surface-control h-11 w-11 rounded-xl"
+              className="dashboard-icon-button h-11 w-11"
             >
               {getThemeIcon()}
             </Button>
@@ -179,7 +182,7 @@ export function MobileHeader({ theme, isDark, onCycleTheme }: MobileHeaderProps)
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="dashboard-surface-control h-11 w-11 rounded-xl">
+                <Button variant="ghost" size="icon" className="dashboard-icon-button h-11 w-11">
                   <Avatar className="h-7 w-7">
                     <AvatarFallback className="bg-primary/10 text-xs text-primary">
                       {user?.username?.substring(0, 2).toUpperCase() || 'AD'}

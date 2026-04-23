@@ -77,7 +77,7 @@ export function DashboardHeader({ theme, isDark, onCycleTheme }: DashboardHeader
     <header className="dashboard-topbar-surface sticky top-0 z-40 hidden md:block">
       <div className="dashboard-topbar-inner">
         <div className="flex items-center gap-4 flex-1">
-          <div className="dashboard-surface-control flex h-10 w-10 items-center justify-center rounded-xl">
+          <div className="dashboard-icon-button flex h-10 w-10 items-center justify-center">
             <SidebarTrigger className="h-8 w-8 rounded-lg" />
           </div>
           
@@ -89,7 +89,7 @@ export function DashboardHeader({ theme, isDark, onCycleTheme }: DashboardHeader
               value={globalSearchQuery}
               onChange={handleSearchChange}
               onKeyPress={handleSearchKeyPress}
-              className="dashboard-surface-control h-11 rounded-xl pl-10 pr-4"
+              className="dashboard-input-control h-11 border-0 pl-10 pr-4"
             />
           </div>
         </div>
@@ -99,7 +99,7 @@ export function DashboardHeader({ theme, isDark, onCycleTheme }: DashboardHeader
             variant="ghost"
             size="icon"
             onClick={onCycleTheme}
-            className="dashboard-surface-control relative h-10 w-10 rounded-xl transition-transform duration-200 hover:scale-105"
+            className="dashboard-icon-button relative h-10 w-10"
             title={`Theme: ${getThemeLabel()}`}
           >
             <div className="transition-transform duration-300 ease-out">
@@ -115,7 +115,7 @@ export function DashboardHeader({ theme, isDark, onCycleTheme }: DashboardHeader
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="dashboard-surface-control h-10 rounded-xl px-2.5">
+              <Button variant="ghost" className="dashboard-input-control h-10 px-2.5">
                 <Avatar className="h-8 w-8">
                   <AvatarFallback className="bg-primary/10 text-primary">
                     {user?.username?.substring(0, 2).toUpperCase() || 'AD'}

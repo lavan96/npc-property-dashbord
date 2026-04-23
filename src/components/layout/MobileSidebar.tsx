@@ -120,8 +120,9 @@ export function MobileSidebar({ onNavigate }: MobileSidebarProps) {
   return (
       <div className="dashboard-sidebar-surface flex h-full flex-col overflow-hidden">
       {/* Header */}
-      <div className="dashboard-sidebar-header flex items-center gap-3 p-4">
-        {settings.sidebarLogo ? (
+      <div className="dashboard-sidebar-header p-4">
+        <div className="dashboard-brand-lockup">
+          {settings.sidebarLogo ? (
           <img 
             src={settings.sidebarLogo} 
             alt={settings.companyName} 
@@ -130,11 +131,12 @@ export function MobileSidebar({ onNavigate }: MobileSidebarProps) {
         ) : (
           <Database className="h-7 w-7 text-primary" />
         )}
-        <div className="flex flex-col min-w-0">
+        <div className="dashboard-brand-meta">
           <span className="font-semibold text-foreground truncate text-sm">
             {settings.companyName}
           </span>
-          <span className="text-[10px] text-muted-foreground">Dashboard</span>
+          <span className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Internal dashboard</span>
+        </div>
         </div>
       </div>
 
@@ -146,7 +148,7 @@ export function MobileSidebar({ onNavigate }: MobileSidebarProps) {
             <p className="dashboard-section-label">
               Dashboard
             </p>
-            <div className="space-y-0.5">
+              <div className="space-y-1">
               {visibleNavItems.map((item) => (
                 <NavLink
                   key={item.url}
@@ -176,7 +178,7 @@ export function MobileSidebar({ onNavigate }: MobileSidebarProps) {
             <p className="dashboard-section-label">
                   Administration
                 </p>
-                <div className="space-y-0.5">
+                <div className="space-y-1">
                   {visibleAdminItems.map((item) => (
                     <NavLink
                       key={item.url}
