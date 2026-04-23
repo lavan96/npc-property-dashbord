@@ -5,7 +5,7 @@ import {
   defaultBrandConfig,
   defaultEmailSignature,
 } from './brand-defaults';
-import { getBrandAssetSrc } from '@/components/branding/BrandAssets';
+import { getBrandAssetSrc } from './brand-assets';
 import { applyBrandTokenMap, resolveBrandTokens } from './token-resolver';
 import type { BrandContextValue, ThemeMode, WhiteLabelSettings } from './brand-types';
 

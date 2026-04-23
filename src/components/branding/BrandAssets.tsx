@@ -1,31 +1,7 @@
 import { Globe, Building2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useBrand } from '@/branding/useTokens';
-
-export type BrandAssetSlot = 'auth' | 'sidebar' | 'sidebar-icon' | 'favicon';
-
-export function getBrandAssetSrc(
-  settings: {
-    authLogo: string | null;
-    sidebarLogo: string | null;
-    sidebarIcon: string | null;
-    favicon: string | null;
-  },
-  slot: BrandAssetSlot
-) {
-  switch (slot) {
-    case 'auth':
-      return settings.authLogo || settings.sidebarLogo || settings.sidebarIcon || null;
-    case 'sidebar':
-      return settings.sidebarLogo || settings.authLogo || settings.sidebarIcon || null;
-    case 'sidebar-icon':
-      return settings.sidebarIcon || settings.sidebarLogo || settings.authLogo || null;
-    case 'favicon':
-      return settings.favicon || settings.sidebarIcon || settings.sidebarLogo || settings.authLogo || null;
-    default:
-      return null;
-  }
-}
+import { getBrandAssetSrc, type BrandAssetSlot } from '@/branding/brand-assets';
 
 interface BrandLogoProps {
   slot: BrandAssetSlot;
