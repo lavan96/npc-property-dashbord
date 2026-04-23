@@ -1,3 +1,5 @@
+import type { Dispatch, SetStateAction } from 'react';
+
 export type ThemeMode = 'light' | 'dark' | 'system';
 
 export interface EmailSignatureSettings {
@@ -42,6 +44,6 @@ export interface BrandContextValue {
   currentTheme: 'light' | 'dark';
   theme: ThemeMode;
   isDark: boolean;
-  setTheme: (theme: ThemeMode) => void;
+  setTheme: Dispatch<SetStateAction<ThemeMode>>;
   resolvedTokens: ResolvedBrandTokens;
 }
