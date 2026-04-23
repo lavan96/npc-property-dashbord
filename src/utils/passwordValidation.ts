@@ -102,10 +102,10 @@ export function validatePasswordSimple(password: string): { isValid: boolean; er
  */
 export function getStrengthColor(strength: 'weak' | 'fair' | 'good' | 'strong'): string {
   switch (strength) {
-    case 'weak': return 'text-red-500';
-    case 'fair': return 'text-yellow-500';
-    case 'good': return 'text-blue-500';
-    case 'strong': return 'text-green-500';
+    case 'weak': return 'text-destructive';
+    case 'fair': return 'text-warning';
+    case 'good': return 'text-info';
+    case 'strong': return 'text-success';
   }
 }
 
@@ -114,9 +114,9 @@ export function getStrengthColor(strength: 'weak' | 'fair' | 'good' | 'strong'):
  */
 export function getStrengthBgColor(strength: 'weak' | 'fair' | 'good' | 'strong'): string {
   switch (strength) {
-    case 'weak': return 'bg-red-500';
-    case 'fair': return 'bg-yellow-500';
-    case 'good': return 'bg-blue-500';
-    case 'strong': return 'bg-green-500';
+    case 'weak': return 'bg-destructive';
+    case 'fair': return 'bg-warning';
+    case 'good': return 'bg-info';
+    case 'strong': return 'bg-success';
   }
 }
