@@ -38,9 +38,11 @@ import {
   Moon,
   Laptop,
   Mail,
-  FileText
+  FileText,
+  Save,
+  Undo2
 } from 'lucide-react';
-import { useWhiteLabel, hexToHsl, hslToHex, ThemeMode, EmailSignatureSettings } from '@/contexts/WhiteLabelContext';
+import { useWhiteLabel, hexToHsl, hslToHex, ThemeMode, EmailSignatureSettings, WhiteLabelSettings } from '@/contexts/WhiteLabelContext';
 import { removeBackground, loadImage, blobToBase64 } from '@/utils/backgroundRemoval';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -68,6 +70,30 @@ const BRAND_SLOT_LABELS: Record<BrandAssetSlot, string> = {
 };
 
 const BRAND_SLOT_ORDER: BrandAssetSlot[] = ['auth', 'sidebar', 'sidebar-icon', 'favicon'];
+const WHITE_LABEL_DRAFT_STORAGE_KEY = 'white-label-editor-draft-v1';
+
+function savePersistedDraft(settings: WhiteLabelSettings) {
+  localStorage.setItem(
+    WHITE_LABEL_DRAFT_STORAGE_KEY,
+    JSON.stringify({ settings, savedAt: new Date().toISOString() })
+  );
+}
+
+function loadPersistedDraft(): { settings: WhiteLabelSettings; savedAt: string } | null {
+  const raw = localStorage.getItem(WHITE_LABEL_DRAFT_STORAGE_KEY);
+  if (!raw) return null;
+
+  try {
+    return JSON.parse(raw) as { settings: WhiteLabelSettings; savedAt: string };
+  } catch {
+    localStorage.removeItem(WHITE_LABEL_DRAFT_STORAGE_KEY);
+    return null;
+  }
+}
+
+function clearPersistedDraft() {
+  localStorage.removeItem(WHITE_LABEL_DRAFT_STORAGE_KEY);
+}
 
 function createDefaultDraft() {
   return {
