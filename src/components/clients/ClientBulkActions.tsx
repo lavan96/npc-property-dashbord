@@ -138,9 +138,10 @@ export function ClientBulkActions({
   };
 
   const handleExportCSV = () => {
-    const headers = ['Name', 'Email', 'Phone', 'Portfolio Value', 'Total Debt', 'Net Cash Flow', 'Properties', 'GHL Status'];
+    const headers = ['First Name', 'Last Name', 'Email', 'Phone', 'Portfolio Value', 'Total Debt', 'Net Cash Flow', 'Properties', 'GHL Status'];
     const rows = selectedClientData.map(c => [
-      `${c.primary_first_name} ${c.primary_surname}`,
+      c.primary_first_name,
+      c.primary_surname,
       c.primary_email || '',
       c.primary_mobile || '',
       c.total_portfolio_value?.toString() || '0',
@@ -155,7 +156,7 @@ export function ClientBulkActions({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `clients-export-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `clients-ghl-export-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
     logActivityDirect({
@@ -163,7 +164,7 @@ export function ClientBulkActions({
       entityType: 'client',
       metadata: { format: 'csv', count: selectedCount }
     });
-    toast.success(`Exported ${selectedCount} clients to CSV`);
+    toast.success(`Exported ${selectedCount} clients to GHL-ready CSV`);
   };
 
   const handleExportJSON = () => {
@@ -225,7 +226,7 @@ export function ClientBulkActions({
           <DropdownMenuContent>
             <DropdownMenuItem onClick={handleExportCSV}>
               <FileSpreadsheet className="h-4 w-4 mr-2" />
-              Export as CSV
+              Export as GHL CSV
             </DropdownMenuItem>
             <DropdownMenuItem onClick={handleExportJSON}>
               <Download className="h-4 w-4 mr-2" />
