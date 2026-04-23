@@ -786,18 +786,49 @@ export default function WhiteLabel() {
         </AlertDialogContent>
       </AlertDialog>
 
+      <AlertDialog open={showResetPrompt} onOpenChange={setShowResetPrompt}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset this draft to defaults?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will replace the current draft with the default brand settings. Your live branding will stay unchanged until you explicitly save brand changes.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep current draft</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              handleResetDraft();
+              setShowResetPrompt(false);
+            }}>
+              Reset draft
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <Card className="dashboard-panel border-primary/15">
         <CardContent className="flex flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-sm font-semibold text-foreground">Brand System Draft</p>
             <p className="text-sm text-muted-foreground">All branding inputs now flow through a single brand resolver before they are committed globally.</p>
+            {lastDraftSavedAt ? (
+              <p className="mt-1 text-xs text-muted-foreground">Draft saved locally at {new Date(lastDraftSavedAt).toLocaleString()}.</p>
+            ) : null}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="outline">{hasChanges ? 'Unsaved changes' : 'In sync'}</Badge>
             {hasCriticalChecks && <Badge variant="outline" className="border-destructive/40 text-destructive">Critical issues</Badge>}
             {hasInvalidAssets && <Badge variant="outline" className="border-warning/40 text-warning">Asset validation required</Badge>}
+            <Button variant="outline" onClick={handleUndoLastChange} disabled={!canUndoLastChange || !canEditWhiteLabel}>
+              <Undo2 className="mr-2 h-4 w-4" />
+              Undo last change
+            </Button>
+            <Button variant="outline" onClick={handleSaveDraft} disabled={!canEditWhiteLabel}>
+              <Save className="mr-2 h-4 w-4" />
+              Save draft
+            </Button>
             <Button variant="outline" onClick={() => setDraftSettings(settings)} disabled={!hasChanges}>Discard</Button>
-            <Button variant="outline" onClick={handleResetDraft} disabled={!canEditWhiteLabel}>Reset to defaults</Button>
+            <Button variant="outline" onClick={() => setShowResetPrompt(true)} disabled={!canEditWhiteLabel}>Reset to defaults</Button>
             <Button onClick={handleSaveBranding} disabled={!canSaveBranding}>
               <Check className="mr-2 h-4 w-4" />
               Save brand changes
@@ -1408,7 +1439,7 @@ export default function WhiteLabel() {
         <CardContent>
           <Button 
             variant="destructive" 
-            onClick={handleResetDraft}
+            onClick={() => setShowResetPrompt(true)}
           >
             <Trash2 className="h-4 w-4 mr-2" />
             Reset draft to defaults
