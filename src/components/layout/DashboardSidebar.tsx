@@ -49,6 +49,7 @@ import {
 } from '@/components/ui/sidebar';
 import { useWhiteLabel } from '@/contexts/WhiteLabelContext';
 import { usePermissions } from '@/hooks/usePermissions';
+import { BrandLockup, BrandLogo } from '@/components/branding/BrandAssets';
 
 const navigationItems = [
   { title: 'Overview', url: '/', icon: Home, moduleKey: 'overview' },
@@ -126,23 +127,23 @@ export function DashboardSidebar() {
       <SidebarContent>
         {/* Brand */}
         <div className={`dashboard-sidebar-header ${isCollapsed ? 'p-3' : 'p-6'}`}>
-          <div className={isCollapsed ? 'flex items-center justify-center' : 'dashboard-brand-lockup'}>
-            {currentLogo ? (
-              <img 
-                src={currentLogo} 
-                alt={settings.companyName} 
-                className={`object-contain ${isCollapsed ? 'h-8 w-8' : 'h-10 max-w-[120px]'}`}
-              />
-            ) : (
-              <Database className={`text-primary ${isCollapsed ? 'h-6 w-6' : 'h-8 w-8'}`} />
-            )}
-            {!isCollapsed && (
-              <div className="dashboard-brand-meta">
-                <span className="font-semibold text-foreground truncate">{settings.companyName}</span>
-                <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Intake Dashboard</span>
-              </div>
-            )}
-          </div>
+          {isCollapsed ? (
+            <div className="flex items-center justify-center">
+              {currentLogo ? (
+                <img src={currentLogo} alt={settings.companyName} className="h-8 w-8 object-contain" />
+              ) : (
+                <BrandLogo slot="sidebar-icon" fallbackClassName="h-8 w-8" />
+              )}
+            </div>
+          ) : (
+            <BrandLockup
+              slot="sidebar"
+              meta="Intake Dashboard"
+              className="dashboard-brand-lockup"
+              logoClassName="h-10 max-w-[120px] object-contain"
+              fallbackClassName="h-10 w-10"
+            />
+          )}
         </div>
 
         {/* Main Navigation */}

@@ -18,7 +18,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useWhiteLabel } from '@/contexts/WhiteLabelContext';
 import { NotificationsDropdown } from './NotificationsDropdown';
 import { MobileSidebar } from './MobileSidebar';
-import { Database } from 'lucide-react';
+import { BrandLockup } from '@/components/branding/BrandAssets';
 
 type Theme = 'light' | 'dark' | 'system';
 
@@ -139,23 +139,15 @@ export function MobileHeader({ theme, isDark, onCycleTheme }: MobileHeaderProps)
               </SheetContent>
             </Sheet>
             
-            <div className="dashboard-brand-lockup">
-              {settings.sidebarIcon || settings.sidebarLogo ? (
-                <img 
-                  src={settings.sidebarIcon || settings.sidebarLogo} 
-                  alt={settings.companyName} 
-                  className="h-7 w-7 object-contain"
-                />
-              ) : (
-                <Database className="h-6 w-6 text-primary" />
-              )}
-              <div className="dashboard-brand-meta">
-                <span className="max-w-[132px] truncate text-sm font-semibold text-foreground">
-                  {settings.companyName}
-                </span>
-                <span className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Command centre</span>
-              </div>
-            </div>
+            <BrandLockup
+              slot="sidebar-icon"
+              meta="Command centre"
+              className="dashboard-brand-lockup"
+              logoClassName="h-7 w-7 object-contain"
+              fallbackClassName="h-7 w-7"
+              companyClassName="max-w-[132px] text-sm"
+              metaClassName="tracking-[0.16em]"
+            />
           </div>
 
           {/* Right: Actions */}

@@ -18,6 +18,7 @@ import { PortalNotificationBell } from './PortalNotificationBell';
 import { PortalNotificationProvider } from '@/contexts/PortalNotificationContext';
 import { PortalImpersonationBanner } from './PortalImpersonationBanner';
 import { ClientPortalPushPrompt } from './ClientPortalPushPrompt';
+import { BrandLockup, BrandLogo } from '@/components/branding/BrandAssets';
 
 const portalNavItems = [
   { to: '/client', icon: HomeIcon, label: 'Dashboard', end: true, tourId: 'dashboard' },
@@ -91,19 +92,14 @@ export function PortalLayout() {
         {/* Logo Area */}
         <div className="flex items-center justify-between p-6 pb-4">
           <div>
-            {settings.authLogo ? (
-              <img src={settings.authLogo} alt={settings.companyName} className="h-10 max-w-[200px] object-contain" />
-            ) : (
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-primary/10">
-                  <Building2 className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <span className="font-bold text-lg text-foreground tracking-tight">Client Portal</span>
-                  <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">Secure Access</p>
-                </div>
-              </div>
-            )}
+            <BrandLockup
+              slot="auth"
+              meta="Secure Access"
+              logoClassName="h-10 max-w-[200px] object-contain"
+              fallbackClassName="h-10 w-10"
+              companyClassName="text-lg font-bold tracking-tight"
+              metaClassName="tracking-widest"
+            />
           </div>
           <PortalNotificationBell />
         </div>
@@ -169,10 +165,8 @@ export function PortalLayout() {
       {/* Mobile Header */}
       <div className="client-portal-topbar fixed left-0 right-0 top-0 z-50 flex items-center justify-between border-b px-4 py-3 md:hidden">
         <div className="flex items-center gap-2.5">
-          <div className="p-1.5 rounded-lg bg-primary/10">
-            <Building2 className="h-5 w-5 text-primary" />
-          </div>
-          <span className="font-bold text-foreground">Client Portal</span>
+          <BrandLogo slot="sidebar-icon" className="h-8 w-8 object-contain" fallbackClassName="h-8 w-8" />
+          <span className="font-bold text-foreground truncate">{settings.companyName}</span>
         </div>
         <div className="flex items-center gap-2">
           <PortalNotificationBell />
