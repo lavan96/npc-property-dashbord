@@ -689,6 +689,21 @@ export default function WhiteLabel() {
         </Badge>
       </div>
 
+      <AlertDialog open={showLeavePrompt} onOpenChange={setShowLeavePrompt}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Discard unsaved brand changes?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Your draft differs from the saved white-label settings. Leave now to discard the current draft, or stay and keep editing.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleKeepEditing}>Keep editing</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDiscardAndLeave}>Discard and leave</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <Card className="dashboard-panel border-primary/15">
         <CardContent className="flex flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between">
           <div>
@@ -698,8 +713,10 @@ export default function WhiteLabel() {
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="outline">{hasChanges ? 'Unsaved changes' : 'In sync'}</Badge>
             {hasCriticalChecks && <Badge variant="outline" className="border-destructive/40 text-destructive">Critical issues</Badge>}
+            {hasInvalidAssets && <Badge variant="outline" className="border-warning/40 text-warning">Asset validation required</Badge>}
             <Button variant="outline" onClick={() => setDraftSettings(settings)} disabled={!hasChanges}>Discard</Button>
-            <Button onClick={handleSaveBranding} disabled={!hasChanges || !canEditWhiteLabel || hasCriticalChecks}>
+            <Button variant="outline" onClick={handleResetDraft} disabled={!canEditWhiteLabel}>Reset to defaults</Button>
+            <Button onClick={handleSaveBranding} disabled={!canSaveBranding}>
               <Check className="mr-2 h-4 w-4" />
               Save brand changes
             </Button>
@@ -981,7 +998,7 @@ export default function WhiteLabel() {
       <Card>
         <CardHeader>
           <CardTitle>Live Multi-Surface Preview</CardTitle>
-          <CardDescription>Review dashboard, portal, finance, and browser-slot branding before saving.</CardDescription>
+          <CardDescription>Review all surfaces together, then isolate auth, sidebar, or browser-tab styling before saving.</CardDescription>
         </CardHeader>
         <CardContent>
           <BrandPreviewShowcase settings={draftSettings} />
@@ -993,89 +1010,142 @@ export default function WhiteLabel() {
           <CardTitle>Accessibility & Brand Health</CardTitle>
           <CardDescription>Contrast and slot coverage are validated against your current draft before it can be saved globally.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          <div className="grid gap-3 md:grid-cols-2">
+            {BRAND_SLOT_ORDER.map((slot) => {
+              const validation = assetValidation[slot];
+              const isValid = validation.status === 'valid';
+              const isInvalid = validation.status === 'invalid';
+
+              return (
+                <div
+                  key={slot}
+                  className={`rounded-2xl border p-4 ${
+                    isValid
+                      ? 'border-success/25 bg-success/5'
+                      : isInvalid
+                        ? 'border-warning/25 bg-warning/5'
+                        : 'border-border bg-muted/20'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{BRAND_SLOT_LABELS[slot]}</p>
+                      <p className="mt-1 text-sm text-muted-foreground">{validation.detail}</p>
+                    </div>
+                    <Badge variant="outline" className={isValid ? 'border-success/30 text-success' : isInvalid ? 'border-warning/30 text-warning' : ''}>
+                      {validation.status === 'validating' ? 'Checking' : validation.status === 'valid' ? 'Ready' : validation.status === 'invalid' ? 'Needs asset' : 'Idle'}
+                    </Badge>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
           <BrandAccessibilityPanel checks={accessibilityChecks} />
         </CardContent>
       </Card>
 
-      {/* Preview Section */}
       <Card>
         <CardHeader>
-          <CardTitle>Live Preview</CardTitle>
-          <CardDescription>See how your branding will appear across the dashboard</CardDescription>
+          <CardTitle>Preview each surface</CardTitle>
+          <CardDescription>Inspect auth, sidebar, and browser-tab styling in isolation before saving.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2">
-            {/* Auth Page Preview */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Login Page</Label>
-              <div className="border rounded-lg p-6 bg-background flex flex-col items-center gap-4">
-                {draftSettings.authLogo ? (
-                  <img src={draftSettings.authLogo} alt="Auth logo preview" className="h-12 object-contain" />
-                ) : (
-                  <div className="h-12 w-12 bg-primary rounded-lg flex items-center justify-center">
-                    <Monitor className="h-6 w-6 text-primary-foreground" />
-                  </div>
-                )}
-                <div className="text-center">
-                  <p className="font-semibold">{draftSettings.companyName} Dashboard</p>
-                  <p className="text-sm text-muted-foreground">Sign in to continue</p>
-                </div>
-              </div>
-            </div>
+          <Tabs value={activeSurfacePreview} onValueChange={(value) => setActiveSurfacePreview(value as SurfacePreview)} className="space-y-4">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="auth">Auth</TabsTrigger>
+              <TabsTrigger value="sidebar">Sidebar</TabsTrigger>
+              <TabsTrigger value="browser">Browser tab</TabsTrigger>
+            </TabsList>
 
-            {/* Sidebar Preview - Expanded */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Sidebar (Expanded)</Label>
-              <div className="border rounded-lg bg-card overflow-hidden">
-                <div className="p-4 border-b flex items-center gap-3">
-                  {draftSettings.sidebarLogo ? (
-                    <img src={draftSettings.sidebarLogo} alt="Sidebar logo preview" className="h-10 max-w-[100px] object-contain" />
+            <TabsContent value="auth" className="space-y-3">
+              <Label className="text-sm font-medium">Authentication surfaces</Label>
+              <div className="rounded-2xl border border-border/60 bg-card p-6">
+                <div className="mx-auto flex max-w-md flex-col items-center gap-4 rounded-2xl border border-border/60 bg-background px-6 py-10 text-center shadow-sm">
+                  {getBrandAssetSrc(draftSettings, 'auth') ? (
+                    <img src={getBrandAssetSrc(draftSettings, 'auth') || ''} alt="Auth logo preview" className="h-14 max-w-[220px] object-contain" />
                   ) : (
-                    <div className="h-8 w-8 bg-primary rounded flex items-center justify-center">
-                      <PanelLeft className="h-5 w-5 text-primary-foreground" />
+                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                      <LogIn className="h-6 w-6" />
                     </div>
                   )}
-                  <div className="flex flex-col">
-                     <span className="font-semibold text-sm">{draftSettings.companyName}</span>
-                    <span className="text-xs text-muted-foreground">Intake Dashboard</span>
+                  <div className="space-y-1">
+                    <p className="text-lg font-semibold text-foreground">{draftSettings.companyName}</p>
+                    <p className="text-sm text-muted-foreground">Sign in to continue to your branded workspace.</p>
+                  </div>
+                  <div className="grid w-full gap-3">
+                    <div className="h-11 rounded-xl border border-border/60 bg-muted/40" />
+                    <div className="h-11 rounded-xl bg-primary" />
                   </div>
                 </div>
-                <div className="p-2 space-y-1">
-                  {['Overview', 'Listings', 'Reports'].map((item) => (
-                    <div key={item} className="px-3 py-2 text-sm rounded-md hover:bg-muted">
-                      {item}
-                    </div>
-                  ))}
-                </div>
               </div>
-            </div>
+            </TabsContent>
 
-            {/* Sidebar Preview - Collapsed */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Sidebar (Collapsed)</Label>
-              <div className="border rounded-lg bg-card overflow-hidden w-16">
-                <div className="p-3 border-b flex items-center justify-center">
-                   {(draftSettings.sidebarIcon || draftSettings.sidebarLogo) ? (
-                    <img 
-                       src={draftSettings.sidebarIcon || draftSettings.sidebarLogo || ''} 
-                      alt="Sidebar icon preview" 
-                      className="h-8 w-8 object-contain" 
-                    />
-                  ) : (
-                    <div className="h-8 w-8 bg-primary rounded flex items-center justify-center">
-                      <PanelLeft className="h-4 w-4 text-primary-foreground" />
+            <TabsContent value="sidebar" className="space-y-3">
+              <Label className="text-sm font-medium">Sidebar shell surfaces</Label>
+              <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_88px]">
+                <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
+                  <div className="flex items-center gap-3 border-b border-border/60 bg-sidebar/95 p-4 text-sidebar-foreground">
+                    {getBrandAssetSrc(draftSettings, 'sidebar') ? (
+                      <img src={getBrandAssetSrc(draftSettings, 'sidebar') || ''} alt="Sidebar logo preview" className="h-10 max-w-[120px] object-contain" />
+                    ) : (
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sidebar-primary text-sidebar-primary-foreground">
+                        <PanelLeft className="h-5 w-5" />
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-sm font-semibold">{draftSettings.companyName}</p>
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-sidebar-foreground/65">Internal dashboard</p>
                     </div>
-                  )}
+                  </div>
+                  <div className="space-y-2 p-3">
+                    {['Overview', 'Clients', 'Pipeline'].map((item, index) => (
+                      <div key={item} className={`rounded-xl px-3 py-2.5 text-sm ${index === 0 ? 'bg-sidebar-primary text-sidebar-primary-foreground' : 'bg-sidebar-accent/10 text-sidebar-foreground/80'}`}>
+                        {item}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="p-1 space-y-1">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-8 w-8 mx-auto rounded-md bg-muted/50" />
-                  ))}
+                <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
+                  <div className="flex items-center justify-center border-b border-border/60 bg-sidebar/95 p-4 text-sidebar-foreground">
+                    {getBrandAssetSrc(draftSettings, 'sidebar-icon') ? (
+                      <img src={getBrandAssetSrc(draftSettings, 'sidebar-icon') || ''} alt="Sidebar icon preview" className="h-10 w-10 object-contain" />
+                    ) : (
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sidebar-primary text-sidebar-primary-foreground">
+                        <Minimize2 className="h-5 w-5" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-2 p-3">
+                    {[1, 2, 3].map((item) => (
+                      <div key={item} className="h-10 rounded-xl bg-muted/40" />
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
+            </TabsContent>
+
+            <TabsContent value="browser" className="space-y-3">
+              <Label className="text-sm font-medium">Browser tab + favicon surface</Label>
+              <div className="rounded-2xl border border-border/60 bg-card p-4">
+                <div className="rounded-2xl border border-border/60 bg-background p-4">
+                  <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-muted/30 px-4 py-3">
+                    {getBrandAssetSrc(draftSettings, 'favicon') ? (
+                      <img src={getBrandAssetSrc(draftSettings, 'favicon') || ''} alt="Favicon preview" className="h-8 w-8 rounded-lg object-contain" />
+                    ) : (
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        <Globe className="h-4 w-4" />
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-foreground">{draftSettings.companyName} Dashboard</p>
+                      <p className="text-xs text-muted-foreground">Browser tab preview with resolved favicon slot</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
 
@@ -1251,22 +1321,15 @@ export default function WhiteLabel() {
       <Card className="border-destructive/50">
         <CardHeader>
           <CardTitle className="text-destructive">Reset Branding</CardTitle>
-          <CardDescription>Remove all custom branding and restore defaults</CardDescription>
+          <CardDescription>Reset the current draft back to defaults before deciding whether to save it globally.</CardDescription>
         </CardHeader>
         <CardContent>
           <Button 
             variant="destructive" 
-            onClick={() => {
-              updateSettings({
-                ...defaultBrandConfig,
-                emailSignature: defaultEmailSignature,
-              });
-              setDraftSettings({ ...defaultBrandConfig, emailSignature: defaultEmailSignature });
-              toast.success('Branding reset to defaults');
-            }}
+            onClick={handleResetDraft}
           >
             <Trash2 className="h-4 w-4 mr-2" />
-            Reset All Branding
+            Reset draft to defaults
           </Button>
         </CardContent>
       </Card>
