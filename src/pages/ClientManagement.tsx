@@ -46,6 +46,7 @@ import { ClientAnalyticsDashboard } from '@/components/clients/ClientAnalyticsDa
 import { ClientComparison } from '@/components/clients/ClientComparison';
 import { PortfolioAnalysisReportsList } from '@/components/clients/PortfolioAnalysisReportsList';
 import { AddClientModal } from '@/components/clients/AddClientModal';
+import { GHLExportDialog } from '@/components/shared/GHLExportDialog';
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -133,6 +134,7 @@ export default function ClientManagement() {
   const [isAutoSyncing, setIsAutoSyncing] = useState(false);
   const [showActiveOnly, setShowActiveOnly] = useState(false);
   const [showAddClientModal, setShowAddClientModal] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
   const queryClient = useQueryClient();
   const { canEdit: canEditClients, canDelete: canDeleteClients } = useModulePermissions('clients');
 
@@ -516,9 +518,61 @@ export default function ClientManagement() {
 
   const allSelected = filteredClients.length > 0 && selectedClients.length === filteredClients.length;
   const someSelected = selectedClients.length > 0 && selectedClients.length < filteredClients.length;
+  const ghlExportFields = [
+    { key: 'first_name', label: 'First Name' },
+    { key: 'last_name', label: 'Last Name' },
+    { key: 'email', label: 'Email' },
+    { key: 'phone', label: 'Phone' },
+    { key: 'tags', label: 'Tags' },
+    { key: 'source', label: 'Source' },
+    { key: 'secondary_first_name', label: 'Secondary First Name' },
+    { key: 'secondary_last_name', label: 'Secondary Last Name' },
+    { key: 'portfolio_value', label: 'Portfolio Value' },
+    { key: 'total_debt', label: 'Total Debt' },
+    { key: 'net_cash_flow', label: 'Net Cash Flow' },
+    { key: 'properties', label: 'Properties' },
+    { key: 'pipeline_status', label: 'Pipeline Status' },
+    { key: 'follow_up_date', label: 'Follow Up Date' },
+    { key: 'next_review_due', label: 'Next Review Due' },
+    { key: 'review_frequency', label: 'Review Frequency' },
+    { key: 'ghl_contact_id', label: 'GHL Contact ID' },
+    { key: 'ghl_status', label: 'GHL Status' },
+  ];
+  const ghlExportRecords = displayClients.map((client) => ({
+    first_name: client.primary_first_name || '',
+    last_name: client.primary_surname || '',
+    email: client.primary_email || '',
+    phone: client.primary_mobile || '',
+    tags: 'NPC Export',
+    source: 'Client Management Export',
+    secondary_first_name: client.secondary_first_name || '',
+    secondary_last_name: client.secondary_surname || '',
+    portfolio_value: client.total_portfolio_value?.toString() || '0',
+    total_debt: client.total_debt?.toString() || '0',
+    net_cash_flow: client.net_monthly_cash_flow?.toString() || '0',
+    properties: (client.client_properties?.length || 0).toString(),
+    pipeline_status: client.pipeline_status || '',
+    follow_up_date: client.follow_up_date || '',
+    next_review_due: client.next_review_due || '',
+    review_frequency: client.review_frequency || '',
+    ghl_contact_id: client.ghl_contact_id || '',
+    ghl_status: client.ghl_sync_status || 'not_synced',
+  }));
 
   return (
     <div className="space-y-4 md:space-y-6 pb-20 md:pb-0">
+      <GHLExportDialog
+        open={showExportDialog}
+        onOpenChange={setShowExportDialog}
+        title="Export clients for GHL"
+        description="Map the current filtered client view into GHL-compatible headers before exporting as CSV or XLSX."
+        fields={ghlExportFields}
+        records={ghlExportRecords}
+        fileBaseName={`client-management-export-${new Date().toISOString().split('T')[0]}`}
+        sheetName="Client Management"
+        onExported={(exportFormat, count) => toast.success(`Exported ${count} clients to ${exportFormat.toUpperCase()}`)}
+      />
+
       {/* Header */}
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
@@ -561,6 +615,17 @@ export default function ClientManagement() {
                 : 'Import from GHL'}
             </span>
             <span className="sm:hidden">Import</span>
+          </Button>
+          <Button
+            onClick={() => setShowExportDialog(true)}
+            variant="outline"
+            size="sm"
+            className="h-8 text-xs sm:text-sm"
+            disabled={displayClients.length === 0}
+          >
+            <Download className="h-3.5 w-3.5 mr-1.5" />
+            <span className="hidden sm:inline">Export</span>
+            <span className="sm:hidden">Export</span>
           </Button>
           {canEditClients && (
             <Button 
