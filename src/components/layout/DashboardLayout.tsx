@@ -9,6 +9,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { AgentChatWidget } from '@/components/agent/AgentChatWidget';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { useDashboardTheme } from '@/hooks/useDashboardTheme';
+import { DashboardPageShell } from './DashboardPageShell';
 
 export function DashboardLayout() {
   const isMobile = useIsMobile();
@@ -27,7 +28,9 @@ export function DashboardLayout() {
         <main className="dashboard-main flex-1 overflow-auto">
           <div className="dashboard-content">
             <ErrorBoundary>
-              <Outlet />
+              <DashboardPageShell>
+                <Outlet />
+              </DashboardPageShell>
             </ErrorBoundary>
           </div>
         </main>
@@ -54,7 +57,9 @@ export function DashboardLayout() {
           <main className="dashboard-main flex-1 overflow-auto">
             <div className="dashboard-content">
               <ErrorBoundary>
-                <Outlet />
+                <DashboardPageShell>
+                  <Outlet />
+                </DashboardPageShell>
               </ErrorBoundary>
             </div>
           </main>
