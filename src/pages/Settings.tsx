@@ -11,7 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { RefreshCw, Shield, Palette, Clock, Mail, FileSignature, Zap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useTheme } from 'next-themes';
+import { useWhiteLabel } from '@/contexts/WhiteLabelContext';
 import { ComparisonScoreMigration } from '@/components/admin/ComparisonScoreMigration';
 import { ProfileCredentials } from '@/components/settings/ProfileCredentials';
 import { FinanceAgentContacts } from '@/components/settings/FinanceAgentContacts';
@@ -46,7 +46,7 @@ export default function Settings() {
   const [savingSignature, setSavingSignature] = useState(false);
 
   const { toast } = useToast();
-  const { theme, setTheme } = useTheme();
+  const { themeMode, setThemeMode } = useWhiteLabel();
 
   // Load settings from localStorage on component mount
   useEffect(() => {
@@ -387,25 +387,25 @@ export default function Settings() {
               </div>
               <div className="flex gap-2">
                 <Button
-                  variant={theme === 'light' ? 'default' : 'outline'}
+                  variant={themeMode === 'light' ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => setTheme('light')}
+                  onClick={() => setThemeMode('light')}
                   className="flex-1 sm:flex-none"
                 >
                   Light
                 </Button>
                 <Button
-                  variant={theme === 'dark' ? 'default' : 'outline'}
+                  variant={themeMode === 'dark' ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => setTheme('dark')}
+                  onClick={() => setThemeMode('dark')}
                   className="flex-1 sm:flex-none"
                 >
                   Dark
                 </Button>
                 <Button
-                  variant={theme === 'system' ? 'default' : 'outline'}
+                  variant={themeMode === 'system' ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => setTheme('system')}
+                  onClick={() => setThemeMode('system')}
                   className="flex-1 sm:flex-none"
                 >
                   System

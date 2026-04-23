@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react';
-import { useTheme } from 'next-themes';
+import { useWhiteLabel } from '@/contexts/WhiteLabelContext';
 
 const TURNSTILE_SITE_KEY = '0x4AAAAAAChQyb0ZxBORhxWq';
 
@@ -23,7 +23,7 @@ interface TurnstileWidgetProps {
 export function TurnstileWidget({ onVerify, onExpire, onError }: TurnstileWidgetProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
-  const { resolvedTheme } = useTheme();
+  const { currentTheme } = useWhiteLabel();
 
   // Keep latest callbacks in refs so the widget never re-renders when parent
   // passes inline arrow functions (which change identity on every keystroke).
@@ -46,9 +46,9 @@ export function TurnstileWidget({ onVerify, onExpire, onError }: TurnstileWidget
       callback: (token: string) => onVerifyRef.current?.(token),
       'expired-callback': () => onExpireRef.current?.(),
       'error-callback': () => onErrorRef.current?.(),
-      theme: resolvedTheme === 'dark' ? 'dark' : 'light',
+      theme: currentTheme === 'dark' ? 'dark' : 'light',
     });
-  }, [resolvedTheme]);
+  }, [currentTheme]);
 
   useEffect(() => {
     // Load script if not already loaded
