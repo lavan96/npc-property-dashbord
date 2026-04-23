@@ -9,6 +9,12 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -216,6 +222,59 @@ export default function Calendar() {
     fetchCalendarData(start.toISOString(), end.toISOString());
     fetchOutlookEvents(start.toISOString(), end.toISOString());
   }, [view, currentMonth, currentWeek]);
+
+  const handleExportCalendarCSV = useCallback(() => {
+    const escapeCSV = (value: string) => `"${value.replace(/"/g, '""')}"`;
+    const headers = [
+      'First Name',
+      'Last Name',
+      'Email',
+      'Phone',
+      'Tags',
+      'Source',
+      'Appointment ID',
+      'Appointment Title',
+      'Calendar',
+      'Status',
+      'Start Date',
+      'End Date',
+      'Notes',
+      'Address',
+      'Contact ID',
+    ];
+
+    const rows = filteredEvents.map((event) => [
+      '',
+      '',
+      '',
+      '',
+      'Appointment Export',
+      'GHL Calendar',
+      event.id || '',
+      event.title || '',
+      event.calendarName || '',
+      event.appointmentStatus || event.status || '',
+      safeFormatISO(event.startTime, 'yyyy-MM-dd HH:mm:ss'),
+      safeFormatISO(event.endTime, 'yyyy-MM-dd HH:mm:ss'),
+      event.notes || '',
+      event.address || '',
+      event.contactId || '',
+    ]);
+
+    const csvContent = [headers, ...rows]
+      .map((row) => row.map((cell) => escapeCSV(cell)).join(','))
+      .join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `ghl-calendar-export-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+
+    toast({ title: 'Exported', description: `Saved ${filteredEvents.length} calendar items as GHL-ready CSV` });
+  }, [filteredEvents, toast]);
 
   useEffect(() => {
     handleRefresh();
@@ -707,6 +766,19 @@ export default function Calendar() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleExportCalendarCSV}>
+                  Export current view as GHL CSV
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             {/* Mobile sidebar trigger */}
             {isMobile && (
               <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
