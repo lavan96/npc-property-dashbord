@@ -75,7 +75,7 @@ export function DashboardHeader({ theme, isDark, onCycleTheme }: DashboardHeader
 
   return (
     <header className="dashboard-topbar-surface sticky top-0 z-40 hidden md:block">
-      <div className="flex items-center justify-between gap-4 px-4 py-3 md:px-6">
+      <div className="dashboard-topbar-inner">
         <div className="flex items-center gap-4 flex-1">
           <div className="dashboard-surface-control flex h-10 w-10 items-center justify-center rounded-xl">
             <SidebarTrigger className="h-8 w-8 rounded-lg" />

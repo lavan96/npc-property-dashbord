@@ -125,12 +125,12 @@ export function MobileHeader({ theme, isDark, onCycleTheme }: MobileHeaderProps)
 
       {/* Mobile Header */}
       <header className="dashboard-topbar-surface sticky top-0 z-40 md:hidden">
-        <div className="flex h-14 items-center justify-between px-3">
+        <div className="dashboard-topbar-inner">
           {/* Left: Menu + Logo */}
           <div className="flex items-center gap-2">
             <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="dashboard-surface-control h-11 w-11 rounded-xl">
+                <Button variant="ghost" size="icon" className="dashboard-surface-control h-11 w-11 rounded-xl shrink-0">
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
@@ -149,7 +149,7 @@ export function MobileHeader({ theme, isDark, onCycleTheme }: MobileHeaderProps)
               ) : (
                 <Database className="h-6 w-6 text-primary" />
               )}
-              <span className="max-w-[120px] truncate text-sm font-semibold text-foreground">
+              <span className="max-w-[132px] truncate text-sm font-semibold text-foreground">
                 {settings.companyName}
               </span>
             </div>
