@@ -172,6 +172,10 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
         }
       };
 
+      if (newSettings.darkModeDefault) {
+        setTheme(newSettings.darkModeDefault);
+      }
+
       void saveToSupabase();
       return updated;
     });
