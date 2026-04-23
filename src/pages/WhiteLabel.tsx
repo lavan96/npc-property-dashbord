@@ -101,7 +101,11 @@ function createDefaultDraft() {
   };
 }
 
-function getAssetRecommendation(slot: BrandAssetSlot, width: number, height: number) {
+function getAssetRecommendation(
+  slot: BrandAssetSlot,
+  width: number,
+  height: number
+): { recommendation: string; compatibility: 'wide' | 'square' | 'flex' } {
   const aspectRatio = width / Math.max(height, 1);
 
   if (slot === 'auth' || slot === 'sidebar') {
@@ -137,11 +141,11 @@ function getResolvedAssetField(settings: typeof defaultBrandConfig, slot: BrandA
   return sources.find((source) => source.value === resolvedSrc)?.key ?? slot;
 }
 
-function validateImageAsset(src: string) {
+function validateImageAsset(slot: BrandAssetSlot, src: string) {
   return new Promise<AssetValidationState['meta'] | null>((resolve) => {
     const image = new Image();
     image.onload = () => {
-      const { recommendation, compatibility } = getAssetRecommendation('auth', image.naturalWidth, image.naturalHeight);
+      const { recommendation, compatibility } = getAssetRecommendation(slot, image.naturalWidth, image.naturalHeight);
       resolve({
         width: image.naturalWidth,
         height: image.naturalHeight,
@@ -666,13 +670,14 @@ export default function WhiteLabel() {
             }] as const;
           }
 
-          const isValid = await validateImageAsset(src);
+          const meta = await validateImageAsset(slot, src);
           return [slot, {
-            status: isValid ? 'valid' : 'invalid',
-            detail: isValid
+            status: meta ? 'valid' : 'invalid',
+            detail: meta
               ? `${BRAND_SLOT_LABELS[slot]} is loading correctly${resolvedFrom && resolvedFrom !== slot ? ` using ${BRAND_SLOT_LABELS[resolvedFrom].toLowerCase()} fallback` : ''}.`
               : `${BRAND_SLOT_LABELS[slot]} could not be loaded. Re-upload the asset before saving.`,
             src,
+            meta: meta ?? undefined,
           }] as const;
         })
       );
