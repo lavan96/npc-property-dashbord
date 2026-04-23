@@ -38,9 +38,11 @@ import {
   Moon,
   Laptop,
   Mail,
-  FileText
+  FileText,
+  Save,
+  Undo2
 } from 'lucide-react';
-import { useWhiteLabel, hexToHsl, hslToHex, ThemeMode, EmailSignatureSettings } from '@/contexts/WhiteLabelContext';
+import { useWhiteLabel, hexToHsl, hslToHex, ThemeMode, EmailSignatureSettings, WhiteLabelSettings } from '@/contexts/WhiteLabelContext';
 import { removeBackground, loadImage, blobToBase64 } from '@/utils/backgroundRemoval';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -68,6 +70,30 @@ const BRAND_SLOT_LABELS: Record<BrandAssetSlot, string> = {
 };
 
 const BRAND_SLOT_ORDER: BrandAssetSlot[] = ['auth', 'sidebar', 'sidebar-icon', 'favicon'];
+const WHITE_LABEL_DRAFT_STORAGE_KEY = 'white-label-editor-draft-v1';
+
+function savePersistedDraft(settings: WhiteLabelSettings) {
+  localStorage.setItem(
+    WHITE_LABEL_DRAFT_STORAGE_KEY,
+    JSON.stringify({ settings, savedAt: new Date().toISOString() })
+  );
+}
+
+function loadPersistedDraft(): { settings: WhiteLabelSettings; savedAt: string } | null {
+  const raw = localStorage.getItem(WHITE_LABEL_DRAFT_STORAGE_KEY);
+  if (!raw) return null;
+
+  try {
+    return JSON.parse(raw) as { settings: WhiteLabelSettings; savedAt: string };
+  } catch {
+    localStorage.removeItem(WHITE_LABEL_DRAFT_STORAGE_KEY);
+    return null;
+  }
+}
+
+function clearPersistedDraft() {
+  localStorage.removeItem(WHITE_LABEL_DRAFT_STORAGE_KEY);
+}
 
 function createDefaultDraft() {
   return {
@@ -505,21 +531,42 @@ export default function WhiteLabel() {
     favicon: { status: 'idle', detail: 'Waiting for validation.', src: null },
   });
   const [showLeavePrompt, setShowLeavePrompt] = useState(false);
+  const [showResetPrompt, setShowResetPrompt] = useState(false);
+  const [lastDraftSavedAt, setLastDraftSavedAt] = useState<string | null>(null);
   const pendingNavigation = useRef<{ proceed: () => void; reset: () => void } | null>(null);
+  const draftHistoryRef = useRef<WhiteLabelSettings[]>([]);
+  const isApplyingHistoryRef = useRef(false);
 
   useEffect(() => {
+    const persistedDraft = loadPersistedDraft();
+    if (persistedDraft) {
+      setDraftSettings(persistedDraft.settings);
+      setLastDraftSavedAt(persistedDraft.savedAt);
+      draftHistoryRef.current = [];
+      return;
+    }
+
     setDraftSettings(settings);
+    setLastDraftSavedAt(null);
+    draftHistoryRef.current = [];
   }, [settings]);
 
   const updateDraftSettings = useCallback((newSettings: Partial<typeof settings>) => {
-    setDraftSettings((prev) => ({
-      ...prev,
-      ...newSettings,
-      emailSignature: {
-        ...prev.emailSignature,
-        ...(newSettings.emailSignature || {}),
-      },
-    }));
+    setDraftSettings((prev) => {
+      if (!isApplyingHistoryRef.current) {
+        draftHistoryRef.current = [...draftHistoryRef.current, prev].slice(-50);
+      }
+
+      return {
+        ...prev,
+        ...newSettings,
+        emailSignature: {
+          ...prev.emailSignature,
+          ...(newSettings.emailSignature || {}),
+        },
+      };
+    });
+    setLastDraftSavedAt(null);
   }, []);
 
   const hasChanges = useMemo(() => JSON.stringify(draftSettings) !== JSON.stringify(settings), [draftSettings, settings]);
@@ -615,11 +662,37 @@ export default function WhiteLabel() {
     [assetValidation]
   );
   const canSaveBranding = hasChanges && canEditWhiteLabel && !hasCriticalChecks && !hasInvalidAssets && !isValidatingAssets;
+  const canUndoLastChange = draftHistoryRef.current.length > 0;
+
+  const handleSaveDraft = useCallback(() => {
+    savePersistedDraft(draftSettings);
+    setLastDraftSavedAt(new Date().toISOString());
+    toast.success('Draft saved', { description: 'Your draft was saved locally without changing live branding.' });
+  }, [draftSettings]);
+
+  const handleUndoLastChange = useCallback(() => {
+    const previousDraft = draftHistoryRef.current.at(-1);
+    if (!previousDraft) return;
+
+    draftHistoryRef.current = draftHistoryRef.current.slice(0, -1);
+    isApplyingHistoryRef.current = true;
+    setDraftSettings(previousDraft);
+    setLastDraftSavedAt(null);
+    toast.success('Last draft change undone');
+  }, []);
 
   const handleResetDraft = useCallback(() => {
+    draftHistoryRef.current = [...draftHistoryRef.current, draftSettings].slice(-50);
     setDraftSettings(createDefaultDraft());
+    setLastDraftSavedAt(null);
     toast.success('Draft reset to brand defaults');
-  }, []);
+  }, [draftSettings]);
+
+  useEffect(() => {
+    if (isApplyingHistoryRef.current) {
+      isApplyingHistoryRef.current = false;
+    }
+  }, [draftSettings]);
 
   const handleKeepEditing = useCallback(() => {
     pendingNavigation.current?.reset();
@@ -651,6 +724,9 @@ export default function WhiteLabel() {
     }
 
     updateSettings(draftSettings);
+    clearPersistedDraft();
+    setLastDraftSavedAt(null);
+    draftHistoryRef.current = [];
     toast.success('Branding settings saved');
     logActivityDirect({
       actionType: 'whitelabel_settings_updated',
@@ -710,18 +786,54 @@ export default function WhiteLabel() {
         </AlertDialogContent>
       </AlertDialog>
 
+      <AlertDialog open={showResetPrompt} onOpenChange={setShowResetPrompt}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset this draft to defaults?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will replace the current draft with the default brand settings. Your live branding will stay unchanged until you explicitly save brand changes.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep current draft</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              handleResetDraft();
+              setShowResetPrompt(false);
+            }}>
+              Reset draft
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <Card className="dashboard-panel border-primary/15">
         <CardContent className="flex flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-sm font-semibold text-foreground">Brand System Draft</p>
             <p className="text-sm text-muted-foreground">All branding inputs now flow through a single brand resolver before they are committed globally.</p>
+            {lastDraftSavedAt ? (
+              <p className="mt-1 text-xs text-muted-foreground">Draft saved locally at {new Date(lastDraftSavedAt).toLocaleString()}.</p>
+            ) : null}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="outline">{hasChanges ? 'Unsaved changes' : 'In sync'}</Badge>
             {hasCriticalChecks && <Badge variant="outline" className="border-destructive/40 text-destructive">Critical issues</Badge>}
             {hasInvalidAssets && <Badge variant="outline" className="border-warning/40 text-warning">Asset validation required</Badge>}
-            <Button variant="outline" onClick={() => setDraftSettings(settings)} disabled={!hasChanges}>Discard</Button>
-            <Button variant="outline" onClick={handleResetDraft} disabled={!canEditWhiteLabel}>Reset to defaults</Button>
+            <Button variant="outline" onClick={handleUndoLastChange} disabled={!canUndoLastChange || !canEditWhiteLabel}>
+              <Undo2 className="mr-2 h-4 w-4" />
+              Undo last change
+            </Button>
+            <Button variant="outline" onClick={handleSaveDraft} disabled={!canEditWhiteLabel}>
+              <Save className="mr-2 h-4 w-4" />
+              Save draft
+            </Button>
+            <Button variant="outline" onClick={() => {
+              setDraftSettings(settings);
+              draftHistoryRef.current = [];
+              clearPersistedDraft();
+              setLastDraftSavedAt(null);
+            }} disabled={!hasChanges}>Discard</Button>
+            <Button variant="outline" onClick={() => setShowResetPrompt(true)} disabled={!canEditWhiteLabel}>Reset to defaults</Button>
             <Button onClick={handleSaveBranding} disabled={!canSaveBranding}>
               <Check className="mr-2 h-4 w-4" />
               Save brand changes
@@ -1332,7 +1444,7 @@ export default function WhiteLabel() {
         <CardContent>
           <Button 
             variant="destructive" 
-            onClick={handleResetDraft}
+            onClick={() => setShowResetPrompt(true)}
           >
             <Trash2 className="h-4 w-4 mr-2" />
             Reset draft to defaults
