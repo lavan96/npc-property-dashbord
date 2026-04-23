@@ -860,6 +860,30 @@ export default function WhiteLabel() {
         </CardContent>
       </Card>
 
+      {availablePersistedDraft ? (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Saved local draft available</AlertTitle>
+          <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <span>
+              Restore the draft you saved locally on {new Date(availablePersistedDraft.savedAt).toLocaleString()} without changing the current live brand settings.
+            </span>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" onClick={() => {
+                clearPersistedDraft();
+                setAvailablePersistedDraft(null);
+                toast.success('Saved local draft dismissed');
+              }}>
+                Dismiss
+              </Button>
+              <Button size="sm" onClick={handleRestoreSavedDraft}>
+                Restore draft
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
       <Alert>
         <AlertCircle className="h-4 w-4" />
         <AlertTitle>How it works</AlertTitle>
