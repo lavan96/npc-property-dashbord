@@ -32,14 +32,9 @@ export function MobileNav() {
         <button
           onClick={() => setIsCollapsed(prev => !prev)}
           className={cn(
-            "flex items-center justify-center",
-            "w-10 h-5 rounded-t-xl",
-            "bg-card/90 backdrop-blur-xl border border-b-0 border-border/50",
-            "text-muted-foreground hover:text-foreground",
-            "transition-all duration-300 ease-out",
-            "shadow-[0_-2px_12px_rgba(0,0,0,0.08)]",
-            "hover:shadow-[0_-4px_16px_rgba(0,0,0,0.12)]",
-            "active:scale-95"
+            "dashboard-mobile-nav-toggle flex items-center justify-center",
+            "h-5 w-10 rounded-t-xl border border-b-0",
+            "hover:text-foreground transition-all duration-300 ease-out active:scale-95"
           )}
           aria-label={isCollapsed ? 'Show navigation' : 'Hide navigation'}
         >
@@ -53,13 +48,10 @@ export function MobileNav() {
 
       {/* Nav bar */}
       <nav
-        className={cn(
-          "bg-card/90 backdrop-blur-xl border-t border-border/50 safe-area-bottom",
-          "shadow-[0_-4px_24px_rgba(0,0,0,0.06)]",
-          "transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]",
-          "overflow-hidden",
-          isCollapsed ? "max-h-0 border-t-0" : "max-h-20"
-        )}
+          className={cn(
+            "dashboard-mobile-nav safe-area-bottom overflow-hidden border-t transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]",
+            isCollapsed ? "max-h-0 border-t-0" : "max-h-20"
+          )}
       >
         <div className="flex items-center justify-around h-16 px-2">
           {mobileNavItems.map((item) => (
@@ -127,7 +119,7 @@ export function MobileNav() {
                 )}
               </button>
             </SheetTrigger>
-            <SheetContent side="left" className="p-0 w-[280px]" hideClose>
+            <SheetContent side="left" className="dashboard-mobile-sheet w-[280px] p-0" hideClose>
               <MobileSidebar onNavigate={() => setIsMoreOpen(false)} />
             </SheetContent>
           </Sheet>

@@ -118,9 +118,9 @@ export function MobileSidebar({ onNavigate }: MobileSidebarProps) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-card">
+    <div className="dashboard-sidebar-surface flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-center gap-3 p-4 border-b border-border">
+      <div className="flex items-center gap-3 border-b border-border/60 p-4">
         {settings.sidebarLogo ? (
           <img 
             src={settings.sidebarLogo} 
@@ -143,7 +143,7 @@ export function MobileSidebar({ onNavigate }: MobileSidebarProps) {
         <div className="p-2">
           {/* Main Navigation */}
           <div className="mb-4">
-            <p className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            <p className="px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               Dashboard
             </p>
             <div className="space-y-0.5">
@@ -153,11 +153,11 @@ export function MobileSidebar({ onNavigate }: MobileSidebarProps) {
                   to={item.url}
                   onClick={handleClick}
                   className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all",
+                    "flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all",
                     "active:scale-[0.98]",
                     isActive(item.url)
-                      ? "bg-primary/10 text-primary font-medium"
-                      : "text-foreground hover:bg-muted"
+                      ? "bg-primary text-primary-foreground font-medium shadow-md shadow-primary/20"
+                      : "text-foreground hover:bg-accent/10 hover:text-foreground"
                   )}
                 >
                   <item.icon className="h-5 w-5 shrink-0" />
@@ -175,7 +175,7 @@ export function MobileSidebar({ onNavigate }: MobileSidebarProps) {
             <>
               <Separator className="my-2" />
               <div>
-                <p className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            <p className="px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                   Administration
                 </p>
                 <div className="space-y-0.5">
@@ -185,11 +185,11 @@ export function MobileSidebar({ onNavigate }: MobileSidebarProps) {
                       to={item.url}
                       onClick={handleClick}
                       className={cn(
-                        "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all",
+                          "flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all",
                         "active:scale-[0.98]",
                         isActive(item.url)
-                          ? "bg-primary/10 text-primary font-medium"
-                          : "text-foreground hover:bg-muted"
+                            ? "bg-primary text-primary-foreground font-medium shadow-md shadow-primary/20"
+                            : "text-foreground hover:bg-accent/10 hover:text-foreground"
                       )}
                     >
                       <item.icon className="h-5 w-5 shrink-0" />
