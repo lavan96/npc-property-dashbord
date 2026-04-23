@@ -31,11 +31,11 @@ export function MobileNav() {
       <div className="flex justify-center">
         <button
           onClick={() => setIsCollapsed(prev => !prev)}
-          className={cn(
-            "dashboard-mobile-nav-toggle flex items-center justify-center",
-            "h-5 w-10 rounded-t-xl border border-b-0",
-            "hover:text-foreground transition-all duration-300 ease-out active:scale-95"
-          )}
+            className={cn(
+              'dashboard-mobile-nav-toggle flex items-center justify-center',
+              'h-5 w-10 rounded-t-xl border border-b-0 border-b-transparent',
+              'hover:text-foreground transition-all duration-300 ease-out active:scale-95'
+            )}
           aria-label={isCollapsed ? 'Show navigation' : 'Hide navigation'}
         >
           {isCollapsed ? (
@@ -49,8 +49,8 @@ export function MobileNav() {
       {/* Nav bar */}
       <nav
           className={cn(
-            "dashboard-mobile-nav safe-area-bottom overflow-hidden border-t transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]",
-            isCollapsed ? "max-h-0 border-t-0" : "max-h-20"
+            'dashboard-mobile-nav safe-area-bottom overflow-hidden border-t transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]',
+            isCollapsed ? 'max-h-0 border-t-0' : 'max-h-20'
           )}
       >
         <div className="flex items-center justify-around h-16 px-2">
@@ -59,30 +59,30 @@ export function MobileNav() {
               key={item.url}
               to={item.url}
               className={cn(
-                "flex flex-col items-center justify-center flex-1 h-full py-2 px-1 transition-all duration-200",
-                "active:scale-90 rounded-xl mx-0.5 relative",
+                'flex flex-1 flex-col items-center justify-center rounded-xl px-1 py-2 transition-all duration-200',
+                'active:scale-90 mx-0.5 relative',
                 isActive(item.url)
-                  ? "text-primary"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? 'text-primary'
+                  : 'text-muted-foreground hover:text-foreground'
               )}
             >
               <div className={cn(
-                "relative p-1 rounded-lg transition-all duration-200",
-                isActive(item.url) && "bg-primary/10"
+                'relative rounded-lg p-1 transition-all duration-200',
+                isActive(item.url) && 'dashboard-chip-accent'
               )}>
                 <item.icon className={cn(
-                  "h-5 w-5 transition-transform duration-200",
-                  isActive(item.url) && "scale-110"
+                  'h-5 w-5 transition-transform duration-200',
+                  isActive(item.url) && 'scale-110'
                 )} />
               </div>
               <span className={cn(
-                "text-[10px] font-medium truncate max-w-[60px] mt-0.5",
-                isActive(item.url) && "font-semibold"
+                'mt-0.5 max-w-[60px] truncate text-[10px] font-medium',
+                isActive(item.url) && 'font-semibold'
               )}>
                 {item.title}
               </span>
               {isActive(item.url) && (
-                <div className="absolute bottom-1.5 w-1 h-1 rounded-full bg-primary" />
+                <div className="dashboard-nav-indicator absolute bottom-1.5 h-1 w-1 rounded-full" />
               )}
             </NavLink>
           ))}
@@ -92,30 +92,30 @@ export function MobileNav() {
             <SheetTrigger asChild>
               <button
                 className={cn(
-                  "flex flex-col items-center justify-center flex-1 h-full py-2 px-1 transition-all duration-200",
-                  "active:scale-90 rounded-xl mx-0.5 relative",
+                  'flex flex-1 flex-col items-center justify-center rounded-xl px-1 py-2 transition-all duration-200',
+                  'active:scale-90 mx-0.5 relative',
                   isMoreActive
-                    ? "text-primary"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? 'text-primary'
+                    : 'text-muted-foreground hover:text-foreground'
                 )}
               >
                 <div className={cn(
-                  "relative p-1 rounded-lg transition-all duration-200",
-                  isMoreActive && "bg-primary/10"
+                  'relative rounded-lg p-1 transition-all duration-200',
+                  isMoreActive && 'dashboard-chip-accent'
                 )}>
                   <MoreHorizontal className={cn(
-                    "h-5 w-5 transition-transform duration-200",
-                    isMoreActive && "scale-110"
+                    'h-5 w-5 transition-transform duration-200',
+                    isMoreActive && 'scale-110'
                   )} />
                 </div>
                 <span className={cn(
-                  "text-[10px] font-medium mt-0.5",
-                  isMoreActive && "font-semibold"
+                  'mt-0.5 text-[10px] font-medium',
+                  isMoreActive && 'font-semibold'
                 )}>
                   More
                 </span>
                 {isMoreActive && (
-                  <div className="absolute bottom-1.5 w-1 h-1 rounded-full bg-primary" />
+                  <div className="dashboard-nav-indicator absolute bottom-1.5 h-1 w-1 rounded-full" />
                 )}
               </button>
             </SheetTrigger>
