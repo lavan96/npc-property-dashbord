@@ -661,6 +661,18 @@ export default function Calendar() {
 
   return (
     <div className="space-y-6">
+      <GHLExportDialog
+        open={showExportDialog}
+        onOpenChange={setShowExportDialog}
+        title="Export calendar for GHL"
+        description="Map appointment fields to GHL import headers and export the current calendar view as CSV or XLSX."
+        fields={ghlExportFields}
+        records={ghlExportRecords}
+        fileBaseName={`ghl-calendar-export-${format(new Date(), 'yyyy-MM-dd')}`}
+        sheetName="Calendar Export"
+        onExported={(exportFormat, count) => toast({ title: 'Exported', description: `Saved ${count} calendar items as ${exportFormat.toUpperCase()}` })}
+      />
+
       {/* Event Details Modal with Edit/Delete */}
       <EventDetailsModal 
         event={selectedEvent}
