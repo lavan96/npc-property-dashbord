@@ -712,10 +712,9 @@ export default function WhiteLabel() {
   const canUndoLastChange = draftHistoryRef.current.length > 0;
 
   const handleSaveDraft = useCallback(() => {
-    const savedAt = new Date().toISOString();
-    savePersistedDraft(draftSettings);
-    setLastDraftSavedAt(savedAt);
-    setAvailablePersistedDraft({ settings: draftSettings, savedAt });
+    const savedDraft = savePersistedDraft(draftSettings);
+    setLastDraftSavedAt(savedDraft.savedAt);
+    setAvailablePersistedDraft(savedDraft);
     toast.success('Draft saved', { description: 'Your draft was saved locally without changing live branding.' });
   }, [draftSettings]);
 
@@ -746,6 +745,42 @@ export default function WhiteLabel() {
     setLastDraftSavedAt(null);
     toast.success('Draft reset to brand defaults');
   }, [draftSettings]);
+
+  const handleSavePreset = useCallback(() => {
+    const trimmedName = presetName.trim();
+    if (!trimmedName) {
+      toast.error('Enter a preset name before saving');
+      return;
+    }
+
+    const preset: StoredBrandPreset = {
+      id: crypto.randomUUID(),
+      name: trimmedName,
+      settings: draftSettings,
+      savedAt: new Date().toISOString(),
+    };
+
+    const nextPresets = [preset, ...savedPresets].slice(0, 12);
+    setSavedPresets(nextPresets);
+    saveStoredBrandPresets(nextPresets);
+    setPresetName('');
+    setShowPresetDialog(false);
+    toast.success('Preset saved locally');
+  }, [draftSettings, presetName, savedPresets]);
+
+  const handleApplyPreset = useCallback((preset: StoredBrandPreset) => {
+    draftHistoryRef.current = [...draftHistoryRef.current, draftSettings].slice(-50);
+    setDraftSettings(preset.settings);
+    setLastDraftSavedAt(null);
+    toast.success(`Preset \"${preset.name}\" applied`);
+  }, [draftSettings]);
+
+  const handleDeletePreset = useCallback((presetId: string) => {
+    const nextPresets = savedPresets.filter((preset) => preset.id !== presetId);
+    setSavedPresets(nextPresets);
+    saveStoredBrandPresets(nextPresets);
+    toast.success('Preset removed');
+  }, [savedPresets]);
 
   useEffect(() => {
     if (isApplyingHistoryRef.current) {
