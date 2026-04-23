@@ -36,10 +36,10 @@ export function BrandAccessibilityPanel({ checks }: BrandAccessibilityPanelProps
         const Icon = meta.icon;
 
         return (
-          <div key={check.id} className={cn('rounded-2xl border p-4', meta.panel)}>
+          <div key={check.id} className={cn('dashboard-status-chip rounded-2xl border p-4', meta.panel)}>
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-start gap-3">
-                <div className="mt-0.5 rounded-full bg-background/80 p-2">
+                <div className="mt-0.5 rounded-full bg-background/80 p-2 shadow-sm">
                   <Icon className="h-4 w-4" />
                 </div>
                 <div>
