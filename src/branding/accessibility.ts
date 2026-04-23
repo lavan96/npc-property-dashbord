@@ -8,6 +8,13 @@ export interface BrandAccessibilityCheck {
   status: 'pass' | 'warning' | 'critical';
 }
 
+export interface BrandImpactPreviewItem {
+  id: string;
+  surface: string;
+  label: string;
+  detail: string;
+}
+
 function contrastRatio(foreground: string, background: string) {
   const fg = relativeLuminanceFromHsl(foreground);
   const bg = relativeLuminanceFromHsl(background);
@@ -54,4 +61,37 @@ export function getBrandAccessibilityChecks(config: BrandConfig): BrandAccessibi
   ];
 
   return checks;
+}
+
+export function getBrandImpactPreview(config: BrandConfig): BrandImpactPreviewItem[] {
+  const items: BrandImpactPreviewItem[] = [
+    {
+      id: 'app-shell',
+      surface: 'Shell',
+      label: 'Global navigation and layout chrome',
+      detail: 'Primary, surface, and border tokens will refresh across the dashboard shell, topbar, sidebar, and mobile navigation.',
+    },
+    {
+      id: 'controls',
+      surface: 'Controls',
+      label: 'Buttons, inputs, tabs, and focus rings',
+      detail: 'Interactive states inherit the draft primary and accent colors through semantic control tokens.',
+    },
+    {
+      id: 'data-views',
+      surface: 'Data views',
+      label: 'Tables, badges, alerts, and charts',
+      detail: 'Shared UI primitives update to the resolved brand palette for statuses, data emphasis, and chart color ramps.',
+    },
+    {
+      id: 'brand-assets',
+      surface: 'Assets',
+      label: 'Auth, sidebar, collapsed icon, and browser tab',
+      detail: config.authLogo || config.sidebarLogo || config.sidebarIcon || config.favicon
+        ? 'Uploaded assets will be reused across every available logo slot with fallback rules where needed.'
+        : 'Add logos and a favicon to propagate a fully branded shell across auth, navigation, and browser surfaces.',
+    },
+  ];
+
+  return items;
 }
