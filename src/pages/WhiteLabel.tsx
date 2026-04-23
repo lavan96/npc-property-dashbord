@@ -567,14 +567,20 @@ export default function WhiteLabel() {
   });
   const [showLeavePrompt, setShowLeavePrompt] = useState(false);
   const [showResetPrompt, setShowResetPrompt] = useState(false);
+  const [showPresetDialog, setShowPresetDialog] = useState(false);
   const [lastDraftSavedAt, setLastDraftSavedAt] = useState<string | null>(null);
   const [availablePersistedDraft, setAvailablePersistedDraft] = useState<{ settings: WhiteLabelSettings; savedAt: string } | null>(null);
+  const [savedPresets, setSavedPresets] = useState<StoredBrandPreset[]>([]);
+  const [presetName, setPresetName] = useState('');
   const pendingNavigation = useRef<{ proceed: () => void; reset: () => void } | null>(null);
   const draftHistoryRef = useRef<WhiteLabelSettings[]>([]);
   const isApplyingHistoryRef = useRef(false);
+  const impactPreview = useMemo(() => getBrandImpactPreview(draftSettings), [draftSettings]);
 
   useEffect(() => {
     const persistedDraft = loadPersistedDraft();
+    setSavedPresets(loadStoredBrandPresets());
+
     if (persistedDraft) {
       const matchesLiveSettings = JSON.stringify(persistedDraft.settings) === JSON.stringify(settings);
 
