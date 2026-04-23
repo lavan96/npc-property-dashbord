@@ -9799,9 +9799,12 @@ export type Database = {
           email_signature_website: string | null
           favicon: string | null
           id: string
+          logo_config: Json
           primary_color: string | null
           sidebar_icon: string | null
           sidebar_logo: string | null
+          theme_config: Json
+          theme_version: number
           updated_at: string
         }
         Insert: {
@@ -9820,9 +9823,12 @@ export type Database = {
           email_signature_website?: string | null
           favicon?: string | null
           id?: string
+          logo_config?: Json
           primary_color?: string | null
           sidebar_icon?: string | null
           sidebar_logo?: string | null
+          theme_config?: Json
+          theme_version?: number
           updated_at?: string
         }
         Update: {
@@ -9841,9 +9847,12 @@ export type Database = {
           email_signature_website?: string | null
           favicon?: string | null
           id?: string
+          logo_config?: Json
           primary_color?: string | null
           sidebar_icon?: string | null
           sidebar_logo?: string | null
+          theme_config?: Json
+          theme_version?: number
           updated_at?: string
         }
         Relationships: []
