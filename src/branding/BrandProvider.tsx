@@ -57,9 +57,9 @@ function applyResolvedTheme(themeMode: ThemeMode, resolvedTokens: ReturnType<typ
 export function BrandProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<WhiteLabelSettings>(defaultBrandConfig);
   const [isLoading, setIsLoading] = useState(true);
-  const [theme, setTheme] = useState<ThemeMode>(() => getInitialThemeMode(defaultBrandConfig.darkModeDefault));
+  const [themeMode, setThemeMode] = useState<ThemeMode>(() => getInitialThemeMode(defaultBrandConfig.darkModeDefault));
   const [currentTheme, setCurrentTheme] = useState<'light' | 'dark'>(() =>
-    theme === 'system' ? getSystemTheme() : theme
+    themeMode === 'system' ? getSystemTheme() : themeMode
   );
 
   useEffect(() => {
@@ -79,7 +79,7 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
         if (data) {
           const mapped = mapDatabaseSettings(data as Record<string, unknown>);
           setSettings(mapped);
-          setTheme((prevTheme) => {
+          setThemeMode((prevTheme) => {
             if (typeof window === 'undefined') return mapped.darkModeDefault;
             const storedTheme = localStorage.getItem(BRAND_THEME_STORAGE_KEY) as ThemeMode | null;
             return storedTheme || prevTheme || mapped.darkModeDefault;
@@ -103,16 +103,16 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
       setCurrentTheme(resolvedTheme);
     };
 
-    applyTheme(theme);
-    localStorage.setItem(BRAND_THEME_STORAGE_KEY, theme);
+    applyTheme(themeMode);
+    localStorage.setItem(BRAND_THEME_STORAGE_KEY, themeMode);
 
-    if (theme !== 'system') return;
+    if (themeMode !== 'system') return;
 
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     const handler = () => applyTheme('system');
     mediaQuery.addEventListener('change', handler);
     return () => mediaQuery.removeEventListener('change', handler);
-  }, [resolvedTokens, theme]);
+  }, [resolvedTokens, themeMode]);
 
   useEffect(() => {
     const favicon = getBrandAssetSrc(settings, 'favicon');
@@ -180,7 +180,7 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
       };
 
       if (newSettings.darkModeDefault) {
-        setTheme(newSettings.darkModeDefault);
+        setThemeMode(newSettings.darkModeDefault);
       }
 
       void saveToSupabase();
@@ -194,12 +194,14 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
       updateSettings,
       isLoading,
       currentTheme,
-      theme,
+      themeMode,
+      theme: themeMode,
       isDark: currentTheme === 'dark',
-      setTheme,
+      setThemeMode,
+      setTheme: setThemeMode,
       resolvedTokens,
     }),
-    [currentTheme, isLoading, resolvedTokens, settings, theme, updateSettings]
+    [currentTheme, isLoading, resolvedTokens, settings, themeMode, updateSettings]
   );
 
   return <BrandContext.Provider value={value}>{children}</BrandContext.Provider>;
