@@ -20,6 +20,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Upload, 
@@ -49,8 +57,16 @@ import { toast } from 'sonner';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { secureStorageUpload } from '@/hooks/useSecureStorage';
 import { defaultBrandConfig, defaultEmailSignature } from '@/branding/brand-defaults';
-import { getBrandAccessibilityChecks } from '@/branding/accessibility';
+import { getBrandAccessibilityChecks, getBrandImpactPreview } from '@/branding/accessibility';
 import { getBrandAssetSrc, type BrandAssetSlot } from '@/branding/brand-assets';
+import {
+  clearPersistedDraft,
+  loadPersistedDraft,
+  loadStoredBrandPresets,
+  savePersistedDraft,
+  saveStoredBrandPresets,
+  type StoredBrandPreset,
+} from '@/branding/brand-draft-storage';
 import { BrandPreviewShowcase } from '@/components/branding/BrandPreviewShowcase';
 import { BrandAccessibilityPanel } from '@/components/branding/BrandAccessibilityPanel';
 
@@ -60,6 +76,13 @@ type AssetValidationState = {
   status: 'idle' | 'validating' | 'valid' | 'invalid';
   detail: string;
   src: string | null;
+  meta?: {
+    width: number;
+    height: number;
+    aspectRatio: number;
+    recommendation: string;
+    compatibility: 'wide' | 'square' | 'flex';
+  };
 };
 
 const BRAND_SLOT_LABELS: Record<BrandAssetSlot, string> = {
@@ -70,35 +93,38 @@ const BRAND_SLOT_LABELS: Record<BrandAssetSlot, string> = {
 };
 
 const BRAND_SLOT_ORDER: BrandAssetSlot[] = ['auth', 'sidebar', 'sidebar-icon', 'favicon'];
-const WHITE_LABEL_DRAFT_STORAGE_KEY = 'white-label-editor-draft-v1';
-
-function savePersistedDraft(settings: WhiteLabelSettings) {
-  localStorage.setItem(
-    WHITE_LABEL_DRAFT_STORAGE_KEY,
-    JSON.stringify({ settings, savedAt: new Date().toISOString() })
-  );
-}
-
-function loadPersistedDraft(): { settings: WhiteLabelSettings; savedAt: string } | null {
-  const raw = localStorage.getItem(WHITE_LABEL_DRAFT_STORAGE_KEY);
-  if (!raw) return null;
-
-  try {
-    return JSON.parse(raw) as { settings: WhiteLabelSettings; savedAt: string };
-  } catch {
-    localStorage.removeItem(WHITE_LABEL_DRAFT_STORAGE_KEY);
-    return null;
-  }
-}
-
-function clearPersistedDraft() {
-  localStorage.removeItem(WHITE_LABEL_DRAFT_STORAGE_KEY);
-}
 
 function createDefaultDraft() {
   return {
     ...defaultBrandConfig,
     emailSignature: { ...defaultEmailSignature },
+  };
+}
+
+function getAssetRecommendation(
+  slot: BrandAssetSlot,
+  width: number,
+  height: number
+): { recommendation: string; compatibility: 'wide' | 'square' | 'flex' } {
+  const aspectRatio = width / Math.max(height, 1);
+
+  if (slot === 'auth' || slot === 'sidebar') {
+    return {
+      recommendation: aspectRatio >= 2 ? 'Wide lockup fits this slot well.' : 'Use a wider lockup for cleaner horizontal placement.',
+      compatibility: aspectRatio >= 2 ? 'wide' : 'flex',
+    };
+  }
+
+  if (slot === 'sidebar-icon' || slot === 'favicon') {
+    return {
+      recommendation: aspectRatio >= 0.85 && aspectRatio <= 1.15 ? 'Square mark is ideal for this slot.' : 'Use a square brand mark for better balance in this slot.',
+      compatibility: aspectRatio >= 0.85 && aspectRatio <= 1.15 ? 'square' : 'flex',
+    };
+  }
+
+  return {
+    recommendation: 'Asset dimensions are acceptable for this surface.',
+    compatibility: 'flex' as const,
   };
 }
 
@@ -115,11 +141,20 @@ function getResolvedAssetField(settings: typeof defaultBrandConfig, slot: BrandA
   return sources.find((source) => source.value === resolvedSrc)?.key ?? slot;
 }
 
-function validateImageAsset(src: string) {
-  return new Promise<boolean>((resolve) => {
+function validateImageAsset(slot: BrandAssetSlot, src: string) {
+  return new Promise<AssetValidationState['meta'] | null>((resolve) => {
     const image = new Image();
-    image.onload = () => resolve(true);
-    image.onerror = () => resolve(false);
+    image.onload = () => {
+      const { recommendation, compatibility } = getAssetRecommendation(slot, image.naturalWidth, image.naturalHeight);
+      resolve({
+        width: image.naturalWidth,
+        height: image.naturalHeight,
+        aspectRatio: image.naturalWidth / Math.max(image.naturalHeight, 1),
+        recommendation,
+        compatibility,
+      });
+    };
+    image.onerror = () => resolve(null);
     image.src = src;
   });
 }
@@ -532,14 +567,20 @@ export default function WhiteLabel() {
   });
   const [showLeavePrompt, setShowLeavePrompt] = useState(false);
   const [showResetPrompt, setShowResetPrompt] = useState(false);
+  const [showPresetDialog, setShowPresetDialog] = useState(false);
   const [lastDraftSavedAt, setLastDraftSavedAt] = useState<string | null>(null);
   const [availablePersistedDraft, setAvailablePersistedDraft] = useState<{ settings: WhiteLabelSettings; savedAt: string } | null>(null);
+  const [savedPresets, setSavedPresets] = useState<StoredBrandPreset[]>([]);
+  const [presetName, setPresetName] = useState('');
   const pendingNavigation = useRef<{ proceed: () => void; reset: () => void } | null>(null);
   const draftHistoryRef = useRef<WhiteLabelSettings[]>([]);
   const isApplyingHistoryRef = useRef(false);
+  const impactPreview = useMemo(() => getBrandImpactPreview(draftSettings), [draftSettings]);
 
   useEffect(() => {
     const persistedDraft = loadPersistedDraft();
+    setSavedPresets(loadStoredBrandPresets());
+
     if (persistedDraft) {
       const matchesLiveSettings = JSON.stringify(persistedDraft.settings) === JSON.stringify(settings);
 
@@ -635,13 +676,14 @@ export default function WhiteLabel() {
             }] as const;
           }
 
-          const isValid = await validateImageAsset(src);
+          const meta = await validateImageAsset(slot, src);
           return [slot, {
-            status: isValid ? 'valid' : 'invalid',
-            detail: isValid
+            status: meta ? 'valid' : 'invalid',
+            detail: meta
               ? `${BRAND_SLOT_LABELS[slot]} is loading correctly${resolvedFrom && resolvedFrom !== slot ? ` using ${BRAND_SLOT_LABELS[resolvedFrom].toLowerCase()} fallback` : ''}.`
               : `${BRAND_SLOT_LABELS[slot]} could not be loaded. Re-upload the asset before saving.`,
             src,
+            meta: meta ?? undefined,
           }] as const;
         })
       );
@@ -670,10 +712,9 @@ export default function WhiteLabel() {
   const canUndoLastChange = draftHistoryRef.current.length > 0;
 
   const handleSaveDraft = useCallback(() => {
-    const savedAt = new Date().toISOString();
-    savePersistedDraft(draftSettings);
-    setLastDraftSavedAt(savedAt);
-    setAvailablePersistedDraft({ settings: draftSettings, savedAt });
+    const savedDraft = savePersistedDraft(draftSettings);
+    setLastDraftSavedAt(savedDraft.savedAt);
+    setAvailablePersistedDraft(savedDraft);
     toast.success('Draft saved', { description: 'Your draft was saved locally without changing live branding.' });
   }, [draftSettings]);
 
@@ -704,6 +745,42 @@ export default function WhiteLabel() {
     setLastDraftSavedAt(null);
     toast.success('Draft reset to brand defaults');
   }, [draftSettings]);
+
+  const handleSavePreset = useCallback(() => {
+    const trimmedName = presetName.trim();
+    if (!trimmedName) {
+      toast.error('Enter a preset name before saving');
+      return;
+    }
+
+    const preset: StoredBrandPreset = {
+      id: crypto.randomUUID(),
+      name: trimmedName,
+      settings: draftSettings,
+      savedAt: new Date().toISOString(),
+    };
+
+    const nextPresets = [preset, ...savedPresets].slice(0, 12);
+    setSavedPresets(nextPresets);
+    saveStoredBrandPresets(nextPresets);
+    setPresetName('');
+    setShowPresetDialog(false);
+    toast.success('Preset saved locally');
+  }, [draftSettings, presetName, savedPresets]);
+
+  const handleApplyPreset = useCallback((preset: StoredBrandPreset) => {
+    draftHistoryRef.current = [...draftHistoryRef.current, draftSettings].slice(-50);
+    setDraftSettings(preset.settings);
+    setLastDraftSavedAt(null);
+    toast.success(`Preset \"${preset.name}\" applied`);
+  }, [draftSettings]);
+
+  const handleDeletePreset = useCallback((presetId: string) => {
+    const nextPresets = savedPresets.filter((preset) => preset.id !== presetId);
+    setSavedPresets(nextPresets);
+    saveStoredBrandPresets(nextPresets);
+    toast.success('Preset removed');
+  }, [savedPresets]);
 
   useEffect(() => {
     if (isApplyingHistoryRef.current) {
@@ -824,6 +901,32 @@ export default function WhiteLabel() {
         </AlertDialogContent>
       </AlertDialog>
 
+      <Dialog open={showPresetDialog} onOpenChange={setShowPresetDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Save brand preset</DialogTitle>
+            <DialogDescription>
+              Store the current draft locally so operations can quickly reapply this branding combination later.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="brand-preset-name">Preset name</Label>
+              <Input
+                id="brand-preset-name"
+                value={presetName}
+                onChange={(event) => setPresetName(event.target.value)}
+                placeholder="e.g. Premium dark gold"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPresetDialog(false)}>Cancel</Button>
+            <Button onClick={handleSavePreset}>Save preset</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Card className="dashboard-panel border-primary/15">
         <CardContent className="flex flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between">
           <div>
@@ -844,6 +947,10 @@ export default function WhiteLabel() {
             <Button variant="outline" onClick={handleSaveDraft} disabled={!canEditWhiteLabel}>
               <Save className="mr-2 h-4 w-4" />
               Save draft
+            </Button>
+            <Button variant="outline" onClick={() => setShowPresetDialog(true)} disabled={!canEditWhiteLabel}>
+              <FileText className="mr-2 h-4 w-4" />
+              Save preset
             </Button>
             <Button variant="outline" onClick={() => {
               setDraftSettings(settings);
@@ -1192,6 +1299,12 @@ export default function WhiteLabel() {
                     <div>
                       <p className="text-sm font-semibold text-foreground">{BRAND_SLOT_LABELS[slot]}</p>
                       <p className="mt-1 text-sm text-muted-foreground">{validation.detail}</p>
+                      {validation.meta ? (
+                        <div className="mt-3 space-y-1 text-xs text-muted-foreground">
+                          <p>{validation.meta.width}×{validation.meta.height}px · {validation.meta.aspectRatio.toFixed(2)}:1 aspect</p>
+                          <p>{validation.meta.recommendation}</p>
+                        </div>
+                      ) : null}
                     </div>
                     <Badge variant="outline" className={isValid ? 'border-success/30 text-success' : isInvalid ? 'border-warning/30 text-warning' : ''}>
                       {validation.status === 'validating' ? 'Checking' : validation.status === 'valid' ? 'Ready' : validation.status === 'invalid' ? 'Needs asset' : 'Idle'}
@@ -1202,6 +1315,48 @@ export default function WhiteLabel() {
             })}
           </div>
           <BrandAccessibilityPanel checks={accessibilityChecks} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Impact preview</CardTitle>
+          <CardDescription>See which shared surfaces will update when this draft becomes the live brand configuration.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-3 md:grid-cols-2">
+            {impactPreview.map((item) => (
+              <div key={item.id} className="dashboard-section-band space-y-2">
+                <Badge variant="outline" className="w-fit">{item.surface}</Badge>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">{item.label}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{item.detail}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          {savedPresets.length > 0 ? (
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Saved presets</p>
+                <p className="text-sm text-muted-foreground">Apply or remove previously saved local brand combinations.</p>
+              </div>
+              <div className="grid gap-3">
+                {savedPresets.map((preset) => (
+                  <div key={preset.id} className="dashboard-section-band flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{preset.name}</p>
+                      <p className="text-xs text-muted-foreground">Saved {new Date(preset.savedAt).toLocaleString()}</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button variant="outline" size="sm" onClick={() => handleDeletePreset(preset.id)}>Remove</Button>
+                      <Button size="sm" onClick={() => handleApplyPreset(preset)}>Apply preset</Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
 
