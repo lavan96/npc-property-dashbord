@@ -87,10 +87,16 @@ export function ConversationExport({ messages, title, reportNames, conversationI
 
   const exportAsCSV = () => {
     const escapeCSV = (value: string) => `"${value.replace(/"/g, '""')}"`;
-    const headers = ['Conversation Title', 'Reports', 'Exported At', 'Timestamp', 'Role', 'Content'];
+    const headers = ['First Name', 'Last Name', 'Email', 'Phone', 'Tags', 'Source', 'Conversation Title', 'Reports', 'Exported At', 'Timestamp', 'Role', 'Content'];
     const exportedAt = new Date().toLocaleString();
 
     const rows = messages.map((message) => [
+      '',
+      '',
+      '',
+      '',
+      'Q&A Export',
+      'Report QA',
       title,
       reportNames.join(', '),
       exportedAt,
