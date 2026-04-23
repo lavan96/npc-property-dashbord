@@ -19,7 +19,7 @@ export function DashboardErrorFallback({ error }: { error?: Error }) {
               <summary className="cursor-pointer text-xs text-muted-foreground transition-colors hover:text-foreground">
                 Show error details
               </summary>
-              <pre className="mt-2 max-h-48 overflow-auto rounded-xl border border-border/60 bg-background/70 p-3 text-xs text-destructive whitespace-pre-wrap break-all">
+              <pre className="dashboard-surface-control mt-2 max-h-48 overflow-auto rounded-xl p-3 text-xs text-destructive whitespace-pre-wrap break-all">
                 {error.message}
                 {error.stack && `\n\n${error.stack}`}
               </pre>

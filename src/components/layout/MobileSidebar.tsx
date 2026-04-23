@@ -118,9 +118,9 @@ export function MobileSidebar({ onNavigate }: MobileSidebarProps) {
   };
 
   return (
-    <div className="dashboard-sidebar-surface flex h-full flex-col">
+      <div className="dashboard-sidebar-surface flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-center gap-3 border-b border-border/60 p-4">
+      <div className="dashboard-divider flex items-center gap-3 border-b p-4">
         {settings.sidebarLogo ? (
           <img 
             src={settings.sidebarLogo} 
@@ -153,17 +153,15 @@ export function MobileSidebar({ onNavigate }: MobileSidebarProps) {
                   to={item.url}
                   onClick={handleClick}
                   className={cn(
-                    "flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all",
-                    "active:scale-[0.98]",
-                    isActive(item.url)
-                      ? "bg-primary text-primary-foreground font-medium shadow-md shadow-primary/20"
-                      : "text-foreground hover:bg-accent/10 hover:text-foreground"
+                    'dashboard-nav-item flex items-center gap-3 rounded-xl px-3 py-2.5',
+                    'active:scale-[0.98]',
+                    isActive(item.url) && 'dashboard-nav-item-active font-medium'
                   )}
                 >
                   <item.icon className="h-5 w-5 shrink-0" />
                   <span className="flex-1 text-sm">{item.title}</span>
                   {isActive(item.url) && (
-                    <ChevronRight className="h-4 w-4 text-primary" />
+                      <ChevronRight className="h-4 w-4" />
                   )}
                 </NavLink>
               ))}
@@ -184,18 +182,16 @@ export function MobileSidebar({ onNavigate }: MobileSidebarProps) {
                       key={item.url}
                       to={item.url}
                       onClick={handleClick}
-                      className={cn(
-                          "flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all",
-                        "active:scale-[0.98]",
-                        isActive(item.url)
-                            ? "bg-primary text-primary-foreground font-medium shadow-md shadow-primary/20"
-                            : "text-foreground hover:bg-accent/10 hover:text-foreground"
+                     className={cn(
+                        'dashboard-nav-item flex items-center gap-3 rounded-xl px-3 py-2.5',
+                        'active:scale-[0.98]',
+                        isActive(item.url) && 'dashboard-nav-item-active font-medium'
                       )}
                     >
                       <item.icon className="h-5 w-5 shrink-0" />
                       <span className="flex-1 text-sm">{item.title}</span>
                       {isActive(item.url) && (
-                        <ChevronRight className="h-4 w-4 text-primary" />
+                        <ChevronRight className="h-4 w-4" />
                       )}
                     </NavLink>
                   ))}

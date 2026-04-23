@@ -125,7 +125,7 @@ export function DashboardSidebar() {
     <Sidebar collapsible="icon" className="dashboard-sidebar-surface border-r-0">
       <SidebarContent>
         {/* Brand */}
-        <div className={`border-b border-border/60 ${isCollapsed ? 'p-3' : 'p-6'}`}>
+        <div className={`dashboard-divider border-b ${isCollapsed ? 'p-3' : 'p-6'}`}>
           <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
             {currentLogo ? (
               <img 

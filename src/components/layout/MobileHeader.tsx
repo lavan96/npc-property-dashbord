@@ -125,12 +125,12 @@ export function MobileHeader({ theme, isDark, onCycleTheme }: MobileHeaderProps)
 
       {/* Mobile Header */}
       <header className="dashboard-topbar-surface sticky top-0 z-40 md:hidden">
-        <div className="flex items-center justify-between h-14 px-3">
+        <div className="flex h-14 items-center justify-between px-3">
           {/* Left: Menu + Logo */}
           <div className="flex items-center gap-2">
             <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-11 w-11 rounded-xl border border-border/50 bg-background/60">
+                <Button variant="ghost" size="icon" className="dashboard-surface-control h-11 w-11 rounded-xl">
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
@@ -161,7 +161,7 @@ export function MobileHeader({ theme, isDark, onCycleTheme }: MobileHeaderProps)
               variant="ghost" 
               size="icon" 
               onClick={() => setIsSearchOpen(true)}
-              className="h-11 w-11 rounded-xl border border-border/50 bg-background/60"
+              className="dashboard-surface-control h-11 w-11 rounded-xl"
             >
               <Search className="h-5 w-5" />
             </Button>
@@ -170,7 +170,7 @@ export function MobileHeader({ theme, isDark, onCycleTheme }: MobileHeaderProps)
               variant="ghost"
               size="icon"
               onClick={onCycleTheme}
-              className="h-11 w-11 rounded-xl border border-border/50 bg-background/60"
+              className="dashboard-surface-control h-11 w-11 rounded-xl"
             >
               {getThemeIcon()}
             </Button>
@@ -179,7 +179,7 @@ export function MobileHeader({ theme, isDark, onCycleTheme }: MobileHeaderProps)
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-11 w-11 rounded-xl border border-border/50 bg-background/60">
+                <Button variant="ghost" size="icon" className="dashboard-surface-control h-11 w-11 rounded-xl">
                   <Avatar className="h-7 w-7">
                     <AvatarFallback className="bg-primary/10 text-xs text-primary">
                       {user?.username?.substring(0, 2).toUpperCase() || 'AD'}

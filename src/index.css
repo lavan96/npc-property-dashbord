@@ -79,6 +79,14 @@ Clean, modern admin dashboard with confidence-based color coding
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 40 15% 90%;
     --sidebar-ring: 43 74% 49%;
+
+    --dashboard-surface: 0 0% 100%;
+    --dashboard-surface-elevated: 40 25% 99%;
+    --dashboard-surface-muted: 40 18% 96%;
+    --dashboard-border-soft: 40 15% 88%;
+    --dashboard-border-strong: 40 18% 80%;
+    --dashboard-primary-soft: 43 74% 94%;
+    --dashboard-primary-strong: 43 74% 49%;
   }
 
   .dark {
@@ -129,6 +137,14 @@ Clean, modern admin dashboard with confidence-based color coding
     --sidebar-accent-foreground: 0 0% 5%;
     --sidebar-border: 0 0% 14%;
     --sidebar-ring: 43 74% 49%;
+
+    --dashboard-surface: 0 0% 7%;
+    --dashboard-surface-elevated: 0 0% 9%;
+    --dashboard-surface-muted: 0 0% 12%;
+    --dashboard-border-soft: 0 0% 18%;
+    --dashboard-border-strong: 43 22% 28%;
+    --dashboard-primary-soft: 43 70% 14%;
+    --dashboard-primary-strong: 43 74% 49%;
   }
 }
 
@@ -262,12 +278,38 @@ Clean, modern admin dashboard with confidence-based color coding
     mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.48), transparent 72%);
   }
 
+  .dashboard-surface-panel {
+    border: 1px solid hsl(var(--dashboard-border-soft) / 0.72);
+    background-color: hsl(var(--dashboard-surface) / 0.82);
+    backdrop-filter: blur(18px);
+    box-shadow: 0 18px 40px -28px hsl(var(--primary) / 0.28);
+  }
+
+  .dashboard-surface-panel-strong {
+    border: 1px solid hsl(var(--dashboard-border-strong) / 0.7);
+    background-color: hsl(var(--dashboard-surface-elevated) / 0.9);
+    backdrop-filter: blur(22px);
+    box-shadow: 0 20px 48px -30px hsl(var(--primary) / 0.34);
+  }
+
+  .dashboard-surface-control {
+    border: 1px solid hsl(var(--dashboard-border-soft) / 0.74);
+    background-color: hsl(var(--dashboard-surface-elevated) / 0.74);
+    box-shadow: 0 10px 24px -20px hsl(var(--primary) / 0.4);
+    backdrop-filter: blur(14px);
+  }
+
+  .dashboard-surface-control:hover {
+    border-color: hsl(var(--dashboard-border-strong) / 0.8);
+    background-color: hsl(var(--dashboard-surface-elevated) / 0.88);
+  }
+
   .dashboard-sidebar-surface {
-    @apply border-border/70 bg-card/80 backdrop-blur-xl shadow-2xl shadow-primary/5;
+    @apply dashboard-surface-panel-strong;
   }
 
   .dashboard-topbar-surface {
-    @apply border-border/70 bg-card/85 backdrop-blur-xl shadow-sm shadow-primary/5;
+    @apply dashboard-surface-panel;
   }
 
   .dashboard-main {
@@ -284,24 +326,63 @@ Clean, modern admin dashboard with confidence-based color coding
     @apply relative mx-auto w-full max-w-[1600px] px-4 py-4 pb-24 md:px-6 md:py-6 md:pb-8;
   }
 
+  .dashboard-page-shell {
+    @apply relative flex min-h-full flex-col gap-4 md:gap-6;
+  }
+
+  .dashboard-page-shell > * {
+    @apply min-w-0;
+  }
+
   .dashboard-content > * {
     @apply relative z-10;
   }
 
   .dashboard-mobile-sheet {
-    @apply border-border/70 bg-card/90 backdrop-blur-2xl shadow-2xl shadow-primary/10;
+    @apply dashboard-surface-panel-strong;
   }
 
   .dashboard-mobile-nav {
-    @apply border-border/60 bg-card/85 backdrop-blur-2xl shadow-[0_-8px_30px_-18px_hsl(var(--primary)/0.35)];
+    @apply dashboard-surface-panel;
+    box-shadow: 0 -8px 30px -18px hsl(var(--primary) / 0.35);
   }
 
   .dashboard-mobile-nav-toggle {
-    @apply border-border/60 bg-card/90 text-muted-foreground shadow-[0_-6px_24px_-16px_hsl(var(--primary)/0.3)] backdrop-blur-xl;
+    @apply dashboard-surface-control text-muted-foreground;
+    box-shadow: 0 -6px 24px -16px hsl(var(--primary) / 0.3);
   }
 
   .dashboard-page-frame {
     @apply client-portal-soft-panel overflow-hidden;
+  }
+
+  .dashboard-divider {
+    border-color: hsl(var(--dashboard-border-soft) / 0.72);
+  }
+
+  .dashboard-chip-accent {
+    background-color: hsl(var(--dashboard-primary-soft) / 0.9);
+    color: hsl(var(--primary));
+  }
+
+  .dashboard-nav-item {
+    @apply text-foreground transition-all duration-200;
+    background-color: transparent;
+  }
+
+  .dashboard-nav-item:hover {
+    background-color: hsl(var(--dashboard-primary-soft) / 0.5);
+    color: hsl(var(--foreground));
+  }
+
+  .dashboard-nav-item-active {
+    background-color: hsl(var(--dashboard-primary-strong));
+    color: hsl(var(--primary-foreground));
+    box-shadow: 0 14px 28px -20px hsl(var(--primary) / 0.9);
+  }
+
+  .dashboard-nav-indicator {
+    background-color: hsl(var(--dashboard-primary-strong));
   }
 
   .client-portal-theme a:focus-visible,
