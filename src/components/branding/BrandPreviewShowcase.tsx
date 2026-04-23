@@ -125,7 +125,7 @@ export function BrandPreviewShowcase({ settings }: BrandPreviewShowcaseProps) {
         <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-lg">
           <div className="rounded-2xl border border-border/60 bg-background p-4">
             <div className="flex items-center gap-3">
-               {faviconSrc ? <BrandFavicon alt={`${settings.companyName} favicon`} /> : (
+               {faviconSrc ? <BrandFavicon settings={settings} alt={`${settings.companyName} favicon`} /> : (
                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
                    <Globe className="h-4 w-4" />
                  </div>
@@ -136,7 +136,7 @@ export function BrandPreviewShowcase({ settings }: BrandPreviewShowcaseProps) {
               </div>
             </div>
             <div className="mt-4 rounded-xl border border-border/60 bg-muted/40 p-3 text-xs text-muted-foreground">
-               <div className="mb-2"><BrandMark slot="sidebar-icon" className="h-4 w-4 object-contain" fallbackClassName="h-4 w-4 rounded" /></div>
+               <div className="mb-2"><BrandMark settings={settings} slot="sidebar-icon" className="h-4 w-4 object-contain" fallbackClassName="h-4 w-4 rounded" /></div>
               The favicon slot falls back to your sidebar icon or primary logo if a dedicated favicon has not been uploaded yet.
             </div>
           </div>
