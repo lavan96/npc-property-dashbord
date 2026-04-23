@@ -223,59 +223,6 @@ export default function Calendar() {
     fetchOutlookEvents(start.toISOString(), end.toISOString());
   }, [view, currentMonth, currentWeek]);
 
-  const handleExportCalendarCSV = useCallback(() => {
-    const escapeCSV = (value: string) => `"${value.replace(/"/g, '""')}"`;
-    const headers = [
-      'First Name',
-      'Last Name',
-      'Email',
-      'Phone',
-      'Tags',
-      'Source',
-      'Appointment ID',
-      'Appointment Title',
-      'Calendar',
-      'Status',
-      'Start Date',
-      'End Date',
-      'Notes',
-      'Address',
-      'Contact ID',
-    ];
-
-    const rows = filteredEvents.map((event) => [
-      '',
-      '',
-      '',
-      '',
-      'Appointment Export',
-      'GHL Calendar',
-      event.id || '',
-      event.title || '',
-      event.calendarName || '',
-      event.appointmentStatus || event.status || '',
-      safeFormatISO(event.startTime, 'yyyy-MM-dd HH:mm:ss'),
-      safeFormatISO(event.endTime, 'yyyy-MM-dd HH:mm:ss'),
-      event.notes || '',
-      event.address || '',
-      event.contactId || '',
-    ]);
-
-    const csvContent = [headers, ...rows]
-      .map((row) => row.map((cell) => escapeCSV(cell)).join(','))
-      .join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `ghl-calendar-export-${format(new Date(), 'yyyy-MM-dd')}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
-
-    toast({ title: 'Exported', description: `Saved ${filteredEvents.length} calendar items as GHL-ready CSV` });
-  }, [filteredEvents, toast]);
-
   useEffect(() => {
     handleRefresh();
   }, [fetchCalendarData, view, currentMonth, currentWeek]);
@@ -479,6 +426,59 @@ export default function Calendar() {
 
     return filtered;
   }, [events, selectedCalendarId, searchQuery, outlookVisible, outlookEvents]);
+
+  const handleExportCalendarCSV = useCallback(() => {
+    const escapeCSV = (value: string) => `"${value.replace(/"/g, '""')}"`;
+    const headers = [
+      'First Name',
+      'Last Name',
+      'Email',
+      'Phone',
+      'Tags',
+      'Source',
+      'Appointment ID',
+      'Appointment Title',
+      'Calendar',
+      'Status',
+      'Start Date',
+      'End Date',
+      'Notes',
+      'Address',
+      'Contact ID',
+    ];
+
+    const rows = filteredEvents.map((event) => [
+      '',
+      '',
+      '',
+      '',
+      'Appointment Export',
+      'GHL Calendar',
+      event.id || '',
+      event.title || '',
+      event.calendarName || '',
+      event.appointmentStatus || event.status || '',
+      safeFormatISO(event.startTime, 'yyyy-MM-dd HH:mm:ss'),
+      safeFormatISO(event.endTime, 'yyyy-MM-dd HH:mm:ss'),
+      event.notes || '',
+      event.address || '',
+      event.contactId || '',
+    ]);
+
+    const csvContent = [headers, ...rows]
+      .map((row) => row.map((cell) => escapeCSV(cell)).join(','))
+      .join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `ghl-calendar-export-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+
+    toast({ title: 'Exported', description: `Saved ${filteredEvents.length} calendar items as GHL-ready CSV` });
+  }, [filteredEvents, toast]);
 
   const selectedDateEvents = useMemo(() => {
     if (!selectedDate) return [];
