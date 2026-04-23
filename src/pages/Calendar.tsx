@@ -769,7 +769,7 @@ export default function Calendar() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm">
-                  <ExternalLink className="h-4 w-4 mr-2" />
+                  <Mail className="h-4 w-4 mr-2" />
                   Export
                 </Button>
               </DropdownMenuTrigger>
