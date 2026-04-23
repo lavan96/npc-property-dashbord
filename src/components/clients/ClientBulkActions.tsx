@@ -30,6 +30,7 @@ interface Client {
   primary_surname: string;
   primary_email: string | null;
   primary_mobile: string | null;
+  ghl_contact_id?: string | null;
   total_portfolio_value: number;
   total_debt: number;
   net_monthly_cash_flow: number;
@@ -82,7 +83,7 @@ export function ClientBulkActions({
     total_debt: client.total_debt?.toString() || '0',
     net_cash_flow: client.net_monthly_cash_flow?.toString() || '0',
     properties: (client.client_properties?.length || 0).toString(),
-    ghl_contact_id: client.id,
+    ghl_contact_id: client.ghl_contact_id || '',
     ghl_status: client.ghl_sync_status || 'not_synced',
   }));
 
@@ -180,7 +181,7 @@ export function ClientBulkActions({
       c.total_debt?.toString() || '0',
       c.net_monthly_cash_flow?.toString() || '0',
       (c.client_properties?.length || 0).toString(),
-      c.id,
+      c.ghl_contact_id || '',
       c.ghl_sync_status || 'not_synced'
     ]);
 
