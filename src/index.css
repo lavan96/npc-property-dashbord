@@ -246,9 +246,89 @@ Clean, modern admin dashboard with confidence-based color coding
     @apply relative overflow-hidden rounded-2xl border border-border/60 bg-card/90 shadow-lg shadow-primary/5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-primary/10;
   }
 
+  .dashboard-shell {
+    @apply relative min-h-screen bg-background text-foreground;
+    background-image:
+      radial-gradient(circle at top left, hsl(var(--primary) / 0.12), transparent 24%),
+      radial-gradient(circle at top right, hsl(var(--primary) / 0.06), transparent 20%),
+      linear-gradient(180deg, hsl(var(--background)), hsl(var(--background)) 48%, hsl(var(--card)) 100%);
+  }
+
+  .dashboard-shell::before {
+    content: "";
+    @apply pointer-events-none absolute inset-0 opacity-35;
+    background-image: linear-gradient(hsl(var(--border) / 0.12) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--border) / 0.08) 1px, transparent 1px);
+    background-size: 36px 36px;
+    mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.48), transparent 72%);
+  }
+
+  .dashboard-sidebar-surface {
+    @apply border-border/70 bg-card/80 backdrop-blur-xl shadow-2xl shadow-primary/5;
+  }
+
+  .dashboard-topbar-surface {
+    @apply border-border/70 bg-card/85 backdrop-blur-xl shadow-sm shadow-primary/5;
+  }
+
+  .dashboard-main {
+    @apply relative min-w-0;
+  }
+
+  .dashboard-main::before {
+    content: "";
+    @apply pointer-events-none absolute inset-x-0 top-0 h-48;
+    background: linear-gradient(180deg, hsl(var(--primary) / 0.08), transparent);
+  }
+
+  .dashboard-content {
+    @apply relative mx-auto w-full max-w-[1600px] px-4 py-4 pb-24 md:px-6 md:py-6 md:pb-8;
+  }
+
+  .dashboard-content > * {
+    @apply relative z-10;
+  }
+
+  .dashboard-mobile-sheet {
+    @apply border-border/70 bg-card/90 backdrop-blur-2xl shadow-2xl shadow-primary/10;
+  }
+
+  .dashboard-mobile-nav {
+    @apply border-border/60 bg-card/85 backdrop-blur-2xl shadow-[0_-8px_30px_-18px_hsl(var(--primary)/0.35)];
+  }
+
+  .dashboard-mobile-nav-toggle {
+    @apply border-border/60 bg-card/90 text-muted-foreground shadow-[0_-6px_24px_-16px_hsl(var(--primary)/0.3)] backdrop-blur-xl;
+  }
+
+  .dashboard-page-frame {
+    @apply client-portal-soft-panel overflow-hidden;
+  }
+
   .client-portal-theme a:focus-visible,
   .client-portal-theme button:focus-visible {
     @apply rounded-xl ring-2 ring-ring ring-offset-2 ring-offset-background outline-none;
+  }
+
+  .dashboard-shell a:focus-visible,
+  .dashboard-shell button:focus-visible,
+  .dashboard-shell input:focus-visible,
+  .dashboard-shell textarea:focus-visible,
+  .dashboard-shell [role="combobox"]:focus-visible {
+    @apply rounded-xl ring-2 ring-ring ring-offset-2 ring-offset-background outline-none;
+  }
+
+  .dashboard-shell .border.bg-card,
+  .dashboard-shell .bg-card.border {
+    border-color: hsl(var(--border) / 0.6);
+    background-color: hsl(var(--card) / 0.84);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 14px 36px -22px hsl(var(--primary) / 0.18);
+  }
+
+  .dashboard-shell input,
+  .dashboard-shell textarea,
+  .dashboard-shell button[role="combobox"] {
+    @apply border-border/60 bg-background/80 shadow-sm shadow-primary/5 focus-visible:ring-ring/80 focus-visible:ring-offset-background;
   }
 
   .qa-markdown {

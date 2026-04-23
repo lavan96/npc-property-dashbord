@@ -74,10 +74,12 @@ export function DashboardHeader({ theme, isDark, onCycleTheme }: DashboardHeader
   };
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-card px-6 py-3 hidden md:block">
-      <div className="flex items-center justify-between">
+    <header className="dashboard-topbar-surface sticky top-0 z-40 hidden md:block">
+      <div className="flex items-center justify-between gap-4 px-6 py-3">
         <div className="flex items-center gap-4 flex-1">
-          <SidebarTrigger />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border/60 bg-background/70 shadow-sm shadow-primary/5">
+            <SidebarTrigger className="h-8 w-8 rounded-lg" />
+          </div>
           
           <div className="relative max-w-md flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
@@ -87,7 +89,7 @@ export function DashboardHeader({ theme, isDark, onCycleTheme }: DashboardHeader
               value={globalSearchQuery}
               onChange={handleSearchChange}
               onKeyPress={handleSearchKeyPress}
-              className="pl-10 pr-4"
+              className="h-11 rounded-xl border-border/60 bg-background/70 pl-10 pr-4"
             />
           </div>
         </div>
@@ -97,7 +99,7 @@ export function DashboardHeader({ theme, isDark, onCycleTheme }: DashboardHeader
             variant="ghost"
             size="icon"
             onClick={onCycleTheme}
-            className="h-9 w-9 transition-transform duration-200 hover:scale-105 relative group"
+            className="relative h-10 w-10 rounded-xl border border-border/60 bg-background/70 transition-transform duration-200 hover:scale-105"
             title={`Theme: ${getThemeLabel()}`}
           >
             <div className="transition-transform duration-300 ease-out">
@@ -113,9 +115,9 @@ export function DashboardHeader({ theme, isDark, onCycleTheme }: DashboardHeader
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="flex items-center gap-2">
+              <Button variant="ghost" className="h-10 rounded-xl border border-border/60 bg-background/70 px-2.5 shadow-sm shadow-primary/5">
                 <Avatar className="h-8 w-8">
-                  <AvatarFallback>
+                  <AvatarFallback className="bg-primary/10 text-primary">
                     {user?.username?.substring(0, 2).toUpperCase() || 'AD'}
                   </AvatarFallback>
                 </Avatar>

@@ -72,8 +72,8 @@ export function MobileHeader({ theme, isDark, onCycleTheme }: MobileHeaderProps)
     <>
       {/* Search Overlay */}
       {isSearchOpen && (
-        <div className="fixed inset-0 z-50 bg-background">
-          <div className="flex items-center gap-2 p-3 border-b border-border">
+        <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-xl">
+          <div className="dashboard-topbar-surface flex items-center gap-2 p-3">
             <Button 
               variant="ghost" 
               size="icon" 
@@ -124,17 +124,17 @@ export function MobileHeader({ theme, isDark, onCycleTheme }: MobileHeaderProps)
       )}
 
       {/* Mobile Header */}
-      <header className="sticky top-0 z-40 bg-card border-b border-border md:hidden">
+      <header className="dashboard-topbar-surface sticky top-0 z-40 md:hidden">
         <div className="flex items-center justify-between h-14 px-3">
           {/* Left: Menu + Logo */}
           <div className="flex items-center gap-2">
             <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-11 w-11">
+                <Button variant="ghost" size="icon" className="h-11 w-11 rounded-xl border border-border/50 bg-background/60">
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="p-0 w-[280px]" hideClose>
+              <SheetContent side="left" className="dashboard-mobile-sheet w-[280px] p-0" hideClose>
                 <MobileSidebar onNavigate={() => setIsSidebarOpen(false)} />
               </SheetContent>
             </Sheet>
@@ -149,7 +149,7 @@ export function MobileHeader({ theme, isDark, onCycleTheme }: MobileHeaderProps)
               ) : (
                 <Database className="h-6 w-6 text-primary" />
               )}
-              <span className="font-semibold text-sm text-foreground truncate max-w-[120px]">
+              <span className="max-w-[120px] truncate text-sm font-semibold text-foreground">
                 {settings.companyName}
               </span>
             </div>
@@ -161,7 +161,7 @@ export function MobileHeader({ theme, isDark, onCycleTheme }: MobileHeaderProps)
               variant="ghost" 
               size="icon" 
               onClick={() => setIsSearchOpen(true)}
-              className="h-11 w-11"
+              className="h-11 w-11 rounded-xl border border-border/50 bg-background/60"
             >
               <Search className="h-5 w-5" />
             </Button>
@@ -170,7 +170,7 @@ export function MobileHeader({ theme, isDark, onCycleTheme }: MobileHeaderProps)
               variant="ghost"
               size="icon"
               onClick={onCycleTheme}
-              className="h-11 w-11"
+              className="h-11 w-11 rounded-xl border border-border/50 bg-background/60"
             >
               {getThemeIcon()}
             </Button>
@@ -179,9 +179,9 @@ export function MobileHeader({ theme, isDark, onCycleTheme }: MobileHeaderProps)
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-11 w-11">
+                <Button variant="ghost" size="icon" className="h-11 w-11 rounded-xl border border-border/50 bg-background/60">
                   <Avatar className="h-7 w-7">
-                    <AvatarFallback className="text-xs">
+                    <AvatarFallback className="bg-primary/10 text-xs text-primary">
                       {user?.username?.substring(0, 2).toUpperCase() || 'AD'}
                     </AvatarFallback>
                   </Avatar>
