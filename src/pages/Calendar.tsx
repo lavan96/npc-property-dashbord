@@ -759,8 +759,8 @@ export default function Calendar() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={handleExportCalendarCSV}>
-                  Export current view as GHL CSV
+                <DropdownMenuItem onClick={() => setShowExportDialog(true)}>
+                  Export current view
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
