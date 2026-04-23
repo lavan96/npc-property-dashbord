@@ -1,4 +1,4 @@
-import type { BrandConfig, BrandTokenMap, EmailSignatureSettings } from './brand-types';
+import type { BrandConfig, BrandLogoConfig, BrandThemeConfig, BrandTokenMap, EmailSignatureSettings } from './brand-types';
 
 export const BRAND_THEME_STORAGE_KEY = 'theme';
 
@@ -20,6 +20,20 @@ export const defaultEmailSignature: EmailSignatureSettings = {
     'This email and any attachments are confidential and may be privileged. If you are not the intended recipient, please notify the sender immediately and delete this message.',
 };
 
+export const defaultBrandThemeConfig: BrandThemeConfig = {
+  primaryColor: null,
+  accentColor: null,
+  darkModeDefault: 'light',
+  emailSignature: defaultEmailSignature,
+};
+
+export const defaultBrandLogoConfig: BrandLogoConfig = {
+  auth: null,
+  sidebar: null,
+  sidebarIcon: null,
+  favicon: null,
+};
+
 export const defaultBrandConfig: BrandConfig = {
   authLogo: null,
   sidebarLogo: null,
@@ -30,6 +44,9 @@ export const defaultBrandConfig: BrandConfig = {
   accentColor: null,
   darkModeDefault: 'light',
   emailSignature: defaultEmailSignature,
+  themeConfig: defaultBrandThemeConfig,
+  logoConfig: defaultBrandLogoConfig,
+  themeVersion: 1,
 };
 
 export const defaultLightTokenMap: BrandTokenMap = {
