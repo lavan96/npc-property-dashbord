@@ -13,6 +13,20 @@ export interface EmailSignatureSettings {
   disclaimer: string;
 }
 
+export interface BrandThemeConfig {
+  primaryColor: string | null;
+  accentColor: string | null;
+  darkModeDefault: ThemeMode;
+  emailSignature: EmailSignatureSettings;
+}
+
+export interface BrandLogoConfig {
+  auth: string | null;
+  sidebar: string | null;
+  sidebarIcon: string | null;
+  favicon: string | null;
+}
+
 export interface BrandConfig {
   id?: string;
   authLogo: string | null;
@@ -24,6 +38,9 @@ export interface BrandConfig {
   accentColor: string | null;
   darkModeDefault: ThemeMode;
   emailSignature: EmailSignatureSettings;
+  themeConfig?: BrandThemeConfig;
+  logoConfig?: BrandLogoConfig;
+  themeVersion?: number;
 }
 
 export type WhiteLabelSettings = BrandConfig;

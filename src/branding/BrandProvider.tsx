@@ -1,13 +1,16 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import type { Json } from '@/integrations/supabase/types';
 import {
   BRAND_THEME_STORAGE_KEY,
   defaultBrandConfig,
   defaultEmailSignature,
+  defaultBrandLogoConfig,
+  defaultBrandThemeConfig,
 } from './brand-defaults';
 import { getBrandAssetSrc } from './brand-assets';
 import { applyBrandTokenMap, resolveBrandTokens } from './token-resolver';
-import type { BrandContextValue, ThemeMode, WhiteLabelSettings } from './brand-types';
+import type { BrandContextValue, BrandLogoConfig, BrandThemeConfig, ThemeMode, WhiteLabelSettings } from './brand-types';
 
 const BrandContext = createContext<BrandContextValue | undefined>(undefined);
 
@@ -22,28 +25,77 @@ function getInitialThemeMode(defaultTheme: ThemeMode): ThemeMode {
   return storedTheme || defaultTheme;
 }
 
+function mergeThemeConfig(themeConfig: Partial<BrandThemeConfig> | null | undefined): BrandThemeConfig {
+  return {
+    ...defaultBrandThemeConfig,
+    ...themeConfig,
+    emailSignature: {
+      ...defaultEmailSignature,
+      ...(themeConfig?.emailSignature || {}),
+    },
+  };
+}
+
+function mergeLogoConfig(logoConfig: Partial<BrandLogoConfig> | null | undefined): BrandLogoConfig {
+  return {
+    ...defaultBrandLogoConfig,
+    ...logoConfig,
+  };
+}
+
+function buildStructuredConfig(settings: WhiteLabelSettings) {
+  const themeConfig: BrandThemeConfig = mergeThemeConfig({
+    primaryColor: settings.primaryColor,
+    accentColor: settings.accentColor,
+    darkModeDefault: settings.darkModeDefault,
+    emailSignature: settings.emailSignature,
+  });
+
+  const logoConfig: BrandLogoConfig = mergeLogoConfig({
+    auth: settings.authLogo,
+    sidebar: settings.sidebarLogo,
+    sidebarIcon: settings.sidebarIcon,
+    favicon: settings.favicon,
+  });
+
+  return {
+    themeConfig,
+    logoConfig,
+    themeVersion: settings.themeVersion ?? 1,
+  };
+}
+
 function mapDatabaseSettings(data: Record<string, unknown>): WhiteLabelSettings {
+  const rawThemeConfig = (data.theme_config as Partial<BrandThemeConfig> | null | undefined) ?? null;
+  const rawLogoConfig = (data.logo_config as Partial<BrandLogoConfig> | null | undefined) ?? null;
+  const themeConfig = mergeThemeConfig(rawThemeConfig);
+  const logoConfig = mergeLogoConfig(rawLogoConfig);
+
   return {
     id: data.id as string,
-    authLogo: (data.auth_logo as string) || null,
-    sidebarLogo: (data.sidebar_logo as string) || null,
-    sidebarIcon: (data.sidebar_icon as string) || null,
-    favicon: (data.favicon as string) || null,
+    authLogo: logoConfig.auth || (data.auth_logo as string) || null,
+    sidebarLogo: logoConfig.sidebar || (data.sidebar_logo as string) || null,
+    sidebarIcon: logoConfig.sidebarIcon || (data.sidebar_icon as string) || null,
+    favicon: logoConfig.favicon || (data.favicon as string) || null,
     companyName: (data.company_name as string) || defaultBrandConfig.companyName,
-    primaryColor: (data.primary_color as string) || null,
-    accentColor: (data.accent_color as string) || null,
-    darkModeDefault: (data.dark_mode_default as ThemeMode) || defaultBrandConfig.darkModeDefault,
-    emailSignature: {
-      banner: (data.email_signature_banner as string) || null,
-      name: (data.email_signature_name as string) || defaultEmailSignature.name,
-      title: (data.email_signature_title as string) || defaultEmailSignature.title,
-      phone: (data.email_signature_phone as string) || '',
-      email: (data.email_signature_email as string) || '',
-      website: (data.email_signature_website as string) || '',
-      address: (data.email_signature_address as string) || '',
-      disclaimer:
-        (data.email_signature_disclaimer as string) || defaultEmailSignature.disclaimer,
-    },
+    primaryColor: themeConfig.primaryColor || (data.primary_color as string) || null,
+    accentColor: themeConfig.accentColor || (data.accent_color as string) || null,
+    darkModeDefault: themeConfig.darkModeDefault || (data.dark_mode_default as ThemeMode) || defaultBrandConfig.darkModeDefault,
+    emailSignature: mergeThemeConfig({
+      emailSignature: {
+        banner: themeConfig.emailSignature.banner || (data.email_signature_banner as string) || null,
+        name: themeConfig.emailSignature.name || (data.email_signature_name as string) || defaultEmailSignature.name,
+        title: themeConfig.emailSignature.title || (data.email_signature_title as string) || defaultEmailSignature.title,
+        phone: themeConfig.emailSignature.phone || (data.email_signature_phone as string) || '',
+        email: themeConfig.emailSignature.email || (data.email_signature_email as string) || '',
+        website: themeConfig.emailSignature.website || (data.email_signature_website as string) || '',
+        address: themeConfig.emailSignature.address || (data.email_signature_address as string) || '',
+        disclaimer: themeConfig.emailSignature.disclaimer || (data.email_signature_disclaimer as string) || defaultEmailSignature.disclaimer,
+      },
+    }).emailSignature,
+    themeConfig,
+    logoConfig,
+    themeVersion: (data.theme_version as number) || 1,
   };
 }
 
@@ -146,6 +198,10 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
           ...(newSettings.emailSignature || {}),
         },
       };
+      const structured = buildStructuredConfig(updated);
+      updated.themeConfig = structured.themeConfig;
+      updated.logoConfig = structured.logoConfig;
+      updated.themeVersion = structured.themeVersion;
 
       const saveToSupabase = async () => {
         try {
@@ -168,6 +224,9 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
               email_signature_website: updated.emailSignature.website,
               email_signature_address: updated.emailSignature.address,
               email_signature_disclaimer: updated.emailSignature.disclaimer,
+              theme_config: structured.themeConfig as unknown as Json,
+              logo_config: structured.logoConfig as unknown as Json,
+              theme_version: structured.themeVersion,
             })
             .eq('id', updated.id || '');
 

@@ -1491,10 +1491,10 @@ export default function WhiteLabel() {
         <CardContent>
           <EmailBannerUpload
             currentBanner={draftSettings.emailSignature.banner}
-            onUpload={(url) => updateSettings({ 
+            onUpload={(url) => updateDraftSettings({ 
               emailSignature: { ...draftSettings.emailSignature, banner: url } 
             })}
-            onRemove={() => updateSettings({ 
+            onRemove={() => updateDraftSettings({ 
               emailSignature: { ...draftSettings.emailSignature, banner: null } 
             })}
           />
