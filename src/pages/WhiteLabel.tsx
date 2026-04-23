@@ -107,14 +107,14 @@ function getAssetRecommendation(slot: BrandAssetSlot, width: number, height: num
   if (slot === 'auth' || slot === 'sidebar') {
     return {
       recommendation: aspectRatio >= 2 ? 'Wide lockup fits this slot well.' : 'Use a wider lockup for cleaner horizontal placement.',
-      compatibility: (aspectRatio >= 2 ? 'wide' : 'flex') as const,
+      compatibility: aspectRatio >= 2 ? 'wide' : 'flex',
     };
   }
 
   if (slot === 'sidebar-icon' || slot === 'favicon') {
     return {
       recommendation: aspectRatio >= 0.85 && aspectRatio <= 1.15 ? 'Square mark is ideal for this slot.' : 'Use a square brand mark for better balance in this slot.',
-      compatibility: (aspectRatio >= 0.85 && aspectRatio <= 1.15 ? 'square' : 'flex') as const,
+      compatibility: aspectRatio >= 0.85 && aspectRatio <= 1.15 ? 'square' : 'flex',
     };
   }
 
@@ -138,10 +138,19 @@ function getResolvedAssetField(settings: typeof defaultBrandConfig, slot: BrandA
 }
 
 function validateImageAsset(src: string) {
-  return new Promise<boolean>((resolve) => {
+  return new Promise<AssetValidationState['meta'] | null>((resolve) => {
     const image = new Image();
-    image.onload = () => resolve(true);
-    image.onerror = () => resolve(false);
+    image.onload = () => {
+      const { recommendation, compatibility } = getAssetRecommendation('auth', image.naturalWidth, image.naturalHeight);
+      resolve({
+        width: image.naturalWidth,
+        height: image.naturalHeight,
+        aspectRatio: image.naturalWidth / Math.max(image.naturalHeight, 1),
+        recommendation,
+        compatibility,
+      });
+    };
+    image.onerror = () => resolve(null);
     image.src = src;
   });
 }
