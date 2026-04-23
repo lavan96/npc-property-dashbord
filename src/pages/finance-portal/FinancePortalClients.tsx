@@ -17,7 +17,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Search, Users, Loader2, ExternalLink, X, ArrowUpDown, UserCheck, Clock, SortAsc,
-  ChevronRight, Shield, UserX, UserPlus, Upload, FileText, Sparkles,
+  ChevronRight, Shield, UserX, UserPlus, Upload, FileText, Sparkles, Download,
 } from 'lucide-react';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -28,6 +28,7 @@ import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { parseVownetPdf } from '@/utils/vownetPdfParser';
 import type { ParsedClient } from '@/utils/excelClientParser';
+import { GHLExportDialog } from '@/components/shared/GHLExportDialog';
 
 type SortKey = 'name' | 'date' | 'status';
 type IntakeMode = 'manual' | 'pdf';
@@ -72,6 +73,16 @@ function getAvatarColor(name?: string): string {
   const hash = name.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
   const hues = [25, 45, 200, 260, 330, 150, 10, 280];
   return `hsl(${hues[hash % hues.length]}, 55%, 50%)`;
+}
+
+function splitFullName(name?: string | null) {
+  const parts = (name || '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return { firstName: '', lastName: '' };
+  if (parts.length === 1) return { firstName: parts[0], lastName: '' };
+  return {
+    firstName: parts[0],
+    lastName: parts.slice(1).join(' '),
+  };
 }
 
 function mapParsedClientToForm(parsed: ParsedClient): NewClientFormData {
@@ -432,6 +443,7 @@ export default function FinancePortalClients() {
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [handoffBusyId, setHandoffBusyId] = useState<string | null>(null);
   const [createClientOpen, setCreateClientOpen] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const [searchFocused, setSearchFocused] = useState(false);
 
@@ -492,6 +504,51 @@ export default function FinancePortalClients() {
     return list;
   }, [records, search, sortKey, statusFilter]);
 
+  const ghlExportFields = useMemo(
+    () => [
+      { key: 'first_name', label: 'First Name' },
+      { key: 'last_name', label: 'Last Name' },
+      { key: 'email', label: 'Email' },
+      { key: 'phone', label: 'Phone' },
+      { key: 'tags', label: 'Tags' },
+      { key: 'source', label: 'Source' },
+      { key: 'secondary_contact', label: 'Secondary Contact' },
+      { key: 'status', label: 'Status' },
+      { key: 'assigned_at', label: 'Assigned At' },
+      { key: 'permissions', label: 'Permissions' },
+      { key: 'client_id', label: 'Client ID' },
+      { key: 'ghl_contact_id', label: 'GHL Contact ID' },
+    ],
+    []
+  );
+
+  const ghlExportRecords = useMemo(
+    () =>
+      filtered.map((record: any) => {
+        const { firstName, lastName } = splitFullName(record.client?.primary_contact_name);
+        const permissionSummary = Object.entries(record.permissions || {})
+          .filter(([, permission]: any) => permission?.view)
+          .map(([table, permission]: any) => `${table}:${permission.edit ? 'edit' : 'view'}`)
+          .join(', ');
+
+        return {
+          first_name: firstName,
+          last_name: lastName,
+          email: record.client?.primary_contact_email || '',
+          phone: record.client?.primary_contact_phone || '',
+          tags: 'Finance Portal',
+          source: 'Finance Portal Export',
+          secondary_contact: record.client?.secondary_contact_name || '',
+          status: record.client?.status || 'active',
+          assigned_at: record.assigned_at || '',
+          permissions: permissionSummary,
+          client_id: record.client_id || '',
+          ghl_contact_id: record.client?.ghl_contact_id || '',
+        };
+      }),
+    [filtered]
+  );
+
   const openClientPortal = async (clientId: string, readonly = true) => {
     setHandoffBusyId(clientId);
     try {
@@ -540,6 +597,17 @@ export default function FinancePortalClients() {
   return (
     <>
       <CreateClientDialog open={createClientOpen} onOpenChange={setCreateClientOpen} onCreated={handleClientCreated} />
+      <GHLExportDialog
+        open={showExportDialog}
+        onOpenChange={setShowExportDialog}
+        title="Export finance portal clients for GHL"
+        description="Export the current finance-portal client view with field mapping for GoHighLevel CSV or XLSX import."
+        fields={ghlExportFields}
+        records={ghlExportRecords}
+        fileBaseName={`finance-portal-clients-ghl-export-${new Date().toISOString().split('T')[0]}`}
+        sheetName="Finance Portal Clients"
+        onExported={(format, count) => toast.success(`Exported ${count} finance clients to ${format.toUpperCase()}`)}
+      />
 
       <div className="p-4 md:p-6 space-y-5 max-w-6xl mx-auto">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -557,10 +625,16 @@ export default function FinancePortalClients() {
             </p>
           </div>
 
-          <Button onClick={() => setCreateClientOpen(true)} className="gap-2 self-start">
-            <UserPlus className="h-4 w-4" />
-            Add client
-          </Button>
+          <div className="flex flex-wrap gap-2 self-start">
+            <Button variant="outline" onClick={() => setShowExportDialog(true)} className="gap-2">
+              <Download className="h-4 w-4" />
+              Export
+            </Button>
+            <Button onClick={() => setCreateClientOpen(true)} className="gap-2">
+              <UserPlus className="h-4 w-4" />
+              Add client
+            </Button>
+          </div>
         </div>
 
         <div className="flex flex-col gap-3">
