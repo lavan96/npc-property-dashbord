@@ -22,6 +22,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { GHLExportDialog } from '@/components/shared/GHLExportDialog';
 import { format } from 'date-fns';
 import { 
   Search, 
@@ -158,6 +159,7 @@ export default function ClientTracker() {
   // Event details modal state
   const [selectedEvent, setSelectedEvent] = useState<GHLEvent | null>(null);
   const [eventModalOpen, setEventModalOpen] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
   
   // Auto-sync state
   const [autoSyncEnabled, setAutoSyncEnabled] = useState(true);
@@ -693,65 +695,46 @@ export default function ClientTracker() {
     return `${diffHours}h ago`;
   };
 
-  const handleExportTrackerCSV = () => {
-    const escapeCSV = (value: string) => `"${value.replace(/"/g, '""')}"`;
-    const headers = [
-      'First Name',
-      'Last Name',
-      'Email',
-      'Phone',
-      'Tags',
-      'Source',
-      'Pipeline',
-      'Stage',
-      'Opportunity Status',
-      'Follow Up Date',
-      'Borrowing Capacity',
-      'Proposed Rental Income',
-      'Equity Release',
-      'Pipeline Notes',
-      'GHL Contact ID',
-      'GHL Opportunity ID',
-    ];
-
-    const rows = filteredClients.map((client) => {
-      const stageInfo = getStageInfo(client.current_stage_id, client.pipeline_status);
-      const pipeline = pipelines.find((item) => item.id === client.current_pipeline_id);
-
-      return [
-        client.primary_first_name || '',
-        client.primary_surname || '',
-        client.primary_email || '',
-        client.primary_mobile || '',
-        'Tracker Export',
-        'Client Tracker',
-        pipeline?.name || '',
-        stageInfo.name || '',
-        client.opportunity_status || '',
-        client.follow_up_date ? format(new Date(client.follow_up_date), 'yyyy-MM-dd') : '',
-        client.borrowing_capacity?.toString() || '',
-        client.proposed_rental_income?.toString() || '',
-        client.equity_release?.toString() || '',
-        client.pipeline_notes || '',
-        client.ghl_contact_id || '',
-        client.ghl_opportunity_id || '',
-      ];
-    });
-
-    const csvContent = [headers, ...rows]
-      .map((row) => row.map((cell) => escapeCSV(cell)).join(','))
-      .join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `client-tracker-ghl-export-${format(new Date(), 'yyyy-MM-dd')}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
-
-    toast.success(`Exported ${filteredClients.length} tracker records to GHL-ready CSV`);
-  };
+  const ghlExportFields = [
+    { key: 'first_name', label: 'First Name' },
+    { key: 'last_name', label: 'Last Name' },
+    { key: 'email', label: 'Email' },
+    { key: 'phone', label: 'Phone' },
+    { key: 'tags', label: 'Tags' },
+    { key: 'source', label: 'Source' },
+    { key: 'pipeline', label: 'Pipeline' },
+    { key: 'stage', label: 'Stage' },
+    { key: 'opportunity_status', label: 'Opportunity Status' },
+    { key: 'follow_up_date', label: 'Follow Up Date' },
+    { key: 'borrowing_capacity', label: 'Borrowing Capacity' },
+    { key: 'proposed_rental_income', label: 'Proposed Rental Income' },
+    { key: 'equity_release', label: 'Equity Release' },
+    { key: 'pipeline_notes', label: 'Pipeline Notes' },
+    { key: 'ghl_contact_id', label: 'GHL Contact ID' },
+    { key: 'ghl_opportunity_id', label: 'GHL Opportunity ID' },
+  ];
+  const ghlExportRecords = filteredClients.map((client) => {
+    const stageInfo = getStageInfo(client.current_stage_id, client.pipeline_status);
+    const pipeline = pipelines.find((item) => item.id === client.current_pipeline_id);
+    return {
+      first_name: client.primary_first_name || '',
+      last_name: client.primary_surname || '',
+      email: client.primary_email || '',
+      phone: client.primary_mobile || '',
+      tags: 'Tracker Export',
+      source: 'Client Tracker',
+      pipeline: pipeline?.name || '',
+      stage: stageInfo.name || '',
+      opportunity_status: client.opportunity_status || '',
+      follow_up_date: client.follow_up_date ? format(new Date(client.follow_up_date), 'yyyy-MM-dd') : '',
+      borrowing_capacity: client.borrowing_capacity?.toString() || '',
+      proposed_rental_income: client.proposed_rental_income?.toString() || '',
+      equity_release: client.equity_release?.toString() || '',
+      pipeline_notes: client.pipeline_notes || '',
+      ghl_contact_id: client.ghl_contact_id || '',
+      ghl_opportunity_id: client.ghl_opportunity_id || '',
+    };
+  });
 
   // Helper for event status colors
   const getEventStatusColor = (status: string, appointmentStatus?: string) => {
@@ -910,9 +893,9 @@ export default function ClientTracker() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={handleExportTrackerCSV}>
+                <DropdownMenuItem onClick={() => setShowExportDialog(true)}>
                   <FileText className="h-4 w-4 mr-2" />
-                  Export current view as GHL CSV
+                  Export current view
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -1203,6 +1186,18 @@ export default function ClientTracker() {
           </CardContent>
         </Card>
       )}
+
+      <GHLExportDialog
+        open={showExportDialog}
+        onOpenChange={setShowExportDialog}
+        title="Export client tracker for GHL"
+        description="Map the current tracker view into GHL-ready headers and export as CSV or XLSX."
+        fields={ghlExportFields}
+        records={ghlExportRecords}
+        fileBaseName={`client-tracker-ghl-export-${format(new Date(), 'yyyy-MM-dd')}`}
+        sheetName="Client Tracker"
+        onExported={(exportFormat, count) => toast.success(`Exported ${count} tracker records to ${exportFormat.toUpperCase()}`)}
+      />
 
       {/* Tabs for different views */}
       {(pipelines.length > 0 || clients.length > 0) && (

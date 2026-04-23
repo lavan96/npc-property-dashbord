@@ -40,6 +40,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { GHLExportDialog } from '@/components/shared/GHLExportDialog';
 import { format, isToday, isYesterday } from 'date-fns';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -137,6 +138,7 @@ export default function Conversations() {
   const [selectedMailbox, setSelectedMailbox] = useState<string>('admin');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
   
   // Resizable panel state
   const [convPanelWidth, setConvPanelWidth] = useState(360);
@@ -385,55 +387,37 @@ export default function Conversations() {
     return format(d, 'dd/MM/yy');
   };
 
-  const handleExportConversationsCSV = () => {
-    const escapeCSV = (value: string) => `"${value.replace(/"/g, '""')}"`;
-    const headers = [
-      'First Name',
-      'Last Name',
-      'Email',
-      'Phone',
-      'Tags',
-      'Source',
-      'Contact ID',
-      'Conversation ID',
-      'Channel',
-      'Last Message',
-      'Last Message Date',
-      'Unread Count',
-    ];
-
-    const rows = filteredConversations.map((conversation) => {
-      const [firstName = '', ...rest] = (conversation.client_name || '').split(' ');
-      return [
-        firstName,
-        rest.join(' '),
-        conversation.client_email || '',
-        '',
-        'Conversation Export',
-        'GHL Conversations',
-        conversation.ghl_contact_id || '',
-        conversation.ghl_conversation_id || '',
-        normalizeChannel(conversation.channel_type),
-        conversation.last_message_body || '',
-        conversation.last_message_date ? format(new Date(conversation.last_message_date), 'yyyy-MM-dd HH:mm:ss') : '',
-        String(conversation.unread_count || 0),
-      ];
-    });
-
-    const csvContent = [headers, ...rows]
-      .map((row) => row.map((cell) => escapeCSV(cell)).join(','))
-      .join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `ghl-conversations-export-${format(new Date(), 'yyyy-MM-dd')}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
-
-    toast.success(`Exported ${filteredConversations.length} conversations to GHL-ready CSV`);
-  };
+  const ghlExportFields = [
+    { key: 'first_name', label: 'First Name' },
+    { key: 'last_name', label: 'Last Name' },
+    { key: 'email', label: 'Email' },
+    { key: 'phone', label: 'Phone' },
+    { key: 'tags', label: 'Tags' },
+    { key: 'source', label: 'Source' },
+    { key: 'contact_id', label: 'Contact ID' },
+    { key: 'conversation_id', label: 'Conversation ID' },
+    { key: 'channel', label: 'Channel' },
+    { key: 'last_message', label: 'Last Message' },
+    { key: 'last_message_date', label: 'Last Message Date' },
+    { key: 'unread_count', label: 'Unread Count' },
+  ];
+  const ghlExportRecords = filteredConversations.map((conversation) => {
+    const [firstName = '', ...rest] = (conversation.client_name || '').split(' ');
+    return {
+      first_name: firstName,
+      last_name: rest.join(' '),
+      email: conversation.client_email || '',
+      phone: '',
+      tags: 'Conversation Export',
+      source: 'GHL Conversations',
+      contact_id: conversation.ghl_contact_id || '',
+      conversation_id: conversation.ghl_conversation_id || '',
+      channel: normalizeChannel(conversation.channel_type),
+      last_message: conversation.last_message_body || '',
+      last_message_date: conversation.last_message_date ? format(new Date(conversation.last_message_date), 'yyyy-MM-dd HH:mm:ss') : '',
+      unread_count: String(conversation.unread_count || 0),
+    };
+  });
 
   const handleSelectConversation = async (conv: ConversationRow) => {
     setSelectedId(conv.id);
@@ -509,8 +493,8 @@ export default function Conversations() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={handleExportConversationsCSV}>
-                Export current view as GHL CSV
+              <DropdownMenuItem onClick={() => setShowExportDialog(true)}>
+                Export current view
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -525,6 +509,18 @@ export default function Conversations() {
           </Button>
         </div>
       </div>
+
+      <GHLExportDialog
+        open={showExportDialog}
+        onOpenChange={setShowExportDialog}
+        title="Export conversations for GHL"
+        description="Map the conversation list into GHL-compatible headers and export as CSV or XLSX."
+        fields={ghlExportFields}
+        records={ghlExportRecords}
+        fileBaseName={`ghl-conversations-export-${format(new Date(), 'yyyy-MM-dd')}`}
+        sheetName="Conversations"
+        onExported={(exportFormat, count) => toast.success(`Exported ${count} conversations to ${exportFormat.toUpperCase()}`)}
+      />
 
       {/* Main content area */}
       <div className="flex flex-1 min-h-0"

@@ -15,6 +15,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { GHLExportDialog } from '@/components/shared/GHLExportDialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -132,6 +133,7 @@ export default function Calendar() {
   const [viewTransition, setViewTransition] = useState<'enter' | 'exit' | null>(null);
   const [selectedEventIds, setSelectedEventIds] = useState<Set<string>>(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
   const { toast } = useToast();
 
   // Keyboard navigation hook
@@ -427,58 +429,41 @@ export default function Calendar() {
     return filtered;
   }, [events, selectedCalendarId, searchQuery, outlookVisible, outlookEvents]);
 
-  const handleExportCalendarCSV = useCallback(() => {
-    const escapeCSV = (value: string) => `"${value.replace(/"/g, '""')}"`;
-    const headers = [
-      'First Name',
-      'Last Name',
-      'Email',
-      'Phone',
-      'Tags',
-      'Source',
-      'Appointment ID',
-      'Appointment Title',
-      'Calendar',
-      'Status',
-      'Start Date',
-      'End Date',
-      'Notes',
-      'Address',
-      'Contact ID',
-    ];
+  const ghlExportFields = [
+    { key: 'first_name', label: 'First Name' },
+    { key: 'last_name', label: 'Last Name' },
+    { key: 'email', label: 'Email' },
+    { key: 'phone', label: 'Phone' },
+    { key: 'tags', label: 'Tags' },
+    { key: 'source', label: 'Source' },
+    { key: 'appointment_id', label: 'Appointment ID' },
+    { key: 'appointment_title', label: 'Appointment Title' },
+    { key: 'calendar', label: 'Calendar' },
+    { key: 'status', label: 'Status' },
+    { key: 'start_date', label: 'Start Date' },
+    { key: 'end_date', label: 'End Date' },
+    { key: 'notes', label: 'Notes' },
+    { key: 'address', label: 'Address' },
+    { key: 'contact_id', label: 'Contact ID' },
+  ];
 
-    const rows = filteredEvents.map((event) => [
-      '',
-      '',
-      '',
-      '',
-      'Appointment Export',
-      'GHL Calendar',
-      event.id || '',
-      event.title || '',
-      event.calendarName || '',
-      event.appointmentStatus || event.status || '',
-      safeFormatISO(event.startTime, 'yyyy-MM-dd HH:mm:ss'),
-      safeFormatISO(event.endTime, 'yyyy-MM-dd HH:mm:ss'),
-      event.notes || '',
-      event.address || '',
-      event.contactId || '',
-    ]);
-
-    const csvContent = [headers, ...rows]
-      .map((row) => row.map((cell) => escapeCSV(cell)).join(','))
-      .join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `ghl-calendar-export-${format(new Date(), 'yyyy-MM-dd')}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
-
-    toast({ title: 'Exported', description: `Saved ${filteredEvents.length} calendar items as GHL-ready CSV` });
-  }, [filteredEvents, toast]);
+  const ghlExportRecords = filteredEvents.map((event) => ({
+    first_name: '',
+    last_name: '',
+    email: '',
+    phone: '',
+    tags: 'Appointment Export',
+    source: 'GHL Calendar',
+    appointment_id: event.id || '',
+    appointment_title: event.title || '',
+    calendar: event.calendarName || '',
+    status: event.appointmentStatus || event.status || '',
+    start_date: safeFormatISO(event.startTime, 'yyyy-MM-dd HH:mm:ss'),
+    end_date: safeFormatISO(event.endTime, 'yyyy-MM-dd HH:mm:ss'),
+    notes: event.notes || '',
+    address: event.address || '',
+    contact_id: event.contactId || '',
+  }));
 
   const selectedDateEvents = useMemo(() => {
     if (!selectedDate) return [];
@@ -676,6 +661,18 @@ export default function Calendar() {
 
   return (
     <div className="space-y-6">
+      <GHLExportDialog
+        open={showExportDialog}
+        onOpenChange={setShowExportDialog}
+        title="Export calendar for GHL"
+        description="Map appointment fields to GHL import headers and export the current calendar view as CSV or XLSX."
+        fields={ghlExportFields}
+        records={ghlExportRecords}
+        fileBaseName={`ghl-calendar-export-${format(new Date(), 'yyyy-MM-dd')}`}
+        sheetName="Calendar Export"
+        onExported={(exportFormat, count) => toast({ title: 'Exported', description: `Saved ${count} calendar items as ${exportFormat.toUpperCase()}` })}
+      />
+
       {/* Event Details Modal with Edit/Delete */}
       <EventDetailsModal 
         event={selectedEvent}
@@ -774,8 +771,8 @@ export default function Calendar() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={handleExportCalendarCSV}>
-                  Export current view as GHL CSV
+                <DropdownMenuItem onClick={() => setShowExportDialog(true)}>
+                  Export current view
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
