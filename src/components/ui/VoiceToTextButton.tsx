@@ -177,7 +177,7 @@ export function VoiceToTextButton({ onTranscript, disabled, size = 'default', cl
           </span>
         )}
         {state === 'paused' && (
-          <span className="flex items-center gap-1 text-xs text-amber-600 font-medium">
+          <span className="flex items-center gap-1 text-xs text-warning font-medium">
             <Pause className="h-2 w-2" />
             {formatTime(elapsed)}
           </span>

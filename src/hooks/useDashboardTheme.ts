@@ -4,23 +4,25 @@ import { useWhiteLabel } from '@/contexts/WhiteLabelContext';
 export type DashboardTheme = 'light' | 'dark' | 'system';
 
 export function useDashboardTheme() {
-  const { theme, isDark, setTheme } = useWhiteLabel();
+  const { themeMode, isDark, setThemeMode } = useWhiteLabel();
 
   const cycleTheme = useMemo(
     () => () => {
-      setTheme((current) => {
+      setThemeMode((current) => {
         if (current === 'dark') return 'light';
         if (current === 'light') return 'system';
         return 'dark';
       });
     },
-    [setTheme]
+    [setThemeMode]
   );
 
   return {
-    theme,
+    theme: themeMode,
+    themeMode,
     isDark,
-    setTheme,
+    setTheme: setThemeMode,
+    setThemeMode,
     cycleTheme,
   };
 }

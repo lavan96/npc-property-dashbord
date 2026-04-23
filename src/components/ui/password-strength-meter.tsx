@@ -1,4 +1,4 @@
-import { validatePassword, getStrengthBgColor } from '@/utils/passwordValidation';
+import { validatePassword, getStrengthBgColor, getStrengthColor } from '@/utils/passwordValidation';
 import { cn } from '@/lib/utils';
 
 interface PasswordStrengthMeterProps {
@@ -22,10 +22,7 @@ export function PasswordStrengthMeter({ password, className }: PasswordStrengthM
       </div>
       <p className={cn(
         "text-xs capitalize",
-        result.strength === 'weak' && "text-red-500",
-        result.strength === 'fair' && "text-yellow-500", 
-        result.strength === 'good' && "text-blue-500",
-        result.strength === 'strong' && "text-green-500"
+        getStrengthColor(result.strength)
       )}>
         Password strength: {result.strength}
       </p>

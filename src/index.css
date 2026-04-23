@@ -50,6 +50,9 @@ Clean, modern admin dashboard with confidence-based color coding
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
     --destructive-light: 0 93% 97%;
+    --info: 200 98% 39%;
+    --info-foreground: 0 0% 100%;
+    --info-light: 200 100% 96%;
 
     /* Chart colors - 10 distinct, high-contrast palette */
     --chart-1: 43 74% 49%;
@@ -135,6 +138,9 @@ Clean, modern admin dashboard with confidence-based color coding
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
     --destructive-light: 0 93% 12%;
+    --info: 200 98% 59%;
+    --info-foreground: 0 0% 5%;
+    --info-light: 200 80% 14%;
 
     --border: 0 0% 18%;
     --input: 0 0% 18%;

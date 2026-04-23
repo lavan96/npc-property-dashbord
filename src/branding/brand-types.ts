@@ -42,8 +42,10 @@ export interface BrandContextValue {
   updateSettings: (newSettings: Partial<WhiteLabelSettings>) => void;
   isLoading: boolean;
   currentTheme: 'light' | 'dark';
+  themeMode: ThemeMode;
   theme: ThemeMode;
   isDark: boolean;
+  setThemeMode: Dispatch<SetStateAction<ThemeMode>>;
   setTheme: Dispatch<SetStateAction<ThemeMode>>;
   resolvedTokens: ResolvedBrandTokens;
 }

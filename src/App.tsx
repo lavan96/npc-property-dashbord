@@ -5,7 +5,6 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation, useNavigate } from "react-router-dom";
-import { ThemeProvider } from "next-themes";
 import { SearchProvider } from "@/contexts/SearchContext";
 import { NotificationsProvider } from "@/contexts/NotificationsContext";
 import { ComparisonProvider } from "@/contexts/ComparisonContext";
@@ -141,7 +140,6 @@ const PathNormalizer = () => {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <TooltipProvider>
         <BrandProvider>
           <AuthProvider>
@@ -306,7 +304,6 @@ const App = () => (
           </AuthProvider>
         </BrandProvider>
       </TooltipProvider>
-    </ThemeProvider>
   </QueryClientProvider>
 );
 
