@@ -28,6 +28,36 @@ export function BrandLogo({ slot, alt, className, fallbackClassName }: BrandLogo
   );
 }
 
+interface BrandMarkProps {
+  slot?: Extract<BrandAssetSlot, 'sidebar-icon' | 'favicon'>;
+  alt?: string;
+  className?: string;
+  fallbackClassName?: string;
+}
+
+export function BrandMark({
+  slot = 'sidebar-icon',
+  alt,
+  className = 'h-10 w-10 object-contain',
+  fallbackClassName = 'h-10 w-10',
+}: BrandMarkProps) {
+  return <BrandLogo slot={slot} alt={alt} className={className} fallbackClassName={fallbackClassName} />;
+}
+
+interface BrandFaviconProps {
+  alt?: string;
+  className?: string;
+  fallbackClassName?: string;
+}
+
+export function BrandFavicon({
+  alt,
+  className = 'h-8 w-8 rounded-lg object-contain',
+  fallbackClassName = 'h-8 w-8 rounded-lg',
+}: BrandFaviconProps) {
+  return <BrandLogo slot="favicon" alt={alt} className={className} fallbackClassName={fallbackClassName} />;
+}
+
 interface BrandLockupProps {
   slot?: Extract<BrandAssetSlot, 'auth' | 'sidebar' | 'sidebar-icon'>;
   meta?: string;
