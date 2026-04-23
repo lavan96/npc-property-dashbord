@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import type { Json } from '@/integrations/supabase/types';
 import {
   BRAND_THEME_STORAGE_KEY,
   defaultBrandConfig,
@@ -223,8 +224,8 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
               email_signature_website: updated.emailSignature.website,
               email_signature_address: updated.emailSignature.address,
               email_signature_disclaimer: updated.emailSignature.disclaimer,
-              theme_config: structured.themeConfig,
-              logo_config: structured.logoConfig,
+              theme_config: structured.themeConfig as unknown as Json,
+              logo_config: structured.logoConfig as unknown as Json,
               theme_version: structured.themeVersion,
             })
             .eq('id', updated.id || '');
