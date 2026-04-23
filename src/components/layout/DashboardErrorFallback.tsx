@@ -4,12 +4,13 @@ import { Card, CardContent } from '@/components/ui/card';
 
 export function DashboardErrorFallback({ error }: { error?: Error }) {
   return (
-    <Card className="client-portal-soft-panel mx-4 overflow-hidden border-primary/10 md:mx-6">
+    <Card className="dashboard-empty-state mx-4 border-0 md:mx-6">
       <CardContent className="p-6 md:p-8">
-        <div className="flex flex-col items-center justify-center py-6 text-center">
-          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-destructive/20 bg-destructive/10 text-destructive">
+        <div className="flex flex-col items-center justify-center py-4 text-center">
+          <div className="dashboard-empty-icon mb-1 border-destructive/20 bg-destructive/10 text-destructive">
             <AlertTriangle className="h-7 w-7" />
           </div>
+          <div className="dashboard-eyebrow text-destructive">Attention required</div>
           <h3 className="text-lg font-semibold text-foreground">Something went wrong</h3>
           <p className="mt-2 max-w-lg text-sm text-muted-foreground">
             This page encountered an error. Please refresh or switch to another section.
