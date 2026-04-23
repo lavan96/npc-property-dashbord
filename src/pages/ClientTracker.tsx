@@ -898,6 +898,20 @@ export default function ClientTracker() {
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
             </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Download className="h-4 w-4 mr-2" />
+                  Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleExportTrackerCSV}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Export current view as GHL CSV
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         )}
       </div>
