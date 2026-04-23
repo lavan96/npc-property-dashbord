@@ -122,10 +122,10 @@ export function DashboardSidebar() {
     : settings.sidebarLogo;
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-border bg-card">
+    <Sidebar collapsible="icon" className="dashboard-sidebar-surface border-r-0">
       <SidebarContent>
         {/* Brand */}
-        <div className={`border-b border-border ${isCollapsed ? 'p-3' : 'p-6'}`}>
+        <div className={`border-b border-border/60 ${isCollapsed ? 'p-3' : 'p-6'}`}>
           <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
             {currentLogo ? (
               <img 
@@ -139,7 +139,7 @@ export function DashboardSidebar() {
             {!isCollapsed && (
               <div className="flex flex-col min-w-0">
                 <span className="font-semibold text-foreground truncate">{settings.companyName}</span>
-                <span className="text-xs text-muted-foreground">Intake Dashboard</span>
+                <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Intake Dashboard</span>
               </div>
             )}
           </div>
