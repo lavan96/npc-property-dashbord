@@ -350,6 +350,112 @@ Clean, modern admin dashboard with confidence-based color coding
     @apply min-w-0;
   }
 
+  .dashboard-section {
+    @apply relative flex flex-col gap-3 md:gap-4;
+  }
+
+  .dashboard-section-header {
+    @apply flex flex-col gap-2 md:flex-row md:items-start md:justify-between;
+  }
+
+  .dashboard-section-heading {
+    @apply flex min-w-0 flex-col gap-1;
+  }
+
+  .dashboard-section-title {
+    @apply text-lg font-semibold tracking-tight text-foreground md:text-xl;
+  }
+
+  .dashboard-section-description {
+    @apply max-w-3xl text-sm text-muted-foreground;
+  }
+
+  .dashboard-panel {
+    @apply dashboard-surface-panel-strong rounded-2xl;
+  }
+
+  .dashboard-panel-muted {
+    @apply dashboard-surface-panel rounded-2xl;
+    background-color: hsl(var(--dashboard-surface-muted) / 0.7);
+  }
+
+  .dashboard-toolbar {
+    @apply dashboard-panel flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between md:px-5;
+  }
+
+  .dashboard-eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.18em] text-primary;
+  }
+
+  .dashboard-kpi-card {
+    @apply dashboard-panel relative overflow-hidden;
+    box-shadow: 0 22px 44px -30px hsl(var(--primary) / 0.32);
+  }
+
+  .dashboard-kpi-card::after {
+    content: "";
+    @apply pointer-events-none absolute inset-x-0 top-0 h-20;
+    background: linear-gradient(180deg, hsl(var(--dashboard-primary-soft) / 0.55), transparent 90%);
+  }
+
+  .dashboard-kpi-title {
+    @apply text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground;
+  }
+
+  .dashboard-kpi-value {
+    @apply text-2xl font-semibold tracking-tight text-foreground md:text-[1.75rem];
+  }
+
+  .dashboard-trend-chip {
+    @apply inline-flex w-fit items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold;
+    border-color: hsl(var(--dashboard-border-soft) / 0.8);
+    background-color: hsl(var(--dashboard-surface-muted) / 0.9);
+  }
+
+  .dashboard-trend-chip-positive {
+    border-color: hsl(var(--success) / 0.24);
+    background-color: hsl(var(--success-light) / 0.68);
+    color: hsl(var(--success));
+  }
+
+  .dashboard-trend-chip-negative {
+    border-color: hsl(var(--destructive) / 0.24);
+    background-color: hsl(var(--destructive-light) / 0.68);
+    color: hsl(var(--destructive));
+  }
+
+  .dashboard-empty-state {
+    @apply dashboard-panel-muted flex flex-col items-center justify-center gap-4 px-6 py-10 text-center md:px-10 md:py-12;
+  }
+
+  .dashboard-empty-icon {
+    @apply flex h-14 w-14 items-center justify-center rounded-2xl border;
+    border-color: hsl(var(--dashboard-border-strong) / 0.64);
+    background: linear-gradient(180deg, hsl(var(--dashboard-primary-soft) / 0.9), hsl(var(--dashboard-surface-elevated) / 0.92));
+    color: hsl(var(--primary));
+  }
+
+  .dashboard-icon-button {
+    @apply dashboard-surface-control rounded-xl transition-transform duration-200 hover:scale-[1.03];
+  }
+
+  .dashboard-input-control {
+    @apply dashboard-surface-control rounded-xl;
+  }
+
+  .dashboard-brand-lockup {
+    @apply flex min-w-0 items-center gap-3;
+  }
+
+  .dashboard-brand-meta {
+    @apply flex min-w-0 flex-col;
+  }
+
+  .dashboard-mobile-search-overlay {
+    background-color: hsl(var(--background) / 0.94);
+    backdrop-filter: blur(20px);
+  }
+
   .dashboard-content > * {
     @apply relative z-10;
   }
