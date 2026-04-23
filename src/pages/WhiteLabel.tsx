@@ -531,21 +531,42 @@ export default function WhiteLabel() {
     favicon: { status: 'idle', detail: 'Waiting for validation.', src: null },
   });
   const [showLeavePrompt, setShowLeavePrompt] = useState(false);
+  const [showResetPrompt, setShowResetPrompt] = useState(false);
+  const [lastDraftSavedAt, setLastDraftSavedAt] = useState<string | null>(null);
   const pendingNavigation = useRef<{ proceed: () => void; reset: () => void } | null>(null);
+  const draftHistoryRef = useRef<WhiteLabelSettings[]>([]);
+  const isApplyingHistoryRef = useRef(false);
 
   useEffect(() => {
+    const persistedDraft = loadPersistedDraft();
+    if (persistedDraft) {
+      setDraftSettings(persistedDraft.settings);
+      setLastDraftSavedAt(persistedDraft.savedAt);
+      draftHistoryRef.current = [];
+      return;
+    }
+
     setDraftSettings(settings);
+    setLastDraftSavedAt(null);
+    draftHistoryRef.current = [];
   }, [settings]);
 
   const updateDraftSettings = useCallback((newSettings: Partial<typeof settings>) => {
-    setDraftSettings((prev) => ({
-      ...prev,
-      ...newSettings,
-      emailSignature: {
-        ...prev.emailSignature,
-        ...(newSettings.emailSignature || {}),
-      },
-    }));
+    setDraftSettings((prev) => {
+      if (!isApplyingHistoryRef.current) {
+        draftHistoryRef.current = [...draftHistoryRef.current, prev].slice(-50);
+      }
+
+      return {
+        ...prev,
+        ...newSettings,
+        emailSignature: {
+          ...prev.emailSignature,
+          ...(newSettings.emailSignature || {}),
+        },
+      };
+    });
+    setLastDraftSavedAt(null);
   }, []);
 
   const hasChanges = useMemo(() => JSON.stringify(draftSettings) !== JSON.stringify(settings), [draftSettings, settings]);
@@ -641,11 +662,37 @@ export default function WhiteLabel() {
     [assetValidation]
   );
   const canSaveBranding = hasChanges && canEditWhiteLabel && !hasCriticalChecks && !hasInvalidAssets && !isValidatingAssets;
+  const canUndoLastChange = draftHistoryRef.current.length > 0;
+
+  const handleSaveDraft = useCallback(() => {
+    savePersistedDraft(draftSettings);
+    setLastDraftSavedAt(new Date().toISOString());
+    toast.success('Draft saved', { description: 'Your draft was saved locally without changing live branding.' });
+  }, [draftSettings]);
+
+  const handleUndoLastChange = useCallback(() => {
+    const previousDraft = draftHistoryRef.current.at(-1);
+    if (!previousDraft) return;
+
+    draftHistoryRef.current = draftHistoryRef.current.slice(0, -1);
+    isApplyingHistoryRef.current = true;
+    setDraftSettings(previousDraft);
+    setLastDraftSavedAt(null);
+    toast.success('Last draft change undone');
+  }, []);
 
   const handleResetDraft = useCallback(() => {
+    draftHistoryRef.current = [...draftHistoryRef.current, draftSettings].slice(-50);
     setDraftSettings(createDefaultDraft());
+    setLastDraftSavedAt(null);
     toast.success('Draft reset to brand defaults');
-  }, []);
+  }, [draftSettings]);
+
+  useEffect(() => {
+    if (isApplyingHistoryRef.current) {
+      isApplyingHistoryRef.current = false;
+    }
+  }, [draftSettings]);
 
   const handleKeepEditing = useCallback(() => {
     pendingNavigation.current?.reset();
@@ -677,6 +724,9 @@ export default function WhiteLabel() {
     }
 
     updateSettings(draftSettings);
+    clearPersistedDraft();
+    setLastDraftSavedAt(null);
+    draftHistoryRef.current = [];
     toast.success('Branding settings saved');
     logActivityDirect({
       actionType: 'whitelabel_settings_updated',
