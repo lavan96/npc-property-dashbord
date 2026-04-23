@@ -15,6 +15,7 @@ import { PasswordStrengthMeter } from '@/components/ui/password-strength-meter';
 import { TurnstileWidget } from '@/components/auth/TurnstileWidget';
 import { OtpInput } from '@/components/finance-portal/OtpInput';
 import { motion, AnimatePresence } from 'framer-motion';
+import { BrandLockup, BrandLogo } from '@/components/branding/BrandAssets';
 
 const FEATURES = [
   { icon: TrendingUp, title: 'Deal Progress', desc: 'Track every stage of your property acquisition in real-time.' },
@@ -62,9 +63,7 @@ export default function PortalAuth() {
       <div className="min-h-screen flex items-center justify-center bg-background" role="status" aria-label="Loading authentication">
         <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.3 }}>
           <div className="flex flex-col items-center gap-3">
-            <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center">
-              <Building2 className="h-6 w-6 text-primary" />
-            </div>
+            <BrandLogo slot="auth" className="h-12 max-w-[200px] object-contain" fallbackClassName="h-12 w-12" />
             <Loader2 className="h-5 w-5 animate-spin text-primary" aria-hidden="true" />
             <span className="sr-only">Loading</span>
           </div>
@@ -156,19 +155,14 @@ export default function PortalAuth() {
 
         <div className="flex-1 flex flex-col justify-between p-10 relative">
           <div>
-            {settings.authLogo ? (
-              <img src={settings.authLogo} alt="" className="h-12 max-w-[220px] object-contain" />
-            ) : (
-              <div className="flex items-center gap-3">
-                <div className="h-11 w-11 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center">
-                  <Building2 className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <div className="text-lg font-bold tracking-tight text-foreground">Client Portal</div>
-                  <div className="text-[10px] text-muted-foreground uppercase tracking-[0.2em] font-medium">Secure Access</div>
-                </div>
-              </div>
-            )}
+            <BrandLockup
+              slot="auth"
+              meta="Secure Access"
+              logoClassName="h-12 max-w-[220px] object-contain"
+              fallbackClassName="h-11 w-11 border border-primary/20"
+              companyClassName="text-lg font-bold tracking-tight"
+              metaClassName="tracking-[0.2em]"
+            />
           </div>
 
           <div className="space-y-8">

@@ -17,6 +17,7 @@ import { PasswordStrengthMeter } from '@/components/ui/password-strength-meter';
 import { TurnstileWidget } from '@/components/auth/TurnstileWidget';
 import { OtpInput } from '@/components/finance-portal/OtpInput';
 import { motion, AnimatePresence } from 'framer-motion';
+import { BrandLockup, BrandLogo } from '@/components/branding/BrandAssets';
 
 const FEATURES = [
   { icon: BarChart3, title: 'Analytics & Reports', desc: 'Investment reports, market intelligence, and portfolio analytics.' },
@@ -65,7 +66,7 @@ export default function Auth() {
         <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.3 }}>
           <div className="flex flex-col items-center gap-3">
             {settings.authLogo ? (
-              <img src={settings.authLogo} alt="" className="h-12 max-w-[200px] object-contain" />
+              <BrandLogo slot="auth" className="h-12 max-w-[200px] object-contain" fallbackClassName="h-12 w-12" />
             ) : (
               <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center">
                 <Database className="h-6 w-6 text-primary" />
@@ -188,19 +189,14 @@ export default function Auth() {
 
         <div className="flex-1 flex flex-col justify-between p-10 relative">
           <div>
-            {settings.authLogo ? (
-              <img src={settings.authLogo} alt="" className="h-12 max-w-[220px] object-contain" />
-            ) : (
-              <div className="flex items-center gap-3">
-                <div className="h-11 w-11 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center">
-                  <Database className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <div className="text-lg font-bold tracking-tight text-foreground">{settings.companyName || 'NPC Services'}</div>
-                  <div className="text-[10px] text-muted-foreground uppercase tracking-[0.2em] font-medium">Command Centre</div>
-                </div>
-              </div>
-            )}
+            <BrandLockup
+              slot="auth"
+              meta="Command Centre"
+              logoClassName="h-12 max-w-[220px] object-contain"
+              fallbackClassName="h-11 w-11 border border-primary/20"
+              companyClassName="text-lg font-bold tracking-tight"
+              metaClassName="tracking-[0.2em]"
+            />
           </div>
 
           <div className="space-y-8">
