@@ -901,6 +901,32 @@ export default function WhiteLabel() {
         </AlertDialogContent>
       </AlertDialog>
 
+      <Dialog open={showPresetDialog} onOpenChange={setShowPresetDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Save brand preset</DialogTitle>
+            <DialogDescription>
+              Store the current draft locally so operations can quickly reapply this branding combination later.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="brand-preset-name">Preset name</Label>
+              <Input
+                id="brand-preset-name"
+                value={presetName}
+                onChange={(event) => setPresetName(event.target.value)}
+                placeholder="e.g. Premium dark gold"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPresetDialog(false)}>Cancel</Button>
+            <Button onClick={handleSavePreset}>Save preset</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Card className="dashboard-panel border-primary/15">
         <CardContent className="flex flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between">
           <div>
@@ -921,6 +947,10 @@ export default function WhiteLabel() {
             <Button variant="outline" onClick={handleSaveDraft} disabled={!canEditWhiteLabel}>
               <Save className="mr-2 h-4 w-4" />
               Save draft
+            </Button>
+            <Button variant="outline" onClick={() => setShowPresetDialog(true)} disabled={!canEditWhiteLabel}>
+              <FileText className="mr-2 h-4 w-4" />
+              Save preset
             </Button>
             <Button variant="outline" onClick={() => {
               setDraftSettings(settings);
@@ -1269,6 +1299,12 @@ export default function WhiteLabel() {
                     <div>
                       <p className="text-sm font-semibold text-foreground">{BRAND_SLOT_LABELS[slot]}</p>
                       <p className="mt-1 text-sm text-muted-foreground">{validation.detail}</p>
+                      {validation.meta ? (
+                        <div className="mt-3 space-y-1 text-xs text-muted-foreground">
+                          <p>{validation.meta.width}×{validation.meta.height}px · {validation.meta.aspectRatio.toFixed(2)}:1 aspect</p>
+                          <p>{validation.meta.recommendation}</p>
+                        </div>
+                      ) : null}
                     </div>
                     <Badge variant="outline" className={isValid ? 'border-success/30 text-success' : isInvalid ? 'border-warning/30 text-warning' : ''}>
                       {validation.status === 'validating' ? 'Checking' : validation.status === 'valid' ? 'Ready' : validation.status === 'invalid' ? 'Needs asset' : 'Idle'}
@@ -1279,6 +1315,48 @@ export default function WhiteLabel() {
             })}
           </div>
           <BrandAccessibilityPanel checks={accessibilityChecks} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Impact preview</CardTitle>
+          <CardDescription>See which shared surfaces will update when this draft becomes the live brand configuration.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-3 md:grid-cols-2">
+            {impactPreview.map((item) => (
+              <div key={item.id} className="dashboard-section-band space-y-2">
+                <Badge variant="outline" className="w-fit">{item.surface}</Badge>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">{item.label}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{item.detail}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          {savedPresets.length > 0 ? (
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Saved presets</p>
+                <p className="text-sm text-muted-foreground">Apply or remove previously saved local brand combinations.</p>
+              </div>
+              <div className="grid gap-3">
+                {savedPresets.map((preset) => (
+                  <div key={preset.id} className="dashboard-section-band flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{preset.name}</p>
+                      <p className="text-xs text-muted-foreground">Saved {new Date(preset.savedAt).toLocaleString()}</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button variant="outline" size="sm" onClick={() => handleDeletePreset(preset.id)}>Remove</Button>
+                      <Button size="sm" onClick={() => handleApplyPreset(preset)}>Apply preset</Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
 
