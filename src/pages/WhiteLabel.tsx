@@ -689,7 +689,13 @@ export default function WhiteLabel() {
         </Badge>
       </div>
 
-      <AlertDialog open={showLeavePrompt} onOpenChange={setShowLeavePrompt}>
+      <AlertDialog open={showLeavePrompt} onOpenChange={(open) => {
+        if (!open) {
+          handleKeepEditing();
+          return;
+        }
+        setShowLeavePrompt(true);
+      }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Discard unsaved brand changes?</AlertDialogTitle>
