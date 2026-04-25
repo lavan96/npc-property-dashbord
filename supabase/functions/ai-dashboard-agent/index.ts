@@ -6571,7 +6571,7 @@ async function handleChat(sb: any, body: any, userId: string, username: string, 
     .eq('conversation_id', conversation_id).order('created_at', { ascending: true }).limit(60);
 
   const messages: any[] = [
-    { role: 'system', content: buildSystemPrompt((await getBrandConfig(sb)).companyName) + `\n\nCurrent user: ${username} (ID: ${userId})\nCurrent conversation_id: ${conversation_id}\nCurrent time: ${new Date().toISOString()}${prefsContext}` },
+    { role: 'system', content: buildSystemPrompt((await getBrandConfig()).companyName) + `\n\nCurrent user: ${username} (ID: ${userId})\nCurrent conversation_id: ${conversation_id}\nCurrent time: ${new Date().toISOString()}${prefsContext}` },
   ];
 
   // Build conversation messages from history
