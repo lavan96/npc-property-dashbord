@@ -191,7 +191,7 @@ export default function FinancePortalAcceptInvite() {
           </div>
           <CardTitle className="text-2xl">Set Up Your Account</CardTitle>
           <CardDescription>
-            {contactName ? `Welcome, ${contactName}!` : 'Welcome!'} Create a password to access the NPC Finance Partner Portal.
+            {contactName ? `Welcome, ${contactName}!` : 'Welcome!'} Create a password to access the {settings.companyName ? `${settings.companyName} ` : ''}Finance Partner Portal.
           </CardDescription>
           {email && (
             <p className="text-sm text-muted-foreground">
