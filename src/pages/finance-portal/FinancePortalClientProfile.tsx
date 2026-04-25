@@ -311,7 +311,7 @@ export default function FinancePortalClientProfile() {
             </div>
             <p className="font-medium text-foreground mb-1">No accessible sections</p>
             <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-              You have been assigned to this client but have no view permissions on any section. Contact your NPC manager.
+              You have been assigned to this client but have no view permissions on any section. Contact your account manager.
             </p>
           </CardContent>
         </Card>
