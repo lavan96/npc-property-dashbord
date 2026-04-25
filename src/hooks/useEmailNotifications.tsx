@@ -67,7 +67,7 @@ export function useEmailNotifications({
       try {
         const notification = new Notification(title, {
           body,
-          icon: '/images/npc-signature-logo.png',
+          icon: '/favicon.ico',
           tag: 'email-notification',
           requireInteraction: false
         });

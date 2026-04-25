@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
+import { useBrand } from '@/branding/useBrand';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -126,6 +127,7 @@ async function triggerGhlSync() {
 export default function Conversations() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { settings: brandSettings } = useBrand();
   const isMobile = useIsMobile();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -258,7 +260,7 @@ export default function Conversations() {
         if (!email) throw new Error('Client does not have an email address');
         const { data, error } = await invokeSecureFunction('send-email-reply', {
           to: email,
-          subject: subject || 'Message from NPC Services',
+          subject: subject || `Message from ${brandSettings.companyName || 'Dashboard'}`,
           body: message,
           mailboxSource: selectedMailbox,
         });

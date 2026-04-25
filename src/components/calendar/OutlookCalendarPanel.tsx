@@ -255,7 +255,7 @@ export function OutlookCalendarPanel({
             <Input
               value={emailInput}
               onChange={(e) => setEmailInput(e.target.value)}
-              placeholder="user@npcservices.com.au"
+              placeholder="user@yourcompany.com"
               className="h-8 text-xs"
             />
             <Button size="sm" className="h-8" onClick={handleSaveEmail}>

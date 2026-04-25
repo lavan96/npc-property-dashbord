@@ -256,7 +256,7 @@ export default function Auth() {
                   <Database className="h-7 w-7 text-primary" aria-hidden="true" />
                 </div>
                 <div className="text-center">
-                  <div className="text-lg font-bold tracking-tight">{settings.companyName || 'NPC Services'}</div>
+                  <div className="text-lg font-bold tracking-tight">{settings.companyName || 'Dashboard'}</div>
                   <div className="text-[10px] text-muted-foreground uppercase tracking-[0.2em] font-medium">Command Centre</div>
                 </div>
               </div>
