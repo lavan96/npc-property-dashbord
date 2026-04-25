@@ -13,15 +13,8 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const auth = await verifyAuth(req);
-    if (!auth?.userId) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const { endpoint } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const { endpoint } = body;
     if (!endpoint) {
       return new Response(JSON.stringify({ error: 'endpoint required' }), {
         status: 400,
@@ -33,6 +26,14 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
+
+    const auth = await verifyAuth(supabase, req.headers, body);
+    if (!auth?.userId) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     await supabase
       .from('push_subscriptions')
