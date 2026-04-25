@@ -355,8 +355,8 @@ Deno.serve(async (req) => {
         const passthroughCustomFields = Array.isArray(contact.customFields) ? [...contact.customFields] : [];
         if (secondaryFirst || secondaryLast) {
           passthroughCustomFields.push(
-            { key: 'secondary_first_name', field_value: smartCap(secondaryFirst) },
-            { key: 'secondary_last_name',  field_value: smartCap(secondaryLast)  },
+            { key: 'secondary_first_name', field_value: smartCapitalizeName(secondaryFirst) },
+            { key: 'secondary_last_name',  field_value: smartCapitalizeName(secondaryLast)  },
           );
         }
 
