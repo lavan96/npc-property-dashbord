@@ -976,7 +976,64 @@ function JobDetailRow({ job, onChanged }: { job: any; onChanged?: () => void }) 
             </div>
           </div>
 
-          {/* Error category breakdown */}
+          {/* Resume cursor + processing position (live) */}
+          <div className="rounded border border-primary/30 bg-primary/5 p-2 text-[11px]">
+            <div className="mb-1.5 flex items-center gap-2 font-semibold text-primary">
+              <Repeat className="h-3 w-3" />
+              Resume checkpoint
+              <span className="ml-auto font-normal text-[10px] text-muted-foreground">
+                {liveJob.status === 'processing' ? 'updating live' : 'last saved'}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 md:grid-cols-4">
+              <div>
+                <span className="text-muted-foreground">processed:</span>{' '}
+                <span className="font-mono">{liveJob.processed_items ?? 0}</span>
+                {liveJob.total_items > 0 && <span className="text-muted-foreground"> / {liveJob.total_items}</span>}
+              </div>
+              <div>
+                <span className="text-muted-foreground">succeeded:</span>{' '}
+                <span className="font-mono text-success">{liveJob.succeeded_items ?? 0}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">failed:</span>{' '}
+                <span className="font-mono text-destructive">{liveJob.failed_items ?? 0}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">dispatches:</span>{' '}
+                <span className="font-mono">{dispatchCount}</span>
+              </div>
+              <div className="col-span-2 md:col-span-2">
+                <span className="text-muted-foreground">last source id:</span>{' '}
+                <code className="rounded bg-background/60 px-1 py-0.5 text-[10px]">{lastSourceId || '—'}</code>
+              </div>
+              <div className="col-span-2 md:col-span-2">
+                <span className="text-muted-foreground">last dispatch:</span>{' '}
+                <span className="font-mono">{lastDispatchedAt ? new Date(lastDispatchedAt).toLocaleTimeString() : '—'}</span>
+              </div>
+            </div>
+            {cursorEntries.length > 0 ? (
+              <div className="mt-1.5">
+                <div className="text-muted-foreground">cursor:</div>
+                <div className="mt-0.5 flex flex-wrap gap-1.5">
+                  {cursorEntries.map(([k, v]) => (
+                    <code key={k} className="rounded bg-background/60 px-1.5 py-0.5 text-[10px]">
+                      <span className="text-muted-foreground">{k}:</span>{' '}
+                      {typeof v === 'object' ? JSON.stringify(v) : String(v)}
+                    </code>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="mt-1 text-[10px] text-muted-foreground">
+                {liveJob.status === 'completed'
+                  ? 'Cursor cleared on successful completion.'
+                  : liveJob.status === 'pending'
+                    ? 'Worker has not started yet.'
+                    : 'No cursor saved yet (worker may still be on first page).'}
+              </div>
+            )}
+          </div>
           {Object.keys(errorCategories).length > 0 && (
             <div className="rounded border border-destructive/30 bg-destructive/5 p-2 text-[11px]">
               <div className="mb-1 font-semibold text-destructive">Failures by category</div>
