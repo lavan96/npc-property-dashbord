@@ -422,13 +422,54 @@ export function detectJunkContactName(raw: string | null | undefined): string | 
   const digitsOnly = v.replace(/[^0-9]/g, '');
   const nonDigits = v.replace(/[0-9\s\-().+]/g, '');
   if (digitsOnly.length >= 6 && nonDigits.length === 0) return 'Phone number used as name';
-  // Test/placeholder rows
-  if (/^(test|testing|asdf+|qwerty|sample|demo|na|n\/a|none|null|unknown)\b/i.test(v)) {
+  // Test/placeholder rows — NOTE: "Unknown" is allowed as an explicit
+  // placeholder in the reference export (Client Management Export uses
+  // "Unknown Unknown" when a contact has phone-only) so we exclude it
+  // from the junk list. We still reject "test", "asdf", etc.
+  if (/^(test|testing|asdf+|qwerty|sample|demo|na|n\/a|none|null)\b/i.test(v)) {
     return `Placeholder name "${v.substring(0, 40)}"`;
   }
   // Repeated single character (e.g. "aaaa")
   if (v.length >= 4 && /^(.)\1+$/.test(v.replace(/\s+/g, ''))) return 'Repeated-character name';
   return null;
+}
+
+/**
+ * Normalize a phone string to E.164-ish format matching the reference
+ * export (e.g. "+61433151743"). Rules:
+ *   - Strip everything except digits and a leading `+`
+ *   - If input already starts with `+`, keep as-is after digit-strip
+ *   - If 10 digits and starts with `0` → assume Australian, prefix `+61`
+ *     and drop the leading 0 (e.g. "0412345678" → "+61412345678")
+ *   - If 11+ digits and looks international, prefix `+`
+ *   - Otherwise, return the digits with a leading `+` (best-effort)
+ *   - Empty / unparseable → empty string
+ */
+export function normalizePhoneE164(raw: string | null | undefined): string {
+  if (!raw) return '';
+  const s = String(raw).trim();
+  if (!s) return '';
+  const hadPlus = s.startsWith('+');
+  const digits = s.replace(/[^0-9]/g, '');
+  if (!digits) return '';
+  if (hadPlus) return '+' + digits;
+  // Australian local format
+  if (digits.length === 10 && digits.startsWith('0')) return '+61' + digits.slice(1);
+  // 9-digit Australian mobile/landline without leading 0
+  if (digits.length === 9 && /^[2-478]/.test(digits)) return '+61' + digits;
+  // Already includes country code
+  return '+' + digits;
+}
+
+/**
+ * Normalize an email for storage in GHL: trim + lowercase. Returns ''
+ * for empty/invalid input. Does NOT validate beyond a basic shape.
+ */
+export function normalizeEmail(raw: string | null | undefined): string {
+  if (!raw) return '';
+  const s = String(raw).trim().toLowerCase();
+  if (!s || !/.+@.+\..+/.test(s)) return '';
+  return s;
 }
 
 /**
