@@ -317,3 +317,90 @@ export async function recordIdMapping(
 export function delay(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
+
+/**
+ * Normalize a person name for fuzzy-equality comparison:
+ *   - lowercase
+ *   - collapse internal whitespace
+ *   - strip surrounding whitespace
+ *   - drop common punctuation we frequently see in GHL contact names
+ *     (commas, parentheticals, mid-name dots, smart quotes, hyphens)
+ *
+ * Two names are considered "the same person" iff their normalized forms
+ * are byte-equal. Returns null if the input is empty after normalization.
+ */
+export function normalizeContactName(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const cleaned = String(raw)
+    .toLowerCase()
+    .replace(/[\u2018\u2019\u201A\u201B\u2032\u2035`']/g, '')   // apostrophes
+    .replace(/[\u201C\u201D\u201E\u201F\u2033\u2036"]/g, '')   // double quotes
+    .replace(/[.,\-_/\\()]+/g, ' ')                              // punctuation → space
+    .replace(/\s+/g, ' ')                                         // collapse whitespace
+    .trim();
+  return cleaned.length ? cleaned : null;
+}
+
+/**
+ * Resolve a SOURCE contact name → TARGET ghl contact id using the
+ * `ghl_id_mapping.notes` column (which the contacts worker populates with
+ * the contact's full name at mirror time).
+ *
+ * Behavior (per user policy "Name only — pick most recent on duplicates"):
+ *   - Returns the most recently created mapping row whose normalized
+ *     `notes` matches the normalized lookup name.
+ *   - If multiple legacy contacts share the same normalized name, the
+ *     opportunity / note gets routed to the *latest* mirrored target
+ *     contact. Caller logs the ambiguity for audit.
+ *   - Returns { newId: null, candidates: [] } if no match exists.
+ */
+export async function resolveTargetContactByName(
+  supabase: any,
+  params: {
+    fullName: string | null | undefined;
+    sourceAccount: 'legacy' | 'new';
+    targetAccount: 'legacy' | 'new';
+  },
+): Promise<{
+  newId: string | null;
+  matchedName: string | null;
+  candidateCount: number;
+  ambiguous: boolean;
+  normalizedKey: string | null;
+}> {
+  const key = normalizeContactName(params.fullName);
+  if (!key) {
+    return { newId: null, matchedName: null, candidateCount: 0, ambiguous: false, normalizedKey: null };
+  }
+
+  // Fetch all candidate rows for this target account (we filter in JS so we
+  // don't have to push the same normalization into SQL — and so future
+  // tweaks to `normalizeContactName` are picked up automatically).
+  const { data, error } = await supabase
+    .from('ghl_id_mapping')
+    .select('new_ghl_id, notes, created_at, remapped_at')
+    .eq('resource_type', 'contact')
+    .eq('source_account_label', params.sourceAccount)
+    .eq('target_account_label', params.targetAccount)
+    .not('notes', 'is', null)
+    .order('created_at', { ascending: false });
+
+  if (error || !Array.isArray(data)) {
+    return { newId: null, matchedName: null, candidateCount: 0, ambiguous: false, normalizedKey: key };
+  }
+
+  const matches = data.filter((row: any) => normalizeContactName(row.notes) === key);
+  if (matches.length === 0) {
+    return { newId: null, matchedName: null, candidateCount: 0, ambiguous: false, normalizedKey: key };
+  }
+
+  // Already sorted DESC by created_at — first match is the latest.
+  const winner = matches[0];
+  return {
+    newId: winner.new_ghl_id,
+    matchedName: winner.notes,
+    candidateCount: matches.length,
+    ambiguous: matches.length > 1,
+    normalizedKey: key,
+  };
+}
