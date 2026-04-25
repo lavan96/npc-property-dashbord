@@ -2347,8 +2347,8 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         pdf.setFontSize(28);
         pdf.setFont('helvetica', 'bold');
         pdf.setTextColor(goldColor.r, goldColor.g, goldColor.b);
-        pdf.text(activeTemplate.companyName || 'PROPERTY', pageWidth / 2, 100, { align: 'center' });
-        pdf.text(activeTemplate.companyNameLine2 || 'CONSULTING', pageWidth / 2, 115, { align: 'center' });
+        pdf.text(templateConfig.companyName || 'PROPERTY', pageWidth / 2, 100, { align: 'center' });
+        pdf.text(templateConfig.companyNameLine2 || 'CONSULTING', pageWidth / 2, 115, { align: 'center' });
         
         pdf.setFontSize(12);
         pdf.setFont('helvetica', 'normal');
