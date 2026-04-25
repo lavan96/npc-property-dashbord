@@ -81,6 +81,38 @@ export async function finishJob(
   if (error) console.error(`finishJob failed: ${error.message}`);
 }
 
+/**
+ * Merge a partial JSON payload into migration_jobs.payload.
+ * This is used by workers to persist run-time ingestion validation
+ * diagnostics without clobbering orchestrator metadata.
+ */
+export async function mergeJobPayload(
+  supabase: any,
+  jobId: string,
+  patch: Record<string, any>,
+): Promise<void> {
+  try {
+    const { data: row, error: readErr } = await supabase
+      .from('migration_jobs')
+      .select('payload')
+      .eq('id', jobId)
+      .maybeSingle();
+    if (readErr) {
+      console.error(`mergeJobPayload read failed: ${readErr.message}`);
+      return;
+    }
+    const current = (row?.payload && typeof row.payload === 'object') ? row.payload : {};
+    const next = { ...current, ...patch };
+    const { error: writeErr } = await supabase
+      .from('migration_jobs')
+      .update({ payload: next })
+      .eq('id', jobId);
+    if (writeErr) console.error(`mergeJobPayload write failed: ${writeErr.message}`);
+  } catch (e: any) {
+    console.error(`mergeJobPayload threw: ${e?.message}`);
+  }
+}
+
 export interface RecordItemParams {
   job_id: string;
   source_id: string;
