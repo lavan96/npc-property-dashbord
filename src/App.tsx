@@ -49,6 +49,7 @@ import WhiteLabel from './pages/WhiteLabel';
 import Auth from "./pages/Auth";
 import AcceptInvite from "./pages/AcceptInvite";
 import UserManagement from "./pages/admin/UserManagement";
+import GhlMigration from "./pages/admin/GhlMigration";
 import FinancePortalAdmin from "./pages/admin/FinancePortalAdmin";
 import FinancePortalAnalytics from "./pages/admin/FinancePortalAnalytics";
 import FinancePortalBulkImport from "./pages/admin/FinancePortalBulkImport";
@@ -274,6 +275,7 @@ const App = () => (
                 <Route path="admin/activity-logs" element={<ModuleGuard moduleKey="activity_logs"><ActivityLogs /></ModuleGuard>} />
                 <Route path="admin/depreciation-comps" element={<ModuleGuard moduleKey="depreciation_comps"><DepreciationCompsAdmin /></ModuleGuard>} />
                 <Route path="integrations" element={<ModuleGuard moduleKey="integrations"><Integrations /></ModuleGuard>} />
+                <Route path="integrations/ghl-migration" element={<GhlMigration />} />
                 <Route path="cloudflare" element={<ModuleGuard moduleKey="cloudflare"><CloudflareManagement /></ModuleGuard>} />
                 <Route path="api-usage" element={<ModuleGuard moduleKey="api_usage"><ApiUsage /></ModuleGuard>} />
                 <Route path="clients" element={<ModuleGuard moduleKey="clients"><ClientManagement /></ModuleGuard>} />
