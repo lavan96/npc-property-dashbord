@@ -220,109 +220,42 @@ Deno.serve(async (req) => {
         totalSeen++;
         totalProcessed++;
 
-        const contactName = [contact.firstName, contact.lastName].filter(Boolean).join(' ') ||
-          contact.contactName || contact.email || '(no name)';
+        // ── SANITIZATION (legacy → new) ────────────────────────────────
+        // Trim + smart-capitalize first/last name and reject obvious junk
+        // (phone numbers stored as names, raw emails, "test" placeholders).
+        // We use the SANITIZED full name everywhere downstream so name-based
+        // dedupe in `ghl_id_mapping` keys off clean values.
+        const sanitized = sanitizeContactNameParts(contact.firstName, contact.lastName);
+        // Fallbacks if both parts are empty after sanitization
+        const fallbackLabel = (contact.contactName || contact.email || '').trim();
+        const contactName = sanitized.fullName || fallbackLabel || '(no name)';
+
+        // Reject junk records BEFORE writing anything to GHL or the mapping table
+        const junkReason = sanitized.junkReason
+          || (sanitized.fullName ? null : detectJunkLabel(fallbackLabel));
+        if (junkReason && !sanitized.fullName) {
+          totalSkipped++;
+          await recordItem(supabase, {
+            job_id: jobId,
+            source_id: contact.id,
+            entity_label: contactName,
+            status: 'skipped',
+            error_message: `Sanitization rejected: ${junkReason}`,
+          });
+          continue;
+        }
 
         // Check if already mirrored by source contact id
-        const { data: existing } = await supabase
-          .from('ghl_id_mapping')
-          .select('new_ghl_id')
-          .eq('resource_type', 'contact')
-          .eq('old_ghl_id', contact.id)
-          .eq('source_account_label', sourceAccount)
-          .eq('target_account_label', targetAccount)
-          .maybeSingle();
-
-        if (existing?.new_ghl_id) {
-          totalSkipped++;
-          await recordItem(supabase, {
-            job_id: jobId,
-            source_id: contact.id,
-            target_id: existing.new_ghl_id,
-            entity_label: contactName,
-            status: 'skipped',
-            error_message: 'Already mapped',
-          });
-          continue;
-        }
-
-        // NAME-BASED DEDUPE (project policy: full_name is source of truth).
-        // If a target contact with the same normalized name already exists,
-        // reuse its mapping instead of pushing a duplicate to GHL. This makes
-        // re-runs idempotent on the (source_id, source_name) → target_id key.
-        const normalizedName = normalizeContactName(contactName);
-        if (normalizedName) {
-          const nameMatch = await resolveTargetContactByName(supabase, {
-            fullName: contactName,
-            sourceAccount,
-            targetAccount,
-          });
-          if (nameMatch.newId) {
-            // Mirror this source contact to the existing target id under the
-            // same name. Records the mapping (so opportunities/notes resolve)
-            // and marks the row as 'skipped' with a clear reason.
-            await recordIdMapping(supabase, {
-              resource_type: 'contact',
-              old_ghl_id: contact.id,
-              new_ghl_id: nameMatch.newId,
-              source_account_label: sourceAccount,
-              target_account_label: targetAccount,
-              notes: contactName,
-            });
-            totalSkipped++;
-            await recordItem(supabase, {
-              job_id: jobId,
-              source_id: contact.id,
-              target_id: nameMatch.newId,
-              entity_label: contactName,
-              status: 'skipped',
-              error_message: nameMatch.ambiguous
-                ? `Reused existing target contact by name (ambiguous: ${nameMatch.candidateCount} candidates, picked latest)`
-                : 'Reused existing target contact by name',
-            });
-            continue;
-          }
-        }
-
-        // GHL /contacts/upsert REQUIRES at least one of email or phone.
-        // Skip contacts with neither — record as 'skipped' (not failed) so the
-        // job summary stays clean and we don't waste an API call we know will 400.
-        const hasEmail = !!(contact.email && String(contact.email).trim());
-        const hasPhone = !!(contact.phone && String(contact.phone).trim());
-        if (!hasEmail && !hasPhone) {
-          totalSkipped++;
-          await recordItem(supabase, {
-            job_id: jobId,
-            source_id: contact.id,
-            entity_label: contactName,
-            status: 'skipped',
-            error_message: 'No email or phone on source contact (GHL upsert requires at least one)',
-          });
-          continue;
-        }
-
-        if (dryRun) {
-          totalSucceeded++;
-          await recordItem(supabase, {
-            job_id: jobId,
-            source_id: contact.id,
-            target_id: null,
-            entity_label: contactName,
-            status: 'succeeded',
-            error_message: 'DRY RUN — would mirror',
-          });
-          continue;
-        }
-
+...
         // LIVE: upsert into target account
         try {
           await delay(RATE_LIMIT_MS);
           const upsertBody = {
             locationId: targetCreds.locationId,
-            firstName: contact.firstName,
-            lastName: contact.lastName,
-            email: contact.email,
-            phone: contact.phone,
+            firstName: sanitized.firstName || contact.firstName,
+            lastName: sanitized.lastName || contact.lastName,
+            email: contact.email ? String(contact.email).trim().toLowerCase() : contact.email,
+            phone: contact.phone ? String(contact.phone).replace(/\s+/g, ' ').trim() : contact.phone,
             tags: contact.tags || [],
             address1: contact.address1,
             city: contact.city,
