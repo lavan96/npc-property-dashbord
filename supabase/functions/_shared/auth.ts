@@ -316,7 +316,7 @@ function parseAllowedOrigins(): string[] {
   return LEGACY_FALLBACK_ORIGINS;
 }
 
-export function createCorsHeaders(origin: string | null): Record<string, string> {
+export function createCorsHeaders(origin: string | null = null): Record<string, string> {
   const allowedOrigins = [
     ...parseAllowedOrigins(),
     'http://localhost:5173',
@@ -377,7 +377,7 @@ export function createClearSessionCookie(): string {
  */
 export function createUnauthorizedResponse(
   message: string = 'Authentication required',
-  corsHeaders: Record<string, string>
+  corsHeaders: Record<string, string> = createCorsHeaders()
 ): Response {
   return new Response(
     JSON.stringify({ error: message, success: false }),
@@ -393,7 +393,7 @@ export function createUnauthorizedResponse(
  */
 export function createForbiddenResponse(
   message: string = 'Access denied',
-  corsHeaders: Record<string, string>
+  corsHeaders: Record<string, string> = createCorsHeaders()
 ): Response {
   return new Response(
     JSON.stringify({ error: message, success: false }),
