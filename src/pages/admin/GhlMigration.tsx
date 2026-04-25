@@ -1078,7 +1078,9 @@ function JobDetailRow({ job, onChanged }: { job: any; onChanged?: () => void }) 
     }
   };
 
-  const manualRedispatch = async () => {
+  const [confirmRedispatch, setConfirmRedispatch] = useState(false);
+
+  const performRedispatch = async () => {
     setRedispatching(true);
     try {
       const res = await invokeSecureFunction<any>('migration-orchestrator', {
@@ -1094,11 +1096,17 @@ function JobDetailRow({ job, onChanged }: { job: any; onChanged?: () => void }) 
         toast.error(res.error?.message || res.data?.error || 'Re-dispatch failed');
       } else {
         toast.success('Re-dispatch queued');
+        setConfirmRedispatch(false);
         onChanged?.();
       }
     } finally {
       setRedispatching(false);
     }
+  };
+
+  const manualRedispatch = () => {
+    if (!job.dry_run) { setConfirmRedispatch(true); return; }
+    performRedispatch();
   };
 
   const canRedispatch = liveJob.status === 'failed' || liveJob.status === 'cancelled' ||
