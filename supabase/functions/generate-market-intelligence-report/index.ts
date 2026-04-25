@@ -545,7 +545,7 @@ Deno.serve(async (req) => {
 
     // Initialise dynamic brand name from global_report_settings.
     try {
-      const _brand = await getBrandConfig(supabase);
+      const _brand = await getBrandConfig();
       BRAND_NAME = _brand.companyName;
     } catch (e) {
       console.warn('[market-intel-report] getBrandConfig failed, using fallback:', e);
