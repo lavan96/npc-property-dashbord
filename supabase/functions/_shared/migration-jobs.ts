@@ -225,6 +225,36 @@ export async function partialExit(
 }
 
 /**
+ * Worker-side: read the current control signal for a job.
+ *   null    → no signal, keep going
+ *   'pause' → finish current page, save checkpoint, exit (dispatcher will
+ *             not re-claim while auto_resume=false)
+ *   'cancel'→ finish current item, then finishJob('cancelled')
+ *   'kill'  → drop everything, finishJob('cancelled') immediately
+ *
+ * Returns one of: 'pause' | 'cancel' | 'kill' | null
+ */
+export type ControlSignal = 'pause' | 'cancel' | 'kill' | null;
+
+export async function readControlSignal(supabase: any, jobId: string): Promise<ControlSignal> {
+  try {
+    const { data, error } = await supabase.rpc('read_migration_control_signal', {
+      p_job_id: jobId,
+    });
+    if (error) {
+      console.error('[readControlSignal] failed:', error.message);
+      return null;
+    }
+    const v = data as string | null;
+    if (v === 'pause' || v === 'cancel' || v === 'kill') return v;
+    return null;
+  } catch (e: any) {
+    console.error('[readControlSignal] threw:', e?.message);
+    return null;
+  }
+}
+
+/**
  * Worker-side heartbeat. Call periodically (e.g. once per page) so the
  * dispatcher knows the worker is alive and extends the lease.
  */
