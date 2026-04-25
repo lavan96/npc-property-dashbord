@@ -383,7 +383,7 @@ function MigrationWorkersPanel() {
     } finally { setTestingAudit(false); }
   };
 
-
+  const refreshJobs = async () => {
     setLoadingJobs(true);
     try {
       const res = await invokeSecureFunction<{ success: boolean; jobs: any[] }>(
