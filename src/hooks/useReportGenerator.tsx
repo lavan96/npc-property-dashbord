@@ -8,6 +8,7 @@ import { ReportConfig } from '@/components/reports/ReportConfigModal';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction, hasActiveSession } from '@/lib/secureInvoke';
+import { fetchGlobalReportSettings } from '@/hooks/useGlobalReportSettings';
 
 interface ChartData {
   type: 'bar' | 'pie' | 'line';
@@ -492,6 +493,11 @@ export function useReportGenerator() {
       if (!hasActiveSession()) {
         throw new Error('User not authenticated. Please log in to generate reports.');
       }
+
+      // Resolve brand name (white-label aware)
+      const __brandSettings = await fetchGlobalReportSettings();
+      const brandName = (__brandSettings?.contactDetails?.company_name || 'Property Report').trim();
+      const brandUpper = brandName.toUpperCase();
       
       // Fetch chart configurations for correct type mapping
       const { data: chartConfigs, error: configError } = await supabase
@@ -714,7 +720,7 @@ export function useReportGenerator() {
         setFill(navy); pdf.rect(0, 0, pageWidth, 12, 'F');
         setFill(gold); pdf.rect(0, 11.5, pageWidth, 0.5, 'F');
         pdf.setFontSize(6); pdf.setFont('helvetica', 'normal'); setColor(lightGold);
-        pdf.text('NAIDU PROPERTY CONSULTING SERVICES', margin, 7);
+        pdf.text(brandUpper, margin, 7);
         pdf.text(sectionTitle.toUpperCase(), pageWidth - margin, 7, { align: 'right' });
       };
 
@@ -722,7 +728,7 @@ export function useReportGenerator() {
         setDraw(dividerCol); pdf.setLineWidth(0.2);
         pdf.line(margin, pageHeight - 14, pageWidth - margin, pageHeight - 14);
         pdf.setFontSize(6); setColor(mutedText); pdf.setFont('helvetica', 'normal');
-        pdf.text('Naidu Property Consulting Services  •  CONFIDENTIAL', margin, pageHeight - 9);
+        pdf.text(`${brandName}  •  CONFIDENTIAL`, margin, pageHeight - 9);
         pdf.text(`Page ${pn}`, pageWidth - margin, pageHeight - 9, { align: 'right' });
       };
 
@@ -802,7 +808,7 @@ export function useReportGenerator() {
       }
 
       pdf.setFontSize(7); setColor({ r: 130, g: 140, b: 165 });
-      pdf.text('NAIDU PROPERTY CONSULTING SERVICES', pageWidth / 2, 100, { align: 'center' });
+      pdf.text(brandUpper, pageWidth / 2, 100, { align: 'center' });
       pdf.setFontSize(6); setColor({ r: 100, g: 110, b: 135 });
       pdf.text('PROPERTY INTELLIGENCE  •  MARKET RESEARCH  •  ADVISORY', pageWidth / 2, 108, { align: 'center' });
 
@@ -1263,13 +1269,13 @@ export function useReportGenerator() {
       // Disclaimer
       checkPageBreak(80);
       const disclaimerLines = [
-        'This report has been prepared by Naidu Property Consulting Services for informational purposes only.',
+        `This report has been prepared by ${brandName} for informational purposes only.`,
         '',
         'While every effort has been made to ensure accuracy, no warranties or representations are made regarding the completeness or suitability of the information.',
         '',
         'This report does not constitute financial, legal, or investment advice. Recipients should seek independent professional counsel.',
         '',
-        '© Naidu Property Consulting Services. All rights reserved.'
+        `© ${brandName}. All rights reserved.`
       ];
 
       setFill(cardBg); pdf.roundedRect(margin, currentY, contentWidth, 70, 2, 2, 'F');
@@ -1289,7 +1295,7 @@ export function useReportGenerator() {
       pdf.line(margin + 20, dY, pageWidth - margin - 20, dY);
       dY += 6;
       pdf.setFontSize(7); pdf.setFont('helvetica', 'bold'); setColor(gold);
-      pdf.text('NAIDU PROPERTY CONSULTING SERVICES', pageWidth / 2, dY, { align: 'center' });
+      pdf.text(brandUpper, pageWidth / 2, dY, { align: 'center' });
       pdf.setFontSize(5.5); pdf.setFont('helvetica', 'normal'); setColor(mutedText);
       pdf.text('Property Intelligence  •  Market Research  •  Strategic Advisory', pageWidth / 2, dY + 5, { align: 'center' });
 

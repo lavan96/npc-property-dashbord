@@ -125,16 +125,16 @@ interface CashFlowTemplateConfig {
   disclaimer: string;
 }
 
-// Default NPC Brand configuration for Cash Flow exports
+// Default Brand configuration for Cash Flow exports
 const defaultCashFlowConfig: CashFlowTemplateConfig = {
   id: 'default',
-  name: 'Default NPC Template',
-  companyName: 'NAIDU PROPERTY',
-  companyNameLine2: 'CONSULTING SERVICES',
+  name: 'Default Template',
+  companyName: 'PROPERTY',
+  companyNameLine2: 'CONSULTING',
   tagline: 'YOUR DEDICATED PROPERTY PARTNER',
-  contactPhone: '0433 005 110',
-  contactEmail: 'admin@npcservices.com.au',
-  website: 'npcservices.com.au',
+  contactPhone: '',
+  contactEmail: '',
+  website: '',
   disclaimer: 'This analysis is for informational purposes only and does not constitute financial advice. Projections are estimates based on assumed growth rates.',
 };
 
@@ -2327,7 +2327,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       let yPos = 0;
 
       // ========== COVER PAGE ==========
-      // Use the NPC template cover image as background
+      // Use the configured cover template image as background
       const goldColor = { r: 201, g: 165, b: 90 }; // #c9a55a
       
       try {
@@ -2343,12 +2343,12 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         pdf.setFillColor(goldColor.r, goldColor.g, goldColor.b);
         pdf.rect(0, 0, pageWidth, 8, 'F');
         
-        // Company name fallback
+        // Company name fallback (uses configured template branding)
         pdf.setFontSize(28);
         pdf.setFont('helvetica', 'bold');
         pdf.setTextColor(goldColor.r, goldColor.g, goldColor.b);
-        pdf.text('NAIDU PROPERTY', pageWidth / 2, 100, { align: 'center' });
-        pdf.text('CONSULTING SERVICES', pageWidth / 2, 115, { align: 'center' });
+        pdf.text(templateConfig.companyName || 'PROPERTY', pageWidth / 2, 100, { align: 'center' });
+        pdf.text(templateConfig.companyNameLine2 || 'CONSULTING', pageWidth / 2, 115, { align: 'center' });
         
         pdf.setFontSize(12);
         pdf.setFont('helvetica', 'normal');

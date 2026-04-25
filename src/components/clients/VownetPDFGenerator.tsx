@@ -9,6 +9,7 @@ import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { drawBorrowingCapacitySections, transformAssessmentToSectionData } from '@/utils/borrowingCapacityPdfSections';
 import { fetchLatestBorrowingCapacity } from '@/lib/fetchLatestBorrowingCapacity';
+import { fetchGlobalReportSettings, type ContactDetails, type ProfessionalDisclaimer } from '@/hooks/useGlobalReportSettings';
 import { smartCapitalize } from '@/lib/nameUtils';
 import {
   DropdownMenu,
@@ -315,8 +316,10 @@ export function VownetPDFGenerator({
       const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
       if (!iframeDoc) throw new Error('Could not access iframe document');
 
-      // Generate HTML content (unchanged)
-      const htmlContent = generateHTMLContent(data, includeOwnerOccupied);
+      // Fetch white-label brand settings for the contact/disclaimer page
+      const __brandSettings = await fetchGlobalReportSettings();
+      // Generate HTML content (with dynamic brand)
+      const htmlContent = generateHTMLContent(data, includeOwnerOccupied, __brandSettings?.contactDetails, __brandSettings?.disclaimer);
 
       // Write the full HTML into the iframe's clean document
       iframeDoc.open();
@@ -472,11 +475,14 @@ export function VownetPDFGenerator({
             // Render footer HTML with emojis to a canvas
             const footerDiv = document.createElement('div');
             footerDiv.style.cssText = 'position:absolute;left:-9999px;top:0;width:794px;background:#f8f9fa;padding:4px 40px;font-family:Arial,sans-serif;display:flex;justify-content:space-between;align-items:center;';
+            const _bPhone = __brandSettings?.contactDetails?.phone || '';
+            const _bEmail = __brandSettings?.contactDetails?.email || '';
+            const _bWeb = __brandSettings?.contactDetails?.website || '';
             footerDiv.innerHTML = `
               <div style="display:flex;gap:18px;font-size:7.5pt;color:#4a5568;">
-                <span>\u{1F4DE} (02) 8609 3299</span>
-                <span>\u{2709}\u{FE0F} admin@npcservices.com.au</span>
-                <span>\u{1F310} npcservices.com.au</span>
+                ${_bPhone ? `<span>\u{1F4DE} ${_bPhone}</span>` : ''}
+                ${_bEmail ? `<span>\u{2709}\u{FE0F} ${_bEmail}</span>` : ''}
+                ${_bWeb ? `<span>\u{1F310} ${_bWeb}</span>` : ''}
               </div>
               <div style="font-size:6pt;color:#b48c32;font-weight:700;letter-spacing:1.5px;">CONFIDENTIAL</div>
               <div style="font-size:7.5pt;color:#4a5568;">Page ${pdfPageIndex}</div>
@@ -493,7 +499,7 @@ export function VownetPDFGenerator({
               pdf.setFontSize(7);
               pdf.setTextColor(74, 85, 104);
               pdf.setFont('helvetica', 'normal');
-              pdf.text('Ph: (02) 8609 3299  |  admin@npcservices.com.au  |  npcservices.com.au', 10, footerY);
+              pdf.text([_bPhone && `Ph: ${_bPhone}`, _bEmail, _bWeb].filter(Boolean).join('  |  '), 10, footerY);
               pdf.setFontSize(6);
               pdf.setTextColor(180, 140, 50);
               pdf.setFont('helvetica', 'bold');
@@ -817,7 +823,25 @@ const NPC_COLORS = {
 };
 
 // Generate the full HTML content for the PDF
-function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean = true): string {
+function generateHTMLContent(
+  data: VownetPDFData,
+  includeOwnerOccupied: boolean = true,
+  brandContact?: ContactDetails,
+  brandDisclaimer?: ProfessionalDisclaimer,
+): string {
+  // Brand-aware values with safe fallbacks
+  const _company = (brandContact?.company_name || 'Property Consulting').trim();
+  const _companyParts = _company.split(' ');
+  const _companyLine1 = _companyParts.length > 1 ? _companyParts.slice(0, -1).join(' ').toUpperCase() : _company.toUpperCase();
+  const _companyLine2 = _companyParts.length > 1 ? _companyParts[_companyParts.length - 1].toUpperCase() : '';
+  const _website = brandContact?.website || '';
+  const _email = brandContact?.email || '';
+  const _phone = brandContact?.phone || '';
+  const _address = brandContact?.address || '';
+  const _abn = brandContact?.abn || '';
+  const _disclaimerText = (brandDisclaimer?.is_enabled === false)
+    ? ''
+    : (brandDisclaimer?.text || 'This information is provided for general informational purposes only and does not constitute financial, legal, or investment advice.');
   const { client, properties, employment = [], income = [], assets = [], liabilities = [], expenses = [] } = data;
   const reportDate = new Date().toLocaleDateString('en-AU', { day: '2-digit', month: 'long', year: 'numeric' });
   
@@ -2154,9 +2178,9 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
         </div>
         <div class="page-footer">
           <div class="footer-contact">
-            <span class="footer-item">📞 (02) 8609 3299</span>
-            <span class="footer-item">✉ admin@npcservices.com.au</span>
-            <span class="footer-item">🌐 npcservices.com.au</span>
+            ${_phone ? `<span class="footer-item">📞 ${_phone}</span>` : ''}
+            ${_email ? `<span class="footer-item">✉ ${_email}</span>` : ''}
+            ${_website ? `<span class="footer-item">🌐 ${_website}</span>` : ''}
           </div>
           <div class="footer-confidential">CONFIDENTIAL</div>
           <div>Page ${summaryPageNumber} of ${totalPages}</div>
@@ -2234,9 +2258,9 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
         </div>
         <div class="page-footer">
           <div class="footer-contact">
-            <span class="footer-item">📞 (02) 8609 3299</span>
-            <span class="footer-item">✉ admin@npcservices.com.au</span>
-            <span class="footer-item">🌐 npcservices.com.au</span>
+            ${_phone ? `<span class="footer-item">📞 ${_phone}</span>` : ''}
+            ${_email ? `<span class="footer-item">✉ ${_email}</span>` : ''}
+            ${_website ? `<span class="footer-item">🌐 ${_website}</span>` : ''}
           </div>
           <div class="footer-confidential">CONFIDENTIAL</div>
           <div>Page ${page1Number} of ${totalPages}</div>
@@ -2279,9 +2303,9 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
         </div>
         <div class="page-footer">
           <div class="footer-contact">
-            <span class="footer-item">📞 (02) 8609 3299</span>
-            <span class="footer-item">✉ admin@npcservices.com.au</span>
-            <span class="footer-item">🌐 npcservices.com.au</span>
+            ${_phone ? `<span class="footer-item">📞 ${_phone}</span>` : ''}
+            ${_email ? `<span class="footer-item">✉ ${_email}</span>` : ''}
+            ${_website ? `<span class="footer-item">🌐 ${_website}</span>` : ''}
           </div>
           <div class="footer-confidential">CONFIDENTIAL</div>
           <div>Page ${employmentPageNumber} of ${totalPages}</div>
@@ -2320,9 +2344,9 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
         </div>
         <div class="page-footer">
           <div class="footer-contact">
-            <span class="footer-item">📞 (02) 8609 3299</span>
-            <span class="footer-item">✉ admin@npcservices.com.au</span>
-            <span class="footer-item">🌐 npcservices.com.au</span>
+            ${_phone ? `<span class="footer-item">📞 ${_phone}</span>` : ''}
+            ${_email ? `<span class="footer-item">✉ ${_email}</span>` : ''}
+            ${_website ? `<span class="footer-item">🌐 ${_website}</span>` : ''}
           </div>
           <div class="footer-confidential">CONFIDENTIAL</div>
           <div>Page ${assetsPageNumber} of ${totalPages}</div>
@@ -2333,22 +2357,22 @@ function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean 
       
       <!-- FINAL PAGE - Contact & Disclaimer -->
       <div class="page final-page" style="background-color: #141414; display: flex; flex-direction: column; justify-content: flex-start; padding: 60px 40px;">
-        <div style="color: #BF9B50; font-size: 28px; font-weight: bold; text-transform: uppercase; margin-bottom: 4px;">NAIDU PROPERTY CONSULTING</div>
-        <div style="color: #BF9B50; font-size: 16px; font-weight: normal; text-transform: uppercase; margin-bottom: 30px;">SERVICES</div>
+        <div style="color: #BF9B50; font-size: 28px; font-weight: bold; text-transform: uppercase; margin-bottom: 4px;">${_companyLine1}</div>
+        ${_companyLine2 ? `<div style="color: #BF9B50; font-size: 16px; font-weight: normal; text-transform: uppercase; margin-bottom: 30px;">${_companyLine2}</div>` : '<div style="margin-bottom: 30px;"></div>'}
         
         <div style="color: #BF9B50; font-size: 14px; font-weight: bold; margin-bottom: 20px;">CONTACT US</div>
         
         <table style="border-collapse: collapse; margin-bottom: auto;">
-          <tr style="height: 28px;"><td style="color: #BF9B50; font-size: 9px; font-weight: bold; padding-right: 20px; white-space: nowrap;">WEBSITE:</td><td style="color: #BF9B50; font-size: 9px;">npcservices.com.au</td></tr>
-          <tr style="height: 28px;"><td style="color: #BF9B50; font-size: 9px; font-weight: bold; padding-right: 20px; white-space: nowrap;">EMAIL:</td><td style="color: #BF9B50; font-size: 9px;">admin@npcservices.com.au</td></tr>
-          <tr style="height: 28px;"><td style="color: #BF9B50; font-size: 9px; font-weight: bold; padding-right: 20px; white-space: nowrap;">PHONE:</td><td style="color: #BF9B50; font-size: 9px;">(02) 8609 3299</td></tr>
-          <tr style="height: 28px;"><td style="color: #BF9B50; font-size: 9px; font-weight: bold; padding-right: 20px; white-space: nowrap;">ADDRESS:</td><td style="color: #BF9B50; font-size: 9px;">Level 5 Nexus Norwest, 4 Columbia Ct, Norwest NSW 2153</td></tr>
-          <tr style="height: 28px;"><td style="color: #BF9B50; font-size: 9px; font-weight: bold; padding-right: 20px; white-space: nowrap;">ABN:</td><td style="color: #BF9B50; font-size: 9px;">50 684 555 771</td></tr>
+          ${_website ? `<tr style="height: 28px;"><td style="color: #BF9B50; font-size: 9px; font-weight: bold; padding-right: 20px; white-space: nowrap;">WEBSITE:</td><td style="color: #BF9B50; font-size: 9px;">${_website}</td></tr>` : ''}
+          ${_email ? `<tr style="height: 28px;"><td style="color: #BF9B50; font-size: 9px; font-weight: bold; padding-right: 20px; white-space: nowrap;">EMAIL:</td><td style="color: #BF9B50; font-size: 9px;">${_email}</td></tr>` : ''}
+          ${_phone ? `<tr style="height: 28px;"><td style="color: #BF9B50; font-size: 9px; font-weight: bold; padding-right: 20px; white-space: nowrap;">PHONE:</td><td style="color: #BF9B50; font-size: 9px;">${_phone}</td></tr>` : ''}
+          ${_address ? `<tr style="height: 28px;"><td style="color: #BF9B50; font-size: 9px; font-weight: bold; padding-right: 20px; white-space: nowrap;">ADDRESS:</td><td style="color: #BF9B50; font-size: 9px;">${_address}</td></tr>` : ''}
+          ${_abn ? `<tr style="height: 28px;"><td style="color: #BF9B50; font-size: 9px; font-weight: bold; padding-right: 20px; white-space: nowrap;">ABN:</td><td style="color: #BF9B50; font-size: 9px;">${_abn}</td></tr>` : ''}
         </table>
         
-        <div style="color: #999999; font-size: 8.5px; line-height: 1.4; margin-top: auto; padding-bottom: 20px;">
-          As a Professional Property Consultant &amp; Buyers Agent, we provide information and advice based on our expertise and experience in the real estate market. Please be aware that the advice and insights offered are for general informational purposes only and should not be considered financial advice. While we strive to ensure the accuracy and relevance of the information provided, real estate markets are dynamic and subject to change and cannot guarantee the future performance or outcomes of any property investment. It is important to understand that real estate investments carry risks, including market fluctuations, changes in property values, and potential financial losses. Our services include assisting you in identifying and evaluating potential opportunities, negotiating purchase terms, and navigating the transaction process. Any decisions to purchase, sell, or invest in real estate should be made after careful consideration and consultation with appropriate financial, legal, and tax advisors. By engaging our services, you acknowledge that you have read and understood this disclaimer and agree to take full responsibility for your property-related decisions. Always conduct your own research and due diligence to ensure that any property transaction aligns with your financial objectives and risk profile.
-        </div>
+        ${_disclaimerText ? `<div style="color: #999999; font-size: 8.5px; line-height: 1.4; margin-top: auto; padding-bottom: 20px;">
+          ${_disclaimerText}
+        </div>` : ''}
       </div>
     </body>
     </html>

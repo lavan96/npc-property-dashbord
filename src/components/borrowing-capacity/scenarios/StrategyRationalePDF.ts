@@ -183,6 +183,13 @@ export async function generateStrategyRationalePDF(
   const displayName = smartCapitalize(context.clientName) || 'Client';
   const generatedDate = format(new Date(report.generatedAt), 'dd MMMM yyyy, HH:mm');
 
+  // Resolve white-label brand for cover fallback
+  const __brand = (await fetchGlobalReportSettings())?.contactDetails;
+  const __brandName = (__brand?.company_name || 'Property Consulting').trim();
+  const __brandParts = __brandName.split(' ');
+  const __brandLine1 = (__brandParts.length > 1 ? __brandParts.slice(0, -1).join(' ') : __brandName).toUpperCase();
+  const __brandLine2 = __brandParts.length > 1 ? __brandParts[__brandParts.length - 1].toUpperCase() : '';
+
   // ════════════════════════════════════════════════════════════════════════
   // PAGE 1 — COVER
   // ════════════════════════════════════════════════════════════════════════
@@ -210,8 +217,8 @@ export async function generateStrategyRationalePDF(
     doc.setFontSize(28);
     doc.setFont('helvetica', 'bold');
     setColor(doc, GOLD);
-    doc.text('NAIDU PROPERTY', PAGE_W / 2, 100, { align: 'center' });
-    doc.text('CONSULTING SERVICES', PAGE_W / 2, 115, { align: 'center' });
+    doc.text(__brandLine1, PAGE_W / 2, 100, { align: 'center' });
+    if (__brandLine2) doc.text(__brandLine2, PAGE_W / 2, 115, { align: 'center' });
     doc.setFontSize(11);
     doc.setFont('helvetica', 'normal');
     setColor(doc, WHITE);

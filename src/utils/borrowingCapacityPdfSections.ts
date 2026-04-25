@@ -26,7 +26,7 @@
 
 import type { jsPDF } from 'jspdf';
 
-// ─── Design tokens (NPC brand) ──────────────────────────────────────────────
+// ─── Design tokens (brand) ──────────────────────────────────────────────────
 const GOLD   = { r: 191, g: 155, b: 80 };
 const NAVY   = { r: 13,  g: 38,  b: 77 };
 const WHITE  = { r: 255, g: 255, b: 255 };
