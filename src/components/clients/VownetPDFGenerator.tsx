@@ -475,11 +475,14 @@ export function VownetPDFGenerator({
             // Render footer HTML with emojis to a canvas
             const footerDiv = document.createElement('div');
             footerDiv.style.cssText = 'position:absolute;left:-9999px;top:0;width:794px;background:#f8f9fa;padding:4px 40px;font-family:Arial,sans-serif;display:flex;justify-content:space-between;align-items:center;';
+            const _bPhone = __brandSettings?.contactDetails?.phone || '';
+            const _bEmail = __brandSettings?.contactDetails?.email || '';
+            const _bWeb = __brandSettings?.contactDetails?.website || '';
             footerDiv.innerHTML = `
               <div style="display:flex;gap:18px;font-size:7.5pt;color:#4a5568;">
-                <span>\u{1F4DE} (02) 8609 3299</span>
-                <span>\u{2709}\u{FE0F} admin@npcservices.com.au</span>
-                <span>\u{1F310} npcservices.com.au</span>
+                ${_bPhone ? `<span>\u{1F4DE} ${_bPhone}</span>` : ''}
+                ${_bEmail ? `<span>\u{2709}\u{FE0F} ${_bEmail}</span>` : ''}
+                ${_bWeb ? `<span>\u{1F310} ${_bWeb}</span>` : ''}
               </div>
               <div style="font-size:6pt;color:#b48c32;font-weight:700;letter-spacing:1.5px;">CONFIDENTIAL</div>
               <div style="font-size:7.5pt;color:#4a5568;">Page ${pdfPageIndex}</div>
@@ -496,7 +499,7 @@ export function VownetPDFGenerator({
               pdf.setFontSize(7);
               pdf.setTextColor(74, 85, 104);
               pdf.setFont('helvetica', 'normal');
-              pdf.text('Ph: (02) 8609 3299  |  admin@npcservices.com.au  |  npcservices.com.au', 10, footerY);
+              pdf.text([_bPhone && `Ph: ${_bPhone}`, _bEmail, _bWeb].filter(Boolean).join('  |  '), 10, footerY);
               pdf.setFontSize(6);
               pdf.setTextColor(180, 140, 50);
               pdf.setFont('helvetica', 'bold');
