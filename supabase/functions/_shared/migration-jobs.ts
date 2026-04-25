@@ -172,7 +172,11 @@ export async function selfRedispatch(
   workerBody: Record<string, any>,
   opts?: { maxDispatches?: number },
 ): Promise<{ dispatched: boolean; reason?: string; dispatchCount: number }> {
-  const max = opts?.maxDispatches ?? 60; // ~ enough for tens of thousands of records
+  // Default to effectively unbounded redispatching. GHL list endpoints are
+  // paged (often max 100 records per request), so large locations must keep
+  // checkpointing + redispatching until the API returns an empty/short page.
+  // Callers can still pass maxDispatches for one-off safety tests.
+  const max = opts?.maxDispatches ?? Number.POSITIVE_INFINITY;
 
   // Increment dispatch_count + record timestamp atomically-ish
   const { data: jobRow } = await supabase
@@ -187,7 +191,7 @@ export async function selfRedispatch(
   if (!autoResume) {
     return { dispatched: false, reason: 'auto_resume disabled', dispatchCount: jobRow?.dispatch_count || 0 };
   }
-  if (nextCount > max) {
+  if (Number.isFinite(max) && nextCount > max) {
     return { dispatched: false, reason: `max_dispatches (${max}) exceeded`, dispatchCount: nextCount - 1 };
   }
 
