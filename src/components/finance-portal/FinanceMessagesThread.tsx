@@ -1,6 +1,6 @@
 /**
  * Shared Messages thread UI component used in both partner-side (Finance Portal)
- * and NPC-staff-side (internal admin) contexts.
+ * and internal staff-side (admin) contexts.
  *
  * The parent supplies the invoke function so this component is auth-agnostic:
  *  - Partner side: useFinancePortalAuth().invokeFinanceFunction
@@ -32,7 +32,7 @@ export type InvokeFn = (fn: string, body: any) => Promise<{ data: any; error: an
 
 interface Props {
   threadId: string;
-  /** 'partner' = current user is a finance partner; 'staff' = current user is NPC staff */
+  /** 'partner' = current user is a finance partner; 'staff' = current user is internal staff */
   viewerSide: 'partner' | 'staff';
   invoke: InvokeFn;
   onMessageSent?: () => void;
@@ -198,7 +198,7 @@ export function FinanceMessagesThread({ threadId, viewerSide, invoke, onMessageS
                   )}>
                     {!mine && (
                       <div className="text-[10px] uppercase opacity-70 mb-1">
-                        {m.sender_name || (m.sender_type === 'staff' ? 'NPC Staff' : 'Finance Partner')}
+                        {m.sender_name || (m.sender_type === 'staff' ? 'Staff' : 'Finance Partner')}
                       </div>
                     )}
                     <div>{m.body}</div>

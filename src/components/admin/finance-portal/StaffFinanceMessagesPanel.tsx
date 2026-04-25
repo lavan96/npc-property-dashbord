@@ -1,5 +1,5 @@
 /**
- * NPC-side Finance Portal Messages panel.
+ * Internal staff-side Finance Portal Messages panel.
  * Renders all threads for a given client across all assigned partners; pick a thread to chat.
  */
 import { useEffect, useState } from 'react';

@@ -20,6 +20,7 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useBrand } from '@/branding/useBrand';
 
 interface ThreadRow {
   id: string;
@@ -59,6 +60,8 @@ function ThreadSkeleton() {
 
 export default function FinancePortalMessages() {
   const { invokeFinanceFunction } = useFinancePortalAuth();
+  const { settings: brandSettings } = useBrand();
+  const brandName = brandSettings.companyName || 'the team';
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [threads, setThreads] = useState<ThreadRow[]>([]);
@@ -121,7 +124,7 @@ export default function FinancePortalMessages() {
             Messages
           </h1>
           <p className="text-sm text-muted-foreground mt-1.5 ml-[42px]">
-            Conversations with the NPC team for each client
+            Conversations with {brandName} for each client
           </p>
         </div>
         {totalUnread > 0 && (
@@ -142,7 +145,7 @@ export default function FinancePortalMessages() {
         <PortalEmptyState
           icon={<Inbox className="h-8 w-8" />}
           title="No conversations yet"
-          description="Open a client profile and use the Messages tab to start a conversation with the NPC team."
+          description={`Open a client profile and use the Messages tab to start a conversation with ${brandName}.`}
           actionLabel="Go to clients"
           onAction={() => navigate('/finance/clients')}
         />

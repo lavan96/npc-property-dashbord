@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
+import { useBrand } from '@/branding/useBrand';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -7,48 +8,52 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ShieldCheck, Users, Lock, Sparkles, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
-const TERMS_BODY = `
+const buildTermsBody = (brand: string) => `
 By accessing the Finance Partner Portal you agree to:
 
-1. Confidentiality. All client information accessible through this portal is strictly confidential. You will not disclose, reproduce, or distribute any client data outside the scope of your engagement with NPC Group.
+1. Confidentiality. All client information accessible through this portal is strictly confidential. You will not disclose, reproduce, or distribute any client data outside the scope of your engagement with ${brand}.
 
 2. Authorised Use. You will only access records for clients you have been explicitly assigned to. Attempting to access unassigned clients is a breach of this agreement.
 
 3. Data Accuracy. Any updates you make to a client's financial profile must reflect documents and information provided to you by that client. You will retain supporting evidence for 7 years.
 
-4. Security. You will keep your login credentials private, enable strong passwords, and immediately notify NPC if you suspect compromise.
+4. Security. You will keep your login credentials private, enable strong passwords, and immediately notify ${brand} if you suspect compromise.
 
-5. Audit. All actions you perform in this portal (logins, views, edits, deletions, document uploads, messages) are logged and may be reviewed by NPC compliance.
+5. Audit. All actions you perform in this portal (logins, views, edits, deletions, document uploads, messages) are logged and may be reviewed by ${brand} compliance.
 
 6. Compliance. You will comply with the Privacy Act 1988, the Australian Privacy Principles, NCCP Act obligations (where applicable), and any AML/CTF requirements.
 
-7. Termination. NPC may revoke your access at any time without notice if a breach is suspected.
+7. Termination. ${brand} may revoke your access at any time without notice if a breach is suspected.
 
-8. Indemnity. You indemnify NPC against losses arising from your misuse of the portal or any breach of these terms.
+8. Indemnity. You indemnify ${brand} against losses arising from your misuse of the portal or any breach of these terms.
 
 This agreement is governed by the laws of New South Wales, Australia.
 `;
 
-const WIZARD_STEPS = [
+const buildWizardSteps = (brand: string) => [
   {
     icon: ShieldCheck,
     title: 'Welcome to the Finance Partner Portal',
-    body: 'A purpose-built workspace where you can manage the financial profiles of clients NPC has assigned to you. Everything you see here is gated by per-client permissions set by NPC.',
+    body: `A purpose-built workspace where you can manage the financial profiles of clients ${brand} has assigned to you. Everything you see here is gated by per-client permissions set by ${brand}.`,
   },
   {
     icon: Users,
     title: 'Per-client access',
-    body: 'Your client list shows only the clients you have been assigned. Inside each client you may see Properties, Income, Expenses, Assets, Liabilities, Employment, Address History, Notes and Contacts depending on the access NPC has granted.',
+    body: `Your client list shows only the clients you have been assigned. Inside each client you may see Properties, Income, Expenses, Assets, Liabilities, Employment, Address History, Notes and Contacts depending on the access ${brand} has granted.`,
   },
   {
     icon: Lock,
     title: 'View, Edit, Delete — clearly labelled',
-    body: 'Each section displays your access level. If a button is missing, your assignment does not include that permission. Need different access? Contact your NPC manager.',
+    body: 'Each section displays your access level. If a button is missing, your assignment does not include that permission. Need different access? Contact your account manager.',
   },
 ];
 
 export function FinancePortalOnboardingGate() {
   const { user, acceptTerms, completeOnboarding } = useFinancePortalAuth();
+  const { settings: brandSettings } = useBrand();
+  const brandName = brandSettings.companyName || 'the operator';
+  const TERMS_BODY = buildTermsBody(brandName);
+  const WIZARD_STEPS = buildWizardSteps(brandName);
   const [agreed, setAgreed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [wizardStep, setWizardStep] = useState(0);
