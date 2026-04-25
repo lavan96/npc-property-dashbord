@@ -110,11 +110,22 @@ export async function invokeSecureFunction<T = any>(
         hasSessionToken: Boolean(sessionToken),
       });
 
-      // On definitive auth failures (400 = bad request / missing token, 401 = expired/invalid)
-      // clear stale tokens to prevent infinite retry loops
-      if (response.status === 401 || response.status === 400) {
+      // Only definitive authentication failures should trip the auth circuit breaker.
+      // Business-rule 400s (for example GHL token preflight failures) must not clear
+      // the user's dashboard session or turn a handled validation error into a blank screen.
+      const message = String(data?.error || data?.message || '').toLowerCase();
+      const isAuthFailure = response.status === 401
+        || response.status === 403
+        || (response.status === 400 && (
+          message.includes('authentication required')
+          || message.includes('auth required')
+          || message.includes('invalid session')
+          || message.includes('session expired')
+        ));
+
+      if (isAuthFailure) {
         markAuthFailure();
-        
+
         // If circuit breaker trips, proactively clear stale tokens
         // so the next page load starts clean and shows the login screen
         if (isAuthExhausted()) {
