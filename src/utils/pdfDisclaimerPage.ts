@@ -50,7 +50,7 @@ export function drawJsPDFDisclaimerPage(
   doc.setTextColor(GOLD.r, GOLD.g, GOLD.b);
   doc.setFontSize(28);
   doc.setFont('helvetica', 'bold');
-  const companyParts = (contact.company_name || 'Naidu Property Consulting Services')
+  const companyParts = (contact.company_name || 'Property Consulting')
     .toUpperCase()
     .split(' ');
   if (companyParts.length >= 2) {
@@ -138,7 +138,7 @@ export function drawPdfLibDisclaimerPage(
   let yPos = pageHeight - 80;
 
   // Company name — split last word to second line
-  const companyName = (contact.company_name || 'Naidu Property Consulting Services').toUpperCase();
+  const companyName = (contact.company_name || 'Property Consulting').toUpperCase();
   const parts = companyName.split(' ');
   if (parts.length >= 2) {
     page.drawText(parts.slice(0, -1).join(' '), {
