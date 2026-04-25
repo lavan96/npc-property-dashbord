@@ -206,7 +206,7 @@ export default function FinancePortalDashboard() {
                 label="Assigned Clients"
                 value={records.length}
                 icon={Users}
-                tooltip="Total clients currently assigned to you. Updated in real-time as NPC assigns or reassigns clients."
+                tooltip={`Total clients currently assigned to you. Updated in real-time as ${brandName} assigns or reassigns clients.`}
                 accent
                 index={0}
               />
@@ -257,7 +257,7 @@ export default function FinancePortalDashboard() {
                 to="/finance/messages"
                 icon={MessageSquare}
                 label="Messages"
-                description="Communicate with NPC team"
+                description={`Communicate with ${brandName}`}
                 index={1}
               />
               <QuickAction
@@ -314,7 +314,7 @@ export default function FinancePortalDashboard() {
                 </div>
               ) : records.length === 0 ? (
                 <div className="text-center py-12 border border-dashed rounded-xl text-sm text-muted-foreground bg-muted/20">
-                  No clients have been assigned to you yet. NPC will assign clients when ready.
+                  No clients have been assigned to you yet. {brandName} will assign clients when ready.
                 </div>
               ) : (
                 <div className="space-y-2">
