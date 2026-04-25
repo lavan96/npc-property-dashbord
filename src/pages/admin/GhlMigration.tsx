@@ -825,6 +825,69 @@ function MigrationWorkersPanel() {
         </div>
       </CardContent>
     </Card>
+
+    <AlertDialog open={!!resumeTarget} onOpenChange={(o) => { if (!o) setResumeTarget(null); }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
+            <ShieldAlert className="h-5 w-5 text-destructive" />
+            Resume LIVE migration?
+          </AlertDialogTitle>
+          <AlertDialogDescription className="space-y-2">
+            <span className="block">
+              You are about to resume a <strong className="text-destructive">LIVE</strong> migration job.
+              This will write data to the <strong className="uppercase">{resumeTarget?.target_account}</strong> GHL account.
+            </span>
+            {resumeTarget && (
+              <span className="block rounded-md border border-border/60 bg-muted/40 p-2 font-mono text-[11px]">
+                <div>Domain: <strong className="capitalize">{resumeTarget.domain}</strong></div>
+                <div>Job: {String(resumeTarget.id).substring(0, 8)}…</div>
+                <div>Direction: {resumeTarget.source_account} → {resumeTarget.target_account}</div>
+                {resumeTarget.last_processed_source_id && (
+                  <div>Resume after: {String(resumeTarget.last_processed_source_id).substring(0, 24)}</div>
+                )}
+              </span>
+            )}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={resuming}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            disabled={resuming}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            onClick={async (e) => {
+              e.preventDefault();
+              if (!resumeTarget) return;
+              setResuming(true);
+              try {
+                const j = resumeTarget;
+                const res = await invokeSecureFunction<any>('migration-orchestrator', {
+                  domain: j.domain,
+                  source_account: j.source_account,
+                  target_account: j.target_account,
+                  dry_run: false,
+                  confirmation: 'MIGRATE-LIVE',
+                  payload: { ...(j.payload || {}), resume_job_id: j.id },
+                  skip_preflight: true,
+                }, { timeoutMs: 30000 });
+                if (res.error || !res.data?.success) {
+                  toast.error(res.error?.message || res.data?.error || 'Resume failed');
+                } else {
+                  toast.success('LIVE resume dispatched');
+                  setResumeTarget(null);
+                  refreshJobs();
+                }
+              } finally {
+                setResuming(false);
+              }
+            }}
+          >
+            {resuming ? 'Resuming…' : 'Yes, resume LIVE'}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
 
