@@ -216,24 +216,37 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // Lookup mapped contact
-        const { data: contactMap } = await supabase
-          .from('ghl_id_mapping')
-          .select('new_ghl_id')
-          .eq('resource_type', 'contact')
-          .eq('old_ghl_id', opp.contactId)
-          .eq('source_account_label', sourceAccount)
-          .eq('target_account_label', targetAccount)
-          .maybeSingle();
+        // Resolve target contact by NAME (per project policy: name is the
+        // source of truth — duplicates routed to the most-recently-mirrored
+        // target contact). The GHL search response includes contactName for
+        // each opp; fall back to firstName+lastName if needed.
+        const oppContactName = (opp.contactName || opp.contact?.name ||
+          [opp.contact?.firstName, opp.contact?.lastName].filter(Boolean).join(' ') ||
+          [opp.firstName, opp.lastName].filter(Boolean).join(' ') ||
+          '').trim();
 
-        if (!contactMap?.new_ghl_id) {
+        const resolved = await resolveTargetContactByName(supabase, {
+          fullName: oppContactName,
+          sourceAccount,
+          targetAccount,
+        });
+
+        if (!resolved.newId) {
           totalSkipped++;
           await recordItem(supabase, {
             job_id: jobId, source_id: opp.id, entity_label: oppLabel,
-            status: 'skipped', error_message: 'Contact not yet mapped — run contacts worker first',
+            status: 'skipped',
+            error_message: oppContactName
+              ? `No target contact named "${oppContactName}" — run contacts worker first`
+              : 'Opportunity has no contact name to match against',
           });
           continue;
         }
+
+        if (resolved.ambiguous) {
+          console.warn(`[opps-worker] Ambiguous contact name "${oppContactName}" → ${resolved.candidateCount} target contacts; routing to latest=${resolved.newId}`);
+        }
+        const contactMap = { new_ghl_id: resolved.newId };
 
         const pmap = pipelineMap.get(opp.pipelineId);
         if (!pmap) {
