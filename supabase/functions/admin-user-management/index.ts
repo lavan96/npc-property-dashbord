@@ -1004,7 +1004,7 @@ Deno.serve(async (req: Request) => {
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h1 style="color: #333;">You're Invited!</h1>
             <p>Hello${invite_data.username ? ` ${invite_data.username}` : ''},</p>
-            <p>${adminUser.username} has invited you to join the NPC Dashboard.</p>
+            <p>${adminUser.username} has invited you to join the ${brandCfg.companyName} Dashboard.</p>
             <div style="margin: 30px 0;">
               <a href="${inviteUrl}" style="background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
                 Accept Invitation
@@ -1019,9 +1019,9 @@ Deno.serve(async (req: Request) => {
       } else {
         emailContent = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h1 style="color: #333;">Your NPC Dashboard Account</h1>
+            <h1 style="color: #333;">Your ${brandCfg.companyName} Dashboard Account</h1>
             <p>Hello${invite_data.username ? ` ${invite_data.username}` : ''},</p>
-            <p>${adminUser.username} has created an account for you on NPC Dashboard.</p>
+            <p>${adminUser.username} has created an account for you on ${brandCfg.companyName} Dashboard.</p>
             <div style="background: #f4f4f4; padding: 20px; border-radius: 8px; margin: 20px 0;">
               <p style="margin: 0;"><strong>Username:</strong> ${invite_data.username || invite_data.email.split('@')[0]}</p>
               <p style="margin: 10px 0 0;"><strong>Temporary Password:</strong> ${tempPassword}</p>
