@@ -800,7 +800,7 @@ export function VownetPDFGenerator({
   );
 }
 
-// NPC Brand Colors
+// Brand colors
 const NPC_COLORS = {
   gold: '#c9a227',
   goldLight: '#e8d59d',
