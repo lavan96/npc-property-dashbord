@@ -2365,6 +2365,9 @@ ${cleanContent.length + 500}
         return lines;
       };
 
+      // Pre-fetch brand for footer (used inside createContentPage closure)
+      const _brandPdfFooter = await getBrandConfig();
+
       // Helper function to create a content page with header/footer
       const createContentPage = (pageNum: number): PDFPage => {
         const page = pdfDoc.addPage([pageWidth, pageHeight]);
@@ -2414,7 +2417,7 @@ ${cleanContent.length + 500}
         });
         
         // Footer text
-        page.drawText(`${(globalThis as any).__rqaBrand?.companyName || 'Property Consulting'} | ${(globalThis as any).__rqaBrand?.contactEmail || ''}`, {
+        page.drawText(`${_brandPdfFooter.companyName}${_brandPdfFooter.contactEmail ? ' | ' + _brandPdfFooter.contactEmail : ''}`, {
           x: marginLeft,
           y: 30,
           size: 8,
