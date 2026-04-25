@@ -9,6 +9,10 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import {
   ShieldAlert, RefreshCw, Eye, ArrowLeftRight, Database, Users,
@@ -364,6 +368,8 @@ function MigrationWorkersPanel() {
   const [testingAudit, setTestingAudit] = useState(false);
   const [auditAccount, setAuditAccount] = useState<Account>('new');
   const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
+  const [resumeTarget, setResumeTarget] = useState<any | null>(null);
+  const [resuming, setResuming] = useState(false);
 
   const testCredentials = async (acct: Account) => {
     setTestingAudit(true);
@@ -383,7 +389,8 @@ function MigrationWorkersPanel() {
     } finally { setTestingAudit(false); }
   };
 
-  const refreshJobs = async () => {
+  // Returns true on success, false on error/timeout — used by backoff scheduler.
+  const refreshJobs = async (): Promise<boolean> => {
     setLoadingJobs(true);
     try {
       const res = await invokeSecureFunction<{ success: boolean; jobs: any[] }>(
@@ -391,18 +398,53 @@ function MigrationWorkersPanel() {
         { list: true, limit: 15 },
         { timeoutMs: 15000 },
       );
-      if (res.data?.success) setJobs(res.data.jobs);
+      if (res.error || !res.data?.success) return false;
+      setJobs(res.data.jobs);
+      return true;
+    } catch {
+      return false;
     } finally {
       setLoadingJobs(false);
     }
   };
 
   useEffect(() => { refreshJobs(); }, []);
+
+  // Adaptive polling: 3s base while active, exponential backoff (max 60s) on
+  // consecutive errors, paused entirely when the queue is idle.
   useEffect(() => {
     const hasActive = jobs.some((j) => j.status === 'pending' || j.status === 'processing');
-    if (!hasActive) return; // pause polling when idle
-    const id = setInterval(refreshJobs, 3000); // 3s while running
-    return () => clearInterval(id);
+    if (!hasActive) return;
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let failures = 0;
+    const BASE = 3000;
+    const MAX = 60000;
+
+    const schedule = (delay: number) => {
+      timer = setTimeout(async () => {
+        if (cancelled) return;
+        const ok = await refreshJobs();
+        if (cancelled) return;
+        if (ok) {
+          failures = 0;
+          schedule(BASE);
+        } else {
+          failures++;
+          // 6s, 12s, 24s, 48s, 60s (capped)
+          const backoff = Math.min(MAX, BASE * Math.pow(2, failures));
+          if (failures === 3) toast.error('Job status polling is failing — backing off');
+          schedule(backoff);
+        }
+      }, delay);
+    };
+
+    schedule(BASE);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
   }, [jobs]);
 
   const dispatch = async () => {
@@ -433,6 +475,7 @@ function MigrationWorkersPanel() {
   };
 
   return (
+    <>
     <Card className="border-primary/20">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
@@ -726,16 +769,20 @@ function MigrationWorkersPanel() {
                               {canResume && (
                                 <Button
                                   size="sm"
-                                  variant="default"
+                                  variant={j.dry_run ? 'default' : 'destructive'}
                                   className="h-7 gap-1 text-[10px] px-2"
                                   onClick={async (e) => {
                                     e.stopPropagation();
+                                    if (!j.dry_run) {
+                                      // LIVE resumes go through the confirmation gate
+                                      setResumeTarget(j);
+                                      return;
+                                    }
                                     const res = await invokeSecureFunction<any>('migration-orchestrator', {
                                       domain: j.domain,
                                       source_account: j.source_account,
                                       target_account: j.target_account,
-                                      dry_run: j.dry_run,
-                                      confirmation: j.dry_run ? undefined : 'MIGRATE-LIVE',
+                                      dry_run: true,
                                       payload: { ...(j.payload || {}), resume_job_id: j.id },
                                       skip_preflight: true,
                                     }, { timeoutMs: 30000 });
@@ -748,7 +795,7 @@ function MigrationWorkersPanel() {
                                   }}
                                 >
                                   <Play className="h-3 w-3" />
-                                  Resume
+                                  Resume{!j.dry_run ? ' LIVE' : ''}
                                 </Button>
                               )}
                               <Button
@@ -778,6 +825,69 @@ function MigrationWorkersPanel() {
         </div>
       </CardContent>
     </Card>
+
+    <AlertDialog open={!!resumeTarget} onOpenChange={(o) => { if (!o) setResumeTarget(null); }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
+            <ShieldAlert className="h-5 w-5 text-destructive" />
+            Resume LIVE migration?
+          </AlertDialogTitle>
+          <AlertDialogDescription className="space-y-2">
+            <span className="block">
+              You are about to resume a <strong className="text-destructive">LIVE</strong> migration job.
+              This will write data to the <strong className="uppercase">{resumeTarget?.target_account}</strong> GHL account.
+            </span>
+            {resumeTarget && (
+              <span className="block rounded-md border border-border/60 bg-muted/40 p-2 font-mono text-[11px]">
+                <div>Domain: <strong className="capitalize">{resumeTarget.domain}</strong></div>
+                <div>Job: {String(resumeTarget.id).substring(0, 8)}…</div>
+                <div>Direction: {resumeTarget.source_account} → {resumeTarget.target_account}</div>
+                {resumeTarget.last_processed_source_id && (
+                  <div>Resume after: {String(resumeTarget.last_processed_source_id).substring(0, 24)}</div>
+                )}
+              </span>
+            )}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={resuming}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            disabled={resuming}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            onClick={async (e) => {
+              e.preventDefault();
+              if (!resumeTarget) return;
+              setResuming(true);
+              try {
+                const j = resumeTarget;
+                const res = await invokeSecureFunction<any>('migration-orchestrator', {
+                  domain: j.domain,
+                  source_account: j.source_account,
+                  target_account: j.target_account,
+                  dry_run: false,
+                  confirmation: 'MIGRATE-LIVE',
+                  payload: { ...(j.payload || {}), resume_job_id: j.id },
+                  skip_preflight: true,
+                }, { timeoutMs: 30000 });
+                if (res.error || !res.data?.success) {
+                  toast.error(res.error?.message || res.data?.error || 'Resume failed');
+                } else {
+                  toast.success('LIVE resume dispatched');
+                  setResumeTarget(null);
+                  refreshJobs();
+                }
+              } finally {
+                setResuming(false);
+              }
+            }}
+          >
+            {resuming ? 'Resuming…' : 'Yes, resume LIVE'}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
 
@@ -968,7 +1078,9 @@ function JobDetailRow({ job, onChanged }: { job: any; onChanged?: () => void }) 
     }
   };
 
-  const manualRedispatch = async () => {
+  const [confirmRedispatch, setConfirmRedispatch] = useState(false);
+
+  const performRedispatch = async () => {
     setRedispatching(true);
     try {
       const res = await invokeSecureFunction<any>('migration-orchestrator', {
@@ -984,11 +1096,17 @@ function JobDetailRow({ job, onChanged }: { job: any; onChanged?: () => void }) 
         toast.error(res.error?.message || res.data?.error || 'Re-dispatch failed');
       } else {
         toast.success('Re-dispatch queued');
+        setConfirmRedispatch(false);
         onChanged?.();
       }
     } finally {
       setRedispatching(false);
     }
+  };
+
+  const manualRedispatch = () => {
+    if (!job.dry_run) { setConfirmRedispatch(true); return; }
+    performRedispatch();
   };
 
   const canRedispatch = liveJob.status === 'failed' || liveJob.status === 'cancelled' ||
@@ -1014,15 +1132,40 @@ function JobDetailRow({ job, onChanged }: { job: any; onChanged?: () => void }) 
             {canRedispatch && (
               <Button
                 size="sm"
-                variant="default"
+                variant={job.dry_run ? 'default' : 'destructive'}
                 onClick={manualRedispatch}
                 disabled={redispatching}
                 className="gap-1 h-7 text-[11px]"
               >
                 <Play className="h-3 w-3" />
-                {redispatching ? 'Re-dispatching…' : 'Re-dispatch'}
+                {redispatching ? 'Re-dispatching…' : job.dry_run ? 'Re-dispatch' : 'Re-dispatch LIVE'}
               </Button>
             )}
+            <AlertDialog open={confirmRedispatch} onOpenChange={setConfirmRedispatch}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="flex items-center gap-2">
+                    <ShieldAlert className="h-5 w-5 text-destructive" />
+                    Re-dispatch LIVE job?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will resume <strong className="capitalize">{job.domain}</strong> writes into{' '}
+                    <strong className="uppercase">{job.target_account}</strong> from cursor.
+                    Only proceed if you intend to continue the production migration.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={redispatching}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    disabled={redispatching}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    onClick={(e) => { e.preventDefault(); performRedispatch(); }}
+                  >
+                    {redispatching ? 'Resuming…' : 'Yes, re-dispatch LIVE'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
             <div className="ml-auto flex flex-wrap items-center gap-1.5 text-[10px]">
               {liveJob.status === 'processing' && (
                 <Badge variant="secondary" className="gap-1 animate-pulse">
