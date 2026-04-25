@@ -26,6 +26,7 @@
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
 import { createCorsHeaders, verifyAuth } from "../_shared/auth.ts";
+import { getBrandConfig } from "../_shared/brand-config.ts";
 
 const STATEMENT_BUCKET = 'finance-portal-statements';
 
@@ -410,7 +411,8 @@ Deno.serve(async (req) => {
 
       await ensureBucket(supabase);
 
-      const html = buildStatementHtml(stmt, lines || []);
+      const _brandCfg = await getBrandConfig(supabase);
+      const html = buildStatementHtml(stmt, lines || [], _brandCfg.companyName);
       const csv = buildRemittanceCsv(stmt, lines || []);
 
       const folder = `${stmt.finance_contact_id}/${stmt.id}`;
