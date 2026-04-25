@@ -540,6 +540,7 @@ export async function resolveTargetContactByName(
     fullName: string | null | undefined;
     sourceAccount: 'legacy' | 'new';
     targetAccount: 'legacy' | 'new';
+    excludeNewIds?: string[];
   },
 ): Promise<{
   newId: string | null;
@@ -569,7 +570,11 @@ export async function resolveTargetContactByName(
     return { newId: null, matchedName: null, candidateCount: 0, ambiguous: false, normalizedKey: key };
   }
 
-  const matches = data.filter((row: any) => normalizeContactName(row.notes) === key);
+  const excluded = new Set((params.excludeNewIds || []).filter(Boolean));
+  const matches = data.filter((row: any) => {
+    if (excluded.has(row.new_ghl_id)) return false;
+    return normalizeContactName(row.notes) === key;
+  });
   if (matches.length === 0) {
     return { newId: null, matchedName: null, candidateCount: 0, ambiguous: false, normalizedKey: key };
   }
