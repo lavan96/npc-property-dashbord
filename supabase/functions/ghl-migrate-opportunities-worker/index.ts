@@ -216,14 +216,26 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // Resolve target contact by NAME (per project policy: name is the
-        // source of truth — duplicates routed to the most-recently-mirrored
-        // target contact). The GHL search response includes contactName for
-        // each opp; fall back to firstName+lastName if needed.
-        const oppContactName = (opp.contactName || opp.contact?.name ||
+        // Resolve target contact by NAME (per project policy: full_name is
+        // the source of truth — duplicates routed to the most-recently-mirrored
+        // target contact). The GHL search response usually includes contactName;
+        // fall back to firstName+lastName fields, and as a final fallback look
+        // up the source contact in our local `clients` mirror by ghl_contact_id.
+        let oppContactName = (opp.contactName || opp.contact?.name ||
           [opp.contact?.firstName, opp.contact?.lastName].filter(Boolean).join(' ') ||
           [opp.firstName, opp.lastName].filter(Boolean).join(' ') ||
           '').trim();
+
+        if (!oppContactName && opp.contactId) {
+          const { data: localClient } = await supabase
+            .from('clients')
+            .select('primary_first_name, primary_surname')
+            .eq('ghl_contact_id', opp.contactId)
+            .maybeSingle();
+          if (localClient) {
+            oppContactName = `${localClient.primary_first_name || ''} ${localClient.primary_surname || ''}`.trim();
+          }
+        }
 
         const resolved = await resolveTargetContactByName(supabase, {
           fullName: oppContactName,
