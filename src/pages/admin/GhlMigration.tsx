@@ -447,6 +447,93 @@ function MigrationWorkersPanel() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
+        {/* Credential audit panel */}
+        <div className="rounded-md border border-border/60 bg-muted/20 p-4 space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <KeyRound className="h-4 w-4 text-primary" />
+              <h3 className="text-sm font-semibold">Token preflight</h3>
+              <Badge variant="outline" className="text-[10px]">Required for LIVE</Badge>
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => testCredentials('legacy')} disabled={testingAudit} className="gap-1">
+                <ShieldAlert className="h-3 w-3" />
+                Test LEGACY
+              </Button>
+              <Button size="sm" variant="default" onClick={() => testCredentials('new')} disabled={testingAudit} className="gap-1">
+                <ShieldAlert className="h-3 w-3" />
+                Test NEW
+              </Button>
+            </div>
+          </div>
+          {!audit && (
+            <p className="text-[11px] text-muted-foreground">
+              Click <strong>Test NEW</strong> to verify the configured token has the contacts/opportunities/notes scopes
+              required for live writes. Live dispatch will be blocked until all required scopes pass.
+            </p>
+          )}
+          {audit && (
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                <Badge variant={auditAccount === 'new' ? 'default' : 'secondary'} className="text-[10px] uppercase">{audit.account}</Badge>
+                <Badge variant="outline" className="text-[10px]">kind: {audit.token_kind}</Badge>
+                <Badge variant="outline" className="text-[10px]">hint: {audit.token_type_hint}</Badge>
+                {audit.exchange_attempted && (
+                  <Badge variant={audit.exchange_succeeded ? 'default' : 'destructive'} className="text-[10px]">
+                    exchange: {audit.exchange_succeeded ? 'ok' : 'failed'}
+                  </Badge>
+                )}
+                {audit.location_id_matches_secret === false && (
+                  <Badge variant="destructive" className="text-[10px]">locationId mismatch</Badge>
+                )}
+                <a href={audit.documentation_url} target="_blank" rel="noreferrer"
+                   className="ml-auto inline-flex items-center gap-1 text-[11px] text-primary hover:underline">
+                  Required scopes <ExternalLink className="h-3 w-3" />
+                </a>
+              </div>
+              <div className="overflow-hidden rounded border border-border/40">
+                <table className="w-full text-[11px]">
+                  <thead className="bg-muted/40 uppercase text-muted-foreground">
+                    <tr>
+                      <th className="p-1.5 text-left">Scope</th>
+                      <th className="p-1.5 text-left">Endpoint</th>
+                      <th className="p-1.5 text-left">Status</th>
+                      <th className="p-1.5 text-left">Detail</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {audit.scope_probes.map((p) => (
+                      <tr key={p.scope} className="border-t border-border/30">
+                        <td className="p-1.5 font-mono text-[10px]">{p.scope}</td>
+                        <td className="p-1.5 font-mono text-[10px] text-muted-foreground">{p.method} {p.endpoint}</td>
+                        <td className="p-1.5">
+                          {p.ok ? (
+                            <span className="inline-flex items-center gap-1 text-success"><CheckCircle2 className="h-3 w-3" />OK</span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-destructive"><XCircle className="h-3 w-3" />{p.http_status || 'ERR'}</span>
+                          )}
+                        </td>
+                        <td className="p-1.5 text-muted-foreground">
+                          {p.ok ? '—' : `[${p.error_code || 'ERR'}] ${p.error_message || ''}`.substring(0, 120)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {!audit.required_scopes_ok && (
+                <Alert className="border-destructive/40 bg-destructive/5 py-2">
+                  <AlertCircle className="h-3.5 w-3.5 text-destructive" />
+                  <AlertDescription className="text-[11px] text-destructive">
+                    Missing required scopes: <code>{audit.missing_scopes.join(', ')}</code>.
+                    Generate a new sub-account/PIT token with these scopes before running live jobs.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* Dispatch form */}
         <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
           <div className="space-y-1">
