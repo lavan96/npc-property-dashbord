@@ -2,6 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 import { logApiUsage } from '../_shared/logApiUsage.ts';
+import { getBrandConfig } from '../_shared/brand-config.ts';
 
 // ============================================================================
 // REPORT SECTION DEFINITIONS - SYNCED WITH DATABASE TEMPLATE STRUCTURE
@@ -2570,7 +2571,7 @@ Statewide Investment Analysis: ${formattedInput}
 
 Produce a comprehensive statewide investment analysis following the structure above with specific Australian market data.`;
 
-    // STRICT REFERENCE TEMPLATE - Based on the Naidu Property Consulting Services Investment Report format
+    // STRICT REFERENCE TEMPLATE - Based on the advisory's Investment Report format
     // This template enforces the exact structure, length, content, and sources matching the reference PDF
     
     // ============================================================================
@@ -2635,7 +2636,8 @@ Produce a comprehensive statewide investment analysis following the structure ab
     console.log(`📊 Annual Costs Breakdown: Council=$${effectiveCouncilRates}, Water=$${effectiveWaterRates}, Strata=$${effectiveStrataFees}, Insurance=$${effectiveLandlordInsurance}, Maintenance=$${effectiveMaintenance}, PM=$${effectivePmDollar}`);
     console.log(`📅 Occupancy: ${effectiveOccupancyRate} weeks/year (${((effectiveOccupancyRate/52)*100).toFixed(0)}%)`);
     console.log(`📊 Land Tax Override: $${effectiveLandTax} (will be injected into prompt)`);
-    const propertyPrompt = `You are an expert Australian property investment analyst for Naidu Property Consulting Services.
+    const _brandPp = await getBrandConfig();
+    const propertyPrompt = `You are an expert Australian property investment analyst for ${_brandPp.companyName}.
 Your role is to produce comprehensive, professional-grade investment reports following the EXACT structure, length, and format of our reference template.
 
 **CRITICAL CALCULATION RULES:**
@@ -4090,12 +4092,14 @@ ${templateContext}
     }
     // ========== END RAG TEMPLATE CONTEXT INJECTION ==========
     
+    const _brandSys = await getBrandConfig();
+    const _brandName = _brandSys.companyName;
     const areaSystemMessages: Record<string, string> = {
-      'suburb': 'You are a trusted property investment advisor at Naidu Property Consulting Services writing suburb-level analysis for clients who may not have a finance background. Lead with clear, plain-English insights and use supporting data selectively — never dump raw statistics without context. Explain what numbers mean in practical terms (e.g., "growing 40% faster than the metro average, which signals strong demand"). Use tables only for direct comparisons, not for listing single values. Every section should feel like advice from a knowledgeable friend, not an academic paper. Still be thorough and accurate — but prioritise readability and actionable takeaways.',
-      'postcode': 'You are a trusted property investment advisor at Naidu Property Consulting Services writing postcode-zone analysis for clients who may not have a finance background. Compare suburbs within the zone using clear narrative language. Use comparison tables sparingly and only when they genuinely aid understanding. Lead each section with the key insight before supporting it with data. Explain implications in practical terms — what does this mean for an investor considering this area?',
-      'statewide': 'You are a trusted property investment advisor at Naidu Property Consulting Services writing statewide macro analysis for clients who may not have a finance background. Provide a bird\'s-eye view of the state\'s property market in accessible, conversational language. Use data to support narrative points, not as the centrepiece. Focus on what matters to investors: where the opportunities are, what risks to watch, and how macro trends translate to real-world investment decisions.',
+      'suburb': `You are a trusted property investment advisor at ${_brandName} writing suburb-level analysis for clients who may not have a finance background. Lead with clear, plain-English insights and use supporting data selectively — never dump raw statistics without context. Explain what numbers mean in practical terms (e.g., "growing 40% faster than the metro average, which signals strong demand"). Use tables only for direct comparisons, not for listing single values. Every section should feel like advice from a knowledgeable friend, not an academic paper. Still be thorough and accurate — but prioritise readability and actionable takeaways.`,
+      'postcode': `You are a trusted property investment advisor at ${_brandName} writing postcode-zone analysis for clients who may not have a finance background. Compare suburbs within the zone using clear narrative language. Use comparison tables sparingly and only when they genuinely aid understanding. Lead each section with the key insight before supporting it with data. Explain implications in practical terms — what does this mean for an investor considering this area?`,
+      'statewide': `You are a trusted property investment advisor at ${_brandName} writing statewide macro analysis for clients who may not have a finance background. Provide a bird's-eye view of the state's property market in accessible, conversational language. Use data to support narrative points, not as the centrepiece. Focus on what matters to investors: where the opportunities are, what risks to watch, and how macro trends translate to real-world investment decisions.`,
     };
-    const systemMessage = areaSystemMessages[reportScope] || `You are a trusted property investment advisor at Naidu Property Consulting Services writing a premium client-facing report. Your reader is a potential property investor who may not have a finance or economics background.
+    const systemMessage = areaSystemMessages[reportScope] || `You are a trusted property investment advisor at ${_brandName} writing a premium client-facing report. Your reader is a potential property investor who may not have a finance or economics background.
 
 WRITING STYLE RULES:
 1. Lead every section with a clear, plain-English insight or takeaway BEFORE presenting any data
