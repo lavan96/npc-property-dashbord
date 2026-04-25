@@ -645,8 +645,8 @@ function MigrationWorkersPanel() {
                     const pct = j.total_items > 0 ? Math.round((j.processed_items / j.total_items) * 100) : 0;
                     const isOpen = expandedJobId === j.id;
                     return (
-                      <>
-                        <tr key={j.id} className="border-t border-border/40 cursor-pointer hover:bg-muted/30"
+                      <React.Fragment key={j.id}>
+                        <tr className="border-t border-border/40 cursor-pointer hover:bg-muted/30"
                             onClick={() => setExpandedJobId(isOpen ? null : j.id)}>
                           <td className="p-2 text-muted-foreground">{new Date(j.created_at).toLocaleTimeString()}</td>
                           <td className="p-2 font-medium">{j.domain}</td>
