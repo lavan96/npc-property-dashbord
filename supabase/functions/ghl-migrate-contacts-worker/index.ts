@@ -30,11 +30,14 @@ import {
   recordIdMapping,
   updateJobProgress,
   delay,
+  saveCheckpoint,
+  loadCheckpoint,
+  selfRedispatch,
 } from '../_shared/migration-jobs.ts';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 const PAGE_LIMIT = 100;
-const MAX_RUNTIME_MS = 50_000; // leave buffer under edge function limit
+const MAX_RUNTIME_MS = 350_000; // 400s wall-clock limit, leave 50s buffer for cleanup + redispatch
 const RATE_LIMIT_MS = 250;
 
 Deno.serve(async (req) => {
@@ -105,26 +108,49 @@ Deno.serve(async (req) => {
     let totalSucceeded = 0;
     let totalFailed = 0;
     let totalSkipped = 0;
-    let nextStartAfterId: string | null = null;
-    let nextStartAfter: string | null = null;
     let firstPage = true;
     let totalEstimate = 0;
 
-    await startJob(supabase, jobId, 0); // total updated as we discover
+    // Resume from saved checkpoint (if this is a redispatch)
+    const checkpoint = await loadCheckpoint(supabase, jobId);
+    let nextStartAfterId: string | null = checkpoint.cursor.startAfterId || null;
+    let nextStartAfter: string | null = checkpoint.cursor.startAfter || null;
+    const isResume = body._resume === true || nextStartAfterId !== null;
+
+    if (isResume) {
+      console.log(`[contacts-worker] RESUMING job=${jobId} dispatch#${checkpoint.dispatchCount} cursor=${JSON.stringify(checkpoint.cursor)}`);
+      // Don't call startJob on resume — preserves total_items and started_at
+    } else {
+      await startJob(supabase, jobId, 0); // total updated as we discover
+    }
 
     while (true) {
       if (Date.now() - startedAt > MAX_RUNTIME_MS) {
-        console.log(`[contacts-worker] Time budget exhausted at ${totalProcessed} processed, will need re-dispatch`);
-        // Mark as still processing — next dispatch can resume (future enhancement)
+        console.log(`[contacts-worker] Time budget exhausted at ${totalProcessed} processed — saving checkpoint + self-redispatching`);
+        await saveCheckpoint(
+          supabase,
+          jobId,
+          { startAfterId: nextStartAfterId, startAfter: nextStartAfter },
+        );
         await updateJobProgress(supabase, jobId, {
           processed_items: totalProcessed,
           succeeded_items: totalSucceeded,
           failed_items: totalFailed,
         });
-        await finishJob(supabase, jobId, 'completed',
-          `Partial run: processed ${totalProcessed} of ${totalEstimate || '?'}. Re-dispatch to continue.`);
+        const r = await selfRedispatch(supabase, jobId, 'ghl-migrate-contacts-worker', {
+          job_id: jobId,
+          source_account: sourceAccount,
+          target_account: targetAccount,
+          dry_run: dryRun,
+          payload,
+        });
+        if (!r.dispatched) {
+          await finishJob(supabase, jobId, 'completed',
+            `Auto-resume halted (${r.reason}). Processed ${totalProcessed} of ${totalEstimate || '?'}.`);
+        }
         return new Response(JSON.stringify({
           success: true, partial: true, processed: totalProcessed,
+          auto_redispatched: r.dispatched, dispatch_count: r.dispatchCount, reason: r.reason || null,
         }), { headers: { 'Content-Type': 'application/json' } });
       }
 
@@ -275,22 +301,32 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Update progress every page
+      // Update progress + checkpoint every page
       await updateJobProgress(supabase, jobId, {
         processed_items: totalProcessed,
         succeeded_items: totalSucceeded,
         failed_items: totalFailed,
       });
 
-      if (maxItems > 0 && totalProcessed >= maxItems) break;
-
       // Pagination: GHL returns either nextPage cursor or last contact's startAfter values
       const last = contacts[contacts.length - 1];
       nextStartAfterId = last?.id || null;
       nextStartAfter = last?.dateAdded || null;
+
+      // Persist cursor + last source id so a future redispatch resumes here
+      await saveCheckpoint(
+        supabase,
+        jobId,
+        { startAfterId: nextStartAfterId, startAfter: nextStartAfter },
+        last?.id || null,
+      );
+
+      if (maxItems > 0 && totalProcessed >= maxItems) break;
       if (contacts.length < PAGE_LIMIT) break;
     }
 
+    // Clear cursor on natural completion
+    await saveCheckpoint(supabase, jobId, {});
     await finishJob(supabase, jobId, totalFailed > 0 && totalSucceeded === 0 ? 'failed' : 'completed',
       totalFailed > 0 ? `Completed with ${totalFailed} failures` : undefined);
 

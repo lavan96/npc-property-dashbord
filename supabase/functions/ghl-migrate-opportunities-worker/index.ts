@@ -20,11 +20,12 @@ import {
 } from '../_shared/ghl-account.ts';
 import {
   startJob, finishJob, recordItem, recordIdMapping, updateJobProgress, delay,
+  saveCheckpoint, loadCheckpoint, selfRedispatch,
 } from '../_shared/migration-jobs.ts';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 const PAGE_LIMIT = 100;
-const MAX_RUNTIME_MS = 50_000;
+const MAX_RUNTIME_MS = 350_000;
 const RATE_LIMIT_MS = 300;
 
 Deno.serve(async (req) => {
@@ -143,15 +144,36 @@ Deno.serve(async (req) => {
       console.warn(`[opps-worker] Pipelines not found in target by name: ${unmappedPipelines.join(', ')}`);
     }
 
-    await startJob(supabase, jobId, 0);
+    const checkpoint = await loadCheckpoint(supabase, jobId);
+    const isResume = body._resume === true || !!checkpoint.cursor.startAfterId;
+    if (isResume) {
+      console.log(`[opps-worker] RESUMING job=${jobId} dispatch#${checkpoint.dispatchCount} cursor=${JSON.stringify(checkpoint.cursor)}`);
+    } else {
+      await startJob(supabase, jobId, 0);
+    }
 
     let totalProcessed = 0, totalSucceeded = 0, totalFailed = 0, totalSkipped = 0;
-    let pageStartAfter: string | null = null;
-    let pageStartAfterId: string | null = null;
+    let pageStartAfter: string | null = checkpoint.cursor.startAfter || null;
+    let pageStartAfterId: string | null = checkpoint.cursor.startAfterId || null;
     let firstPage = true;
 
     while (true) {
-      if (Date.now() - startedAt > MAX_RUNTIME_MS) break;
+      if (Date.now() - startedAt > MAX_RUNTIME_MS) {
+        await saveCheckpoint(supabase, jobId, { startAfterId: pageStartAfterId, startAfter: pageStartAfter });
+        await updateJobProgress(supabase, jobId, {
+          processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed,
+        });
+        const r = await selfRedispatch(supabase, jobId, 'ghl-migrate-opportunities-worker', {
+          job_id: jobId, source_account: sourceAccount, target_account: targetAccount, dry_run: dryRun, payload,
+        });
+        if (!r.dispatched) {
+          await finishJob(supabase, jobId, 'completed', `Auto-resume halted (${r.reason}). Processed ${totalProcessed}.`);
+        }
+        return new Response(JSON.stringify({
+          success: true, partial: true, processed: totalProcessed,
+          auto_redispatched: r.dispatched, dispatch_count: r.dispatchCount, reason: r.reason || null,
+        }), { headers: { 'Content-Type': 'application/json' } });
+      }
 
       const p = new URLSearchParams({ location_id: sourceCreds.locationId!, limit: String(PAGE_LIMIT) });
       if (pageStartAfter) p.set('startAfter', pageStartAfter);
@@ -312,13 +334,17 @@ Deno.serve(async (req) => {
         processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed,
       });
 
-      if (maxItems > 0 && totalProcessed >= maxItems) break;
       const last = opps[opps.length - 1];
       pageStartAfterId = last?.id || null;
       pageStartAfter = last?.updatedAt || last?.dateAdded || null;
+      await saveCheckpoint(supabase, jobId,
+        { startAfterId: pageStartAfterId, startAfter: pageStartAfter }, last?.id || null);
+
+      if (maxItems > 0 && totalProcessed >= maxItems) break;
       if (opps.length < PAGE_LIMIT) break;
     }
 
+    await saveCheckpoint(supabase, jobId, {});
     await finishJob(supabase, jobId,
       totalFailed > 0 && totalSucceeded === 0 ? 'failed' : 'completed',
       [

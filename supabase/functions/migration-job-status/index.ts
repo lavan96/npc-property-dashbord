@@ -76,27 +76,54 @@ Deno.serve(async (req) => {
     // Recent items (latest 50 by processed_at desc)
     const { data: items } = await supabase
       .from('migration_job_items')
-      .select('source_id, target_id, entity_label, status, error_message, processed_at')
+      .select('source_id, target_id, entity_label, status, error_message, error_category, is_retryable, processed_at')
       .eq('job_id', jobId)
       .order('processed_at', { ascending: false, nullsFirst: false })
       .limit(50);
 
-    // Status breakdown
+    // Status breakdown + error category breakdown
     const breakdown: Record<string, number> = { pending: 0, succeeded: 0, failed: 0, skipped: 0 };
+    const errorCategories: Record<string, number> = {};
+    let retryableFailures = 0;
+    let nonRetryableFailures = 0;
+
     const { data: allItems } = await supabase
       .from('migration_job_items')
-      .select('status')
+      .select('status, error_category, is_retryable')
       .eq('job_id', jobId);
     (allItems || []).forEach((i: any) => {
       breakdown[i.status] = (breakdown[i.status] || 0) + 1;
+      if (i.status === 'failed') {
+        const cat = i.error_category || 'unknown';
+        errorCategories[cat] = (errorCategories[cat] || 0) + 1;
+        if (i.is_retryable) retryableFailures++; else nonRetryableFailures++;
+      }
     });
+
+    // Optional: full failed-item dump for CSV export (capped at 5000)
+    let failed_items: any[] | undefined;
+    if (body.include_failed_items === true) {
+      const { data: fails } = await supabase
+        .from('migration_job_items')
+        .select('source_id, target_id, entity_label, status, error_message, error_category, is_retryable, processed_at, attempts')
+        .eq('job_id', jobId)
+        .eq('status', 'failed')
+        .order('processed_at', { ascending: false, nullsFirst: false })
+        .limit(5000);
+      failed_items = fails || [];
+    }
 
     return new Response(
       JSON.stringify({
         success: true,
         job,
         breakdown,
+        error_categories: errorCategories,
+        retryable_failures: retryableFailures,
+        non_retryable_failures: nonRetryableFailures,
         recent_items: items || [],
+        items: items || [], // back-compat with UI that reads `items`
+        failed_items,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );

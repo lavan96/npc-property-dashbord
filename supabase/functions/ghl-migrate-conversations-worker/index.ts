@@ -14,11 +14,12 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import { getGhlCredentials, validateGhlCredentials, buildGhlHeaders } from '../_shared/ghl-account.ts';
 import {
   startJob, finishJob, recordItem, updateJobProgress, delay,
+  saveCheckpoint, loadCheckpoint, selfRedispatch,
 } from '../_shared/migration-jobs.ts';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 const PAGE_LIMIT = 100;
-const MAX_RUNTIME_MS = 50_000;
+const MAX_RUNTIME_MS = 350_000;
 const RATE_LIMIT_MS = 250;
 
 function mapDirection(msg: any): string {
@@ -81,14 +82,35 @@ Deno.serve(async (req) => {
 
     console.log(`[conv-worker] job=${jobId} from=${sourceAccount} dry_run=${dryRun}`);
 
-    await startJob(supabase, jobId, 0);
+    const checkpoint = await loadCheckpoint(supabase, jobId);
+    const isResume = body._resume === true || !!checkpoint.cursor.nextPage;
+    if (isResume) {
+      console.log(`[conv-worker] RESUMING job=${jobId} dispatch#${checkpoint.dispatchCount}`);
+    } else {
+      await startJob(supabase, jobId, 0);
+    }
 
     let totalProcessed = 0, totalSucceeded = 0, totalFailed = 0, totalSkipped = 0;
-    let nextPage: string | null = null;
+    let nextPage: string | null = checkpoint.cursor.nextPage || null;
     let firstPage = true;
 
     while (true) {
-      if (Date.now() - startedAt > MAX_RUNTIME_MS) break;
+      if (Date.now() - startedAt > MAX_RUNTIME_MS) {
+        await saveCheckpoint(supabase, jobId, { nextPage });
+        await updateJobProgress(supabase, jobId, {
+          processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed,
+        });
+        const r = await selfRedispatch(supabase, jobId, 'ghl-migrate-conversations-worker', {
+          job_id: jobId, source_account: sourceAccount, target_account: targetAccount, dry_run: dryRun, payload,
+        });
+        if (!r.dispatched) {
+          await finishJob(supabase, jobId, 'completed', `Auto-resume halted (${r.reason}). Processed ${totalProcessed}.`);
+        }
+        return new Response(JSON.stringify({
+          success: true, partial: true, processed: totalProcessed,
+          auto_redispatched: r.dispatched, dispatch_count: r.dispatchCount,
+        }), { headers: { 'Content-Type': 'application/json' } });
+      }
 
       const p = new URLSearchParams({ locationId: creds.locationId!, limit: String(PAGE_LIMIT) });
       if (nextPage) p.set('startAfter', nextPage);
@@ -175,11 +197,14 @@ Deno.serve(async (req) => {
         processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed,
       });
 
-      if (maxItems > 0 && totalProcessed >= maxItems) break;
       nextPage = data.nextPage || null;
+      await saveCheckpoint(supabase, jobId, { nextPage });
+
+      if (maxItems > 0 && totalProcessed >= maxItems) break;
       if (!nextPage || convs.length < PAGE_LIMIT) break;
     }
 
+    await saveCheckpoint(supabase, jobId, {});
     await finishJob(supabase, jobId,
       totalFailed > 0 && totalSucceeded === 0 ? 'failed' : 'completed',
       totalFailed > 0 ? `Completed with ${totalFailed} failures` : undefined,

@@ -21,10 +21,11 @@ import {
 } from '../_shared/ghl-account.ts';
 import {
   startJob, finishJob, recordItem, recordIdMapping, updateJobProgress, delay,
+  saveCheckpoint, loadCheckpoint, selfRedispatch,
 } from '../_shared/migration-jobs.ts';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
-const MAX_RUNTIME_MS = 50_000;
+const MAX_RUNTIME_MS = 350_000;
 const RATE_LIMIT_MS = 300;
 const BATCH = 200;
 
@@ -82,24 +83,38 @@ Deno.serve(async (req) => {
 
     console.log(`[notes-worker] job=${jobId} ${sourceAccount}→${targetAccount} dry_run=${dryRun}`);
 
-    // Pull all client_notes joined to clients with a ghl_contact_id
+    // Resume support: notes are paginated by an integer offset over local rows
+    const checkpoint = await loadCheckpoint(supabase, jobId);
+    const isResume = body._resume === true || (checkpoint.cursor.offset || 0) > 0;
+    const startOffset = Number(checkpoint.cursor.offset) || 0;
+
+    // Pull notes joined to clients with a ghl_contact_id; resume from offset
+    const pullLimit = maxItems > 0 ? Math.min(maxItems, 1000) : 1000;
     const { data: notes, error: notesErr } = await supabase
       .from('client_notes')
       .select('id, content, note_type, client_id, clients!inner(ghl_contact_id, primary_first_name, primary_surname)')
       .not('clients.ghl_contact_id', 'is', null)
-      .limit(maxItems > 0 ? maxItems : 5000);
+      .order('id', { ascending: true })
+      .range(startOffset, startOffset + pullLimit - 1);
 
     if (notesErr) throw new Error(`Notes query failed: ${notesErr.message}`);
 
-    await startJob(supabase, jobId, notes?.length || 0);
+    if (isResume) {
+      console.log(`[notes-worker] RESUMING job=${jobId} dispatch#${checkpoint.dispatchCount} offset=${startOffset}`);
+    } else {
+      await startJob(supabase, jobId, notes?.length || 0);
+    }
 
     let totalProcessed = 0, totalSucceeded = 0, totalFailed = 0, totalSkipped = 0;
+    let currentOffset = startOffset;
 
+    let timeBudgetExhausted = false;
     for (const note of (notes || [])) {
-      if (Date.now() - startedAt > MAX_RUNTIME_MS) break;
+      if (Date.now() - startedAt > MAX_RUNTIME_MS) { timeBudgetExhausted = true; break; }
       if (maxItems > 0 && totalProcessed >= maxItems) break;
 
       totalProcessed++;
+      currentOffset++;
       const client = (note as any).clients;
       const sourceContactId = client?.ghl_contact_id;
       const label = `${client?.primary_first_name || ''} ${client?.primary_surname || ''}`.trim() || 'Note';
@@ -204,6 +219,27 @@ Deno.serve(async (req) => {
     await updateJobProgress(supabase, jobId, {
       processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed,
     });
+
+    const morePagesAvailable = (notes?.length || 0) >= pullLimit;
+    const shouldRedispatch = !timeBudgetExhausted && morePagesAvailable && !(maxItems > 0 && totalProcessed >= maxItems);
+
+    if (timeBudgetExhausted || shouldRedispatch) {
+      await saveCheckpoint(supabase, jobId, { offset: currentOffset });
+      const r = await selfRedispatch(supabase, jobId, 'ghl-migrate-notes-worker', {
+        job_id: jobId, source_account: sourceAccount, target_account: targetAccount, dry_run: dryRun, payload,
+      });
+      if (!r.dispatched) {
+        await finishJob(supabase, jobId, 'completed',
+          `Auto-resume halted (${r.reason}). Processed ${totalProcessed} (offset=${currentOffset}).`);
+      }
+      console.log(`[notes-worker] PARTIAL job=${jobId} processed=${totalProcessed} redispatched=${r.dispatched}`);
+      return new Response(JSON.stringify({
+        success: true, partial: true, processed: totalProcessed,
+        auto_redispatched: r.dispatched, dispatch_count: r.dispatchCount,
+      }), { headers: { 'Content-Type': 'application/json' } });
+    }
+
+    await saveCheckpoint(supabase, jobId, {});
     await finishJob(supabase, jobId,
       totalFailed > 0 && totalSucceeded === 0 ? 'failed' : 'completed',
       totalFailed > 0 ? `Completed with ${totalFailed} failures` : undefined,
