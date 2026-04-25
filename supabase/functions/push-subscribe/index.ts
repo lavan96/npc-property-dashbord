@@ -104,7 +104,7 @@ Deno.serve(async (req) => {
       if (!r.userId) return jsonResponse({ error: r.error || 'Unauthorized' }, 401);
       userId = r.userId;
     } else {
-      const auth = await verifyAuth(req);
+      const auth = await verifyAuth(supabase, req.headers, body);
       if (!auth?.userId) return jsonResponse({ error: 'Unauthorized' }, 401);
       userId = auth.userId;
     }
