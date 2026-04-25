@@ -102,7 +102,7 @@ export const QAPDFGenerator: React.FC<QAPDFGeneratorProps> = ({
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(18);
       doc.setFont('helvetica', 'bold');
-      doc.text(contact.company_name || 'Naidu Property Consulting Services', margin, 15);
+      doc.text(contact.company_name || 'Property Report', margin, 15);
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
       doc.text('Investment Property Analysis', margin, 22);
@@ -412,7 +412,7 @@ export const QAPDFGenerator: React.FC<QAPDFGeneratorProps> = ({
 
       // Footer on each page (skip cover page = page 1, skip disclaimer = last page)
       const totalPages = doc.getNumberOfPages();
-      const companyFooterName = contact.company_name || 'Naidu Property Consulting Services';
+      const companyFooterName = contact.company_name || 'Property Report';
       for (let p = 1; p <= totalPages; p++) {
         if (p === 1 || p === totalPages) continue;
         doc.setPage(p);

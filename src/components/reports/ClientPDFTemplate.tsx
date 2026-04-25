@@ -79,7 +79,9 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
             marginBottom: '40px',
             background: 'rgba(201, 165, 90, 0.1)',
           }}>
-            <span style={{ fontSize: '64px', color: '#c9a55a', fontFamily: 'serif', fontWeight: 'bold' }}>N</span>
+            <span style={{ fontSize: '64px', color: '#c9a55a', fontFamily: 'serif', fontWeight: 'bold' }}>
+              {(contactDetails.company_name || 'P').charAt(0).toUpperCase()}
+            </span>
           </div>
 
           {/* Title */}
@@ -92,7 +94,7 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
             margin: '0 0 20px 0',
             letterSpacing: '4px',
           }}>
-            NAIDU PROPERTY<br />CONSULTING SERVICES
+            {(contactDetails.company_name || 'Property Consulting').toUpperCase()}
           </h1>
 
           {/* Subtitle */}
