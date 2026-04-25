@@ -14,6 +14,7 @@ import {
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { useBrand } from '@/branding/useBrand';
 
 /* ── Skeleton loaders ── */
 function KpiSkeleton() {
