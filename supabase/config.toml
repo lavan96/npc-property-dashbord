@@ -592,19 +592,19 @@ request_timeout = 30
 
 [functions.ghl-migrate-contacts-worker]
 verify_jwt = false
-request_timeout = 60
+request_timeout = 400
 
 [functions.ghl-migrate-opportunities-worker]
 verify_jwt = false
-request_timeout = 60
+request_timeout = 400
 
 [functions.ghl-migrate-conversations-worker]
 verify_jwt = false
-request_timeout = 60
+request_timeout = 400
 
 [functions.ghl-migrate-notes-worker]
 verify_jwt = false
-request_timeout = 60
+request_timeout = 400
 
 [functions.ghl-test-credentials]
 verify_jwt = false
