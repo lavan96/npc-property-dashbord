@@ -372,6 +372,83 @@ export function normalizeContactName(raw: string | null | undefined): string | n
 }
 
 /**
+ * Smart-capitalize a name coming from GHL. Handles all-lowercase /
+ * all-uppercase imports, McX / MacX / O'X prefixes, and hyphenated
+ * surnames. Already-mixed-case input is returned unchanged so we don't
+ * stomp on legitimately styled names like "van der Berg".
+ *
+ * Mirror of `src/utils/nameFormatting.ts#smartCapitalize` so the same
+ * sanitization runs in Deno workers as in the browser.
+ */
+export function smartCapitalizeName(raw: string | null | undefined): string {
+  if (!raw) return '';
+  const trimmed = String(raw).replace(/\s+/g, ' ').trim();
+  if (!trimmed) return '';
+  // Leave mixed-case names alone.
+  if (trimmed !== trimmed.toLowerCase() && trimmed !== trimmed.toUpperCase()) {
+    return trimmed;
+  }
+  return trimmed
+    .toLowerCase()
+    .split(/(\s+|-|')/)
+    .map((part) => {
+      if (/^(\s+|-|')$/.test(part)) return part;
+      if (part.startsWith('mc') && part.length > 2) {
+        return 'Mc' + part.charAt(2).toUpperCase() + part.slice(3);
+      }
+      if (part.startsWith('mac') && part.length > 3) {
+        return 'Mac' + part.charAt(3).toUpperCase() + part.slice(4);
+      }
+      return part.charAt(0).toUpperCase() + part.slice(1);
+    })
+    .join('');
+}
+
+/**
+ * Detect "junk" contact names that should NEVER be pushed to the target
+ * account — phone numbers stored as names, raw email addresses, "test"
+ * placeholders, runs of digits, and other obvious garbage we observed
+ * in the legacy GHL export. Returns a reason string when junk is
+ * detected, or null when the name passes.
+ */
+export function detectJunkContactName(raw: string | null | undefined): string | null {
+  if (!raw) return 'Empty name';
+  const v = String(raw).trim();
+  if (!v) return 'Empty name';
+  if (v.length < 2) return 'Name too short';
+  // Email address used as name
+  if (/@/.test(v) && /\.[a-z]{2,}$/i.test(v)) return 'Email used as name';
+  // Pure digit/phone-style strings (e.g. "00000000", "0412 478 751", "(02) 3814 5447")
+  const digitsOnly = v.replace(/[^0-9]/g, '');
+  const nonDigits = v.replace(/[0-9\s\-().+]/g, '');
+  if (digitsOnly.length >= 6 && nonDigits.length === 0) return 'Phone number used as name';
+  // Test/placeholder rows
+  if (/^(test|testing|asdf+|qwerty|sample|demo|na|n\/a|none|null|unknown)\b/i.test(v)) {
+    return `Placeholder name "${v.substring(0, 40)}"`;
+  }
+  // Repeated single character (e.g. "aaaa")
+  if (v.length >= 4 && /^(.)\1+$/.test(v.replace(/\s+/g, ''))) return 'Repeated-character name';
+  return null;
+}
+
+/**
+ * Apply full sanitization to a {firstName, lastName} pair coming from
+ * legacy GHL: trims, collapses whitespace, smart-capitalizes, and
+ * computes the resulting display name. Returns the sanitized parts plus
+ * a `junkReason` if the combined name should be skipped.
+ */
+export function sanitizeContactNameParts(
+  firstName: string | null | undefined,
+  lastName: string | null | undefined,
+): { firstName: string; lastName: string; fullName: string; junkReason: string | null } {
+  const first = smartCapitalizeName(firstName);
+  const last = smartCapitalizeName(lastName);
+  const fullName = [first, last].filter(Boolean).join(' ').trim();
+  const junkReason = detectJunkContactName(fullName);
+  return { firstName: first, lastName: last, fullName, junkReason };
+}
+
+/**
  * Resolve a SOURCE contact name → TARGET ghl contact id using the
  * `ghl_id_mapping.notes` column (which the contacts worker populates with
  * the contact's full name at mirror time).
