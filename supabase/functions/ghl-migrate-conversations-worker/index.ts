@@ -196,7 +196,9 @@ Deno.serve(async (req) => {
       await saveCheckpoint(supabase, jobId, { nextPage });
 
       if (maxItems > 0 && totalProcessed >= maxItems) break;
-      if (!nextPage || convs.length < PAGE_LIMIT) break;
+      // Walk every page until GHL stops returning a nextPage cursor; do
+      // NOT break early on a short page (uncapped total).
+      if (!nextPage) break;
     }
 
     await saveCheckpoint(supabase, jobId, {});
