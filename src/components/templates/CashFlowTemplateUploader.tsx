@@ -271,7 +271,7 @@ export function CashFlowTemplateUploader({ onUploadComplete }: CashFlowTemplateU
               id="cashflow-template-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., NPC Cash Flow Export Template v1"
+              placeholder="e.g., Cash Flow Export Template v1"
             />
           </div>
 

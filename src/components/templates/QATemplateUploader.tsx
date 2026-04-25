@@ -273,7 +273,7 @@ export function QATemplateUploader({ onUploadComplete }: QATemplateUploaderProps
               id="qa-template-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., NPC Q&A Export Template v1"
+              placeholder="e.g., Q&A Export Template v1"
             />
           </div>
 
