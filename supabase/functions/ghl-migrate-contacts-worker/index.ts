@@ -343,16 +343,7 @@ Deno.serve(async (req) => {
         if (existing?.new_ghl_id && !forceReingest) {
           let existsInTarget = contactExistenceCache.get(existing.new_ghl_id);
           if (existsInTarget === undefined) {
-            const verifyRes = await fetch(`${GHL_API_BASE}/contacts/${existing.new_ghl_id}`, { headers: targetHeaders });
-            if (verifyRes.ok) {
-              existsInTarget = true;
-            } else if (verifyRes.status === 404) {
-              existsInTarget = false;
-            } else {
-              // On auth/rate-limit/server errors, prefer safety: keep mapping
-              // and avoid duplicate creates.
-              existsInTarget = true;
-            }
+            existsInTarget = await targetContactExists(existing.new_ghl_id, targetHeaders);
             contactExistenceCache.set(existing.new_ghl_id, existsInTarget);
           }
 
@@ -395,6 +386,20 @@ Deno.serve(async (req) => {
               targetAccount,
             });
             if (nameMatch.newId) {
+              let existsInTarget = contactExistenceCache.get(nameMatch.newId);
+              if (existsInTarget === undefined) {
+                existsInTarget = await targetContactExists(nameMatch.newId, targetHeaders);
+                contactExistenceCache.set(nameMatch.newId, existsInTarget);
+              }
+              if (!existsInTarget) {
+                await supabase
+                  .from('ghl_id_mapping')
+                  .delete()
+                  .eq('resource_type', 'contact')
+                  .eq('new_ghl_id', nameMatch.newId)
+                  .eq('source_account_label', sourceAccount)
+                  .eq('target_account_label', targetAccount);
+              } else {
               skippedByNameDedupe++;
               await recordIdMapping(supabase, {
                 resource_type: 'contact',
@@ -416,6 +421,7 @@ Deno.serve(async (req) => {
                   : 'Reused existing target contact by name',
               });
               continue;
+              }
             }
           }
         }
