@@ -16,6 +16,7 @@ import {
   buildGhlHeaders,
   resolveGhlAccessTokenForLocation,
   describeGhlWriteAuthFailure,
+  parseGhlError,
 } from '../_shared/ghl-account.ts';
 import {
   startJob, finishJob, recordItem, recordIdMapping, updateJobProgress, delay,
@@ -268,13 +269,15 @@ Deno.serve(async (req) => {
           });
           if (!r.ok) {
             const t = await r.text();
+            const parsed = parseGhlError(t);
+            const code = parsed.error_code || `GHL_${r.status}`;
             const authDetail = (r.status === 401 || r.status === 403) && targetAuthHint
               ? ` ${targetAuthHint}`
               : '';
             totalFailed++;
             await recordItem(supabase, {
               job_id: jobId, source_id: opp.id, entity_label: oppLabel,
-              status: 'failed', error_message: `${r.status}: ${t.substring(0, 300)}${authDetail}`.substring(0, 900),
+              status: 'failed', error_message: `[${code}] ${r.status}: ${(parsed.message || t).substring(0, 260)}${authDetail}`.substring(0, 900),
             });
             continue;
           }
