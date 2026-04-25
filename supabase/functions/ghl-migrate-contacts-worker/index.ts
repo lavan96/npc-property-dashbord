@@ -108,26 +108,49 @@ Deno.serve(async (req) => {
     let totalSucceeded = 0;
     let totalFailed = 0;
     let totalSkipped = 0;
-    let nextStartAfterId: string | null = null;
-    let nextStartAfter: string | null = null;
     let firstPage = true;
     let totalEstimate = 0;
 
-    await startJob(supabase, jobId, 0); // total updated as we discover
+    // Resume from saved checkpoint (if this is a redispatch)
+    const checkpoint = await loadCheckpoint(supabase, jobId);
+    let nextStartAfterId: string | null = checkpoint.cursor.startAfterId || null;
+    let nextStartAfter: string | null = checkpoint.cursor.startAfter || null;
+    const isResume = body._resume === true || nextStartAfterId !== null;
+
+    if (isResume) {
+      console.log(`[contacts-worker] RESUMING job=${jobId} dispatch#${checkpoint.dispatchCount} cursor=${JSON.stringify(checkpoint.cursor)}`);
+      // Don't call startJob on resume — preserves total_items and started_at
+    } else {
+      await startJob(supabase, jobId, 0); // total updated as we discover
+    }
 
     while (true) {
       if (Date.now() - startedAt > MAX_RUNTIME_MS) {
-        console.log(`[contacts-worker] Time budget exhausted at ${totalProcessed} processed, will need re-dispatch`);
-        // Mark as still processing — next dispatch can resume (future enhancement)
+        console.log(`[contacts-worker] Time budget exhausted at ${totalProcessed} processed — saving checkpoint + self-redispatching`);
+        await saveCheckpoint(
+          supabase,
+          jobId,
+          { startAfterId: nextStartAfterId, startAfter: nextStartAfter },
+        );
         await updateJobProgress(supabase, jobId, {
           processed_items: totalProcessed,
           succeeded_items: totalSucceeded,
           failed_items: totalFailed,
         });
-        await finishJob(supabase, jobId, 'completed',
-          `Partial run: processed ${totalProcessed} of ${totalEstimate || '?'}. Re-dispatch to continue.`);
+        const r = await selfRedispatch(supabase, jobId, 'ghl-migrate-contacts-worker', {
+          job_id: jobId,
+          source_account: sourceAccount,
+          target_account: targetAccount,
+          dry_run: dryRun,
+          payload,
+        });
+        if (!r.dispatched) {
+          await finishJob(supabase, jobId, 'completed',
+            `Auto-resume halted (${r.reason}). Processed ${totalProcessed} of ${totalEstimate || '?'}.`);
+        }
         return new Response(JSON.stringify({
           success: true, partial: true, processed: totalProcessed,
+          auto_redispatched: r.dispatched, dispatch_count: r.dispatchCount, reason: r.reason || null,
         }), { headers: { 'Content-Type': 'application/json' } });
       }
 
