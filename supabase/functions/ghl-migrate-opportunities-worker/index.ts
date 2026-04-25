@@ -21,7 +21,7 @@ import {
 import {
   startJob, finishJob, recordItem, recordIdMapping, updateJobProgress, delay,
   saveCheckpoint, loadCheckpoint, partialExit, heartbeat,
-  resolveTargetContactByName, readControlSignal,
+  resolveTargetContactByName, readControlSignal, sanitizeContactNameParts,
 } from '../_shared/migration-jobs.ts';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
@@ -241,26 +241,27 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // Resolve target contact by NAME (per project policy: full_name is
-        // the source of truth — duplicates routed to the most-recently-mirrored
-        // target contact). The GHL search response usually includes contactName;
-        // fall back to firstName+lastName fields, and as a final fallback look
-        // up the source contact in our local `clients` mirror by ghl_contact_id.
-        let oppContactName = (opp.contactName || opp.contact?.name ||
-          [opp.contact?.firstName, opp.contact?.lastName].filter(Boolean).join(' ') ||
-          [opp.firstName, opp.lastName].filter(Boolean).join(' ') ||
-          '').trim();
+        // Pull a raw name first (GHL field, then local clients fallback),
+        // then sanitize so we lookup the same canonical key the contacts
+        // worker stored in ghl_id_mapping.notes.
+        let rawFirst = opp.contact?.firstName || opp.firstName || null;
+        let rawLast = opp.contact?.lastName || opp.lastName || null;
+        let rawCombined = (opp.contactName || opp.contact?.name || '').trim();
 
-        if (!oppContactName && opp.contactId) {
+        if (!rawFirst && !rawLast && !rawCombined && opp.contactId) {
           const { data: localClient } = await supabase
             .from('clients')
             .select('primary_first_name, primary_surname')
             .eq('ghl_contact_id', opp.contactId)
             .maybeSingle();
           if (localClient) {
-            oppContactName = `${localClient.primary_first_name || ''} ${localClient.primary_surname || ''}`.trim();
+            rawFirst = localClient.primary_first_name;
+            rawLast = localClient.primary_surname;
           }
         }
+
+        const sanitized = sanitizeContactNameParts(rawFirst, rawLast);
+        const oppContactName = sanitized.fullName || rawCombined;
 
         const resolved = await resolveTargetContactByName(supabase, {
           fullName: oppContactName,

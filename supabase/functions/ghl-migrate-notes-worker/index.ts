@@ -22,7 +22,7 @@ import {
 import {
   startJob, finishJob, recordItem, recordIdMapping, updateJobProgress, delay,
   saveCheckpoint, loadCheckpoint, partialExit, heartbeat,
-  resolveTargetContactByName, readControlSignal,
+  resolveTargetContactByName, readControlSignal, sanitizeContactNameParts,
 } from '../_shared/migration-jobs.ts';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
@@ -131,7 +131,13 @@ Deno.serve(async (req) => {
       totalProcessed++;
       currentOffset++;
       const client = (note as any).clients;
-      const fullName = `${client?.primary_first_name || ''} ${client?.primary_surname || ''}`.trim();
+      // Sanitize the source client name so name-based resolution keys off
+      // the same canonical form the contacts worker stored in ghl_id_mapping.notes.
+      const sanitizedClient = sanitizeContactNameParts(
+        client?.primary_first_name,
+        client?.primary_surname,
+      );
+      const fullName = sanitizedClient.fullName;
       const label = fullName || 'Note';
 
       // Resolve target contact by NAME (project-wide policy: full_name is
