@@ -216,22 +216,21 @@ Deno.serve(async (req) => {
     while (pageCount < maxPages) {
       pageCount++;
 
-      // GHL opportunities/search validation is strict; this endpoint expects `locationId` (camelCase)
-      // and rejects unknown properties.
-      const searchUrl = `${GHL_API_BASE}/opportunities/search`;
-      const searchBody: Record<string, any> = {
-        locationId: locationId,
-        limit: 100,
-      };
-      if (startAfterId) searchBody.startAfterId = startAfterId;
-      if (startAfter) searchBody.startAfter = startAfter;
+      // GHL v2021-07-28 opportunities/search uses GET with query params.
+      // POST body validation rejects startAfterId/startAfter as "unknown properties".
+      const params = new URLSearchParams({
+        location_id: locationId,
+        limit: '100',
+      });
+      if (startAfterId) params.set('startAfterId', startAfterId);
+      if (startAfter) params.set('startAfter', String(startAfter));
 
-      console.log(`Fetching opportunities page ${pageCount} via POST to ${searchUrl}`);
+      const searchUrl = `${GHL_API_BASE}/opportunities/search?${params.toString()}`;
+      console.log(`Fetching opportunities page ${pageCount} via GET to ${searchUrl}`);
 
       const oppResponse = await fetch(searchUrl, {
-        method: 'POST',
+        method: 'GET',
         headers,
-        body: JSON.stringify(searchBody),
       });
 
       if (!oppResponse.ok) {
