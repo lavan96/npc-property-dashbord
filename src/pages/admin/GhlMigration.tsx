@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 import {
   ShieldAlert, RefreshCw, Eye, ArrowLeftRight, Database, Users,
   TrendingUp, MessageSquare, StickyNote, GitBranch, MapPin, AlertCircle, CheckCircle2, Lock,
-  KeyRound, ExternalLink, XCircle,
+  KeyRound, ExternalLink, XCircle, Download, Play, Repeat,
 } from 'lucide-react';
 
 interface ScopeProbe {
