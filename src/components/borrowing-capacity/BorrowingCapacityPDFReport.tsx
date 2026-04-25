@@ -227,8 +227,8 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
     doc.setFontSize(28);
     doc.setFont('helvetica', 'bold');
     setColor(doc, goldColor);
-    doc.text('NAIDU PROPERTY', PAGE_W / 2, 100, { align: 'center' });
-    doc.text('CONSULTING SERVICES', PAGE_W / 2, 115, { align: 'center' });
+    doc.text(__brandLine1, PAGE_W / 2, 100, { align: 'center' });
+    if (__brandLine2) doc.text(__brandLine2, PAGE_W / 2, 115, { align: 'center' });
     doc.setFontSize(12);
     doc.setFont('helvetica', 'normal');
     doc.text('YOUR DEDICATED PROPERTY PARTNER', PAGE_W / 2, 135, { align: 'center' });
