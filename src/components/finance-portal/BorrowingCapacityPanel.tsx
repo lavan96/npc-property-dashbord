@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Lock, TrendingUp, AlertTriangle, CheckCircle2, History, Info } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { useBrand } from '@/branding/useBrand';
 
 interface Props {
   clientId: string;
