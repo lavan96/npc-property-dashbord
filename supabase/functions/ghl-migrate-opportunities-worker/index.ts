@@ -287,6 +287,9 @@ Deno.serve(async (req) => {
           matchedName: null as string | null,
           normalizedKey: null as string | null,
         };
+        let idMappingFound = false;
+        let idMappingDeleted = false;
+        let idMappedButTargetMissing = false;
 
         if (opp.contactId) {
           const { data: idMapped } = await supabase
@@ -298,26 +301,52 @@ Deno.serve(async (req) => {
             .eq('target_account_label', targetAccount)
             .maybeSingle();
           if (idMapped?.new_ghl_id) {
-            resolved.newId = idMapped.new_ghl_id;
-            resolvedByContactIdMap++;
+            idMappingFound = true;
+            const existsInTarget = dryRun ? true : await targetContactExists(idMapped.new_ghl_id, targetHeaders);
+            if (existsInTarget) {
+              resolved.newId = idMapped.new_ghl_id;
+              resolvedByContactIdMap++;
+            } else {
+              idMappedButTargetMissing = true;
+              await supabase
+                .from('ghl_id_mapping')
+                .delete()
+                .eq('resource_type', 'contact')
+                .eq('old_ghl_id', opp.contactId)
+                .eq('source_account_label', sourceAccount)
+                .eq('target_account_label', targetAccount);
+              idMappingDeleted = true;
+            }
           }
         }
 
-        if (!resolved.newId && oppContactName) {
+        if (!resolved.newId && oppContactName && !isPlaceholderResolutionName(oppContactName)) {
           const nameResolved = await resolveTargetContactByName(supabase, {
             fullName: oppContactName,
             sourceAccount,
             targetAccount,
+            excludeNewIds: idMappedButTargetMissing && idMappingFound ? [resolved.newId || ''] : [],
           });
-          if (nameResolved.newId) resolvedByNameMap++;
-          if (nameResolved.ambiguous) ambiguousNameRoutes++;
-          resolved = {
-            newId: nameResolved.newId,
-            ambiguous: nameResolved.ambiguous,
-            candidateCount: nameResolved.candidateCount,
-            matchedName: nameResolved.matchedName,
-            normalizedKey: nameResolved.normalizedKey,
-          };
+          if (nameResolved.newId) {
+            const nameTargetExists = dryRun ? true : await targetContactExists(nameResolved.newId, targetHeaders);
+            if (nameTargetExists) {
+              resolvedByNameMap++;
+              if (nameResolved.ambiguous) ambiguousNameRoutes++;
+              resolved = {
+                newId: nameResolved.newId,
+                ambiguous: nameResolved.ambiguous,
+                candidateCount: nameResolved.candidateCount,
+                matchedName: nameResolved.matchedName,
+                normalizedKey: nameResolved.normalizedKey,
+              };
+              if (opp.contactId && idMappingDeleted) {
+                await recordIdMapping(supabase, {
+                  resource_type: 'contact', old_ghl_id: opp.contactId, new_ghl_id: nameResolved.newId,
+                  source_account_label: sourceAccount, target_account_label: targetAccount, notes: oppContactName,
+                });
+              }
+            }
+          }
         }
 
         if (!resolved.newId) {
@@ -328,7 +357,7 @@ Deno.serve(async (req) => {
             job_id: jobId, source_id: opp.id, entity_label: oppLabel,
             status: 'skipped',
             error_message: opp.contactId
-              ? `No target contact mapping for source contactId=${opp.contactId}${oppContactName ? ` (name "${oppContactName}")` : ''} — ensure contacts migration completed`
+              ? `No live target contact mapping for source contactId=${opp.contactId}${idMappedButTargetMissing ? ' (stale target contact was deleted)' : ''}${oppContactName ? ` (name "${oppContactName}")` : ''} — rerun contacts migration before opportunities`
               : (oppContactName
                   ? `No target contact named "${oppContactName}" — run contacts worker first`
                   : 'Opportunity has no contactId or contact name to match against'),
