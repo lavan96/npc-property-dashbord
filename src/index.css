@@ -549,6 +549,24 @@ Clean, modern admin dashboard with confidence-based color coding
     color: hsl(var(--destructive));
   }
 
+  .dashboard-status-chip-info {
+    border-color: hsl(var(--info) / 0.24);
+    background-color: hsl(var(--info-light) / 0.72);
+    color: hsl(var(--info));
+  }
+
+  .dashboard-status-chip-accent {
+    border-color: hsl(var(--primary) / 0.28);
+    background-color: hsl(var(--dashboard-primary-soft) / 0.85);
+    color: hsl(var(--primary));
+  }
+
+  .dashboard-status-chip-neutral {
+    border-color: hsl(var(--border-soft) / 0.82);
+    background-color: hsl(var(--surface-muted) / 0.92);
+    color: hsl(var(--muted-foreground));
+  }
+
   .dashboard-section-band {
     @apply rounded-2xl px-4 py-4 md:px-6;
     border: 1px solid hsl(var(--border-soft) / 0.72);
