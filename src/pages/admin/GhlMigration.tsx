@@ -768,16 +768,20 @@ function MigrationWorkersPanel() {
                               {canResume && (
                                 <Button
                                   size="sm"
-                                  variant="default"
+                                  variant={j.dry_run ? 'default' : 'destructive'}
                                   className="h-7 gap-1 text-[10px] px-2"
                                   onClick={async (e) => {
                                     e.stopPropagation();
+                                    if (!j.dry_run) {
+                                      // LIVE resumes go through the confirmation gate
+                                      setResumeTarget(j);
+                                      return;
+                                    }
                                     const res = await invokeSecureFunction<any>('migration-orchestrator', {
                                       domain: j.domain,
                                       source_account: j.source_account,
                                       target_account: j.target_account,
-                                      dry_run: j.dry_run,
-                                      confirmation: j.dry_run ? undefined : 'MIGRATE-LIVE',
+                                      dry_run: true,
                                       payload: { ...(j.payload || {}), resume_job_id: j.id },
                                       skip_preflight: true,
                                     }, { timeoutMs: 30000 });
@@ -790,7 +794,7 @@ function MigrationWorkersPanel() {
                                   }}
                                 >
                                   <Play className="h-3 w-3" />
-                                  Resume
+                                  Resume{!j.dry_run ? ' LIVE' : ''}
                                 </Button>
                               )}
                               <Button
