@@ -121,7 +121,7 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error('Error in sync-client-to-ghl:', error);
     return new Response(JSON.stringify({ 
-      error: error.message,
+      error: error instanceof Error ? error.message : String(error),
       success: false 
     }), {
       status: 500,
@@ -307,7 +307,7 @@ async function syncSingleClient(
     return {
       success: false,
       clientId,
-      error: error.message
+      error: error instanceof Error ? error.message : String(error)
     };
   }
 }
