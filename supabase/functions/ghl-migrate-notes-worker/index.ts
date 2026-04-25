@@ -219,6 +219,27 @@ Deno.serve(async (req) => {
     await updateJobProgress(supabase, jobId, {
       processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed,
     });
+
+    const morePagesAvailable = (notes?.length || 0) >= pullLimit;
+    const shouldRedispatch = !timeBudgetExhausted && morePagesAvailable && !(maxItems > 0 && totalProcessed >= maxItems);
+
+    if (timeBudgetExhausted || shouldRedispatch) {
+      await saveCheckpoint(supabase, jobId, { offset: currentOffset });
+      const r = await selfRedispatch(supabase, jobId, 'ghl-migrate-notes-worker', {
+        job_id: jobId, source_account: sourceAccount, target_account: targetAccount, dry_run: dryRun, payload,
+      });
+      if (!r.dispatched) {
+        await finishJob(supabase, jobId, 'completed',
+          `Auto-resume halted (${r.reason}). Processed ${totalProcessed} (offset=${currentOffset}).`);
+      }
+      console.log(`[notes-worker] PARTIAL job=${jobId} processed=${totalProcessed} redispatched=${r.dispatched}`);
+      return new Response(JSON.stringify({
+        success: true, partial: true, processed: totalProcessed,
+        auto_redispatched: r.dispatched, dispatch_count: r.dispatchCount,
+      }), { headers: { 'Content-Type': 'application/json' } });
+    }
+
+    await saveCheckpoint(supabase, jobId, {});
     await finishJob(supabase, jobId,
       totalFailed > 0 && totalSucceeded === 0 ? 'failed' : 'completed',
       totalFailed > 0 ? `Completed with ${totalFailed} failures` : undefined,
