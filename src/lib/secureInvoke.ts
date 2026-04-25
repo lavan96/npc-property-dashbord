@@ -102,7 +102,14 @@ export async function invokeSecureFunction<T = any>(
     const data = await response.json();
     
     if (!response.ok) {
-      console.error('[invokeSecureFunction] Request failed', {
+      // Transient platform errors (5xx) should be warnings, not errors.
+      // The Supabase edge runtime intermittently returns 503/502 even when
+      // the function itself is healthy — logging these as console.error
+      // triggers the runtime error overlay and creates a poor UX. Callers
+      // already handle these with backoff via the returned error.
+      const isTransient = response.status >= 500 && response.status < 600;
+      const log = isTransient ? console.warn : console.error;
+      log('[invokeSecureFunction] Request failed', {
         functionName,
         status: response.status,
         data,
