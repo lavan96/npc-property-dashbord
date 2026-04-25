@@ -683,7 +683,7 @@ function MigrationWorkersPanel() {
                           </td>
                         </tr>
                         {isOpen && <JobDetailRow job={j} />}
-                      </>
+                      </React.Fragment>
                     );
                   })}
                 </tbody>
