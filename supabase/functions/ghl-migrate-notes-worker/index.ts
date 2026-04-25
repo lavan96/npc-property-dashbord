@@ -21,10 +21,11 @@ import {
 } from '../_shared/ghl-account.ts';
 import {
   startJob, finishJob, recordItem, recordIdMapping, updateJobProgress, delay,
+  saveCheckpoint, loadCheckpoint, selfRedispatch,
 } from '../_shared/migration-jobs.ts';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
-const MAX_RUNTIME_MS = 50_000;
+const MAX_RUNTIME_MS = 350_000;
 const RATE_LIMIT_MS = 300;
 const BATCH = 200;
 

@@ -14,11 +14,12 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import { getGhlCredentials, validateGhlCredentials, buildGhlHeaders } from '../_shared/ghl-account.ts';
 import {
   startJob, finishJob, recordItem, updateJobProgress, delay,
+  saveCheckpoint, loadCheckpoint, selfRedispatch,
 } from '../_shared/migration-jobs.ts';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 const PAGE_LIMIT = 100;
-const MAX_RUNTIME_MS = 50_000;
+const MAX_RUNTIME_MS = 350_000;
 const RATE_LIMIT_MS = 250;
 
 function mapDirection(msg: any): string {
