@@ -1,0 +1,285 @@
+/**
+ * GHL Migrate: CONTACTS Worker (Phase 2B)
+ *
+ * Mirrors contacts from `source_account` → `target_account` in GHL,
+ * recording each new contact's ID in `ghl_id_mapping` so downstream
+ * workers (opportunities, conversations, notes) can translate IDs.
+ *
+ * Strategy:
+ *   - Pull contacts from source GHL via /contacts/?locationId=... (paginated)
+ *   - For each contact, check existing ghl_id_mapping; skip if already mirrored
+ *   - In dry_run: only enumerate, do NOT write to GHL
+ *   - In live: POST /contacts/upsert to target account, then store mapping
+ *
+ * Internal-call only (service role key in body).
+ */
+
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
+import { getGhlCredentials, validateGhlCredentials, buildGhlHeaders } from '../_shared/ghl-account.ts';
+import {
+  startJob,
+  finishJob,
+  recordItem,
+  recordIdMapping,
+  updateJobProgress,
+  delay,
+} from '../_shared/migration-jobs.ts';
+
+const GHL_API_BASE = 'https://services.leadconnectorhq.com';
+const PAGE_LIMIT = 100;
+const MAX_RUNTIME_MS = 50_000; // leave buffer under edge function limit
+const RATE_LIMIT_MS = 250;
+
+Deno.serve(async (req) => {
+  const startedAt = Date.now();
+
+  if (req.method === 'OPTIONS') return new Response('ok');
+  if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 });
+
+  let supabase: any;
+  let jobId: string | null = null;
+
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const body = await req.json().catch(() => ({}));
+
+    // Internal-call validation
+    if (body._service_token !== serviceRoleKey) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 });
+    }
+
+    supabase = createClient(supabaseUrl, serviceRoleKey);
+    jobId = body.job_id as string;
+    const sourceAccount = body.source_account as 'legacy' | 'new';
+    const targetAccount = body.target_account as 'legacy' | 'new';
+    const dryRun = body.dry_run !== false;
+    const payload = body.payload || {};
+    const maxItems = Number(payload.max_items) || 0; // 0 = no cap
+
+    if (!jobId) return new Response(JSON.stringify({ error: 'job_id required' }), { status: 400 });
+
+    const sourceCreds = getGhlCredentials(sourceAccount);
+    const targetCreds = getGhlCredentials(targetAccount);
+    const sourceErr = validateGhlCredentials(sourceCreds);
+    const targetErr = validateGhlCredentials(targetCreds);
+    if (sourceErr || targetErr) {
+      await finishJob(supabase, jobId, 'failed', sourceErr || targetErr || 'Missing credentials');
+      return new Response(JSON.stringify({ error: sourceErr || targetErr }), { status: 400 });
+    }
+
+    const sourceHeaders = buildGhlHeaders(sourceCreds.apiKey!);
+    const targetHeaders = buildGhlHeaders(targetCreds.apiKey!);
+
+    console.log(`[contacts-worker] job=${jobId} ${sourceAccount}→${targetAccount} dry_run=${dryRun}`);
+
+    // Phase 1: enumerate source contacts to determine total
+    // GHL pagination uses `startAfter` & `startAfterId` cursors
+    let totalSeen = 0;
+    let totalProcessed = 0;
+    let totalSucceeded = 0;
+    let totalFailed = 0;
+    let totalSkipped = 0;
+    let nextStartAfterId: string | null = null;
+    let nextStartAfter: string | null = null;
+    let firstPage = true;
+    let totalEstimate = 0;
+
+    await startJob(supabase, jobId, 0); // total updated as we discover
+
+    while (true) {
+      if (Date.now() - startedAt > MAX_RUNTIME_MS) {
+        console.log(`[contacts-worker] Time budget exhausted at ${totalProcessed} processed, will need re-dispatch`);
+        // Mark as still processing — next dispatch can resume (future enhancement)
+        await updateJobProgress(supabase, jobId, {
+          processed_items: totalProcessed,
+          succeeded_items: totalSucceeded,
+          failed_items: totalFailed,
+        });
+        await finishJob(supabase, jobId, 'completed',
+          `Partial run: processed ${totalProcessed} of ${totalEstimate || '?'}. Re-dispatch to continue.`);
+        return new Response(JSON.stringify({
+          success: true, partial: true, processed: totalProcessed,
+        }), { headers: { 'Content-Type': 'application/json' } });
+      }
+
+      const params = new URLSearchParams({
+        locationId: sourceCreds.locationId!,
+        limit: String(PAGE_LIMIT),
+      });
+      if (nextStartAfterId) params.set('startAfterId', nextStartAfterId);
+      if (nextStartAfter) params.set('startAfter', nextStartAfter);
+
+      const res = await fetch(`${GHL_API_BASE}/contacts/?${params}`, { headers: sourceHeaders });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Source contacts fetch failed: ${res.status} ${text.substring(0, 200)}`);
+      }
+      const data = await res.json();
+      const contacts: any[] = data.contacts || [];
+      if (firstPage) {
+        totalEstimate = data.meta?.total ?? data.total ?? 0;
+        if (totalEstimate > 0) {
+          await updateJobProgress(supabase, jobId, { total_items: maxItems > 0 ? Math.min(maxItems, totalEstimate) : totalEstimate });
+        }
+        firstPage = false;
+      }
+
+      if (contacts.length === 0) break;
+
+      for (const contact of contacts) {
+        if (maxItems > 0 && totalProcessed >= maxItems) break;
+        if (Date.now() - startedAt > MAX_RUNTIME_MS) break;
+
+        totalSeen++;
+        totalProcessed++;
+
+        const contactName = [contact.firstName, contact.lastName].filter(Boolean).join(' ') ||
+          contact.contactName || contact.email || '(no name)';
+
+        // Check if already mirrored
+        const { data: existing } = await supabase
+          .from('ghl_id_mapping')
+          .select('new_ghl_id')
+          .eq('resource_type', 'contact')
+          .eq('old_ghl_id', contact.id)
+          .eq('source_account_label', sourceAccount)
+          .eq('target_account_label', targetAccount)
+          .maybeSingle();
+
+        if (existing?.new_ghl_id) {
+          totalSkipped++;
+          await recordItem(supabase, {
+            job_id: jobId,
+            source_id: contact.id,
+            target_id: existing.new_ghl_id,
+            entity_label: contactName,
+            status: 'skipped',
+            error_message: 'Already mapped',
+          });
+          continue;
+        }
+
+        if (dryRun) {
+          totalSucceeded++;
+          await recordItem(supabase, {
+            job_id: jobId,
+            source_id: contact.id,
+            target_id: null,
+            entity_label: contactName,
+            status: 'succeeded',
+            error_message: 'DRY RUN — would mirror',
+          });
+          continue;
+        }
+
+        // LIVE: upsert into target account
+        try {
+          await delay(RATE_LIMIT_MS);
+          const upsertBody = {
+            locationId: targetCreds.locationId,
+            firstName: contact.firstName,
+            lastName: contact.lastName,
+            email: contact.email,
+            phone: contact.phone,
+            tags: contact.tags || [],
+            address1: contact.address1,
+            city: contact.city,
+            state: contact.state,
+            postalCode: contact.postalCode,
+            country: contact.country,
+            source: `Migrated from ${sourceAccount} (${contact.id})`,
+            customFields: contact.customFields,
+          };
+
+          const upRes = await fetch(`${GHL_API_BASE}/contacts/upsert`, {
+            method: 'POST',
+            headers: targetHeaders,
+            body: JSON.stringify(upsertBody),
+          });
+
+          if (!upRes.ok) {
+            const errText = await upRes.text();
+            totalFailed++;
+            await recordItem(supabase, {
+              job_id: jobId,
+              source_id: contact.id,
+              entity_label: contactName,
+              status: 'failed',
+              error_message: `${upRes.status}: ${errText.substring(0, 300)}`,
+            });
+            continue;
+          }
+
+          const upData = await upRes.json();
+          const newId = upData?.contact?.id || upData?.id;
+          if (!newId) {
+            totalFailed++;
+            await recordItem(supabase, {
+              job_id: jobId, source_id: contact.id, entity_label: contactName,
+              status: 'failed', error_message: 'Upsert returned no contact id',
+            });
+            continue;
+          }
+
+          await recordIdMapping(supabase, {
+            resource_type: 'contact',
+            old_ghl_id: contact.id,
+            new_ghl_id: newId,
+            source_account_label: sourceAccount,
+            target_account_label: targetAccount,
+            notes: contactName,
+          });
+
+          totalSucceeded++;
+          await recordItem(supabase, {
+            job_id: jobId, source_id: contact.id, target_id: newId,
+            entity_label: contactName, status: 'succeeded',
+          });
+        } catch (e: any) {
+          totalFailed++;
+          await recordItem(supabase, {
+            job_id: jobId, source_id: contact.id, entity_label: contactName,
+            status: 'failed', error_message: e.message?.substring(0, 300) || 'Unknown error',
+          });
+        }
+      }
+
+      // Update progress every page
+      await updateJobProgress(supabase, jobId, {
+        processed_items: totalProcessed,
+        succeeded_items: totalSucceeded,
+        failed_items: totalFailed,
+      });
+
+      if (maxItems > 0 && totalProcessed >= maxItems) break;
+
+      // Pagination: GHL returns either nextPage cursor or last contact's startAfter values
+      const last = contacts[contacts.length - 1];
+      nextStartAfterId = last?.id || null;
+      nextStartAfter = last?.dateAdded || null;
+      if (contacts.length < PAGE_LIMIT) break;
+    }
+
+    await finishJob(supabase, jobId, totalFailed > 0 && totalSucceeded === 0 ? 'failed' : 'completed',
+      totalFailed > 0 ? `Completed with ${totalFailed} failures` : undefined);
+
+    console.log(`[contacts-worker] DONE job=${jobId} processed=${totalProcessed} ok=${totalSucceeded} fail=${totalFailed} skip=${totalSkipped}`);
+
+    return new Response(JSON.stringify({
+      success: true,
+      job_id: jobId,
+      processed: totalProcessed,
+      succeeded: totalSucceeded,
+      failed: totalFailed,
+      skipped: totalSkipped,
+    }), { headers: { 'Content-Type': 'application/json' } });
+
+  } catch (err: any) {
+    console.error('[contacts-worker] FATAL:', err);
+    if (jobId && supabase) {
+      await finishJob(supabase, jobId, 'failed', err.message || 'Worker crashed').catch(() => {});
+    }
+    return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500 });
+  }
+});

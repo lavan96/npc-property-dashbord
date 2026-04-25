@@ -1,0 +1,195 @@
+/**
+ * GHL Migrate: NOTES Worker (Phase 2B)
+ *
+ * Reads existing client_notes that have NOT been pushed to the target
+ * account, finds the mapped target contactId via ghl_id_mapping, and
+ * POSTs each note to the target account's /contacts/{id}/notes endpoint.
+ *
+ * Notes are stored locally with `ghl_note_id` (legacy) and we add a
+ * conceptual mapping in ghl_id_mapping under resource_type='note' so we
+ * can identify which notes have been mirrored to the target.
+ */
+
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
+import { getGhlCredentials, validateGhlCredentials, buildGhlHeaders } from '../_shared/ghl-account.ts';
+import {
+  startJob, finishJob, recordItem, recordIdMapping, updateJobProgress, delay,
+} from '../_shared/migration-jobs.ts';
+
+const GHL_API_BASE = 'https://services.leadconnectorhq.com';
+const MAX_RUNTIME_MS = 50_000;
+const RATE_LIMIT_MS = 300;
+const BATCH = 200;
+
+Deno.serve(async (req) => {
+  const startedAt = Date.now();
+  if (req.method === 'OPTIONS') return new Response('ok');
+  if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 });
+
+  let supabase: any;
+  let jobId: string | null = null;
+
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const body = await req.json().catch(() => ({}));
+    if (body._service_token !== serviceRoleKey) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 });
+    }
+    supabase = createClient(supabaseUrl, serviceRoleKey);
+
+    jobId = body.job_id as string;
+    const sourceAccount = body.source_account as 'legacy' | 'new';
+    const targetAccount = body.target_account as 'legacy' | 'new';
+    const dryRun = body.dry_run !== false;
+    const payload = body.payload || {};
+    const maxItems = Number(payload.max_items) || 0;
+
+    if (!jobId) return new Response(JSON.stringify({ error: 'job_id required' }), { status: 400 });
+
+    const targetCreds = getGhlCredentials(targetAccount);
+    const tErr = validateGhlCredentials(targetCreds);
+    if (tErr) {
+      await finishJob(supabase, jobId, 'failed', tErr);
+      return new Response(JSON.stringify({ error: tErr }), { status: 400 });
+    }
+    const targetHeaders = buildGhlHeaders(targetCreds.apiKey!);
+
+    console.log(`[notes-worker] job=${jobId} ${sourceAccount}→${targetAccount} dry_run=${dryRun}`);
+
+    // Pull all client_notes joined to clients with a ghl_contact_id
+    const { data: notes, error: notesErr } = await supabase
+      .from('client_notes')
+      .select('id, content, note_type, client_id, clients!inner(ghl_contact_id, primary_first_name, primary_surname)')
+      .not('clients.ghl_contact_id', 'is', null)
+      .limit(maxItems > 0 ? maxItems : 5000);
+
+    if (notesErr) throw new Error(`Notes query failed: ${notesErr.message}`);
+
+    await startJob(supabase, jobId, notes?.length || 0);
+
+    let totalProcessed = 0, totalSucceeded = 0, totalFailed = 0, totalSkipped = 0;
+
+    for (const note of (notes || [])) {
+      if (Date.now() - startedAt > MAX_RUNTIME_MS) break;
+      if (maxItems > 0 && totalProcessed >= maxItems) break;
+
+      totalProcessed++;
+      const client = (note as any).clients;
+      const sourceContactId = client?.ghl_contact_id;
+      const label = `${client?.primary_first_name || ''} ${client?.primary_surname || ''}`.trim() || 'Note';
+
+      // Map source contact → target contact
+      const { data: mapping } = await supabase
+        .from('ghl_id_mapping')
+        .select('new_ghl_id')
+        .eq('resource_type', 'contact')
+        .eq('old_ghl_id', sourceContactId)
+        .eq('source_account_label', sourceAccount)
+        .eq('target_account_label', targetAccount)
+        .maybeSingle();
+
+      if (!mapping?.new_ghl_id) {
+        totalSkipped++;
+        await recordItem(supabase, {
+          job_id: jobId, source_id: note.id, entity_label: label,
+          status: 'skipped', error_message: 'Contact not yet mapped — run contacts worker first',
+        });
+        continue;
+      }
+
+      // Already mirrored?
+      const { data: existingNoteMap } = await supabase
+        .from('ghl_id_mapping')
+        .select('new_ghl_id')
+        .eq('resource_type', 'note')
+        .eq('old_ghl_id', note.id)
+        .eq('source_account_label', sourceAccount)
+        .eq('target_account_label', targetAccount)
+        .maybeSingle();
+      if (existingNoteMap?.new_ghl_id) {
+        totalSkipped++;
+        await recordItem(supabase, {
+          job_id: jobId, source_id: note.id, target_id: existingNoteMap.new_ghl_id,
+          entity_label: label, status: 'skipped', error_message: 'Already mirrored',
+        });
+        continue;
+      }
+
+      const formatted = note.note_type && note.note_type !== 'general'
+        ? `[${String(note.note_type).toUpperCase()}] ${note.content}`
+        : note.content;
+
+      if (dryRun) {
+        totalSucceeded++;
+        await recordItem(supabase, {
+          job_id: jobId, source_id: note.id, entity_label: label,
+          status: 'succeeded', error_message: 'DRY RUN — would push to target',
+        });
+        continue;
+      }
+
+      try {
+        await delay(RATE_LIMIT_MS);
+        const r = await fetch(`${GHL_API_BASE}/contacts/${mapping.new_ghl_id}/notes`, {
+          method: 'POST', headers: targetHeaders, body: JSON.stringify({ body: formatted }),
+        });
+        if (!r.ok) {
+          const t = await r.text();
+          totalFailed++;
+          await recordItem(supabase, {
+            job_id: jobId, source_id: note.id, entity_label: label,
+            status: 'failed', error_message: `${r.status}: ${t.substring(0, 300)}`,
+          });
+          continue;
+        }
+        const data = await r.json();
+        const newNoteId = data?.note?.id;
+        if (newNoteId) {
+          await recordIdMapping(supabase, {
+            resource_type: 'note', old_ghl_id: note.id, new_ghl_id: newNoteId,
+            source_account_label: sourceAccount, target_account_label: targetAccount, notes: label,
+          });
+        }
+        totalSucceeded++;
+        await recordItem(supabase, {
+          job_id: jobId, source_id: note.id, target_id: newNoteId || null,
+          entity_label: label, status: 'succeeded',
+        });
+      } catch (e: any) {
+        totalFailed++;
+        await recordItem(supabase, {
+          job_id: jobId, source_id: note.id, entity_label: label,
+          status: 'failed', error_message: e.message?.substring(0, 300) || 'Unknown error',
+        });
+      }
+
+      if (totalProcessed % 25 === 0) {
+        await updateJobProgress(supabase, jobId, {
+          processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed,
+        });
+      }
+    }
+
+    await updateJobProgress(supabase, jobId, {
+      processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed,
+    });
+    await finishJob(supabase, jobId,
+      totalFailed > 0 && totalSucceeded === 0 ? 'failed' : 'completed',
+      totalFailed > 0 ? `Completed with ${totalFailed} failures` : undefined,
+    );
+
+    console.log(`[notes-worker] DONE job=${jobId} ok=${totalSucceeded} fail=${totalFailed} skip=${totalSkipped}`);
+
+    return new Response(JSON.stringify({
+      success: true, job_id: jobId,
+      processed: totalProcessed, succeeded: totalSucceeded, failed: totalFailed, skipped: totalSkipped,
+    }), { headers: { 'Content-Type': 'application/json' } });
+  } catch (err: any) {
+    console.error('[notes-worker] FATAL:', err);
+    if (jobId && supabase) {
+      await finishJob(supabase, jobId, 'failed', err.message || 'Worker crashed').catch(() => {});
+    }
+    return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500 });
+  }
+});
