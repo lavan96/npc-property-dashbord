@@ -202,7 +202,7 @@ Deno.serve(async (req) => {
       const formattedTime = startDate.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', timeZone: 'Australia/Sydney' });
 
       // Resolve sender once for both notification + confirmation emails.
-      const brand = await getBrandConfig(supabase);
+      const brand = await getBrandConfig();
 
       // Send team notification email
       if (portalConfig?.booking_team_notification_email) {
@@ -268,7 +268,7 @@ Deno.serve(async (req) => {
                       ${notes ? `<p style="margin: 4px 0;"><strong>📝 Notes:</strong> ${notes}</p>` : ''}
                     </div>
                     <p>If you need to reschedule or cancel, please contact us directly.</p>
-                    <p>Best regards,<br/>${companyName}</p>
+                    <p>Best regards,<br/>${brand.companyName}</p>
                   </div>
                 `,
               }),
