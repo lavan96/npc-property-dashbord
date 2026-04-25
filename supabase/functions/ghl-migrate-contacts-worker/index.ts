@@ -41,6 +41,7 @@ import {
   detectJunkContactName,
   normalizePhoneE164,
   normalizeEmail,
+  smartCapitalizeName,
 } from '../_shared/migration-jobs.ts';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
