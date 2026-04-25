@@ -328,6 +328,9 @@ Deno.serve(async (req) => {
         succeeded_items: totalSucceeded,
         failed_items: totalFailed,
       });
+      // Heartbeat extends our lease so the dispatcher doesn't steal the job
+      // mid-flight just because we've spent a while on slow GHL pages.
+      await heartbeat(supabase, jobId);
 
       // Pagination: GHL returns either nextPage cursor or last contact's startAfter values
       const last = contacts[contacts.length - 1];
@@ -346,8 +349,9 @@ Deno.serve(async (req) => {
       if (contacts.length < PAGE_LIMIT) break;
     }
 
-    // Clear cursor on natural completion
+    // Clear cursor on natural completion + release dispatcher lock
     await saveCheckpoint(supabase, jobId, {});
+    await supabase.rpc('release_migration_job_lock', { p_job_id: jobId }).catch(() => {});
     await finishJob(supabase, jobId, totalFailed > 0 && totalSucceeded === 0 ? 'failed' : 'completed',
       totalFailed > 0 ? `Completed with ${totalFailed} failures` : undefined);
 
