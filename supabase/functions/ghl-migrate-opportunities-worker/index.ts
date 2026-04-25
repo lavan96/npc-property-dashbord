@@ -334,13 +334,17 @@ Deno.serve(async (req) => {
         processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed,
       });
 
-      if (maxItems > 0 && totalProcessed >= maxItems) break;
       const last = opps[opps.length - 1];
       pageStartAfterId = last?.id || null;
       pageStartAfter = last?.updatedAt || last?.dateAdded || null;
+      await saveCheckpoint(supabase, jobId,
+        { startAfterId: pageStartAfterId, startAfter: pageStartAfter }, last?.id || null);
+
+      if (maxItems > 0 && totalProcessed >= maxItems) break;
       if (opps.length < PAGE_LIMIT) break;
     }
 
+    await saveCheckpoint(supabase, jobId, {});
     await finishJob(supabase, jobId,
       totalFailed > 0 && totalSucceeded === 0 ? 'failed' : 'completed',
       [
