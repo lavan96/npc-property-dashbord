@@ -42,6 +42,8 @@ interface SendAgreementDialogProps {
 
 export function SendAgreementDialog({ open, onOpenChange, client, dealId }: SendAgreementDialogProps) {
   const { generateAgreement, sendViaDocuSign } = useAgreementMutations();
+  const { settings: brandSettings } = useGlobalReportSettings();
+  const agencyLegalName = brandSettings.contactDetails.company_name || 'the Agency';
 
   // Fetch available Gamma templates
   const { data: templates = [] } = useQuery({
@@ -311,8 +313,8 @@ export function SendAgreementDialog({ open, onOpenChange, client, dealId }: Send
               <CardContent className="pt-4 text-sm space-y-1">
                 <p className="font-medium text-foreground">Agreement Preview</p>
                 <p className="text-muted-foreground">
-                  This agreement will be generated between <strong>{buyerNames || '...'}</strong> and
-                  Naidu Group Pty Ltd T/A Naidu Property Consulting Services, dated{' '}
+                  This agreement will be generated between <strong>{buyerNames || '...'}</strong> and{' '}
+                  <strong>{agencyLegalName}</strong>, dated{' '}
                   <strong>{agreementDate ? format(new Date(agreementDate), 'dd MMMM yyyy') : '...'}</strong>.
                 </p>
                 {secondaryBuyerName && (

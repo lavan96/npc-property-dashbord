@@ -88,7 +88,7 @@ export async function subscribeToPush(): Promise<{ success: boolean; reason?: st
   if (isPushBlockedInThisContext()) {
     return {
       success: false,
-      reason: 'Push notifications only work on the published site (npcservices.com.au), not in the editor preview.',
+      reason: 'Push notifications only work on the published site, not in the editor preview.',
     };
   }
 

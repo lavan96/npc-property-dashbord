@@ -75,9 +75,7 @@ export function PushNotificationToggle() {
         <div className="flex items-start gap-2 text-sm text-muted-foreground">
           <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-warning" />
           <span>
-            Push notifications only work on the published site (e.g.{' '}
-            <span className="font-mono text-xs">command-centre.npcservices.com.au</span>),
-            not in the Lovable editor preview.
+            Push notifications only work on the published site, not in the Lovable editor preview.
           </span>
         </div>
       );
