@@ -808,24 +808,41 @@ function JobDetailRow({ job, onChanged }: { job: any; onChanged?: () => void }) 
   const [downloading, setDownloading] = useState(false);
   const [redispatching, setRedispatching] = useState(false);
 
+  const [liveJob, setLiveJob] = useState<any>(job);
+
+  useEffect(() => { setLiveJob(job); }, [job]);
+
+  const fetchStatus = async () => {
+    const res = await invokeSecureFunction<any>(
+      'migration-job-status', { job_id: job.id }, { timeoutMs: 15000 },
+    );
+    if (res.data?.success) {
+      setItems(res.data?.items || res.data?.recent_items || []);
+      setBreakdown(res.data?.breakdown || {});
+      setErrorCategories(res.data?.error_categories || {});
+      setRetryableFailures(res.data?.retryable_failures || 0);
+      setNonRetryableFailures(res.data?.non_retryable_failures || 0);
+      if (res.data?.job) setLiveJob(res.data.job);
+    }
+    setLoading(false);
+  };
+
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      setLoading(true);
-      const res = await invokeSecureFunction<any>(
-        'migration-job-status', { job_id: job.id }, { timeoutMs: 15000 },
-      );
-      if (!cancelled) {
-        setItems(res.data?.items || res.data?.recent_items || []);
-        setBreakdown(res.data?.breakdown || {});
-        setErrorCategories(res.data?.error_categories || {});
-        setRetryableFailures(res.data?.retryable_failures || 0);
-        setNonRetryableFailures(res.data?.non_retryable_failures || 0);
-        setLoading(false);
-      }
-    })();
+    setLoading(true);
+    (async () => { if (!cancelled) await fetchStatus(); })();
     return () => { cancelled = true; };
-  }, [job.id, job.processed_items, job.failed_items]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [job.id]);
+
+  // Live-poll while job is active
+  useEffect(() => {
+    const active = liveJob?.status === 'pending' || liveJob?.status === 'processing';
+    if (!active) return;
+    const id = setInterval(fetchStatus, 3000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveJob?.status, job.id]);
 
   const tokenAudit = job.payload?.token_audit;
   const failed = items.filter((i) => i.status === 'failed');
