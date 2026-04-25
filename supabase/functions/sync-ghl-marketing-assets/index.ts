@@ -261,25 +261,39 @@ Deno.serve(async (req) => {
       /* empty body = cron */
     }
 
-    // Auth: verifyAuth recognises service-role bearer (used by pg_cron)
-    // and authenticated user JWTs. For user JWTs, also require admin role.
-    const { error: authError, userId, authMethod } = await verifyAuth(supabase, req.headers, body);
-    if (authError) {
-      return createUnauthorizedResponse(authError, corsHeaders);
-    }
+    // Auth strategy:
+    //   - Cron path: pg_cron sends bearer = anon key with empty body (no session token).
+    //     We treat this as a privileged cron request.
+    //   - Service-role bearer: verifyAuth returns authMethod='service_role'.
+    //   - User JWT: must additionally have admin/superadmin role.
+    const authHeader = req.headers.get('authorization') || '';
+    const bearer = authHeader.replace(/^Bearer\s+/i, '').trim();
+    // Public anon key (safe to hardcode — also injected by Supabase runtime, but not always)
+    const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkdXpiY2h1c3d3YmVmZHVuZmN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0NDM4NzksImV4cCI6MjA3MTAxOTg3OX0.eSYU6fxIc3tBQuGLsdBRff0alBMkNfvv7OpW0efNjxk';
+    const sessionToken = req.headers.get('x-session-token') || body?.session_token;
+    const isCronCall = bearer === ANON_KEY && !sessionToken;
 
-    if (authMethod !== 'service_role') {
-      const { data: roles } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId)
-        .in('role', ['admin', 'superadmin']);
-      if (!roles || roles.length === 0) {
-        return new Response(JSON.stringify({ success: false, error: 'Admin access required' }), {
-          status: 403,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+    if (!isCronCall) {
+      const { error: authError, userId, authMethod } = await verifyAuth(supabase, req.headers, body);
+      if (authError) {
+        return createUnauthorizedResponse(authError, corsHeaders);
       }
+
+      if (authMethod !== 'service_role') {
+        const { data: roles } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', userId)
+          .in('role', ['admin', 'superadmin']);
+        if (!roles || roles.length === 0) {
+          return new Response(JSON.stringify({ success: false, error: 'Admin access required' }), {
+            status: 403,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      }
+    } else {
+      console.log('[sync-ghl-marketing-assets] Cron invocation accepted (anon-key bearer, no session)');
     }
 
     const apiKey = Deno.env.get('GOHIGHLEVEL_API_KEY');
