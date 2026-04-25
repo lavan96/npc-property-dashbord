@@ -7048,6 +7048,185 @@ export type Database = {
           },
         ]
       }
+      ghl_forms: {
+        Row: {
+          created_at: string
+          fields_count: number | null
+          form_type: string
+          ghl_form_id: string
+          id: string
+          last_synced_at: string
+          location_id: string
+          name: string
+          raw_payload: Json
+          submission_count: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          fields_count?: number | null
+          form_type?: string
+          ghl_form_id: string
+          id?: string
+          last_synced_at?: string
+          location_id: string
+          name: string
+          raw_payload?: Json
+          submission_count?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          fields_count?: number | null
+          form_type?: string
+          ghl_form_id?: string
+          id?: string
+          last_synced_at?: string
+          location_id?: string
+          name?: string
+          raw_payload?: Json
+          submission_count?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ghl_funnel_pages: {
+        Row: {
+          created_at: string
+          full_url: string | null
+          funnel_uuid: string | null
+          ghl_funnel_id: string
+          ghl_page_id: string
+          id: string
+          last_synced_at: string
+          name: string
+          page_type: string | null
+          position: number | null
+          raw_payload: Json
+          slug: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          full_url?: string | null
+          funnel_uuid?: string | null
+          ghl_funnel_id: string
+          ghl_page_id: string
+          id?: string
+          last_synced_at?: string
+          name: string
+          page_type?: string | null
+          position?: number | null
+          raw_payload?: Json
+          slug?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          full_url?: string | null
+          funnel_uuid?: string | null
+          ghl_funnel_id?: string
+          ghl_page_id?: string
+          id?: string
+          last_synced_at?: string
+          name?: string
+          page_type?: string | null
+          position?: number | null
+          raw_payload?: Json
+          slug?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ghl_funnel_pages_funnel_uuid_fkey"
+            columns: ["funnel_uuid"]
+            isOneToOne: false
+            referencedRelation: "ghl_funnels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ghl_funnels: {
+        Row: {
+          created_at: string
+          domain: string | null
+          ghl_funnel_id: string
+          id: string
+          last_synced_at: string
+          location_id: string
+          name: string
+          page_count: number | null
+          raw_payload: Json
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          domain?: string | null
+          ghl_funnel_id: string
+          id?: string
+          last_synced_at?: string
+          location_id: string
+          name: string
+          page_count?: number | null
+          raw_payload?: Json
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          domain?: string | null
+          ghl_funnel_id?: string
+          id?: string
+          last_synced_at?: string
+          location_id?: string
+          name?: string
+          page_count?: number | null
+          raw_payload?: Json
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ghl_id_mapping: {
+        Row: {
+          created_at: string
+          id: string
+          new_ghl_id: string | null
+          notes: string | null
+          old_ghl_id: string
+          remapped_at: string | null
+          resource_type: string
+          source_account_label: string | null
+          target_account_label: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          new_ghl_id?: string | null
+          notes?: string | null
+          old_ghl_id: string
+          remapped_at?: string | null
+          resource_type: string
+          source_account_label?: string | null
+          target_account_label?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          new_ghl_id?: string | null
+          notes?: string | null
+          old_ghl_id?: string
+          remapped_at?: string | null
+          resource_type?: string
+          source_account_label?: string | null
+          target_account_label?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ghl_pipeline_stages: {
         Row: {
           color: string | null
@@ -7125,6 +7304,51 @@ export type Database = {
           position?: number | null
           synced_at?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      ghl_workflows: {
+        Row: {
+          created_at: string
+          ghl_workflow_id: string
+          id: string
+          last_synced_at: string
+          location_id: string
+          name: string
+          raw_payload: Json
+          status: string | null
+          step_count: number | null
+          trigger_summary: string | null
+          updated_at: string
+          version: number | null
+        }
+        Insert: {
+          created_at?: string
+          ghl_workflow_id: string
+          id?: string
+          last_synced_at?: string
+          location_id: string
+          name: string
+          raw_payload?: Json
+          status?: string | null
+          step_count?: number | null
+          trigger_summary?: string | null
+          updated_at?: string
+          version?: number | null
+        }
+        Update: {
+          created_at?: string
+          ghl_workflow_id?: string
+          id?: string
+          last_synced_at?: string
+          location_id?: string
+          name?: string
+          raw_payload?: Json
+          status?: string | null
+          step_count?: number | null
+          trigger_summary?: string | null
+          updated_at?: string
+          version?: number | null
         }
         Relationships: []
       }
