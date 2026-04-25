@@ -361,6 +361,7 @@ function MigrationWorkersPanel() {
   const [maxItems, setMaxItems] = useState<string>('25');
   const [confirmation, setConfirmation] = useState('');
   const [dispatching, setDispatching] = useState(false);
+  const [preserveCsvStructure, setPreserveCsvStructure] = useState(true);
   const [jobs, setJobs] = useState<any[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(false);
 
@@ -457,7 +458,10 @@ function MigrationWorkersPanel() {
     setDispatching(true);
     try {
       const max = parseInt(maxItems, 10);
-      const payload = max > 0 ? { max_items: max } : {};
+      const payload = {
+        ...(max > 0 ? { max_items: max } : {}),
+        preserve_csv_structure: preserveCsvStructure,
+      };
       const dispatchDomain = async (dispatchDomain: 'contacts' | 'opportunities' | 'notes' | 'conversations', extraPayload?: Record<string, any>) => {
         return invokeSecureFunction<any>('migration-orchestrator', {
           domain: dispatchDomain, source_account: source, target_account: target, dry_run: dryRun,
@@ -598,6 +602,22 @@ function MigrationWorkersPanel() {
               )}
             </div>
           )}
+        </div>
+
+        <div className="rounded-md border border-border/60 bg-muted/20 p-3">
+          <label className="flex items-start gap-2 text-xs">
+            <input
+              type="checkbox"
+              checked={preserveCsvStructure}
+              onChange={(e) => setPreserveCsvStructure(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              <strong>Preserve legacy CSV structure</strong> (recommended): keep original source/list-like grouping signals
+              (legacy <code>source</code>, tags, and metadata columns like portfolio/debt/pipeline/review fields)
+              instead of flattening all contacts under one export source.
+            </span>
+          </label>
         </div>
 
         {/* Dispatch form */}
@@ -1512,6 +1532,9 @@ function JobDetailRow({ job, onChanged }: { job: any; onChanged?: () => void }) 
                   <div><span className="text-muted-foreground">skipped no phone/email:</span> <span className="font-mono">{ingestionValidation.skipped_missing_phone_and_email ?? 0}</span></div>
                   <div><span className="text-muted-foreground">skipped junk name:</span> <span className="font-mono">{ingestionValidation.skipped_junk_name ?? 0}</span></div>
                   <div><span className="text-muted-foreground">processed:</span> <span className="font-mono">{ingestionValidation.processed ?? 0}</span></div>
+                  <div><span className="text-muted-foreground">legacy source preserved:</span> <span className="font-mono">{ingestionValidation.preserved_legacy_source_count ?? 0}</span></div>
+                  <div><span className="text-muted-foreground">csv structure mode:</span> <span className="font-mono">{ingestionValidation.preserve_csv_structure === false ? 'off' : 'on'}</span></div>
+                  <div><span className="text-muted-foreground">scientific phone fixed:</span> <span className="font-mono">{ingestionValidation.scientific_phone_normalized ?? 0}</span></div>
                 </div>
               )}
             </div>
