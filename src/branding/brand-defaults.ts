@@ -10,8 +10,8 @@ export const DEFAULT_DESTRUCTIVE = '0 84% 60%';
 
 export const defaultEmailSignature: EmailSignatureSettings = {
   banner: null,
-  name: 'NPC Property Services',
-  title: 'Property Investment Specialist',
+  name: '',
+  title: '',
   phone: '',
   email: '',
   website: '',
