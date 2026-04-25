@@ -10338,6 +10338,18 @@ export type Database = {
         Args: { report_id: string }
         Returns: number
       }
+      claim_migration_jobs: {
+        Args: { p_lease_seconds?: number; p_limit?: number }
+        Returns: {
+          dispatch_count: number
+          domain: string
+          dry_run: boolean
+          id: string
+          payload: Json
+          source_account: string
+          target_account: string
+        }[]
+      }
       cleanup_expired_census_cache: { Args: never; Returns: undefined }
       cleanup_expired_climate_cache: { Args: never; Returns: undefined }
       cleanup_expired_crime_cache: { Args: never; Returns: undefined }
@@ -10460,6 +10472,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      heartbeat_migration_job: {
+        Args: { p_job_id: string; p_lease_seconds?: number }
+        Returns: undefined
+      }
       log_activity: {
         Args: {
           p_action_type: Database["public"]["Enums"]["activity_action_type"]
@@ -10489,6 +10505,10 @@ export type Database = {
           id: string
           similarity: number
         }[]
+      }
+      release_migration_job_lock: {
+        Args: { p_job_id: string }
+        Returns: undefined
       }
       seed_sample_schools: { Args: never; Returns: undefined }
       validate_property_specs: {

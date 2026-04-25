@@ -21,11 +21,11 @@ import {
 } from '../_shared/ghl-account.ts';
 import {
   startJob, finishJob, recordItem, recordIdMapping, updateJobProgress, delay,
-  saveCheckpoint, loadCheckpoint, selfRedispatch,
+  saveCheckpoint, loadCheckpoint, partialExit, heartbeat,
 } from '../_shared/migration-jobs.ts';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
-const MAX_RUNTIME_MS = 350_000;
+const MAX_RUNTIME_MS = 90_000;
 const RATE_LIMIT_MS = 300;
 const BATCH = 200;
 
@@ -224,22 +224,20 @@ Deno.serve(async (req) => {
     const shouldRedispatch = !timeBudgetExhausted && morePagesAvailable && !(maxItems > 0 && totalProcessed >= maxItems);
 
     if (timeBudgetExhausted || shouldRedispatch) {
-      await saveCheckpoint(supabase, jobId, { offset: currentOffset });
-      const r = await selfRedispatch(supabase, jobId, 'ghl-migrate-notes-worker', {
-        job_id: jobId, source_account: sourceAccount, target_account: targetAccount, dry_run: dryRun, payload,
-      });
-      if (!r.dispatched) {
-        await finishJob(supabase, jobId, 'completed',
-          `Auto-resume halted (${r.reason}). Processed ${totalProcessed} (offset=${currentOffset}).`);
-      }
-      console.log(`[notes-worker] PARTIAL job=${jobId} processed=${totalProcessed} redispatched=${r.dispatched}`);
+      await partialExit(
+        supabase, jobId,
+        { offset: currentOffset },
+        { processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed },
+      );
+      console.log(`[notes-worker] PARTIAL job=${jobId} processed=${totalProcessed} → handed off to dispatcher`);
       return new Response(JSON.stringify({
         success: true, partial: true, processed: totalProcessed,
-        auto_redispatched: r.dispatched, dispatch_count: r.dispatchCount,
+        handed_off_to: 'migration-dispatcher',
       }), { headers: { 'Content-Type': 'application/json' } });
     }
 
     await saveCheckpoint(supabase, jobId, {});
+    await supabase.rpc('release_migration_job_lock', { p_job_id: jobId }).catch(() => {});
     await finishJob(supabase, jobId,
       totalFailed > 0 && totalSucceeded === 0 ? 'failed' : 'completed',
       totalFailed > 0 ? `Completed with ${totalFailed} failures` : undefined,

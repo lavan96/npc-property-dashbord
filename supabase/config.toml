@@ -610,3 +610,7 @@ request_timeout = 400
 verify_jwt = false
 request_timeout = 30
 
+[functions.migration-dispatcher]
+verify_jwt = false
+request_timeout = 30
+

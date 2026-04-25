@@ -32,12 +32,16 @@ import {
   delay,
   saveCheckpoint,
   loadCheckpoint,
-  selfRedispatch,
+  partialExit,
+  heartbeat,
 } from '../_shared/migration-jobs.ts';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 const PAGE_LIMIT = 100;
-const MAX_RUNTIME_MS = 350_000; // 400s wall-clock limit, leave 50s buffer for cleanup + redispatch
+// Shorter budget — the cron dispatcher resumes us within ~15s, so we
+// don't need to push 5+ minutes per invocation. Smaller batches mean
+// faster recovery from any single edge-runtime crash.
+const MAX_RUNTIME_MS = 90_000;
 const RATE_LIMIT_MS = 250;
 
 Deno.serve(async (req) => {
@@ -126,31 +130,23 @@ Deno.serve(async (req) => {
 
     while (true) {
       if (Date.now() - startedAt > MAX_RUNTIME_MS) {
-        console.log(`[contacts-worker] Time budget exhausted at ${totalProcessed} processed — saving checkpoint + self-redispatching`);
-        await saveCheckpoint(
+        console.log(`[contacts-worker] Time budget exhausted at ${totalProcessed} processed — handing off to dispatcher`);
+        await partialExit(
           supabase,
           jobId,
           { startAfterId: nextStartAfterId, startAfter: nextStartAfter },
+          {
+            processed_items: totalProcessed,
+            succeeded_items: totalSucceeded,
+            failed_items: totalFailed,
+          },
+          nextStartAfterId,
         );
-        await updateJobProgress(supabase, jobId, {
-          processed_items: totalProcessed,
-          succeeded_items: totalSucceeded,
-          failed_items: totalFailed,
-        });
-        const r = await selfRedispatch(supabase, jobId, 'ghl-migrate-contacts-worker', {
-          job_id: jobId,
-          source_account: sourceAccount,
-          target_account: targetAccount,
-          dry_run: dryRun,
-          payload,
-        });
-        if (!r.dispatched) {
-          await finishJob(supabase, jobId, 'completed',
-            `Auto-resume halted (${r.reason}). Processed ${totalProcessed} of ${totalEstimate || '?'}.`);
-        }
         return new Response(JSON.stringify({
-          success: true, partial: true, processed: totalProcessed,
-          auto_redispatched: r.dispatched, dispatch_count: r.dispatchCount, reason: r.reason || null,
+          success: true,
+          partial: true,
+          processed: totalProcessed,
+          handed_off_to: 'migration-dispatcher',
         }), { headers: { 'Content-Type': 'application/json' } });
       }
 
@@ -332,6 +328,9 @@ Deno.serve(async (req) => {
         succeeded_items: totalSucceeded,
         failed_items: totalFailed,
       });
+      // Heartbeat extends our lease so the dispatcher doesn't steal the job
+      // mid-flight just because we've spent a while on slow GHL pages.
+      await heartbeat(supabase, jobId);
 
       // Pagination: GHL returns either nextPage cursor or last contact's startAfter values
       const last = contacts[contacts.length - 1];
@@ -350,8 +349,9 @@ Deno.serve(async (req) => {
       if (contacts.length < PAGE_LIMIT) break;
     }
 
-    // Clear cursor on natural completion
+    // Clear cursor on natural completion + release dispatcher lock
     await saveCheckpoint(supabase, jobId, {});
+    await supabase.rpc('release_migration_job_lock', { p_job_id: jobId }).catch(() => {});
     await finishJob(supabase, jobId, totalFailed > 0 && totalSucceeded === 0 ? 'failed' : 'completed',
       totalFailed > 0 ? `Completed with ${totalFailed} failures` : undefined);
 
