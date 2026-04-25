@@ -224,26 +224,38 @@ Deno.serve(async (req) => {
         totalProcessed++;
 
         // ── SANITIZATION (legacy → new) ────────────────────────────────
-        // Trim + smart-capitalize first/last name and reject obvious junk
-        // (phone numbers stored as names, raw emails, "test" placeholders).
-        // We use the SANITIZED full name everywhere downstream so name-based
-        // dedupe in `ghl_id_mapping` keys off clean values.
+        // Apply the SAME shape the reference Client Management Export
+        // produces:
+        //   - Smart-cased first/last (Mihir Patel, Melissa Willis Bennett)
+        //   - "Unknown" placeholder when a name part is missing but the
+        //     row has a phone/email (matches reference rows like
+        //     "Unknown Unknown" / "Rahul Unknown")
+        //   - Phone forced to E.164 (+61… for AU local)
+        //   - Email lowercased
+        //   - Tags ALWAYS include "NPC Export"; pipeline status (if any)
+        //     becomes its own tag so the opportunities worker can
+        //     re-create the lifecycle stage downstream
+        //   - Source set to a clean human label (no raw IDs)
+        //   - Secondary contact name preserved as custom fields
         const sanitized = sanitizeContactNameParts(contact.firstName, contact.lastName);
-        // Fallbacks if both parts are empty after sanitization
-        const fallbackLabel = (contact.contactName || contact.email || '').trim();
-        const contactName = sanitized.fullName || fallbackLabel || '(no name)';
+        const safeFirst = sanitized.firstName || (sanitized.junkReason ? '' : 'Unknown');
+        const safeLast = sanitized.lastName || (sanitized.junkReason ? '' : 'Unknown');
+        const contactName = (sanitized.fullName
+          || [safeFirst, safeLast].filter(Boolean).join(' ').trim()
+          || (contact.contactName || contact.email || '').trim()
+          || '(no name)').trim();
 
-        // Reject junk records BEFORE writing anything to GHL or the mapping table
-        const junkReason = sanitized.junkReason
-          || (sanitized.fullName ? null : detectJunkContactName(fallbackLabel));
-        if (junkReason && !sanitized.fullName) {
+        // Reject ONLY when the name is unambiguously junk (email/phone-as-name,
+        // "test", repeated chars). "Unknown Unknown" is allowed (matches
+        // reference export behaviour).
+        if (sanitized.junkReason) {
           totalSkipped++;
           await recordItem(supabase, {
             job_id: jobId,
             source_id: contact.id,
             entity_label: contactName,
             status: 'skipped',
-            error_message: `Sanitization rejected: ${junkReason}`,
+            error_message: `Sanitization rejected: ${sanitized.junkReason}`,
           });
           continue;
         }
@@ -305,10 +317,12 @@ Deno.serve(async (req) => {
           }
         }
 
+        // ── Healthy-shape value normalization (matches reference export)
+        const cleanEmail = normalizeEmail(contact.email);
+        const cleanPhone = normalizePhoneE164(contact.phone);
+
         // GHL /contacts/upsert REQUIRES at least one of email or phone.
-        const hasEmail = !!(contact.email && String(contact.email).trim());
-        const hasPhone = !!(contact.phone && String(contact.phone).trim());
-        if (!hasEmail && !hasPhone) {
+        if (!cleanEmail && !cleanPhone) {
           totalSkipped++;
           await recordItem(supabase, {
             job_id: jobId,
@@ -320,6 +334,31 @@ Deno.serve(async (req) => {
           continue;
         }
 
+        // ── Pipeline status as a tag (preserves lifecycle for opportunities worker)
+        const sourceTags: string[] = Array.isArray(contact.tags)
+          ? contact.tags.map((t: any) => String(t || '').trim()).filter(Boolean)
+          : [];
+        const pipelineStatus = String(
+          contact.pipelineStatus || contact.opportunityStatus || ''
+        ).trim();
+        const mergedTags = Array.from(new Set([
+          ...sourceTags,
+          'NPC Export',                                       // fixed marker (matches reference)
+          `Migration: ${sourceAccount}→${targetAccount}`,      // audit tag
+          ...(pipelineStatus ? [`Stage: ${pipelineStatus}`] : []),
+        ]));
+
+        // ── Secondary contact name passthrough (custom fields)
+        const secondaryFirst = String(contact.secondaryFirstName || contact.secondary_first_name || '').trim();
+        const secondaryLast  = String(contact.secondaryLastName  || contact.secondary_last_name  || '').trim();
+        const passthroughCustomFields = Array.isArray(contact.customFields) ? [...contact.customFields] : [];
+        if (secondaryFirst || secondaryLast) {
+          passthroughCustomFields.push(
+            { key: 'secondary_first_name', field_value: smartCap(secondaryFirst) },
+            { key: 'secondary_last_name',  field_value: smartCap(secondaryLast)  },
+          );
+        }
+
         if (dryRun) {
           totalSucceeded++;
           await recordItem(supabase, {
@@ -328,7 +367,7 @@ Deno.serve(async (req) => {
             target_id: null,
             entity_label: contactName,
             status: 'succeeded',
-            error_message: 'DRY RUN — would mirror (sanitized)',
+            error_message: 'DRY RUN — would mirror (sanitized to reference shape)',
           });
           continue;
         }
@@ -338,18 +377,19 @@ Deno.serve(async (req) => {
           await delay(RATE_LIMIT_MS);
           const upsertBody = {
             locationId: targetCreds.locationId,
-            firstName: sanitized.firstName || contact.firstName,
-            lastName: sanitized.lastName || contact.lastName,
-            email: contact.email ? String(contact.email).trim().toLowerCase() : contact.email,
-            phone: contact.phone ? String(contact.phone).replace(/\s+/g, ' ').trim() : contact.phone,
-            tags: contact.tags || [],
-            address1: contact.address1,
-            city: contact.city,
-            state: contact.state,
-            postalCode: contact.postalCode,
-            country: contact.country,
-            source: `Migrated from ${sourceAccount} (${contact.id})`,
-            customFields: contact.customFields,
+            firstName: safeFirst,
+            lastName: safeLast,
+            name: contactName,                                // full_name is the source of truth
+            email: cleanEmail || undefined,
+            phone: cleanPhone || undefined,
+            tags: mergedTags,
+            address1: contact.address1 || undefined,
+            city: contact.city || undefined,
+            state: contact.state || undefined,
+            postalCode: contact.postalCode || undefined,
+            country: contact.country || 'Australia',          // matches reference default
+            source: 'Client Management Export',                // matches reference Source column
+            customFields: passthroughCustomFields,
           };
 
           const upRes = await fetch(`${GHL_API_BASE}/contacts/upsert`, {
