@@ -786,3 +786,116 @@ function CompareTable({
     </div>
   );
 }
+
+// ────────────────────────────────────────────────────────────────────────────
+// Expandable per-job audit / items row
+// ────────────────────────────────────────────────────────────────────────────
+function JobDetailRow({ job }: { job: any }) {
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      const res = await invokeSecureFunction<{ success: boolean; items: any[] }>(
+        'migration-job-status', { job_id: job.id }, { timeoutMs: 15000 },
+      );
+      if (!cancelled) {
+        setItems(res.data?.items || []);
+        setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [job.id]);
+
+  const tokenAudit = job.payload?.token_audit;
+  const failed = items.filter((i) => i.status === 'failed');
+  const skipped = items.filter((i) => i.status === 'skipped');
+
+  return (
+    <tr className="border-t border-border/40 bg-muted/10">
+      <td colSpan={6} className="p-3">
+        <div className="space-y-3">
+          {tokenAudit && (
+            <div className="rounded border border-border/40 bg-background/40 p-2 text-[11px]">
+              <div className="mb-1 flex items-center gap-2 font-semibold">
+                <KeyRound className="h-3 w-3 text-primary" />
+                Run-level token audit
+              </div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 md:grid-cols-4">
+                <div><span className="text-muted-foreground">kind:</span> {tokenAudit.token_kind || '—'}</div>
+                <div><span className="text-muted-foreground">hint:</span> {tokenAudit.token_type_hint || '—'}</div>
+                <div><span className="text-muted-foreground">scopes ok:</span>{' '}
+                  {tokenAudit.required_scopes_ok
+                    ? <span className="text-success">yes</span>
+                    : <span className="text-destructive">no</span>}
+                </div>
+                <div><span className="text-muted-foreground">missing:</span>{' '}
+                  <code>{(tokenAudit.missing_scopes || []).join(',') || 'none'}</code>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {loading ? (
+            <Skeleton className="h-20" />
+          ) : items.length === 0 ? (
+            <div className="text-[11px] text-muted-foreground">No items recorded yet.</div>
+          ) : (
+            <div className="space-y-2">
+              {failed.length > 0 && (
+                <details open className="rounded border border-destructive/30 bg-destructive/5 p-2 text-[11px]">
+                  <summary className="cursor-pointer font-semibold text-destructive">
+                    Failed items ({failed.length})
+                  </summary>
+                  <div className="mt-2 max-h-64 space-y-1 overflow-auto">
+                    {failed.map((it, i) => {
+                      const codeMatch = (it.error_message || '').match(/\[([A-Z0-9_]+)\]/);
+                      const code = codeMatch ? codeMatch[1] : null;
+                      const isAuth = code?.includes('401') || code?.includes('SCOPE') || code?.includes('FORBIDDEN');
+                      return (
+                        <div key={i} className="rounded bg-background/60 p-1.5 font-mono text-[10px]">
+                          <div className="flex items-center gap-2">
+                            {code && (
+                              <Badge variant={isAuth ? 'destructive' : 'outline'} className="text-[10px]">
+                                {code}
+                              </Badge>
+                            )}
+                            <span className="font-sans font-medium">{it.entity_label || it.source_id}</span>
+                          </div>
+                          <div className="mt-0.5 break-words text-muted-foreground">{it.error_message}</div>
+                          {isAuth && (
+                            <a href="https://highlevel.stoplight.io/docs/integrations/0443d7d1a4bd0-overview"
+                               target="_blank" rel="noreferrer"
+                               className="mt-0.5 inline-flex items-center gap-1 font-sans text-primary hover:underline">
+                              View required scopes <ExternalLink className="h-2.5 w-2.5" />
+                            </a>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </details>
+              )}
+              {skipped.length > 0 && (
+                <details className="rounded border border-border/40 bg-muted/30 p-2 text-[11px]">
+                  <summary className="cursor-pointer font-semibold">Skipped items ({skipped.length})</summary>
+                  <div className="mt-2 max-h-48 space-y-1 overflow-auto">
+                    {skipped.map((it, i) => (
+                      <div key={i} className="rounded bg-background/60 p-1.5 text-[10px]">
+                        <span className="font-medium">{it.entity_label || it.source_id}</span>
+                        <span className="ml-2 text-muted-foreground">{it.error_message}</span>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              )}
+              <div className="text-[10px] text-muted-foreground">Showing the most recent {items.length} items.</div>
+            </div>
+          )}
+        </div>
+      </td>
+    </tr>
+  );
+}
