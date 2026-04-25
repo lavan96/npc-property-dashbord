@@ -92,8 +92,9 @@ Deno.serve(async (req) => {
 
     console.log(`Processing user guide assistant request with ${messages.length} messages`);
 
-    // Build the full system prompt with knowledge base
-    const fullSystemPrompt = `${SYSTEM_PROMPT}
+    // Build the full system prompt with knowledge base (brand-aware)
+    const _brand = await getBrandConfig(supabase);
+    const fullSystemPrompt = `${buildSystemPrompt(_brand.companyName)}
 
 ---
 
