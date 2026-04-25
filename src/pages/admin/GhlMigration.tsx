@@ -400,8 +400,8 @@ function MigrationWorkersPanel() {
   useEffect(() => { refreshJobs(); }, []);
   useEffect(() => {
     const hasActive = jobs.some((j) => j.status === 'pending' || j.status === 'processing');
-    if (!hasActive) return;
-    const id = setInterval(refreshJobs, 4000);
+    if (!hasActive) return; // pause polling when idle
+    const id = setInterval(refreshJobs, 3000); // 3s while running
     return () => clearInterval(id);
   }, [jobs]);
 
@@ -636,21 +636,36 @@ function MigrationWorkersPanel() {
                     <th className="p-2 text-left">Domain</th>
                     <th className="p-2 text-left">Direction</th>
                     <th className="p-2 text-left">Mode</th>
-                    <th className="p-2 text-right">Progress</th>
+                    <th className="p-2 text-left w-[28%]">Progress</th>
                     <th className="p-2 text-left">Status</th>
+                    <th className="p-2 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {jobs.map((j) => {
-                    const pct = j.total_items > 0 ? Math.round((j.processed_items / j.total_items) * 100) : 0;
+                    const total = j.total_items || 0;
+                    const succeeded = j.succeeded_items || 0;
+                    const failed = j.failed_items || 0;
+                    const skipped = j.skipped_items || 0;
+                    const processed = j.processed_items || (succeeded + failed + skipped);
+                    const denom = total > 0 ? total : Math.max(processed, 1);
+                    const pct = total > 0 ? Math.round((processed / total) * 100) : 0;
+                    const widthOf = (n: number) => `${Math.min(100, (n / denom) * 100)}%`;
                     const isOpen = expandedJobId === j.id;
+                    const isLive = j.status === 'processing' || j.status === 'pending';
+                    const canResume = j.status === 'failed' || j.status === 'cancelled' ||
+                      (j.status === 'processing' && (j.dispatch_count ?? 0) > 0 &&
+                       j.last_dispatched_at && (Date.now() - new Date(j.last_dispatched_at).getTime() > 5 * 60_000));
+
                     return (
                       <React.Fragment key={j.id}>
                         <tr className="border-t border-border/40 cursor-pointer hover:bg-muted/30"
                             onClick={() => setExpandedJobId(isOpen ? null : j.id)}>
-                          <td className="p-2 text-muted-foreground">{new Date(j.created_at).toLocaleTimeString()}</td>
-                          <td className="p-2 font-medium">{j.domain}</td>
-                          <td className="p-2">
+                          <td className="p-2 text-muted-foreground whitespace-nowrap">
+                            {new Date(j.created_at).toLocaleTimeString()}
+                          </td>
+                          <td className="p-2 font-medium capitalize">{j.domain}</td>
+                          <td className="p-2 whitespace-nowrap">
                             <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase">{j.source_account}</span>
                             <span className="mx-1 text-muted-foreground">→</span>
                             <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] uppercase">{j.target_account}</span>
@@ -660,15 +675,32 @@ function MigrationWorkersPanel() {
                               {j.dry_run ? 'DRY' : 'LIVE'}
                             </Badge>
                           </td>
-                          <td className="p-2 text-right tabular-nums">
-                            {j.processed_items}/{j.total_items || '?'}
-                            <span className="ml-1 text-muted-foreground">({pct}%)</span>
-                            <div className="text-[10px] text-muted-foreground">
-                              ✓ {j.succeeded_items} · ✗ {j.failed_items}
+                          <td className="p-2">
+                            <div className="flex items-center justify-between gap-2 mb-1">
+                              <span className="font-mono tabular-nums text-[11px]">
+                                {processed.toLocaleString()}{total > 0 ? `/${total.toLocaleString()}` : ''}
+                                <span className="ml-1 text-muted-foreground">({pct}%)</span>
+                              </span>
+                              {isLive && (
+                                <span className="inline-flex items-center gap-1 text-[10px] text-primary">
+                                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
+                                  live
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-muted ring-1 ring-border/40">
+                              {succeeded > 0 && <div className="h-full bg-success transition-all duration-500" style={{ width: widthOf(succeeded) }} title={`Succeeded: ${succeeded}`} />}
+                              {failed > 0 && <div className="h-full bg-destructive transition-all duration-500" style={{ width: widthOf(failed) }} title={`Failed: ${failed}`} />}
+                              {skipped > 0 && <div className="h-full bg-warning transition-all duration-500" style={{ width: widthOf(skipped) }} title={`Skipped: ${skipped}`} />}
+                            </div>
+                            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground">
+                              <span><span className="text-success">✓</span> {succeeded}</span>
+                              <span><span className="text-destructive">✗</span> {failed}</span>
+                              {skipped > 0 && <span><span className="text-warning">⊘</span> {skipped}</span>}
                             </div>
                           </td>
                           <td className="p-2">
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1.5 flex-wrap">
                               <Badge variant={
                                 j.status === 'completed' ? 'default' :
                                 j.status === 'failed' ? 'destructive' :
@@ -684,10 +716,51 @@ function MigrationWorkersPanel() {
                               )}
                             </div>
                             {j.error_summary && (
-                              <div className="mt-1 max-w-xs truncate text-[10px] text-destructive" title={j.error_summary}>
+                              <div className="mt-1 max-w-[240px] truncate text-[10px] text-destructive" title={j.error_summary}>
                                 {j.error_summary}
                               </div>
                             )}
+                          </td>
+                          <td className="p-2 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              {canResume && (
+                                <Button
+                                  size="sm"
+                                  variant="default"
+                                  className="h-7 gap-1 text-[10px] px-2"
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    const res = await invokeSecureFunction<any>('migration-orchestrator', {
+                                      domain: j.domain,
+                                      source_account: j.source_account,
+                                      target_account: j.target_account,
+                                      dry_run: j.dry_run,
+                                      confirmation: j.dry_run ? undefined : 'MIGRATE-LIVE',
+                                      payload: { ...(j.payload || {}), resume_job_id: j.id },
+                                      skip_preflight: true,
+                                    }, { timeoutMs: 30000 });
+                                    if (res.error || !res.data?.success) {
+                                      toast.error(res.error?.message || res.data?.error || 'Resume failed');
+                                    } else {
+                                      toast.success('Resume dispatched');
+                                      refreshJobs();
+                                    }
+                                  }}
+                                >
+                                  <Play className="h-3 w-3" />
+                                  Resume
+                                </Button>
+                              )}
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 gap-1 text-[10px] px-2"
+                                onClick={(e) => { e.stopPropagation(); setExpandedJobId(isOpen ? null : j.id); }}
+                              >
+                                <Eye className="h-3 w-3" />
+                                {isOpen ? 'Hide' : 'Details'}
+                              </Button>
+                            </div>
                           </td>
                         </tr>
                         {isOpen && <JobDetailRow job={j} onChanged={refreshJobs} />}
