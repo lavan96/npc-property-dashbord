@@ -237,7 +237,7 @@ Deno.serve(async (req) => {
     }
 
     await saveCheckpoint(supabase, jobId, {});
-    await supabase.rpc('release_migration_job_lock', { p_job_id: jobId }).catch(() => {});
+    try { await supabase.rpc('release_migration_job_lock', { p_job_id: jobId }); } catch {}
     await finishJob(supabase, jobId,
       totalFailed > 0 && totalSucceeded === 0 ? 'failed' : 'completed',
       totalFailed > 0 ? `Completed with ${totalFailed} failures` : undefined,
