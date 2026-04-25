@@ -260,7 +260,7 @@ Deno.serve(async (req) => {
                 </div>
                 <p style="color: #555; font-size: 16px; line-height: 1.6;">Hi ${clientName},</p>
                 <p style="color: #555; font-size: 16px; line-height: 1.6;">
-                  You've been invited to access your personal Client Portal at NPC Services. 
+                  You've been invited to access your personal Client Portal at ${brand.companyName}. 
                   Here you can view your property portfolio, financial details, correspondence, and more.
                 </p>
                 <div style="text-align: center; margin: 32px 0;">
@@ -275,7 +275,7 @@ Deno.serve(async (req) => {
                 </p>
                 <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0;" />
                 <p style="color: #aaa; font-size: 12px; text-align: center;">
-                  NPC Services — Property Investment Advisory
+                  ${brand.companyName} — Property Investment Advisory
                 </p>
               </div>
             `,

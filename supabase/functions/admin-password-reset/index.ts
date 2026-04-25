@@ -149,6 +149,7 @@ Deno.serve(async (req: Request) => {
       // Send email via Resend using REST API
       console.log(`Attempting to send OTP email to ${user.email} for user ${user.username}`);
       
+      const brand = await getBrandConfig();
       const emailHtml = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h1 style="color: #333;">Password Reset Request</h1>
@@ -160,14 +161,14 @@ Deno.serve(async (req: Request) => {
           <p>This code expires in 10 minutes.</p>
           <p>If you didn't request this, please ignore this email.</p>
           <p style="color: #666; font-size: 12px; margin-top: 30px;">
-            This is an automated message from NPC Dashboard.
+            This is an automated message from ${brand.companyName} Dashboard.
           </p>
         </div>
       `;
       
       const emailResult = await sendEmail(
         user.email,
-        'Password Reset OTP - NPC Dashboard',
+        `Password Reset OTP - ${brand.companyName} Dashboard`,
         emailHtml
       );
 

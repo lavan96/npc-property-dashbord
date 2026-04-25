@@ -145,7 +145,7 @@ Deno.serve(async (req) => {
           type: 'info',
           category: 'account',
           actionUrl: '/client',
-          companyName: wl?.company_name || 'NPC Services',
+          companyName: wl?.company_name || 'Property Consulting',
         });
       } catch (notifErr) {
         console.warn('[client-portal-login] Failed to create welcome notification:', notifErr);

@@ -1,9 +1,9 @@
 /**
- * Finance Portal Messages — secure messaging between finance partners and NPC staff.
+ * Finance Portal Messages — secure messaging between finance partners and internal staff.
  *
  * Dual auth modes:
  *   • Partner mode:  x-finance-session-token header (partner-side calls)
- *   • Staff mode:    standard NPC auth via verifyAuth (internal dashboard calls)
+ *   • Staff mode:    standard internal auth via verifyAuth (internal dashboard calls)
  *
  * Operations:
  *   - list_threads             (partner: own threads only · staff: all threads, optionally for client_id)
@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
       if (auth.error || !auth.userId) {
         return jsonResponse({ error: 'Authentication required' }, 401, corsHeaders);
       }
-      actor = { type: 'staff', userId: auth.userId, username: auth.username || 'NPC Staff' };
+      actor = { type: 'staff', userId: auth.userId, username: auth.username || 'Staff' };
     }
 
     // Helper: ensure partner is assigned to client and has messages permission
@@ -300,7 +300,7 @@ Deno.serve(async (req) => {
         await notifyFinancePortalAssignees({
           client_id: thread.client_id,
           notification_type: 'message_received',
-          title: 'New message from NPC',
+          title: 'New message from staff',
           body: trimmed.slice(0, 140) || 'Sent you an attachment',
           link_path: `/finance/clients/${thread.client_id}?tab=messages`,
           metadata: { thread_id, message_id: message.id },
