@@ -149,7 +149,7 @@ function markdownToHtml(md: string): string {
 function wrapInAgentTemplate(bodyHtml: string, signature: string, bannerUrl?: string): string {
   const bannerSection = bannerUrl 
     ? `<tr><td style="padding: 0;">
-        <img src="${bannerUrl}" alt="NPC Services" style="width: 100%; max-width: 600px; height: auto; display: block;" />
+        <img src="${bannerUrl}" alt="Email banner" style="width: 100%; max-width: 600px; height: auto; display: block;" />
        </td></tr>`
     : '';
 

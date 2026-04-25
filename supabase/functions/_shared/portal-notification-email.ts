@@ -46,12 +46,12 @@ export async function sendPortalNotificationEmail(params: PortalNotificationEmai
     type = 'info',
     category = 'general',
     actionUrl,
-    companyName = 'NPC Services',
+    companyName = 'Property Consulting',
   } = params;
 
   const emoji = TYPE_EMOJI[type] || 'ℹ️';
   const catLabel = CATEGORY_LABEL[category] || 'Notification';
-  const appUrl = Deno.env.get('APP_URL') || 'https://npc-property-dashbord.lovable.app';
+  const appUrl = Deno.env.get('APP_URL') || 'https://app.lovable.dev';
   const portalUrl = actionUrl ? `${appUrl}${actionUrl}` : `${appUrl}/client`;
 
   const html = `
@@ -134,7 +134,7 @@ export async function sendPortalNotificationEmail(params: PortalNotificationEmai
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: `${companyName} <notifications@npcservices.com.au>`,
+        from: `${companyName} <notifications@npcservices.com.au>`, // SAFETY: notifications@ kept as Resend-verified fallback sender
         to: [to],
         subject: `${emoji} ${title}`,
         html,
@@ -191,7 +191,7 @@ export async function resolveClientEmailInfo(
     return {
       email: portalUser.email,
       firstName: client?.primary_first_name || 'there',
-      companyName: wl?.company_name || 'NPC Services',
+      companyName: wl?.company_name || 'Property Consulting',
     };
   } catch (err) {
     console.error('[portal-email] Failed to resolve client info:', err);

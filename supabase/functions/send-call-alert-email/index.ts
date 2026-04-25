@@ -1,6 +1,7 @@
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { getBrandConfig } from '../_shared/brand-config.ts';
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -71,8 +72,9 @@ const handler = async (req: Request): Promise<Response> => {
     const alertColor = isPositive ? "#22c55e" : "#ef4444";
     const alertIcon = isPositive ? "✓" : "⚠";
 
+    const brand = await getBrandConfig();
     const emailResponse = await resend.emails.send({
-      from: "NPC Services Call Alerts <admin@npcservices.com.au>",
+      from: `${brand.companyName} Call Alerts <${brand.contactEmail}>`,
       to: [to],
       subject: `${alertIcon} Call Alert: ${alertName}`,
       html: `
@@ -130,7 +132,7 @@ const handler = async (req: Request): Promise<Response> => {
               <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e2e8f0;">
                 <p style="margin: 0; color: #64748b; font-size: 12px; text-align: center;">
                   Call ID: ${callId}<br>
-                  This is an automated alert from NPC Services Call Monitoring System.
+                  This is an automated alert from ${brand.companyName} Call Monitoring System.
                 </p>
               </div>
             </div>

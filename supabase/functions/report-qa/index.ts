@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { PDFDocument, rgb, StandardFonts, PDFPage, PDFFont } from "https://esm.sh/pdf-lib@1.17.1";
 import { verifyAuth, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { getBrandConfig } from '../_shared/brand-config.ts';
 import { logApiUsage, extractOpenAIUsage } from '../_shared/logApiUsage.ts';
 import { createUsageTrackingStream } from '../_shared/streamUsageLogger.ts';
 
@@ -2082,17 +2083,18 @@ ${transcript}`;
               <pre>${content}</pre>
             </div>
             <div class="footer">
-              <p>NPC Services</p>
-              <p>Phone: 0433 005 110 | Email: admin@npcservices.com.au</p>
-              <p>Website: npcservices.com.au</p>
+              <p>${(await getBrandConfig()).companyName}</p>
+              <p>Phone: ${(await getBrandConfig()).contactPhone || ''} | Email: ${(await getBrandConfig()).contactEmail}</p>
+              <p>Website: ${(await getBrandConfig()).contactWebsite || ''}</p>
             </div>
           </div>
         </body>
         </html>
       `;
 
+      const _brand = await getBrandConfig();
       const emailResponse = await resend.emails.send({
-        from: "NPC Services <admin@npcservices.com.au>",
+        from: _brand.fromHeaderAdmin,
         to: [to],
         subject: subject || "Investment Report Summary",
         html: htmlContent,

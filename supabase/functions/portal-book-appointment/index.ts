@@ -245,7 +245,7 @@ Deno.serve(async (req) => {
           if (resendKey) {
             // Get company name from whitelabel
             const { data: wl } = await supabase.from('whitelabel_settings').select('company_name').limit(1).maybeSingle();
-            const companyName = wl?.company_name || 'NPC Property';
+            const companyName = wl?.company_name || 'Property Consulting';
 
             await fetch('https://api.resend.com/emails', {
               method: 'POST',
