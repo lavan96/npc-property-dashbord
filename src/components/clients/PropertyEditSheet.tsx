@@ -368,7 +368,7 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
         throw new Error(error?.message || data?.error || 'Failed to update property');
       }
 
-      // Auto-update client deal_status when NPC-sourced property is saved
+      // Auto-update client deal_status when an internally-sourced property is saved
       if (formData.sourced_by === 'npc') {
         try {
           const clientUpdateData: Record<string, any> = { deal_status: 'closed' };

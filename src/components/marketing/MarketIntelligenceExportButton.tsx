@@ -134,7 +134,7 @@ export function MarketIntelligenceExportButton({ reportType = 'full', reportCont
               <p className="text-sm font-medium">Report Options</p>
               <div className="flex items-center justify-between gap-3">
                 <Label htmlFor="npc-strategy-toggle" className="text-xs leading-tight cursor-pointer">
-                  Include NPC Strategic Approach
+                  Include Strategic Advisory Approach
                   <span className="mt-0.5 block text-[10px] text-muted-foreground">
                     Proprietary methodology section
                   </span>

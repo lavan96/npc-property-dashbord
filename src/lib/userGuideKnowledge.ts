@@ -1294,7 +1294,7 @@ export const userGuideKnowledge: GuideSection[] = [
  * Format the knowledge base as context for AI
  */
 export function formatKnowledgeBaseForAI(): string {
-  let context = `# NPC Property Dashboard - User Guide Knowledge Base\n\n`;
+  let context = `# Property Dashboard - User Guide Knowledge Base\n\n`;
   context += `This is a comprehensive property investment analysis platform. Below is the complete documentation:\n\n`;
   
   for (const section of userGuideKnowledge) {

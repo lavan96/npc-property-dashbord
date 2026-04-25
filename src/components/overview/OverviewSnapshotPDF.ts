@@ -2,7 +2,7 @@
  * Overview Snapshot PDF Generator
  * 
  * Generates a premium navy/gold branded PDF report for the
- * Overview dashboard snapshot — matching the NPC design system.
+ * Overview dashboard snapshot — premium navy/gold branded report.
  */
 
 import jsPDF from 'jspdf';
@@ -88,6 +88,10 @@ export async function generateOverviewSnapshotPDF(data: OverviewSnapshotData): P
 
   const now = new Date();
 
+  // Fetch dynamic brand for footer/cover
+  const brandSettings = await fetchGlobalReportSettings();
+  const brandName = (brandSettings?.contactDetails?.company_name || 'Property Consulting').trim();
+
   // ── Utilities ──
   const addPage = () => {
     if (pageNum > 0) {
@@ -106,7 +110,7 @@ export async function generateOverviewSnapshotPDF(data: OverviewSnapshotData): P
     doc.setFontSize(7);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(GRAY_TEXT.r, GRAY_TEXT.g, GRAY_TEXT.b);
-    doc.text('NPC Services | Overview Snapshot Report', margin, fy);
+    doc.text(`${brandName} | Overview Snapshot Report`, margin, fy);
     doc.text(`Page ${pageNum}`, pw - margin, fy, { align: 'right' });
   };
 
@@ -205,7 +209,7 @@ export async function generateOverviewSnapshotPDF(data: OverviewSnapshotData): P
   // Brand
   doc.setFontSize(9);
   doc.setTextColor(120, 120, 120);
-  doc.text('NPC Services', margin, ph - 25);
+  doc.text(brandName, margin, ph - 25);
 
   // ═══════════════════════════════════════════════════════════════════════════
   //  PAGE 2 — Key Performance Indicators

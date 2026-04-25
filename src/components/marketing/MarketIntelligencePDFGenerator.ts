@@ -146,12 +146,16 @@ function stripEmptyRegulatorySections(content: string): string {
 }
 
 /**
- * Strip "Why NPC Services?" from CTA content since the PDF adds it separately.
+ * Strip the "Why <Brand>?" callout from CTA content since the PDF adds it separately.
  */
-function stripDuplicateNPCTagline(content: string): string {
+function stripDuplicateBrandTagline(content: string, brandName: string): string {
   if (!content) return '';
-  // Remove ### Why NPC Services? section and its content
-  let cleaned = content.replace(/#{1,4}\s*Why NPC Services\?[\s\S]*?(?=\n#{1,4}\s|\n---|\n$)/gi, '');
+  const escaped = brandName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // Remove ### Why <Brand>? section and its content
+  const pattern = new RegExp(`#{1,4}\\s*Why\\s+${escaped}\\??[\\s\\S]*?(?=\\n#{1,4}\\s|\\n---|\\n$)`, 'gi');
+  let cleaned = content.replace(pattern, '');
+  // Also strip generic "Why NPC Services?" for legacy content
+  cleaned = cleaned.replace(/#{1,4}\s*Why NPC Services\?[\s\S]*?(?=\n#{1,4}\s|\n---|\n$)/gi, '');
   cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
   return cleaned.trim();
 }
@@ -165,11 +169,15 @@ class MarketIntelPDFBuilder {
   private margin = 25;
   private y = 0;
   private pageNum = 0;
+  private brandName: string;
+  private brandUpper: string;
 
-  constructor() {
+  constructor(brandName: string = 'Property Consulting') {
     this.doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     this.pageWidth = this.doc.internal.pageSize.getWidth();
     this.pageHeight = this.doc.internal.pageSize.getHeight();
+    this.brandName = brandName.trim() || 'Property Consulting';
+    this.brandUpper = this.brandName.toUpperCase();
   }
 
   private contentWidth() { return this.pageWidth - this.margin * 2; }
@@ -199,7 +207,7 @@ class MarketIntelPDFBuilder {
     this.doc.setFontSize(7);
     this.doc.setFont('helvetica', 'normal');
     this.doc.setTextColor(GRAY_TEXT.r, GRAY_TEXT.g, GRAY_TEXT.b);
-    this.doc.text('NPC Services | Market Intelligence Report', this.margin, footerY);
+    this.doc.text(`${this.brandName} | Market Intelligence Report`, this.margin, footerY);
     this.doc.text(`Page ${this.pageNum}`, this.pageWidth - this.margin, footerY, { align: 'right' });
   }
 
@@ -222,7 +230,7 @@ class MarketIntelPDFBuilder {
     this.doc.setTextColor(GOLD.r, GOLD.g, GOLD.b);
     this.doc.setFont('helvetica', 'bold');
     this.doc.setFontSize(14);
-    this.doc.text('NPC SERVICES', this.margin, 50);
+    this.doc.text(this.brandUpper, this.margin, 50);
 
     // Gold divider
     this.doc.setDrawColor(GOLD.r, GOLD.g, GOLD.b);
@@ -722,8 +730,8 @@ class MarketIntelPDFBuilder {
     this.y += 5;
     this.checkPageBreak(35);
     
-    // Why NPC callout panel
-    const whyText = 'NPC Services is a strategic property advisory that delivers data-driven, insight-led guidance — enabling clients to act on opportunities others don\'t see.';
+    // Why <brand> callout panel
+    const whyText = `${this.brandName} is a strategic property advisory that delivers data-driven, insight-led guidance — enabling clients to act on opportunities others don't see.`;
     const whyWrapped = this.doc.splitTextToSize(whyText, this.contentWidth() - 20);
     const whyHeight = whyWrapped.length * 4.5 + 14;
     
@@ -738,7 +746,7 @@ class MarketIntelPDFBuilder {
     this.doc.setFont('helvetica', 'bold');
     this.doc.setFontSize(9);
     this.doc.setTextColor(GOLD.r, GOLD.g, GOLD.b);
-    this.doc.text('WHY NPC SERVICES?', this.margin + 8, this.y + 6);
+    this.doc.text(`WHY ${this.brandUpper}?`, this.margin + 8, this.y + 6);
     
     this.doc.setFont('helvetica', 'normal');
     this.doc.setFontSize(9);
@@ -760,7 +768,7 @@ class MarketIntelPDFBuilder {
     this.doc.setTextColor(WHITE.r, WHITE.g, WHITE.b);
     this.doc.setFont('helvetica', 'normal');
     this.doc.setFontSize(9);
-    this.doc.text('Contact NPC Services to discuss your personalised property strategy.', this.pageWidth / 2, this.y + 17, { align: 'center' });
+    this.doc.text(`Contact ${this.brandName} to discuss your personalised property strategy.`, this.pageWidth / 2, this.y + 17, { align: 'center' });
 
     this.y += 32;
   }
@@ -1089,8 +1097,8 @@ class MarketIntelPDFBuilder {
       this.drawMarkdownContent(stripDataLimitations(data.layer8_competitive_edge.content));
       
       this.drawInsightCallout(
-        'The NPC Advantage',
-        'The insights in this section reflect NPC Services\' proprietary analysis methodology. These strategic angles are derived from deep market intelligence and are not available through standard property reports or competitor advisory services.'
+        'Our Strategic Advantage',
+        `The insights in this section reflect ${this.brandName}' proprietary analysis methodology. These strategic angles are derived from deep market intelligence and are not available through standard property reports or competitor advisory services.`
       );
     }
 
@@ -1116,7 +1124,7 @@ class MarketIntelPDFBuilder {
 
     // CTA Section
     if (layers.includes('cta') && data.ctaContent) {
-      this.drawCTASection(stripDuplicateNPCTagline(data.ctaContent));
+      this.drawCTASection(stripDuplicateBrandTagline(data.ctaContent, this.brandName));
     }
 
     // Citations
@@ -1144,6 +1152,8 @@ class MarketIntelPDFBuilder {
 export async function generateMarketIntelligencePDF(
   data: MarketIntelligenceReportData
 ): Promise<Blob> {
-  const builder = new MarketIntelPDFBuilder();
+  const brandSettings = await fetchGlobalReportSettings();
+  const brandName = (brandSettings?.contactDetails?.company_name || 'Property Consulting').trim();
+  const builder = new MarketIntelPDFBuilder(brandName);
   return builder.generate(data);
 }

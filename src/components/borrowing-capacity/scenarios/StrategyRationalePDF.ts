@@ -5,7 +5,7 @@
  * broker can hand it directly to the finance division.
  *
  * Sections (in order):
- *   1. Cover page — NPC template image, falls back to dark/gold splash
+ *   1. Cover page — branded template image, falls back to dark/gold splash
  *   2. Header — client name + scenario timestamp + capacity headline
  *   3. Headline + sub-headline (target framing)
  *   4. What & Why bullets (per lever, sorted by material impact)
