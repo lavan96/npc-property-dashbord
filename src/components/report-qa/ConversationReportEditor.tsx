@@ -200,7 +200,7 @@ export function ConversationReportEditor({
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(18);
       doc.setFont('helvetica', 'bold');
-      doc.text(contact.company_name || 'Naidu Property Consulting Services', margin, 15);
+      doc.text(contact.company_name || 'Property Report', margin, 15);
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
       doc.text('Investment Property Analysis', margin, 22);
@@ -496,7 +496,7 @@ export function ConversationReportEditor({
 
       // Footer on each page (skip cover page = page 1, skip disclaimer = last page)
       const totalPages = doc.getNumberOfPages();
-      const companyFooterName = contact.company_name || 'Naidu Property Consulting Services';
+      const companyFooterName = contact.company_name || 'Property Report';
       for (let i = 1; i <= totalPages; i++) {
         // Skip cover (page 1) and disclaimer (last page)
         if (i === 1 || i === totalPages) continue;
