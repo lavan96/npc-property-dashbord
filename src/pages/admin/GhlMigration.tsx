@@ -690,7 +690,7 @@ function MigrationWorkersPanel() {
                             )}
                           </td>
                         </tr>
-                        {isOpen && <JobDetailRow job={j} />}
+                        {isOpen && <JobDetailRow job={j} onChanged={refreshJobs} />}
                       </React.Fragment>
                     );
                   })}
