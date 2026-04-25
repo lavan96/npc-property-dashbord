@@ -268,10 +268,13 @@ Deno.serve(async (req) => {
           });
           if (!r.ok) {
             const t = await r.text();
+            const authDetail = (r.status === 401 || r.status === 403) && targetAuthHint
+              ? ` ${targetAuthHint}`
+              : '';
             totalFailed++;
             await recordItem(supabase, {
               job_id: jobId, source_id: opp.id, entity_label: oppLabel,
-              status: 'failed', error_message: `${r.status}: ${t.substring(0, 300)}`,
+              status: 'failed', error_message: `${r.status}: ${t.substring(0, 300)}${authDetail}`.substring(0, 900),
             });
             continue;
           }
