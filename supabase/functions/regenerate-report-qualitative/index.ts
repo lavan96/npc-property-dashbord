@@ -1517,7 +1517,7 @@ Deno.serve(async (req) => {
     console.log('📊 Enhanced data sources loaded:', Object.keys(enhancedData).filter(k => enhancedData[k as keyof EnhancedData]).length);
 
     // Generate report header (only if starting fresh)
-    const reportHeader = `# NAIDU PROPERTY CONSULTING SERVICES
+    const reportHeader = `# ${_brandRq.companyNameUpper}
 
 YOUR DEDICATED PROPERTY PARTNER
 

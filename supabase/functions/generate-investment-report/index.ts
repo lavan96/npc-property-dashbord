@@ -4155,7 +4155,7 @@ This report should feel like a polished advisory document that inspires confiden
       }
     } else {
       // Fresh generation: Add report header
-      const reportHeader = `# NAIDU PROPERTY CONSULTING SERVICES
+      const reportHeader = `# ${_brandName.toUpperCase()}
 
 YOUR DEDICATED PROPERTY PARTNER
 
