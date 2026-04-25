@@ -327,8 +327,15 @@ const PROBES: ProbeSpec[] = [
     required_for: ['contacts'],
     method: 'POST',
     buildUrl: () => `${GHL_API_BASE}/contacts/upsert`,
-    // Intentional: missing locationId → 422 if scope OK, 401/403 if not.
-    body: () => ({ firstName: '__lovable_scope_probe__' }),
+    // Include locationId so GHL doesn't 403 with "does not have access to this
+    // location" before it ever checks the scope. Use an obviously-fake email
+    // so a real contact is never created — upsert will either match nothing
+    // and 422/400, or match a synthetic record. Either proves scope is granted.
+    body: (loc) => ({
+      locationId: loc,
+      firstName: '__lovable_scope_probe__',
+      email: `__lovable_scope_probe__@example.invalid`,
+    }),
     okStatuses: [200, 201, 400, 422],
   },
   {
