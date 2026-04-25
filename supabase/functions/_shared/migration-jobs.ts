@@ -289,6 +289,8 @@ export async function recordIdMapping(
     notes?: string;
   },
 ): Promise<void> {
+  // The live `ghl_id_mapping` table has a UNIQUE constraint on
+  // (resource_type, old_ghl_id) only — match it exactly so ON CONFLICT works.
   const { error } = await supabase.from('ghl_id_mapping').upsert(
     {
       resource_type: params.resource_type,
@@ -299,7 +301,7 @@ export async function recordIdMapping(
       notes: params.notes ?? null,
       remapped_at: new Date().toISOString(),
     },
-    { onConflict: 'resource_type,old_ghl_id,source_account_label,target_account_label' },
+    { onConflict: 'resource_type,old_ghl_id' },
   );
   if (error) console.error(`recordIdMapping failed: ${error.message}`);
 }

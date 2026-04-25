@@ -211,6 +211,23 @@ Deno.serve(async (req) => {
           continue;
         }
 
+        // GHL /contacts/upsert REQUIRES at least one of email or phone.
+        // Skip contacts with neither — record as 'skipped' (not failed) so the
+        // job summary stays clean and we don't waste an API call we know will 400.
+        const hasEmail = !!(contact.email && String(contact.email).trim());
+        const hasPhone = !!(contact.phone && String(contact.phone).trim());
+        if (!hasEmail && !hasPhone) {
+          totalSkipped++;
+          await recordItem(supabase, {
+            job_id: jobId,
+            source_id: contact.id,
+            entity_label: contactName,
+            status: 'skipped',
+            error_message: 'No email or phone on source contact (GHL upsert requires at least one)',
+          });
+          continue;
+        }
+
         if (dryRun) {
           totalSucceeded++;
           await recordItem(supabase, {
