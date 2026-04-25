@@ -96,6 +96,30 @@ Deno.serve(async (req) => {
     let firstPage = true;
 
     while (true) {
+      // ── Granular control: pause / cancel / kill ─────────────────────
+      const signal = await readControlSignal(supabase, jobId);
+      if (signal === 'kill' || signal === 'cancel') {
+        console.log(`[conv-worker] ${signal.toUpperCase()} signal — finalizing cancelled at ${totalProcessed}`);
+        await updateJobProgress(supabase, jobId, {
+          processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed,
+        });
+        await finishJob(supabase, jobId, 'cancelled', `Cancelled by user (${signal}) at ${totalProcessed} processed`);
+        return new Response(JSON.stringify({
+          success: true, cancelled: true, signal, processed: totalProcessed,
+        }), { headers: { 'Content-Type': 'application/json' } });
+      }
+      if (signal === 'pause') {
+        console.log(`[conv-worker] PAUSE signal — checkpointing at ${totalProcessed}`);
+        await partialExit(
+          supabase, jobId,
+          { nextPage },
+          { processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed },
+        );
+        return new Response(JSON.stringify({
+          success: true, paused: true, processed: totalProcessed,
+        }), { headers: { 'Content-Type': 'application/json' } });
+      }
+
       if (Date.now() - startedAt > MAX_RUNTIME_MS) {
         await partialExit(
           supabase, jobId,
