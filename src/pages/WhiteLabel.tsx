@@ -681,7 +681,7 @@ export default function WhiteLabel() {
   const hasChanges = useMemo(() => JSON.stringify(draftSettings) !== JSON.stringify(settings), [draftSettings, settings]);
   const accessibilityChecks = useMemo(() => getBrandAccessibilityChecks(draftSettings), [draftSettings]);
   const hasCriticalChecks = accessibilityChecks.some((check) => check.status === 'critical');
-  const blocker = useBlocker(hasChanges);
+  const blocker = useUnsavedChangesBlocker(hasChanges);
 
   useEffect(() => {
     if (blocker.state === 'blocked') {
