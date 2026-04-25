@@ -217,8 +217,8 @@ export async function generateStrategyRationalePDF(
     doc.setFontSize(28);
     doc.setFont('helvetica', 'bold');
     setColor(doc, GOLD);
-    doc.text('NAIDU PROPERTY', PAGE_W / 2, 100, { align: 'center' });
-    doc.text('CONSULTING SERVICES', PAGE_W / 2, 115, { align: 'center' });
+    doc.text(__brandLine1, PAGE_W / 2, 100, { align: 'center' });
+    if (__brandLine2) doc.text(__brandLine2, PAGE_W / 2, 115, { align: 'center' });
     doc.setFontSize(11);
     doc.setFont('helvetica', 'normal');
     setColor(doc, WHITE);
