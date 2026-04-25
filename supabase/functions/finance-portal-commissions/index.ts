@@ -49,7 +49,7 @@ function escapeHtml(s: any) {
   ));
 }
 
-function buildStatementHtml(statement: any, lines: any[]) {
+function buildStatementHtml(statement: any, lines: any[], brandName: string) {
   const rows = lines.map((l, i) => `
     <tr>
       <td style="padding:8px;border-bottom:1px solid #1f2a44">${i + 1}</td>
