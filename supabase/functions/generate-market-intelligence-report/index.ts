@@ -543,6 +543,14 @@ Deno.serve(async (req) => {
 
     console.log(`[market-intel-report] Starting generation: type=${reportType}, audience=${audienceSegment}, user=${userId}`);
 
+    // Initialise dynamic brand name from global_report_settings.
+    try {
+      const _brand = await getBrandConfig(supabase);
+      BRAND_NAME = _brand.companyName;
+    } catch (e) {
+      console.warn('[market-intel-report] getBrandConfig failed, using fallback:', e);
+    }
+
     const PERPLEXITY_API_KEY = Deno.env.get('PERPLEXITY_API_KEY');
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
