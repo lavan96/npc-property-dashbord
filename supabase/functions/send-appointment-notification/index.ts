@@ -115,6 +115,7 @@ function buildEmailBody(params: {
   type: string;
   notes?: string;
   calendarName?: string;
+  brandName: string;
 }): string {
   const startDate = new Date(params.start);
   const endDate = new Date(params.end);
@@ -141,7 +142,7 @@ function buildEmailBody(params: {
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <div style="background: #1a1a2e; color: #d4a843; padding: 20px; border-radius: 8px 8px 0 0;">
         <h2 style="margin: 0; font-size: 20px;">📅 Meeting Invitation</h2>
-        <p style="margin: 5px 0 0; opacity: 0.9; font-size: 14px;">NPC Services — Command Centre</p>
+        <p style="margin: 5px 0 0; opacity: 0.9; font-size: 14px;">${params.brandName} — Command Centre</p>
       </div>
       <div style="background: #ffffff; padding: 24px; border: 1px solid #e0e0e0; border-top: none;">
         <p style="color: #333; font-size: 15px;">Hi ${params.recipientName},</p>
@@ -182,7 +183,7 @@ function buildEmailBody(params: {
       </div>
       <div style="background: #f4f4f4; padding: 12px 20px; border-radius: 0 0 8px 8px; border: 1px solid #e0e0e0; border-top: none;">
         <p style="color: #999; font-size: 11px; margin: 0; text-align: center;">
-          This is an automated notification from NPC Services Command Centre.
+          This is an automated notification from ${params.brandName} Command Centre.
         </p>
       </div>
     </div>
