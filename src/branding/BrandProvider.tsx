@@ -10,7 +10,7 @@ import {
 } from './brand-defaults';
 import { getBrandAssetSrc } from './brand-assets';
 import { applyBrandTokenMap, resolveBrandTokens } from './token-resolver';
-import type { BrandContextValue, BrandLogoConfig, BrandThemeConfig, ThemeMode, WhiteLabelSettings } from './brand-types';
+import type { BrandContextValue, BrandLogoConfig, BrandThemeConfig, EmailSignatureSettings, ThemeMode, WhiteLabelSettings } from './brand-types';
 
 const BrandContext = createContext<BrandContextValue | undefined>(undefined);
 
