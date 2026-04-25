@@ -42,6 +42,7 @@ import {
   normalizePhoneE164,
   normalizeEmail,
   smartCapitalizeName,
+  mergeJobPayload,
 } from '../_shared/migration-jobs.ts';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
@@ -120,6 +121,10 @@ Deno.serve(async (req) => {
     let totalSucceeded = 0;
     let totalFailed = 0;
     let totalSkipped = 0;
+    let usedRawCombinedName = 0;
+    let unknownPlaceholderNames = 0;
+    let skippedMissingContactMethod = 0;
+    let skippedJunkName = 0;
     let firstPage = true;
     let totalEstimate = 0;
 
@@ -239,27 +244,38 @@ Deno.serve(async (req) => {
         //   - Source set to a clean human label (no raw IDs)
         //   - Secondary contact name preserved as custom fields
         const sanitized = sanitizeContactNameParts(contact.firstName, contact.lastName);
-        const safeFirst = sanitized.firstName || (sanitized.junkReason ? '' : 'Unknown');
-        const safeLast = sanitized.lastName || (sanitized.junkReason ? '' : 'Unknown');
-        const contactName = (sanitized.fullName
+        const rawCombinedName = String(contact.contactName || contact.name || '').trim();
+        const canonicalName = sanitized.fullName || rawCombinedName;
+        if (!sanitized.fullName && rawCombinedName) usedRawCombinedName++;
+        const junkReason = canonicalName ? detectJunkContactName(canonicalName) : null;
+
+        const fallbackTokens = canonicalName.split(/\s+/).filter(Boolean);
+        const fallbackFirst = fallbackTokens[0] ? smartCapitalizeName(fallbackTokens[0]) : '';
+        const fallbackLast = fallbackTokens.length > 1 ? smartCapitalizeName(fallbackTokens.slice(1).join(' ')) : '';
+        const safeFirst = sanitized.firstName || fallbackFirst || (junkReason ? '' : 'Unknown');
+        const safeLast = sanitized.lastName || fallbackLast || (junkReason ? '' : 'Unknown');
+        const contactName = (canonicalName
           || [safeFirst, safeLast].filter(Boolean).join(' ').trim()
-          || (contact.contactName || contact.email || '').trim()
+          || (contact.email || '').trim()
           || '(no name)').trim();
 
         // Reject ONLY when the name is unambiguously junk (email/phone-as-name,
         // "test", repeated chars). "Unknown Unknown" is allowed (matches
         // reference export behaviour).
-        if (sanitized.junkReason) {
+        if (junkReason) {
+          skippedJunkName++;
           totalSkipped++;
           await recordItem(supabase, {
             job_id: jobId,
             source_id: contact.id,
             entity_label: contactName,
             status: 'skipped',
-            error_message: `Sanitization rejected: ${sanitized.junkReason}`,
+            error_message: `Sanitization rejected: ${junkReason}`,
           });
           continue;
         }
+
+        if (safeFirst === 'Unknown' || safeLast === 'Unknown') unknownPlaceholderNames++;
 
         // Check if already mirrored by source contact id
         const { data: existing } = await supabase
@@ -324,6 +340,7 @@ Deno.serve(async (req) => {
 
         // GHL /contacts/upsert REQUIRES at least one of email or phone.
         if (!cleanEmail && !cleanPhone) {
+          skippedMissingContactMethod++;
           totalSkipped++;
           await recordItem(supabase, {
             job_id: jobId,
@@ -485,6 +502,20 @@ Deno.serve(async (req) => {
     // Clear cursor on natural completion + release dispatcher lock
     await saveCheckpoint(supabase, jobId, {});
     try { await supabase.rpc('release_migration_job_lock', { p_job_id: jobId }); } catch {}
+    await mergeJobPayload(supabase, jobId, {
+      ingestion_validation: {
+        worker: 'contacts',
+        source_seen: totalSeen,
+        processed: totalProcessed,
+        succeeded: totalSucceeded,
+        failed: totalFailed,
+        skipped: totalSkipped,
+        used_raw_combined_name: usedRawCombinedName,
+        unknown_placeholder_names: unknownPlaceholderNames,
+        skipped_missing_phone_and_email: skippedMissingContactMethod,
+        skipped_junk_name: skippedJunkName,
+      },
+    });
     await finishJob(supabase, jobId, totalFailed > 0 && totalSucceeded === 0 ? 'failed' : 'completed',
       totalFailed > 0 ? `Completed with ${totalFailed} failures` : undefined);
 

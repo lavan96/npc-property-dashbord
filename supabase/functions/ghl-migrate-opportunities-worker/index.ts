@@ -21,7 +21,7 @@ import {
 import {
   startJob, finishJob, recordItem, recordIdMapping, updateJobProgress, delay,
   saveCheckpoint, loadCheckpoint, partialExit, heartbeat,
-  resolveTargetContactByName, readControlSignal, sanitizeContactNameParts,
+  resolveTargetContactByName, readControlSignal, sanitizeContactNameParts, mergeJobPayload,
 } from '../_shared/migration-jobs.ts';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
@@ -156,6 +156,11 @@ Deno.serve(async (req) => {
     }
 
     let totalProcessed = 0, totalSucceeded = 0, totalFailed = 0, totalSkipped = 0;
+    let resolvedByContactIdMap = 0;
+    let resolvedByNameMap = 0;
+    let unresolvedWithContactId = 0;
+    let missingContactReference = 0;
+    let ambiguousNameRoutes = 0;
     let pageStartAfter: string | null = checkpoint.cursor.startAfter || null;
     let pageStartAfterId: string | null = checkpoint.cursor.startAfterId || null;
     let firstPage = true;
@@ -263,20 +268,58 @@ Deno.serve(async (req) => {
         const sanitized = sanitizeContactNameParts(rawFirst, rawLast);
         const oppContactName = sanitized.fullName || rawCombined;
 
-        const resolved = await resolveTargetContactByName(supabase, {
-          fullName: oppContactName,
-          sourceAccount,
-          targetAccount,
-        });
+        let resolved = {
+          newId: null as string | null,
+          ambiguous: false,
+          candidateCount: 0,
+          matchedName: null as string | null,
+          normalizedKey: null as string | null,
+        };
+
+        if (opp.contactId) {
+          const { data: idMapped } = await supabase
+            .from('ghl_id_mapping')
+            .select('new_ghl_id')
+            .eq('resource_type', 'contact')
+            .eq('old_ghl_id', opp.contactId)
+            .eq('source_account_label', sourceAccount)
+            .eq('target_account_label', targetAccount)
+            .maybeSingle();
+          if (idMapped?.new_ghl_id) {
+            resolved.newId = idMapped.new_ghl_id;
+            resolvedByContactIdMap++;
+          }
+        }
+
+        if (!resolved.newId && oppContactName) {
+          const nameResolved = await resolveTargetContactByName(supabase, {
+            fullName: oppContactName,
+            sourceAccount,
+            targetAccount,
+          });
+          if (nameResolved.newId) resolvedByNameMap++;
+          if (nameResolved.ambiguous) ambiguousNameRoutes++;
+          resolved = {
+            newId: nameResolved.newId,
+            ambiguous: nameResolved.ambiguous,
+            candidateCount: nameResolved.candidateCount,
+            matchedName: nameResolved.matchedName,
+            normalizedKey: nameResolved.normalizedKey,
+          };
+        }
 
         if (!resolved.newId) {
+          if (opp.contactId) unresolvedWithContactId++;
+          else missingContactReference++;
           totalSkipped++;
           await recordItem(supabase, {
             job_id: jobId, source_id: opp.id, entity_label: oppLabel,
             status: 'skipped',
-            error_message: oppContactName
-              ? `No target contact named "${oppContactName}" — run contacts worker first`
-              : 'Opportunity has no contact name to match against',
+            error_message: opp.contactId
+              ? `No target contact mapping for source contactId=${opp.contactId}${oppContactName ? ` (name "${oppContactName}")` : ''} — ensure contacts migration completed`
+              : (oppContactName
+                  ? `No target contact named "${oppContactName}" — run contacts worker first`
+                  : 'Opportunity has no contactId or contact name to match against'),
           });
           continue;
         }
@@ -405,10 +448,34 @@ Deno.serve(async (req) => {
     }
 
     await saveCheckpoint(supabase, jobId, {});
+    const resolvedTotal = resolvedByContactIdMap + resolvedByNameMap;
+    const resolutionDenominator = resolvedTotal + unresolvedWithContactId + missingContactReference;
+    const coveragePct = resolutionDenominator > 0
+      ? Number(((resolvedTotal / resolutionDenominator) * 100).toFixed(2))
+      : 100;
+    await mergeJobPayload(supabase, jobId, {
+      ingestion_validation: {
+        worker: 'opportunities',
+        contact_resolution: {
+          resolved_by_contact_id_map: resolvedByContactIdMap,
+          resolved_by_name_map: resolvedByNameMap,
+          unresolved_with_contact_id: unresolvedWithContactId,
+          missing_contact_reference: missingContactReference,
+          ambiguous_name_routes: ambiguousNameRoutes,
+          resolved_total: resolvedTotal,
+          coverage_pct: coveragePct,
+        },
+        processed: totalProcessed,
+        succeeded: totalSucceeded,
+        failed: totalFailed,
+        skipped: totalSkipped,
+      },
+    });
     await finishJob(supabase, jobId,
       totalFailed > 0 && totalSucceeded === 0 ? 'failed' : 'completed',
       [
         totalFailed > 0 ? `${totalFailed} failed` : null,
+        unresolvedWithContactId > 0 ? `${unresolvedWithContactId} without contact mapping` : null,
         unmappedPipelines.length ? `Unmapped pipelines: ${unmappedPipelines.join(', ')}` : null,
       ].filter(Boolean).join(' | ') || undefined,
     );
@@ -419,6 +486,16 @@ Deno.serve(async (req) => {
       success: true, job_id: jobId,
       processed: totalProcessed, succeeded: totalSucceeded, failed: totalFailed, skipped: totalSkipped,
       unmapped_pipelines: unmappedPipelines,
+      ingestion_validation: {
+        contact_resolution: {
+          resolved_by_contact_id_map: resolvedByContactIdMap,
+          resolved_by_name_map: resolvedByNameMap,
+          unresolved_with_contact_id: unresolvedWithContactId,
+          missing_contact_reference: missingContactReference,
+          ambiguous_name_routes: ambiguousNameRoutes,
+          coverage_pct: coveragePct,
+        },
+      },
     }), { headers: { 'Content-Type': 'application/json' } });
   } catch (err: any) {
     console.error('[opps-worker] FATAL:', err);

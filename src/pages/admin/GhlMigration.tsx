@@ -17,7 +17,7 @@ import { toast } from 'sonner';
 import {
   ShieldAlert, RefreshCw, Eye, ArrowLeftRight, Database, Users,
   TrendingUp, MessageSquare, StickyNote, GitBranch, MapPin, AlertCircle, CheckCircle2, Lock,
-  KeyRound, ExternalLink, XCircle, Download, Play, Repeat, Pause, Square, Zap,
+  KeyRound, ExternalLink, XCircle, Download, Play, Repeat, Pause, Square, Zap, Link2,
 } from 'lucide-react';
 
 interface ScopeProbe {
@@ -457,18 +457,41 @@ function MigrationWorkersPanel() {
     setDispatching(true);
     try {
       const max = parseInt(maxItems, 10);
-      const res = await invokeSecureFunction<any>('migration-orchestrator', {
-        domain, source_account: source, target_account: target, dry_run: dryRun,
-        confirmation: dryRun ? undefined : 'MIGRATE-LIVE',
-        payload: max > 0 ? { max_items: max } : {},
-      }, { timeoutMs: 30000 });
-      if (res.error || !res.data?.success) {
-        toast.error(res.error?.message || res.data?.error || 'Dispatch failed');
+      const payload = max > 0 ? { max_items: max } : {};
+      const dispatchDomain = async (dispatchDomain: 'contacts' | 'opportunities' | 'notes' | 'conversations', extraPayload?: Record<string, any>) => {
+        return invokeSecureFunction<any>('migration-orchestrator', {
+          domain: dispatchDomain, source_account: source, target_account: target, dry_run: dryRun,
+          confirmation: dryRun ? undefined : 'MIGRATE-LIVE',
+          payload: { ...payload, ...(extraPayload || {}) },
+        }, { timeoutMs: 30000 });
+      };
+
+      if (domain === 'opportunities') {
+        const paired = await dispatchDomain('contacts', { paired_dispatch: true, paired_for: 'opportunities' });
+        if (paired.error || !paired.data?.success) {
+          toast.error(paired.error?.message || paired.data?.error || 'Contacts pre-dispatch failed');
+          return;
+        }
+        const oppRes = await dispatchDomain('opportunities', {
+          ingestion_validation: { require_contact_mapping: true, dispatch_mode: 'paired' },
+        });
+        if (oppRes.error || !oppRes.data?.success) {
+          toast.error(oppRes.error?.message || oppRes.data?.error || 'Opportunity dispatch failed');
+          return;
+        }
+        toast.success(`Paired jobs dispatched: contacts ${paired.data.job_id.substring(0, 8)} + opportunities ${oppRes.data.job_id.substring(0, 8)}`);
       } else {
+        const res = await dispatchDomain(domain, {
+          ingestion_validation: { require_contact_mapping: domain === 'contacts' ? false : true },
+        });
+        if (res.error || !res.data?.success) {
+          toast.error(res.error?.message || res.data?.error || 'Dispatch failed');
+          return;
+        }
         toast.success(`Job ${res.data.job_id.substring(0, 8)} dispatched`);
-        setConfirmation('');
-        setTimeout(refreshJobs, 1000);
       }
+      setConfirmation('');
+      setTimeout(refreshJobs, 1000);
     } finally {
       setDispatching(false);
     }
@@ -653,8 +676,12 @@ function MigrationWorkersPanel() {
           variant={dryRun ? 'default' : 'destructive'}
           className="gap-2"
         >
-          <Database className="h-4 w-4" />
-          {dispatching ? 'Dispatching…' : dryRun ? 'Dispatch dry-run job' : 'Dispatch LIVE job'}
+          {domain === 'opportunities' ? <Link2 className="h-4 w-4" /> : <Database className="h-4 w-4" />}
+          {dispatching
+            ? 'Dispatching…'
+            : domain === 'opportunities'
+              ? (dryRun ? 'Dispatch paired contacts + opportunities (dry)' : 'Dispatch paired contacts + opportunities (LIVE)')
+              : (dryRun ? 'Dispatch dry-run job' : 'Dispatch LIVE job')}
         </Button>
 
         {/* Recent jobs */}
@@ -1107,6 +1134,7 @@ function JobDetailRow({ job, onChanged }: { job: any; onChanged?: () => void }) 
   }, [liveJob?.status, job.id]);
 
   const tokenAudit = liveJob.payload?.token_audit;
+  const ingestionValidation = liveJob.payload?.ingestion_validation;
   const failed = items.filter((i) => i.status === 'failed');
   const skipped = items.filter((i) => i.status === 'skipped');
 
@@ -1447,6 +1475,45 @@ function JobDetailRow({ job, onChanged }: { job: any; onChanged?: () => void }) 
                   <code>{(tokenAudit.missing_scopes || []).join(',') || 'none'}</code>
                 </div>
               </div>
+            </div>
+          )}
+
+          {ingestionValidation && (
+            <div className="rounded border border-primary/30 bg-primary/5 p-2 text-[11px]">
+              <div className="mb-1 flex items-center gap-2 font-semibold">
+                <Database className="h-3 w-3 text-primary" />
+                GHL ingestion validation
+              </div>
+              {ingestionValidation.worker === 'opportunities' ? (
+                <div className="space-y-1">
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 md:grid-cols-3">
+                    <div><span className="text-muted-foreground">resolved by contactId:</span> <span className="font-mono">{ingestionValidation.contact_resolution?.resolved_by_contact_id_map ?? 0}</span></div>
+                    <div><span className="text-muted-foreground">resolved by name:</span> <span className="font-mono">{ingestionValidation.contact_resolution?.resolved_by_name_map ?? 0}</span></div>
+                    <div><span className="text-muted-foreground">unresolved w/ contactId:</span> <span className="font-mono text-destructive">{ingestionValidation.contact_resolution?.unresolved_with_contact_id ?? 0}</span></div>
+                    <div><span className="text-muted-foreground">missing contact ref:</span> <span className="font-mono">{ingestionValidation.contact_resolution?.missing_contact_reference ?? 0}</span></div>
+                    <div><span className="text-muted-foreground">ambiguous name routes:</span> <span className="font-mono text-warning">{ingestionValidation.contact_resolution?.ambiguous_name_routes ?? 0}</span></div>
+                    <div><span className="text-muted-foreground">coverage:</span> <span className="font-mono">{ingestionValidation.contact_resolution?.coverage_pct ?? 100}%</span></div>
+                  </div>
+                  {(ingestionValidation.contact_resolution?.unresolved_with_contact_id ?? 0) > 0 && (
+                    <Alert className="mt-1 border-destructive/40 bg-destructive/5 py-2">
+                      <AlertCircle className="h-3.5 w-3.5 text-destructive" />
+                      <AlertDescription className="text-[11px] text-destructive">
+                        Some opportunities had a source contactId but no target mapping at processing time.
+                        Re-run paired contacts + opportunities after contacts complete.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 md:grid-cols-3">
+                  <div><span className="text-muted-foreground">source seen:</span> <span className="font-mono">{ingestionValidation.source_seen ?? 0}</span></div>
+                  <div><span className="text-muted-foreground">used contactName fallback:</span> <span className="font-mono">{ingestionValidation.used_raw_combined_name ?? 0}</span></div>
+                  <div><span className="text-muted-foreground">unknown placeholders:</span> <span className="font-mono">{ingestionValidation.unknown_placeholder_names ?? 0}</span></div>
+                  <div><span className="text-muted-foreground">skipped no phone/email:</span> <span className="font-mono">{ingestionValidation.skipped_missing_phone_and_email ?? 0}</span></div>
+                  <div><span className="text-muted-foreground">skipped junk name:</span> <span className="font-mono">{ingestionValidation.skipped_junk_name ?? 0}</span></div>
+                  <div><span className="text-muted-foreground">processed:</span> <span className="font-mono">{ingestionValidation.processed ?? 0}</span></div>
+                </div>
+              )}
             </div>
           )}
 
