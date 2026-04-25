@@ -475,6 +475,7 @@ function MigrationWorkersPanel() {
   };
 
   return (
+    <>
     <Card className="border-primary/20">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
