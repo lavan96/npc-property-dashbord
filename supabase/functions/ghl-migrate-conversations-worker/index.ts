@@ -14,7 +14,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import { getGhlCredentials, validateGhlCredentials, buildGhlHeaders } from '../_shared/ghl-account.ts';
 import {
   startJob, finishJob, recordItem, updateJobProgress, delay,
-  saveCheckpoint, loadCheckpoint, partialExit, heartbeat, handleWorkerCrash,
+  saveCheckpoint, loadCheckpoint, partialExit, heartbeat,
 } from '../_shared/migration-jobs.ts';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
@@ -196,7 +196,9 @@ Deno.serve(async (req) => {
       await saveCheckpoint(supabase, jobId, { nextPage });
 
       if (maxItems > 0 && totalProcessed >= maxItems) break;
-      if (!nextPage || convs.length < PAGE_LIMIT) break;
+      // Walk every page until GHL stops returning a nextPage cursor; do
+      // NOT break early on a short page (uncapped total).
+      if (!nextPage) break;
     }
 
     await saveCheckpoint(supabase, jobId, {});
@@ -213,7 +215,7 @@ Deno.serve(async (req) => {
   } catch (err: any) {
     console.error('[conv-worker] FATAL:', err);
     if (jobId && supabase) {
-      try { await handleWorkerCrash(supabase, jobId, err, 'conv-worker'); } catch (e) { console.error('[conv-worker] handleWorkerCrash threw:', e); }
+      await finishJob(supabase, jobId, 'failed', err.message || 'Worker crashed').catch(() => {});
     }
     return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500 });
   }

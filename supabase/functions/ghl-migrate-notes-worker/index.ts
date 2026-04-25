@@ -21,13 +21,17 @@ import {
 } from '../_shared/ghl-account.ts';
 import {
   startJob, finishJob, recordItem, recordIdMapping, updateJobProgress, delay,
-  saveCheckpoint, loadCheckpoint, partialExit, heartbeat, handleWorkerCrash,
+  saveCheckpoint, loadCheckpoint, partialExit, heartbeat,
+  resolveTargetContactByName,
 } from '../_shared/migration-jobs.ts';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 const MAX_RUNTIME_MS = 90_000;
 const RATE_LIMIT_MS = 300;
-const BATCH = 200;
+// Pull this many local note rows per dispatch. The dispatcher will
+// re-invoke us until the cursor is exhausted, so this is a per-invocation
+// fetch ceiling, NOT a global cap on total notes processed.
+const BATCH = 5000;
 
 Deno.serve(async (req) => {
   const startedAt = Date.now();
@@ -88,8 +92,10 @@ Deno.serve(async (req) => {
     const isResume = body._resume === true || (checkpoint.cursor.offset || 0) > 0;
     const startOffset = Number(checkpoint.cursor.offset) || 0;
 
-    // Pull notes joined to clients with a ghl_contact_id; resume from offset
-    const pullLimit = maxItems > 0 ? Math.min(maxItems, 1000) : 1000;
+    // Pull notes joined to clients with a ghl_contact_id; resume from offset.
+    // Per-invocation pull is bounded by BATCH; the dispatcher re-invokes
+    // until cursor exhaustion, so total notes processed is uncapped.
+    const pullLimit = maxItems > 0 ? Math.min(maxItems, BATCH) : BATCH;
     const { data: notes, error: notesErr } = await supabase
       .from('client_notes')
       .select('id, content, note_type, client_id, clients!inner(ghl_contact_id, primary_first_name, primary_surname)')
@@ -116,27 +122,34 @@ Deno.serve(async (req) => {
       totalProcessed++;
       currentOffset++;
       const client = (note as any).clients;
-      const sourceContactId = client?.ghl_contact_id;
-      const label = `${client?.primary_first_name || ''} ${client?.primary_surname || ''}`.trim() || 'Note';
+      const fullName = `${client?.primary_first_name || ''} ${client?.primary_surname || ''}`.trim();
+      const label = fullName || 'Note';
 
-      // Map source contact → target contact
-      const { data: mapping } = await supabase
-        .from('ghl_id_mapping')
-        .select('new_ghl_id')
-        .eq('resource_type', 'contact')
-        .eq('old_ghl_id', sourceContactId)
-        .eq('source_account_label', sourceAccount)
-        .eq('target_account_label', targetAccount)
-        .maybeSingle();
+      // Resolve target contact by NAME (project-wide policy: full_name is
+      // the source of truth; on duplicates pick the most-recently mirrored
+      // target contact).
+      const resolved = await resolveTargetContactByName(supabase, {
+        fullName,
+        sourceAccount,
+        targetAccount,
+      });
 
-      if (!mapping?.new_ghl_id) {
+      if (!resolved.newId) {
         totalSkipped++;
         await recordItem(supabase, {
           job_id: jobId, source_id: note.id, entity_label: label,
-          status: 'skipped', error_message: 'Contact not yet mapped — run contacts worker first',
+          status: 'skipped',
+          error_message: fullName
+            ? `No target contact named "${fullName}" — run contacts worker first`
+            : 'Client has no name to match a target contact',
         });
         continue;
       }
+
+      if (resolved.ambiguous) {
+        console.warn(`[notes-worker] Ambiguous contact name "${fullName}" → ${resolved.candidateCount} target contacts; routing to latest=${resolved.newId}`);
+      }
+      const mapping = { new_ghl_id: resolved.newId };
 
       // Already mirrored?
       const { data: existingNoteMap } = await supabase
@@ -252,7 +265,7 @@ Deno.serve(async (req) => {
   } catch (err: any) {
     console.error('[notes-worker] FATAL:', err);
     if (jobId && supabase) {
-      try { await handleWorkerCrash(supabase, jobId, err, 'notes-worker'); } catch (e) { console.error('[notes-worker] handleWorkerCrash threw:', e); }
+      await finishJob(supabase, jobId, 'failed', err.message || 'Worker crashed').catch(() => {});
     }
     return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500 });
   }

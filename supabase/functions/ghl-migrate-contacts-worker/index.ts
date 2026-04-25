@@ -34,7 +34,6 @@ import {
   loadCheckpoint,
   partialExit,
   heartbeat,
-  handleWorkerCrash,
 } from '../_shared/migration-jobs.ts';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
@@ -347,7 +346,11 @@ Deno.serve(async (req) => {
       );
 
       if (maxItems > 0 && totalProcessed >= maxItems) break;
-      if (contacts.length < PAGE_LIMIT) break;
+      // Walk every page via cursor; only an empty page (handled above) or
+      // a missing cursor is a stop signal. Removes the artificial cap that
+      // used to fire when GHL returned fewer than PAGE_LIMIT records on a
+      // mid-stream page (which it sometimes does even when more exist).
+      if (!nextStartAfterId) break;
     }
 
     // Clear cursor on natural completion + release dispatcher lock
@@ -370,7 +373,7 @@ Deno.serve(async (req) => {
   } catch (err: any) {
     console.error('[contacts-worker] FATAL:', err);
     if (jobId && supabase) {
-      try { await handleWorkerCrash(supabase, jobId, err, 'contacts-worker'); } catch (e) { console.error('[contacts-worker] handleWorkerCrash threw:', e); }
+      await finishJob(supabase, jobId, 'failed', err.message || 'Worker crashed').catch(() => {});
     }
     return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500 });
   }

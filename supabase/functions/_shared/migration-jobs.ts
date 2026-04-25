@@ -319,56 +319,88 @@ export function delay(ms: number): Promise<void> {
 }
 
 /**
- * Decide whether a worker crash should mark the job as `failed` or just
- * release the lease so the dispatcher retries it.
+ * Normalize a person name for fuzzy-equality comparison:
+ *   - lowercase
+ *   - collapse internal whitespace
+ *   - strip surrounding whitespace
+ *   - drop common punctuation we frequently see in GHL contact names
+ *     (commas, parentheticals, mid-name dots, smart quotes, hyphens)
  *
- * Retryable (release lease, leave status='processing'):
- *   - network / timeout / fetch errors
- *   - 5xx upstream errors
- *   - rate_limit
- *   - "unknown" — give it at least one more shot
- *
- * Terminal (mark failed):
- *   - auth / validation / not_found / conflict — these won't fix themselves
- *   - exceeded retry budget (dispatch_count >= 8)
+ * Two names are considered "the same person" iff their normalized forms
+ * are byte-equal. Returns null if the input is empty after normalization.
  */
-export async function handleWorkerCrash(
+export function normalizeContactName(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const cleaned = String(raw)
+    .toLowerCase()
+    .replace(/[\u2018\u2019\u201A\u201B\u2032\u2035`']/g, '')   // apostrophes
+    .replace(/[\u201C\u201D\u201E\u201F\u2033\u2036"]/g, '')   // double quotes
+    .replace(/[.,\-_/\\()]+/g, ' ')                              // punctuation → space
+    .replace(/\s+/g, ' ')                                         // collapse whitespace
+    .trim();
+  return cleaned.length ? cleaned : null;
+}
+
+/**
+ * Resolve a SOURCE contact name → TARGET ghl contact id using the
+ * `ghl_id_mapping.notes` column (which the contacts worker populates with
+ * the contact's full name at mirror time).
+ *
+ * Behavior (per user policy "Name only — pick most recent on duplicates"):
+ *   - Returns the most recently created mapping row whose normalized
+ *     `notes` matches the normalized lookup name.
+ *   - If multiple legacy contacts share the same normalized name, the
+ *     opportunity / note gets routed to the *latest* mirrored target
+ *     contact. Caller logs the ambiguity for audit.
+ *   - Returns { newId: null, candidates: [] } if no match exists.
+ */
+export async function resolveTargetContactByName(
   supabase: any,
-  jobId: string,
-  err: any,
-  workerLabel: string,
-): Promise<{ action: 'retry' | 'failed'; reason: string }> {
-  const msg = (err?.message || String(err) || 'Unknown error').substring(0, 500);
-  const { category, retryable } = classifyError(msg);
-
-  // Pull dispatch_count to enforce a retry budget
-  let dispatchCount = 0;
-  try {
-    const { data } = await supabase
-      .from('migration_jobs')
-      .select('dispatch_count')
-      .eq('id', jobId)
-      .maybeSingle();
-    dispatchCount = data?.dispatch_count || 0;
-  } catch {}
-
-  const MAX_RETRIES = 8;
-  if (!retryable || dispatchCount >= MAX_RETRIES) {
-    const reason = !retryable
-      ? `terminal (${category}): ${msg}`
-      : `retry budget exceeded after ${dispatchCount} dispatches: ${msg}`;
-    console.error(`[${workerLabel}] crash → marking FAILED — ${reason}`);
-    await finishJob(supabase, jobId, 'failed', `[${category}] ${msg}`);
-    return { action: 'failed', reason };
+  params: {
+    fullName: string | null | undefined;
+    sourceAccount: 'legacy' | 'new';
+    targetAccount: 'legacy' | 'new';
+  },
+): Promise<{
+  newId: string | null;
+  matchedName: string | null;
+  candidateCount: number;
+  ambiguous: boolean;
+  normalizedKey: string | null;
+}> {
+  const key = normalizeContactName(params.fullName);
+  if (!key) {
+    return { newId: null, matchedName: null, candidateCount: 0, ambiguous: false, normalizedKey: null };
   }
 
-  // Retryable: release lease, dispatcher will pick it up next tick.
-  console.warn(`[${workerLabel}] crash → releasing lease for retry (${category}, dispatch#${dispatchCount}): ${msg}`);
-  try {
-    const { error } = await supabase.rpc('release_migration_job_lock', { p_job_id: jobId });
-    if (error) console.error(`[${workerLabel}] release_lock failed:`, error.message);
-  } catch (e: any) {
-    console.error(`[${workerLabel}] release_lock threw:`, e?.message);
+  // Fetch all candidate rows for this target account (we filter in JS so we
+  // don't have to push the same normalization into SQL — and so future
+  // tweaks to `normalizeContactName` are picked up automatically).
+  const { data, error } = await supabase
+    .from('ghl_id_mapping')
+    .select('new_ghl_id, notes, created_at, remapped_at')
+    .eq('resource_type', 'contact')
+    .eq('source_account_label', params.sourceAccount)
+    .eq('target_account_label', params.targetAccount)
+    .not('notes', 'is', null)
+    .order('created_at', { ascending: false });
+
+  if (error || !Array.isArray(data)) {
+    return { newId: null, matchedName: null, candidateCount: 0, ambiguous: false, normalizedKey: key };
   }
-  return { action: 'retry', reason: `${category}: ${msg}` };
+
+  const matches = data.filter((row: any) => normalizeContactName(row.notes) === key);
+  if (matches.length === 0) {
+    return { newId: null, matchedName: null, candidateCount: 0, ambiguous: false, normalizedKey: key };
+  }
+
+  // Already sorted DESC by created_at — first match is the latest.
+  const winner = matches[0];
+  return {
+    newId: winner.new_ghl_id,
+    matchedName: winner.notes,
+    candidateCount: matches.length,
+    ambiguous: matches.length > 1,
+    normalizedKey: key,
+  };
 }

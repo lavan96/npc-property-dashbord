@@ -20,10 +20,13 @@ import {
 } from '../_shared/ghl-account.ts';
 import {
   startJob, finishJob, recordItem, recordIdMapping, updateJobProgress, delay,
-  saveCheckpoint, loadCheckpoint, partialExit, heartbeat, handleWorkerCrash,
+  saveCheckpoint, loadCheckpoint, partialExit, heartbeat,
+  resolveTargetContactByName,
 } from '../_shared/migration-jobs.ts';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
+// GHL hard-caps /opportunities/search at 100 per page. We request the
+// max and walk every page via cursor — there is NO total-record cap.
 const PAGE_LIMIT = 100;
 const MAX_RUNTIME_MS = 90_000;
 const RATE_LIMIT_MS = 300;
@@ -213,24 +216,37 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // Lookup mapped contact
-        const { data: contactMap } = await supabase
-          .from('ghl_id_mapping')
-          .select('new_ghl_id')
-          .eq('resource_type', 'contact')
-          .eq('old_ghl_id', opp.contactId)
-          .eq('source_account_label', sourceAccount)
-          .eq('target_account_label', targetAccount)
-          .maybeSingle();
+        // Resolve target contact by NAME (per project policy: name is the
+        // source of truth — duplicates routed to the most-recently-mirrored
+        // target contact). The GHL search response includes contactName for
+        // each opp; fall back to firstName+lastName if needed.
+        const oppContactName = (opp.contactName || opp.contact?.name ||
+          [opp.contact?.firstName, opp.contact?.lastName].filter(Boolean).join(' ') ||
+          [opp.firstName, opp.lastName].filter(Boolean).join(' ') ||
+          '').trim();
 
-        if (!contactMap?.new_ghl_id) {
+        const resolved = await resolveTargetContactByName(supabase, {
+          fullName: oppContactName,
+          sourceAccount,
+          targetAccount,
+        });
+
+        if (!resolved.newId) {
           totalSkipped++;
           await recordItem(supabase, {
             job_id: jobId, source_id: opp.id, entity_label: oppLabel,
-            status: 'skipped', error_message: 'Contact not yet mapped — run contacts worker first',
+            status: 'skipped',
+            error_message: oppContactName
+              ? `No target contact named "${oppContactName}" — run contacts worker first`
+              : 'Opportunity has no contact name to match against',
           });
           continue;
         }
+
+        if (resolved.ambiguous) {
+          console.warn(`[opps-worker] Ambiguous contact name "${oppContactName}" → ${resolved.candidateCount} target contacts; routing to latest=${resolved.newId}`);
+        }
+        const contactMap = { new_ghl_id: resolved.newId };
 
         const pmap = pipelineMap.get(opp.pipelineId);
         if (!pmap) {
@@ -343,7 +359,11 @@ Deno.serve(async (req) => {
         { startAfterId: pageStartAfterId, startAfter: pageStartAfter }, last?.id || null);
 
       if (maxItems > 0 && totalProcessed >= maxItems) break;
-      if (opps.length < PAGE_LIMIT) break;
+      // No artificial cap on total records: we keep paging via cursor until
+      // GHL returns an empty page (handled by the `opps.length === 0` guard above).
+      // Some GHL accounts return < PAGE_LIMIT mid-stream when filters apply,
+      // so a short page is NOT a stop signal — only an empty page is.
+      if (!last?.id) break; // no cursor advancement → would loop forever
     }
 
     await saveCheckpoint(supabase, jobId, {});
@@ -365,7 +385,7 @@ Deno.serve(async (req) => {
   } catch (err: any) {
     console.error('[opps-worker] FATAL:', err);
     if (jobId && supabase) {
-      try { await handleWorkerCrash(supabase, jobId, err, 'opps-worker'); } catch (e) { console.error('[opps-worker] handleWorkerCrash threw:', e); }
+      await finishJob(supabase, jobId, 'failed', err.message || 'Worker crashed').catch(() => {});
     }
     return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500 });
   }
