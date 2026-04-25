@@ -44,20 +44,20 @@ const activityIcons: Record<string, any> = {
 };
 
 const activityColors: Record<string, string> = {
-  note_added: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
-  file_uploaded: 'bg-purple-500/10 text-purple-600 border-purple-500/20',
-  reminder_created: 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20',
-  reminder_completed: 'bg-green-500/10 text-green-600 border-green-500/20',
-  tag_added: 'bg-pink-500/10 text-pink-600 border-pink-500/20',
-  tag_removed: 'bg-gray-500/10 text-gray-600 border-gray-500/20',
-  property_added: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20',
-  property_updated: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20',
-  score_updated: 'bg-orange-500/10 text-orange-600 border-orange-500/20',
-  contact_made: 'bg-cyan-500/10 text-cyan-600 border-cyan-500/20',
-  meeting: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20',
-  email_sent: 'bg-sky-500/10 text-sky-600 border-sky-500/20',
-  status_changed: 'bg-slate-500/10 text-slate-600 border-slate-500/20',
-  custom: 'bg-gray-500/10 text-gray-600 border-gray-500/20',
+  note_added: 'bg-info/10 text-info border-info/20',
+  file_uploaded: 'bg-accent/15 text-accent-foreground border-accent/30',
+  reminder_created: 'bg-warning/10 text-warning border-warning/20',
+  reminder_completed: 'bg-success/10 text-success border-success/20',
+  tag_added: 'bg-primary/10 text-primary border-primary/20',
+  tag_removed: 'bg-muted text-muted-foreground border-border',
+  property_added: 'bg-success/10 text-success border-success/20',
+  property_updated: 'bg-success/10 text-success border-success/20',
+  score_updated: 'bg-warning/10 text-warning border-warning/20',
+  contact_made: 'bg-info/10 text-info border-info/20',
+  meeting: 'bg-primary/10 text-primary border-primary/20',
+  email_sent: 'bg-info/10 text-info border-info/20',
+  status_changed: 'bg-muted text-muted-foreground border-border',
+  custom: 'bg-muted text-muted-foreground border-border',
 };
 
 /**
