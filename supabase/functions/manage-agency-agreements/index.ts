@@ -770,8 +770,8 @@ Deno.serve(async (req) => {
       const base64Doc = btoa(unescape(encodeURIComponent(agreementHtml)));
 
       const envelopeDefinition = {
-        emailSubject: `Buyer's Agent Agreement - Naidu Property Consulting Services`,
-        emailBlurb: `Dear ${agreement.buyer_names},\n\nPlease review and sign the attached Buyer's Agent Agreement.\n\nRegards,\nNaidu Property Consulting Services`,
+        emailSubject: `Buyer's Agent Agreement`,
+        emailBlurb: `Dear ${agreement.buyer_names},\n\nPlease review and sign the attached Buyer's Agent Agreement.\n\nKind regards`,
         documents: [
           {
             documentBase64: base64Doc,

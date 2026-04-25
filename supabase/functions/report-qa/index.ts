@@ -922,7 +922,7 @@ Deno.serve(async (req) => {
       const isMultiReportContext = isMultiReport || (reportNames && reportNames.length > 1);
       
       if (isMultiReportContext && hasContext) {
-        systemPrompt = `You are an expert Australian investment property analyst and advisor for NPC Services. You have been provided with investment report data for comparison analysis.
+        systemPrompt = `You are an expert Australian investment property analyst and advisor for ${(await getBrandConfig()).companyName}. You have been provided with investment report data for comparison analysis.
 
 ## YOUR EXPERTISE
 - Deep knowledge of Australian property markets across all states and territories
@@ -950,7 +950,7 @@ Deno.serve(async (req) => {
 ## REPORT DATA
 ${contextSection}`;
       } else if (hasContext) {
-        systemPrompt = `You are an expert Australian investment property analyst and advisor for NPC Services. You have been provided with investment property report data to analyze.
+        systemPrompt = `You are an expert Australian investment property analyst and advisor for ${(await getBrandConfig()).companyName}. You have been provided with investment property report data to analyze.
 
 ## YOUR EXPERTISE
 - Deep knowledge of Australian property markets across all states and territories
@@ -984,7 +984,7 @@ ${contextSection}`;
 ${contextSection}`;
       } else if (ragContext) {
         // No reports loaded but we have RAG context from knowledge base
-        systemPrompt = `You are an expert Australian investment property analyst and advisor for NPC Services.
+        systemPrompt = `You are an expert Australian investment property analyst and advisor for ${(await getBrandConfig()).companyName}.
 
 ## YOUR EXPERTISE
 - Deep knowledge of Australian property markets across all states and territories
@@ -1012,7 +1012,7 @@ ${contextSection}`;
 ${ragContext}`;
       } else {
         // Open-ended conversation without document context
-        systemPrompt = `You are an expert Australian investment property analyst and advisor for NPC Services, a property investment advisory firm.
+        systemPrompt = `You are an expert Australian investment property analyst and advisor for ${(await getBrandConfig()).companyName}, a property investment advisory firm.
 
 ## YOUR EXPERTISE
 - Deep knowledge of Australian property markets across all states and territories (Sydney, Melbourne, Brisbane, Perth, Adelaide, Hobart, Darwin, Canberra, and regional areas)
@@ -1823,7 +1823,8 @@ Be thorough and include ALL specific numbers, percentages, and data points menti
         return `**${role}:**\n${m.content}`;
       }).join('\n\n---\n\n');
 
-      const summarizePrompt = `You are a professional report writer for NPC Services, an Australian property investment advisory firm.
+      const _brandSum = await getBrandConfig();
+      const summarizePrompt = `You are a professional report writer for ${_brandSum.companyName}, an Australian property investment advisory firm.
 
 You have been given a raw Q&A conversation transcript between a property advisor and an AI analyst about investment property reports. Your task is to transform this raw conversation into a polished, structured analytical report suitable for client presentation.
 
@@ -1867,7 +1868,7 @@ Any other relevant information from the conversation.
 ---
 *Reports analyzed: ${(reportNames || []).join(', ') || 'N/A'}*
 *Generated: ${new Date().toLocaleDateString('en-AU', { year: 'numeric', month: 'long', day: 'numeric' })}*
-*Prepared by: NPC Services*
+*Prepared by: ${_brandSum.companyName}*
 
 ## RAW CONVERSATION TRANSCRIPT
 ${transcript}`;
@@ -2305,7 +2306,8 @@ ${cleanContent.length + 500}
           color: lightGray,
         });
         
-        coverPage.drawText('NPC Services', {
+        const _brandPdf1 = await getBrandConfig();
+        coverPage.drawText(_brandPdf1.companyName, {
           x: 50,
           y: 35,
           size: 10,
@@ -2313,7 +2315,7 @@ ${cleanContent.length + 500}
           color: primaryColor,
         });
         
-        coverPage.drawText('admin@npcservices.com.au | 0433 005 110', {
+        coverPage.drawText(`${_brandPdf1.contactEmail}${_brandPdf1.contactPhone ? ' | ' + _brandPdf1.contactPhone : ''}`, {
           x: 50,
           y: 20,
           size: 9,
@@ -2412,7 +2414,7 @@ ${cleanContent.length + 500}
         });
         
         // Footer text
-        page.drawText('NPC Services | admin@npcservices.com.au', {
+        page.drawText(`${(globalThis as any).__rqaBrand?.companyName || 'Property Consulting'} | ${(globalThis as any).__rqaBrand?.contactEmail || ''}`, {
           x: marginLeft,
           y: 30,
           size: 8,
