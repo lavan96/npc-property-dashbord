@@ -30,11 +30,14 @@ import {
   recordIdMapping,
   updateJobProgress,
   delay,
+  saveCheckpoint,
+  loadCheckpoint,
+  selfRedispatch,
 } from '../_shared/migration-jobs.ts';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 const PAGE_LIMIT = 100;
-const MAX_RUNTIME_MS = 50_000; // leave buffer under edge function limit
+const MAX_RUNTIME_MS = 350_000; // 400s wall-clock limit, leave 50s buffer for cleanup + redispatch
 const RATE_LIMIT_MS = 250;
 
 Deno.serve(async (req) => {
