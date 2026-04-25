@@ -92,8 +92,10 @@ Deno.serve(async (req) => {
     const isResume = body._resume === true || (checkpoint.cursor.offset || 0) > 0;
     const startOffset = Number(checkpoint.cursor.offset) || 0;
 
-    // Pull notes joined to clients with a ghl_contact_id; resume from offset
-    const pullLimit = maxItems > 0 ? Math.min(maxItems, 1000) : 1000;
+    // Pull notes joined to clients with a ghl_contact_id; resume from offset.
+    // Per-invocation pull is bounded by BATCH; the dispatcher re-invokes
+    // until cursor exhaustion, so total notes processed is uncapped.
+    const pullLimit = maxItems > 0 ? Math.min(maxItems, BATCH) : BATCH;
     const { data: notes, error: notesErr } = await supabase
       .from('client_notes')
       .select('id, content, note_type, client_id, clients!inner(ghl_contact_id, primary_first_name, primary_surname)')
