@@ -1132,15 +1132,40 @@ function JobDetailRow({ job, onChanged }: { job: any; onChanged?: () => void }) 
             {canRedispatch && (
               <Button
                 size="sm"
-                variant="default"
+                variant={job.dry_run ? 'default' : 'destructive'}
                 onClick={manualRedispatch}
                 disabled={redispatching}
                 className="gap-1 h-7 text-[11px]"
               >
                 <Play className="h-3 w-3" />
-                {redispatching ? 'Re-dispatching…' : 'Re-dispatch'}
+                {redispatching ? 'Re-dispatching…' : job.dry_run ? 'Re-dispatch' : 'Re-dispatch LIVE'}
               </Button>
             )}
+            <AlertDialog open={confirmRedispatch} onOpenChange={setConfirmRedispatch}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="flex items-center gap-2">
+                    <ShieldAlert className="h-5 w-5 text-destructive" />
+                    Re-dispatch LIVE job?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will resume <strong className="capitalize">{job.domain}</strong> writes into{' '}
+                    <strong className="uppercase">{job.target_account}</strong> from cursor.
+                    Only proceed if you intend to continue the production migration.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={redispatching}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    disabled={redispatching}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    onClick={(e) => { e.preventDefault(); performRedispatch(); }}
+                  >
+                    {redispatching ? 'Resuming…' : 'Yes, re-dispatch LIVE'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
             <div className="ml-auto flex flex-wrap items-center gap-1.5 text-[10px]">
               {liveJob.status === 'processing' && (
                 <Badge variant="secondary" className="gap-1 animate-pulse">
