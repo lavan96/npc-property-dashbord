@@ -411,7 +411,7 @@ Deno.serve(async (req) => {
 
       await ensureBucket(supabase);
 
-      const _brandCfg = await getBrandConfig(supabase);
+      const _brandCfg = await getBrandConfig();
       const html = buildStatementHtml(stmt, lines || [], _brandCfg.companyName);
       const csv = buildRemittanceCsv(stmt, lines || []);
 

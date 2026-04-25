@@ -241,7 +241,7 @@ Deno.serve(async (req) => {
 
     // Send invite email via Resend
     if (resendApiKey) {
-      const brand = await getBrandConfig(supabase);
+      const brand = await getBrandConfig();
       try {
         const emailRes = await fetch('https://api.resend.com/emails', {
           method: 'POST',
