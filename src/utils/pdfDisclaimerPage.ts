@@ -1,7 +1,7 @@
 /**
  * Shared Disclaimer & Contact Page for all PDF reports.
  * 
- * This is the SINGLE SOURCE OF TRUTH for the dark-themed NPC branded
+ * This is the SINGLE SOURCE OF TRUTH for the dark-themed branded
  * disclaimer/contact page used across every report type.
  * 
  * Two implementations are provided:
