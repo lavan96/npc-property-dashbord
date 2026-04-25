@@ -1038,7 +1038,6 @@ Deno.serve(async (req: Request) => {
         `;
       }
 
-      const brandCfg = await getBrandConfig(supabase);
       const { error: emailError } = await resend.emails.send({
         from: brandCfg.fromHeaderAdmin,
         to: [invite_data.email],
