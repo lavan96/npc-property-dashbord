@@ -15,7 +15,7 @@ import { BrandLockup, BrandLogo } from '@/components/branding/BrandAssets';
 const FEATURES = [
   { icon: Users, title: 'Client Management', desc: 'Access and manage assigned client financial profiles in real-time.' },
   { icon: ShieldCheck, title: 'Secure & Compliant', desc: 'End-to-end encryption with full audit trail on every action.' },
-  { icon: Lock, title: 'Permission-based Access', desc: 'Granular per-client permissions controlled by NPC administrators.' },
+  { icon: Lock, title: 'Permission-based Access', desc: 'Granular per-client permissions controlled by your administrators.' },
 ];
 
 type Mode = 'login' | 'forgot' | 'verify' | 'reset';

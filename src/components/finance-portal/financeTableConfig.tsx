@@ -266,7 +266,7 @@ export const FINANCE_TABLE_CONFIGS: Record<FinanceTableKey, TableConfig> = {
     table: 'client_notes',
     label: 'Notes',
     singular: 'Note',
-    description: 'File notes left by NPC staff and finance partners.',
+    description: 'File notes left by internal staff and finance partners.',
     primaryColumn: 'note_type',
     fields: [
       { key: 'note_type', label: 'Type', type: 'select', required: true, options: [
