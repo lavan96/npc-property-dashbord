@@ -543,7 +543,7 @@ export default function ClientManagement() {
     last_name: client.primary_surname || '',
     email: client.primary_email || '',
     phone: client.primary_mobile || '',
-    tags: 'NPC Export',
+    tags: 'Dashboard Export',
     source: 'Client Management Export',
     secondary_first_name: client.secondary_first_name || '',
     secondary_last_name: client.secondary_surname || '',

@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
+import { useBrand } from '@/branding/useBrand';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
@@ -113,6 +114,7 @@ interface ClientConversationsTabProps {
 export function ClientConversationsTab({ clientId, clientName, clientEmail, ghlContactId }: ClientConversationsTabProps) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { settings: brandSettings } = useBrand();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [replyText, setReplyText] = useState('');
@@ -214,7 +216,7 @@ export function ClientConversationsTab({ clientId, clientName, clientEmail, ghlC
         if (!clientEmail) throw new Error('Client does not have an email address');
         const { data, error } = await invokeSecureFunction('send-email-reply', {
           to: clientEmail,
-          subject: subject || `Message from NPC Services`,
+          subject: subject || `Message from ${brandSettings.companyName || 'Dashboard'}`,
           body: message,
           mailboxSource: selectedMailbox,
           ghlConversationId: selectedConversation?.id || undefined,

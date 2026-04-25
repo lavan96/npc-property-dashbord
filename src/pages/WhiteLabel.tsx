@@ -1619,7 +1619,7 @@ export default function WhiteLabel() {
                 onChange={(e) => updateDraftSettings({ 
                   emailSignature: { ...draftSettings.emailSignature, email: e.target.value } 
                 })}
-                placeholder="contact@npcservices.com.au"
+                placeholder="contact@yourcompany.com"
               />
             </div>
             <div className="space-y-2">
@@ -1630,7 +1630,7 @@ export default function WhiteLabel() {
                 onChange={(e) => updateDraftSettings({ 
                   emailSignature: { ...draftSettings.emailSignature, website: e.target.value } 
                 })}
-                placeholder="www.npcservices.com.au"
+                placeholder="www.yourcompany.com"
               />
             </div>
             <div className="space-y-2">

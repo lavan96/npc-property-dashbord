@@ -1511,7 +1511,7 @@ export default function UserGuide() {
       <div className="space-y-2">
         <h1 className="text-3xl font-bold">User Guide</h1>
         <p className="text-muted-foreground">
-          Complete guide to navigating and using the NPC Property Intake Dashboard
+          Complete guide to navigating and using your dashboard
         </p>
       </div>
 
