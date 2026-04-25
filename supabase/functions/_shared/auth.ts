@@ -316,7 +316,7 @@ function parseAllowedOrigins(): string[] {
   return LEGACY_FALLBACK_ORIGINS;
 }
 
-export function createCorsHeaders(origin: string | null): Record<string, string> {
+export function createCorsHeaders(origin: string | null = null): Record<string, string> {
   const allowedOrigins = [
     ...parseAllowedOrigins(),
     'http://localhost:5173',
