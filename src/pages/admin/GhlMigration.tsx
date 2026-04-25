@@ -400,8 +400,8 @@ function MigrationWorkersPanel() {
   useEffect(() => { refreshJobs(); }, []);
   useEffect(() => {
     const hasActive = jobs.some((j) => j.status === 'pending' || j.status === 'processing');
-    if (!hasActive) return;
-    const id = setInterval(refreshJobs, 4000);
+    if (!hasActive) return; // pause polling when idle
+    const id = setInterval(refreshJobs, 3000); // 3s while running
     return () => clearInterval(id);
   }, [jobs]);
 
