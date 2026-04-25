@@ -301,8 +301,8 @@ Deno.serve(async (req) => {
     const loginLink = `${appUrl}/finance/login`
 
     const subject = useTempPassword
-      ? 'Your NPC Finance Portal account is ready'
-      : "You're Invited to the NPC Finance Portal"
+      ? `Your ${brand.companyName} Finance Portal account is ready`
+      : `You're Invited to the ${brand.companyName} Finance Portal`
 
     const safeName = String(contact.name || 'there').replace(/[<>]/g, '');
 
@@ -326,7 +326,7 @@ Deno.serve(async (req) => {
         </p>`
       : `
         <p style="margin:0 0 16px;color:#475569;font-size:15px;line-height:1.6;">
-          You've been invited to access the NPC Finance Portal. Click the button below to set your password and activate your account.
+          You've been invited to access the ${brand.companyName} Finance Portal. Click the button below to set your password and activate your account.
         </p>
         <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:24px auto 20px;">
           <tr><td align="center" bgcolor="#0D264D" style="border-radius:8px;">
@@ -349,7 +349,7 @@ Deno.serve(async (req) => {
       <tr><td align="center">
         <table role="presentation" width="560" cellspacing="0" cellpadding="0" border="0" style="max-width:560px;background:#ffffff;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,0.06);">
           <tr><td style="background:#0D264D;padding:28px 32px;text-align:center;">
-            <div style="font-family:Georgia,'Times New Roman',serif;color:#BF9B50;font-size:13px;letter-spacing:4px;text-transform:uppercase;font-weight:600;">NPC Services</div>
+            <div style="font-family:Georgia,'Times New Roman',serif;color:#BF9B50;font-size:13px;letter-spacing:4px;text-transform:uppercase;font-weight:600;">${brand.companyName}</div>
             <div style="margin-top:6px;color:#ffffff;font-size:20px;font-weight:600;letter-spacing:0.3px;">Finance Partner Portal</div>
           </td></tr>
           <tr><td style="padding:32px;">
@@ -359,7 +359,7 @@ Deno.serve(async (req) => {
           <tr><td style="padding:18px 32px 28px;border-top:1px solid #eef0f3;">
             <p style="margin:0;color:#94a3b8;font-size:12px;line-height:1.5;text-align:center;">
               If you didn't expect this email, you can safely ignore it.<br/>
-              NPC Services — Property Investment Advisory
+              ${brand.companyName} — Property Investment Advisory
             </p>
           </td></tr>
         </table>
@@ -369,8 +369,8 @@ Deno.serve(async (req) => {
 </html>`
 
     const textBody = useTempPassword
-      ? `Hi ${safeName},\n\nYour NPC Finance Portal account is ready.\n\nTemporary password: ${tempPasswordPlain}\n\nSign in here: ${loginLink}\n\nYou'll be asked to change your password on first sign-in.\n\n— NPC Services`
-      : `Hi ${safeName},\n\nYou've been invited to the NPC Finance Portal.\n\nSet your password and activate your account:\n${inviteLink}\n\nThis invitation expires in ${INVITE_EXPIRY_HOURS} hours.\n\n— NPC Services`
+      ? `Hi ${safeName},\n\nYour ${brand.companyName} Finance Portal account is ready.\n\nTemporary password: ${tempPasswordPlain}\n\nSign in here: ${loginLink}\n\nYou'll be asked to change your password on first sign-in.\n\n— ${brand.companyName}`
+      : `Hi ${safeName},\n\nYou've been invited to the ${brand.companyName} Finance Portal.\n\nSet your password and activate your account:\n${inviteLink}\n\nThis invitation expires in ${INVITE_EXPIRY_HOURS} hours.\n\n— ${brand.companyName}`
 
     let emailSent = false;
     let emailError: string | null = null;
