@@ -177,7 +177,7 @@ export async function selfRedispatch(
   _opts?: { maxDispatches?: number },
 ): Promise<{ dispatched: boolean; reason?: string; dispatchCount: number }> {
   // Just release the lock so the dispatcher claims it next tick.
-  await supabase.rpc('release_migration_job_lock', { p_job_id: jobId }).catch(() => {});
+  try { await supabase.rpc('release_migration_job_lock', { p_job_id: jobId }); } catch {}
   const { data } = await supabase
     .from('migration_jobs')
     .select('dispatch_count')
