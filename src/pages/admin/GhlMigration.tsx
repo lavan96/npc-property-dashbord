@@ -207,10 +207,10 @@ export default function GhlMigration() {
       </div>
 
       {/* Read-only banner */}
-      <Alert className="border-amber-500/40 bg-amber-500/5">
-        <ShieldAlert className="h-4 w-4 text-amber-600 dark:text-amber-500" />
-        <AlertTitle className="text-amber-700 dark:text-amber-400">READ-ONLY MODE</AlertTitle>
-        <AlertDescription className="text-xs text-amber-700/80 dark:text-amber-400/80">
+      <Alert className="border-warning/40 bg-warning/5">
+        <ShieldAlert className="h-4 w-4 text-warning" />
+        <AlertTitle className="text-warning">READ-ONLY MODE</AlertTitle>
+        <AlertDescription className="text-xs text-warning/80">
           This page only fetches counts and small samples directly from GoHighLevel.
           No data is written to either GHL account or to the dashboard database.
           Existing webhooks and syncs against the legacy account remain unchanged.
@@ -340,7 +340,7 @@ function AccountSummary({ data }: { data: PreviewResponse }) {
 
   return (
     <div className="mb-4 flex flex-wrap items-center gap-3 rounded-md border border-border/60 bg-muted/20 p-3 text-xs">
-      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+      <CheckCircle2 className="h-4 w-4 text-success" />
       <div>
         <span className="text-muted-foreground">Account:</span>{' '}
         <Badge variant={data.account === 'new' ? 'default' : 'secondary'} className="h-4 px-1.5 text-[10px] uppercase">
@@ -404,7 +404,7 @@ function CompareTable({
                 <td className="p-3 text-right tabular-nums">{fmtCount(nc ?? null)}</td>
                 <td className="p-3 text-right tabular-nums">
                   {gap === null ? '—' : (
-                    <span className={gap > 0 ? 'text-amber-600' : gap < 0 ? 'text-emerald-600' : 'text-muted-foreground'}>
+                    <span className={gap > 0 ? 'text-warning' : gap < 0 ? 'text-success' : 'text-muted-foreground'}>
                       {gap > 0 ? '+' : ''}{gap.toLocaleString()}
                     </span>
                   )}
