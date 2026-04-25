@@ -34,6 +34,8 @@ import {
   loadCheckpoint,
   partialExit,
   heartbeat,
+  resolveTargetContactByName,
+  normalizeContactName,
 } from '../_shared/migration-jobs.ts';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
