@@ -189,23 +189,57 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
     const favicon = getBrandAssetSrc(settings, 'favicon');
     if (!favicon) return;
 
-    const link = document.querySelector("link[rel~='icon']") as HTMLLinkElement | null;
-    if (link) {
-      link.href = favicon;
-      return;
+    // <link rel="icon">
+    const iconLink = document.querySelector("link[rel~='icon']") as HTMLLinkElement | null;
+    if (iconLink) {
+      iconLink.href = favicon;
+    } else {
+      const newLink = document.createElement('link');
+      newLink.rel = 'icon';
+      newLink.href = favicon;
+      document.head.appendChild(newLink);
     }
 
-    const newLink = document.createElement('link');
-    newLink.rel = 'icon';
-    newLink.href = favicon;
-    document.head.appendChild(newLink);
+    // <link rel="apple-touch-icon">
+    const appleLink = document.querySelector("link[rel='apple-touch-icon']") as HTMLLinkElement | null;
+    if (appleLink) {
+      appleLink.href = favicon;
+    } else {
+      const newApple = document.createElement('link');
+      newApple.rel = 'apple-touch-icon';
+      newApple.href = favicon;
+      document.head.appendChild(newApple);
+    }
   }, [settings]);
 
   useEffect(() => {
-    if (settings.companyName) {
-      document.title = `${settings.companyName} Dashboard`;
+    const company = settings.companyName?.trim();
+    if (!company) return;
+
+    const titleStr = `${company} Dashboard`;
+    document.title = titleStr;
+
+    const setMeta = (selector: string, attr: 'content' | 'href', value: string) => {
+      const el = document.querySelector(selector) as HTMLMetaElement | HTMLLinkElement | null;
+      if (el) el.setAttribute(attr, value);
+    };
+
+    const description = `${company} - Property investment management dashboard`;
+
+    setMeta("meta[name='apple-mobile-web-app-title']", 'content', company);
+    setMeta("meta[name='application-name']", 'content', company);
+    setMeta("meta[name='description']", 'content', description);
+    setMeta("meta[name='author']", 'content', company);
+    setMeta("meta[property='og:title']", 'content', titleStr);
+    setMeta("meta[property='og:description']", 'content', description);
+    setMeta("meta[name='twitter:title']", 'content', company);
+
+    const favicon = getBrandAssetSrc(settings, 'favicon');
+    if (favicon) {
+      setMeta("meta[property='og:image']", 'content', favicon);
+      setMeta("meta[name='twitter:image']", 'content', favicon);
     }
-  }, [settings.companyName]);
+  }, [settings]);
 
   const updateSettings = useCallback((newSettings: Partial<WhiteLabelSettings>) => {
     setSettings((prev) => {
