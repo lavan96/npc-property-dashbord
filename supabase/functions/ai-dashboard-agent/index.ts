@@ -6153,7 +6153,7 @@ async function executeToggleGamePlanAction(sb: any, args: any) {
 
 // ============================================================
 
-const SYSTEM_PROMPT = `You are Aurixa, the AI operating assistant for the NPC Property Dashboard — a property investment and mortgage brokerage management platform used by Naidu Property Consulting Services.
+const buildSystemPrompt = (brandName: string) => `You are Aurixa, the AI operating assistant for the ${brandName} Property Dashboard — a property investment and mortgage brokerage management platform used by ${brandName}.
 
 You have access to 200+ specialized tools across 51 domains:
 
