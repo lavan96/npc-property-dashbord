@@ -2175,9 +2175,9 @@ function generateHTMLContent(
         </div>
         <div class="page-footer">
           <div class="footer-contact">
-            <span class="footer-item">📞 (02) 8609 3299</span>
-            <span class="footer-item">✉ admin@npcservices.com.au</span>
-            <span class="footer-item">🌐 npcservices.com.au</span>
+            ${_phone ? `<span class="footer-item">📞 ${_phone}</span>` : ''}
+            ${_email ? `<span class="footer-item">✉ ${_email}</span>` : ''}
+            ${_website ? `<span class="footer-item">🌐 ${_website}</span>` : ''}
           </div>
           <div class="footer-confidential">CONFIDENTIAL</div>
           <div>Page ${summaryPageNumber} of ${totalPages}</div>
@@ -2255,9 +2255,9 @@ function generateHTMLContent(
         </div>
         <div class="page-footer">
           <div class="footer-contact">
-            <span class="footer-item">📞 (02) 8609 3299</span>
-            <span class="footer-item">✉ admin@npcservices.com.au</span>
-            <span class="footer-item">🌐 npcservices.com.au</span>
+            ${_phone ? `<span class="footer-item">📞 ${_phone}</span>` : ''}
+            ${_email ? `<span class="footer-item">✉ ${_email}</span>` : ''}
+            ${_website ? `<span class="footer-item">🌐 ${_website}</span>` : ''}
           </div>
           <div class="footer-confidential">CONFIDENTIAL</div>
           <div>Page ${page1Number} of ${totalPages}</div>
@@ -2300,9 +2300,9 @@ function generateHTMLContent(
         </div>
         <div class="page-footer">
           <div class="footer-contact">
-            <span class="footer-item">📞 (02) 8609 3299</span>
-            <span class="footer-item">✉ admin@npcservices.com.au</span>
-            <span class="footer-item">🌐 npcservices.com.au</span>
+            ${_phone ? `<span class="footer-item">📞 ${_phone}</span>` : ''}
+            ${_email ? `<span class="footer-item">✉ ${_email}</span>` : ''}
+            ${_website ? `<span class="footer-item">🌐 ${_website}</span>` : ''}
           </div>
           <div class="footer-confidential">CONFIDENTIAL</div>
           <div>Page ${employmentPageNumber} of ${totalPages}</div>
@@ -2341,9 +2341,9 @@ function generateHTMLContent(
         </div>
         <div class="page-footer">
           <div class="footer-contact">
-            <span class="footer-item">📞 (02) 8609 3299</span>
-            <span class="footer-item">✉ admin@npcservices.com.au</span>
-            <span class="footer-item">🌐 npcservices.com.au</span>
+            ${_phone ? `<span class="footer-item">📞 ${_phone}</span>` : ''}
+            ${_email ? `<span class="footer-item">✉ ${_email}</span>` : ''}
+            ${_website ? `<span class="footer-item">🌐 ${_website}</span>` : ''}
           </div>
           <div class="footer-confidential">CONFIDENTIAL</div>
           <div>Page ${assetsPageNumber} of ${totalPages}</div>
