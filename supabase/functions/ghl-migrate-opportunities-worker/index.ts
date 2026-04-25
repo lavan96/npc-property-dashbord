@@ -21,7 +21,7 @@ import {
 import {
   startJob, finishJob, recordItem, recordIdMapping, updateJobProgress, delay,
   saveCheckpoint, loadCheckpoint, partialExit, heartbeat,
-  resolveTargetContactByName, readControlSignal, sanitizeContactNameParts, mergeJobPayload,
+  resolveTargetContactByName, readControlSignal, sanitizeContactNameParts, mergeJobPayload, normalizeContactName,
 } from '../_shared/migration-jobs.ts';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
@@ -30,6 +30,18 @@ const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 const PAGE_LIMIT = 100;
 const MAX_RUNTIME_MS = 90_000;
 const RATE_LIMIT_MS = 300;
+
+function isPlaceholderResolutionName(name: string): boolean {
+  const normalized = normalizeContactName(name);
+  return !normalized || normalized === 'unknown unknown' || normalized === 'unknown';
+}
+
+async function targetContactExists(contactId: string, headers: Record<string, string>): Promise<boolean> {
+  const res = await fetch(`${GHL_API_BASE}/contacts/${contactId}`, { headers });
+  if (res.ok) return true;
+  if (res.status === 404 || res.status === 410) return false;
+  return true;
+}
 
 Deno.serve(async (req) => {
   const startedAt = Date.now();
