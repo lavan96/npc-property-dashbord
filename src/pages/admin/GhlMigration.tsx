@@ -976,6 +976,93 @@ function JobDetailRow({ job, onChanged }: { job: any; onChanged?: () => void }) 
             </div>
           </div>
 
+          {/* Live progress bar — stacked succeeded / failed / skipped / pending */}
+          {(() => {
+            const succeeded = breakdown.succeeded || 0;
+            const failedN = breakdown.failed || 0;
+            const skippedN = breakdown.skipped || 0;
+            const pendingN = breakdown.pending || 0;
+            const recorded = succeeded + failedN + skippedN + pendingN;
+            // Use total_items if known, else derive from recorded items
+            const total = liveJob.total_items && liveJob.total_items > 0
+              ? Math.max(liveJob.total_items, recorded)
+              : Math.max(recorded, liveJob.processed_items ?? 0, 1);
+            const pct = (n: number) => total > 0 ? (n / total) * 100 : 0;
+            const overallPct = total > 0
+              ? Math.min(100, Math.round(((succeeded + failedN + skippedN) / total) * 100))
+              : 0;
+            return (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="font-semibold">Progress</span>
+                  <span className="font-mono text-muted-foreground">
+                    {succeeded + failedN + skippedN}{liveJob.total_items > 0 ? ` / ${liveJob.total_items}` : ''} ({overallPct}%)
+                  </span>
+                </div>
+                <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-muted ring-1 ring-border/40">
+                  {succeeded > 0 && (
+                    <div
+                      className="h-full bg-success transition-all duration-500"
+                      style={{ width: `${pct(succeeded)}%` }}
+                      title={`Succeeded: ${succeeded}`}
+                    />
+                  )}
+                  {failedN > 0 && (
+                    <div
+                      className="h-full bg-destructive transition-all duration-500"
+                      style={{ width: `${pct(failedN)}%` }}
+                      title={`Failed: ${failedN}`}
+                    />
+                  )}
+                  {skippedN > 0 && (
+                    <div
+                      className="h-full bg-warning transition-all duration-500"
+                      style={{ width: `${pct(skippedN)}%` }}
+                      title={`Skipped: ${skippedN}`}
+                    />
+                  )}
+                  {pendingN > 0 && (
+                    <div
+                      className="h-full bg-primary/40 transition-all duration-500"
+                      style={{ width: `${pct(pendingN)}%` }}
+                      title={`Pending: ${pendingN}`}
+                    />
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-3 text-[10px]">
+                  <span className="inline-flex items-center gap-1">
+                    <span className="h-2 w-2 rounded-sm bg-success" />
+                    <span className="text-muted-foreground">succeeded</span>
+                    <span className="font-mono">{succeeded}</span>
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <span className="h-2 w-2 rounded-sm bg-destructive" />
+                    <span className="text-muted-foreground">failed</span>
+                    <span className="font-mono">{failedN}</span>
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <span className="h-2 w-2 rounded-sm bg-warning" />
+                    <span className="text-muted-foreground">skipped</span>
+                    <span className="font-mono">{skippedN}</span>
+                  </span>
+                  {pendingN > 0 && (
+                    <span className="inline-flex items-center gap-1">
+                      <span className="h-2 w-2 rounded-sm bg-primary/40" />
+                      <span className="text-muted-foreground">pending</span>
+                      <span className="font-mono">{pendingN}</span>
+                    </span>
+                  )}
+                  {liveJob.status === 'processing' && (
+                    <span className="ml-auto inline-flex items-center gap-1 text-primary">
+                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
+                      streaming
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Resume cursor + processing position (live) */}
           <div className="rounded border border-primary/30 bg-primary/5 p-2 text-[11px]">
             <div className="mb-1.5 flex items-center gap-2 font-semibold text-primary">
