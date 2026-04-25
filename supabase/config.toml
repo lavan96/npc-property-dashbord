@@ -577,3 +577,31 @@ verify_jwt = false
 
 [functions.analytics-query]
 verify_jwt = false
+
+[functions.ghl-account-preview]
+verify_jwt = false
+request_timeout = 120
+
+[functions.migration-orchestrator]
+verify_jwt = false
+request_timeout = 60
+
+[functions.migration-job-status]
+verify_jwt = false
+request_timeout = 30
+
+[functions.ghl-migrate-contacts-worker]
+verify_jwt = false
+request_timeout = 60
+
+[functions.ghl-migrate-opportunities-worker]
+verify_jwt = false
+request_timeout = 60
+
+[functions.ghl-migrate-conversations-worker]
+verify_jwt = false
+request_timeout = 60
+
+[functions.ghl-migrate-notes-worker]
+verify_jwt = false
+request_timeout = 60
