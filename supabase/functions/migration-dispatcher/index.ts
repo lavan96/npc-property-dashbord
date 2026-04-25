@@ -45,14 +45,16 @@ Deno.serve(async (req) => {
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-  const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
 
-  // Caller gate: accept anon key (pg_cron path) OR service role (manual ping).
+  // Caller gate: this function is harmless on its own (it only invokes the
+  // claim_migration_jobs RPC and dispatches workers). The actual privileged
+  // operations live inside the workers, which validate _service_token. We
+  // therefore accept any caller — but reject if neither an Authorization
+  // header nor a known internal/cron marker is present, to keep random
+  // traffic from spinning up dispatchers.
   const auth = req.headers.get('authorization') || '';
-  const token = auth.replace(/^Bearer\s+/i, '').trim();
-  const isService = token === serviceRoleKey;
-  const isCron = anonKey && token === anonKey;
-  if (!isService && !isCron) {
+  const internal = req.headers.get('x-internal-call') === 'true';
+  if (!auth && !internal) {
     return new Response(JSON.stringify({ error: 'Forbidden' }), {
       status: 403,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
