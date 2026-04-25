@@ -22,12 +22,16 @@ import {
 import {
   startJob, finishJob, recordItem, recordIdMapping, updateJobProgress, delay,
   saveCheckpoint, loadCheckpoint, partialExit, heartbeat,
+  resolveTargetContactByName,
 } from '../_shared/migration-jobs.ts';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 const MAX_RUNTIME_MS = 90_000;
 const RATE_LIMIT_MS = 300;
-const BATCH = 200;
+// Pull this many local note rows per dispatch. The dispatcher will
+// re-invoke us until the cursor is exhausted, so this is a per-invocation
+// fetch ceiling, NOT a global cap on total notes processed.
+const BATCH = 5000;
 
 Deno.serve(async (req) => {
   const startedAt = Date.now();
