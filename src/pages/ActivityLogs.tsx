@@ -233,11 +233,11 @@ export default function ActivityLogs() {
   const hasActiveFilters = searchTerm || actionFilter !== 'all' || entityFilter !== 'all' || userFilter !== 'all';
 
   const getActionBadge = (actionType: string) => {
-    const config = ACTION_TYPE_LABELS[actionType] || { label: actionType, color: 'bg-gray-500' };
+    const config = ACTION_TYPE_LABELS[actionType] || { label: actionType.replace(/_/g, ' '), tone: 'neutral' as ActionTone };
     return (
-      <Badge className={`${config.color} text-white text-xs`}>
+      <span className={TONE_CLASSES[config.tone]}>
         {config.label}
-      </Badge>
+      </span>
     );
   };
 
