@@ -162,78 +162,74 @@ export async function loadCheckpoint(
  * worker invocation against the same job_id so it picks up from the
  * saved checkpoint. The caller returns immediately after this resolves.
  *
- * MAX_DISPATCHES guards against infinite loops if a job can never make
- * progress (e.g. cursor never advances).
+ * NOTE (Phase 2C): self-redispatch is DEPRECATED. Workers should now
+ * call `partialExit()` instead. The cron-driven `migration-dispatcher`
+ * picks up jobs whose lease (worker_lock_until) has expired.
+ *
+ * Kept here for safety so legacy code still compiles, but it now no-ops
+ * (returns dispatched=false) and falls through to the dispatcher path.
  */
 export async function selfRedispatch(
   supabase: any,
   jobId: string,
-  workerName: string,
-  workerBody: Record<string, any>,
-  opts?: { maxDispatches?: number },
+  _workerName: string,
+  _workerBody: Record<string, any>,
+  _opts?: { maxDispatches?: number },
 ): Promise<{ dispatched: boolean; reason?: string; dispatchCount: number }> {
-  // Default to effectively unbounded redispatching. GHL list endpoints are
-  // paged (often max 100 records per request), so large locations must keep
-  // checkpointing + redispatching until the API returns an empty/short page.
-  // Callers can still pass maxDispatches for one-off safety tests.
-  const max = opts?.maxDispatches ?? Number.POSITIVE_INFINITY;
-
-  // Increment dispatch_count + record timestamp atomically-ish
-  const { data: jobRow } = await supabase
+  // Just release the lock so the dispatcher claims it next tick.
+  await supabase.rpc('release_migration_job_lock', { p_job_id: jobId }).catch(() => {});
+  const { data } = await supabase
     .from('migration_jobs')
-    .select('dispatch_count, auto_resume')
+    .select('dispatch_count')
     .eq('id', jobId)
     .maybeSingle();
+  return {
+    dispatched: false,
+    reason: 'handed_off_to_dispatcher',
+    dispatchCount: data?.dispatch_count || 0,
+  };
+}
 
-  const nextCount = (jobRow?.dispatch_count || 0) + 1;
-  const autoResume = jobRow?.auto_resume !== false;
+/**
+ * Worker-side helper for the new dispatcher architecture.
+ *
+ * Call this when the worker hits its time budget but has NOT finished the
+ * job. It:
+ *   1. Saves the cursor (so the next run resumes)
+ *   2. Updates progress counters
+ *   3. Releases the worker_lock_until lease (cron immediately re-claims)
+ *   4. Leaves status='processing' — does NOT call finishJob
+ *
+ * The dispatcher will pick it up on the next tick (≤15s).
+ */
+export async function partialExit(
+  supabase: any,
+  jobId: string,
+  cursor: Record<string, any>,
+  progress: {
+    processed_items?: number;
+    succeeded_items?: number;
+    failed_items?: number;
+  },
+  lastSourceId?: string | null,
+): Promise<void> {
+  await saveCheckpoint(supabase, jobId, cursor, lastSourceId);
+  await updateJobProgress(supabase, jobId, progress);
+  // Release lease so dispatcher re-claims on next tick.
+  await supabase.rpc('release_migration_job_lock', { p_job_id: jobId }).catch((e: any) => {
+    console.error('[partialExit] release_lock failed:', e?.message);
+  });
+}
 
-  if (!autoResume) {
-    return { dispatched: false, reason: 'auto_resume disabled', dispatchCount: jobRow?.dispatch_count || 0 };
-  }
-  if (Number.isFinite(max) && nextCount > max) {
-    return { dispatched: false, reason: `max_dispatches (${max}) exceeded`, dispatchCount: nextCount - 1 };
-  }
-
-  await supabase
-    .from('migration_jobs')
-    .update({
-      status: 'processing',
-      dispatch_count: nextCount,
-      last_dispatched_at: new Date().toISOString(),
-      // explicitly clear completed_at in case a previous run set it
-      completed_at: null,
-    })
-    .eq('id', jobId);
-
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-  const url = `${supabaseUrl}/functions/v1/${workerName}`;
-
-  const dispatch = fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${serviceRoleKey}`,
-      'x-internal-call': 'true',
-    },
-    body: JSON.stringify({ ...workerBody, _service_token: serviceRoleKey, _resume: true }),
-  })
-    .then((r) => {
-      if (!r.ok) console.error(`[selfRedispatch] worker ${workerName} returned ${r.status}`);
-      else console.log(`[selfRedispatch] worker ${workerName} re-dispatched (#${nextCount}) for job ${jobId}`);
-    })
-    .catch((e) => console.error(`[selfRedispatch] dispatch threw:`, e?.message));
-
-  // @ts-ignore — EdgeRuntime is provided by Supabase Deno runtime
-  if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
-    // @ts-ignore
-    EdgeRuntime.waitUntil(dispatch);
-  } else {
-    await dispatch; // fallback: best-effort
-  }
-
-  return { dispatched: true, dispatchCount: nextCount };
+/**
+ * Worker-side heartbeat. Call periodically (e.g. once per page) so the
+ * dispatcher knows the worker is alive and extends the lease.
+ */
+export async function heartbeat(supabase: any, jobId: string, leaseSeconds = 180): Promise<void> {
+  await supabase.rpc('heartbeat_migration_job', {
+    p_job_id: jobId,
+    p_lease_seconds: leaseSeconds,
+  }).catch((e: any) => console.error('[heartbeat] failed:', e?.message));
 }
 
 /**
