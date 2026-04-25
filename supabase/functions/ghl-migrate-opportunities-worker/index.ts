@@ -20,12 +20,12 @@ import {
 } from '../_shared/ghl-account.ts';
 import {
   startJob, finishJob, recordItem, recordIdMapping, updateJobProgress, delay,
-  saveCheckpoint, loadCheckpoint, selfRedispatch,
+  saveCheckpoint, loadCheckpoint, partialExit, heartbeat,
 } from '../_shared/migration-jobs.ts';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 const PAGE_LIMIT = 100;
-const MAX_RUNTIME_MS = 350_000;
+const MAX_RUNTIME_MS = 90_000;
 const RATE_LIMIT_MS = 300;
 
 Deno.serve(async (req) => {
@@ -159,19 +159,15 @@ Deno.serve(async (req) => {
 
     while (true) {
       if (Date.now() - startedAt > MAX_RUNTIME_MS) {
-        await saveCheckpoint(supabase, jobId, { startAfterId: pageStartAfterId, startAfter: pageStartAfter });
-        await updateJobProgress(supabase, jobId, {
-          processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed,
-        });
-        const r = await selfRedispatch(supabase, jobId, 'ghl-migrate-opportunities-worker', {
-          job_id: jobId, source_account: sourceAccount, target_account: targetAccount, dry_run: dryRun, payload,
-        });
-        if (!r.dispatched) {
-          await finishJob(supabase, jobId, 'completed', `Auto-resume halted (${r.reason}). Processed ${totalProcessed}.`);
-        }
+        await partialExit(
+          supabase, jobId,
+          { startAfterId: pageStartAfterId, startAfter: pageStartAfter },
+          { processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed },
+          pageStartAfterId,
+        );
         return new Response(JSON.stringify({
           success: true, partial: true, processed: totalProcessed,
-          auto_redispatched: r.dispatched, dispatch_count: r.dispatchCount, reason: r.reason || null,
+          handed_off_to: 'migration-dispatcher',
         }), { headers: { 'Content-Type': 'application/json' } });
       }
 
