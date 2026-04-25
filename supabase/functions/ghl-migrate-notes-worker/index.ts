@@ -122,27 +122,34 @@ Deno.serve(async (req) => {
       totalProcessed++;
       currentOffset++;
       const client = (note as any).clients;
-      const sourceContactId = client?.ghl_contact_id;
-      const label = `${client?.primary_first_name || ''} ${client?.primary_surname || ''}`.trim() || 'Note';
+      const fullName = `${client?.primary_first_name || ''} ${client?.primary_surname || ''}`.trim();
+      const label = fullName || 'Note';
 
-      // Map source contact → target contact
-      const { data: mapping } = await supabase
-        .from('ghl_id_mapping')
-        .select('new_ghl_id')
-        .eq('resource_type', 'contact')
-        .eq('old_ghl_id', sourceContactId)
-        .eq('source_account_label', sourceAccount)
-        .eq('target_account_label', targetAccount)
-        .maybeSingle();
+      // Resolve target contact by NAME (project-wide policy: full_name is
+      // the source of truth; on duplicates pick the most-recently mirrored
+      // target contact).
+      const resolved = await resolveTargetContactByName(supabase, {
+        fullName,
+        sourceAccount,
+        targetAccount,
+      });
 
-      if (!mapping?.new_ghl_id) {
+      if (!resolved.newId) {
         totalSkipped++;
         await recordItem(supabase, {
           job_id: jobId, source_id: note.id, entity_label: label,
-          status: 'skipped', error_message: 'Contact not yet mapped — run contacts worker first',
+          status: 'skipped',
+          error_message: fullName
+            ? `No target contact named "${fullName}" — run contacts worker first`
+            : 'Client has no name to match a target contact',
         });
         continue;
       }
+
+      if (resolved.ambiguous) {
+        console.warn(`[notes-worker] Ambiguous contact name "${fullName}" → ${resolved.candidateCount} target contacts; routing to latest=${resolved.newId}`);
+      }
+      const mapping = { new_ghl_id: resolved.newId };
 
       // Already mirrored?
       const { data: existingNoteMap } = await supabase
