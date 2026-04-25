@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { getBrandConfig } from '../_shared/brand-config.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -327,7 +328,8 @@ Deno.serve(async (req) => {
     const tierConfig = TIER_CONFIG[targetTier];
 
     // Build the condensation prompt using the structure guide
-    const systemPrompt = `You are an expert investment property analyst for Naidu Property Consulting Services. Your task is to condense a comprehensive property investment report into a ${tierConfig.name} format.
+    const _brandCondense = await getBrandConfig();
+    const systemPrompt = `You are an expert investment property analyst for ${_brandCondense.companyName}. Your task is to condense a comprehensive property investment report into a ${tierConfig.name} format.
 
 CRITICAL REQUIREMENTS:
 1. Follow the EXACT structure template provided below

@@ -250,7 +250,7 @@ Format with clear subsections:
 ## MANDATORY CLOSING SECTION:
 
 ### Contact Information
-**NPC Services**
+**Property Consulting**
 - **Phone:** 0433 005 110
 - **Email:** admin@npcservices.com.au
 - **Website:** npcservices.com.au

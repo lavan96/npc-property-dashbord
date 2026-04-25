@@ -2,6 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { verifyAuth, createCorsHeaders as createAuthCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 import { logApiUsage, extractOpenAIUsage } from '../_shared/logApiUsage.ts';
+import { getBrandConfig } from '../_shared/brand-config.ts';
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -91,7 +92,8 @@ Deno.serve(async (req) => {
 async function handleSummarize(email: EmailData, emailId: string | null, supabase: any, corsHeaders: Record<string, string>): Promise<Response> {
   console.log('[Email Copilot] Generating summary...');
   
-  const systemPrompt = `You are an email analysis assistant for NPC Services, a property investment advisory company. 
+  const _brand = await getBrandConfig();
+  const systemPrompt = `You are an email analysis assistant for ${_brand.companyName}, a property investment advisory company. 
 Your task is to analyze incoming emails and provide a structured summary.
 
 IMPORTANT: 
@@ -200,17 +202,18 @@ async function handleDraftReply(
     ? `\n\nUSER CONTEXT: The admin has provided the following guidance for the reply:\n"${replyContext}"\n\nIncorporate this context into your draft reply while maintaining professional tone.`
     : '';
 
-  const systemPrompt = `You are an email drafting assistant for NPC Services, a professional property investment advisory company.
+  const _brandDr = await getBrandConfig();
+  const systemPrompt = `You are an email drafting assistant for ${_brandDr.companyName}, a professional property investment advisory company.
 Your task is to draft a professional, polite, and helpful reply to the given email.
 
 IMPORTANT GUIDELINES:
-- Match NPC Services' professional, courteous tone
+- Match ${_brandDr.companyName}' professional, courteous tone
 - Be clear, concise, and context-aware
 - Do NOT make any financial commitments or guarantees
 - Do NOT fabricate dates, prices, or specific details
 - If information is missing, acknowledge it and offer to clarify
 - Use proper email formatting with greeting and sign-off
-- Sign off as "NPC Services Team"
+- Sign off as "${_brandDr.companyName} Team"
 ${propertyContext}
 ${userContextInstruction}
 
