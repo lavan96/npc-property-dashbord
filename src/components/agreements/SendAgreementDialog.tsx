@@ -14,6 +14,7 @@ import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { format } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useGlobalReportSettings } from '@/hooks/useGlobalReportSettings';
 
 interface GammaTemplate {
   id: string;
