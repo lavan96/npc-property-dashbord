@@ -21,6 +21,7 @@ import {
   buildGhlHeaders,
   resolveGhlAccessTokenForLocation,
   describeGhlWriteAuthFailure,
+  parseGhlError,
 } from '../_shared/ghl-account.ts';
 import {
   startJob,
@@ -224,6 +225,8 @@ Deno.serve(async (req) => {
 
           if (!upRes.ok) {
             const errText = await upRes.text();
+            const parsed = parseGhlError(errText);
+            const code = parsed.error_code || `GHL_${upRes.status}`;
             const authDetail = (upRes.status === 401 || upRes.status === 403) && targetAuthHint
               ? ` ${targetAuthHint}`
               : '';
@@ -233,7 +236,7 @@ Deno.serve(async (req) => {
               source_id: contact.id,
               entity_label: contactName,
               status: 'failed',
-              error_message: `${upRes.status}: ${errText.substring(0, 300)}${authDetail}`.substring(0, 900),
+              error_message: `[${code}] ${upRes.status}: ${(parsed.message || errText).substring(0, 260)}${authDetail}`.substring(0, 900),
             });
             continue;
           }
