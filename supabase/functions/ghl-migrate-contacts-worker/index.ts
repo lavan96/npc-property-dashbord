@@ -34,6 +34,7 @@ import {
   loadCheckpoint,
   partialExit,
   heartbeat,
+  handleWorkerCrash,
 } from '../_shared/migration-jobs.ts';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
@@ -369,7 +370,7 @@ Deno.serve(async (req) => {
   } catch (err: any) {
     console.error('[contacts-worker] FATAL:', err);
     if (jobId && supabase) {
-      await finishJob(supabase, jobId, 'failed', err.message || 'Worker crashed').catch(() => {});
+      try { await handleWorkerCrash(supabase, jobId, err, 'contacts-worker'); } catch (e) { console.error('[contacts-worker] handleWorkerCrash threw:', e); }
     }
     return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500 });
   }
