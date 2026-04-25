@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { verifyAuth, createCorsHeaders as createAuthCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 import { logApiUsage } from '../_shared/logApiUsage.ts';
+import { getBrandConfig } from '../_shared/brand-config.ts';
 
 const clientId = Deno.env.get('MICROSOFT_CLIENT_ID');
 const clientSecret = Deno.env.get('MICROSOFT_CLIENT_SECRET');
