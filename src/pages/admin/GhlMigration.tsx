@@ -13,7 +13,35 @@ import { toast } from 'sonner';
 import {
   ShieldAlert, RefreshCw, Eye, ArrowLeftRight, Database, Users,
   TrendingUp, MessageSquare, StickyNote, GitBranch, MapPin, AlertCircle, CheckCircle2, Lock,
+  KeyRound, ExternalLink, XCircle,
 } from 'lucide-react';
+
+interface ScopeProbe {
+  scope: string;
+  required_for: string[];
+  ok: boolean;
+  http_status: number | null;
+  error_code: string | null;
+  error_message: string | null;
+  endpoint: string;
+  method: string;
+}
+interface CredentialAudit {
+  account: 'legacy' | 'new';
+  token_kind: string;
+  token_type_hint: string;
+  token_format: string;
+  has_location_id: boolean;
+  location_id_matches_secret: boolean | null;
+  expires_at: string | null;
+  exchange_attempted: boolean;
+  exchange_succeeded: boolean | null;
+  exchange_error: string | null;
+  scope_probes: ScopeProbe[];
+  required_scopes_ok: boolean;
+  missing_scopes: string[];
+  documentation_url: string;
+}
 
 type Account = 'legacy' | 'new';
 type Domain = 'location' | 'contacts' | 'opportunities' | 'conversations' | 'notes' | 'pipelines';
@@ -332,7 +360,30 @@ function MigrationWorkersPanel() {
   const [jobs, setJobs] = useState<any[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(false);
 
-  const refreshJobs = async () => {
+  const [audit, setAudit] = useState<CredentialAudit | null>(null);
+  const [testingAudit, setTestingAudit] = useState(false);
+  const [auditAccount, setAuditAccount] = useState<Account>('new');
+  const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
+
+  const testCredentials = async (acct: Account) => {
+    setTestingAudit(true);
+    setAuditAccount(acct);
+    try {
+      const res = await invokeSecureFunction<{ success: boolean; audit: CredentialAudit; error?: string }>(
+        'ghl-test-credentials', { account: acct }, { timeoutMs: 60000 },
+      );
+      if (res.error || !res.data?.success) {
+        toast.error(res.error?.message || res.data?.error || 'Credential test failed');
+        setAudit(null);
+      } else {
+        setAudit(res.data.audit);
+        if (res.data.audit.required_scopes_ok) toast.success(`${acct.toUpperCase()} token: all scopes OK`);
+        else toast.error(`${acct.toUpperCase()} token missing: ${res.data.audit.missing_scopes.join(', ')}`);
+      }
+    } finally { setTestingAudit(false); }
+  };
+
+
     setLoadingJobs(true);
     try {
       const res = await invokeSecureFunction<{ success: boolean; jobs: any[] }>(

@@ -21,6 +21,11 @@ import {
   createForbiddenResponse,
 } from '../_shared/auth.ts';
 import { createJob, type MigrationDomain } from '../_shared/migration-jobs.ts';
+import {
+  probeGhlCredentialScopes,
+  requiredScopesForDomain,
+  GHL_SCOPE_DOCS_URL,
+} from '../_shared/ghl-account.ts';
 
 const VALID_DOMAINS: MigrationDomain[] = ['contacts', 'opportunities', 'conversations', 'notes'];
 const LIVE_WRITE_CONFIRMATION = 'MIGRATE-LIVE';
@@ -87,6 +92,38 @@ Deno.serve(async (req) => {
 
     // Optional payload — workers interpret this (e.g. limits, filters, scope)
     const payload = (body.payload && typeof body.payload === 'object') ? body.payload : {};
+    const skipPreflight = body.skip_preflight === true;
+
+    // ── Scope preflight (live writes only) ────────────────────────────────
+    // Probe the TARGET account for the scopes this domain needs. Block if
+    // any required scope is missing. Always stamp the audit into payload.
+    let tokenAudit: any = null;
+    if (!dry_run && !skipPreflight) {
+      try {
+        tokenAudit = await probeGhlCredentialScopes(target_account, { domains: [domain] });
+        const required = requiredScopesForDomain(domain);
+        const missingRequired = required.filter((s) => tokenAudit.missing_scopes.includes(s));
+        if (missingRequired.length > 0) {
+          console.warn(`[migration-orchestrator] Preflight FAILED for ${target_account}/${domain}: missing scopes=${missingRequired.join(', ')}`);
+          return new Response(JSON.stringify({
+            success: false,
+            error: `GHL token for "${target_account}" account is missing required scopes for ${domain}: ${missingRequired.join(', ')}. Update the Private Integration Token's scopes and retry.`,
+            preflight_failed: true,
+            missing_scopes: missingRequired,
+            token_audit: tokenAudit,
+            documentation_url: GHL_SCOPE_DOCS_URL,
+          }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        console.log(`[migration-orchestrator] Preflight OK for ${target_account}/${domain}: kind=${tokenAudit.token_kind} all required scopes present`);
+      } catch (preflightErr: any) {
+        console.error('[migration-orchestrator] Preflight threw:', preflightErr.message);
+        // Don't fail the job for a transient probe error; record and proceed.
+        tokenAudit = { error: preflightErr.message?.substring(0, 240), preflight_threw: true };
+      }
+    }
 
     // Create job row
     const jobId = await createJob(supabase, {
@@ -98,6 +135,8 @@ Deno.serve(async (req) => {
         ...payload,
         triggered_by: userId,
         triggered_at: new Date().toISOString(),
+        token_audit: tokenAudit,         // run-level audit for live runs
+        preflight_skipped: dry_run || skipPreflight,
       },
       created_by: userId === 'service_role' ? null : userId,
     });

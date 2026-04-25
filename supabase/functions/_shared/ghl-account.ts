@@ -214,6 +214,286 @@ export async function resolveGhlAccessTokenForLocation(creds: GhlCredentials): P
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Scope probing — verify a token has the scopes required for live migration
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type GhlScopeKey =
+  | 'contacts.readonly'
+  | 'contacts.write'
+  | 'opportunities.readonly'
+  | 'opportunities.write'
+  | 'contacts/notes.write'
+  | 'conversations.readonly'
+  | 'locations.readonly';
+
+export interface GhlScopeProbeResult {
+  scope: GhlScopeKey;
+  required_for: string[];           // e.g. ['contacts', 'opportunities']
+  ok: boolean;
+  http_status: number | null;
+  error_code: string | null;        // GHL error code or our parsed token (e.g. GHL_401_SCOPE)
+  error_message: string | null;
+  endpoint: string;
+  method: string;
+}
+
+export interface GhlCredentialAudit {
+  account: GhlAccount;
+  token_format: GhlTokenDiagnostics['token_format'];
+  token_type_hint: GhlTokenDiagnostics['token_type_hint'];
+  token_kind: 'private_integration_token' | 'oauth_jwt' | 'legacy_api_key' | 'unknown';
+  has_location_id: boolean;
+  location_id_matches_secret: boolean | null;
+  expires_at: string | null;
+  exchange_attempted: boolean;
+  exchange_succeeded: boolean | null;
+  exchange_error: string | null;
+  scope_probes: GhlScopeProbeResult[];
+  required_scopes_ok: boolean;
+  missing_scopes: GhlScopeKey[];
+  documentation_url: string;
+}
+
+export const GHL_SCOPE_DOCS_URL =
+  'https://highlevel.stoplight.io/docs/integrations/ZG9jOjI4MzkxNDg4-authorization';
+
+/**
+ * Classify what kind of token this is. PIT and OAuth JWTs both start with eyJ;
+ * we use payload presence of `authClass` (PIT) vs `companyId/locationId` (OAuth)
+ * heuristically.
+ */
+function classifyTokenKind(apiKey: string | undefined): GhlCredentialAudit['token_kind'] {
+  if (!apiKey) return 'unknown';
+  if (!apiKey.startsWith('eyJ')) return 'legacy_api_key';
+  const payload = decodeJwtPayload(apiKey);
+  if (!payload) return 'unknown';
+  // PIT tokens generally embed authClass = 'Location' and an oauthMeta
+  if (payload.authClass === 'Location' || payload.tokenType === 'pit' || payload.scopes) {
+    return 'private_integration_token';
+  }
+  if (payload.companyId || payload.locationId || payload.aud === 'gohighlevel') {
+    return 'oauth_jwt';
+  }
+  return 'unknown';
+}
+
+/** Map a domain to the scopes a live migration job into that domain requires. */
+export function requiredScopesForDomain(domain: string): GhlScopeKey[] {
+  switch (domain) {
+    case 'contacts':
+      return ['locations.readonly', 'contacts.readonly', 'contacts.write'];
+    case 'opportunities':
+      return ['locations.readonly', 'contacts.readonly', 'opportunities.readonly', 'opportunities.write'];
+    case 'notes':
+      return ['locations.readonly', 'contacts.readonly', 'contacts/notes.write'];
+    case 'conversations':
+      return ['locations.readonly', 'conversations.readonly'];
+    default:
+      return ['locations.readonly'];
+  }
+}
+
+interface ProbeSpec {
+  scope: GhlScopeKey;
+  required_for: string[];
+  method: 'GET' | 'POST';
+  buildUrl: (locationId: string) => string;
+  body?: Record<string, any> | ((locationId: string) => Record<string, any>);
+  /** Status codes that *prove* the scope is granted (even if the entity doesn't exist). */
+  okStatuses?: number[];
+}
+
+/**
+ * Each probe is the cheapest possible call that exercises the scope.
+ * We deliberately use endpoints that 4xx (404/422) on missing data but only
+ * return 401/403 when the *scope* is missing.
+ */
+const PROBES: ProbeSpec[] = [
+  {
+    scope: 'locations.readonly',
+    required_for: ['contacts', 'opportunities', 'notes', 'conversations'],
+    method: 'GET',
+    buildUrl: (loc) => `${GHL_API_BASE}/locations/${loc}`,
+  },
+  {
+    scope: 'contacts.readonly',
+    required_for: ['contacts', 'opportunities', 'notes'],
+    method: 'GET',
+    buildUrl: (loc) => `${GHL_API_BASE}/contacts/?locationId=${loc}&limit=1`,
+  },
+  {
+    scope: 'contacts.write',
+    required_for: ['contacts'],
+    method: 'POST',
+    buildUrl: () => `${GHL_API_BASE}/contacts/upsert`,
+    // Intentional: missing locationId → 422 if scope OK, 401/403 if not.
+    body: () => ({ firstName: '__lovable_scope_probe__' }),
+    okStatuses: [200, 201, 400, 422],
+  },
+  {
+    scope: 'opportunities.readonly',
+    required_for: ['opportunities'],
+    method: 'GET',
+    buildUrl: (loc) => `${GHL_API_BASE}/opportunities/search?location_id=${loc}&limit=1`,
+  },
+  {
+    scope: 'opportunities.write',
+    required_for: ['opportunities'],
+    method: 'POST',
+    buildUrl: () => `${GHL_API_BASE}/opportunities/`,
+    body: (loc) => ({ locationId: loc /* missing required pipelineId → 422, not 401 */ }),
+    okStatuses: [200, 201, 400, 422],
+  },
+  {
+    scope: 'contacts/notes.write',
+    required_for: ['notes'],
+    method: 'POST',
+    // GHL note creation requires a contactId; we use an obviously fake one.
+    // Result: 404/422 if scope OK, 401/403 if scope missing.
+    buildUrl: () => `${GHL_API_BASE}/contacts/__lovable_probe_invalid__/notes/`,
+    body: () => ({ body: 'scope probe' }),
+    okStatuses: [200, 201, 400, 404, 422],
+  },
+  {
+    scope: 'conversations.readonly',
+    required_for: ['conversations'],
+    method: 'GET',
+    buildUrl: (loc) => `${GHL_API_BASE}/conversations/search?locationId=${loc}&limit=1`,
+  },
+];
+
+/**
+ * Probe each scope. Returns per-scope results plus an aggregate audit object
+ * suitable for stamping into migration_jobs.payload.token_audit.
+ */
+export async function probeGhlCredentialScopes(
+  account: GhlAccount,
+  options: { domains?: string[] } = {},
+): Promise<GhlCredentialAudit> {
+  const creds = getGhlCredentials(account);
+  const diagnostics = getGhlTokenDiagnostics(creds);
+  const tokenKind = classifyTokenKind(creds.apiKey);
+
+  const audit: GhlCredentialAudit = {
+    account,
+    token_format: diagnostics.token_format,
+    token_type_hint: diagnostics.token_type_hint,
+    token_kind: tokenKind,
+    has_location_id: Boolean(creds.locationId),
+    location_id_matches_secret: diagnostics.location_id_matches_secret,
+    expires_at: diagnostics.expires_at,
+    exchange_attempted: false,
+    exchange_succeeded: null,
+    exchange_error: null,
+    scope_probes: [],
+    required_scopes_ok: false,
+    missing_scopes: [],
+    documentation_url: GHL_SCOPE_DOCS_URL,
+  };
+
+  if (!creds.apiKey || !creds.locationId) {
+    return audit;
+  }
+
+  // For agency/main tokens, attempt token exchange first so probes use the right token.
+  let probeToken = creds.apiKey;
+  if (diagnostics.token_type_hint === 'agency_or_main') {
+    const resolved = await resolveGhlAccessTokenForLocation(creds);
+    probeToken = resolved.accessToken;
+    audit.exchange_attempted = resolved.diagnostics.exchange_attempted ?? false;
+    audit.exchange_succeeded = resolved.diagnostics.exchange_succeeded ?? null;
+    audit.exchange_error = resolved.diagnostics.exchange_error ?? null;
+  }
+
+  const headers = buildGhlHeaders(probeToken);
+  const restrictDomains = options.domains;
+
+  for (const probe of PROBES) {
+    if (restrictDomains && !probe.required_for.some((d) => restrictDomains.includes(d))) {
+      continue;
+    }
+    const url = probe.buildUrl(creds.locationId);
+    let result: GhlScopeProbeResult = {
+      scope: probe.scope,
+      required_for: probe.required_for,
+      ok: false,
+      http_status: null,
+      error_code: null,
+      error_message: null,
+      endpoint: url.replace(GHL_API_BASE, ''),
+      method: probe.method,
+    };
+
+    try {
+      const init: RequestInit = { method: probe.method, headers };
+      if (probe.method === 'POST') {
+        const bodyObj = typeof probe.body === 'function' ? probe.body(creds.locationId) : probe.body;
+        init.body = JSON.stringify(bodyObj ?? {});
+      }
+      const res = await fetch(url, init);
+      const status = res.status;
+      const text = await res.text();
+      result.http_status = status;
+
+      if (status === 401 || status === 403) {
+        const parsed = parseGhlError(text);
+        result.ok = false;
+        result.error_code = parsed.error_code || `GHL_${status}_SCOPE`;
+        result.error_message = parsed.message || text.substring(0, 240);
+      } else if (probe.okStatuses && probe.okStatuses.includes(status)) {
+        result.ok = true;
+      } else if (status >= 200 && status < 300) {
+        result.ok = true;
+      } else {
+        // Non-auth failure (404/422 on read GET we didn't whitelist, 500, etc.)
+        // Treat as scope-OK if the response body doesn't mention scope/auth.
+        const lower = text.toLowerCase();
+        const looksLikeScope = lower.includes('scope') || lower.includes('not authorized');
+        result.ok = !looksLikeScope;
+        if (!result.ok) {
+          const parsed = parseGhlError(text);
+          result.error_code = parsed.error_code || `GHL_${status}`;
+          result.error_message = parsed.message || text.substring(0, 240);
+        }
+      }
+    } catch (err: any) {
+      result.error_code = 'NETWORK_ERROR';
+      result.error_message = err.message?.substring(0, 240) || 'Request failed';
+    }
+
+    audit.scope_probes.push(result);
+  }
+
+  audit.missing_scopes = audit.scope_probes.filter((p) => !p.ok).map((p) => p.scope);
+  audit.required_scopes_ok = audit.missing_scopes.length === 0;
+  return audit;
+}
+
+/**
+ * Parse a GHL error response body into a structured code + message.
+ * GHL responses are typically: { statusCode, message, error?, code? }
+ */
+export function parseGhlError(body: string): { error_code: string | null; message: string | null } {
+  if (!body) return { error_code: null, message: null };
+  try {
+    const json = JSON.parse(body);
+    const message = json.message || json.error || json.msg || null;
+    const explicit = json.code || json.errorCode || null;
+    let inferred: string | null = null;
+    const lower = (message || '').toLowerCase();
+    if (lower.includes('not authorized for this scope')) inferred = 'GHL_SCOPE_FORBIDDEN';
+    else if (lower.includes('invalid token') || lower.includes('jwt')) inferred = 'GHL_INVALID_TOKEN';
+    else if (lower.includes('location') && lower.includes('not found')) inferred = 'GHL_LOCATION_NOT_FOUND';
+    else if (lower.includes('rate limit')) inferred = 'GHL_RATE_LIMIT';
+    return { error_code: explicit || inferred, message };
+  } catch {
+    const lower = body.toLowerCase();
+    if (lower.includes('scope')) return { error_code: 'GHL_SCOPE_FORBIDDEN', message: body.substring(0, 240) };
+    return { error_code: null, message: body.substring(0, 240) };
+  }
+}
+
 export function describeGhlWriteAuthFailure(diagnostics: GhlTokenDiagnostics): string {
   if (diagnostics.token_type_hint === 'agency_or_main') {
     const exchange = diagnostics.exchange_attempted
