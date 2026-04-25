@@ -301,22 +301,32 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Update progress every page
+      // Update progress + checkpoint every page
       await updateJobProgress(supabase, jobId, {
         processed_items: totalProcessed,
         succeeded_items: totalSucceeded,
         failed_items: totalFailed,
       });
 
-      if (maxItems > 0 && totalProcessed >= maxItems) break;
-
       // Pagination: GHL returns either nextPage cursor or last contact's startAfter values
       const last = contacts[contacts.length - 1];
       nextStartAfterId = last?.id || null;
       nextStartAfter = last?.dateAdded || null;
+
+      // Persist cursor + last source id so a future redispatch resumes here
+      await saveCheckpoint(
+        supabase,
+        jobId,
+        { startAfterId: nextStartAfterId, startAfter: nextStartAfter },
+        last?.id || null,
+      );
+
+      if (maxItems > 0 && totalProcessed >= maxItems) break;
       if (contacts.length < PAGE_LIMIT) break;
     }
 
+    // Clear cursor on natural completion
+    await saveCheckpoint(supabase, jobId, {});
     await finishJob(supabase, jobId, totalFailed > 0 && totalSucceeded === 0 ? 'failed' : 'completed',
       totalFailed > 0 ? `Completed with ${totalFailed} failures` : undefined);
 
