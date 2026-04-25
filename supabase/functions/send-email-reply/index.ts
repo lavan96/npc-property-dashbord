@@ -1,26 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import { verifyAuth, createCorsHeaders as createAuthCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 import { logApiUsage } from '../_shared/logApiUsage.ts';
-
-// Dynamic CORS headers for credential-based requests
-function createCorsHeaders(origin: string | null): Record<string, string> {
-  const allowedOrigin = origin && (
-    origin === 'https://command-centre.npcservices.com.au' ||
-    origin.endsWith('.lovable.app') ||
-    origin.endsWith('.lovableproject.com') ||
-    origin.endsWith('.npcservices.com.au') ||
-    origin.includes('localhost')
-  )
-    ? origin 
-    : 'https://command-centre.npcservices.com.au';
-
-  return {
-    'Access-Control-Allow-Origin': allowedOrigin,
-    'Access-Control-Allow-Credentials': 'true',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-session-token',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  };
-}
 
 const clientId = Deno.env.get('MICROSOFT_CLIENT_ID');
 const clientSecret = Deno.env.get('MICROSOFT_CLIENT_SECRET');
@@ -298,7 +278,7 @@ async function getSignatureFromDatabase(supabase: any): Promise<string> {
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
-  const corsHeaders = createAuthCorsHeaders(origin);
+  const corsHeaders = createCorsHeaders(origin);
 
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
