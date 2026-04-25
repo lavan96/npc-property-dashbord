@@ -10,7 +10,13 @@
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
-import { getGhlCredentials, validateGhlCredentials, buildGhlHeaders } from '../_shared/ghl-account.ts';
+import {
+  getGhlCredentials,
+  validateGhlCredentials,
+  buildGhlHeaders,
+  resolveGhlAccessTokenForLocation,
+  describeGhlWriteAuthFailure,
+} from '../_shared/ghl-account.ts';
 import {
   startJob, finishJob, recordItem, recordIdMapping, updateJobProgress, delay,
 } from '../_shared/migration-jobs.ts';
@@ -56,7 +62,25 @@ Deno.serve(async (req) => {
     }
 
     const sourceHeaders = buildGhlHeaders(sourceCreds.apiKey!);
-    const targetHeaders = buildGhlHeaders(targetCreds.apiKey!);
+    const targetAccess = dryRun
+      ? { accessToken: targetCreds.apiKey!, diagnostics: null as any }
+      : await resolveGhlAccessTokenForLocation(targetCreds);
+    const targetHeaders = buildGhlHeaders(targetAccess.accessToken);
+    const targetAuthHint = targetAccess.diagnostics
+      ? describeGhlWriteAuthFailure(targetAccess.diagnostics)
+      : null;
+
+    if (!dryRun && targetAccess.diagnostics) {
+      console.log('[opps-worker] target token diagnostics:', JSON.stringify({
+        token_type_hint: targetAccess.diagnostics.token_type_hint,
+        has_location_id: targetAccess.diagnostics.has_location_id,
+        location_id_matches_secret: targetAccess.diagnostics.location_id_matches_secret,
+        has_company_id: targetAccess.diagnostics.has_company_id,
+        exchange_attempted: targetAccess.diagnostics.exchange_attempted || false,
+        exchange_succeeded: targetAccess.diagnostics.exchange_succeeded || false,
+        exchange_error: targetAccess.diagnostics.exchange_error || null,
+      }));
+    }
 
     console.log(`[opps-worker] job=${jobId} ${sourceAccount}→${targetAccount} dry_run=${dryRun}`);
 
