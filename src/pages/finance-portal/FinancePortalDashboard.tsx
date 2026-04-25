@@ -157,6 +157,8 @@ function QuickAction({
 /* ── Main Dashboard ── */
 export default function FinancePortalDashboard() {
   const { user, invokeFinanceFunction } = useFinancePortalAuth();
+  const { settings: brandSettings } = useBrand();
+  const brandName = brandSettings.companyName || 'the team';
 
   const { data, isLoading } = useQuery({
     queryKey: ['finance-portal-clients', user?.id],
