@@ -193,8 +193,15 @@ export async function generateBorrowingCapacityPDF(data: BorrowingCapacityExport
   const pageNum = { value: 1 };
   const a = data.assessment;
 
+  // Resolve white-label brand for cover fallback + disclaimer page
+  const __brand = (await fetchGlobalReportSettings())?.contactDetails;
+  const __brandName = (__brand?.company_name || 'Property Consulting').trim();
+  const __brandParts = __brandName.split(' ');
+  const __brandLine1 = (__brandParts.length > 1 ? __brandParts.slice(0, -1).join(' ') : __brandName).toUpperCase();
+  const __brandLine2 = __brandParts.length > 1 ? __brandParts[__brandParts.length - 1].toUpperCase() : '';
+
   // ════════════════════════════════════════════════════════════════════════════
-  // PAGE 1: COVER — standard NPC template image (no overlay text)
+  // PAGE 1: COVER — standard template image (no overlay text)
   // ════════════════════════════════════════════════════════════════════════════
   try {
     const coverImageUrl = '/templates/npc-cashflow-cover.jpg';
