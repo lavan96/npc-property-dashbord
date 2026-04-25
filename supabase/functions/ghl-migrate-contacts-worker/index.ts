@@ -15,7 +15,13 @@
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
-import { getGhlCredentials, validateGhlCredentials, buildGhlHeaders } from '../_shared/ghl-account.ts';
+import {
+  getGhlCredentials,
+  validateGhlCredentials,
+  buildGhlHeaders,
+  resolveGhlAccessTokenForLocation,
+  describeGhlWriteAuthFailure,
+} from '../_shared/ghl-account.ts';
 import {
   startJob,
   finishJob,
@@ -69,7 +75,25 @@ Deno.serve(async (req) => {
     }
 
     const sourceHeaders = buildGhlHeaders(sourceCreds.apiKey!);
-    const targetHeaders = buildGhlHeaders(targetCreds.apiKey!);
+    const targetAccess = dryRun
+      ? { accessToken: targetCreds.apiKey!, diagnostics: null as any }
+      : await resolveGhlAccessTokenForLocation(targetCreds);
+    const targetHeaders = buildGhlHeaders(targetAccess.accessToken);
+    const targetAuthHint = targetAccess.diagnostics
+      ? describeGhlWriteAuthFailure(targetAccess.diagnostics)
+      : null;
+
+    if (!dryRun && targetAccess.diagnostics) {
+      console.log('[contacts-worker] target token diagnostics:', JSON.stringify({
+        token_type_hint: targetAccess.diagnostics.token_type_hint,
+        has_location_id: targetAccess.diagnostics.has_location_id,
+        location_id_matches_secret: targetAccess.diagnostics.location_id_matches_secret,
+        has_company_id: targetAccess.diagnostics.has_company_id,
+        exchange_attempted: targetAccess.diagnostics.exchange_attempted || false,
+        exchange_succeeded: targetAccess.diagnostics.exchange_succeeded || false,
+        exchange_error: targetAccess.diagnostics.exchange_error || null,
+      }));
+    }
 
     console.log(`[contacts-worker] job=${jobId} ${sourceAccount}→${targetAccount} dry_run=${dryRun}`);
 
@@ -200,13 +224,16 @@ Deno.serve(async (req) => {
 
           if (!upRes.ok) {
             const errText = await upRes.text();
+            const authDetail = (upRes.status === 401 || upRes.status === 403) && targetAuthHint
+              ? ` ${targetAuthHint}`
+              : '';
             totalFailed++;
             await recordItem(supabase, {
               job_id: jobId,
               source_id: contact.id,
               entity_label: contactName,
               status: 'failed',
-              error_message: `${upRes.status}: ${errText.substring(0, 300)}`,
+              error_message: `${upRes.status}: ${errText.substring(0, 300)}${authDetail}`.substring(0, 900),
             });
             continue;
           }
