@@ -21,9 +21,12 @@ import {
 import {
   startJob, finishJob, recordItem, recordIdMapping, updateJobProgress, delay,
   saveCheckpoint, loadCheckpoint, partialExit, heartbeat,
+  resolveTargetContactByName,
 } from '../_shared/migration-jobs.ts';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
+// GHL hard-caps /opportunities/search at 100 per page. We request the
+// max and walk every page via cursor — there is NO total-record cap.
 const PAGE_LIMIT = 100;
 const MAX_RUNTIME_MS = 90_000;
 const RATE_LIMIT_MS = 300;
