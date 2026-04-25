@@ -8568,6 +8568,7 @@ export type Database = {
           dry_run: boolean
           error_summary: string | null
           failed_items: number
+          heartbeat_at: string | null
           id: string
           last_dispatched_at: string | null
           last_processed_source_id: string | null
@@ -8581,6 +8582,7 @@ export type Database = {
           target_account: string
           total_items: number
           updated_at: string
+          worker_lock_until: string | null
         }
         Insert: {
           auto_resume?: boolean
@@ -8592,6 +8594,7 @@ export type Database = {
           dry_run?: boolean
           error_summary?: string | null
           failed_items?: number
+          heartbeat_at?: string | null
           id?: string
           last_dispatched_at?: string | null
           last_processed_source_id?: string | null
@@ -8605,6 +8608,7 @@ export type Database = {
           target_account: string
           total_items?: number
           updated_at?: string
+          worker_lock_until?: string | null
         }
         Update: {
           auto_resume?: boolean
@@ -8616,6 +8620,7 @@ export type Database = {
           dry_run?: boolean
           error_summary?: string | null
           failed_items?: number
+          heartbeat_at?: string | null
           id?: string
           last_dispatched_at?: string | null
           last_processed_source_id?: string | null
@@ -8629,6 +8634,7 @@ export type Database = {
           target_account?: string
           total_items?: number
           updated_at?: string
+          worker_lock_until?: string | null
         }
         Relationships: [
           {
