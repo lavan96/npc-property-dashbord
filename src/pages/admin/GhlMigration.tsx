@@ -668,13 +668,21 @@ function MigrationWorkersPanel() {
                             </div>
                           </td>
                           <td className="p-2">
-                            <Badge variant={
-                              j.status === 'completed' ? 'default' :
-                              j.status === 'failed' ? 'destructive' :
-                              j.status === 'processing' ? 'secondary' : 'outline'
-                            } className="text-[10px] uppercase">
-                              {j.status}
-                            </Badge>
+                            <div className="flex items-center gap-1.5">
+                              <Badge variant={
+                                j.status === 'completed' ? 'default' :
+                                j.status === 'failed' ? 'destructive' :
+                                j.status === 'processing' ? 'secondary' : 'outline'
+                              } className="text-[10px] uppercase">
+                                {j.status}
+                              </Badge>
+                              {(j.dispatch_count ?? 0) > 0 && (
+                                <Badge variant="outline" className="gap-1 text-[10px]" title={`Worker invocations: ${j.dispatch_count}`}>
+                                  <Repeat className="h-2.5 w-2.5" />
+                                  ×{j.dispatch_count}
+                                </Badge>
+                              )}
+                            </div>
                             {j.error_summary && (
                               <div className="mt-1 max-w-xs truncate text-[10px] text-destructive" title={j.error_summary}>
                                 {j.error_summary}
