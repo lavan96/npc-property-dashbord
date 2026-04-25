@@ -32,12 +32,16 @@ import {
   delay,
   saveCheckpoint,
   loadCheckpoint,
-  selfRedispatch,
+  partialExit,
+  heartbeat,
 } from '../_shared/migration-jobs.ts';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 const PAGE_LIMIT = 100;
-const MAX_RUNTIME_MS = 350_000; // 400s wall-clock limit, leave 50s buffer for cleanup + redispatch
+// Shorter budget — the cron dispatcher resumes us within ~15s, so we
+// don't need to push 5+ minutes per invocation. Smaller batches mean
+// faster recovery from any single edge-runtime crash.
+const MAX_RUNTIME_MS = 90_000;
 const RATE_LIMIT_MS = 250;
 
 Deno.serve(async (req) => {
