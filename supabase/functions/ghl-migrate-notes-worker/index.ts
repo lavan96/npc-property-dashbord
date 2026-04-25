@@ -108,11 +108,13 @@ Deno.serve(async (req) => {
     let totalProcessed = 0, totalSucceeded = 0, totalFailed = 0, totalSkipped = 0;
     let currentOffset = startOffset;
 
+    let timeBudgetExhausted = false;
     for (const note of (notes || [])) {
-      if (Date.now() - startedAt > MAX_RUNTIME_MS) break;
+      if (Date.now() - startedAt > MAX_RUNTIME_MS) { timeBudgetExhausted = true; break; }
       if (maxItems > 0 && totalProcessed >= maxItems) break;
 
       totalProcessed++;
+      currentOffset++;
       const client = (note as any).clients;
       const sourceContactId = client?.ghl_contact_id;
       const label = `${client?.primary_first_name || ''} ${client?.primary_surname || ''}`.trim() || 'Note';
