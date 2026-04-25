@@ -229,7 +229,7 @@ Deno.serve(async (req) => {
 
     console.log(`[Appointment Notification] Sending to ${recipients.length} recipients for: ${appointmentTitle}`);
 
-    const brand = await getBrandConfig(supabase);
+    const brand = await getBrandConfig();
     const brandName = brand.companyName;
     // Derive a UID domain from the configured contact email (fallback to a stable placeholder)
     const uidDomain = (brand.contactEmail.split('@')[1] || 'command-centre.local').toLowerCase();
