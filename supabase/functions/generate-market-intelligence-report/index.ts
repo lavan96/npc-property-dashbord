@@ -9,6 +9,9 @@ interface ReportRequest {
   session_token?: string;
   report_type?: string;
   audience_segment?: string;
+  /** New canonical name. */
+  include_advisory_strategy?: boolean;
+  /** @deprecated kept for backward-compat with old callers. */
   include_npc_strategy?: boolean;
 }
 
@@ -525,7 +528,10 @@ Deno.serve(async (req) => {
     const body: ReportRequest = await req.json();
     const reportType = body.report_type || 'full';
     const audienceSegment = body.audience_segment || 'general';
-    const includeNpcStrategy = body.include_npc_strategy !== false; // default true
+    // Accept either field name (new canonical or legacy). Default true.
+    const includeAdvisoryStrategy = body.include_advisory_strategy !== undefined
+      ? body.include_advisory_strategy !== false
+      : body.include_npc_strategy !== false;
 
     // Allow internal service calls (from dispatch function) without auth
     const authHeader = req.headers.get('Authorization') || '';
@@ -562,8 +568,8 @@ Deno.serve(async (req) => {
 
     let requiredLayers = [...(REPORT_TYPE_LAYERS[reportType] || REPORT_TYPE_LAYERS.full)];
     
-    // Remove layer8 if NPC strategy is excluded
-    if (!includeNpcStrategy) {
+    // Remove layer8 if Advisory strategy is excluded
+    if (!includeAdvisoryStrategy) {
       requiredLayers = requiredLayers.filter(l => l !== 'layer8');
     }
     const audiencePrompt = AUDIENCE_SYSTEM_PROMPTS[audienceSegment] || AUDIENCE_SYSTEM_PROMPTS.general;
@@ -580,7 +586,7 @@ Deno.serve(async (req) => {
         report_period: reportPeriod,
         report_type: reportType,
         audience_segment: audienceSegment,
-        include_npc_strategy: includeNpcStrategy,
+        include_advisory_strategy: includeAdvisoryStrategy,
       })
       .select('id')
       .single();
