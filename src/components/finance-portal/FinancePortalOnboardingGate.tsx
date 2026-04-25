@@ -50,6 +50,10 @@ const buildWizardSteps = (brand: string) => [
 
 export function FinancePortalOnboardingGate() {
   const { user, acceptTerms, completeOnboarding } = useFinancePortalAuth();
+  const { settings: brandSettings } = useBrand();
+  const brandName = brandSettings.companyName || 'the operator';
+  const TERMS_BODY = buildTermsBody(brandName);
+  const WIZARD_STEPS = buildWizardSteps(brandName);
   const [agreed, setAgreed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [wizardStep, setWizardStep] = useState(0);
