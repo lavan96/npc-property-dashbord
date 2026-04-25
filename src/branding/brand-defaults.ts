@@ -39,7 +39,7 @@ export const defaultBrandConfig: BrandConfig = {
   sidebarLogo: null,
   sidebarIcon: null,
   favicon: null,
-  companyName: 'NPC Property',
+  companyName: 'Dashboard',
   primaryColor: null,
   accentColor: null,
   darkModeDefault: 'light',
