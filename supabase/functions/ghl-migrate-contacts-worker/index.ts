@@ -346,7 +346,11 @@ Deno.serve(async (req) => {
       );
 
       if (maxItems > 0 && totalProcessed >= maxItems) break;
-      if (contacts.length < PAGE_LIMIT) break;
+      // Walk every page via cursor; only an empty page (handled above) or
+      // a missing cursor is a stop signal. Removes the artificial cap that
+      // used to fire when GHL returned fewer than PAGE_LIMIT records on a
+      // mid-stream page (which it sometimes does even when more exist).
+      if (!nextStartAfterId) break;
     }
 
     // Clear cursor on natural completion + release dispatcher lock
