@@ -798,33 +798,168 @@ function CompareTable({
 // ────────────────────────────────────────────────────────────────────────────
 // Expandable per-job audit / items row
 // ────────────────────────────────────────────────────────────────────────────
-function JobDetailRow({ job }: { job: any }) {
+function JobDetailRow({ job, onChanged }: { job: any; onChanged?: () => void }) {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [breakdown, setBreakdown] = useState<Record<string, number>>({});
+  const [errorCategories, setErrorCategories] = useState<Record<string, number>>({});
+  const [retryableFailures, setRetryableFailures] = useState(0);
+  const [nonRetryableFailures, setNonRetryableFailures] = useState(0);
+  const [downloading, setDownloading] = useState(false);
+  const [redispatching, setRedispatching] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setLoading(true);
-      const res = await invokeSecureFunction<{ success: boolean; items: any[] }>(
+      const res = await invokeSecureFunction<any>(
         'migration-job-status', { job_id: job.id }, { timeoutMs: 15000 },
       );
       if (!cancelled) {
-        setItems(res.data?.items || []);
+        setItems(res.data?.items || res.data?.recent_items || []);
+        setBreakdown(res.data?.breakdown || {});
+        setErrorCategories(res.data?.error_categories || {});
+        setRetryableFailures(res.data?.retryable_failures || 0);
+        setNonRetryableFailures(res.data?.non_retryable_failures || 0);
         setLoading(false);
       }
     })();
     return () => { cancelled = true; };
-  }, [job.id]);
+  }, [job.id, job.processed_items, job.failed_items]);
 
   const tokenAudit = job.payload?.token_audit;
   const failed = items.filter((i) => i.status === 'failed');
   const skipped = items.filter((i) => i.status === 'skipped');
 
+  const downloadFailedCsv = async () => {
+    setDownloading(true);
+    try {
+      const res = await invokeSecureFunction<any>(
+        'migration-job-status',
+        { job_id: job.id, include_failed_items: true },
+        { timeoutMs: 60000 },
+      );
+      const rows: any[] = res.data?.failed_items || [];
+      if (rows.length === 0) {
+        toast.info('No failed items to export');
+        return;
+      }
+      const headers = ['source_id', 'target_id', 'entity_label', 'error_category', 'is_retryable', 'attempts', 'processed_at', 'error_message'];
+      const escape = (v: any) => {
+        if (v === null || v === undefined) return '';
+        const s = typeof v === 'string' ? v : JSON.stringify(v);
+        return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+      };
+      const csv = [
+        headers.join(','),
+        ...rows.map((r) => headers.map((h) => escape(r[h])).join(',')),
+      ].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `migration-${job.domain}-${job.id.substring(0, 8)}-failed.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success(`Exported ${rows.length} failed item${rows.length === 1 ? '' : 's'}`);
+    } catch (e: any) {
+      toast.error(e?.message || 'CSV export failed');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const manualRedispatch = async () => {
+    setRedispatching(true);
+    try {
+      const res = await invokeSecureFunction<any>('migration-orchestrator', {
+        domain: job.domain,
+        source_account: job.source_account,
+        target_account: job.target_account,
+        dry_run: job.dry_run,
+        confirmation: job.dry_run ? undefined : 'MIGRATE-LIVE',
+        payload: { ...(job.payload || {}), resume_job_id: job.id },
+        skip_preflight: true,
+      }, { timeoutMs: 30000 });
+      if (res.error || !res.data?.success) {
+        toast.error(res.error?.message || res.data?.error || 'Re-dispatch failed');
+      } else {
+        toast.success('Re-dispatch queued');
+        onChanged?.();
+      }
+    } finally {
+      setRedispatching(false);
+    }
+  };
+
+  const canRedispatch = job.status === 'failed' || job.status === 'cancelled' ||
+    (job.status === 'processing' && job.dispatch_count > 0 &&
+     job.last_dispatched_at && (Date.now() - new Date(job.last_dispatched_at).getTime() > 5 * 60_000));
+
   return (
     <tr className="border-t border-border/40 bg-muted/10">
       <td colSpan={6} className="p-3">
         <div className="space-y-3">
+          {/* Action toolbar */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={downloadFailedCsv}
+              disabled={downloading || (breakdown.failed || 0) === 0}
+              className="gap-1 h-7 text-[11px]"
+            >
+              <Download className="h-3 w-3" />
+              {downloading ? 'Exporting…' : `Export failed (${breakdown.failed || 0})`}
+            </Button>
+            {canRedispatch && (
+              <Button
+                size="sm"
+                variant="default"
+                onClick={manualRedispatch}
+                disabled={redispatching}
+                className="gap-1 h-7 text-[11px]"
+              >
+                <Play className="h-3 w-3" />
+                {redispatching ? 'Re-dispatching…' : 'Re-dispatch'}
+              </Button>
+            )}
+            <div className="ml-auto flex flex-wrap items-center gap-1.5 text-[10px]">
+              {(job.dispatch_count ?? 0) > 0 && (
+                <Badge variant="outline" className="gap-1">
+                  <Repeat className="h-2.5 w-2.5" />
+                  {job.dispatch_count} dispatch{job.dispatch_count === 1 ? '' : 'es'}
+                </Badge>
+              )}
+              {retryableFailures > 0 && (
+                <Badge variant="secondary" title="Failures that may succeed on retry (rate limits, server, network)">
+                  {retryableFailures} retryable
+                </Badge>
+              )}
+              {nonRetryableFailures > 0 && (
+                <Badge variant="destructive" title="Failures requiring user action (auth, validation, conflict)">
+                  {nonRetryableFailures} blocked
+                </Badge>
+              )}
+            </div>
+          </div>
+
+          {/* Error category breakdown */}
+          {Object.keys(errorCategories).length > 0 && (
+            <div className="rounded border border-destructive/30 bg-destructive/5 p-2 text-[11px]">
+              <div className="mb-1 font-semibold text-destructive">Failures by category</div>
+              <div className="flex flex-wrap gap-1.5">
+                {Object.entries(errorCategories).map(([cat, n]) => (
+                  <Badge key={cat} variant="outline" className="text-[10px] font-mono">
+                    {cat}: {n}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
           {tokenAudit && (
             <div className="rounded border border-border/40 bg-background/40 p-2 text-[11px]">
               <div className="mb-1 flex items-center gap-2 font-semibold">
@@ -855,25 +990,23 @@ function JobDetailRow({ job }: { job: any }) {
               {failed.length > 0 && (
                 <details open className="rounded border border-destructive/30 bg-destructive/5 p-2 text-[11px]">
                   <summary className="cursor-pointer font-semibold text-destructive">
-                    Failed items ({failed.length})
+                    Recent failed items ({failed.length})
                   </summary>
                   <div className="mt-2 max-h-64 space-y-1 overflow-auto">
                     {failed.map((it, i) => {
-                      const codeMatch = (it.error_message || '').match(/\[([A-Z0-9_]+)\]/);
-                      const code = codeMatch ? codeMatch[1] : null;
-                      const isAuth = code?.includes('401') || code?.includes('SCOPE') || code?.includes('FORBIDDEN');
+                      const cat = it.error_category || 'unknown';
+                      const retryable = it.is_retryable;
                       return (
                         <div key={i} className="rounded bg-background/60 p-1.5 font-mono text-[10px]">
                           <div className="flex items-center gap-2">
-                            {code && (
-                              <Badge variant={isAuth ? 'destructive' : 'outline'} className="text-[10px]">
-                                {code}
-                              </Badge>
-                            )}
+                            <Badge variant={retryable ? 'secondary' : 'destructive'} className="text-[10px]">
+                              {cat}
+                            </Badge>
                             <span className="font-sans font-medium">{it.entity_label || it.source_id}</span>
+                            {retryable && <span className="font-sans text-[9px] text-muted-foreground">retryable</span>}
                           </div>
                           <div className="mt-0.5 break-words text-muted-foreground">{it.error_message}</div>
-                          {isAuth && (
+                          {cat === 'auth' && (
                             <a href="https://highlevel.stoplight.io/docs/integrations/0443d7d1a4bd0-overview"
                                target="_blank" rel="noreferrer"
                                className="mt-0.5 inline-flex items-center gap-1 font-sans text-primary hover:underline">
@@ -899,7 +1032,9 @@ function JobDetailRow({ job }: { job: any }) {
                   </div>
                 </details>
               )}
-              <div className="text-[10px] text-muted-foreground">Showing the most recent {items.length} items.</div>
+              <div className="text-[10px] text-muted-foreground">
+                Showing the most recent {items.length} items. Use <strong>Export failed</strong> for the full list.
+              </div>
             </div>
           )}
         </div>
