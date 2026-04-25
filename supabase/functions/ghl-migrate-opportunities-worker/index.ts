@@ -359,7 +359,11 @@ Deno.serve(async (req) => {
         { startAfterId: pageStartAfterId, startAfter: pageStartAfter }, last?.id || null);
 
       if (maxItems > 0 && totalProcessed >= maxItems) break;
-      if (opps.length < PAGE_LIMIT) break;
+      // No artificial cap on total records: we keep paging via cursor until
+      // GHL returns an empty page (handled by the `opps.length === 0` guard above).
+      // Some GHL accounts return < PAGE_LIMIT mid-stream when filters apply,
+      // so a short page is NOT a stop signal — only an empty page is.
+      if (!last?.id) break; // no cursor advancement → would loop forever
     }
 
     await saveCheckpoint(supabase, jobId, {});
