@@ -27,7 +27,7 @@ type GenerationState =
 export function MarketIntelligenceExportButton({ reportType = 'full', reportContext = 'default', correlationData }: MarketIntelligenceExportButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState('');
-  const [includeNpcStrategy, setIncludeNpcStrategy] = useState(true);
+  const [includeAdvisoryStrategy, setIncludeAdvisoryStrategy] = useState(true);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [generationState, setGenerationState] = useState<GenerationState>({ status: 'idle' });
 
@@ -56,7 +56,7 @@ export function MarketIntelligenceExportButton({ reportType = 'full', reportCont
       const { data, error } = await invokeSecureFunction('generate-market-intelligence-report', {
         report_type: reportType,
         audience_segment: 'general',
-        include_npc_strategy: includeNpcStrategy,
+        include_advisory_strategy: includeAdvisoryStrategy,
       });
 
       if (error) throw new Error(error.message || 'Failed to generate report data');
@@ -140,9 +140,9 @@ export function MarketIntelligenceExportButton({ reportType = 'full', reportCont
                   </span>
                 </Label>
                 <Switch
-                  id="npc-strategy-toggle"
-                  checked={includeNpcStrategy}
-                  onCheckedChange={setIncludeNpcStrategy}
+                  id="advisory-strategy-toggle"
+                  checked={includeAdvisoryStrategy}
+                  onCheckedChange={setIncludeAdvisoryStrategy}
                 />
               </div>
             </div>
