@@ -605,3 +605,8 @@ request_timeout = 60
 [functions.ghl-migrate-notes-worker]
 verify_jwt = false
 request_timeout = 60
+
+[functions.ghl-test-credentials]
+verify_jwt = false
+request_timeout = 30
+
