@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 import { callLLMRaw } from '../_shared/llmRouter.ts';
+import { getBrandConfig } from '../_shared/brand-config.ts';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 

@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 import { logApiUsage } from '../_shared/logApiUsage.ts';
+import { getBrandConfig } from '../_shared/brand-config.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -1210,7 +1211,8 @@ ${sectionDef.sections.map((s, i) => `${i + 1}. ## ${s}`).join('\n')}
 
   // IMPORTANT: This is a REGENERATION - we generate COMPLETELY FRESH content
   // DO NOT reference original content - this ensures truly new analysis each time
-  const sectionPrompt = `You are an expert Australian property investment analyst for Naidu Property Consulting Services.
+  const _brandRq = await getBrandConfig();
+  const sectionPrompt = `You are an expert Australian property investment analyst for ${_brandRq.companyName}.
 You are creating a FRESH, COMPREHENSIVE section for an investment report for: ${propertyAddress}
 
 **SECTION TO CREATE:** ${sectionDef.name}
@@ -1246,7 +1248,7 @@ Generate the ${sectionDef.name} section now:`;
 
   // MUST match generate-investment-report, with regeneration note added
   // CRITICAL FIX: Removed hardcoded "$1,500 maintenance" instruction - use data-driven values from overrides
-  const systemMessage = 'You are an expert Australian property investment analyst for Naidu Property Consulting Services. You produce comprehensive, professional-grade investment reports following strict template structures. Every section is MANDATORY - do not skip any. Use extensive markdown tables for data presentation. Include detailed bullet points with explanations. Never use placeholders like "N/A" or "XX" - provide real data or realistic estimates. Use the EXACT expense values provided in the financial data context - do not substitute with defaults. This is a premium client-facing report - be thorough, professional, and data-driven.\n\nThis is a REGENERATION request: keep the exact required structure, but use fresh wording and analysis.';
+  const systemMessage = `You are an expert Australian property investment analyst for ${_brandRq.companyName}. You produce comprehensive, professional-grade investment reports following strict template structures. Every section is MANDATORY - do not skip any. Use extensive markdown tables for data presentation. Include detailed bullet points with explanations. Never use placeholders like "N/A" or "XX" - provide real data or realistic estimates. Use the EXACT expense values provided in the financial data context - do not substitute with defaults. This is a premium client-facing report - be thorough, professional, and data-driven.\n\nThis is a REGENERATION request: keep the exact required structure, but use fresh wording and analysis.`;
 
   // Retry loop - matches generate-investment-report
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
