@@ -13,7 +13,35 @@ import { toast } from 'sonner';
 import {
   ShieldAlert, RefreshCw, Eye, ArrowLeftRight, Database, Users,
   TrendingUp, MessageSquare, StickyNote, GitBranch, MapPin, AlertCircle, CheckCircle2, Lock,
+  KeyRound, ExternalLink, XCircle,
 } from 'lucide-react';
+
+interface ScopeProbe {
+  scope: string;
+  required_for: string[];
+  ok: boolean;
+  http_status: number | null;
+  error_code: string | null;
+  error_message: string | null;
+  endpoint: string;
+  method: string;
+}
+interface CredentialAudit {
+  account: 'legacy' | 'new';
+  token_kind: string;
+  token_type_hint: string;
+  token_format: string;
+  has_location_id: boolean;
+  location_id_matches_secret: boolean | null;
+  expires_at: string | null;
+  exchange_attempted: boolean;
+  exchange_succeeded: boolean | null;
+  exchange_error: string | null;
+  scope_probes: ScopeProbe[];
+  required_scopes_ok: boolean;
+  missing_scopes: string[];
+  documentation_url: string;
+}
 
 type Account = 'legacy' | 'new';
 type Domain = 'location' | 'contacts' | 'opportunities' | 'conversations' | 'notes' | 'pipelines';
