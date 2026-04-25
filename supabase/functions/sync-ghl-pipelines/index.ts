@@ -243,47 +243,61 @@ Deno.serve(async (req) => {
       const oppData: GHLOpportunitiesResponse = await oppResponse.json();
       const opportunities = oppData.opportunities || [];
 
-      console.log(`Received ${opportunities.length} opportunities on page ${pageCount}`);
+      console.log(`Received ${opportunities.length} opportunities on page ${pageCount} (meta.total: ${oppData.meta?.total ?? 'n/a'})`);
 
       if (opportunities.length === 0) break;
 
       allOpportunities = [...allOpportunities, ...opportunities];
 
       // Check for pagination (GHL may return either cursor fields or nextPageUrl)
+      let advanced = false;
+
       if (oppData.meta?.nextPageUrl) {
         // Some responses provide a fully qualified URL; others may be relative.
         const nextUrl = oppData.meta.nextPageUrl.startsWith('http')
           ? oppData.meta.nextPageUrl
           : `${GHL_API_BASE}${oppData.meta.nextPageUrl}`;
 
-        // Reset cursor vars and continue with nextPageUrl on next loop iteration
         startAfterId = null;
         startAfter = null;
 
-        // Encode the next page cursor back into startAfter/startAfterId if present in URL,
-        // otherwise we will just fetch nextUrl directly by overwriting url building.
-        // Easiest: set startAfterId/startAfter by parsing query params.
         try {
           const parsed = new URL(nextUrl);
           startAfterId = parsed.searchParams.get('startAfterId');
           const startAfterStr = parsed.searchParams.get('startAfter');
           startAfter = startAfterStr ? Number(startAfterStr) : null;
+          if (startAfterId || startAfter) advanced = true;
         } catch (_e) {
-          // If URL parsing fails, stop pagination to avoid infinite loops.
-          break;
+          advanced = false;
         }
-
-        // Continue loop (url will be rebuilt with the cursor)
-        continue;
       }
 
-      if (oppData.meta?.startAfterId) {
+      if (!advanced && oppData.meta?.startAfterId) {
         startAfterId = oppData.meta.startAfterId;
         startAfter = oppData.meta.startAfter || null;
-        continue;
+        advanced = true;
       }
 
-      break;
+      // FALLBACK: GHL sometimes omits pagination metadata even when more pages exist.
+      // If we received a full page (>=limit) but no cursor was provided, manually
+      // construct cursor from the last opportunity (id + createdAt epoch ms).
+      if (!advanced && opportunities.length >= 100) {
+        const last = opportunities[opportunities.length - 1];
+        const lastCreatedMs = last.createdAt ? new Date(last.createdAt).getTime() : null;
+        if (last?.id && lastCreatedMs) {
+          startAfterId = last.id;
+          startAfter = lastCreatedMs;
+          advanced = true;
+          console.log(`Pagination meta missing — falling back to manual cursor: startAfterId=${startAfterId}, startAfter=${startAfter}`);
+        }
+      }
+
+      if (!advanced) break;
+      // Stop early if we've collected everything GHL says exists
+      if (oppData.meta?.total && allOpportunities.length >= oppData.meta.total) {
+        console.log(`Collected ${allOpportunities.length} >= meta.total ${oppData.meta.total}, stopping.`);
+        break;
+      }
     }
 
     console.log(`========================================`);
