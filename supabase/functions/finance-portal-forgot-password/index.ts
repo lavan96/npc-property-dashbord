@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
 import { createCorsHeaders } from "../_shared/auth.ts"
+import { getBrandConfig } from "../_shared/brand-config.ts"
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
@@ -63,7 +64,7 @@ Deno.serve(async (req) => {
             'Authorization': `Bearer ${resendApiKey}`,
           },
           body: JSON.stringify({
-            from: 'NPC Services <noreply@npcservices.com.au>',
+            from: brand.fromHeader,
             to: [normalizedEmail],
             subject: 'Password Reset Code - Finance Portal',
             html: `

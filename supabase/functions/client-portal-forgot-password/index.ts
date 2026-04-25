@@ -67,7 +67,7 @@ Deno.serve(async (req) => {
             'Authorization': `Bearer ${resendApiKey}`,
           },
           body: JSON.stringify({
-            from: 'NPC Services <noreply@npcservices.com.au>',
+            from: brand.fromHeader,
             to: [normalizedEmail],
             subject: 'Password Reset Code - Client Portal',
             html: `

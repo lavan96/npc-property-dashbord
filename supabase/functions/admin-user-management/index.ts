@@ -1036,10 +1036,11 @@ Deno.serve(async (req: Request) => {
         `;
       }
 
+      const brandCfg = await getBrandConfig(supabase);
       const { error: emailError } = await resend.emails.send({
-        from: 'NPC Admin <admin@npcservices.com.au>',
+        from: brandCfg.fromHeaderAdmin,
         to: [invite_data.email],
-        subject: 'You\'re Invited to NPC Dashboard',
+        subject: `You're Invited to ${brandCfg.companyName} Dashboard`,
         html: emailContent,
       });
 

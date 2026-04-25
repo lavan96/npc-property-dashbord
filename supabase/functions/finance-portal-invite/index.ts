@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
 import { createCorsHeaders, verifyAuth } from "../_shared/auth.ts"
 import { hashPassword } from "../_shared/password.ts"
+import { getBrandConfig } from "../_shared/brand-config.ts"
 
 const INVITE_EXPIRY_HOURS = 72;
 
@@ -208,7 +209,8 @@ Deno.serve(async (req) => {
 
     // Resolve invite mode + temp password
     const useTempPassword = invite_mode === 'temp_password';
-    const resendFrom = 'NPC Services <admin@npcservices.com.au>';
+    const brand = await getBrandConfig(supabase);
+    const resendFrom = brand.fromHeaderAdmin;
     let tempPasswordPlain: string | null = null;
     let tempPasswordHash: string | null = null;
     if (useTempPassword) {
@@ -390,7 +392,7 @@ Deno.serve(async (req) => {
             text: textBody,
             headers: {
               'X-Entity-Ref-ID': inviteToken.slice(0, 36),
-              'List-Unsubscribe': `<mailto:admin@npcservices.com.au?subject=unsubscribe>`,
+              'List-Unsubscribe': `<mailto:${brand.contactEmail}?subject=unsubscribe>`,
             },
             tags: [
               { name: 'category', value: 'finance_portal_invite' },
