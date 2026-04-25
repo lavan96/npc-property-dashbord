@@ -115,7 +115,16 @@ Deno.serve(async (req) => {
     let currentOffset = startOffset;
 
     let timeBudgetExhausted = false;
+    let pausedByUser = false;
+    let cancelledByUser: 'pause' | 'cancel' | 'kill' | null = null;
     for (const note of (notes || [])) {
+      // ── Granular control: pause / cancel / kill ─────────────────────
+      // (Checked once per item — notes worker has no API page loop.)
+      if (totalProcessed % 10 === 0) {
+        const sig = await readControlSignal(supabase, jobId);
+        if (sig === 'kill' || sig === 'cancel') { cancelledByUser = sig; break; }
+        if (sig === 'pause') { pausedByUser = true; break; }
+      }
       if (Date.now() - startedAt > MAX_RUNTIME_MS) { timeBudgetExhausted = true; break; }
       if (maxItems > 0 && totalProcessed >= maxItems) break;
 
