@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
+import { fetchGlobalReportSettings } from '@/hooks/useGlobalReportSettings';
 
 interface GeneratedReport {
   id: string;
@@ -292,6 +293,9 @@ export default function ReportViewer() {
 
     setDownloading(true);
     try {
+      const __brandSettings = await fetchGlobalReportSettings();
+      const brandName = (__brandSettings?.contactDetails?.company_name || 'Property Report').trim();
+      const brandUpper = brandName.toUpperCase();
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
