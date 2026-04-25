@@ -68,31 +68,50 @@ function buildStructuredConfig(settings: WhiteLabelSettings) {
 function mapDatabaseSettings(data: Record<string, unknown>): WhiteLabelSettings {
   const rawThemeConfig = (data.theme_config as Partial<BrandThemeConfig> | null | undefined) ?? null;
   const rawLogoConfig = (data.logo_config as Partial<BrandLogoConfig> | null | undefined) ?? null;
-  const themeConfig = mergeThemeConfig(rawThemeConfig);
-  const logoConfig = mergeLogoConfig(rawLogoConfig);
+
+  // Backward compatibility: prefer raw structured values, otherwise fall back to legacy
+  // flat columns. This guarantees presets saved before theme_version=2 keep rendering
+  // exactly as they did before the JSONB columns existed.
+  const rawSig = (rawThemeConfig?.emailSignature ?? {}) as Partial<EmailSignatureSettings>;
+  const emailSignature: EmailSignatureSettings = {
+    banner: rawSig.banner ?? (data.email_signature_banner as string) ?? null,
+    name: rawSig.name ?? (data.email_signature_name as string) ?? defaultEmailSignature.name,
+    title: rawSig.title ?? (data.email_signature_title as string) ?? defaultEmailSignature.title,
+    phone: rawSig.phone ?? (data.email_signature_phone as string) ?? '',
+    email: rawSig.email ?? (data.email_signature_email as string) ?? '',
+    website: rawSig.website ?? (data.email_signature_website as string) ?? '',
+    address: rawSig.address ?? (data.email_signature_address as string) ?? '',
+    disclaimer: rawSig.disclaimer ?? (data.email_signature_disclaimer as string) ?? defaultEmailSignature.disclaimer,
+  };
+
+  const themeConfig: BrandThemeConfig = {
+    primaryColor: rawThemeConfig?.primaryColor ?? (data.primary_color as string) ?? null,
+    accentColor: rawThemeConfig?.accentColor ?? (data.accent_color as string) ?? null,
+    darkModeDefault:
+      (rawThemeConfig?.darkModeDefault as ThemeMode | undefined) ??
+      (data.dark_mode_default as ThemeMode) ??
+      defaultBrandThemeConfig.darkModeDefault,
+    emailSignature,
+  };
+
+  const logoConfig: BrandLogoConfig = {
+    auth: rawLogoConfig?.auth ?? (data.auth_logo as string) ?? null,
+    sidebar: rawLogoConfig?.sidebar ?? (data.sidebar_logo as string) ?? null,
+    sidebarIcon: rawLogoConfig?.sidebarIcon ?? (data.sidebar_icon as string) ?? null,
+    favicon: rawLogoConfig?.favicon ?? (data.favicon as string) ?? null,
+  };
 
   return {
     id: data.id as string,
-    authLogo: logoConfig.auth || (data.auth_logo as string) || null,
-    sidebarLogo: logoConfig.sidebar || (data.sidebar_logo as string) || null,
-    sidebarIcon: logoConfig.sidebarIcon || (data.sidebar_icon as string) || null,
-    favicon: logoConfig.favicon || (data.favicon as string) || null,
+    authLogo: logoConfig.auth,
+    sidebarLogo: logoConfig.sidebar,
+    sidebarIcon: logoConfig.sidebarIcon,
+    favicon: logoConfig.favicon,
     companyName: (data.company_name as string) || defaultBrandConfig.companyName,
-    primaryColor: themeConfig.primaryColor || (data.primary_color as string) || null,
-    accentColor: themeConfig.accentColor || (data.accent_color as string) || null,
-    darkModeDefault: themeConfig.darkModeDefault || (data.dark_mode_default as ThemeMode) || defaultBrandConfig.darkModeDefault,
-    emailSignature: mergeThemeConfig({
-      emailSignature: {
-        banner: themeConfig.emailSignature.banner || (data.email_signature_banner as string) || null,
-        name: themeConfig.emailSignature.name || (data.email_signature_name as string) || defaultEmailSignature.name,
-        title: themeConfig.emailSignature.title || (data.email_signature_title as string) || defaultEmailSignature.title,
-        phone: themeConfig.emailSignature.phone || (data.email_signature_phone as string) || '',
-        email: themeConfig.emailSignature.email || (data.email_signature_email as string) || '',
-        website: themeConfig.emailSignature.website || (data.email_signature_website as string) || '',
-        address: themeConfig.emailSignature.address || (data.email_signature_address as string) || '',
-        disclaimer: themeConfig.emailSignature.disclaimer || (data.email_signature_disclaimer as string) || defaultEmailSignature.disclaimer,
-      },
-    }).emailSignature,
+    primaryColor: themeConfig.primaryColor,
+    accentColor: themeConfig.accentColor,
+    darkModeDefault: themeConfig.darkModeDefault,
+    emailSignature,
     themeConfig,
     logoConfig,
     themeVersion: (data.theme_version as number) || 1,
