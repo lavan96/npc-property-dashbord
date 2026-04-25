@@ -346,7 +346,7 @@ Deno.serve(async (req) => {
     await logApiUsage(supabase, {
       service_name: 'microsoft-graph',
       endpoint: '/v1.0/users/sendMail',
-      status: results.every(r => r.success) ? 'success' : 'partial',
+      status: results.every(r => r.success) ? 'success' : 'error',
       model_used: 'graph-api',
       metadata: {
         function: 'send-appointment-notification',
