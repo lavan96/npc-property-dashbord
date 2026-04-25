@@ -198,7 +198,7 @@ This report includes:
 If you have any questions about the report or would like to discuss your investment strategy, please don't hesitate to reach out.
 
 Best regards,
-NPC Team`
+The Team`
       );
 
       logActivityDirect({
@@ -632,13 +632,13 @@ NPC Team`
                               variant={property.sourced_by === 'npc' ? 'default' : 'outline'}
                               className={
                                 property.sourced_by === 'npc' 
-                                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white' 
+                                  ? 'bg-success hover:bg-success/90 text-success-foreground' 
                                   : property.sourced_by === 'self_sourced'
-                                    ? 'border-blue-500 text-blue-700 bg-blue-50'
-                                    : 'border-orange-500 text-orange-700 bg-orange-50'
+                                    ? 'border-info text-info bg-info/10'
+                                    : 'border-warning text-warning bg-warning/10'
                               }
                             >
-                              {property.sourced_by === 'npc' ? '🏆 NPC Sourced' 
+                              {property.sourced_by === 'npc' ? '🏆 Our Deal' 
                                 : property.sourced_by === 'self_sourced' ? 'Self Sourced' 
                                 : property.sourced_by === 'other_agency' ? 'Other Agency' 
                                 : property.sourced_by}
