@@ -111,6 +111,8 @@ Deno.serve(async (req) => {
     const payload = body.payload || {};
     const maxItems = Number(payload.max_items) || 0; // 0 = no cap
     const preserveCsvStructure = payload.preserve_csv_structure !== false;
+    const allowNameDedupe = payload.allow_name_dedupe === true;
+    const forceReingest = payload.force_reingest === true;
 
     if (!jobId) return new Response(JSON.stringify({ error: 'job_id required' }), { status: 400 });
 
@@ -157,10 +159,14 @@ Deno.serve(async (req) => {
     let unknownPlaceholderNames = 0;
     let skippedMissingContactMethod = 0;
     let skippedJunkName = 0;
+    let skippedByNameDedupe = 0;
     let preservedLegacySourceCount = 0;
     let scientificPhoneNormalized = 0;
+    let staleMappingsRehydrated = 0;
+    let skippedByVerifiedMapping = 0;
     let firstPage = true;
     let totalEstimate = 0;
+    const contactExistenceCache = new Map<string, boolean>();
 
     // Resume from saved checkpoint (if this is a redispatch)
     const checkpoint = await loadCheckpoint(supabase, jobId);
@@ -321,50 +327,81 @@ Deno.serve(async (req) => {
           .eq('target_account_label', targetAccount)
           .maybeSingle();
 
-        if (existing?.new_ghl_id) {
-          totalSkipped++;
-          await recordItem(supabase, {
-            job_id: jobId,
-            source_id: contact.id,
-            target_id: existing.new_ghl_id,
-            entity_label: contactName,
-            status: 'skipped',
-            error_message: 'Already mapped',
-          });
-          continue;
-        }
+        if (existing?.new_ghl_id && !forceReingest) {
+          let existsInTarget = contactExistenceCache.get(existing.new_ghl_id);
+          if (existsInTarget === undefined) {
+            const verifyRes = await fetch(`${GHL_API_BASE}/contacts/${existing.new_ghl_id}`, { headers: targetHeaders });
+            if (verifyRes.ok) {
+              existsInTarget = true;
+            } else if (verifyRes.status === 404) {
+              existsInTarget = false;
+            } else {
+              // On auth/rate-limit/server errors, prefer safety: keep mapping
+              // and avoid duplicate creates.
+              existsInTarget = true;
+            }
+            contactExistenceCache.set(existing.new_ghl_id, existsInTarget);
+          }
 
-        // NAME-BASED DEDUPE on the SANITIZED name (project policy: full_name
-        // is source of truth). Reuses existing target contact if a sibling
-        // legacy record with the same normalized name was already mirrored.
-        const normalizedName = normalizeContactName(contactName);
-        if (normalizedName) {
-          const nameMatch = await resolveTargetContactByName(supabase, {
-            fullName: contactName,
-            sourceAccount,
-            targetAccount,
-          });
-          if (nameMatch.newId) {
-            await recordIdMapping(supabase, {
-              resource_type: 'contact',
-              old_ghl_id: contact.id,
-              new_ghl_id: nameMatch.newId,
-              source_account_label: sourceAccount,
-              target_account_label: targetAccount,
-              notes: contactName,
-            });
+          if (existsInTarget) {
+            skippedByVerifiedMapping++;
             totalSkipped++;
             await recordItem(supabase, {
               job_id: jobId,
               source_id: contact.id,
-              target_id: nameMatch.newId,
+              target_id: existing.new_ghl_id,
               entity_label: contactName,
               status: 'skipped',
-              error_message: nameMatch.ambiguous
-                ? `Reused existing target contact by name (ambiguous: ${nameMatch.candidateCount} candidates, picked latest)`
-                : 'Reused existing target contact by name',
+              error_message: 'Already mapped (verified in target)',
             });
             continue;
+          }
+
+          // Stale mapping row pointing at a deleted/non-existent target contact.
+          staleMappingsRehydrated++;
+          await supabase
+            .from('ghl_id_mapping')
+            .delete()
+            .eq('resource_type', 'contact')
+            .eq('old_ghl_id', contact.id)
+            .eq('source_account_label', sourceAccount)
+            .eq('target_account_label', targetAccount);
+        }
+
+        // Optional NAME-BASED DEDUPE. Disabled by default because name-only
+        // matching can collapse distinct contacts into one row and cause
+        // "all skipped" behaviour on repeated/common names.
+        if (allowNameDedupe) {
+          const normalizedName = normalizeContactName(contactName);
+          if (normalizedName) {
+            const nameMatch = await resolveTargetContactByName(supabase, {
+              fullName: contactName,
+              sourceAccount,
+              targetAccount,
+            });
+            if (nameMatch.newId) {
+              skippedByNameDedupe++;
+              await recordIdMapping(supabase, {
+                resource_type: 'contact',
+                old_ghl_id: contact.id,
+                new_ghl_id: nameMatch.newId,
+                source_account_label: sourceAccount,
+                target_account_label: targetAccount,
+                notes: contactName,
+              });
+              totalSkipped++;
+              await recordItem(supabase, {
+                job_id: jobId,
+                source_id: contact.id,
+                target_id: nameMatch.newId,
+                entity_label: contactName,
+                status: 'skipped',
+                error_message: nameMatch.ambiguous
+                  ? `Reused existing target contact by name (ambiguous: ${nameMatch.candidateCount} candidates, picked latest)`
+                  : 'Reused existing target contact by name',
+              });
+              continue;
+            }
           }
         }
 
@@ -592,6 +629,11 @@ Deno.serve(async (req) => {
         skipped_missing_phone_and_email: skippedMissingContactMethod,
         skipped_junk_name: skippedJunkName,
         preserve_csv_structure: preserveCsvStructure,
+        allow_name_dedupe: allowNameDedupe,
+        force_reingest: forceReingest,
+        skipped_by_name_dedupe: skippedByNameDedupe,
+        skipped_by_verified_mapping: skippedByVerifiedMapping,
+        stale_mappings_rehydrated: staleMappingsRehydrated,
         preserved_legacy_source_count: preservedLegacySourceCount,
         scientific_phone_normalized: scientificPhoneNormalized,
       },

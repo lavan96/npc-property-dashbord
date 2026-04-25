@@ -362,6 +362,8 @@ function MigrationWorkersPanel() {
   const [confirmation, setConfirmation] = useState('');
   const [dispatching, setDispatching] = useState(false);
   const [preserveCsvStructure, setPreserveCsvStructure] = useState(true);
+  const [allowNameDedupe, setAllowNameDedupe] = useState(false);
+  const [forceReingest, setForceReingest] = useState(false);
   const [jobs, setJobs] = useState<any[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(false);
 
@@ -461,6 +463,8 @@ function MigrationWorkersPanel() {
       const payload = {
         ...(max > 0 ? { max_items: max } : {}),
         preserve_csv_structure: preserveCsvStructure,
+        allow_name_dedupe: allowNameDedupe,
+        force_reingest: forceReingest,
       };
       const dispatchDomain = async (dispatchDomain: 'contacts' | 'opportunities' | 'notes' | 'conversations', extraPayload?: Record<string, any>) => {
         return invokeSecureFunction<any>('migration-orchestrator', {
@@ -616,6 +620,34 @@ function MigrationWorkersPanel() {
               <strong>Preserve legacy CSV structure</strong> (recommended): keep original source/list-like grouping signals
               (legacy <code>source</code>, tags, and metadata columns like portfolio/debt/pipeline/review fields)
               instead of flattening all contacts under one export source.
+            </span>
+          </label>
+        </div>
+        <div className="rounded-md border border-border/60 bg-muted/20 p-3">
+          <label className="flex items-start gap-2 text-xs">
+            <input
+              type="checkbox"
+              checked={forceReingest}
+              onChange={(e) => setForceReingest(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              <strong>Force re-ingest contacts</strong> (advanced): ignore existing ID mappings and recreate mapping entries.
+              Use this if prior runs left stale mappings and contacts are being skipped as already mapped.
+            </span>
+          </label>
+        </div>
+        <div className="rounded-md border border-border/60 bg-muted/20 p-3">
+          <label className="flex items-start gap-2 text-xs">
+            <input
+              type="checkbox"
+              checked={allowNameDedupe}
+              onChange={(e) => setAllowNameDedupe(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              <strong>Allow name-based dedupe</strong> (advanced, off by default): reuse target contacts by matching full name only.
+              Keep this <strong>off</strong> if you are seeing widespread skipped contacts.
             </span>
           </label>
         </div>
@@ -1534,6 +1566,11 @@ function JobDetailRow({ job, onChanged }: { job: any; onChanged?: () => void }) 
                   <div><span className="text-muted-foreground">processed:</span> <span className="font-mono">{ingestionValidation.processed ?? 0}</span></div>
                   <div><span className="text-muted-foreground">legacy source preserved:</span> <span className="font-mono">{ingestionValidation.preserved_legacy_source_count ?? 0}</span></div>
                   <div><span className="text-muted-foreground">csv structure mode:</span> <span className="font-mono">{ingestionValidation.preserve_csv_structure === false ? 'off' : 'on'}</span></div>
+                  <div><span className="text-muted-foreground">name dedupe mode:</span> <span className="font-mono">{ingestionValidation.allow_name_dedupe ? 'on' : 'off'}</span></div>
+                  <div><span className="text-muted-foreground">force re-ingest:</span> <span className="font-mono">{ingestionValidation.force_reingest ? 'on' : 'off'}</span></div>
+                  <div><span className="text-muted-foreground">skipped by name dedupe:</span> <span className="font-mono">{ingestionValidation.skipped_by_name_dedupe ?? 0}</span></div>
+                  <div><span className="text-muted-foreground">skipped by verified mapping:</span> <span className="font-mono">{ingestionValidation.skipped_by_verified_mapping ?? 0}</span></div>
+                  <div><span className="text-muted-foreground">stale mappings repaired:</span> <span className="font-mono">{ingestionValidation.stale_mappings_rehydrated ?? 0}</span></div>
                   <div><span className="text-muted-foreground">scientific phone fixed:</span> <span className="font-mono">{ingestionValidation.scientific_phone_normalized ?? 0}</span></div>
                 </div>
               )}
