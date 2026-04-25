@@ -42,6 +42,7 @@ import {
   normalizePhoneE164,
   normalizeEmail,
   smartCapitalizeName,
+  mergeJobPayload,
 } from '../_shared/migration-jobs.ts';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
@@ -51,6 +52,37 @@ const PAGE_LIMIT = 100;
 // faster recovery from any single edge-runtime crash.
 const MAX_RUNTIME_MS = 90_000;
 const RATE_LIMIT_MS = 250;
+
+function getCustomFieldValue(contact: any, ...keys: string[]): string {
+  const candidates = Array.isArray(contact?.customFields) ? contact.customFields : [];
+  if (!candidates.length) return '';
+  const normalized = keys.map((k) => k.trim().toLowerCase());
+  for (const field of candidates) {
+    const rawKey = String(field?.key || field?.id || field?.name || '').trim().toLowerCase();
+    if (!rawKey) continue;
+    if (normalized.some((k) => rawKey === k || rawKey.includes(k))) {
+      const value = field?.field_value ?? field?.value ?? '';
+      const v = String(value ?? '').trim();
+      if (v) return v;
+    }
+  }
+  return '';
+}
+
+function toIntegerString(raw: unknown): string {
+  const s = String(raw ?? '').trim();
+  if (!s) return '';
+  if (/^[-+]?\d+(\.\d+)?e[+-]?\d+$/i.test(s)) {
+    const n = Number(s);
+    if (!Number.isFinite(n)) return '';
+    return Math.trunc(n).toString();
+  }
+  const digits = s.replace(/[^0-9.-]/g, '');
+  if (!digits) return '';
+  const parsed = Number(digits);
+  if (!Number.isFinite(parsed)) return '';
+  return Math.trunc(parsed).toString();
+}
 
 Deno.serve(async (req) => {
   const startedAt = Date.now();
@@ -78,6 +110,9 @@ Deno.serve(async (req) => {
     const dryRun = body.dry_run !== false;
     const payload = body.payload || {};
     const maxItems = Number(payload.max_items) || 0; // 0 = no cap
+    const preserveCsvStructure = payload.preserve_csv_structure !== false;
+    const allowNameDedupe = payload.allow_name_dedupe === true;
+    const forceReingest = payload.force_reingest === true;
 
     if (!jobId) return new Response(JSON.stringify({ error: 'job_id required' }), { status: 400 });
 
@@ -120,8 +155,18 @@ Deno.serve(async (req) => {
     let totalSucceeded = 0;
     let totalFailed = 0;
     let totalSkipped = 0;
+    let usedRawCombinedName = 0;
+    let unknownPlaceholderNames = 0;
+    let skippedMissingContactMethod = 0;
+    let skippedJunkName = 0;
+    let skippedByNameDedupe = 0;
+    let preservedLegacySourceCount = 0;
+    let scientificPhoneNormalized = 0;
+    let staleMappingsRehydrated = 0;
+    let skippedByVerifiedMapping = 0;
     let firstPage = true;
     let totalEstimate = 0;
+    const contactExistenceCache = new Map<string, boolean>();
 
     // Resume from saved checkpoint (if this is a redispatch)
     const checkpoint = await loadCheckpoint(supabase, jobId);
@@ -239,27 +284,38 @@ Deno.serve(async (req) => {
         //   - Source set to a clean human label (no raw IDs)
         //   - Secondary contact name preserved as custom fields
         const sanitized = sanitizeContactNameParts(contact.firstName, contact.lastName);
-        const safeFirst = sanitized.firstName || (sanitized.junkReason ? '' : 'Unknown');
-        const safeLast = sanitized.lastName || (sanitized.junkReason ? '' : 'Unknown');
-        const contactName = (sanitized.fullName
+        const rawCombinedName = String(contact.contactName || contact.name || '').trim();
+        const canonicalName = sanitized.fullName || rawCombinedName;
+        if (!sanitized.fullName && rawCombinedName) usedRawCombinedName++;
+        const junkReason = canonicalName ? detectJunkContactName(canonicalName) : null;
+
+        const fallbackTokens = canonicalName.split(/\s+/).filter(Boolean);
+        const fallbackFirst = fallbackTokens[0] ? smartCapitalizeName(fallbackTokens[0]) : '';
+        const fallbackLast = fallbackTokens.length > 1 ? smartCapitalizeName(fallbackTokens.slice(1).join(' ')) : '';
+        const safeFirst = sanitized.firstName || fallbackFirst || (junkReason ? '' : 'Unknown');
+        const safeLast = sanitized.lastName || fallbackLast || (junkReason ? '' : 'Unknown');
+        const contactName = (canonicalName
           || [safeFirst, safeLast].filter(Boolean).join(' ').trim()
-          || (contact.contactName || contact.email || '').trim()
+          || (contact.email || '').trim()
           || '(no name)').trim();
 
         // Reject ONLY when the name is unambiguously junk (email/phone-as-name,
         // "test", repeated chars). "Unknown Unknown" is allowed (matches
         // reference export behaviour).
-        if (sanitized.junkReason) {
+        if (junkReason) {
+          skippedJunkName++;
           totalSkipped++;
           await recordItem(supabase, {
             job_id: jobId,
             source_id: contact.id,
             entity_label: contactName,
             status: 'skipped',
-            error_message: `Sanitization rejected: ${sanitized.junkReason}`,
+            error_message: `Sanitization rejected: ${junkReason}`,
           });
           continue;
         }
+
+        if (safeFirst === 'Unknown' || safeLast === 'Unknown') unknownPlaceholderNames++;
 
         // Check if already mirrored by source contact id
         const { data: existing } = await supabase
@@ -271,59 +327,96 @@ Deno.serve(async (req) => {
           .eq('target_account_label', targetAccount)
           .maybeSingle();
 
-        if (existing?.new_ghl_id) {
-          totalSkipped++;
-          await recordItem(supabase, {
-            job_id: jobId,
-            source_id: contact.id,
-            target_id: existing.new_ghl_id,
-            entity_label: contactName,
-            status: 'skipped',
-            error_message: 'Already mapped',
-          });
-          continue;
-        }
+        if (existing?.new_ghl_id && !forceReingest) {
+          let existsInTarget = contactExistenceCache.get(existing.new_ghl_id);
+          if (existsInTarget === undefined) {
+            const verifyRes = await fetch(`${GHL_API_BASE}/contacts/${existing.new_ghl_id}`, { headers: targetHeaders });
+            if (verifyRes.ok) {
+              existsInTarget = true;
+            } else if (verifyRes.status === 404) {
+              existsInTarget = false;
+            } else {
+              // On auth/rate-limit/server errors, prefer safety: keep mapping
+              // and avoid duplicate creates.
+              existsInTarget = true;
+            }
+            contactExistenceCache.set(existing.new_ghl_id, existsInTarget);
+          }
 
-        // NAME-BASED DEDUPE on the SANITIZED name (project policy: full_name
-        // is source of truth). Reuses existing target contact if a sibling
-        // legacy record with the same normalized name was already mirrored.
-        const normalizedName = normalizeContactName(contactName);
-        if (normalizedName) {
-          const nameMatch = await resolveTargetContactByName(supabase, {
-            fullName: contactName,
-            sourceAccount,
-            targetAccount,
-          });
-          if (nameMatch.newId) {
-            await recordIdMapping(supabase, {
-              resource_type: 'contact',
-              old_ghl_id: contact.id,
-              new_ghl_id: nameMatch.newId,
-              source_account_label: sourceAccount,
-              target_account_label: targetAccount,
-              notes: contactName,
-            });
+          if (existsInTarget) {
+            skippedByVerifiedMapping++;
             totalSkipped++;
             await recordItem(supabase, {
               job_id: jobId,
               source_id: contact.id,
-              target_id: nameMatch.newId,
+              target_id: existing.new_ghl_id,
               entity_label: contactName,
               status: 'skipped',
-              error_message: nameMatch.ambiguous
-                ? `Reused existing target contact by name (ambiguous: ${nameMatch.candidateCount} candidates, picked latest)`
-                : 'Reused existing target contact by name',
+              error_message: 'Already mapped (verified in target)',
             });
             continue;
+          }
+
+          // Stale mapping row pointing at a deleted/non-existent target contact.
+          staleMappingsRehydrated++;
+          await supabase
+            .from('ghl_id_mapping')
+            .delete()
+            .eq('resource_type', 'contact')
+            .eq('old_ghl_id', contact.id)
+            .eq('source_account_label', sourceAccount)
+            .eq('target_account_label', targetAccount);
+        }
+
+        // Optional NAME-BASED DEDUPE. Disabled by default because name-only
+        // matching can collapse distinct contacts into one row and cause
+        // "all skipped" behaviour on repeated/common names.
+        if (allowNameDedupe) {
+          const normalizedName = normalizeContactName(contactName);
+          if (normalizedName) {
+            const nameMatch = await resolveTargetContactByName(supabase, {
+              fullName: contactName,
+              sourceAccount,
+              targetAccount,
+            });
+            if (nameMatch.newId) {
+              skippedByNameDedupe++;
+              await recordIdMapping(supabase, {
+                resource_type: 'contact',
+                old_ghl_id: contact.id,
+                new_ghl_id: nameMatch.newId,
+                source_account_label: sourceAccount,
+                target_account_label: targetAccount,
+                notes: contactName,
+              });
+              totalSkipped++;
+              await recordItem(supabase, {
+                job_id: jobId,
+                source_id: contact.id,
+                target_id: nameMatch.newId,
+                entity_label: contactName,
+                status: 'skipped',
+                error_message: nameMatch.ambiguous
+                  ? `Reused existing target contact by name (ambiguous: ${nameMatch.candidateCount} candidates, picked latest)`
+                  : 'Reused existing target contact by name',
+              });
+              continue;
+            }
           }
         }
 
         // ── Healthy-shape value normalization (matches reference export)
         const cleanEmail = normalizeEmail(contact.email);
-        const cleanPhone = normalizePhoneE164(contact.phone);
+        const rawPhone = String(contact.phone || '').trim();
+        const phoneForNormalization = /^[-+]?\d+(\.\d+)?e[+-]?\d+$/i.test(rawPhone)
+          ? toIntegerString(rawPhone)
+          : rawPhone;
+        if (phoneForNormalization !== rawPhone && phoneForNormalization) scientificPhoneNormalized++;
+        const cleanPhone = normalizePhoneE164(phoneForNormalization);
 
         // GHL /contacts/upsert REQUIRES at least one of email or phone.
         if (!cleanEmail && !cleanPhone) {
+          skippedMissingContactMethod++;
           totalSkipped++;
           await recordItem(supabase, {
             job_id: jobId,
@@ -342,12 +435,17 @@ Deno.serve(async (req) => {
         const pipelineStatus = String(
           contact.pipelineStatus || contact.opportunityStatus || ''
         ).trim();
-        const mergedTags = Array.from(new Set([
-          ...sourceTags,
-          'NPC Export',                                       // fixed marker (matches reference)
-          `Migration: ${sourceAccount}→${targetAccount}`,      // audit tag
-          ...(pipelineStatus ? [`Stage: ${pipelineStatus}`] : []),
-        ]));
+        const mergedTags = preserveCsvStructure
+          ? Array.from(new Set([
+              ...sourceTags,
+              ...(pipelineStatus ? [`Stage: ${pipelineStatus}`] : []),
+            ]))
+          : Array.from(new Set([
+              ...sourceTags,
+              'NPC Export',                                       // fixed marker (matches reference)
+              `Migration: ${sourceAccount}→${targetAccount}`,      // audit tag
+              ...(pipelineStatus ? [`Stage: ${pipelineStatus}`] : []),
+            ]));
 
         // ── Secondary contact name passthrough (custom fields)
         const secondaryFirst = String(contact.secondaryFirstName || contact.secondary_first_name || '').trim();
@@ -359,6 +457,39 @@ Deno.serve(async (req) => {
             { key: 'secondary_last_name',  field_value: smartCapitalizeName(secondaryLast)  },
           );
         }
+        // Preserve legacy CSV-import structure columns so target account data
+        // mirrors the same shape used in existing exports/imports.
+        const portfolioValue = getCustomFieldValue(contact, 'portfolio_value', 'portfolio value');
+        const totalDebt = getCustomFieldValue(contact, 'total_debt', 'total debt');
+        const netCashFlow = getCustomFieldValue(contact, 'net_cash_flow', 'net cash flow');
+        const propertiesCount = getCustomFieldValue(contact, 'properties', 'properties_count');
+        const followUpInDays = getCustomFieldValue(contact, 'follow_up_in_days', 'follow up in days', 'follow_up');
+        const nextReviewDate = getCustomFieldValue(contact, 'next_review_date', 'next review');
+        const reviewFrequency = getCustomFieldValue(contact, 'review_frequency', 'review freq');
+        const pipelineStatusLegacy = getCustomFieldValue(contact, 'pipeline_status', 'pipeline stage') || pipelineStatus;
+        const ghlStatusLegacy = getCustomFieldValue(contact, 'ghl_status', 'sync_status') || 'synced';
+
+        passthroughCustomFields.push(
+          { key: 'portfolio_value', field_value: toIntegerString(portfolioValue) || '0' },
+          { key: 'total_debt', field_value: toIntegerString(totalDebt) || '0' },
+          { key: 'net_cash_flow', field_value: netCashFlow || '0' },
+          { key: 'properties', field_value: toIntegerString(propertiesCount) || '0' },
+          { key: 'pipeline_status', field_value: pipelineStatusLegacy || '' },
+          { key: 'follow_up_in_days', field_value: followUpInDays || '' },
+          { key: 'next_review_date', field_value: nextReviewDate || '' },
+          { key: 'review_frequency', field_value: reviewFrequency || 'annual' },
+          { key: 'ghl_contact_id', field_value: String(contact.id || '') },
+          { key: 'ghl_status', field_value: ghlStatusLegacy },
+        );
+        const sourceLabel = String(contact.source || '').trim();
+        const normalizedSource = sourceLabel || 'Client Management Export';
+        if (sourceLabel) preservedLegacySourceCount++;
+        passthroughCustomFields.push(
+          { key: 'legacy_contact_id', field_value: String(contact.id || '') },
+          { key: 'legacy_account_label', field_value: sourceAccount },
+          { key: 'migration_target_account', field_value: targetAccount },
+          { key: 'legacy_source', field_value: normalizedSource },
+        );
 
         if (dryRun) {
           totalSucceeded++;
@@ -389,7 +520,7 @@ Deno.serve(async (req) => {
             state: contact.state || undefined,
             postalCode: contact.postalCode || undefined,
             country: contact.country || 'Australia',          // matches reference default
-            source: 'Client Management Export',                // matches reference Source column
+            source: preserveCsvStructure ? normalizedSource : 'Client Management Export',
             customFields: passthroughCustomFields,
           };
 
@@ -485,6 +616,28 @@ Deno.serve(async (req) => {
     // Clear cursor on natural completion + release dispatcher lock
     await saveCheckpoint(supabase, jobId, {});
     try { await supabase.rpc('release_migration_job_lock', { p_job_id: jobId }); } catch {}
+    await mergeJobPayload(supabase, jobId, {
+      ingestion_validation: {
+        worker: 'contacts',
+        source_seen: totalSeen,
+        processed: totalProcessed,
+        succeeded: totalSucceeded,
+        failed: totalFailed,
+        skipped: totalSkipped,
+        used_raw_combined_name: usedRawCombinedName,
+        unknown_placeholder_names: unknownPlaceholderNames,
+        skipped_missing_phone_and_email: skippedMissingContactMethod,
+        skipped_junk_name: skippedJunkName,
+        preserve_csv_structure: preserveCsvStructure,
+        allow_name_dedupe: allowNameDedupe,
+        force_reingest: forceReingest,
+        skipped_by_name_dedupe: skippedByNameDedupe,
+        skipped_by_verified_mapping: skippedByVerifiedMapping,
+        stale_mappings_rehydrated: staleMappingsRehydrated,
+        preserved_legacy_source_count: preservedLegacySourceCount,
+        scientific_phone_normalized: scientificPhoneNormalized,
+      },
+    });
     await finishJob(supabase, jobId, totalFailed > 0 && totalSucceeded === 0 ? 'failed' : 'completed',
       totalFailed > 0 ? `Completed with ${totalFailed} failures` : undefined);
 
