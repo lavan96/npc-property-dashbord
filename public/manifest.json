@@ -1,13 +1,13 @@
 {
-  "name": "NPC Services - Command Centre",
-  "short_name": "NPC Command",
-  "description": "NPC Services property investment management dashboard",
+  "name": "Dashboard - Command Centre",
+  "short_name": "Dashboard",
+  "description": "Property investment management dashboard",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#0a0a0a",
-  "theme_color": "#d4a843",
+  "theme_color": "#0a0a0a",
   "icons": [
     {
       "src": "/favicon.ico",
@@ -15,15 +15,15 @@
       "type": "image/x-icon"
     },
     {
-      "src": "/images/npc-signature-logo.png",
+      "src": "/favicon.ico",
       "sizes": "192x192",
-      "type": "image/png",
+      "type": "image/x-icon",
       "purpose": "any"
     },
     {
-      "src": "/images/npc-signature-logo.png",
+      "src": "/favicon.ico",
       "sizes": "512x512",
-      "type": "image/png",
+      "type": "image/x-icon",
       "purpose": "any maskable"
     }
   ],

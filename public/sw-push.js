@@ -18,11 +18,11 @@ self.addEventListener('push', (event) => {
     data = { title: 'Notification', body: event.data ? event.data.text() : '' };
   }
 
-  const title = data.title || 'NPC Services';
+  const title = data.title || 'Notification';
   const options = {
     body: data.body || '',
-    icon: '/images/npc-signature-logo.png',
-    badge: '/images/npc-signature-logo.png',
+    icon: data.icon || '/favicon.ico',
+    badge: data.badge || '/favicon.ico',
     data: {
       url: data.url || '/',
       notification_id: data.notification_id || null,
