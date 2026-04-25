@@ -216,9 +216,12 @@ export async function partialExit(
   await saveCheckpoint(supabase, jobId, cursor, lastSourceId);
   await updateJobProgress(supabase, jobId, progress);
   // Release lease so dispatcher re-claims on next tick.
-  await supabase.rpc('release_migration_job_lock', { p_job_id: jobId }).catch((e: any) => {
-    console.error('[partialExit] release_lock failed:', e?.message);
-  });
+  try {
+    const { error } = await supabase.rpc('release_migration_job_lock', { p_job_id: jobId });
+    if (error) console.error('[partialExit] release_lock failed:', error.message);
+  } catch (e: any) {
+    console.error('[partialExit] release_lock threw:', e?.message);
+  }
 }
 
 /**
@@ -226,10 +229,15 @@ export async function partialExit(
  * dispatcher knows the worker is alive and extends the lease.
  */
 export async function heartbeat(supabase: any, jobId: string, leaseSeconds = 180): Promise<void> {
-  await supabase.rpc('heartbeat_migration_job', {
-    p_job_id: jobId,
-    p_lease_seconds: leaseSeconds,
-  }).catch((e: any) => console.error('[heartbeat] failed:', e?.message));
+  try {
+    const { error } = await supabase.rpc('heartbeat_migration_job', {
+      p_job_id: jobId,
+      p_lease_seconds: leaseSeconds,
+    });
+    if (error) console.error('[heartbeat] failed:', error.message);
+  } catch (e: any) {
+    console.error('[heartbeat] threw:', e?.message);
+  }
 }
 
 /**
