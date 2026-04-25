@@ -194,7 +194,7 @@ Deno.serve(async (req) => {
         const contactName = [contact.firstName, contact.lastName].filter(Boolean).join(' ') ||
           contact.contactName || contact.email || '(no name)';
 
-        // Check if already mirrored
+        // Check if already mirrored by source contact id
         const { data: existing } = await supabase
           .from('ghl_id_mapping')
           .select('new_ghl_id')
@@ -215,6 +215,44 @@ Deno.serve(async (req) => {
             error_message: 'Already mapped',
           });
           continue;
+        }
+
+        // NAME-BASED DEDUPE (project policy: full_name is source of truth).
+        // If a target contact with the same normalized name already exists,
+        // reuse its mapping instead of pushing a duplicate to GHL. This makes
+        // re-runs idempotent on the (source_id, source_name) → target_id key.
+        const normalizedName = normalizeContactName(contactName);
+        if (normalizedName) {
+          const nameMatch = await resolveTargetContactByName(supabase, {
+            fullName: contactName,
+            sourceAccount,
+            targetAccount,
+          });
+          if (nameMatch.newId) {
+            // Mirror this source contact to the existing target id under the
+            // same name. Records the mapping (so opportunities/notes resolve)
+            // and marks the row as 'skipped' with a clear reason.
+            await recordIdMapping(supabase, {
+              resource_type: 'contact',
+              old_ghl_id: contact.id,
+              new_ghl_id: nameMatch.newId,
+              source_account_label: sourceAccount,
+              target_account_label: targetAccount,
+              notes: contactName,
+            });
+            totalSkipped++;
+            await recordItem(supabase, {
+              job_id: jobId,
+              source_id: contact.id,
+              target_id: nameMatch.newId,
+              entity_label: contactName,
+              status: 'skipped',
+              error_message: nameMatch.ambiguous
+                ? `Reused existing target contact by name (ambiguous: ${nameMatch.candidateCount} candidates, picked latest)`
+                : 'Reused existing target contact by name',
+            });
+            continue;
+          }
         }
 
         // GHL /contacts/upsert REQUIRES at least one of email or phone.
