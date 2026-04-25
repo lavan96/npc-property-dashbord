@@ -8,6 +8,7 @@ import { ReportConfig } from '@/components/reports/ReportConfigModal';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction, hasActiveSession } from '@/lib/secureInvoke';
+import { fetchGlobalReportSettings } from '@/hooks/useGlobalReportSettings';
 
 interface ChartData {
   type: 'bar' | 'pie' | 'line';
@@ -492,6 +493,11 @@ export function useReportGenerator() {
       if (!hasActiveSession()) {
         throw new Error('User not authenticated. Please log in to generate reports.');
       }
+
+      // Resolve brand name (white-label aware)
+      const __brandSettings = await fetchGlobalReportSettings();
+      const brandName = (__brandSettings?.contactDetails?.company_name || 'Property Report').trim();
+      const brandUpper = brandName.toUpperCase();
       
       // Fetch chart configurations for correct type mapping
       const { data: chartConfigs, error: configError } = await supabase
