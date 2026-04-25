@@ -62,6 +62,7 @@ function generateICS(params: {
   attendeeEmail: string;
   attendeeName: string;
   uid: string;
+  brandName: string;
 }): string {
   const formatICSDate = (iso: string): string => {
     const d = new Date(iso);
@@ -79,7 +80,7 @@ function generateICS(params: {
   return [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//NPC Services//Command Centre//EN',
+    `PRODID:-//${params.brandName}//Command Centre//EN`,
     'CALSCALE:GREGORIAN',
     'METHOD:REQUEST',
     'BEGIN:VEVENT',
@@ -89,7 +90,7 @@ function generateICS(params: {
     `DTEND:${dtEnd}`,
     `SUMMARY:${escapeICS(params.title)}`,
     params.notes ? `DESCRIPTION:${escapeICS(params.notes)}` : '',
-    `ORGANIZER;CN=NPC Services:mailto:${params.organizer}`,
+    `ORGANIZER;CN=${escapeICS(params.brandName)}:mailto:${params.organizer}`,
     `ATTENDEE;CN=${escapeICS(params.attendeeName)};RSVP=TRUE:mailto:${params.attendeeEmail}`,
     'STATUS:CONFIRMED',
     'SEQUENCE:0',
