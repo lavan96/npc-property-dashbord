@@ -8504,6 +8504,121 @@ export type Database = {
         }
         Relationships: []
       }
+      migration_job_items: {
+        Row: {
+          attempts: number
+          created_at: string
+          entity_label: string | null
+          error_message: string | null
+          id: string
+          job_id: string
+          processed_at: string | null
+          source_id: string
+          status: string
+          target_id: string | null
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          entity_label?: string | null
+          error_message?: string | null
+          id?: string
+          job_id: string
+          processed_at?: string | null
+          source_id: string
+          status?: string
+          target_id?: string | null
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          entity_label?: string | null
+          error_message?: string | null
+          id?: string
+          job_id?: string
+          processed_at?: string | null
+          source_id?: string
+          status?: string
+          target_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "migration_job_items_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "migration_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      migration_jobs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          domain: string
+          dry_run: boolean
+          error_summary: string | null
+          failed_items: number
+          id: string
+          payload: Json
+          processed_items: number
+          source_account: string
+          started_at: string | null
+          status: string
+          succeeded_items: number
+          target_account: string
+          total_items: number
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          domain: string
+          dry_run?: boolean
+          error_summary?: string | null
+          failed_items?: number
+          id?: string
+          payload?: Json
+          processed_items?: number
+          source_account: string
+          started_at?: string | null
+          status?: string
+          succeeded_items?: number
+          target_account: string
+          total_items?: number
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          domain?: string
+          dry_run?: boolean
+          error_summary?: string | null
+          failed_items?: number
+          id?: string
+          payload?: Json
+          processed_items?: number
+          source_account?: string
+          started_at?: string | null
+          status?: string
+          succeeded_items?: number
+          target_account?: string
+          total_items?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "migration_jobs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       model_catalog_cache: {
         Row: {
           capabilities: string[] | null

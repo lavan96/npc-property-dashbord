@@ -312,25 +312,248 @@ export default function GhlMigration() {
         </CardContent>
       </Card>
 
-      {/* Phase 2B preview */}
-      <Card className="border-dashed">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Database className="h-4 w-4 text-muted-foreground" />
-            What happens next (Phase 2B)
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
-          <ul className="ml-4 list-disc space-y-1">
-            <li>Worker edge functions to mirror Contacts → New (with ID mapping in <code>ghl_id_mapping</code>)</li>
-            <li>Recreate Opportunities into the New account using exact stage-name matching</li>
-            <li>Backfill Notes against newly mirrored contacts</li>
-            <li>Re-pull Conversations against the chosen account into <code>ghl_conversations</code></li>
-            <li>All writes gated by typed <code>MIGRATE</code> confirmation and audited via a <code>migration_jobs</code> table</li>
-          </ul>
-        </CardContent>
-      </Card>
+      {/* Phase 2B — Migration workers */}
+      <MigrationWorkersPanel />
     </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Phase 2B: Worker dispatch + job monitor
+// ────────────────────────────────────────────────────────────────────────────
+function MigrationWorkersPanel() {
+  const [domain, setDomain] = useState<'contacts' | 'opportunities' | 'conversations' | 'notes'>('contacts');
+  const [source, setSource] = useState<Account>('legacy');
+  const [target, setTarget] = useState<Account>('new');
+  const [dryRun, setDryRun] = useState(true);
+  const [maxItems, setMaxItems] = useState<string>('25');
+  const [confirmation, setConfirmation] = useState('');
+  const [dispatching, setDispatching] = useState(false);
+  const [jobs, setJobs] = useState<any[]>([]);
+  const [loadingJobs, setLoadingJobs] = useState(false);
+
+  const refreshJobs = async () => {
+    setLoadingJobs(true);
+    try {
+      const res = await invokeSecureFunction<{ success: boolean; jobs: any[] }>(
+        'migration-job-status',
+        { list: true, limit: 15 },
+        { timeoutMs: 15000 },
+      );
+      if (res.data?.success) setJobs(res.data.jobs);
+    } finally {
+      setLoadingJobs(false);
+    }
+  };
+
+  useEffect(() => { refreshJobs(); }, []);
+  useEffect(() => {
+    const hasActive = jobs.some((j) => j.status === 'pending' || j.status === 'processing');
+    if (!hasActive) return;
+    const id = setInterval(refreshJobs, 4000);
+    return () => clearInterval(id);
+  }, [jobs]);
+
+  const dispatch = async () => {
+    if (source === target) {
+      toast.error('Source and target must differ'); return;
+    }
+    if (!dryRun && confirmation !== 'MIGRATE-LIVE') {
+      toast.error('Type MIGRATE-LIVE to confirm live writes'); return;
+    }
+    setDispatching(true);
+    try {
+      const max = parseInt(maxItems, 10);
+      const res = await invokeSecureFunction<any>('migration-orchestrator', {
+        domain, source_account: source, target_account: target, dry_run: dryRun,
+        confirmation: dryRun ? undefined : 'MIGRATE-LIVE',
+        payload: max > 0 ? { max_items: max } : {},
+      }, { timeoutMs: 30000 });
+      if (res.error || !res.data?.success) {
+        toast.error(res.error?.message || res.data?.error || 'Dispatch failed');
+      } else {
+        toast.success(`Job ${res.data.job_id.substring(0, 8)} dispatched`);
+        setConfirmation('');
+        setTimeout(refreshJobs, 1000);
+      }
+    } finally {
+      setDispatching(false);
+    }
+  };
+
+  return (
+    <Card className="border-primary/20">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Database className="h-4 w-4 text-primary" />
+          Phase 2B — Migration Workers
+          <Badge variant="outline" className="ml-2 text-[10px]">DISPATCH & MONITOR</Badge>
+        </CardTitle>
+        <CardDescription>
+          Kick off background workers to mirror Contacts/Opportunities/Notes into the target account,
+          or to re-sync Conversations from the chosen account into our local mirror.
+          Default is dry-run. Live writes require typing <code className="rounded bg-muted px-1">MIGRATE-LIVE</code>.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        {/* Dispatch form */}
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">Domain</label>
+            <Select value={domain} onValueChange={(v) => setDomain(v as any)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="contacts">Contacts</SelectItem>
+                <SelectItem value="opportunities">Opportunities</SelectItem>
+                <SelectItem value="notes">Notes</SelectItem>
+                <SelectItem value="conversations">Conversations (read-only mirror)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">Source</label>
+            <Select value={source} onValueChange={(v) => setSource(v as Account)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="legacy">LEGACY</SelectItem>
+                <SelectItem value="new">NEW</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">Target</label>
+            <Select value={target} onValueChange={(v) => setTarget(v as Account)} disabled={domain === 'conversations'}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="new">NEW</SelectItem>
+                <SelectItem value="legacy">LEGACY</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">Max items (0 = all)</label>
+            <input
+              type="number" min={0} value={maxItems}
+              onChange={(e) => setMaxItems(e.target.value)}
+              className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">Mode</label>
+            <Select value={dryRun ? 'dry' : 'live'} onValueChange={(v) => setDryRun(v === 'dry')}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="dry">DRY RUN (safe)</SelectItem>
+                <SelectItem value="live">LIVE (writes!)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {!dryRun && (
+          <Alert className="border-destructive/40 bg-destructive/5">
+            <ShieldAlert className="h-4 w-4 text-destructive" />
+            <AlertTitle className="text-destructive">LIVE MODE</AlertTitle>
+            <AlertDescription className="space-y-2 text-xs">
+              <div>This will write data to the {target.toUpperCase()} GoHighLevel account. Type <code className="rounded bg-muted px-1">MIGRATE-LIVE</code> to enable the dispatch button.</div>
+              <input
+                value={confirmation}
+                onChange={(e) => setConfirmation(e.target.value)}
+                placeholder="MIGRATE-LIVE"
+                className="w-64 rounded-md border bg-background px-3 py-1.5 text-sm font-mono"
+              />
+            </AlertDescription>
+          </Alert>
+        )}
+
+        <Button
+          onClick={dispatch}
+          disabled={dispatching || (!dryRun && confirmation !== 'MIGRATE-LIVE')}
+          variant={dryRun ? 'default' : 'destructive'}
+          className="gap-2"
+        >
+          <Database className="h-4 w-4" />
+          {dispatching ? 'Dispatching…' : dryRun ? 'Dispatch dry-run job' : 'Dispatch LIVE job'}
+        </Button>
+
+        {/* Recent jobs */}
+        <div className="space-y-2 pt-2">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold">Recent jobs</h3>
+            <Button size="sm" variant="ghost" onClick={refreshJobs} disabled={loadingJobs} className="gap-1">
+              <RefreshCw className={`h-3 w-3 ${loadingJobs ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
+          {jobs.length === 0 ? (
+            <div className="rounded-md border border-dashed p-4 text-center text-xs text-muted-foreground">
+              No jobs yet. Dispatch one above to see it appear here.
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-md border border-border/60">
+              <table className="w-full text-xs">
+                <thead className="bg-muted/40 uppercase text-muted-foreground">
+                  <tr>
+                    <th className="p-2 text-left">When</th>
+                    <th className="p-2 text-left">Domain</th>
+                    <th className="p-2 text-left">Direction</th>
+                    <th className="p-2 text-left">Mode</th>
+                    <th className="p-2 text-right">Progress</th>
+                    <th className="p-2 text-left">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {jobs.map((j) => {
+                    const pct = j.total_items > 0 ? Math.round((j.processed_items / j.total_items) * 100) : 0;
+                    return (
+                      <tr key={j.id} className="border-t border-border/40">
+                        <td className="p-2 text-muted-foreground">{new Date(j.created_at).toLocaleTimeString()}</td>
+                        <td className="p-2 font-medium">{j.domain}</td>
+                        <td className="p-2">
+                          <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase">{j.source_account}</span>
+                          <span className="mx-1 text-muted-foreground">→</span>
+                          <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] uppercase">{j.target_account}</span>
+                        </td>
+                        <td className="p-2">
+                          <Badge variant={j.dry_run ? 'secondary' : 'destructive'} className="text-[10px]">
+                            {j.dry_run ? 'DRY' : 'LIVE'}
+                          </Badge>
+                        </td>
+                        <td className="p-2 text-right tabular-nums">
+                          {j.processed_items}/{j.total_items || '?'}
+                          <span className="ml-1 text-muted-foreground">({pct}%)</span>
+                          <div className="text-[10px] text-muted-foreground">
+                            ✓ {j.succeeded_items} · ✗ {j.failed_items}
+                          </div>
+                        </td>
+                        <td className="p-2">
+                          <Badge variant={
+                            j.status === 'completed' ? 'default' :
+                            j.status === 'failed' ? 'destructive' :
+                            j.status === 'processing' ? 'secondary' : 'outline'
+                          } className="text-[10px] uppercase">
+                            {j.status}
+                          </Badge>
+                          {j.error_summary && (
+                            <div className="mt-1 max-w-xs truncate text-[10px] text-destructive" title={j.error_summary}>
+                              {j.error_summary}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <p className="text-[11px] text-muted-foreground">
+            Recommended order: <strong>Contacts</strong> first → <strong>Opportunities</strong> &amp; <strong>Notes</strong> next (they require contact ID mappings).
+            <strong> Conversations</strong> is a one-way read-only mirror into our DB.
+          </p>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
