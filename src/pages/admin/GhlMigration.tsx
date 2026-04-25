@@ -643,42 +643,47 @@ function MigrationWorkersPanel() {
                 <tbody>
                   {jobs.map((j) => {
                     const pct = j.total_items > 0 ? Math.round((j.processed_items / j.total_items) * 100) : 0;
+                    const isOpen = expandedJobId === j.id;
                     return (
-                      <tr key={j.id} className="border-t border-border/40">
-                        <td className="p-2 text-muted-foreground">{new Date(j.created_at).toLocaleTimeString()}</td>
-                        <td className="p-2 font-medium">{j.domain}</td>
-                        <td className="p-2">
-                          <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase">{j.source_account}</span>
-                          <span className="mx-1 text-muted-foreground">→</span>
-                          <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] uppercase">{j.target_account}</span>
-                        </td>
-                        <td className="p-2">
-                          <Badge variant={j.dry_run ? 'secondary' : 'destructive'} className="text-[10px]">
-                            {j.dry_run ? 'DRY' : 'LIVE'}
-                          </Badge>
-                        </td>
-                        <td className="p-2 text-right tabular-nums">
-                          {j.processed_items}/{j.total_items || '?'}
-                          <span className="ml-1 text-muted-foreground">({pct}%)</span>
-                          <div className="text-[10px] text-muted-foreground">
-                            ✓ {j.succeeded_items} · ✗ {j.failed_items}
-                          </div>
-                        </td>
-                        <td className="p-2">
-                          <Badge variant={
-                            j.status === 'completed' ? 'default' :
-                            j.status === 'failed' ? 'destructive' :
-                            j.status === 'processing' ? 'secondary' : 'outline'
-                          } className="text-[10px] uppercase">
-                            {j.status}
-                          </Badge>
-                          {j.error_summary && (
-                            <div className="mt-1 max-w-xs truncate text-[10px] text-destructive" title={j.error_summary}>
-                              {j.error_summary}
+                      <>
+                        <tr key={j.id} className="border-t border-border/40 cursor-pointer hover:bg-muted/30"
+                            onClick={() => setExpandedJobId(isOpen ? null : j.id)}>
+                          <td className="p-2 text-muted-foreground">{new Date(j.created_at).toLocaleTimeString()}</td>
+                          <td className="p-2 font-medium">{j.domain}</td>
+                          <td className="p-2">
+                            <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase">{j.source_account}</span>
+                            <span className="mx-1 text-muted-foreground">→</span>
+                            <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] uppercase">{j.target_account}</span>
+                          </td>
+                          <td className="p-2">
+                            <Badge variant={j.dry_run ? 'secondary' : 'destructive'} className="text-[10px]">
+                              {j.dry_run ? 'DRY' : 'LIVE'}
+                            </Badge>
+                          </td>
+                          <td className="p-2 text-right tabular-nums">
+                            {j.processed_items}/{j.total_items || '?'}
+                            <span className="ml-1 text-muted-foreground">({pct}%)</span>
+                            <div className="text-[10px] text-muted-foreground">
+                              ✓ {j.succeeded_items} · ✗ {j.failed_items}
                             </div>
-                          )}
-                        </td>
-                      </tr>
+                          </td>
+                          <td className="p-2">
+                            <Badge variant={
+                              j.status === 'completed' ? 'default' :
+                              j.status === 'failed' ? 'destructive' :
+                              j.status === 'processing' ? 'secondary' : 'outline'
+                            } className="text-[10px] uppercase">
+                              {j.status}
+                            </Badge>
+                            {j.error_summary && (
+                              <div className="mt-1 max-w-xs truncate text-[10px] text-destructive" title={j.error_summary}>
+                                {j.error_summary}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                        {isOpen && <JobDetailRow job={j} />}
+                      </>
                     );
                   })}
                 </tbody>
