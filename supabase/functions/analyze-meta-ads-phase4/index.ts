@@ -322,7 +322,7 @@ Deno.serve(async (req) => {
     const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
     if (authError) {
       console.log('[analyze-meta-ads-phase4] Auth failed:', authError);
-      return createUnauthorizedResponse(corsHeaders);
+      return createUnauthorizedResponse(authError, corsHeaders);
     }
     console.log('[analyze-meta-ads-phase4] Authenticated user', userId);
 
