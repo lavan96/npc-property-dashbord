@@ -844,9 +844,16 @@ function JobDetailRow({ job, onChanged }: { job: any; onChanged?: () => void }) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liveJob?.status, job.id]);
 
-  const tokenAudit = job.payload?.token_audit;
+  const tokenAudit = liveJob.payload?.token_audit;
   const failed = items.filter((i) => i.status === 'failed');
   const skipped = items.filter((i) => i.status === 'skipped');
+
+  // Best-effort cursor formatting — workers each persist their own shape
+  const cursor = liveJob.resume_cursor || {};
+  const cursorEntries = Object.entries(cursor).filter(([, v]) => v !== null && v !== undefined && v !== '');
+  const lastSourceId: string | null = liveJob.last_processed_source_id || null;
+  const lastDispatchedAt: string | null = liveJob.last_dispatched_at || null;
+  const dispatchCount: number = liveJob.dispatch_count ?? 0;
 
   const downloadFailedCsv = async () => {
     setDownloading(true);
