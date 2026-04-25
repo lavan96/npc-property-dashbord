@@ -951,10 +951,16 @@ function JobDetailRow({ job, onChanged }: { job: any; onChanged?: () => void }) 
               </Button>
             )}
             <div className="ml-auto flex flex-wrap items-center gap-1.5 text-[10px]">
-              {(job.dispatch_count ?? 0) > 0 && (
+              {liveJob.status === 'processing' && (
+                <Badge variant="secondary" className="gap-1 animate-pulse">
+                  <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                  live
+                </Badge>
+              )}
+              {dispatchCount > 0 && (
                 <Badge variant="outline" className="gap-1">
                   <Repeat className="h-2.5 w-2.5" />
-                  {job.dispatch_count} dispatch{job.dispatch_count === 1 ? '' : 'es'}
+                  {dispatchCount} dispatch{dispatchCount === 1 ? '' : 'es'}
                 </Badge>
               )}
               {retryableFailures > 0 && (
