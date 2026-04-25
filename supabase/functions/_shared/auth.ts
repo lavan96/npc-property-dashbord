@@ -286,26 +286,49 @@ export function extractSessionToken(
 /**
  * Create CORS headers with credentials support for cookies
  * Uses dynamic origin for security
+ *
+ * Allowed origins are sourced from the `ALLOWED_ORIGINS` environment variable
+ * (comma-separated list of fully-qualified URLs). Lovable platform domains
+ * (`*.lovable.app`, `*.lovableproject.com`) and `localhost` are always
+ * allowed for preview/development.
+ *
+ * SAFETY FALLBACK: If `ALLOWED_ORIGINS` is unset, we fall back to the
+ * legacy production origin so existing deployments never break. Set
+ * `ALLOWED_ORIGINS` once and remove the fallback in a future migration.
  */
+
+const LEGACY_FALLBACK_ORIGINS = [
+  'https://command-centre.npcservices.com.au',
+  'https://npc-property-dashbord.lovable.app',
+];
+
+function parseAllowedOrigins(): string[] {
+  const raw = Deno.env.get('ALLOWED_ORIGINS') || '';
+  const fromEnv = raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+
+  if (fromEnv.length > 0) {
+    return fromEnv;
+  }
+  console.warn('[auth.cors] ALLOWED_ORIGINS env var is unset; using legacy fallback origins. Set ALLOWED_ORIGINS to override.');
+  return LEGACY_FALLBACK_ORIGINS;
+}
+
 export function createCorsHeaders(origin: string | null): Record<string, string> {
-  // Allowed origins for the application
   const allowedOrigins = [
-    'https://command-centre.npcservices.com.au',
-    'https://npc-property-dashbord.lovable.app',
-    'https://id-preview--7976d60b-c277-4851-889b-c170285f4be2.lovable.app',
+    ...parseAllowedOrigins(),
     'http://localhost:5173',
     'http://localhost:8080',
   ];
-  
-  // Check if origin is allowed, default to primary domain
-  // NOTE: Lovable preview iframes often run on *.lovableproject.com.
-  // If we don't allow that, browsers will block credentialed requests (cookies)
-  // and auth/JWT issuance will silently fail with "Failed to fetch".
-  const allowedOrigin = origin && allowedOrigins.some(allowed => 
-    origin === allowed ||
+
+  // Lovable preview iframes run on *.lovable.app and *.lovableproject.com.
+  // These are platform infrastructure and are always allowed.
+  const allowedOrigin = origin && (
+    allowedOrigins.includes(origin) ||
     origin.endsWith('.lovable.app') ||
-    origin.endsWith('.lovableproject.com') ||
-    origin.endsWith('.npcservices.com.au')
+    origin.endsWith('.lovableproject.com')
   ) ? origin : allowedOrigins[0];
 
   return {
