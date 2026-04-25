@@ -84,6 +84,11 @@ function toIntegerString(raw: unknown): string {
   return Math.trunc(parsed).toString();
 }
 
+function isPlaceholderResolutionName(name: string): boolean {
+  const normalized = normalizeContactName(name);
+  return !normalized || normalized === 'unknown unknown' || normalized === 'unknown';
+}
+
 Deno.serve(async (req) => {
   const startedAt = Date.now();
 
@@ -376,7 +381,7 @@ Deno.serve(async (req) => {
         // into the new GHL account as separate contacts.
         if (allowNameDedupe) {
           const normalizedName = normalizeContactName(contactName);
-          if (normalizedName) {
+          if (normalizedName && !isPlaceholderResolutionName(contactName)) {
             const nameMatch = await resolveTargetContactByName(supabase, {
               fullName: contactName,
               sourceAccount,
