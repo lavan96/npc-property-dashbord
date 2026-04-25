@@ -393,7 +393,7 @@ export function createUnauthorizedResponse(
  */
 export function createForbiddenResponse(
   message: string = 'Access denied',
-  corsHeaders: Record<string, string>
+  corsHeaders: Record<string, string> = createCorsHeaders()
 ): Response {
   return new Response(
     JSON.stringify({ error: message, success: false }),
