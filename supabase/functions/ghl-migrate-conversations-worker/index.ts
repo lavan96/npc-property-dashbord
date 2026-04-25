@@ -197,11 +197,14 @@ Deno.serve(async (req) => {
         processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed,
       });
 
-      if (maxItems > 0 && totalProcessed >= maxItems) break;
       nextPage = data.nextPage || null;
+      await saveCheckpoint(supabase, jobId, { nextPage });
+
+      if (maxItems > 0 && totalProcessed >= maxItems) break;
       if (!nextPage || convs.length < PAGE_LIMIT) break;
     }
 
+    await saveCheckpoint(supabase, jobId, {});
     await finishJob(supabase, jobId,
       totalFailed > 0 && totalSucceeded === 0 ? 'failed' : 'completed',
       totalFailed > 0 ? `Completed with ${totalFailed} failures` : undefined,
