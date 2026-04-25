@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { smartCapitalize } from '@/lib/nameUtils';
+import { isAdvisorySourced } from '@/utils/propertySourcing';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
