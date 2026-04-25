@@ -159,7 +159,15 @@ Deno.serve(async (req) => {
         limit: String(PAGE_LIMIT),
       });
       if (nextStartAfterId) params.set('startAfterId', nextStartAfterId);
-      if (nextStartAfter) params.set('startAfter', nextStartAfter);
+      if (nextStartAfter) {
+        // GHL requires `startAfter` as a numeric millisecond timestamp,
+        // NOT an ISO date string. Convert if needed (cursor may have been
+        // saved as ISO from `contact.dateAdded` in older runs).
+        const numeric = /^\d+$/.test(String(nextStartAfter))
+          ? String(nextStartAfter)
+          : String(new Date(nextStartAfter).getTime());
+        params.set('startAfter', numeric);
+      }
 
       const res = await fetch(`${GHL_API_BASE}/contacts/?${params}`, { headers: sourceHeaders });
       if (!res.ok) {
