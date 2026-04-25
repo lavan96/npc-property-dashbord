@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { AddressAutocomplete } from '@/components/shared/AddressAutocomplete';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { ADVISORY_SOURCE, isAdvisorySourced } from '@/utils/propertySourcing';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -245,9 +246,9 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
         smsf_abn: formData.property_type === 'smsf' ? formData.smsf_abn : null,
         smsf_compliance_status: formData.property_type === 'smsf' ? formData.smsf_compliance_status : null,
         smsf_auditor_name: formData.property_type === 'smsf' ? formData.smsf_auditor_name : null,
-        // Deal sourcing
-        sourced_by: formData.sourced_by,
-        deal_closed_at: formData.sourced_by === 'npc' && formData.deal_closed_at ? formData.deal_closed_at : null,
+        // Deal sourcing — normalise legacy 'npc' to canonical 'advisory'
+        sourced_by: formData.sourced_by === 'npc' ? ADVISORY_SOURCE : formData.sourced_by,
+        deal_closed_at: isAdvisorySourced(formData.sourced_by) && formData.deal_closed_at ? formData.deal_closed_at : null,
         sourced_notes: formData.sourced_notes || null,
       };
 
@@ -264,7 +265,7 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
       }
 
       // Auto-update client deal_status when an internally-sourced property is added
-      if (formData.sourced_by === 'npc') {
+      if (isAdvisorySourced(formData.sourced_by)) {
         try {
           await invokeSecureFunction('manage-client-data', {
             operation: 'update',
@@ -477,14 +478,14 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="unknown">Unknown</SelectItem>
-                        <SelectItem value="npc">Our Agency</SelectItem>
+                        <SelectItem value="advisory">Our Agency</SelectItem>
                         <SelectItem value="client">Self-sourced (Client)</SelectItem>
                         <SelectItem value="other_agency">Other Agency</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
-                  {formData.sourced_by === 'npc' && (
+                  {isAdvisorySourced(formData.sourced_by) && (
                     <div className="space-y-2">
                       <Label>Deal Closed Date</Label>
                       <Popover>

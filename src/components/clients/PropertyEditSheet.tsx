@@ -3,6 +3,7 @@ import { AddressAutocomplete } from '@/components/shared/AddressAutocomplete';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { LenderCombobox } from './LenderCombobox';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { ADVISORY_SOURCE, isAdvisorySourced } from '@/utils/propertySourcing';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -324,8 +325,8 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
         smsf_abn: formData.property_type === 'smsf' ? formData.smsf_abn : null,
         smsf_compliance_status: formData.property_type === 'smsf' ? formData.smsf_compliance_status : null,
         smsf_auditor_name: formData.property_type === 'smsf' ? formData.smsf_auditor_name : null,
-        sourced_by: formData.sourced_by,
-        deal_closed_at: formData.sourced_by === 'npc' && formData.deal_closed_at ? formData.deal_closed_at : null,
+        sourced_by: formData.sourced_by === 'npc' ? ADVISORY_SOURCE : formData.sourced_by,
+        deal_closed_at: isAdvisorySourced(formData.sourced_by) && formData.deal_closed_at ? formData.deal_closed_at : null,
         sourced_notes: formData.sourced_notes || null,
         loan_repayment_amount: null, // deprecated — superseded by monthly_interest_repayment + repayment_type
         loan_repayment_frequency: null,
@@ -369,7 +370,7 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
       }
 
       // Auto-update client deal_status when an internally-sourced property is saved
-      if (formData.sourced_by === 'npc') {
+      if (isAdvisorySourced(formData.sourced_by)) {
         try {
           const clientUpdateData: Record<string, any> = { deal_status: 'closed' };
           if (formData.deal_closed_at) {
@@ -734,7 +735,7 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="npc">Our Deal</SelectItem>
+                        <SelectItem value="advisory">Our Deal</SelectItem>
                         <SelectItem value="self_sourced">Self-sourced by Client</SelectItem>
                         <SelectItem value="other_agency">Other Agency</SelectItem>
                         <SelectItem value="unknown">Unknown</SelectItem>
@@ -742,7 +743,7 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
                     </Select>
                   </div>
 
-                  {formData.sourced_by === 'npc' && (
+                  {isAdvisorySourced(formData.sourced_by) && (
                     <div className="space-y-2">
                       <Label>Deal Closed Date</Label>
                       <Input
@@ -753,7 +754,7 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
                     </div>
                   )}
 
-                  {(formData.sourced_by === 'other_agency' || formData.sourced_by === 'npc') && (
+                  {(formData.sourced_by === 'other_agency' || isAdvisorySourced(formData.sourced_by)) && (
                     <div className="space-y-2">
                       <Label>{formData.sourced_by === 'other_agency' ? 'Agency Name / Notes' : 'Notes'}</Label>
                       <Textarea
