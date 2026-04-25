@@ -21,6 +21,11 @@ import {
   createForbiddenResponse,
 } from '../_shared/auth.ts';
 import { createJob, type MigrationDomain } from '../_shared/migration-jobs.ts';
+import {
+  probeGhlCredentialScopes,
+  requiredScopesForDomain,
+  GHL_SCOPE_DOCS_URL,
+} from '../_shared/ghl-account.ts';
 
 const VALID_DOMAINS: MigrationDomain[] = ['contacts', 'opportunities', 'conversations', 'notes'];
 const LIVE_WRITE_CONFIRMATION = 'MIGRATE-LIVE';
