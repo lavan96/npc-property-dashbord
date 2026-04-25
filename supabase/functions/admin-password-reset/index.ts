@@ -160,14 +160,14 @@ Deno.serve(async (req: Request) => {
           <p>This code expires in 10 minutes.</p>
           <p>If you didn't request this, please ignore this email.</p>
           <p style="color: #666; font-size: 12px; margin-top: 30px;">
-            This is an automated message from NPC Dashboard.
+            This is an automated message from ${brand.companyName} Dashboard.
           </p>
         </div>
       `;
       
       const emailResult = await sendEmail(
         user.email,
-        'Password Reset OTP - NPC Dashboard',
+        `Password Reset OTP - ${brand.companyName} Dashboard`,
         emailHtml
       );
 
