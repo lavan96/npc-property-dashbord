@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
 import { createCorsHeaders } from "../_shared/auth.ts"
+import { getBrandConfig } from "../_shared/brand-config.ts"
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 
@@ -200,6 +201,9 @@ Deno.serve(async (req) => {
       const formattedDate = startDate.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Australia/Sydney' });
       const formattedTime = startDate.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', timeZone: 'Australia/Sydney' });
 
+      // Resolve sender once for both notification + confirmation emails.
+      const brand = await getBrandConfig(supabase);
+
       // Send team notification email
       if (portalConfig?.booking_team_notification_email) {
         try {
@@ -212,7 +216,7 @@ Deno.serve(async (req) => {
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({
-                from: 'notifications@npcservices.com.au',
+                from: brand.fromHeaderNotifications,
                 to: portalConfig.booking_team_notification_email,
                 subject: `New Portal Booking: ${client?.primary_first_name || ''} ${client?.primary_last_name || ''} - ${formattedDate}`,
                 html: `
@@ -243,10 +247,6 @@ Deno.serve(async (req) => {
         try {
           const resendKey = Deno.env.get('RESEND_API_KEY');
           if (resendKey) {
-            // Get company name from whitelabel
-            const { data: wl } = await supabase.from('whitelabel_settings').select('company_name').limit(1).maybeSingle();
-            const companyName = wl?.company_name || 'Property Consulting';
-
             await fetch('https://api.resend.com/emails', {
               method: 'POST',
               headers: {
@@ -254,7 +254,7 @@ Deno.serve(async (req) => {
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({
-                from: `${companyName} <notifications@npcservices.com.au>`,
+                from: brand.fromHeaderNotifications,
                 to: portalUser.email,
                 subject: `Booking Confirmed - ${formattedDate} at ${formattedTime}`,
                 html: `
