@@ -246,7 +246,90 @@ Deno.serve(async (req) => {
         }
 
         // Check if already mirrored by source contact id
-...
+        const { data: existing } = await supabase
+          .from('ghl_id_mapping')
+          .select('new_ghl_id')
+          .eq('resource_type', 'contact')
+          .eq('old_ghl_id', contact.id)
+          .eq('source_account_label', sourceAccount)
+          .eq('target_account_label', targetAccount)
+          .maybeSingle();
+
+        if (existing?.new_ghl_id) {
+          totalSkipped++;
+          await recordItem(supabase, {
+            job_id: jobId,
+            source_id: contact.id,
+            target_id: existing.new_ghl_id,
+            entity_label: contactName,
+            status: 'skipped',
+            error_message: 'Already mapped',
+          });
+          continue;
+        }
+
+        // NAME-BASED DEDUPE on the SANITIZED name (project policy: full_name
+        // is source of truth). Reuses existing target contact if a sibling
+        // legacy record with the same normalized name was already mirrored.
+        const normalizedName = normalizeContactName(contactName);
+        if (normalizedName) {
+          const nameMatch = await resolveTargetContactByName(supabase, {
+            fullName: contactName,
+            sourceAccount,
+            targetAccount,
+          });
+          if (nameMatch.newId) {
+            await recordIdMapping(supabase, {
+              resource_type: 'contact',
+              old_ghl_id: contact.id,
+              new_ghl_id: nameMatch.newId,
+              source_account_label: sourceAccount,
+              target_account_label: targetAccount,
+              notes: contactName,
+            });
+            totalSkipped++;
+            await recordItem(supabase, {
+              job_id: jobId,
+              source_id: contact.id,
+              target_id: nameMatch.newId,
+              entity_label: contactName,
+              status: 'skipped',
+              error_message: nameMatch.ambiguous
+                ? `Reused existing target contact by name (ambiguous: ${nameMatch.candidateCount} candidates, picked latest)`
+                : 'Reused existing target contact by name',
+            });
+            continue;
+          }
+        }
+
+        // GHL /contacts/upsert REQUIRES at least one of email or phone.
+        const hasEmail = !!(contact.email && String(contact.email).trim());
+        const hasPhone = !!(contact.phone && String(contact.phone).trim());
+        if (!hasEmail && !hasPhone) {
+          totalSkipped++;
+          await recordItem(supabase, {
+            job_id: jobId,
+            source_id: contact.id,
+            entity_label: contactName,
+            status: 'skipped',
+            error_message: 'No email or phone on source contact (GHL upsert requires at least one)',
+          });
+          continue;
+        }
+
+        if (dryRun) {
+          totalSucceeded++;
+          await recordItem(supabase, {
+            job_id: jobId,
+            source_id: contact.id,
+            target_id: null,
+            entity_label: contactName,
+            status: 'succeeded',
+            error_message: 'DRY RUN — would mirror (sanitized)',
+          });
+          continue;
+        }
+
         // LIVE: upsert into target account
         try {
           await delay(RATE_LIMIT_MS);
