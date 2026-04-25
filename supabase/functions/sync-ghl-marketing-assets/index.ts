@@ -261,15 +261,14 @@ Deno.serve(async (req) => {
       /* empty body = cron */
     }
 
-    // Allow service-to-service via shared secret OR authenticated admin
-    const cronSecret = req.headers.get('x-cron-secret');
-    const isCron = cronSecret && cronSecret === Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    // Auth: verifyAuth recognises service-role bearer (used by pg_cron)
+    // and authenticated user JWTs. For user JWTs, also require admin role.
+    const { error: authError, userId, authMethod } = await verifyAuth(supabase, req.headers, body);
+    if (authError) {
+      return createUnauthorizedResponse(authError, corsHeaders);
+    }
 
-    if (!isCron) {
-      const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
-      if (authError) {
-        return createUnauthorizedResponse(authError, corsHeaders);
-      }
+    if (authMethod !== 'service_role') {
       const { data: roles } = await supabase
         .from('user_roles')
         .select('role')
