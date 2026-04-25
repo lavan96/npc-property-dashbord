@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { getBrandConfig } from '../_shared/brand-config.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -647,7 +648,7 @@ Deno.serve(async (req) => {
       // If Gamma URL exists, include it
       const gammaUrl = agreement.gamma_document_url || null;
 
-      const html = generateAgreementHtml(agreement);
+      const html = await generateAgreementHtml(agreement);
       return new Response(
         JSON.stringify({ success: true, html, agreement, pdf_url: pdfSignedUrl, gamma_url: gammaUrl }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -766,7 +767,7 @@ Deno.serve(async (req) => {
       // Build the DocuSign envelope
       // We use a document generated on-the-fly containing the agreement text
       // In production, this would use the stored PDF. For now, we create an HTML document.
-      const agreementHtml = generateAgreementHtml(agreement);
+      const agreementHtml = await generateAgreementHtml(agreement);
       const base64Doc = btoa(unescape(encodeURIComponent(agreementHtml)));
 
       const envelopeDefinition = {
@@ -1063,7 +1064,7 @@ Deno.serve(async (req) => {
  * Generate the agreement HTML document for DocuSign
  * This mirrors the PDF template structure with pre-filled values
  */
-function generateAgreementHtml(agreement: any): string {
+async function generateAgreementHtml(agreement: any): Promise<string> {
   const date = agreement.agreement_date
     ? new Date(agreement.agreement_date).toLocaleDateString('en-AU', {
         day: 'numeric',
@@ -1071,6 +1072,15 @@ function generateAgreementHtml(agreement: any): string {
         year: 'numeric',
       })
     : new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  // Resolve dynamic brand identity. Falls back to safe defaults when
+  // global_report_settings is empty so legal copy never breaks.
+  const brand = await getBrandConfig();
+  const legalEntity = brand.companyName || 'Property Consulting';
+  const legalAddress = brand.contactAddress || '[Address]';
+  const legalEmail = brand.contactEmail || 'admin@example.com';
+  const legalAbn = brand.abn || '';
+  const footerLine = legalAbn ? `${legalEntity} | ABN: ${legalAbn}` : legalEntity;
 
   return `<!DOCTYPE html>
 <html>
@@ -1111,9 +1121,9 @@ function generateAgreementHtml(agreement: any): string {
   </div>
   
   <div class="party">
-    <p class="party-label">2. Naidu Group Pty Ltd T/A Naidu Property Consulting Services</p>
-    <p>Level 5, Nexus Norwest<br>4 Columbia Ct, Norwest, NSW, 2153</p>
-    <p>admin@npcservices.com.au</p>
+    <p class="party-label">2. ${legalEntity}</p>
+    <p>${legalAddress.replace(/\n/g, '<br>')}</p>
+    <p>${legalEmail}</p>
     <p>(Hereinafter referred to as "the Agent")</p>
   </div>
   
@@ -1222,19 +1232,19 @@ function generateAgreementHtml(agreement: any): string {
 <h2 style="page-break-before: always;">Terms and Conditions</h2>
 
 <h3>1.1</h3>
-<p>The client appoints (NPC Services) Naidu Property Consulting Services as their exclusive agent to perform services in respect to a property which meets the specifications provided the client, in accordance with the terms of this Agreement.</p>
+<p>The client appoints ${legalEntity} as their exclusive agent to perform services in respect to a property which meets the specifications provided the client, in accordance with the terms of this Agreement.</p>
 
 <h3>1.2</h3>
-<p>The Parties will be deemed to have accepted the terms of this agreement upon the Client's execution of this Agreement (Including Electronic Execution) or upon NPC Services receipt of any commission from the Client.</p>
+<p>The Parties will be deemed to have accepted the terms of this agreement upon the Client's execution of this Agreement (Including Electronic Execution) or upon ${legalEntity} receipt of any commission from the Client.</p>
 
 <h3>1.3</h3>
 <p>The term of this Agreement will be from the date the client accepts the terms of this agreement, after which this agreement will remain enforceable until it is terminated by either party giving (14) days' notice in writing.</p>
 
 <h3>1.4 The Client Agrees to:</h3>
-<p>1.4.1 Notify NPC Services in writing of any amendments to the personal details or property specifications.</p>
-<p>1.4.2 Always Cooperate with NPC Services.</p>
+<p>1.4.1 Notify ${legalEntity} in writing of any amendments to the personal details or property specifications.</p>
+<p>1.4.2 Always Cooperate with ${legalEntity}.</p>
 <p>1.4.3 Obtain Independent legal, financial, investment, tax and other advice pursuant to the Purchase.</p>
-<p>1.4.4 Not purchase any property which was presented by NPC Services to the client during the term.</p>
+<p>1.4.4 Not purchase any property which was presented by ${legalEntity} to the client during the term.</p>
 <p>1.4.5 Not appoint another agent to act on its behalf during the time of the term.</p>
 
 <h3>1.5</h3>
@@ -1244,34 +1254,34 @@ function generateAgreementHtml(agreement: any): string {
 <p>The Client warrants they are not subject to any earlier or concurrent agency agreement which would conflict with its obligations.</p>
 
 <h3>1.7</h3>
-<p>The Client agrees to pay the commission/sign up fee to NPC Services as specified.</p>
+<p>The Client agrees to pay the commission/sign up fee to ${legalEntity} as specified.</p>
 
 <h3>1.8</h3>
-<p>The Client agrees to pay NPC Services the applicable Commission upon the earlier of: entering a contract, purchasing or procuring that another person purchases, or becoming the legal or equitable beneficial owner of a property.</p>
+<p>The Client agrees to pay ${legalEntity} the applicable Commission upon the earlier of: entering a contract, purchasing or procuring that another person purchases, or becoming the legal or equitable beneficial owner of a property.</p>
 
 <h3>1.9</h3>
 <p>The Commission will also be payable where any of the matters in clause 1.8 arise at anytime within 12 months after termination.</p>
 
 <h3>1.10</h3>
-<p>The Client indemnifies NPC Services for all expenses, costs, and disbursements incurred in recovering any outstanding fees.</p>
+<p>The Client indemnifies ${legalEntity} for all expenses, costs, and disbursements incurred in recovering any outstanding fees.</p>
 
 <h3>1.11</h3>
-<p>The Client acknowledges that any data information or advice provided by NPC Services is of general purpose only and does not constitute financial or investment advice.</p>
+<p>The Client acknowledges that any data information or advice provided by ${legalEntity} is of general purpose only and does not constitute financial or investment advice.</p>
 
 <h3>1.12</h3>
 <p>The Client acknowledges that the market data provided is solely for the benefit of the client and may only be relied upon for the purposes of this Agreement.</p>
 
 <h3>1.13</h3>
-<p>The Client acknowledges that they are responsible for their purchasing decision and that NPC Services makes no guarantee or warranties.</p>
+<p>The Client acknowledges that they are responsible for their purchasing decision and that ${legalEntity} makes no guarantee or warranties.</p>
 
 <h3>1.14</h3>
-<p>NPC Services may recommend third parties to the client. The client acknowledges that all third parties are independent of NPC Services.</p>
+<p>${legalEntity} may recommend third parties to the client. The client acknowledges that all third parties are independent of ${legalEntity}.</p>
 
 <h3>1.15</h3>
-<p>Under no circumstances will NPC Services be liable for any indirect, incidental, special, consequential, aggravated, exemplary and/or punitive damages.</p>
+<p>Under no circumstances will ${legalEntity} be liable for any indirect, incidental, special, consequential, aggravated, exemplary and/or punitive damages.</p>
 
 <h3>1.16</h3>
-<p>The Client will indemnify and hold NPC Services harmless from any liabilities, actions, suits, proceedings, claims, demands, costs, loss, damage, and expenses of any nature.</p>
+<p>The Client will indemnify and hold ${legalEntity} harmless from any liabilities, actions, suits, proceedings, claims, demands, costs, loss, damage, and expenses of any nature.</p>
 
 <h3>1.17</h3>
 <p>Each of the terms set out in this agreement is severable and independent.</p>
@@ -1283,7 +1293,7 @@ function generateAgreementHtml(agreement: any): string {
 <p>The Client acknowledges that this agreement constitutes the whole agreement and supersedes all communications, negotiations, arrangements and agreements prior to the date of this agreement.</p>
 
 <div class="footer">
-  Naidu Group Pty Ltd T/A Naidu Property Consulting Services | ACN: 684 555 771 | ABN: 50 684 555 771
+  ${footerLine}
 </div>
 
 </body>

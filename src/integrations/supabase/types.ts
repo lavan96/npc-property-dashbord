@@ -7948,6 +7948,7 @@ export type Database = {
           generated_at: string
           generated_by: string
           id: string
+          include_advisory_strategy: boolean
           include_npc_strategy: boolean
           pdf_storage_path: string | null
           report_data: Json | null
@@ -7963,6 +7964,7 @@ export type Database = {
           generated_at?: string
           generated_by: string
           id?: string
+          include_advisory_strategy?: boolean
           include_npc_strategy?: boolean
           pdf_storage_path?: string | null
           report_data?: Json | null
@@ -7978,6 +7980,7 @@ export type Database = {
           generated_at?: string
           generated_by?: string
           id?: string
+          include_advisory_strategy?: boolean
           include_npc_strategy?: boolean
           pdf_storage_path?: string | null
           report_data?: Json | null

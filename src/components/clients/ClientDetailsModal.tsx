@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { smartCapitalize } from '@/lib/nameUtils';
+import { isAdvisorySourced } from '@/utils/propertySourcing';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -629,16 +630,16 @@ The Team`
                           {/* Sourced By Badge */}
                           {property.sourced_by && property.sourced_by !== 'unknown' && (
                             <Badge 
-                              variant={property.sourced_by === 'npc' ? 'default' : 'outline'}
+                              variant={isAdvisorySourced(property.sourced_by) ? 'default' : 'outline'}
                               className={
-                                property.sourced_by === 'npc' 
+                                isAdvisorySourced(property.sourced_by)
                                   ? 'bg-success hover:bg-success/90 text-success-foreground' 
                                   : property.sourced_by === 'self_sourced'
                                     ? 'border-info text-info bg-info/10'
                                     : 'border-warning text-warning bg-warning/10'
                               }
                             >
-                              {property.sourced_by === 'npc' ? '🏆 Our Deal' 
+                              {isAdvisorySourced(property.sourced_by) ? '🏆 Our Deal' 
                                 : property.sourced_by === 'self_sourced' ? 'Self Sourced' 
                                 : property.sourced_by === 'other_agency' ? 'Other Agency' 
                                 : property.sourced_by}

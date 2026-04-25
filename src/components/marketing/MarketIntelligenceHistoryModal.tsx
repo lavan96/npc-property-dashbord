@@ -16,7 +16,7 @@ interface ReportEntry {
   report_type: string;
   audience_segment: string;
   status: string;
-  include_npc_strategy: boolean;
+  include_advisory_strategy: boolean;
   error_message: string | null;
   report_data: any;
 }
@@ -50,7 +50,7 @@ export const MarketIntelligenceHistoryModal = ({ open, onOpenChange }: MarketInt
     setLoading(true);
     const { data, error } = await supabase
       .from('marketing_intelligence_reports')
-      .select('id, generated_at, report_period, report_type, audience_segment, status, include_npc_strategy, error_message, report_data')
+      .select('id, generated_at, report_period, report_type, audience_segment, status, include_advisory_strategy, error_message, report_data')
       .order('generated_at', { ascending: false })
       .limit(50);
 
@@ -166,7 +166,7 @@ export const MarketIntelligenceHistoryModal = ({ open, onOpenChange }: MarketInt
                         {report.audience_segment === 'investor' ? '📊 Investor' :
                          report.audience_segment === 'owner_occupier' ? '🏠 Homebuyer' : '🌐 General'}
                       </Badge>
-                      {!report.include_npc_strategy && (
+                      {!report.include_advisory_strategy && (
                         <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-500/30">
                           Strategy excluded
                         </Badge>

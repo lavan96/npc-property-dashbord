@@ -179,9 +179,9 @@ async function syncSingleClient(
       { key: 'portfolio_value', field_value: formatCurrency(client.total_portfolio_value) },
       { key: 'total_debt', field_value: formatCurrency(client.total_debt) },
       { key: 'monthly_cash_flow', field_value: formatCurrency(client.net_monthly_cash_flow) },
-      { key: 'client_source', field_value: 'NPC Portal Import' },
+      { key: 'client_source', field_value: 'Advisory Portal Import' },
     ],
-    tags: ['NPC Client', 'Portal Import'],
+    tags: ['Advisory Client', 'Portal Import'],
   };
 
   let ghlContactId = client.ghl_contact_id;
