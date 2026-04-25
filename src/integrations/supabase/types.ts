@@ -8509,8 +8509,10 @@ export type Database = {
           attempts: number
           created_at: string
           entity_label: string | null
+          error_category: string | null
           error_message: string | null
           id: string
+          is_retryable: boolean | null
           job_id: string
           processed_at: string | null
           source_id: string
@@ -8521,8 +8523,10 @@ export type Database = {
           attempts?: number
           created_at?: string
           entity_label?: string | null
+          error_category?: string | null
           error_message?: string | null
           id?: string
+          is_retryable?: boolean | null
           job_id: string
           processed_at?: string | null
           source_id: string
@@ -8533,8 +8537,10 @@ export type Database = {
           attempts?: number
           created_at?: string
           entity_label?: string | null
+          error_category?: string | null
           error_message?: string | null
           id?: string
+          is_retryable?: boolean | null
           job_id?: string
           processed_at?: string | null
           source_id?: string
@@ -8553,16 +8559,21 @@ export type Database = {
       }
       migration_jobs: {
         Row: {
+          auto_resume: boolean
           completed_at: string | null
           created_at: string
           created_by: string | null
+          dispatch_count: number
           domain: string
           dry_run: boolean
           error_summary: string | null
           failed_items: number
           id: string
+          last_dispatched_at: string | null
+          last_processed_source_id: string | null
           payload: Json
           processed_items: number
+          resume_cursor: Json
           source_account: string
           started_at: string | null
           status: string
@@ -8572,16 +8583,21 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          auto_resume?: boolean
           completed_at?: string | null
           created_at?: string
           created_by?: string | null
+          dispatch_count?: number
           domain: string
           dry_run?: boolean
           error_summary?: string | null
           failed_items?: number
           id?: string
+          last_dispatched_at?: string | null
+          last_processed_source_id?: string | null
           payload?: Json
           processed_items?: number
+          resume_cursor?: Json
           source_account: string
           started_at?: string | null
           status?: string
@@ -8591,16 +8607,21 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          auto_resume?: boolean
           completed_at?: string | null
           created_at?: string
           created_by?: string | null
+          dispatch_count?: number
           domain?: string
           dry_run?: boolean
           error_summary?: string | null
           failed_items?: number
           id?: string
+          last_dispatched_at?: string | null
+          last_processed_source_id?: string | null
           payload?: Json
           processed_items?: number
+          resume_cursor?: Json
           source_account?: string
           started_at?: string | null
           status?: string
