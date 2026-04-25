@@ -29,6 +29,10 @@ const REPORT_TYPE_LAYERS: Record<string, string[]> = {
   development_spotlight: ['layer2', 'layer7', 'layer8', 'executive', 'key_insights', 'actionable_strategy', 'cta'],
 };
 
+// Module-level brand name — set per-request at the top of Deno.serve, then
+// referenced inside helper prompts to avoid threading it through every signature.
+let BRAND_NAME = 'Property Consulting';
+
 const AUDIENCE_SYSTEM_PROMPTS: Record<string, string> = {
   general: 'You are writing for a mixed audience of property investors and owner-occupiers. Provide balanced insights relevant to both groups.',
   investor: 'You are writing specifically for property investors. Focus on yield, capital growth, equity strategies, tax advantages, cash flow analysis, and portfolio positioning. Frame everything through an investment return lens.',
@@ -92,7 +96,7 @@ async function queryPerplexity(
       messages: [
         {
           role: 'system',
-          content: `You are a senior Australian property market analyst providing data-backed intelligence for property investment professionals. Always cite sources and use specific numbers. NPC Services is a strategic property advisory that operates above the noise of the general market — all analysis must reflect this positioning. CRITICAL RULES: (1) Never include "Data Limitations" sections, disclaimers about missing data, or phrases like "the search results do not contain" or "data is not available." If specific data is unavailable, omit that subsection entirely and focus on what IS available. (2) Never cite specific property addresses, street names, or individual sale prices — use only published median/aggregate suburb-level statistics. (3) The output is client-facing and must project authority and completeness. ${systemPrompt || ''}`
+          content: `You are a senior Australian property market analyst providing data-backed intelligence for property investment professionals. Always cite sources and use specific numbers. ${BRAND_NAME} is a strategic property advisory that operates above the noise of the general market — all analysis must reflect this positioning. CRITICAL RULES: (1) Never include "Data Limitations" sections, disclaimers about missing data, or phrases like "the search results do not contain" or "data is not available." If specific data is unavailable, omit that subsection entirely and focus on what IS available. (2) Never cite specific property addresses, street names, or individual sale prices — use only published median/aggregate suburb-level statistics. (3) The output is client-facing and must project authority and completeness. ${systemPrompt || ''}`
         },
         { role: 'user', content: prompt }
       ],
@@ -122,7 +126,7 @@ async function callGemini(prompt: string, _apiKey: string, maxTokens = 6000): Pr
     messages: [
       {
         role: 'system',
-        content: 'You are a senior Australian property market analyst writing premium client reports for NPC Services, a strategic property advisory. Produce clear, professional, data-driven analysis with specific numbers. Use markdown formatting with headers, bold, bullet points, and tables. Tone: Professional, strategic, clear, confident, client-focused, insight-driven. CRITICAL: Never include "Data Limitations" sections, disclaimers about missing data, or any language suggesting incomplete information. If specific data is unavailable, omit that subsection entirely. The output is client-facing and must project authority.'
+        content: `You are a senior Australian property market analyst writing premium client reports for ${BRAND_NAME}, a strategic property advisory. Produce clear, professional, data-driven analysis with specific numbers. Use markdown formatting with headers, bold, bullet points, and tables. Tone: Professional, strategic, clear, confident, client-focused, insight-driven. CRITICAL: Never include "Data Limitations" sections, disclaimers about missing data, or any language suggesting incomplete information. If specific data is unavailable, omit that subsection entirely. The output is client-facing and must project authority.`
       },
       { role: 'user', content: prompt },
     ],
@@ -321,7 +325,7 @@ async function generateLayer8_CompetitiveEdge(
   audiencePrompt: string
 ): Promise<string> {
   return callGemini(
-    `You are writing the "Competitive Strategic Edge" section of a premium NPC Services Market Intelligence Report. This section differentiates NPC from every other property advisory by revealing insights that typical buyers and competitors overlook.
+    `You are writing the "Competitive Strategic Edge" section of a premium ${BRAND_NAME} Market Intelligence Report. This section differentiates ${BRAND_NAME} from every other property advisory by revealing insights that typical buyers and competitors overlook.
 
 ## Context Data:
 ### Housing Market Overview:
@@ -333,7 +337,7 @@ ${layer7Content.slice(0, 3000)}
 ## Required Analysis (produce ALL sections):
 
 ### 1. Off-Market & Pre-Market Intelligence
-Identify 2-3 opportunities that are likely available off-market or pre-market in the suburbs analysed. Explain what signals suggest off-market activity and how a strategic buyer would access these. Frame this as general market intelligence — do NOT fabricate specific NPC deal pipeline data, active negotiations, or specific property addresses that NPC is supposedly pursuing. Do NOT cite specific street addresses, lot numbers, or individual sale prices — use only suburb-level aggregate data. Instead, describe the types of opportunities and access strategies available.
+Identify 2-3 opportunities that are likely available off-market or pre-market in the suburbs analysed. Explain what signals suggest off-market activity and how a strategic buyer would access these. Frame this as general market intelligence — do NOT fabricate specific deal pipeline data, active negotiations, or specific property addresses that the advisory is supposedly pursuing. Do NOT cite specific street addresses, lot numbers, or individual sale prices — use only suburb-level aggregate data. Instead, describe the types of opportunities and access strategies available.
 
 ### 2. Development & Subdivision Potential
 For the top suburbs identified, analyse:
@@ -358,7 +362,7 @@ For each key opportunity, recommend the optimal approach:
 ### 5. Hidden Opportunities
 3 non-obvious insights that most property buyers — and even competitors — would miss. These should be genuinely strategic, not surface-level observations.
 
-### 6. How NPC Would Approach This
+### 6. How ${BRAND_NAME} Would Approach This
 For the #1 opportunity identified, provide a detailed strategic playbook:
 - Entry timing and approach
 - Negotiation leverage points
@@ -367,7 +371,7 @@ For the #1 opportunity identified, provide a detailed strategic playbook:
 
 ${audiencePrompt}
 
-Tone: Confident, strategic, authoritative. This is where NPC proves its value above the noise. NPC Services is a strategic property advisory, not just a buyer's agent — decisions are data-driven and insight-led. IMPORTANT: Do NOT fabricate specific property addresses, street names, lot numbers, deal negotiations, individual sale prices, or "pipeline activity" that NPC is supposedly engaged in. Use only suburb-level median/aggregate data from published sources. Keep recommendations at a strategic framework level.`,
+Tone: Confident, strategic, authoritative. This is where ${BRAND_NAME} proves its value above the noise. ${BRAND_NAME} is a strategic property advisory, not just a buyer's agent — decisions are data-driven and insight-led. IMPORTANT: Do NOT fabricate specific property addresses, street names, lot numbers, deal negotiations, individual sale prices, or "pipeline activity" that the advisory is supposedly engaged in. Use only suburb-level median/aggregate data from published sources. Keep recommendations at a strategic framework level.`,
     lovableKey,
     8000
   );
@@ -382,7 +386,7 @@ async function generateKeyInsightsSnapshot(
   audiencePrompt: string
 ): Promise<string> {
   return callGemini(
-    `Generate a "Key Insights Snapshot" section for an NPC Services ${REPORT_TYPE_LABELS[reportType] || 'Market Intelligence Report'}.
+    `Generate a "Key Insights Snapshot" section for an ${BRAND_NAME} ${REPORT_TYPE_LABELS[reportType] || 'Market Intelligence Report'}.
 
 ## Data Summary:
 ${allLayerSummaries.slice(0, 6000)}
@@ -423,7 +427,7 @@ async function generateActionableStrategy(
   };
 
   return callGemini(
-    `Generate the "Actionable Strategy" section for an NPC Services ${REPORT_TYPE_LABELS[reportType] || 'Market Intelligence Report'}.
+    `Generate the "Actionable Strategy" section for an ${BRAND_NAME} ${REPORT_TYPE_LABELS[reportType] || 'Market Intelligence Report'}.
 
 ## Data Context:
 ${allLayerSummaries.slice(0, 5000)}
@@ -451,7 +455,7 @@ ${allLayerSummaries.slice(0, 5000)}
 
 ${audienceFraming[audienceSegment] || audienceFraming.general}
 
-Tone: Decisive, strategic, authoritative. NPC provides clarity where others provide confusion. Every recommendation must be justified with data.`,
+Tone: Decisive, strategic, authoritative. ${BRAND_NAME} provides clarity where others provide confusion. Every recommendation must be justified with data.`,
     lovableKey,
     3000
   );
@@ -478,7 +482,7 @@ async function generateCTA(lovableKey: string, reportType: string, audienceSegme
   };
 
   return callGemini(
-    `Generate a compelling, professional Call to Action section for an NPC Services Market Intelligence Report.
+    `Generate a compelling, professional Call to Action section for an ${BRAND_NAME} Market Intelligence Report.
 
 Report Type: ${REPORT_TYPE_LABELS[reportType] || reportType}
 Target Audience: ${audienceSegment}
@@ -498,7 +502,7 @@ A 2-3 sentence compelling paragraph that creates urgency without being pushy.
 2. **Request Detailed Analysis** — for a suburb or opportunity mentioned
 3. **Connect With Our Team** — phone/email with a personal touch
 
-IMPORTANT: Do NOT include a "Why NPC Services?" section — this is added separately by the PDF generator. End your output after the 3 action steps.
+IMPORTANT: Do NOT include a "Why ${BRAND_NAME}?" section — this is added separately by the PDF generator. End your output after the 3 action steps.
 
 Keep it professional, warm, and action-oriented. No generic "contact us" language.`,
     lovableKey,
@@ -833,7 +837,7 @@ Write 5-6 dense paragraphs covering:
 5. Top suburb opportunities identified
 6. The bottom line — what the reader should do NOW
 
-Tone: Authoritative, data-backed, actionable. Use bold for key figures. Position NPC Services as a strategic property advisory delivering insight-led guidance.`,
+Tone: Authoritative, data-backed, actionable. Use bold for key figures. Position ${BRAND_NAME} as a strategic property advisory delivering insight-led guidance.`,
             LOVABLE_API_KEY,
             3000
           );
