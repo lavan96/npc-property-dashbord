@@ -439,6 +439,8 @@ function CreateClientDialog({
 export default function FinancePortalClients() {
   const { invokeFinanceFunction } = useFinancePortalAuth();
   const navigate = useNavigate();
+  const { settings: brandSettings } = useBrand();
+  const brandName = brandSettings.companyName || 'the team';
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
@@ -771,7 +773,7 @@ export default function FinancePortalClients() {
               </h3>
               <p className="text-sm text-muted-foreground max-w-sm">
                 {records.length === 0
-                  ? 'Create a new client from the finance portal or wait for NPC to assign existing clients to your account.'
+                  ? `Create a new client from the finance portal or wait for ${brandName} to assign existing clients to your account.`
                   : 'No clients match your current filters. Try adjusting your search or status filter.'}
               </p>
               <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
@@ -921,7 +923,7 @@ export default function FinancePortalClients() {
         {!isLoading && records.length > 0 && (
           <div className="flex items-center justify-center gap-1.5 text-[10px] text-muted-foreground/40 pt-2">
             <Shield className="h-3 w-3" />
-            <span>Data access governed by NPC permission policies</span>
+            <span>Data access governed by permission policies</span>
           </div>
         )}
       </div>
