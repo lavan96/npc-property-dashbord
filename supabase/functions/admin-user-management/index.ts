@@ -998,6 +998,7 @@ Deno.serve(async (req: Request) => {
       const inviteUrl = `${appUrl}/accept-invite?token=${token}`;
 
       // Send email
+      const brandCfg = await getBrandConfig(supabase);
       let emailContent = '';
       if (invite_data.invite_type === 'magic_link') {
         emailContent = `
