@@ -734,7 +734,7 @@ export function PropertyEditSheet({ property, open, onOpenChange, onComplete }: 
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="npc">NPC (Our Deal)</SelectItem>
+                        <SelectItem value="npc">Our Deal</SelectItem>
                         <SelectItem value="self_sourced">Self-sourced by Client</SelectItem>
                         <SelectItem value="other_agency">Other Agency</SelectItem>
                         <SelectItem value="unknown">Unknown</SelectItem>

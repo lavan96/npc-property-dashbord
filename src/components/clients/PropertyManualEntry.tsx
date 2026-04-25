@@ -477,7 +477,7 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="unknown">Unknown</SelectItem>
-                        <SelectItem value="npc">NPC (Our Agency)</SelectItem>
+                        <SelectItem value="npc">Our Agency</SelectItem>
                         <SelectItem value="client">Self-sourced (Client)</SelectItem>
                         <SelectItem value="other_agency">Other Agency</SelectItem>
                       </SelectContent>
