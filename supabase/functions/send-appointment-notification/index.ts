@@ -229,6 +229,11 @@ Deno.serve(async (req) => {
 
     console.log(`[Appointment Notification] Sending to ${recipients.length} recipients for: ${appointmentTitle}`);
 
+    const brand = await getBrandConfig(supabase);
+    const brandName = brand.companyName;
+    // Derive a UID domain from the configured contact email (fallback to a stable placeholder)
+    const uidDomain = (brand.contactEmail.split('@')[1] || 'command-centre.local').toLowerCase();
+
     const accessToken = await getAccessToken();
     const results: { email: string; success: boolean; error?: string }[] = [];
 
@@ -243,7 +248,8 @@ Deno.serve(async (req) => {
           organizer: mailboxEmail!,
           attendeeEmail: recipient.email,
           attendeeName: recipient.name,
-          uid: `${appointmentGhlId}-${recipient.financeContactId}@npcservices.com.au`,
+          uid: `${appointmentGhlId}-${recipient.financeContactId}@${uidDomain}`,
+          brandName,
         });
 
         const icsBase64 = btoa(icsContent);
@@ -256,6 +262,7 @@ Deno.serve(async (req) => {
           type: appointmentType,
           notes: appointmentNotes,
           calendarName,
+          brandName,
         });
 
         // Send via Microsoft Graph (always admin mailbox)
