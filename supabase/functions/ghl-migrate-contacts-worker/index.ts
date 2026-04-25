@@ -38,6 +38,7 @@ import {
   normalizeContactName,
   readControlSignal,
   sanitizeContactNameParts,
+  detectJunkContactName,
 } from '../_shared/migration-jobs.ts';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
@@ -232,7 +233,7 @@ Deno.serve(async (req) => {
 
         // Reject junk records BEFORE writing anything to GHL or the mapping table
         const junkReason = sanitized.junkReason
-          || (sanitized.fullName ? null : detectJunkLabel(fallbackLabel));
+          || (sanitized.fullName ? null : detectJunkContactName(fallbackLabel));
         if (junkReason && !sanitized.fullName) {
           totalSkipped++;
           await recordItem(supabase, {
