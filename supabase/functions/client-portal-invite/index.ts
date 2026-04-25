@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
 import { hashPassword } from "../_shared/password.ts"
 import { createCorsHeaders, verifyAuth } from "../_shared/auth.ts"
+import { getBrandConfig } from "../_shared/brand-config.ts"
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
@@ -240,6 +241,7 @@ Deno.serve(async (req) => {
 
     // Send invite email via Resend
     if (resendApiKey) {
+      const brand = await getBrandConfig(supabase);
       try {
         const emailRes = await fetch('https://api.resend.com/emails', {
           method: 'POST',
@@ -248,9 +250,9 @@ Deno.serve(async (req) => {
             'Authorization': `Bearer ${resendApiKey}`,
           },
           body: JSON.stringify({
-            from: 'NPC Services <noreply@npcservices.com.au>',
+            from: brand.fromHeader,
             to: [normalizedEmail],
-            subject: 'You\'re Invited to the Client Portal - NPC Services',
+            subject: `You're Invited to the Client Portal - ${brand.companyName}`,
             html: `
               <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 40px 24px;">
                 <div style="text-align: center; margin-bottom: 32px;">

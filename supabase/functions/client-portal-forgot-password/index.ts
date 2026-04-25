@@ -58,6 +58,7 @@ Deno.serve(async (req) => {
 
     // Send email via Resend if configured
     if (resendApiKey) {
+      const brand = await getBrandConfig(supabase);
       const clientName = (portalUser.clients as any)?.primary_first_name || 'there';
       try {
         const emailRes = await fetch('https://api.resend.com/emails', {
@@ -67,7 +68,7 @@ Deno.serve(async (req) => {
             'Authorization': `Bearer ${resendApiKey}`,
           },
           body: JSON.stringify({
-            from: 'NPC Services <noreply@npcservices.com.au>',
+            from: brand.fromHeader,
             to: [normalizedEmail],
             subject: 'Password Reset Code - Client Portal',
             html: `

@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { hashPassword } from "../_shared/password.ts";
 import { validatePasswordStrength } from "../_shared/passwordValidation.ts";
 import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from "../_shared/auth.ts";
+import { getBrandConfig } from "../_shared/brand-config.ts";
 
 // Simple email sending via Resend REST API
 async function sendEmail(to: string, subject: string, html: string): Promise<{ success: boolean; error?: string }> {
@@ -11,6 +12,7 @@ async function sendEmail(to: string, subject: string, html: string): Promise<{ s
   }
   
   try {
+    const brand = await getBrandConfig();
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -18,7 +20,7 @@ async function sendEmail(to: string, subject: string, html: string): Promise<{ s
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "NPC Admin <admin@npcservices.com.au>",
+        from: brand.fromHeaderAdmin,
         to: [to],
         subject,
         html,

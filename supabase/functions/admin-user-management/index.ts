@@ -3,6 +3,7 @@ import { Resend } from "https://esm.sh/resend@2.0.0";
 import { hashPassword, verifyPassword } from "../_shared/password.ts";
 import { validatePasswordStrength } from "../_shared/passwordValidation.ts";
 import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from "../_shared/auth.ts";
+import { getBrandConfig } from "../_shared/brand-config.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -1036,10 +1037,11 @@ Deno.serve(async (req: Request) => {
         `;
       }
 
+      const brandCfg = await getBrandConfig(supabase);
       const { error: emailError } = await resend.emails.send({
-        from: 'NPC Admin <admin@npcservices.com.au>',
+        from: brandCfg.fromHeaderAdmin,
         to: [invite_data.email],
-        subject: 'You\'re Invited to NPC Dashboard',
+        subject: `You're Invited to ${brandCfg.companyName} Dashboard`,
         html: emailContent,
       });
 
