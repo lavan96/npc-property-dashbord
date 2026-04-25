@@ -149,6 +149,7 @@ Deno.serve(async (req: Request) => {
       // Send email via Resend using REST API
       console.log(`Attempting to send OTP email to ${user.email} for user ${user.username}`);
       
+      const brand = await getBrandConfig();
       const emailHtml = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h1 style="color: #333;">Password Reset Request</h1>
