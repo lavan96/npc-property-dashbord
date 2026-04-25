@@ -1,5 +1,68 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { useBlocker } from 'react-router-dom';
+
+// Lightweight in-app navigation guard.
+// `useBlocker` from react-router-dom requires a data router (createBrowserRouter),
+// but this app uses the classic <BrowserRouter>, so we implement a popstate-based
+// guard that mirrors the subset of the blocker API we consume below.
+type NavigationBlocker = {
+  state: 'unblocked' | 'blocked';
+  proceed: () => void;
+  reset: () => void;
+};
+
+function useUnsavedChangesBlocker(when: boolean): NavigationBlocker {
+  const [state, setState] = useState<'unblocked' | 'blocked'>('unblocked');
+  const pendingUrlRef = useRef<string | null>(null);
+  const allowNextPopRef = useRef(false);
+  const whenRef = useRef(when);
+
+  useEffect(() => {
+    whenRef.current = when;
+    if (!when) {
+      setState('unblocked');
+      pendingUrlRef.current = null;
+    }
+  }, [when]);
+
+  useEffect(() => {
+    if (!when) return;
+
+    // Push a sentinel state so the first back-navigation triggers our handler
+    // without actually leaving the page.
+    const initialUrl = window.location.href;
+    window.history.pushState({ __whiteLabelGuard: true }, '', initialUrl);
+
+    const handlePopState = () => {
+      if (allowNextPopRef.current || !whenRef.current) {
+        allowNextPopRef.current = false;
+        return;
+      }
+      // Re-pin the guard entry so the user stays on the page until they confirm.
+      window.history.pushState({ __whiteLabelGuard: true }, '', initialUrl);
+      pendingUrlRef.current = initialUrl;
+      setState('blocked');
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [when]);
+
+  const proceed = useCallback(() => {
+    allowNextPopRef.current = true;
+    setState('unblocked');
+    pendingUrlRef.current = null;
+    window.history.back();
+  }, []);
+
+  const reset = useCallback(() => {
+    setState('unblocked');
+    pendingUrlRef.current = null;
+  }, []);
+
+  return { state, proceed, reset };
+}
 import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
