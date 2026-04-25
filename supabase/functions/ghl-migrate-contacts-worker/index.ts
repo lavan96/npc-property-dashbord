@@ -130,31 +130,23 @@ Deno.serve(async (req) => {
 
     while (true) {
       if (Date.now() - startedAt > MAX_RUNTIME_MS) {
-        console.log(`[contacts-worker] Time budget exhausted at ${totalProcessed} processed — saving checkpoint + self-redispatching`);
-        await saveCheckpoint(
+        console.log(`[contacts-worker] Time budget exhausted at ${totalProcessed} processed — handing off to dispatcher`);
+        await partialExit(
           supabase,
           jobId,
           { startAfterId: nextStartAfterId, startAfter: nextStartAfter },
+          {
+            processed_items: totalProcessed,
+            succeeded_items: totalSucceeded,
+            failed_items: totalFailed,
+          },
+          nextStartAfterId,
         );
-        await updateJobProgress(supabase, jobId, {
-          processed_items: totalProcessed,
-          succeeded_items: totalSucceeded,
-          failed_items: totalFailed,
-        });
-        const r = await selfRedispatch(supabase, jobId, 'ghl-migrate-contacts-worker', {
-          job_id: jobId,
-          source_account: sourceAccount,
-          target_account: targetAccount,
-          dry_run: dryRun,
-          payload,
-        });
-        if (!r.dispatched) {
-          await finishJob(supabase, jobId, 'completed',
-            `Auto-resume halted (${r.reason}). Processed ${totalProcessed} of ${totalEstimate || '?'}.`);
-        }
         return new Response(JSON.stringify({
-          success: true, partial: true, processed: totalProcessed,
-          auto_redispatched: r.dispatched, dispatch_count: r.dispatchCount, reason: r.reason || null,
+          success: true,
+          partial: true,
+          processed: totalProcessed,
+          handed_off_to: 'migration-dispatcher',
         }), { headers: { 'Content-Type': 'application/json' } });
       }
 
