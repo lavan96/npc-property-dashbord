@@ -368,6 +368,8 @@ function MigrationWorkersPanel() {
   const [testingAudit, setTestingAudit] = useState(false);
   const [auditAccount, setAuditAccount] = useState<Account>('new');
   const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
+  const [resumeTarget, setResumeTarget] = useState<any | null>(null);
+  const [resuming, setResuming] = useState(false);
 
   const testCredentials = async (acct: Account) => {
     setTestingAudit(true);
@@ -387,7 +389,8 @@ function MigrationWorkersPanel() {
     } finally { setTestingAudit(false); }
   };
 
-  const refreshJobs = async () => {
+  // Returns true on success, false on error/timeout — used by backoff scheduler.
+  const refreshJobs = async (): Promise<boolean> => {
     setLoadingJobs(true);
     try {
       const res = await invokeSecureFunction<{ success: boolean; jobs: any[] }>(
@@ -395,18 +398,53 @@ function MigrationWorkersPanel() {
         { list: true, limit: 15 },
         { timeoutMs: 15000 },
       );
-      if (res.data?.success) setJobs(res.data.jobs);
+      if (res.error || !res.data?.success) return false;
+      setJobs(res.data.jobs);
+      return true;
+    } catch {
+      return false;
     } finally {
       setLoadingJobs(false);
     }
   };
 
   useEffect(() => { refreshJobs(); }, []);
+
+  // Adaptive polling: 3s base while active, exponential backoff (max 60s) on
+  // consecutive errors, paused entirely when the queue is idle.
   useEffect(() => {
     const hasActive = jobs.some((j) => j.status === 'pending' || j.status === 'processing');
-    if (!hasActive) return; // pause polling when idle
-    const id = setInterval(refreshJobs, 3000); // 3s while running
-    return () => clearInterval(id);
+    if (!hasActive) return;
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let failures = 0;
+    const BASE = 3000;
+    const MAX = 60000;
+
+    const schedule = (delay: number) => {
+      timer = setTimeout(async () => {
+        if (cancelled) return;
+        const ok = await refreshJobs();
+        if (cancelled) return;
+        if (ok) {
+          failures = 0;
+          schedule(BASE);
+        } else {
+          failures++;
+          // 6s, 12s, 24s, 48s, 60s (capped)
+          const backoff = Math.min(MAX, BASE * Math.pow(2, failures));
+          if (failures === 3) toast.error('Job status polling is failing — backing off');
+          schedule(backoff);
+        }
+      }, delay);
+    };
+
+    schedule(BASE);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
   }, [jobs]);
 
   const dispatch = async () => {
