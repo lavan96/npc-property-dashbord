@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { createCorsHeaders, verifyAuth, createUnauthorizedResponse } from "../_shared/auth.ts";
 import { logApiUsage, estimateCost, extractOpenAIUsage } from "../_shared/logApiUsage.ts";
+import { getBrandConfig } from "../_shared/brand-config.ts";
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -6153,7 +6154,7 @@ async function executeToggleGamePlanAction(sb: any, args: any) {
 
 // ============================================================
 
-const SYSTEM_PROMPT = `You are Aurixa, the AI operating assistant for the NPC Property Dashboard — a property investment and mortgage brokerage management platform used by Naidu Property Consulting Services.
+const buildSystemPrompt = (brandName: string) => `You are Aurixa, the AI operating assistant for the ${brandName} Property Dashboard — a property investment and mortgage brokerage management platform used by ${brandName}.
 
 You have access to 200+ specialized tools across 51 domains:
 
@@ -6570,7 +6571,7 @@ async function handleChat(sb: any, body: any, userId: string, username: string, 
     .eq('conversation_id', conversation_id).order('created_at', { ascending: true }).limit(60);
 
   const messages: any[] = [
-    { role: 'system', content: SYSTEM_PROMPT + `\n\nCurrent user: ${username} (ID: ${userId})\nCurrent conversation_id: ${conversation_id}\nCurrent time: ${new Date().toISOString()}${prefsContext}` },
+    { role: 'system', content: buildSystemPrompt((await getBrandConfig()).companyName) + `\n\nCurrent user: ${username} (ID: ${userId})\nCurrent conversation_id: ${conversation_id}\nCurrent time: ${new Date().toISOString()}${prefsContext}` },
   ];
 
   // Build conversation messages from history

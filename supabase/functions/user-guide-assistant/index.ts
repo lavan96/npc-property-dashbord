@@ -2,14 +2,15 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 import { logApiUsage } from '../_shared/logApiUsage.ts';
 import { createUsageTrackingStream } from '../_shared/streamUsageLogger.ts';
+import { getBrandConfig } from '../_shared/brand-config.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// System prompt for the User Guide Assistant
-const SYSTEM_PROMPT = `You are a helpful AI assistant for the NPC Property Dashboard. Your role is to guide users through the platform's features and help them understand how to use the dashboard effectively.
+// System prompt for the User Guide Assistant — brand name is injected dynamically
+const buildSystemPrompt = (brandName: string) => `You are a helpful AI assistant for the ${brandName} Property Dashboard. Your role is to guide users through the platform's features and help them understand how to use the dashboard effectively.
 
 IMPORTANT GUIDELINES:
 1. Be concise and helpful - provide clear, actionable answers
@@ -91,8 +92,9 @@ Deno.serve(async (req) => {
 
     console.log(`Processing user guide assistant request with ${messages.length} messages`);
 
-    // Build the full system prompt with knowledge base
-    const fullSystemPrompt = `${SYSTEM_PROMPT}
+    // Build the full system prompt with knowledge base (brand-aware)
+    const _brand = await getBrandConfig();
+    const fullSystemPrompt = `${buildSystemPrompt(_brand.companyName)}
 
 ---
 
