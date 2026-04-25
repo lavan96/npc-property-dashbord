@@ -8561,6 +8561,7 @@ export type Database = {
         Row: {
           auto_resume: boolean
           completed_at: string | null
+          control_signal: string | null
           created_at: string
           created_by: string | null
           dispatch_count: number
@@ -8587,6 +8588,7 @@ export type Database = {
         Insert: {
           auto_resume?: boolean
           completed_at?: string | null
+          control_signal?: string | null
           created_at?: string
           created_by?: string | null
           dispatch_count?: number
@@ -8613,6 +8615,7 @@ export type Database = {
         Update: {
           auto_resume?: boolean
           completed_at?: string | null
+          control_signal?: string | null
           created_at?: string
           created_by?: string | null
           dispatch_count?: number
@@ -10338,6 +10341,10 @@ export type Database = {
         Args: { report_id: string }
         Returns: number
       }
+      cancel_migration_job: {
+        Args: { p_immediate?: boolean; p_job_id: string }
+        Returns: undefined
+      }
       claim_migration_jobs: {
         Args: { p_lease_seconds?: number; p_limit?: number }
         Returns: {
@@ -10506,10 +10513,16 @@ export type Database = {
           similarity: number
         }[]
       }
+      pause_migration_job: { Args: { p_job_id: string }; Returns: undefined }
+      read_migration_control_signal: {
+        Args: { p_job_id: string }
+        Returns: string
+      }
       release_migration_job_lock: {
         Args: { p_job_id: string }
         Returns: undefined
       }
+      resume_migration_job: { Args: { p_job_id: string }; Returns: undefined }
       seed_sample_schools: { Args: never; Returns: undefined }
       validate_property_specs: {
         Args: { specs: Json }

@@ -36,6 +36,7 @@ import {
   heartbeat,
   resolveTargetContactByName,
   normalizeContactName,
+  readControlSignal,
 } from '../_shared/migration-jobs.ts';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
@@ -131,6 +132,33 @@ Deno.serve(async (req) => {
     }
 
     while (true) {
+      // ── Granular control: pause / cancel / kill ─────────────────────
+      const signal = await readControlSignal(supabase, jobId);
+      if (signal === 'kill' || signal === 'cancel') {
+        console.log(`[contacts-worker] ${signal.toUpperCase()} signal received — finalizing as cancelled at ${totalProcessed} processed`);
+        await updateJobProgress(supabase, jobId, {
+          processed_items: totalProcessed,
+          succeeded_items: totalSucceeded,
+          failed_items: totalFailed,
+        });
+        await finishJob(supabase, jobId, 'cancelled', `Cancelled by user (${signal}) at ${totalProcessed} processed`);
+        return new Response(JSON.stringify({
+          success: true, cancelled: true, signal, processed: totalProcessed,
+        }), { headers: { 'Content-Type': 'application/json' } });
+      }
+      if (signal === 'pause') {
+        console.log(`[contacts-worker] PAUSE signal received — checkpointing at ${totalProcessed} processed`);
+        await partialExit(
+          supabase, jobId,
+          { startAfterId: nextStartAfterId, startAfter: nextStartAfter },
+          { processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed },
+          nextStartAfterId,
+        );
+        return new Response(JSON.stringify({
+          success: true, paused: true, processed: totalProcessed,
+        }), { headers: { 'Content-Type': 'application/json' } });
+      }
+
       if (Date.now() - startedAt > MAX_RUNTIME_MS) {
         console.log(`[contacts-worker] Time budget exhausted at ${totalProcessed} processed — handing off to dispatcher`);
         await partialExit(

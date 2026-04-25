@@ -22,7 +22,7 @@ import {
 import {
   startJob, finishJob, recordItem, recordIdMapping, updateJobProgress, delay,
   saveCheckpoint, loadCheckpoint, partialExit, heartbeat,
-  resolveTargetContactByName,
+  resolveTargetContactByName, readControlSignal,
 } from '../_shared/migration-jobs.ts';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
@@ -115,7 +115,16 @@ Deno.serve(async (req) => {
     let currentOffset = startOffset;
 
     let timeBudgetExhausted = false;
+    let pausedByUser = false;
+    let cancelledByUser: 'pause' | 'cancel' | 'kill' | null = null;
     for (const note of (notes || [])) {
+      // ── Granular control: pause / cancel / kill ─────────────────────
+      // (Checked once per item — notes worker has no API page loop.)
+      if (totalProcessed % 10 === 0) {
+        const sig = await readControlSignal(supabase, jobId);
+        if (sig === 'kill' || sig === 'cancel') { cancelledByUser = sig; break; }
+        if (sig === 'pause') { pausedByUser = true; break; }
+      }
       if (Date.now() - startedAt > MAX_RUNTIME_MS) { timeBudgetExhausted = true; break; }
       if (maxItems > 0 && totalProcessed >= maxItems) break;
 
@@ -232,6 +241,27 @@ Deno.serve(async (req) => {
     await updateJobProgress(supabase, jobId, {
       processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed,
     });
+
+    // ── Granular control exits ──────────────────────────────────────────
+    if (cancelledByUser) {
+      await finishJob(supabase, jobId, 'cancelled',
+        `Cancelled by user (${cancelledByUser}) at ${totalProcessed} processed`);
+      console.log(`[notes-worker] CANCELLED job=${jobId} via ${cancelledByUser} at ${totalProcessed}`);
+      return new Response(JSON.stringify({
+        success: true, cancelled: true, signal: cancelledByUser, processed: totalProcessed,
+      }), { headers: { 'Content-Type': 'application/json' } });
+    }
+    if (pausedByUser) {
+      await partialExit(
+        supabase, jobId,
+        { offset: currentOffset },
+        { processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed },
+      );
+      console.log(`[notes-worker] PAUSED job=${jobId} at ${totalProcessed}`);
+      return new Response(JSON.stringify({
+        success: true, paused: true, processed: totalProcessed,
+      }), { headers: { 'Content-Type': 'application/json' } });
+    }
 
     const morePagesAvailable = (notes?.length || 0) >= pullLimit;
     const shouldRedispatch = !timeBudgetExhausted && morePagesAvailable && !(maxItems > 0 && totalProcessed >= maxItems);

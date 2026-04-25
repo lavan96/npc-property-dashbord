@@ -17,7 +17,7 @@ import { toast } from 'sonner';
 import {
   ShieldAlert, RefreshCw, Eye, ArrowLeftRight, Database, Users,
   TrendingUp, MessageSquare, StickyNote, GitBranch, MapPin, AlertCircle, CheckCircle2, Lock,
-  KeyRound, ExternalLink, XCircle, Download, Play, Repeat,
+  KeyRound, ExternalLink, XCircle, Download, Play, Repeat, Pause, Square, Zap,
 } from 'lucide-react';
 
 interface ScopeProbe {
@@ -696,9 +696,30 @@ function MigrationWorkersPanel() {
                     const widthOf = (n: number) => `${Math.min(100, (n / denom) * 100)}%`;
                     const isOpen = expandedJobId === j.id;
                     const isLive = j.status === 'processing' || j.status === 'pending';
+                    const isPaused = j.auto_resume === false && (j.status === 'processing' || j.status === 'pending');
+                    const isFinished = j.status === 'completed' || j.status === 'cancelled' || j.status === 'failed';
                     const canResume = j.status === 'failed' || j.status === 'cancelled' ||
+                      isPaused ||
                       (j.status === 'processing' && (j.dispatch_count ?? 0) > 0 &&
                        j.last_dispatched_at && (Date.now() - new Date(j.last_dispatched_at).getTime() > 5 * 60_000));
+                    const canPause = isLive && !isPaused;
+                    const canCancel = isLive || isPaused;
+
+                    const performControl = async (
+                      action: 'pause' | 'resume' | 'cancel' | 'kill',
+                    ) => {
+                      const verb = action.charAt(0).toUpperCase() + action.slice(1);
+                      const res = await invokeSecureFunction<any>('migration-job-control', {
+                        job_id: j.id,
+                        action,
+                      }, { timeoutMs: 15000 });
+                      if (res.error || !res.data?.success) {
+                        toast.error(res.error?.message || res.data?.error || `${verb} failed`);
+                      } else {
+                        toast.success(`Job ${action === 'kill' ? 'killed' : action === 'cancel' ? 'cancelled' : action + 'd'}`);
+                        refreshJobs();
+                      }
+                    };
 
                     return (
                       <React.Fragment key={j.id}>
@@ -724,10 +745,16 @@ function MigrationWorkersPanel() {
                                 {processed.toLocaleString()}{total > 0 ? `/${total.toLocaleString()}` : ''}
                                 <span className="ml-1 text-muted-foreground">({pct}%)</span>
                               </span>
-                              {isLive && (
+                              {isLive && !isPaused && (
                                 <span className="inline-flex items-center gap-1 text-[10px] text-primary">
                                   <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
                                   live
+                                </span>
+                              )}
+                              {isPaused && (
+                                <span className="inline-flex items-center gap-1 text-[10px] text-warning">
+                                  <Pause className="h-2.5 w-2.5" />
+                                  paused
                                 </span>
                               )}
                             </div>
@@ -747,9 +774,10 @@ function MigrationWorkersPanel() {
                               <Badge variant={
                                 j.status === 'completed' ? 'default' :
                                 j.status === 'failed' ? 'destructive' :
+                                isPaused ? 'outline' :
                                 j.status === 'processing' ? 'secondary' : 'outline'
                               } className="text-[10px] uppercase">
-                                {j.status}
+                                {isPaused ? 'paused' : j.status}
                               </Badge>
                               {(j.dispatch_count ?? 0) > 0 && (
                                 <Badge variant="outline" className="gap-1 text-[10px]" title={`Worker invocations: ${j.dispatch_count}`}>
@@ -765,7 +793,19 @@ function MigrationWorkersPanel() {
                             )}
                           </td>
                           <td className="p-2 text-right">
-                            <div className="flex items-center justify-end gap-1">
+                            <div className="flex items-center justify-end gap-1 flex-wrap">
+                              {canPause && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 gap-1 text-[10px] px-2"
+                                  title="Pause: worker stops at next checkpoint, dispatcher won't re-claim"
+                                  onClick={(e) => { e.stopPropagation(); performControl('pause'); }}
+                                >
+                                  <Pause className="h-3 w-3" />
+                                  Pause
+                                </Button>
+                              )}
                               {canResume && (
                                 <Button
                                   size="sm"
@@ -773,9 +813,14 @@ function MigrationWorkersPanel() {
                                   className="h-7 gap-1 text-[10px] px-2"
                                   onClick={async (e) => {
                                     e.stopPropagation();
-                                    if (!j.dry_run) {
-                                      // LIVE resumes go through the confirmation gate
+                                    if (!j.dry_run && !isPaused) {
+                                      // LIVE resumes from cancelled/failed go through confirmation gate
                                       setResumeTarget(j);
+                                      return;
+                                    }
+                                    // Paused jobs (auto_resume=false) just need the control RPC
+                                    if (isPaused) {
+                                      await performControl('resume');
                                       return;
                                     }
                                     const res = await invokeSecureFunction<any>('migration-orchestrator', {
@@ -795,7 +840,41 @@ function MigrationWorkersPanel() {
                                   }}
                                 >
                                   <Play className="h-3 w-3" />
-                                  Resume{!j.dry_run ? ' LIVE' : ''}
+                                  {isPaused ? 'Resume' : `Resume${!j.dry_run ? ' LIVE' : ''}`}
+                                </Button>
+                              )}
+                              {canCancel && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 gap-1 text-[10px] px-2 text-destructive hover:bg-destructive/10"
+                                  title="Cancel: graceful — worker finishes current item then stops"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (window.confirm(`Cancel ${j.domain} job? The worker will finish its current item and stop.`)) {
+                                      performControl('cancel');
+                                    }
+                                  }}
+                                >
+                                  <Square className="h-3 w-3" />
+                                  Cancel
+                                </Button>
+                              )}
+                              {canCancel && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 gap-1 text-[10px] px-2 text-destructive hover:bg-destructive/10"
+                                  title="Kill: immediate — drops next page entirely"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (window.confirm(`KILL ${j.domain} job immediately? Any in-flight page will be aborted at the next signal check.`)) {
+                                      performControl('kill');
+                                    }
+                                  }}
+                                >
+                                  <Zap className="h-3 w-3" />
+                                  Kill
                                 </Button>
                               )}
                               <Button
