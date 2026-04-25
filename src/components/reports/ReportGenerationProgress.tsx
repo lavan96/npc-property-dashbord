@@ -253,6 +253,10 @@ function ReportGenerationProgressInner() {
   const authFailCountRef = useRef(0);
   const AUTH_FAIL_THRESHOLD = 3; // Stop polling after 3 consecutive 401s
 
+  // Track consecutive transient (5xx / network) failures to back off polling
+  const transientFailCountRef = useRef(0);
+  const transientBackoffUntilRef = useRef(0);
+
   useEffect(() => {
     // Reset auth fail count when session state changes
     if (hasActiveSession()) {
@@ -288,6 +292,11 @@ function ReportGenerationProgressInner() {
       return;
     }
 
+    // Guard: respect transient-error backoff window (e.g., edge runtime 503s)
+    if (Date.now() < transientBackoffUntilRef.current) {
+      return;
+    }
+
     const { data, error } = await invokeSecureFunction('get-investment-reports', {
       listMode: true,
       listOptions: {
@@ -307,13 +316,41 @@ function ReportGenerationProgressInner() {
         if (authFailCountRef.current >= AUTH_FAIL_THRESHOLD) {
           console.warn('[ReportGenerationProgress] Stopped polling after repeated auth failures. User may need to re-login.');
         }
+        console.error('Error fetching active reports:', error);
+        return;
       }
+
+      // Detect transient/server errors (5xx, network failures) and back off exponentially
+      const msg = String(error.message || '');
+      const isTransient =
+        msg.includes('503') ||
+        msg.includes('502') ||
+        msg.includes('504') ||
+        msg.includes('500') ||
+        msg.includes('Failed to fetch') ||
+        msg.includes('NetworkError') ||
+        msg.includes('temporarily unavailable');
+
+      if (isTransient) {
+        transientFailCountRef.current += 1;
+        // Exponential backoff: 5s, 10s, 20s, 40s, capped at 60s
+        const backoffSeconds = Math.min(60, 5 * Math.pow(2, transientFailCountRef.current - 1));
+        transientBackoffUntilRef.current = Date.now() + backoffSeconds * 1000;
+        console.warn(
+          `[ReportGenerationProgress] Edge function transient error (attempt ${transientFailCountRef.current}). Backing off ${backoffSeconds}s.`,
+          msg
+        );
+        return;
+      }
+
       console.error('Error fetching active reports:', error);
       return;
     }
 
-    // Reset auth fail counter on success
+    // Reset auth + transient counters on success
     authFailCountRef.current = 0;
+    transientFailCountRef.current = 0;
+    transientBackoffUntilRef.current = 0;
 
     const records = data?.reports || [];
     
