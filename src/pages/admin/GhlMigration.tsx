@@ -1572,6 +1572,7 @@ function JobDetailRow({ job, onChanged }: { job: any; onChanged?: () => void }) 
                   <div><span className="text-muted-foreground">skipped by verified mapping:</span> <span className="font-mono">{ingestionValidation.skipped_by_verified_mapping ?? 0}</span></div>
                   <div><span className="text-muted-foreground">stale mappings repaired:</span> <span className="font-mono">{ingestionValidation.stale_mappings_rehydrated ?? 0}</span></div>
                   <div><span className="text-muted-foreground">scientific phone fixed:</span> <span className="font-mono">{ingestionValidation.scientific_phone_normalized ?? 0}</span></div>
+                  <div><span className="text-muted-foreground">structured records embedded:</span> <span className="font-mono">{ingestionValidation.structured_records_embedded ?? 0}</span></div>
                 </div>
               )}
             </div>

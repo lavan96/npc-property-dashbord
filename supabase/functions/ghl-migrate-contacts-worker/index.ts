@@ -164,6 +164,7 @@ Deno.serve(async (req) => {
     let scientificPhoneNormalized = 0;
     let staleMappingsRehydrated = 0;
     let skippedByVerifiedMapping = 0;
+    let structuredRecordsEmbedded = 0;
     let firstPage = true;
     let totalEstimate = 0;
     const contactExistenceCache = new Map<string, boolean>();
@@ -484,12 +485,34 @@ Deno.serve(async (req) => {
         const sourceLabel = String(contact.source || '').trim();
         const normalizedSource = sourceLabel || 'Client Management Export';
         if (sourceLabel) preservedLegacySourceCount++;
+        const legacyStructureRecord = {
+          first_name: safeFirst || 'Unknown',
+          last_name: safeLast || 'Unknown',
+          email: cleanEmail || '',
+          phone: cleanPhone || '',
+          tags: mergedTags,
+          source: normalizedSource,
+          secondary_first_name: smartCapitalizeName(secondaryFirst),
+          secondary_last_name: smartCapitalizeName(secondaryLast),
+          portfolio_value: toIntegerString(portfolioValue) || '0',
+          total_debt: toIntegerString(totalDebt) || '0',
+          net_cash_flow: netCashFlow || '0',
+          properties: toIntegerString(propertiesCount) || '0',
+          pipeline_status: pipelineStatusLegacy || '',
+          follow_up_in_days: followUpInDays || '',
+          next_review_date: nextReviewDate || '',
+          review_frequency: reviewFrequency || 'annual',
+          ghl_contact_id: String(contact.id || ''),
+          ghl_status: ghlStatusLegacy,
+        };
         passthroughCustomFields.push(
           { key: 'legacy_contact_id', field_value: String(contact.id || '') },
           { key: 'legacy_account_label', field_value: sourceAccount },
           { key: 'migration_target_account', field_value: targetAccount },
           { key: 'legacy_source', field_value: normalizedSource },
+          { key: 'legacy_csv_structure_json', field_value: JSON.stringify(legacyStructureRecord) },
         );
+        structuredRecordsEmbedded++;
 
         if (dryRun) {
           totalSucceeded++;
@@ -636,6 +659,7 @@ Deno.serve(async (req) => {
         stale_mappings_rehydrated: staleMappingsRehydrated,
         preserved_legacy_source_count: preservedLegacySourceCount,
         scientific_phone_normalized: scientificPhoneNormalized,
+        structured_records_embedded: structuredRecordsEmbedded,
       },
     });
     await finishJob(supabase, jobId, totalFailed > 0 && totalSucceeded === 0 ? 'failed' : 'completed',
