@@ -26,6 +26,7 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useBrand } from '@/branding/useBrand';
 import { parseVownetPdf } from '@/utils/vownetPdfParser';
 import type { ParsedClient } from '@/utils/excelClientParser';
 import { GHLExportDialog } from '@/components/shared/GHLExportDialog';
