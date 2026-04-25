@@ -47,6 +47,8 @@ const bandStyles: Record<string, string> = {
 
 export function BorrowingCapacityPanel({ clientId }: Props) {
   const { invokeFinanceFunction } = useFinancePortalAuth();
+  const { settings: brandSettings } = useBrand();
+  const brandName = brandSettings.companyName || 'the team';
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['finance-portal-bc', clientId],
@@ -93,7 +95,7 @@ export function BorrowingCapacityPanel({ clientId }: Props) {
             No borrowing capacity assessment has been calculated for this client yet.
           </p>
           <p className="text-xs text-muted-foreground">
-            Once the NPC team runs an assessment it will appear here automatically.
+            Once {brandName} runs an assessment it will appear here automatically.
           </p>
         </CardContent>
       </Card>
@@ -116,7 +118,7 @@ export function BorrowingCapacityPanel({ clientId }: Props) {
                 <TrendingUp className="h-4 w-4" /> Borrowing Capacity
               </CardTitle>
               <CardDescription className="text-xs mt-1">
-                Latest NPC assessment · {format(new Date(latest.created_at), 'd MMM yyyy, h:mm a')}
+                Latest assessment · {format(new Date(latest.created_at), 'd MMM yyyy, h:mm a')}
               </CardDescription>
             </div>
             <Badge variant="outline" className={cn('uppercase tracking-wide', bandClass)}>
@@ -149,7 +151,7 @@ export function BorrowingCapacityPanel({ clientId }: Props) {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-sm">Inputs used</CardTitle>
-          <CardDescription className="text-xs">Snapshot of the figures the NPC team modelled.</CardDescription>
+          <CardDescription className="text-xs">Snapshot of the figures modelled.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
@@ -240,8 +242,8 @@ export function BorrowingCapacityPanel({ clientId }: Props) {
       <p className="text-xs text-muted-foreground flex items-start gap-2">
         <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
         <span>
-          Read-only view. Borrowing capacity assessments are calculated by the NPC team using APRA-compliant
-          serviceability rules. Contact your NPC manager to request a re-assessment or to update inputs.
+          Read-only view. Borrowing capacity assessments are calculated using APRA-compliant
+          serviceability rules. Contact your account manager to request a re-assessment or to update inputs.
         </span>
       </p>
     </div>
