@@ -278,7 +278,7 @@ async function getSignatureFromDatabase(supabase: any): Promise<string> {
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
-  const corsHeaders = createAuthCorsHeaders(origin);
+  const corsHeaders = createCorsHeaders(origin);
 
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
