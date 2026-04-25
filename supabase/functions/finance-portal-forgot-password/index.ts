@@ -55,6 +55,7 @@ Deno.serve(async (req) => {
       .eq('id', portalUser.id)
 
     if (resendApiKey) {
+      const brand = await getBrandConfig(supabase);
       const contactName = (portalUser.finance_agent_contacts as any)?.name || 'there';
       try {
         const emailRes = await fetch('https://api.resend.com/emails', {
