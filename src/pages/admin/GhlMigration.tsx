@@ -918,9 +918,9 @@ function JobDetailRow({ job, onChanged }: { job: any; onChanged?: () => void }) 
     }
   };
 
-  const canRedispatch = job.status === 'failed' || job.status === 'cancelled' ||
-    (job.status === 'processing' && job.dispatch_count > 0 &&
-     job.last_dispatched_at && (Date.now() - new Date(job.last_dispatched_at).getTime() > 5 * 60_000));
+  const canRedispatch = liveJob.status === 'failed' || liveJob.status === 'cancelled' ||
+    (liveJob.status === 'processing' && dispatchCount > 0 &&
+     lastDispatchedAt && (Date.now() - new Date(lastDispatchedAt).getTime() > 5 * 60_000));
 
   return (
     <tr className="border-t border-border/40 bg-muted/10">
