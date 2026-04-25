@@ -84,6 +84,11 @@ function toIntegerString(raw: unknown): string {
   return Math.trunc(parsed).toString();
 }
 
+function isPlaceholderResolutionName(name: string): boolean {
+  const normalized = normalizeContactName(name);
+  return !normalized || normalized === 'unknown unknown' || normalized === 'unknown';
+}
+
 Deno.serve(async (req) => {
   const startedAt = Date.now();
 
@@ -111,7 +116,7 @@ Deno.serve(async (req) => {
     const payload = body.payload || {};
     const maxItems = Number(payload.max_items) || 0; // 0 = no cap
     const preserveCsvStructure = payload.preserve_csv_structure !== false;
-    const allowNameDedupe = payload.allow_name_dedupe === true;
+    const allowNameDedupe = payload.allow_name_dedupe !== false;
     const forceReingest = payload.force_reingest === true;
 
     if (!jobId) return new Response(JSON.stringify({ error: 'job_id required' }), { status: 400 });
@@ -369,12 +374,14 @@ Deno.serve(async (req) => {
             .eq('target_account_label', targetAccount);
         }
 
-        // Optional NAME-BASED DEDUPE. Disabled by default because name-only
-        // matching can collapse distinct contacts into one row and cause
-        // "all skipped" behaviour on repeated/common names.
+        // FULL_NAME DEDUPE. This is the canonical contact-resolution layer:
+        // if a legacy contact's sanitized full_name has already been mirrored,
+        // reuse the existing target contact and only refresh the ID mapping.
+        // This prevents one bulk import from spraying repeated full_name rows
+        // into the new GHL account as separate contacts.
         if (allowNameDedupe) {
           const normalizedName = normalizeContactName(contactName);
-          if (normalizedName) {
+          if (normalizedName && !isPlaceholderResolutionName(contactName)) {
             const nameMatch = await resolveTargetContactByName(supabase, {
               fullName: contactName,
               sourceAccount,

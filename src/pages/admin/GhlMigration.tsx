@@ -362,7 +362,7 @@ function MigrationWorkersPanel() {
   const [confirmation, setConfirmation] = useState('');
   const [dispatching, setDispatching] = useState(false);
   const [preserveCsvStructure, setPreserveCsvStructure] = useState(true);
-  const [allowNameDedupe, setAllowNameDedupe] = useState(false);
+  const [allowNameDedupe, setAllowNameDedupe] = useState(true);
   const [forceReingest, setForceReingest] = useState(false);
   const [jobs, setJobs] = useState<any[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(false);
@@ -646,8 +646,8 @@ function MigrationWorkersPanel() {
               className="mt-0.5"
             />
             <span>
-              <strong>Allow name-based dedupe</strong> (advanced, off by default): reuse target contacts by matching full name only.
-              Keep this <strong>off</strong> if you are seeing widespread skipped contacts.
+              <strong>Full-name contact resolution</strong> (recommended): reuse target contacts by matching the canonical full name before writing.
+              Turn this off only for a controlled test where duplicate target contacts are expected.
             </span>
           </label>
         </div>
