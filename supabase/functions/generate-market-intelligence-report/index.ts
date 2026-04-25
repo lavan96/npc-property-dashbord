@@ -536,7 +536,7 @@ Deno.serve(async (req) => {
     if (!isServiceCall) {
       const { error: authError, userId: authUserId } = await verifyAuth(supabase, req.headers, body);
       if (authError || !authUserId) {
-        return createUnauthorizedResponse(corsHeaders);
+        return createUnauthorizedResponse('Authentication required', corsHeaders);
       }
       userId = authUserId;
     }
