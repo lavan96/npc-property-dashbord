@@ -317,3 +317,58 @@ export async function recordIdMapping(
 export function delay(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
+
+/**
+ * Decide whether a worker crash should mark the job as `failed` or just
+ * release the lease so the dispatcher retries it.
+ *
+ * Retryable (release lease, leave status='processing'):
+ *   - network / timeout / fetch errors
+ *   - 5xx upstream errors
+ *   - rate_limit
+ *   - "unknown" — give it at least one more shot
+ *
+ * Terminal (mark failed):
+ *   - auth / validation / not_found / conflict — these won't fix themselves
+ *   - exceeded retry budget (dispatch_count >= 8)
+ */
+export async function handleWorkerCrash(
+  supabase: any,
+  jobId: string,
+  err: any,
+  workerLabel: string,
+): Promise<{ action: 'retry' | 'failed'; reason: string }> {
+  const msg = (err?.message || String(err) || 'Unknown error').substring(0, 500);
+  const { category, retryable } = classifyError(msg);
+
+  // Pull dispatch_count to enforce a retry budget
+  let dispatchCount = 0;
+  try {
+    const { data } = await supabase
+      .from('migration_jobs')
+      .select('dispatch_count')
+      .eq('id', jobId)
+      .maybeSingle();
+    dispatchCount = data?.dispatch_count || 0;
+  } catch {}
+
+  const MAX_RETRIES = 8;
+  if (!retryable || dispatchCount >= MAX_RETRIES) {
+    const reason = !retryable
+      ? `terminal (${category}): ${msg}`
+      : `retry budget exceeded after ${dispatchCount} dispatches: ${msg}`;
+    console.error(`[${workerLabel}] crash → marking FAILED — ${reason}`);
+    await finishJob(supabase, jobId, 'failed', `[${category}] ${msg}`);
+    return { action: 'failed', reason };
+  }
+
+  // Retryable: release lease, dispatcher will pick it up next tick.
+  console.warn(`[${workerLabel}] crash → releasing lease for retry (${category}, dispatch#${dispatchCount}): ${msg}`);
+  try {
+    const { error } = await supabase.rpc('release_migration_job_lock', { p_job_id: jobId });
+    if (error) console.error(`[${workerLabel}] release_lock failed:`, error.message);
+  } catch (e: any) {
+    console.error(`[${workerLabel}] release_lock threw:`, e?.message);
+  }
+  return { action: 'retry', reason: `${category}: ${msg}` };
+}
