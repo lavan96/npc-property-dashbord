@@ -46,6 +46,7 @@ interface RequestBody {
   email?: string;
   otp?: string;
   new_password?: string;
+  session_token?: string;
 }
 
 Deno.serve(async (req: Request) => {

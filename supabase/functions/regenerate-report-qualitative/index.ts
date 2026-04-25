@@ -1517,7 +1517,8 @@ Deno.serve(async (req) => {
     console.log('📊 Enhanced data sources loaded:', Object.keys(enhancedData).filter(k => enhancedData[k as keyof EnhancedData]).length);
 
     // Generate report header (only if starting fresh)
-    const reportHeader = `# ${_brandRq.companyNameUpper}
+    const _brandHdr = await getBrandConfig();
+    const reportHeader = `# ${_brandHdr.companyNameUpper}
 
 YOUR DEDICATED PROPERTY PARTNER
 

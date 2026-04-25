@@ -209,7 +209,7 @@ Deno.serve(async (req) => {
 
     // Resolve invite mode + temp password
     const useTempPassword = invite_mode === 'temp_password';
-    const brand = await getBrandConfig(supabase);
+    const brand = await getBrandConfig();
     const resendFrom = brand.fromHeaderAdmin;
     let tempPasswordPlain: string | null = null;
     let tempPasswordHash: string | null = null;
