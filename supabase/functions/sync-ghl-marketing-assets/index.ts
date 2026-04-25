@@ -268,9 +268,10 @@ Deno.serve(async (req) => {
     //   - User JWT: must additionally have admin/superadmin role.
     const authHeader = req.headers.get('authorization') || '';
     const bearer = authHeader.replace(/^Bearer\s+/i, '').trim();
-    const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
+    // Public anon key (safe to hardcode — also injected by Supabase runtime, but not always)
+    const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkdXpiY2h1c3d3YmVmZHVuZmN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0NDM4NzksImV4cCI6MjA3MTAxOTg3OX0.eSYU6fxIc3tBQuGLsdBRff0alBMkNfvv7OpW0efNjxk';
     const sessionToken = req.headers.get('x-session-token') || body?.session_token;
-    const isCronCall = bearer && anonKey && bearer === anonKey && !sessionToken;
+    const isCronCall = bearer === ANON_KEY && !sessionToken;
 
     if (!isCronCall) {
       const { error: authError, userId, authMethod } = await verifyAuth(supabase, req.headers, body);
