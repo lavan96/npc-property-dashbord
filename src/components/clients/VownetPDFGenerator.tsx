@@ -9,6 +9,7 @@ import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { drawBorrowingCapacitySections, transformAssessmentToSectionData } from '@/utils/borrowingCapacityPdfSections';
 import { fetchLatestBorrowingCapacity } from '@/lib/fetchLatestBorrowingCapacity';
+import { fetchGlobalReportSettings, type ContactDetails, type ProfessionalDisclaimer } from '@/hooks/useGlobalReportSettings';
 import { smartCapitalize } from '@/lib/nameUtils';
 import {
   DropdownMenu,
@@ -315,8 +316,10 @@ export function VownetPDFGenerator({
       const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
       if (!iframeDoc) throw new Error('Could not access iframe document');
 
-      // Generate HTML content (unchanged)
-      const htmlContent = generateHTMLContent(data, includeOwnerOccupied);
+      // Fetch white-label brand settings for the contact/disclaimer page
+      const __brandSettings = await fetchGlobalReportSettings();
+      // Generate HTML content (with dynamic brand)
+      const htmlContent = generateHTMLContent(data, includeOwnerOccupied, __brandSettings?.contactDetails, __brandSettings?.disclaimer);
 
       // Write the full HTML into the iframe's clean document
       iframeDoc.open();
@@ -817,7 +820,25 @@ const NPC_COLORS = {
 };
 
 // Generate the full HTML content for the PDF
-function generateHTMLContent(data: VownetPDFData, includeOwnerOccupied: boolean = true): string {
+function generateHTMLContent(
+  data: VownetPDFData,
+  includeOwnerOccupied: boolean = true,
+  brandContact?: ContactDetails,
+  brandDisclaimer?: ProfessionalDisclaimer,
+): string {
+  // Brand-aware values with safe fallbacks
+  const _company = (brandContact?.company_name || 'Property Consulting').trim();
+  const _companyParts = _company.split(' ');
+  const _companyLine1 = _companyParts.length > 1 ? _companyParts.slice(0, -1).join(' ').toUpperCase() : _company.toUpperCase();
+  const _companyLine2 = _companyParts.length > 1 ? _companyParts[_companyParts.length - 1].toUpperCase() : '';
+  const _website = brandContact?.website || '';
+  const _email = brandContact?.email || '';
+  const _phone = brandContact?.phone || '';
+  const _address = brandContact?.address || '';
+  const _abn = brandContact?.abn || '';
+  const _disclaimerText = (brandDisclaimer?.is_enabled === false)
+    ? ''
+    : (brandDisclaimer?.text || 'This information is provided for general informational purposes only and does not constitute financial, legal, or investment advice.');
   const { client, properties, employment = [], income = [], assets = [], liabilities = [], expenses = [] } = data;
   const reportDate = new Date().toLocaleDateString('en-AU', { day: '2-digit', month: 'long', year: 'numeric' });
   
