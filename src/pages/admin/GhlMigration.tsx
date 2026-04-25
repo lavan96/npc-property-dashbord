@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
@@ -383,7 +383,7 @@ function MigrationWorkersPanel() {
     } finally { setTestingAudit(false); }
   };
 
-
+  const refreshJobs = async () => {
     setLoadingJobs(true);
     try {
       const res = await invokeSecureFunction<{ success: boolean; jobs: any[] }>(
@@ -447,6 +447,93 @@ function MigrationWorkersPanel() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
+        {/* Credential audit panel */}
+        <div className="rounded-md border border-border/60 bg-muted/20 p-4 space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <KeyRound className="h-4 w-4 text-primary" />
+              <h3 className="text-sm font-semibold">Token preflight</h3>
+              <Badge variant="outline" className="text-[10px]">Required for LIVE</Badge>
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => testCredentials('legacy')} disabled={testingAudit} className="gap-1">
+                <ShieldAlert className="h-3 w-3" />
+                Test LEGACY
+              </Button>
+              <Button size="sm" variant="default" onClick={() => testCredentials('new')} disabled={testingAudit} className="gap-1">
+                <ShieldAlert className="h-3 w-3" />
+                Test NEW
+              </Button>
+            </div>
+          </div>
+          {!audit && (
+            <p className="text-[11px] text-muted-foreground">
+              Click <strong>Test NEW</strong> to verify the configured token has the contacts/opportunities/notes scopes
+              required for live writes. Live dispatch will be blocked until all required scopes pass.
+            </p>
+          )}
+          {audit && (
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                <Badge variant={auditAccount === 'new' ? 'default' : 'secondary'} className="text-[10px] uppercase">{audit.account}</Badge>
+                <Badge variant="outline" className="text-[10px]">kind: {audit.token_kind}</Badge>
+                <Badge variant="outline" className="text-[10px]">hint: {audit.token_type_hint}</Badge>
+                {audit.exchange_attempted && (
+                  <Badge variant={audit.exchange_succeeded ? 'default' : 'destructive'} className="text-[10px]">
+                    exchange: {audit.exchange_succeeded ? 'ok' : 'failed'}
+                  </Badge>
+                )}
+                {audit.location_id_matches_secret === false && (
+                  <Badge variant="destructive" className="text-[10px]">locationId mismatch</Badge>
+                )}
+                <a href={audit.documentation_url} target="_blank" rel="noreferrer"
+                   className="ml-auto inline-flex items-center gap-1 text-[11px] text-primary hover:underline">
+                  Required scopes <ExternalLink className="h-3 w-3" />
+                </a>
+              </div>
+              <div className="overflow-hidden rounded border border-border/40">
+                <table className="w-full text-[11px]">
+                  <thead className="bg-muted/40 uppercase text-muted-foreground">
+                    <tr>
+                      <th className="p-1.5 text-left">Scope</th>
+                      <th className="p-1.5 text-left">Endpoint</th>
+                      <th className="p-1.5 text-left">Status</th>
+                      <th className="p-1.5 text-left">Detail</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {audit.scope_probes.map((p) => (
+                      <tr key={p.scope} className="border-t border-border/30">
+                        <td className="p-1.5 font-mono text-[10px]">{p.scope}</td>
+                        <td className="p-1.5 font-mono text-[10px] text-muted-foreground">{p.method} {p.endpoint}</td>
+                        <td className="p-1.5">
+                          {p.ok ? (
+                            <span className="inline-flex items-center gap-1 text-success"><CheckCircle2 className="h-3 w-3" />OK</span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-destructive"><XCircle className="h-3 w-3" />{p.http_status || 'ERR'}</span>
+                          )}
+                        </td>
+                        <td className="p-1.5 text-muted-foreground">
+                          {p.ok ? '—' : `[${p.error_code || 'ERR'}] ${p.error_message || ''}`.substring(0, 120)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {!audit.required_scopes_ok && (
+                <Alert className="border-destructive/40 bg-destructive/5 py-2">
+                  <AlertCircle className="h-3.5 w-3.5 text-destructive" />
+                  <AlertDescription className="text-[11px] text-destructive">
+                    Missing required scopes: <code>{audit.missing_scopes.join(', ')}</code>.
+                    Generate a new sub-account/PIT token with these scopes before running live jobs.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* Dispatch form */}
         <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
           <div className="space-y-1">
@@ -556,42 +643,47 @@ function MigrationWorkersPanel() {
                 <tbody>
                   {jobs.map((j) => {
                     const pct = j.total_items > 0 ? Math.round((j.processed_items / j.total_items) * 100) : 0;
+                    const isOpen = expandedJobId === j.id;
                     return (
-                      <tr key={j.id} className="border-t border-border/40">
-                        <td className="p-2 text-muted-foreground">{new Date(j.created_at).toLocaleTimeString()}</td>
-                        <td className="p-2 font-medium">{j.domain}</td>
-                        <td className="p-2">
-                          <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase">{j.source_account}</span>
-                          <span className="mx-1 text-muted-foreground">→</span>
-                          <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] uppercase">{j.target_account}</span>
-                        </td>
-                        <td className="p-2">
-                          <Badge variant={j.dry_run ? 'secondary' : 'destructive'} className="text-[10px]">
-                            {j.dry_run ? 'DRY' : 'LIVE'}
-                          </Badge>
-                        </td>
-                        <td className="p-2 text-right tabular-nums">
-                          {j.processed_items}/{j.total_items || '?'}
-                          <span className="ml-1 text-muted-foreground">({pct}%)</span>
-                          <div className="text-[10px] text-muted-foreground">
-                            ✓ {j.succeeded_items} · ✗ {j.failed_items}
-                          </div>
-                        </td>
-                        <td className="p-2">
-                          <Badge variant={
-                            j.status === 'completed' ? 'default' :
-                            j.status === 'failed' ? 'destructive' :
-                            j.status === 'processing' ? 'secondary' : 'outline'
-                          } className="text-[10px] uppercase">
-                            {j.status}
-                          </Badge>
-                          {j.error_summary && (
-                            <div className="mt-1 max-w-xs truncate text-[10px] text-destructive" title={j.error_summary}>
-                              {j.error_summary}
+                      <React.Fragment key={j.id}>
+                        <tr className="border-t border-border/40 cursor-pointer hover:bg-muted/30"
+                            onClick={() => setExpandedJobId(isOpen ? null : j.id)}>
+                          <td className="p-2 text-muted-foreground">{new Date(j.created_at).toLocaleTimeString()}</td>
+                          <td className="p-2 font-medium">{j.domain}</td>
+                          <td className="p-2">
+                            <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase">{j.source_account}</span>
+                            <span className="mx-1 text-muted-foreground">→</span>
+                            <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] uppercase">{j.target_account}</span>
+                          </td>
+                          <td className="p-2">
+                            <Badge variant={j.dry_run ? 'secondary' : 'destructive'} className="text-[10px]">
+                              {j.dry_run ? 'DRY' : 'LIVE'}
+                            </Badge>
+                          </td>
+                          <td className="p-2 text-right tabular-nums">
+                            {j.processed_items}/{j.total_items || '?'}
+                            <span className="ml-1 text-muted-foreground">({pct}%)</span>
+                            <div className="text-[10px] text-muted-foreground">
+                              ✓ {j.succeeded_items} · ✗ {j.failed_items}
                             </div>
-                          )}
-                        </td>
-                      </tr>
+                          </td>
+                          <td className="p-2">
+                            <Badge variant={
+                              j.status === 'completed' ? 'default' :
+                              j.status === 'failed' ? 'destructive' :
+                              j.status === 'processing' ? 'secondary' : 'outline'
+                            } className="text-[10px] uppercase">
+                              {j.status}
+                            </Badge>
+                            {j.error_summary && (
+                              <div className="mt-1 max-w-xs truncate text-[10px] text-destructive" title={j.error_summary}>
+                                {j.error_summary}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                        {isOpen && <JobDetailRow job={j} />}
+                      </React.Fragment>
                     );
                   })}
                 </tbody>
@@ -692,5 +784,118 @@ function CompareTable({
         Δ Gap = LEGACY − NEW. Positive = records still to migrate. Counts of <code>—</code> mean the API didn't return a total (e.g. notes).
       </div>
     </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Expandable per-job audit / items row
+// ────────────────────────────────────────────────────────────────────────────
+function JobDetailRow({ job }: { job: any }) {
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      const res = await invokeSecureFunction<{ success: boolean; items: any[] }>(
+        'migration-job-status', { job_id: job.id }, { timeoutMs: 15000 },
+      );
+      if (!cancelled) {
+        setItems(res.data?.items || []);
+        setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [job.id]);
+
+  const tokenAudit = job.payload?.token_audit;
+  const failed = items.filter((i) => i.status === 'failed');
+  const skipped = items.filter((i) => i.status === 'skipped');
+
+  return (
+    <tr className="border-t border-border/40 bg-muted/10">
+      <td colSpan={6} className="p-3">
+        <div className="space-y-3">
+          {tokenAudit && (
+            <div className="rounded border border-border/40 bg-background/40 p-2 text-[11px]">
+              <div className="mb-1 flex items-center gap-2 font-semibold">
+                <KeyRound className="h-3 w-3 text-primary" />
+                Run-level token audit
+              </div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 md:grid-cols-4">
+                <div><span className="text-muted-foreground">kind:</span> {tokenAudit.token_kind || '—'}</div>
+                <div><span className="text-muted-foreground">hint:</span> {tokenAudit.token_type_hint || '—'}</div>
+                <div><span className="text-muted-foreground">scopes ok:</span>{' '}
+                  {tokenAudit.required_scopes_ok
+                    ? <span className="text-success">yes</span>
+                    : <span className="text-destructive">no</span>}
+                </div>
+                <div><span className="text-muted-foreground">missing:</span>{' '}
+                  <code>{(tokenAudit.missing_scopes || []).join(',') || 'none'}</code>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {loading ? (
+            <Skeleton className="h-20" />
+          ) : items.length === 0 ? (
+            <div className="text-[11px] text-muted-foreground">No items recorded yet.</div>
+          ) : (
+            <div className="space-y-2">
+              {failed.length > 0 && (
+                <details open className="rounded border border-destructive/30 bg-destructive/5 p-2 text-[11px]">
+                  <summary className="cursor-pointer font-semibold text-destructive">
+                    Failed items ({failed.length})
+                  </summary>
+                  <div className="mt-2 max-h-64 space-y-1 overflow-auto">
+                    {failed.map((it, i) => {
+                      const codeMatch = (it.error_message || '').match(/\[([A-Z0-9_]+)\]/);
+                      const code = codeMatch ? codeMatch[1] : null;
+                      const isAuth = code?.includes('401') || code?.includes('SCOPE') || code?.includes('FORBIDDEN');
+                      return (
+                        <div key={i} className="rounded bg-background/60 p-1.5 font-mono text-[10px]">
+                          <div className="flex items-center gap-2">
+                            {code && (
+                              <Badge variant={isAuth ? 'destructive' : 'outline'} className="text-[10px]">
+                                {code}
+                              </Badge>
+                            )}
+                            <span className="font-sans font-medium">{it.entity_label || it.source_id}</span>
+                          </div>
+                          <div className="mt-0.5 break-words text-muted-foreground">{it.error_message}</div>
+                          {isAuth && (
+                            <a href="https://highlevel.stoplight.io/docs/integrations/0443d7d1a4bd0-overview"
+                               target="_blank" rel="noreferrer"
+                               className="mt-0.5 inline-flex items-center gap-1 font-sans text-primary hover:underline">
+                              View required scopes <ExternalLink className="h-2.5 w-2.5" />
+                            </a>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </details>
+              )}
+              {skipped.length > 0 && (
+                <details className="rounded border border-border/40 bg-muted/30 p-2 text-[11px]">
+                  <summary className="cursor-pointer font-semibold">Skipped items ({skipped.length})</summary>
+                  <div className="mt-2 max-h-48 space-y-1 overflow-auto">
+                    {skipped.map((it, i) => (
+                      <div key={i} className="rounded bg-background/60 p-1.5 text-[10px]">
+                        <span className="font-medium">{it.entity_label || it.source_id}</span>
+                        <span className="ml-2 text-muted-foreground">{it.error_message}</span>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              )}
+              <div className="text-[10px] text-muted-foreground">Showing the most recent {items.length} items.</div>
+            </div>
+          )}
+        </div>
+      </td>
+    </tr>
   );
 }
