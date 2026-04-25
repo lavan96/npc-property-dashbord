@@ -242,6 +242,27 @@ Deno.serve(async (req) => {
       processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed,
     });
 
+    // ── Granular control exits ──────────────────────────────────────────
+    if (cancelledByUser) {
+      await finishJob(supabase, jobId, 'cancelled',
+        `Cancelled by user (${cancelledByUser}) at ${totalProcessed} processed`);
+      console.log(`[notes-worker] CANCELLED job=${jobId} via ${cancelledByUser} at ${totalProcessed}`);
+      return new Response(JSON.stringify({
+        success: true, cancelled: true, signal: cancelledByUser, processed: totalProcessed,
+      }), { headers: { 'Content-Type': 'application/json' } });
+    }
+    if (pausedByUser) {
+      await partialExit(
+        supabase, jobId,
+        { offset: currentOffset },
+        { processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed },
+      );
+      console.log(`[notes-worker] PAUSED job=${jobId} at ${totalProcessed}`);
+      return new Response(JSON.stringify({
+        success: true, paused: true, processed: totalProcessed,
+      }), { headers: { 'Content-Type': 'application/json' } });
+    }
+
     const morePagesAvailable = (notes?.length || 0) >= pullLimit;
     const shouldRedispatch = !timeBudgetExhausted && morePagesAvailable && !(maxItems > 0 && totalProcessed >= maxItems);
 
