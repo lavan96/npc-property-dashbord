@@ -15,6 +15,7 @@ import { getGhlCredentials, validateGhlCredentials, buildGhlHeaders } from '../_
 import {
   startJob, finishJob, recordItem, updateJobProgress, delay,
   saveCheckpoint, loadCheckpoint, partialExit, heartbeat,
+  readControlSignal,
 } from '../_shared/migration-jobs.ts';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
