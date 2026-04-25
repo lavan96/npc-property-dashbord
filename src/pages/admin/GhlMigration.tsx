@@ -360,7 +360,30 @@ function MigrationWorkersPanel() {
   const [jobs, setJobs] = useState<any[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(false);
 
-  const refreshJobs = async () => {
+  const [audit, setAudit] = useState<CredentialAudit | null>(null);
+  const [testingAudit, setTestingAudit] = useState(false);
+  const [auditAccount, setAuditAccount] = useState<Account>('new');
+  const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
+
+  const testCredentials = async (acct: Account) => {
+    setTestingAudit(true);
+    setAuditAccount(acct);
+    try {
+      const res = await invokeSecureFunction<{ success: boolean; audit: CredentialAudit; error?: string }>(
+        'ghl-test-credentials', { account: acct }, { timeoutMs: 60000 },
+      );
+      if (res.error || !res.data?.success) {
+        toast.error(res.error?.message || res.data?.error || 'Credential test failed');
+        setAudit(null);
+      } else {
+        setAudit(res.data.audit);
+        if (res.data.audit.required_scopes_ok) toast.success(`${acct.toUpperCase()} token: all scopes OK`);
+        else toast.error(`${acct.toUpperCase()} token missing: ${res.data.audit.missing_scopes.join(', ')}`);
+      }
+    } finally { setTestingAudit(false); }
+  };
+
+
     setLoadingJobs(true);
     try {
       const res = await invokeSecureFunction<{ success: boolean; jobs: any[] }>(
