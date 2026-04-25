@@ -253,6 +253,10 @@ function ReportGenerationProgressInner() {
   const authFailCountRef = useRef(0);
   const AUTH_FAIL_THRESHOLD = 3; // Stop polling after 3 consecutive 401s
 
+  // Track consecutive transient (5xx / network) failures to back off polling
+  const transientFailCountRef = useRef(0);
+  const transientBackoffUntilRef = useRef(0);
+
   useEffect(() => {
     // Reset auth fail count when session state changes
     if (hasActiveSession()) {
