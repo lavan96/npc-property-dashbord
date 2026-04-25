@@ -808,28 +808,52 @@ function JobDetailRow({ job, onChanged }: { job: any; onChanged?: () => void }) 
   const [downloading, setDownloading] = useState(false);
   const [redispatching, setRedispatching] = useState(false);
 
+  const [liveJob, setLiveJob] = useState<any>(job);
+
+  useEffect(() => { setLiveJob(job); }, [job]);
+
+  const fetchStatus = async () => {
+    const res = await invokeSecureFunction<any>(
+      'migration-job-status', { job_id: job.id }, { timeoutMs: 15000 },
+    );
+    if (res.data?.success) {
+      setItems(res.data?.items || res.data?.recent_items || []);
+      setBreakdown(res.data?.breakdown || {});
+      setErrorCategories(res.data?.error_categories || {});
+      setRetryableFailures(res.data?.retryable_failures || 0);
+      setNonRetryableFailures(res.data?.non_retryable_failures || 0);
+      if (res.data?.job) setLiveJob(res.data.job);
+    }
+    setLoading(false);
+  };
+
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      setLoading(true);
-      const res = await invokeSecureFunction<any>(
-        'migration-job-status', { job_id: job.id }, { timeoutMs: 15000 },
-      );
-      if (!cancelled) {
-        setItems(res.data?.items || res.data?.recent_items || []);
-        setBreakdown(res.data?.breakdown || {});
-        setErrorCategories(res.data?.error_categories || {});
-        setRetryableFailures(res.data?.retryable_failures || 0);
-        setNonRetryableFailures(res.data?.non_retryable_failures || 0);
-        setLoading(false);
-      }
-    })();
+    setLoading(true);
+    (async () => { if (!cancelled) await fetchStatus(); })();
     return () => { cancelled = true; };
-  }, [job.id, job.processed_items, job.failed_items]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [job.id]);
 
-  const tokenAudit = job.payload?.token_audit;
+  // Live-poll while job is active
+  useEffect(() => {
+    const active = liveJob?.status === 'pending' || liveJob?.status === 'processing';
+    if (!active) return;
+    const id = setInterval(fetchStatus, 3000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveJob?.status, job.id]);
+
+  const tokenAudit = liveJob.payload?.token_audit;
   const failed = items.filter((i) => i.status === 'failed');
   const skipped = items.filter((i) => i.status === 'skipped');
+
+  // Best-effort cursor formatting — workers each persist their own shape
+  const cursor = liveJob.resume_cursor || {};
+  const cursorEntries = Object.entries(cursor).filter(([, v]) => v !== null && v !== undefined && v !== '');
+  const lastSourceId: string | null = liveJob.last_processed_source_id || null;
+  const lastDispatchedAt: string | null = liveJob.last_dispatched_at || null;
+  const dispatchCount: number = liveJob.dispatch_count ?? 0;
 
   const downloadFailedCsv = async () => {
     setDownloading(true);
@@ -894,9 +918,9 @@ function JobDetailRow({ job, onChanged }: { job: any; onChanged?: () => void }) 
     }
   };
 
-  const canRedispatch = job.status === 'failed' || job.status === 'cancelled' ||
-    (job.status === 'processing' && job.dispatch_count > 0 &&
-     job.last_dispatched_at && (Date.now() - new Date(job.last_dispatched_at).getTime() > 5 * 60_000));
+  const canRedispatch = liveJob.status === 'failed' || liveJob.status === 'cancelled' ||
+    (liveJob.status === 'processing' && dispatchCount > 0 &&
+     lastDispatchedAt && (Date.now() - new Date(lastDispatchedAt).getTime() > 5 * 60_000));
 
   return (
     <tr className="border-t border-border/40 bg-muted/10">
@@ -927,10 +951,16 @@ function JobDetailRow({ job, onChanged }: { job: any; onChanged?: () => void }) 
               </Button>
             )}
             <div className="ml-auto flex flex-wrap items-center gap-1.5 text-[10px]">
-              {(job.dispatch_count ?? 0) > 0 && (
+              {liveJob.status === 'processing' && (
+                <Badge variant="secondary" className="gap-1 animate-pulse">
+                  <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                  live
+                </Badge>
+              )}
+              {dispatchCount > 0 && (
                 <Badge variant="outline" className="gap-1">
                   <Repeat className="h-2.5 w-2.5" />
-                  {job.dispatch_count} dispatch{job.dispatch_count === 1 ? '' : 'es'}
+                  {dispatchCount} dispatch{dispatchCount === 1 ? '' : 'es'}
                 </Badge>
               )}
               {retryableFailures > 0 && (
@@ -946,7 +976,64 @@ function JobDetailRow({ job, onChanged }: { job: any; onChanged?: () => void }) 
             </div>
           </div>
 
-          {/* Error category breakdown */}
+          {/* Resume cursor + processing position (live) */}
+          <div className="rounded border border-primary/30 bg-primary/5 p-2 text-[11px]">
+            <div className="mb-1.5 flex items-center gap-2 font-semibold text-primary">
+              <Repeat className="h-3 w-3" />
+              Resume checkpoint
+              <span className="ml-auto font-normal text-[10px] text-muted-foreground">
+                {liveJob.status === 'processing' ? 'updating live' : 'last saved'}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 md:grid-cols-4">
+              <div>
+                <span className="text-muted-foreground">processed:</span>{' '}
+                <span className="font-mono">{liveJob.processed_items ?? 0}</span>
+                {liveJob.total_items > 0 && <span className="text-muted-foreground"> / {liveJob.total_items}</span>}
+              </div>
+              <div>
+                <span className="text-muted-foreground">succeeded:</span>{' '}
+                <span className="font-mono text-success">{liveJob.succeeded_items ?? 0}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">failed:</span>{' '}
+                <span className="font-mono text-destructive">{liveJob.failed_items ?? 0}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">dispatches:</span>{' '}
+                <span className="font-mono">{dispatchCount}</span>
+              </div>
+              <div className="col-span-2 md:col-span-2">
+                <span className="text-muted-foreground">last source id:</span>{' '}
+                <code className="rounded bg-background/60 px-1 py-0.5 text-[10px]">{lastSourceId || '—'}</code>
+              </div>
+              <div className="col-span-2 md:col-span-2">
+                <span className="text-muted-foreground">last dispatch:</span>{' '}
+                <span className="font-mono">{lastDispatchedAt ? new Date(lastDispatchedAt).toLocaleTimeString() : '—'}</span>
+              </div>
+            </div>
+            {cursorEntries.length > 0 ? (
+              <div className="mt-1.5">
+                <div className="text-muted-foreground">cursor:</div>
+                <div className="mt-0.5 flex flex-wrap gap-1.5">
+                  {cursorEntries.map(([k, v]) => (
+                    <code key={k} className="rounded bg-background/60 px-1.5 py-0.5 text-[10px]">
+                      <span className="text-muted-foreground">{k}:</span>{' '}
+                      {typeof v === 'object' ? JSON.stringify(v) : String(v)}
+                    </code>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="mt-1 text-[10px] text-muted-foreground">
+                {liveJob.status === 'completed'
+                  ? 'Cursor cleared on successful completion.'
+                  : liveJob.status === 'pending'
+                    ? 'Worker has not started yet.'
+                    : 'No cursor saved yet (worker may still be on first page).'}
+              </div>
+            )}
+          </div>
           {Object.keys(errorCategories).length > 0 && (
             <div className="rounded border border-destructive/30 bg-destructive/5 p-2 text-[11px]">
               <div className="mb-1 font-semibold text-destructive">Failures by category</div>
