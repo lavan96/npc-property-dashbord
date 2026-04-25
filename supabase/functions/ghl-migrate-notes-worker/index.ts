@@ -83,18 +83,30 @@ Deno.serve(async (req) => {
 
     console.log(`[notes-worker] job=${jobId} ${sourceAccount}→${targetAccount} dry_run=${dryRun}`);
 
-    // Pull all client_notes joined to clients with a ghl_contact_id
+    // Resume support: notes are paginated by an integer offset over local rows
+    const checkpoint = await loadCheckpoint(supabase, jobId);
+    const isResume = body._resume === true || (checkpoint.cursor.offset || 0) > 0;
+    const startOffset = Number(checkpoint.cursor.offset) || 0;
+
+    // Pull notes joined to clients with a ghl_contact_id; resume from offset
+    const pullLimit = maxItems > 0 ? Math.min(maxItems, 1000) : 1000;
     const { data: notes, error: notesErr } = await supabase
       .from('client_notes')
       .select('id, content, note_type, client_id, clients!inner(ghl_contact_id, primary_first_name, primary_surname)')
       .not('clients.ghl_contact_id', 'is', null)
-      .limit(maxItems > 0 ? maxItems : 5000);
+      .order('id', { ascending: true })
+      .range(startOffset, startOffset + pullLimit - 1);
 
     if (notesErr) throw new Error(`Notes query failed: ${notesErr.message}`);
 
-    await startJob(supabase, jobId, notes?.length || 0);
+    if (isResume) {
+      console.log(`[notes-worker] RESUMING job=${jobId} dispatch#${checkpoint.dispatchCount} offset=${startOffset}`);
+    } else {
+      await startJob(supabase, jobId, notes?.length || 0);
+    }
 
     let totalProcessed = 0, totalSucceeded = 0, totalFailed = 0, totalSkipped = 0;
+    let currentOffset = startOffset;
 
     for (const note of (notes || [])) {
       if (Date.now() - startedAt > MAX_RUNTIME_MS) break;
