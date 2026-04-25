@@ -89,6 +89,13 @@ function isPlaceholderResolutionName(name: string): boolean {
   return !normalized || normalized === 'unknown unknown' || normalized === 'unknown';
 }
 
+async function targetContactExists(contactId: string, headers: Record<string, string>): Promise<boolean> {
+  const res = await fetch(`${GHL_API_BASE}/contacts/${contactId}`, { headers });
+  if (res.ok) return true;
+  if (res.status === 404 || res.status === 410) return false;
+  return true;
+}
+
 Deno.serve(async (req) => {
   const startedAt = Date.now();
 
