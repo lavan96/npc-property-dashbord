@@ -263,7 +263,7 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
         throw new Error(fnError?.message || data?.error || 'Failed to create property');
       }
 
-      // Auto-update client deal_status when NPC-sourced property is added
+      // Auto-update client deal_status when an internally-sourced property is added
       if (formData.sourced_by === 'npc') {
         try {
           await invokeSecureFunction('manage-client-data', {
