@@ -7227,6 +7227,36 @@ export type Database = {
         }
         Relationships: []
       }
+      ghl_migration_baseline: {
+        Row: {
+          captured_at: string
+          created_at: string
+          id: string
+          notes: string | null
+          row_count: number
+          snapshot_label: string
+          table_name: string
+        }
+        Insert: {
+          captured_at?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          row_count: number
+          snapshot_label: string
+          table_name: string
+        }
+        Update: {
+          captured_at?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          row_count?: number
+          snapshot_label?: string
+          table_name?: string
+        }
+        Relationships: []
+      }
       ghl_pipeline_stages: {
         Row: {
           color: string | null
