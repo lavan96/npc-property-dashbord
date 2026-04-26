@@ -463,6 +463,8 @@ function MigrationWorkersPanel() {
       const payload = {
         ...(max > 0 ? { max_items: max } : {}),
         preserve_csv_structure: preserveCsvStructure,
+        write_mode: 'create_first',
+        reuse_existing_mappings: allowNameDedupe,
         allow_name_dedupe: allowNameDedupe,
         force_reingest: forceReingest,
       };
