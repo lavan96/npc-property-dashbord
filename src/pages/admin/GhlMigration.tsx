@@ -634,8 +634,7 @@ function MigrationWorkersPanel() {
               className="mt-0.5"
             />
             <span>
-              <strong>Force re-ingest contacts</strong> (advanced): ignore existing ID mappings and recreate mapping entries.
-              Use this if prior runs left stale mappings and contacts are being skipped as already mapped.
+              <strong>Force create-first contact writes</strong> (recommended after target wipe): ignore stale ID mappings and attempt individual <code>POST /contacts/</code> writes before any duplicate fallback.
             </span>
           </label>
         </div>
