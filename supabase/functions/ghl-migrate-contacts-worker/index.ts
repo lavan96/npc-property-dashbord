@@ -649,7 +649,7 @@ Deno.serve(async (req) => {
 
         // LIVE: write into target account
         try {
-          await delay(RATE_LIMIT_MS);
+          // Rate-gating + Retry-After + backoff is handled inside ghlFetch.
           const writeBody = {
             locationId: targetCreds.locationId,
             firstName: safeFirst,
