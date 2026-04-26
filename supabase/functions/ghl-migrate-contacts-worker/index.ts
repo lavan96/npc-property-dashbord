@@ -137,14 +137,19 @@ Deno.serve(async (req) => {
     const payload = body.payload || {};
     const maxItems = Number(payload.max_items) || 0; // 0 = no cap
     const preserveCsvStructure = payload.preserve_csv_structure !== false;
-    const allowNameDedupe = payload.allow_name_dedupe !== false;
-    const forceReingest = payload.force_reingest === true;
     // Write mode:
     //   'create_first' (default) → POST /contacts/ then fall back to /contacts/upsert
     //                              only if GHL signals a duplicate
     //   'upsert'                  → legacy behaviour: always /contacts/upsert
     const writeMode: 'create_first' | 'upsert' =
       payload.write_mode === 'upsert' ? 'upsert' : 'create_first';
+
+    // In create-first migrations, old mapping rows must NOT short-circuit writes.
+    // The new target account was wiped, so stale `ghl_id_mapping` rows can only
+    // be trusted when the caller explicitly asks to reuse existing mappings.
+    const reuseExistingMappings = payload.reuse_existing_mappings === true;
+    const forceReingest = payload.force_reingest === true || (writeMode === 'create_first' && !reuseExistingMappings);
+    const allowNameDedupe = payload.allow_name_dedupe === true && reuseExistingMappings;
 
     if (!jobId) return new Response(JSON.stringify({ error: 'job_id required' }), { status: 400 });
 
