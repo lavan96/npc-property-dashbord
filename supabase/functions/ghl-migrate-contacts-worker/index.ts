@@ -77,7 +77,8 @@ const CIRCUIT_BREAKER_COOLDOWN_MS = 30_000; // broadcast cooldown when tripped
 
 // Per-invocation context for ghlFetch (set in the handler, read by helpers)
 let _supabaseRef: any = null;
-let _tokenKeyRef: string = '';
+let _sourceTokenKey: string = '';
+let _targetTokenKey: string = '';
 let _consecutive429s = 0;
 let _circuitTripped = false;
 
@@ -95,31 +96,39 @@ function isCircuitTripped(): boolean {
  * honours Retry-After, broadcasts 429 cooldown to all other callers of
  * the same token, and trips a per-invocation circuit breaker after
  * N consecutive 429s.
+ *
+ * @param bucket Which token bucket to charge. Defaults to 'target' (writes).
+ *               Source pagination reads should pass 'source'.
  */
-async function ghlFetch(url: string, init: RequestInit, maxRetries = 3): Promise<Response> {
+async function ghlFetch(
+  url: string,
+  init: RequestInit,
+  maxRetries = 3,
+  bucket: 'source' | 'target' = 'target',
+): Promise<Response> {
   if (_circuitTripped) {
-    // Synthetic 429-style response so callers can fall through to error handling
     console.warn(`[contacts-worker] circuit breaker OPEN — refusing call to ${url.substring(0, 80)}`);
     return new Response(JSON.stringify({ error: 'circuit_breaker_open' }), {
       status: 429,
       headers: { 'Content-Type': 'application/json' },
     });
   }
-  const res = await ghlFetchShared(_supabaseRef, _tokenKeyRef, url, init, {
+  const tokenKey = bucket === 'source' ? _sourceTokenKey : _targetTokenKey;
+  const res = await ghlFetchShared(_supabaseRef, tokenKey, url, init, {
     maxPerWindow: PER_TOKEN_RATE_PER_SEC,
     windowMs: PER_TOKEN_WINDOW_MS,
     maxRetries,
     default429CooldownMs: 5_000,
-    logTag: 'contacts-worker',
+    logTag: `contacts-worker:${bucket}`,
   });
 
   if (res.status === 429) {
     _consecutive429s++;
     if (_consecutive429s >= CIRCUIT_BREAKER_THRESHOLD) {
       _circuitTripped = true;
-      console.error(`[contacts-worker] CIRCUIT BREAKER TRIPPED after ${_consecutive429s} consecutive 429s — broadcasting ${CIRCUIT_BREAKER_COOLDOWN_MS}ms global cooldown`);
+      console.error(`[contacts-worker] CIRCUIT BREAKER TRIPPED after ${_consecutive429s} consecutive 429s — broadcasting ${CIRCUIT_BREAKER_COOLDOWN_MS}ms global cooldown on ${bucket}`);
       try {
-        await noteGhlRateLimitHit(_supabaseRef, _tokenKeyRef, CIRCUIT_BREAKER_COOLDOWN_MS);
+        await noteGhlRateLimitHit(_supabaseRef, tokenKey, CIRCUIT_BREAKER_COOLDOWN_MS);
       } catch { /* fail open */ }
     }
   } else if (res.status < 400) {
@@ -127,6 +136,7 @@ async function ghlFetch(url: string, init: RequestInit, maxRetries = 3): Promise
   }
   return res;
 }
+
 
 
 function getCustomFieldValue(contact: any, ...keys: string[]): string {
