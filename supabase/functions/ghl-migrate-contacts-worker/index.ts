@@ -51,7 +51,79 @@ const PAGE_LIMIT = 100;
 // don't need to push 5+ minutes per invocation. Smaller batches mean
 // faster recovery from any single edge-runtime crash.
 const MAX_RUNTIME_MS = 90_000;
-const RATE_LIMIT_MS = 250;
+
+// ── Adaptive throttle (token bucket) ──────────────────────────────────
+// GHL v2 limit: ~100 req / 10s per location. We start at 8 req/s to keep
+// safe headroom against shared-token callers (webhooks, calendar sync,
+// other workers). On every 429 we halve the rate for ~30s, then ramp back.
+const RATE_MAX_PER_SEC = 8;
+const RATE_MIN_PER_SEC = 1;
+const THROTTLE_RECOVERY_MS = 30_000;
+let currentRatePerSec = RATE_MAX_PER_SEC;
+let lastRequestAt = 0;
+let throttleSince = 0;
+
+async function rateGate(): Promise<void> {
+  // Recover throttle after the cool-off window
+  if (throttleSince && Date.now() - throttleSince > THROTTLE_RECOVERY_MS) {
+    currentRatePerSec = Math.min(RATE_MAX_PER_SEC, currentRatePerSec * 2);
+    if (currentRatePerSec >= RATE_MAX_PER_SEC) throttleSince = 0;
+    else throttleSince = Date.now();
+  }
+  const minIntervalMs = Math.ceil(1000 / currentRatePerSec);
+  const elapsed = Date.now() - lastRequestAt;
+  if (elapsed < minIntervalMs) {
+    await new Promise((r) => setTimeout(r, minIntervalMs - elapsed));
+  }
+  lastRequestAt = Date.now();
+}
+
+function noteThrottleHit(): void {
+  currentRatePerSec = Math.max(RATE_MIN_PER_SEC, Math.floor(currentRatePerSec / 2));
+  throttleSince = Date.now();
+  console.warn(`[contacts-worker] throttle: 429 → reduced rate to ${currentRatePerSec} req/s for ${THROTTLE_RECOVERY_MS}ms`);
+}
+
+/**
+ * GHL fetch with: token-bucket rate gate, Retry-After honouring,
+ * exponential backoff + jitter on 429/5xx (max 3 retries).
+ */
+async function ghlFetch(url: string, init: RequestInit, maxRetries = 3): Promise<Response> {
+  let attempt = 0;
+  while (true) {
+    await rateGate();
+    const res = await fetch(url, init);
+    if (res.status !== 429 && res.status < 500) return res;
+
+    if (res.status === 429) noteThrottleHit();
+
+    if (attempt >= maxRetries) return res;
+
+    // Honour Retry-After (seconds, or HTTP-date). Cap to 30s sanity bound.
+    const retryAfter = res.headers.get('Retry-After');
+    let waitMs = 0;
+    if (retryAfter) {
+      const asInt = Number(retryAfter);
+      if (Number.isFinite(asInt)) waitMs = asInt * 1000;
+      else {
+        const dateMs = Date.parse(retryAfter);
+        if (Number.isFinite(dateMs)) waitMs = Math.max(0, dateMs - Date.now());
+      }
+    }
+    if (!waitMs) {
+      // Exponential backoff + jitter: 1s, 2s, 4s ± 25%
+      const base = 1000 * Math.pow(2, attempt);
+      const jitter = base * (0.75 + Math.random() * 0.5);
+      waitMs = Math.round(jitter);
+    }
+    waitMs = Math.min(waitMs, 30_000);
+    // Drain body so the connection can be reused
+    try { await res.text(); } catch {}
+    console.warn(`[contacts-worker] retry: status=${res.status} attempt=${attempt + 1}/${maxRetries} waiting=${waitMs}ms`);
+    await new Promise((r) => setTimeout(r, waitMs));
+    attempt++;
+  }
+}
 
 function getCustomFieldValue(contact: any, ...keys: string[]): string {
   const candidates = Array.isArray(contact?.customFields) ? contact.customFields : [];
