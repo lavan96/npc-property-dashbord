@@ -125,6 +125,12 @@ Deno.serve(async (req) => {
     const preserveCsvStructure = payload.preserve_csv_structure !== false;
     const allowNameDedupe = payload.allow_name_dedupe !== false;
     const forceReingest = payload.force_reingest === true;
+    // Write mode:
+    //   'create_first' (default) → POST /contacts/ then fall back to /contacts/upsert
+    //                              only if GHL signals a duplicate
+    //   'upsert'                  → legacy behaviour: always /contacts/upsert
+    const writeMode: 'create_first' | 'upsert' =
+      payload.write_mode === 'upsert' ? 'upsert' : 'create_first';
 
     if (!jobId) return new Response(JSON.stringify({ error: 'job_id required' }), { status: 400 });
 
