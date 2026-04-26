@@ -162,7 +162,7 @@ function isPlaceholderResolutionName(name: string): boolean {
 }
 
 async function targetContactExists(contactId: string, headers: Record<string, string>): Promise<boolean> {
-  const res = await fetch(`${GHL_API_BASE}/contacts/${contactId}`, { headers });
+  const res = await ghlFetch(`${GHL_API_BASE}/contacts/${contactId}`, { headers });
   if (res.ok) {
     await res.text().catch(() => '');
     return true;
