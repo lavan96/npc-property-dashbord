@@ -257,6 +257,18 @@ Deno.serve(async (req) => {
       ? describeGhlWriteAuthFailure(targetAccess.diagnostics)
       : null;
 
+    // ── Initialize per-invocation rate-limiter context ────────────────
+    // Bind the shared limiter to BOTH source and target tokens so reads
+    // and writes are paced independently against their own daily budgets.
+    _supabaseRef = supabase;
+    _sourceTokenKey = tokenKeyFor(sourceAccount, sourceCreds.apiKey);
+    // The TARGET bucket uses the actual write token (may have been
+    // exchanged from agency/main → location), not the raw secret, because
+    // that's the token GHL will see on every write request.
+    _targetTokenKey = tokenKeyFor(targetAccount, targetAccess.accessToken);
+    resetCircuitBreaker();
+    console.log(`[contacts-worker] rate-limiter bound: source=${_sourceTokenKey} target=${_targetTokenKey} cap=${PER_TOKEN_RATE_PER_SEC}/s`);
+
     if (!dryRun && targetAccess.diagnostics) {
       console.log('[contacts-worker] target token diagnostics:', JSON.stringify({
         token_type_hint: targetAccess.diagnostics.token_type_hint,
