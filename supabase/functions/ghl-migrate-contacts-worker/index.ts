@@ -384,7 +384,7 @@ Deno.serve(async (req) => {
         params.set('startAfter', numeric);
       }
 
-      const res = await ghlFetch(`${GHL_API_BASE}/contacts/?${params}`, { headers: sourceHeaders });
+      const res = await ghlFetch(`${GHL_API_BASE}/contacts/?${params}`, { headers: sourceHeaders }, 3, 'source');
       if (!res.ok) {
         const text = await res.text();
         throw new Error(`Source contacts fetch failed: ${res.status} ${text.substring(0, 200)}`);
