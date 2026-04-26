@@ -33,63 +33,49 @@ Deno.serve(async (req) => {
       sessionToken = null;
     }
 
-    if (!sessionToken) {
-      // No session token found — try JWT-based authentication as fallback
-      // This handles users whose session token was lost/stale but still have a valid JWT
-      console.log('[custom-auth-verify] No session token, attempting JWT fallback...');
-      
-      const { error: jwtError, userId: jwtUserId, username: jwtUsername, authMethod } = await verifyAuth(
+    // Helper: attempt JWT-based fallback authentication when session token is missing or invalid
+    const tryJwtFallback = async (reason: string) => {
+      console.log(`[custom-auth-verify] ${reason}, attempting JWT fallback...`);
+
+      const { error: jwtError, userId: jwtUserId, authMethod } = await verifyAuth(
         supabase,
         req.headers,
-        {} // empty body since we already parsed it
+        {}
       );
-      
+
       if (jwtError || !jwtUserId || authMethod !== 'jwt') {
         console.log('[custom-auth-verify] JWT fallback failed:', jwtError || 'no valid JWT');
-        return new Response(
-          JSON.stringify({ error: 'Session token is required', valid: false }), 
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
+        return null;
       }
-      
-      // JWT is valid — fetch user data and create a fresh session
-      console.log('[custom-auth-verify] JWT fallback succeeded for user:', jwtUserId.substring(0, 8) + '...');
-      
+
       const { data: jwtUser } = await supabase
         .from('custom_users')
         .select('id, username, role, is_active')
         .eq('id', jwtUserId)
         .maybeSingle();
-      
+
       if (!jwtUser || !jwtUser.is_active) {
-        return new Response(
-          JSON.stringify({ error: 'User not found or inactive', valid: false }), 
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
+        console.log('[custom-auth-verify] JWT user not found or inactive');
+        return null;
       }
-      
-      // Create a fresh session for this user so subsequent calls work
+
       const newSessionToken = crypto.randomUUID();
       const expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + 24);
-      
-      await supabase
-        .from('user_sessions')
-        .insert({
-          user_id: jwtUser.id,
-          session_token: newSessionToken,
-          expires_at: expiresAt.toISOString()
-        });
-      
-      // Fetch roles
+
+      await supabase.from('user_sessions').insert({
+        user_id: jwtUser.id,
+        session_token: newSessionToken,
+        expires_at: expiresAt.toISOString(),
+      });
+
       const { data: jwtUserRoles } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', jwtUser.id);
-      
-      const jwtRoles = jwtUserRoles?.map(r => r.role) || [];
-      
-      // Generate fresh JWT
+
+      const jwtRoles = jwtUserRoles?.map((r) => r.role) || [];
+
       let freshAccessToken: string | null = null;
       try {
         freshAccessToken = await generateSupabaseJWT(jwtUser.id, 86400, {
@@ -99,19 +85,30 @@ Deno.serve(async (req) => {
       } catch (e) {
         console.error('[custom-auth-verify] JWT generation failed during fallback:', e);
       }
-      
+
       console.log('[custom-auth-verify] Created fresh session via JWT fallback for:', jwtUser.username);
-      
+
+      return {
+        valid: true,
+        user: { id: jwtUser.id, username: jwtUser.username, role: jwtUser.role },
+        roles: jwtRoles,
+        access_token: freshAccessToken,
+        session_token: newSessionToken,
+      };
+    };
+
+    if (!sessionToken) {
+      const fallbackResult = await tryJwtFallback('No session token');
+      if (fallbackResult) {
+        return new Response(JSON.stringify(fallbackResult), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
       return new Response(
-        JSON.stringify({
-          valid: true,
-          user: { id: jwtUser.id, username: jwtUser.username, role: jwtUser.role },
-          roles: jwtRoles,
-          access_token: freshAccessToken,
-          session_token: newSessionToken, // Client will persist this for future calls
-        }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+        JSON.stringify({ error: 'Session token is required', valid: false }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Check if session exists and is valid
@@ -128,11 +125,19 @@ Deno.serve(async (req) => {
       `)
       .eq('session_token', sessionToken)
       .gt('expires_at', new Date().toISOString())
-      .single()
+      .maybeSingle()
 
     if (sessionError || !session || !session.custom_users?.is_active) {
+      // Session token was provided but is invalid/expired — try JWT fallback before giving up
+      const fallbackResult = await tryJwtFallback('Stale session token');
+      if (fallbackResult) {
+        return new Response(JSON.stringify(fallbackResult), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
       return new Response(
-        JSON.stringify({ error: 'Invalid or expired session', valid: false }), 
+        JSON.stringify({ error: 'Invalid or expired session', valid: false }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
