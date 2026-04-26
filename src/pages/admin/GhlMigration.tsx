@@ -647,8 +647,7 @@ function MigrationWorkersPanel() {
               className="mt-0.5"
             />
             <span>
-              <strong>Full-name contact resolution</strong> (recommended): reuse target contacts by matching the canonical full name before writing.
-              Turn this off only for a controlled test where duplicate target contacts are expected.
+              <strong>Reuse existing mappings/name matches</strong> (off for wiped target accounts): only enable when the target GHL account already contains trusted contacts that should be reused instead of created.
             </span>
           </label>
         </div>
