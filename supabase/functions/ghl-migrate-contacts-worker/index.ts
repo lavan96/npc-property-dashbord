@@ -125,6 +125,12 @@ Deno.serve(async (req) => {
     const preserveCsvStructure = payload.preserve_csv_structure !== false;
     const allowNameDedupe = payload.allow_name_dedupe !== false;
     const forceReingest = payload.force_reingest === true;
+    // Write mode:
+    //   'create_first' (default) → POST /contacts/ then fall back to /contacts/upsert
+    //                              only if GHL signals a duplicate
+    //   'upsert'                  → legacy behaviour: always /contacts/upsert
+    const writeMode: 'create_first' | 'upsert' =
+      payload.write_mode === 'upsert' ? 'upsert' : 'create_first';
 
     if (!jobId) return new Response(JSON.stringify({ error: 'job_id required' }), { status: 400 });
 
@@ -177,6 +183,9 @@ Deno.serve(async (req) => {
     let staleMappingsRehydrated = 0;
     let skippedByVerifiedMapping = 0;
     let structuredRecordsEmbedded = 0;
+    let createdViaPost = 0;
+    let mergedViaUpsertFallback = 0;
+    let createDuplicateDetected = 0;
     let firstPage = true;
     let totalEstimate = 0;
     const contactExistenceCache = new Map<string, boolean>();
@@ -547,10 +556,10 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // LIVE: upsert into target account
+        // LIVE: write into target account
         try {
           await delay(RATE_LIMIT_MS);
-          const upsertBody = {
+          const writeBody = {
             locationId: targetCreds.locationId,
             firstName: safeFirst,
             lastName: safeLast,
@@ -567,37 +576,119 @@ Deno.serve(async (req) => {
             customFields: passthroughCustomFields,
           };
 
-          const upRes = await fetch(`${GHL_API_BASE}/contacts/upsert`, {
-            method: 'POST',
-            headers: targetHeaders,
-            body: JSON.stringify(upsertBody),
-          });
+          // ── Helper: detect "duplicate exists" responses from POST /contacts/
+          //
+          // GHL returns:
+          //   400 with body containing the existing contact id, OR
+          //   409 Conflict with body { meta: { contactId } }, OR
+          //   message text containing "duplicated contacts" / "already exists"
+          // when an email/phone collides with an existing contact.
+          const detectDuplicateContactId = (status: number, raw: string, parsed: any): string | null => {
+            const body = (() => { try { return JSON.parse(raw); } catch { return null; } })();
+            const candidate =
+              body?.meta?.contactId ||
+              body?.contactId ||
+              body?.contact?.id ||
+              parsed?.meta?.contactId ||
+              null;
+            if (candidate && (status === 400 || status === 409)) return String(candidate);
+            const msg = String(parsed?.message || raw || '').toLowerCase();
+            if (status === 409 || /duplicat|already exists|exists with the same/.test(msg)) {
+              // No id but message clearly says duplicate — caller will fall back to upsert.
+              return 'unknown';
+            }
+            return null;
+          };
 
-          if (!upRes.ok) {
-            const errText = await upRes.text();
-            const parsed = parseGhlError(errText);
-            const code = parsed.error_code || `GHL_${upRes.status}`;
-            const authDetail = (upRes.status === 401 || upRes.status === 403) && targetAuthHint
-              ? ` ${targetAuthHint}`
-              : '';
-            totalFailed++;
-            await recordItem(supabase, {
-              job_id: jobId,
-              source_id: contact.id,
-              entity_label: contactName,
-              status: 'failed',
-              error_message: `[${code}] ${upRes.status}: ${(parsed.message || errText).substring(0, 260)}${authDetail}`.substring(0, 900),
+          let newId: string | null = null;
+          let writePathTaken: 'create' | 'create_then_upsert' | 'upsert' = 'upsert';
+
+          if (writeMode === 'create_first') {
+            // Step 1: try POST /contacts/
+            const createRes = await fetch(`${GHL_API_BASE}/contacts/`, {
+              method: 'POST',
+              headers: targetHeaders,
+              body: JSON.stringify(writeBody),
             });
-            continue;
+
+            if (createRes.ok) {
+              const createData = await createRes.json();
+              newId = createData?.contact?.id || createData?.id || null;
+              writePathTaken = 'create';
+              createdViaPost++;
+              console.log(`[contacts-worker] write_path=create source=${contact.id} new=${newId} name="${contactName}"`);
+            } else {
+              const errText = await createRes.text();
+              const parsed = parseGhlError(errText);
+              const dup = detectDuplicateContactId(createRes.status, errText, parsed);
+
+              if (dup) {
+                createDuplicateDetected++;
+                console.log(`[contacts-worker] write_path=create_duplicate source=${contact.id} dup_id=${dup} status=${createRes.status} — falling back to upsert`);
+                // Fall through to upsert below
+              } else {
+                // Real failure (auth, validation, rate limit) — record and continue
+                const code = parsed.error_code || `GHL_${createRes.status}`;
+                const authDetail = (createRes.status === 401 || createRes.status === 403) && targetAuthHint
+                  ? ` ${targetAuthHint}`
+                  : '';
+                totalFailed++;
+                await recordItem(supabase, {
+                  job_id: jobId,
+                  source_id: contact.id,
+                  entity_label: contactName,
+                  status: 'failed',
+                  error_message: `[${code}] POST /contacts/ ${createRes.status}: ${(parsed.message || errText).substring(0, 220)}${authDetail}`.substring(0, 900),
+                });
+                continue;
+              }
+            }
           }
 
-          const upData = await upRes.json();
-          const newId = upData?.contact?.id || upData?.id;
+          // Upsert path: either explicit upsert mode, or create_first fallback after duplicate
+          if (!newId) {
+            await delay(RATE_LIMIT_MS);
+            const upRes = await fetch(`${GHL_API_BASE}/contacts/upsert`, {
+              method: 'POST',
+              headers: targetHeaders,
+              body: JSON.stringify(writeBody),
+            });
+
+            if (!upRes.ok) {
+              const errText = await upRes.text();
+              const parsed = parseGhlError(errText);
+              const code = parsed.error_code || `GHL_${upRes.status}`;
+              const authDetail = (upRes.status === 401 || upRes.status === 403) && targetAuthHint
+                ? ` ${targetAuthHint}`
+                : '';
+              totalFailed++;
+              await recordItem(supabase, {
+                job_id: jobId,
+                source_id: contact.id,
+                entity_label: contactName,
+                status: 'failed',
+                error_message: `[${code}] /contacts/upsert ${upRes.status}: ${(parsed.message || errText).substring(0, 220)}${authDetail}`.substring(0, 900),
+              });
+              continue;
+            }
+
+            const upData = await upRes.json();
+            newId = upData?.contact?.id || upData?.id || null;
+            if (writeMode === 'create_first') {
+              writePathTaken = 'create_then_upsert';
+              mergedViaUpsertFallback++;
+              console.log(`[contacts-worker] write_path=create_then_upsert source=${contact.id} merged_into=${newId} name="${contactName}"`);
+            } else {
+              writePathTaken = 'upsert';
+              console.log(`[contacts-worker] write_path=upsert source=${contact.id} target=${newId} name="${contactName}"`);
+            }
+          }
+
           if (!newId) {
             totalFailed++;
             await recordItem(supabase, {
               job_id: jobId, source_id: contact.id, entity_label: contactName,
-              status: 'failed', error_message: 'Upsert returned no contact id',
+              status: 'failed', error_message: 'Write returned no contact id',
             });
             continue;
           }
@@ -615,6 +706,7 @@ Deno.serve(async (req) => {
           await recordItem(supabase, {
             job_id: jobId, source_id: contact.id, target_id: newId,
             entity_label: contactName, status: 'succeeded',
+            error_message: `write_path=${writePathTaken}`,
           });
         } catch (e: any) {
           totalFailed++;
@@ -680,6 +772,10 @@ Deno.serve(async (req) => {
         preserved_legacy_source_count: preservedLegacySourceCount,
         scientific_phone_normalized: scientificPhoneNormalized,
         structured_records_embedded: structuredRecordsEmbedded,
+        write_mode: writeMode,
+        created_via_post: createdViaPost,
+        merged_via_upsert_fallback: mergedViaUpsertFallback,
+        create_duplicate_detected: createDuplicateDetected,
       },
     });
     await finishJob(supabase, jobId, totalFailed > 0 && totalSucceeded === 0 ? 'failed' : 'completed',
