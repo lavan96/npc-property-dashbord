@@ -91,9 +91,23 @@ function isPlaceholderResolutionName(name: string): boolean {
 
 async function targetContactExists(contactId: string, headers: Record<string, string>): Promise<boolean> {
   const res = await fetch(`${GHL_API_BASE}/contacts/${contactId}`, { headers });
-  if (res.ok) return true;
+  if (res.ok) {
+    await res.text().catch(() => '');
+    return true;
+  }
+
+  const body = await res.text().catch(() => '');
   if (res.status === 404 || res.status === 410) return false;
-  return true;
+
+  // Critical: never treat an inconclusive probe as proof that a target contact
+  // exists. GHL commonly returns 429 during migrations; fail-open here causes
+  // stale mapping rows from a wiped target account to skip every contact before
+  // create-first can run.
+  console.warn(
+    `[contacts-worker] target existence probe inconclusive for ${contactId}: ` +
+      `${res.status} ${body.substring(0, 160)} — treating mapping as stale`,
+  );
+  return false;
 }
 
 Deno.serve(async (req) => {
