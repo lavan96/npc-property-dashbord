@@ -7337,6 +7337,33 @@ export type Database = {
         }
         Relationships: []
       }
+      ghl_rate_state: {
+        Row: {
+          cooldown_until_ms: number
+          last_429_at: string | null
+          token_key: string
+          updated_at: string
+          window_count: number
+          window_start_ms: number
+        }
+        Insert: {
+          cooldown_until_ms?: number
+          last_429_at?: string | null
+          token_key: string
+          updated_at?: string
+          window_count?: number
+          window_start_ms?: number
+        }
+        Update: {
+          cooldown_until_ms?: number
+          last_429_at?: string | null
+          token_key?: string
+          updated_at?: string
+          window_count?: number
+          window_start_ms?: number
+        }
+        Relationships: []
+      }
       ghl_workflows: {
         Row: {
           created_at: string
@@ -10467,6 +10494,18 @@ export type Database = {
           entity_type: Database["public"]["Enums"]["activity_entity_type"]
           last_occurrence: string
         }[]
+      }
+      ghl_rate_note_429: {
+        Args: { p_cooldown_ms: number; p_token_key: string }
+        Returns: undefined
+      }
+      ghl_rate_reserve: {
+        Args: {
+          p_max_per_window: number
+          p_token_key: string
+          p_window_ms: number
+        }
+        Returns: number
       }
       has_module_access: {
         Args: { _module_key: string; _user_id: string }
