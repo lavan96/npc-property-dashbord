@@ -362,8 +362,8 @@ function MigrationWorkersPanel() {
   const [confirmation, setConfirmation] = useState('');
   const [dispatching, setDispatching] = useState(false);
   const [preserveCsvStructure, setPreserveCsvStructure] = useState(true);
-  const [allowNameDedupe, setAllowNameDedupe] = useState(true);
-  const [forceReingest, setForceReingest] = useState(false);
+  const [allowNameDedupe, setAllowNameDedupe] = useState(false);
+  const [forceReingest, setForceReingest] = useState(true);
   const [jobs, setJobs] = useState<any[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(false);
 
@@ -463,6 +463,8 @@ function MigrationWorkersPanel() {
       const payload = {
         ...(max > 0 ? { max_items: max } : {}),
         preserve_csv_structure: preserveCsvStructure,
+        write_mode: 'create_first',
+        reuse_existing_mappings: allowNameDedupe,
         allow_name_dedupe: allowNameDedupe,
         force_reingest: forceReingest,
       };
@@ -632,8 +634,7 @@ function MigrationWorkersPanel() {
               className="mt-0.5"
             />
             <span>
-              <strong>Force re-ingest contacts</strong> (advanced): ignore existing ID mappings and recreate mapping entries.
-              Use this if prior runs left stale mappings and contacts are being skipped as already mapped.
+              <strong>Force create-first contact writes</strong> (recommended after target wipe): ignore stale ID mappings and attempt individual <code>POST /contacts/</code> writes before any duplicate fallback.
             </span>
           </label>
         </div>
@@ -646,8 +647,7 @@ function MigrationWorkersPanel() {
               className="mt-0.5"
             />
             <span>
-              <strong>Full-name contact resolution</strong> (recommended): reuse target contacts by matching the canonical full name before writing.
-              Turn this off only for a controlled test where duplicate target contacts are expected.
+              <strong>Reuse existing mappings/name matches</strong> (off for wiped target accounts): only enable when the target GHL account already contains trusted contacts that should be reused instead of created.
             </span>
           </label>
         </div>
