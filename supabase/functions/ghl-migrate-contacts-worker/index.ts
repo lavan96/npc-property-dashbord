@@ -772,6 +772,10 @@ Deno.serve(async (req) => {
         preserved_legacy_source_count: preservedLegacySourceCount,
         scientific_phone_normalized: scientificPhoneNormalized,
         structured_records_embedded: structuredRecordsEmbedded,
+        write_mode: writeMode,
+        created_via_post: createdViaPost,
+        merged_via_upsert_fallback: mergedViaUpsertFallback,
+        create_duplicate_detected: createDuplicateDetected,
       },
     });
     await finishJob(supabase, jobId, totalFailed > 0 && totalSucceeded === 0 ? 'failed' : 'completed',
