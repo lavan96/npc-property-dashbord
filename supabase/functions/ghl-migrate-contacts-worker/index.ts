@@ -696,7 +696,7 @@ Deno.serve(async (req) => {
 
           if (writeMode === 'create_first') {
             // Step 1: try POST /contacts/
-            const createRes = await fetch(`${GHL_API_BASE}/contacts/`, {
+            const createRes = await ghlFetch(`${GHL_API_BASE}/contacts/`, {
               method: 'POST',
               headers: targetHeaders,
               body: JSON.stringify(writeBody),
