@@ -92,7 +92,13 @@ Deno.serve(async (req) => {
 
     // Optional payload — workers interpret this (e.g. limits, filters, scope)
     const payload = (body.payload && typeof body.payload === 'object') ? body.payload : {};
-    const skipPreflight = body.skip_preflight === true;
+    // Skip preflight when:
+    //   1. caller explicitly opts out (skip_preflight)
+    //   2. this is a resume of an in-progress job (the original dispatch
+    //      already audited the token; re-probing burns ~3-4 calls of the
+    //      same daily budget the worker is about to need).
+    const isResume = body._resume === true || body.resume === true;
+    const skipPreflight = body.skip_preflight === true || isResume;
 
     // ── Scope preflight (live writes only) ────────────────────────────────
     // Probe the TARGET account for the scopes this domain needs. Block if
