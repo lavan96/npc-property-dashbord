@@ -738,8 +738,7 @@ Deno.serve(async (req) => {
 
           // Upsert path: either explicit upsert mode, or create_first fallback after duplicate
           if (!newId) {
-            await delay(RATE_LIMIT_MS);
-            const upRes = await fetch(`${GHL_API_BASE}/contacts/upsert`, {
+            const upRes = await ghlFetch(`${GHL_API_BASE}/contacts/upsert`, {
               method: 'POST',
               headers: targetHeaders,
               body: JSON.stringify(writeBody),
