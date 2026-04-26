@@ -348,6 +348,28 @@ Deno.serve(async (req) => {
         }), { headers: { 'Content-Type': 'application/json' } });
       }
 
+      if (isCircuitTripped()) {
+        console.warn(`[contacts-worker] Circuit breaker tripped at ${totalProcessed} processed — handing off to dispatcher for cool-off`);
+        await partialExit(
+          supabase,
+          jobId,
+          { startAfterId: nextStartAfterId, startAfter: nextStartAfter },
+          {
+            processed_items: totalProcessed,
+            succeeded_items: totalSucceeded,
+            failed_items: totalFailed,
+          },
+          nextStartAfterId,
+        );
+        return new Response(JSON.stringify({
+          success: true,
+          partial: true,
+          circuit_breaker_tripped: true,
+          processed: totalProcessed,
+          handed_off_to: 'migration-dispatcher',
+        }), { headers: { 'Content-Type': 'application/json' } });
+      }
+
       if (Date.now() - startedAt > MAX_RUNTIME_MS) {
         console.log(`[contacts-worker] Time budget exhausted at ${totalProcessed} processed — handing off to dispatcher`);
         await partialExit(
