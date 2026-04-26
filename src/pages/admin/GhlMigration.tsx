@@ -362,8 +362,8 @@ function MigrationWorkersPanel() {
   const [confirmation, setConfirmation] = useState('');
   const [dispatching, setDispatching] = useState(false);
   const [preserveCsvStructure, setPreserveCsvStructure] = useState(true);
-  const [allowNameDedupe, setAllowNameDedupe] = useState(true);
-  const [forceReingest, setForceReingest] = useState(false);
+  const [allowNameDedupe, setAllowNameDedupe] = useState(false);
+  const [forceReingest, setForceReingest] = useState(true);
   const [jobs, setJobs] = useState<any[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(false);
 
