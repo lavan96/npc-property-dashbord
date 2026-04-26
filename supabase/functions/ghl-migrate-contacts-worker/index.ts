@@ -57,78 +57,77 @@ const PAGE_LIMIT = 100;
 // faster recovery from any single edge-runtime crash.
 const MAX_RUNTIME_MS = 90_000;
 
-// ── Adaptive throttle (token bucket) ──────────────────────────────────
-// GHL v2 limit: ~100 req / 10s per location. We start at 8 req/s to keep
-// safe headroom against shared-token callers (webhooks, calendar sync,
-// other workers). On every 429 we halve the rate for ~30s, then ramp back.
-const RATE_MAX_PER_SEC = 8;
-const RATE_MIN_PER_SEC = 1;
-const THROTTLE_RECOVERY_MS = 30_000;
-let currentRatePerSec = RATE_MAX_PER_SEC;
-let lastRequestAt = 0;
-let throttleSince = 0;
+// ── Shared rate-limiting & circuit breaker ────────────────────────────
+// IMPORTANT: All GHL HTTP traffic goes through `ghlFetch` which delegates
+// to the cross-isolate shared limiter (`ghlFetchShared`). This guarantees
+// every isolate of every function sharing a token cooperates on pacing.
+//
+// We deliberately set a conservative per-token budget (6 req/s) because the
+// SAME token is also used by webhooks, conversations cron, etc. The shared
+// state in Postgres reflects the sum of all callers.
+//
+// The circuit breaker tracks consecutive 429s within a single worker
+// invocation: 3 in a row → exit cleanly so the dispatcher resumes us
+// with a fresh budget after the cooldown window.
 
-async function rateGate(): Promise<void> {
-  // Recover throttle after the cool-off window
-  if (throttleSince && Date.now() - throttleSince > THROTTLE_RECOVERY_MS) {
-    currentRatePerSec = Math.min(RATE_MAX_PER_SEC, currentRatePerSec * 2);
-    if (currentRatePerSec >= RATE_MAX_PER_SEC) throttleSince = 0;
-    else throttleSince = Date.now();
-  }
-  const minIntervalMs = Math.ceil(1000 / currentRatePerSec);
-  const elapsed = Date.now() - lastRequestAt;
-  if (elapsed < minIntervalMs) {
-    await new Promise((r) => setTimeout(r, minIntervalMs - elapsed));
-  }
-  lastRequestAt = Date.now();
+const PER_TOKEN_RATE_PER_SEC = 6;        // shared budget per GHL token
+const PER_TOKEN_WINDOW_MS = 1_000;
+const CIRCUIT_BREAKER_THRESHOLD = 3;     // consecutive 429s → trip
+const CIRCUIT_BREAKER_COOLDOWN_MS = 30_000; // broadcast cooldown when tripped
+
+// Per-invocation context for ghlFetch (set in the handler, read by helpers)
+let _supabaseRef: any = null;
+let _tokenKeyRef: string = '';
+let _consecutive429s = 0;
+let _circuitTripped = false;
+
+function resetCircuitBreaker() {
+  _consecutive429s = 0;
+  _circuitTripped = false;
 }
 
-function noteThrottleHit(): void {
-  currentRatePerSec = Math.max(RATE_MIN_PER_SEC, Math.floor(currentRatePerSec / 2));
-  throttleSince = Date.now();
-  console.warn(`[contacts-worker] throttle: 429 → reduced rate to ${currentRatePerSec} req/s for ${THROTTLE_RECOVERY_MS}ms`);
+function isCircuitTripped(): boolean {
+  return _circuitTripped;
 }
 
 /**
- * GHL fetch with: token-bucket rate gate, Retry-After honouring,
- * exponential backoff + jitter on 429/5xx (max 3 retries).
+ * GHL fetch wrapper. Uses the shared DB-backed limiter for pacing,
+ * honours Retry-After, broadcasts 429 cooldown to all other callers of
+ * the same token, and trips a per-invocation circuit breaker after
+ * N consecutive 429s.
  */
 async function ghlFetch(url: string, init: RequestInit, maxRetries = 3): Promise<Response> {
-  let attempt = 0;
-  while (true) {
-    await rateGate();
-    const res = await fetch(url, init);
-    if (res.status !== 429 && res.status < 500) return res;
-
-    if (res.status === 429) noteThrottleHit();
-
-    if (attempt >= maxRetries) return res;
-
-    // Honour Retry-After (seconds, or HTTP-date). Cap to 30s sanity bound.
-    const retryAfter = res.headers.get('Retry-After');
-    let waitMs = 0;
-    if (retryAfter) {
-      const asInt = Number(retryAfter);
-      if (Number.isFinite(asInt)) waitMs = asInt * 1000;
-      else {
-        const dateMs = Date.parse(retryAfter);
-        if (Number.isFinite(dateMs)) waitMs = Math.max(0, dateMs - Date.now());
-      }
-    }
-    if (!waitMs) {
-      // Exponential backoff + jitter: 1s, 2s, 4s ± 25%
-      const base = 1000 * Math.pow(2, attempt);
-      const jitter = base * (0.75 + Math.random() * 0.5);
-      waitMs = Math.round(jitter);
-    }
-    waitMs = Math.min(waitMs, 30_000);
-    // Drain body so the connection can be reused
-    try { await res.text(); } catch {}
-    console.warn(`[contacts-worker] retry: status=${res.status} attempt=${attempt + 1}/${maxRetries} waiting=${waitMs}ms`);
-    await new Promise((r) => setTimeout(r, waitMs));
-    attempt++;
+  if (_circuitTripped) {
+    // Synthetic 429-style response so callers can fall through to error handling
+    console.warn(`[contacts-worker] circuit breaker OPEN — refusing call to ${url.substring(0, 80)}`);
+    return new Response(JSON.stringify({ error: 'circuit_breaker_open' }), {
+      status: 429,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
+  const res = await ghlFetchShared(_supabaseRef, _tokenKeyRef, url, init, {
+    maxPerWindow: PER_TOKEN_RATE_PER_SEC,
+    windowMs: PER_TOKEN_WINDOW_MS,
+    maxRetries,
+    default429CooldownMs: 5_000,
+    logTag: 'contacts-worker',
+  });
+
+  if (res.status === 429) {
+    _consecutive429s++;
+    if (_consecutive429s >= CIRCUIT_BREAKER_THRESHOLD) {
+      _circuitTripped = true;
+      console.error(`[contacts-worker] CIRCUIT BREAKER TRIPPED after ${_consecutive429s} consecutive 429s — broadcasting ${CIRCUIT_BREAKER_COOLDOWN_MS}ms global cooldown`);
+      try {
+        await noteGhlRateLimitHit(_supabaseRef, _tokenKeyRef, CIRCUIT_BREAKER_COOLDOWN_MS);
+      } catch { /* fail open */ }
+    }
+  } else if (res.status < 400) {
+    _consecutive429s = 0;
+  }
+  return res;
 }
+
 
 function getCustomFieldValue(contact: any, ...keys: string[]): string {
   const candidates = Array.isArray(contact?.customFields) ? contact.customFields : [];
