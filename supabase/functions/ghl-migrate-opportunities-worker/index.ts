@@ -563,23 +563,35 @@ Deno.serve(async (req) => {
         // Empty/whitespace names cause 422 "name should not be empty".
         // Fall back to a deterministic placeholder so we never POST blank.
         const safeName = (opp.name || '').trim() || `Opportunity ${String(opp.id).slice(-6)}`;
+        const sourceMonetary =
+          typeof opp.monetaryValue === 'number' && !Number.isNaN(opp.monetaryValue)
+            ? opp.monetaryValue
+            : null;
 
         // Pre-check: does an opportunity for this contact already exist in
         // the target pipeline? If so, record the mapping & skip — avoids
         // GHL's "Can not create duplicate opportunity for the contact" 400.
+        // The matcher is strict: requires name + monetaryValue agreement
+        // for a 'medium' confidence match. Anything weaker is recorded as
+        // 'low' so it surfaces for manual review.
         if (!dryRun) {
-          const existingTargetOppId = await findExistingTargetOpportunity(
-            ctx, targetCreds.locationId!, contactMap.new_ghl_id!, pmap.targetPipelineId, safeName, targetHeaders,
+          const match = await findExistingTargetOpportunity(
+            ctx, targetCreds.locationId!, contactMap.new_ghl_id!, pmap.targetPipelineId,
+            safeName, sourceMonetary, targetHeaders,
           );
-          if (existingTargetOppId) {
+          if (match) {
             await recordIdMapping(supabase, {
-              resource_type: 'opportunity', old_ghl_id: opp.id, new_ghl_id: existingTargetOppId,
-              source_account_label: sourceAccount, target_account_label: targetAccount, notes: oppLabel,
+              resource_type: 'opportunity', old_ghl_id: opp.id, new_ghl_id: match.id,
+              source_account_label: sourceAccount, target_account_label: targetAccount,
+              notes: oppLabel, match_confidence: match.confidence,
             });
             totalSkipped++;
+            const skipMsg = match.confidence === 'medium'
+              ? 'Matched existing target opportunity (name + monetaryValue) — mapping recorded'
+              : 'Ambiguous match in target (name only or multiple candidates) — mapping recorded for review';
             await recordItem(supabase, {
-              job_id: jobId, source_id: opp.id, target_id: existingTargetOppId, entity_label: oppLabel,
-              status: 'skipped', error_message: 'Already exists in target (pre-check) — mapping recorded',
+              job_id: jobId, source_id: opp.id, target_id: match.id, entity_label: oppLabel,
+              status: 'skipped', error_message: skipMsg,
             });
             continue;
           }
