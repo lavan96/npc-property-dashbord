@@ -742,9 +742,7 @@ function MigrationWorkersPanel() {
           {domain === 'opportunities' ? <Link2 className="h-4 w-4" /> : <Database className="h-4 w-4" />}
           {dispatching
             ? 'Dispatching…'
-            : domain === 'opportunities'
-              ? (dryRun ? 'Dispatch paired contacts + opportunities (dry)' : 'Dispatch paired contacts + opportunities (LIVE)')
-              : (dryRun ? 'Dispatch dry-run job' : 'Dispatch LIVE job')}
+            : (dryRun ? 'Dispatch dry-run job' : 'Dispatch LIVE job')}
         </Button>
 
         {/* Recent jobs */}
