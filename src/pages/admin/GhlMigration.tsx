@@ -1559,8 +1559,8 @@ function JobDetailRow({ job, onChanged }: { job: any; onChanged?: () => void }) 
                     <Alert className="mt-1 border-destructive/40 bg-destructive/5 py-2">
                       <AlertCircle className="h-3.5 w-3.5 text-destructive" />
                       <AlertDescription className="text-[11px] text-destructive">
-                        Some opportunities had a source contactId but no target mapping at processing time.
-                        Re-run paired contacts + opportunities after contacts complete.
+                        Some opportunities had a source contactId but no target contact mapping at processing time.
+                        Run a contacts migration first (separately), then re-run opportunities.
                       </AlertDescription>
                     </Alert>
                   )}
