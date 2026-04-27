@@ -19,25 +19,32 @@ import {
   parseGhlError,
 } from '../_shared/ghl-account.ts';
 import {
-  startJob, finishJob, recordItem, recordIdMapping, updateJobProgress, delay,
+  startJob, finishJob, recordItem, recordIdMapping, updateJobProgress,
   saveCheckpoint, loadCheckpoint, partialExit, heartbeat,
   resolveTargetContactByName, readControlSignal, sanitizeContactNameParts, mergeJobPayload, normalizeContactName,
 } from '../_shared/migration-jobs.ts';
+import { tokenKeyFor } from '../_shared/ghl-rate-limiter.ts';
+import { createGhlFetchContext, type GhlFetchContext } from '../_shared/ghl-worker-fetch.ts';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 // GHL hard-caps /opportunities/search at 100 per page. We request the
 // max and walk every page via cursor — there is NO total-record cap.
 const PAGE_LIMIT = 100;
-const MAX_RUNTIME_MS = 90_000;
-const RATE_LIMIT_MS = 300;
+// 110s leaves ~40s headroom inside the 150s edge cap for graceful
+// checkpoint + finishJob, mirroring the contacts worker.
+const MAX_RUNTIME_MS = 110_000;
 
 function isPlaceholderResolutionName(name: string): boolean {
   const normalized = normalizeContactName(name);
   return !normalized || normalized === 'unknown unknown' || normalized === 'unknown';
 }
 
-async function targetContactExists(contactId: string, headers: Record<string, string>): Promise<boolean> {
-  const res = await fetch(`${GHL_API_BASE}/contacts/${contactId}`, { headers });
+async function targetContactExists(
+  ctx: GhlFetchContext,
+  contactId: string,
+  headers: Record<string, string>,
+): Promise<boolean> {
+  const res = await ctx.ghlFetch(`${GHL_API_BASE}/contacts/${contactId}`, { headers }, 2, 'target');
   if (res.ok) return true;
   if (res.status === 404 || res.status === 410) return false;
   return true;
