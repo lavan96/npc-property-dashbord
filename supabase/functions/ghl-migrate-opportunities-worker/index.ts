@@ -307,19 +307,36 @@ Deno.serve(async (req) => {
     const needTargetUsers = !dryRun && (
       assignedUserStrategy === 'single' || assignedUserStrategy === 'map_by_email'
     );
-    if (needTargetUsers && (!targetAssignedUserId || assignedUserStrategy === 'map_by_email')) {
+    // ── Cache the "no users endpoint" verdict in migration_jobs.payload ──
+    // The target sub-account legitimately doesn't expose /locations/<id>/users
+    // (returns 404 every time). Without caching, every leg burns ~1-2s
+    // probing both endpoints with retries before giving up. Once we've
+    // confirmed neither works, persist that and short-circuit on subsequent
+    // legs.
+    let userEndpointVerdict: 'unknown' | 'works' | 'unsupported' =
+      (payload.user_endpoint_verdict === 'unsupported' ? 'unsupported'
+        : payload.user_endpoint_verdict === 'works' ? 'works'
+        : 'unknown');
+    if (needTargetUsers && (!targetAssignedUserId || assignedUserStrategy === 'map_by_email')
+        && userEndpointVerdict !== 'unsupported') {
       const userEndpoints = [
         `${GHL_API_BASE}/locations/${targetCreds.locationId}/users`,
         `${GHL_API_BASE}/users/?locationId=${targetCreds.locationId}`,
       ];
+      let any404 = 0;
+      let anyOk = false;
       for (const url of userEndpoints) {
         try {
-          const usersRes = await ctx.ghlFetch(url, { headers: targetHeaders }, 2, 'target');
+          // Reduce retries from 2 → 1 for this discovery call; if the
+          // endpoint is missing, retrying just doubles the latency.
+          const usersRes = await ctx.ghlFetch(url, { headers: targetHeaders }, 1, 'target');
           if (!usersRes.ok) {
             const errBody = await usersRes.text();
             console.warn(`[opps-worker] ${url} → ${usersRes.status}: ${errBody.substring(0, 160)}`);
+            if (usersRes.status === 404) any404++;
             continue;
           }
+          anyOk = true;
           const usersData = await usersRes.json();
           const users: any[] = usersData.users || usersData.locationUsers || [];
           if (users.length === 0) continue;
