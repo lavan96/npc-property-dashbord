@@ -10560,6 +10560,10 @@ export type Database = {
         Args: { p_job_id: string }
         Returns: string
       }
+      recompute_migration_job_counters: {
+        Args: { p_job_id: string }
+        Returns: Json
+      }
       release_migration_job_lock: {
         Args: { p_job_id: string }
         Returns: undefined
