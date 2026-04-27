@@ -248,6 +248,14 @@ Deno.serve(async (req) => {
     const unmappedPipelines: string[] = [];
 
     for (const sp of sourcePipelines) {
+      // ── Pipeline filter (allow-list by name, case-insensitive) ──────
+      if (pipelineFilter.length > 0) {
+        const spName = (sp.name || '').trim().toLowerCase();
+        if (!pipelineFilter.includes(spName)) {
+          console.log(`[opps-worker] pipeline_filter: skipping source pipeline "${sp.name}"`);
+          continue;
+        }
+      }
       const tp = targetPipelines.find((p) => p.name?.trim().toLowerCase() === sp.name?.trim().toLowerCase());
       if (!tp) {
         unmappedPipelines.push(sp.name);
@@ -255,6 +263,11 @@ Deno.serve(async (req) => {
       }
       const stageMap = new Map<string, string>();
       for (const ss of (sp.stages || [])) {
+        // ── Stage filter (allow-list by name, case-insensitive) ───────
+        if (stageFilter.length > 0) {
+          const ssName = (ss.name || '').trim().toLowerCase();
+          if (!stageFilter.includes(ssName)) continue;
+        }
         const ts = (tp.stages || []).find((s: any) => s.name?.trim().toLowerCase() === ss.name?.trim().toLowerCase());
         if (ts) stageMap.set(ss.id, ts.id);
       }
