@@ -392,14 +392,36 @@ Deno.serve(async (req) => {
     let pageStartAfterId: string | null = checkpoint.cursor.startAfterId || null;
     let firstPage = true;
 
+    // ── Cumulative progress across redispatched legs ─────────────────
+    // Without these, each leg overwrites migration_jobs counters with just
+    // its OWN local counts (which reset to 0 on every cold start), so the
+    // dashboard appears to "regress" and the job can never finish even
+    // though work is being done. Mirrors the contacts-worker pattern.
+    let baseProcessed = 0, baseSucceeded = 0, baseFailed = 0;
+    let persistedTotalItems = 0;
+    try {
+      const { data: jobRow } = await supabase
+        .from('migration_jobs')
+        .select('processed_items, succeeded_items, failed_items, total_items')
+        .eq('id', jobId)
+        .maybeSingle();
+      baseProcessed = Number(jobRow?.processed_items || 0);
+      baseSucceeded = Number(jobRow?.succeeded_items || 0);
+      baseFailed = Number(jobRow?.failed_items || 0);
+      persistedTotalItems = Number(jobRow?.total_items || 0);
+    } catch { /* non-fatal */ }
+    const progressPatch = () => ({
+      processed_items: baseProcessed + totalProcessed,
+      succeeded_items: baseSucceeded + totalSucceeded,
+      failed_items: baseFailed + totalFailed,
+    });
+
     while (true) {
       // ── Granular control: pause / cancel / kill ─────────────────────
       const signal = await readControlSignal(supabase, jobId);
       if (signal === 'kill' || signal === 'cancel') {
         console.log(`[opps-worker] ${signal.toUpperCase()} signal — finalizing cancelled at ${totalProcessed}`);
-        await updateJobProgress(supabase, jobId, {
-          processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed,
-        });
+        await updateJobProgress(supabase, jobId, progressPatch());
         await finishJob(supabase, jobId, 'cancelled', `Cancelled by user (${signal}) at ${totalProcessed} processed`);
         return new Response(JSON.stringify({
           success: true, cancelled: true, signal, processed: totalProcessed,
@@ -410,7 +432,7 @@ Deno.serve(async (req) => {
         await partialExit(
           supabase, jobId,
           { startAfterId: pageStartAfterId, startAfter: pageStartAfter },
-          { processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed },
+          progressPatch(),
           pageStartAfterId,
         );
         return new Response(JSON.stringify({
@@ -422,7 +444,7 @@ Deno.serve(async (req) => {
         await partialExit(
           supabase, jobId,
           { startAfterId: pageStartAfterId, startAfter: pageStartAfter },
-          { processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed },
+          progressPatch(),
           pageStartAfterId,
         );
         return new Response(JSON.stringify({
@@ -437,7 +459,7 @@ Deno.serve(async (req) => {
         await partialExit(
           supabase, jobId,
           { startAfterId: pageStartAfterId, startAfter: pageStartAfter },
-          { processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed },
+          progressPatch(),
           pageStartAfterId,
         );
         return new Response(JSON.stringify({
@@ -466,7 +488,10 @@ Deno.serve(async (req) => {
 
       if (firstPage) {
         const total = data.meta?.total ?? 0;
-        if (total > 0) await updateJobProgress(supabase, jobId, { total_items: maxItems > 0 ? Math.min(maxItems, total) : total });
+        // Don't clobber a healthy persisted total on resume.
+        if (total > 0 && (!isResume || persistedTotalItems <= 0)) {
+          await updateJobProgress(supabase, jobId, { total_items: maxItems > 0 ? Math.min(maxItems, total) : total });
+        }
         firstPage = false;
       }
       if (opps.length === 0) break;
@@ -880,9 +905,10 @@ Deno.serve(async (req) => {
         }
       }
 
-      await updateJobProgress(supabase, jobId, {
-        processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed,
-      });
+      await updateJobProgress(supabase, jobId, progressPatch());
+      // Heartbeat extends our lease so the dispatcher doesn't steal the job
+      // mid-flight just because we've spent a while on slow GHL pages.
+      await heartbeat(supabase, jobId);
 
       const last = opps[opps.length - 1];
       pageStartAfterId = last?.id || null;
