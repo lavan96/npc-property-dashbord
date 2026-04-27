@@ -159,9 +159,7 @@ Deno.serve(async (req) => {
       const signal = await readControlSignal(supabase, jobId);
       if (signal === 'kill' || signal === 'cancel') {
         console.log(`[conv-worker] ${signal.toUpperCase()} signal — finalizing cancelled at ${totalProcessed}`);
-        await updateJobProgress(supabase, jobId, {
-          processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed,
-        });
+        await updateJobProgress(supabase, jobId, progressPatch());
         await finishJob(supabase, jobId, 'cancelled', `Cancelled by user (${signal}) at ${totalProcessed} processed`);
         return new Response(JSON.stringify({
           success: true, cancelled: true, signal, processed: totalProcessed,
@@ -172,7 +170,7 @@ Deno.serve(async (req) => {
         await partialExit(
           supabase, jobId,
           { nextPage },
-          { processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed },
+          progressPatch(),
         );
         return new Response(JSON.stringify({
           success: true, paused: true, processed: totalProcessed,
@@ -186,7 +184,7 @@ Deno.serve(async (req) => {
         await partialExit(
           supabase, jobId,
           { nextPage },
-          { processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed },
+          progressPatch(),
         );
         return new Response(JSON.stringify({
           success: true, partial: true, circuit_breaker: true, processed: totalProcessed,
@@ -198,7 +196,7 @@ Deno.serve(async (req) => {
         await partialExit(
           supabase, jobId,
           { nextPage },
-          { processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed },
+          progressPatch(),
         );
         return new Response(JSON.stringify({
           success: true, partial: true, processed: totalProcessed,
@@ -218,7 +216,10 @@ Deno.serve(async (req) => {
       const convs: any[] = data.conversations || [];
       if (firstPage) {
         const total = data.total ?? data.meta?.total ?? 0;
-        if (total > 0) await updateJobProgress(supabase, jobId, { total_items: maxItems > 0 ? Math.min(maxItems, total) : total });
+        // Don't clobber a healthy persisted total on resume.
+        if (total > 0 && (!isResume || persistedTotalItems <= 0)) {
+          await updateJobProgress(supabase, jobId, { total_items: maxItems > 0 ? Math.min(maxItems, total) : total });
+        }
         firstPage = false;
       }
       if (convs.length === 0) break;
