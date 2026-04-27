@@ -525,6 +525,31 @@ Deno.serve(async (req) => {
           continue;
         }
 
+        // Empty/whitespace names cause 422 "name should not be empty".
+        // Fall back to a deterministic placeholder so we never POST blank.
+        const safeName = (opp.name || '').trim() || `Opportunity ${String(opp.id).slice(-6)}`;
+
+        // Pre-check: does an opportunity for this contact already exist in
+        // the target pipeline? If so, record the mapping & skip — avoids
+        // GHL's "Can not create duplicate opportunity for the contact" 400.
+        if (!dryRun) {
+          const existingTargetOppId = await findExistingTargetOpportunity(
+            ctx, targetCreds.locationId!, contactMap.new_ghl_id!, pmap.targetPipelineId, safeName, targetHeaders,
+          );
+          if (existingTargetOppId) {
+            await recordIdMapping(supabase, {
+              resource_type: 'opportunity', old_ghl_id: opp.id, new_ghl_id: existingTargetOppId,
+              source_account_label: sourceAccount, target_account_label: targetAccount, notes: oppLabel,
+            });
+            totalSkipped++;
+            await recordItem(supabase, {
+              job_id: jobId, source_id: opp.id, target_id: existingTargetOppId, entity_label: oppLabel,
+              status: 'skipped', error_message: 'Already exists in target (pre-check) — mapping recorded',
+            });
+            continue;
+          }
+        }
+
         if (dryRun) {
           totalSucceeded++;
           await recordItem(supabase, {
@@ -539,13 +564,14 @@ Deno.serve(async (req) => {
           // no manual delay needed.
           // NOTE: legacy `assignedTo` user IDs do not exist in the new GHL
           // account; we hard-set `assignedTo` to a single resolved target
-          // user (above) instead.
+          // user (above) instead. If unresolved we OMIT the field entirely
+          // (GHL rejects empty strings or invalid IDs with a 400).
           const createBody: Record<string, unknown> = {
             locationId: targetCreds.locationId,
             pipelineId: pmap.targetPipelineId,
             pipelineStageId: targetStageId,
             contactId: contactMap.new_ghl_id,
-            name: opp.name,
+            name: safeName,
             status: opp.status || 'open',
           };
           if (typeof opp.monetaryValue === 'number' && !Number.isNaN(opp.monetaryValue)) {
