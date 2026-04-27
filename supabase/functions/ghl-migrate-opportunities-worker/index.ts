@@ -488,7 +488,10 @@ Deno.serve(async (req) => {
 
       if (firstPage) {
         const total = data.meta?.total ?? 0;
-        if (total > 0) await updateJobProgress(supabase, jobId, { total_items: maxItems > 0 ? Math.min(maxItems, total) : total });
+        // Don't clobber a healthy persisted total on resume.
+        if (total > 0 && (!isResume || persistedTotalItems <= 0)) {
+          await updateJobProgress(supabase, jobId, { total_items: maxItems > 0 ? Math.min(maxItems, total) : total });
+        }
         firstPage = false;
       }
       if (opps.length === 0) break;
