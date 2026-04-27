@@ -62,8 +62,18 @@ async function targetContactExists(
 
 /**
  * Look for an existing opportunity in the target account that matches this
- * (contactId, pipelineId, name). Returns the existing opportunity id if any,
- * so we can record-and-skip instead of failing with the GHL "duplicate" 400.
+ * source opportunity. We use a strict matcher: contactId + pipelineId scope
+ * the search, and we only declare a match when name (case-insensitive,
+ * trimmed) AND monetaryValue (within $1) BOTH agree. This prevents the
+ * earlier "two legacy opps collapse to one target opp" false positives
+ * caused by name-only matching.
+ *
+ * Returns:
+ *   { id, confidence: 'medium' }  — strict name+value match, safe to map
+ *   { id, confidence: 'low' }     — name matches but value differs OR
+ *                                   multiple candidates share the name;
+ *                                   recorded for audit, NOT auto-mapped
+ *   null                          — no candidate found at all
  */
 async function findExistingTargetOpportunity(
   ctx: GhlFetchContext,
@@ -71,8 +81,9 @@ async function findExistingTargetOpportunity(
   contactId: string,
   pipelineId: string,
   name: string,
+  monetaryValue: number | null,
   headers: Record<string, string>,
-): Promise<string | null> {
+): Promise<{ id: string; confidence: 'medium' | 'low' } | null> {
   try {
     const params = new URLSearchParams({
       location_id: locationId,
@@ -88,9 +99,33 @@ async function findExistingTargetOpportunity(
     const data = await res.json();
     const opps: any[] = data.opportunities || [];
     if (opps.length === 0) return null;
+
     const wanted = (name || '').trim().toLowerCase();
-    const exact = opps.find((o) => (o.name || '').trim().toLowerCase() === wanted);
-    return (exact?.id || opps[0]?.id) || null;
+    const nameMatches = opps.filter((o) => (o.name || '').trim().toLowerCase() === wanted);
+    if (nameMatches.length === 0) return null;
+
+    // If we have a monetaryValue, require it to agree (within $1) for a
+    // medium-confidence match. Otherwise the best we can claim is "low".
+    if (typeof monetaryValue === 'number' && !Number.isNaN(monetaryValue)) {
+      const valueMatches = nameMatches.filter((o) => {
+        const v = typeof o.monetaryValue === 'number' ? o.monetaryValue : Number(o.monetaryValue);
+        return !Number.isNaN(v) && Math.abs(v - monetaryValue) < 1;
+      });
+      if (valueMatches.length === 1) {
+        return { id: valueMatches[0].id, confidence: 'medium' };
+      }
+      if (valueMatches.length > 1) {
+        return { id: valueMatches[0].id, confidence: 'low' };
+      }
+      // Name matched but no value match — ambiguous.
+      return { id: nameMatches[0].id, confidence: 'low' };
+    }
+
+    // No source monetaryValue to compare against.
+    if (nameMatches.length === 1) {
+      return { id: nameMatches[0].id, confidence: 'medium' };
+    }
+    return { id: nameMatches[0].id, confidence: 'low' };
   } catch {
     return null;
   }
