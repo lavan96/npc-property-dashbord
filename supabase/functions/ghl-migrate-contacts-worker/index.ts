@@ -443,13 +443,17 @@ Deno.serve(async (req) => {
       const contacts: any[] = data.contacts || [];
       if (firstPage) {
         totalEstimate = data.meta?.total ?? data.total ?? 0;
-        if (totalEstimate > 0) {
+        if (totalEstimate > 0 && (!isResume || persistedTotalItems <= 0)) {
           await updateJobProgress(supabase, jobId, { total_items: maxItems > 0 ? Math.min(maxItems, totalEstimate) : totalEstimate });
         }
         firstPage = false;
       }
 
-      if (contacts.length === 0) break;
+      if (contacts.length === 0) {
+        nextStartAfterId = null;
+        nextStartAfter = null;
+        break;
+      }
 
       for (const contact of contacts) {
         if (maxItems > 0 && totalProcessed >= maxItems) break;
@@ -893,27 +897,26 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Update progress + checkpoint every page
-      await updateJobProgress(supabase, jobId, {
-        processed_items: totalProcessed,
-        succeeded_items: totalSucceeded,
-        failed_items: totalFailed,
-      });
+      // Update cumulative progress + checkpoint every page/partial page.
+      await updateJobProgress(supabase, jobId, progressPatch());
       // Heartbeat extends our lease so the dispatcher doesn't steal the job
       // mid-flight just because we've spent a while on slow GHL pages.
       await heartbeat(supabase, jobId);
 
-      // Pagination: GHL returns either nextPage cursor or last contact's startAfter values
-      const last = contacts[contacts.length - 1];
-      nextStartAfterId = last?.id || null;
-      nextStartAfter = last?.dateAdded || null;
+      // Pagination: prefer GHL's explicit meta cursor. Falling back to the
+      // last contact is unsafe when we only processed part of a page before
+      // timing out — it jumps over the unprocessed remainder. Track the last
+      // processed item separately so partial exits resume without gaps.
+      const pageLast = contacts[contacts.length - 1];
+      nextStartAfterId = data.meta?.startAfterId ?? pageLast?.id ?? null;
+      nextStartAfter = data.meta?.startAfter ?? pageLast?.dateAdded ?? null;
 
       // Persist cursor + last source id so a future redispatch resumes here
       await saveCheckpoint(
         supabase,
         jobId,
         { startAfterId: nextStartAfterId, startAfter: nextStartAfter },
-        last?.id || null,
+        nextStartAfterId,
       );
 
       if (maxItems > 0 && totalProcessed >= maxItems) break;
