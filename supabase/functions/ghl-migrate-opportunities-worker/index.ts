@@ -531,14 +531,14 @@ Deno.serve(async (req) => {
       }
 
       const p = new URLSearchParams({ location_id: sourceCreds.locationId!, limit: String(PAGE_LIMIT) });
-      if (pageStartAfter) {
+      if (nextStartAfterId) p.set('startAfterId', nextStartAfterId);
+      if (nextStartAfter) {
         // GHL requires `startAfter` as a numeric millisecond timestamp, not ISO.
-        const numeric = /^\d+$/.test(String(pageStartAfter))
-          ? String(pageStartAfter)
-          : String(new Date(pageStartAfter).getTime());
+        const numeric = /^\d+$/.test(String(nextStartAfter))
+          ? String(nextStartAfter)
+          : String(new Date(nextStartAfter).getTime());
         p.set('startAfter', numeric);
       }
-      if (pageStartAfterId) p.set('startAfterId', pageStartAfterId);
 
       const res = await ctx.ghlFetch(`${GHL_API_BASE}/opportunities/search?${p}`, { headers: sourceHeaders }, 3, 'source');
       if (!res.ok) {
