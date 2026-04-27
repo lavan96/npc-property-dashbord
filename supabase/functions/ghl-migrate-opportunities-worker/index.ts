@@ -45,9 +45,55 @@ async function targetContactExists(
   headers: Record<string, string>,
 ): Promise<boolean> {
   const res = await ctx.ghlFetch(`${GHL_API_BASE}/contacts/${contactId}`, { headers }, 2, 'target');
-  if (res.ok) return true;
   if (res.status === 404 || res.status === 410) return false;
-  return true;
+  if (!res.ok) return true; // unknown error → assume exists, don't drop the mapping
+  // GHL sometimes returns 200 for soft-deleted contacts. Detect that so we
+  // re-resolve via name instead of POSTing an opp that will 400 with
+  // "The opportunity contact is deleted".
+  try {
+    const body = await res.json();
+    const c = body?.contact || body;
+    if (!c || c.deleted === true || c.isDeleted === true || c.status === 'deleted') return false;
+    return true;
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * Look for an existing opportunity in the target account that matches this
+ * (contactId, pipelineId, name). Returns the existing opportunity id if any,
+ * so we can record-and-skip instead of failing with the GHL "duplicate" 400.
+ */
+async function findExistingTargetOpportunity(
+  ctx: GhlFetchContext,
+  locationId: string,
+  contactId: string,
+  pipelineId: string,
+  name: string,
+  headers: Record<string, string>,
+): Promise<string | null> {
+  try {
+    const params = new URLSearchParams({
+      location_id: locationId,
+      contact_id: contactId,
+      pipeline_id: pipelineId,
+      limit: '100',
+    });
+    const res = await ctx.ghlFetch(
+      `${GHL_API_BASE}/opportunities/search?${params}`,
+      { headers }, 2, 'target',
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const opps: any[] = data.opportunities || [];
+    if (opps.length === 0) return null;
+    const wanted = (name || '').trim().toLowerCase();
+    const exact = opps.find((o) => (o.name || '').trim().toLowerCase() === wanted);
+    return (exact?.id || opps[0]?.id) || null;
+  } catch {
+    return null;
+  }
 }
 
 Deno.serve(async (req) => {
@@ -179,29 +225,42 @@ Deno.serve(async (req) => {
 
     // Resolve the single target-account user that all migrated opportunities
     // will be assigned to. Allows override via payload.target_assigned_user_id;
-    // otherwise picks the first user returned by GHL for the target location.
+    // otherwise probes location-scoped user endpoints (the company /users/
+    // endpoint sometimes returns agency users whose IDs are NOT valid for
+    // location-scoped opportunity writes, which is why GHL was returning
+    // "The assigned to field is invalid" 400s).
     let targetAssignedUserId: string | null = (payload.target_assigned_user_id as string) || null;
     if (!targetAssignedUserId && !dryRun) {
-      try {
-        const usersRes = await ctx.ghlFetch(
-          `${GHL_API_BASE}/users/?locationId=${targetCreds.locationId}`,
-          { headers: targetHeaders }, 2, 'target',
-        );
-        if (usersRes.ok) {
-          const usersData = await usersRes.json();
-          const users: any[] = usersData.users || [];
-          if (users.length > 0) {
-            targetAssignedUserId = users[0].id;
-            console.log(`[opps-worker] Hard-set assignedTo target user: ${targetAssignedUserId} (${users[0].name || users[0].email || 'unnamed'}) — ${users.length} user(s) available in target location`);
-          } else {
-            console.warn('[opps-worker] Target location returned 0 users — opportunities will be created unassigned');
+      const userEndpoints = [
+        `${GHL_API_BASE}/locations/${targetCreds.locationId}/users`,
+        `${GHL_API_BASE}/users/?locationId=${targetCreds.locationId}`,
+      ];
+      for (const url of userEndpoints) {
+        try {
+          const usersRes = await ctx.ghlFetch(url, { headers: targetHeaders }, 2, 'target');
+          if (!usersRes.ok) {
+            const errBody = await usersRes.text();
+            console.warn(`[opps-worker] ${url} → ${usersRes.status}: ${errBody.substring(0, 160)}`);
+            continue;
           }
-        } else {
-          const errBody = await usersRes.text();
-          console.warn(`[opps-worker] Failed to fetch target users (${usersRes.status}): ${errBody.substring(0, 200)} — opportunities will be created unassigned`);
+          const usersData = await usersRes.json();
+          const users: any[] = usersData.users || usersData.locationUsers || [];
+          if (users.length === 0) continue;
+          // Prefer users explicitly bound to the target location.
+          const located = users.find((u) =>
+            Array.isArray(u.roles?.locationIds) ? u.roles.locationIds.includes(targetCreds.locationId)
+              : Array.isArray(u.locationIds) ? u.locationIds.includes(targetCreds.locationId)
+              : true,
+          ) || users[0];
+          targetAssignedUserId = located.id;
+          console.log(`[opps-worker] Hard-set assignedTo=${targetAssignedUserId} (${located.name || located.email || 'unnamed'}) via ${url} — ${users.length} candidate(s)`);
+          break;
+        } catch (e: any) {
+          console.warn(`[opps-worker] ${url} threw: ${e.message}`);
         }
-      } catch (e: any) {
-        console.warn(`[opps-worker] Error fetching target users: ${e.message} — opportunities will be created unassigned`);
+      }
+      if (!targetAssignedUserId) {
+        console.warn('[opps-worker] No target user resolved — opportunities will be created WITHOUT assignedTo (omitted from POST body)');
       }
     }
 
@@ -466,6 +525,31 @@ Deno.serve(async (req) => {
           continue;
         }
 
+        // Empty/whitespace names cause 422 "name should not be empty".
+        // Fall back to a deterministic placeholder so we never POST blank.
+        const safeName = (opp.name || '').trim() || `Opportunity ${String(opp.id).slice(-6)}`;
+
+        // Pre-check: does an opportunity for this contact already exist in
+        // the target pipeline? If so, record the mapping & skip — avoids
+        // GHL's "Can not create duplicate opportunity for the contact" 400.
+        if (!dryRun) {
+          const existingTargetOppId = await findExistingTargetOpportunity(
+            ctx, targetCreds.locationId!, contactMap.new_ghl_id!, pmap.targetPipelineId, safeName, targetHeaders,
+          );
+          if (existingTargetOppId) {
+            await recordIdMapping(supabase, {
+              resource_type: 'opportunity', old_ghl_id: opp.id, new_ghl_id: existingTargetOppId,
+              source_account_label: sourceAccount, target_account_label: targetAccount, notes: oppLabel,
+            });
+            totalSkipped++;
+            await recordItem(supabase, {
+              job_id: jobId, source_id: opp.id, target_id: existingTargetOppId, entity_label: oppLabel,
+              status: 'skipped', error_message: 'Already exists in target (pre-check) — mapping recorded',
+            });
+            continue;
+          }
+        }
+
         if (dryRun) {
           totalSucceeded++;
           await recordItem(supabase, {
@@ -480,13 +564,14 @@ Deno.serve(async (req) => {
           // no manual delay needed.
           // NOTE: legacy `assignedTo` user IDs do not exist in the new GHL
           // account; we hard-set `assignedTo` to a single resolved target
-          // user (above) instead.
+          // user (above) instead. If unresolved we OMIT the field entirely
+          // (GHL rejects empty strings or invalid IDs with a 400).
           const createBody: Record<string, unknown> = {
             locationId: targetCreds.locationId,
             pipelineId: pmap.targetPipelineId,
             pipelineStageId: targetStageId,
             contactId: contactMap.new_ghl_id,
-            name: opp.name,
+            name: safeName,
             status: opp.status || 'open',
           };
           if (typeof opp.monetaryValue === 'number' && !Number.isNaN(opp.monetaryValue)) {
