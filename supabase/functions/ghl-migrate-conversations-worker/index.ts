@@ -79,6 +79,22 @@ Deno.serve(async (req) => {
     const maxItems = Number(payload.max_items) || 0;
     const messagesPerConv = Math.min(Number(payload.messages_per_conversation) || 50, 100);
 
+    // ── New filter flags (from Advanced options UI) ─────────────────────
+    const messageDirection: 'all' | 'inbound' | 'outbound' =
+      payload.message_direction === 'inbound' || payload.message_direction === 'outbound'
+        ? payload.message_direction
+        : 'all';
+    const channelFilterRaw: string[] = Array.isArray(payload.channel_filter) ? payload.channel_filter : [];
+    const channelFilter = new Set(channelFilterRaw.map((c) => mapChannel(String(c).trim())).filter(Boolean));
+    const dateRangeDays = Number(payload.date_range_days) || 0;
+    const sinceTs = dateRangeDays > 0 ? Date.now() - dateRangeDays * 86400_000 : 0;
+    const skipAttachments = payload.skip_attachments === true;
+
+    console.log(
+      `[conv-worker] flags direction=${messageDirection} channels=${channelFilter.size === 0 ? 'all' : [...channelFilter].join(',')} ` +
+      `since=${sinceTs ? new Date(sinceTs).toISOString() : 'none'} skip_attachments=${skipAttachments}`,
+    );
+
     if (!jobId) return new Response(JSON.stringify({ error: 'job_id required' }), { status: 400 });
 
     const creds = getGhlCredentials(sourceAccount);
