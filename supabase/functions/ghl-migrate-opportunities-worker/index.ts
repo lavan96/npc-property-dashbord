@@ -447,6 +447,15 @@ Deno.serve(async (req) => {
     // checkpoint where we really are (not where we started).
     let lastProcessedOppId: string | null = null;
     let lastProcessedOppAt: string | null = null;
+    // ── In-leg de-dup ──────────────────────────────────────────────────
+    // GHL pagination ties on identical `updatedAt` timestamps can re-serve
+    // the same items repeatedly. Track every id we've already processed
+    // THIS leg; on the next page, skip dupes locally and — if the entire
+    // page is dupes — bump the cursor by 1 ms to step past the tied
+    // timestamp cluster. Without this, a 100-item cluster sharing the same
+    // updatedAt will loop until the no-progress guard kills the job.
+    const seenInLegOpps = new Set<string>();
+    let lastPageDupRatio = 0; // 0..1 — fraction of last page that was dupes
     // Helper: build the cursor we'll persist on partial exit. Prefer the
     // last opp we touched THIS leg; fall back to the page cursor.
     const exitCursor = (): { startAfterId: string | null; startAfter: string | null } => ({
