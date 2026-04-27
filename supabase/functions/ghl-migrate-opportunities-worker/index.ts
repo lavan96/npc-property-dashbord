@@ -430,37 +430,27 @@ Deno.serve(async (req) => {
     let unresolvedWithContactId = 0;
     let missingContactReference = 0;
     let ambiguousNameRoutes = 0;
-    let pageStartAfter: string | null = checkpoint.cursor.startAfter || null;
-    let pageStartAfterId: string | null = checkpoint.cursor.startAfterId || null;
-    let firstPage = true;
-
-    // ── Cursor-advance tracking (no-progress guard) ─────────────────────
-    // Snapshot the cursor we STARTED this leg with. If the leg processes
-    // items but never advances past this cursor, we have a stuck loop —
-    // we'll fail the job loudly instead of letting the dispatcher keep
-    // re-claiming it. This is the root-cause fix for the 200-mark
-    // duplicate-flood bug: previously partialExit wrote back the leg's
-    // STARTING cursor, so leg N+1 always restarted from the same place.
-    const legStartCursorId: string | null = pageStartAfterId;
-    const legStartCursorAt: string | null = pageStartAfter;
+    // ── Pagination cursors (mirrors contacts-worker) ───────────────────
+    // We trust GHL's server-supplied `data.meta.startAfterId` / `startAfter`
+    // for advancement (same as the contacts worker). The previous "manual"
+    // approach of deriving the next cursor from `last.updatedAt` of the
+    // page array was the root cause of the 200-mark duplicate-flood: when
+    // many opps share an identical `updatedAt`, deriving from the array
+    // tail fails to advance past the cluster, while GHL's own meta cursor
+    // does. Removing all the band-aids (in-leg dedup set, dup-ratio escape
+    // hatch, 1ms-bump auto-recover, no-progress fail) — they were patching
+    // around that single bug.
+    let nextStartAfterId: string | null = checkpoint.cursor.startAfterId || null;
+    let nextStartAfter: string | null = checkpoint.cursor.startAfter || null;
     // Track the LAST opp this leg actually touched so partialExit can
-    // checkpoint where we really are (not where we started).
-    let lastProcessedOppId: string | null = null;
-    let lastProcessedOppAt: string | null = null;
-    // ── In-leg de-dup ──────────────────────────────────────────────────
-    // GHL pagination ties on identical `updatedAt` timestamps can re-serve
-    // the same items repeatedly. Track every id we've already processed
-    // THIS leg; on the next page, skip dupes locally and — if the entire
-    // page is dupes — bump the cursor by 1 ms to step past the tied
-    // timestamp cluster. Without this, a 100-item cluster sharing the same
-    // updatedAt will loop until the no-progress guard kills the job.
-    const seenInLegOpps = new Set<string>();
-    let lastPageDupRatio = 0; // 0..1 — fraction of last page that was dupes
-    // Helper: build the cursor we'll persist on partial exit. Prefer the
-    // last opp we touched THIS leg; fall back to the page cursor.
+    // checkpoint exactly where we are mid-page (not where we started, and
+    // not the page-end cursor that jumps over unprocessed items).
+    let lastProcessedOppId: string | null = nextStartAfterId;
+    let lastProcessedOppAt: string | null = nextStartAfter;
+    let firstPage = true;
     const exitCursor = (): { startAfterId: string | null; startAfter: string | null } => ({
-      startAfterId: lastProcessedOppId || pageStartAfterId,
-      startAfter: lastProcessedOppAt || pageStartAfter,
+      startAfterId: lastProcessedOppId,
+      startAfter: lastProcessedOppAt,
     });
 
     // ── Cumulative progress across redispatched legs ─────────────────
