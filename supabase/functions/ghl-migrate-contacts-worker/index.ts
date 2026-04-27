@@ -243,6 +243,14 @@ Deno.serve(async (req) => {
     const reuseExistingMappings = payload.reuse_existing_mappings === true;
     const forceReingest = payload.force_reingest === true || (writeMode === 'create_first' && !reuseExistingMappings);
     const allowNameDedupe = payload.allow_name_dedupe === true && reuseExistingMappings;
+    // BYPASS SANITIZER MODE — forces 100% migration regardless of data quality.
+    //   • Junk-name contacts (email/phone/test as name) are still ingested,
+    //     just tagged "Migrated: Bad Name" for downstream cleanup.
+    //   • Contacts with no email AND no phone get a SYNTHETIC placeholder email
+    //     (legacy-{id}@migrated.placeholder.local) so GHL's upsert API accepts
+    //     them, and are tagged "Migrated: Synthetic Email" + "Migrated: No Contact Method".
+    //   • Use only when you need a 100% bit-for-bit copy of the legacy account.
+    const bypassSanitizer = payload.bypass_sanitizer === true;
 
     if (!jobId) return new Response(JSON.stringify({ error: 'job_id required' }), { status: 400 });
 
@@ -501,7 +509,9 @@ Deno.serve(async (req) => {
         // Reject ONLY when the name is unambiguously junk (email/phone-as-name,
         // "test", repeated chars). "Unknown Unknown" is allowed (matches
         // reference export behaviour).
-        if (junkReason) {
+        // BYPASS: when bypassSanitizer=true, junk names are kept (tagged for cleanup).
+        let junkNameBypassed = false;
+        if (junkReason && !bypassSanitizer) {
           skippedJunkName++;
           totalSkipped++;
           await recordItem(supabase, {
@@ -512,6 +522,9 @@ Deno.serve(async (req) => {
             error_message: `Sanitization rejected: ${junkReason}`,
           });
           continue;
+        }
+        if (junkReason && bypassSanitizer) {
+          junkNameBypassed = true;
         }
 
         if (safeFirst === 'Unknown' || safeLast === 'Unknown') unknownPlaceholderNames++;
@@ -632,17 +645,30 @@ Deno.serve(async (req) => {
         const cleanPhone = normalizePhoneE164(phoneForNormalization);
 
         // GHL /contacts/upsert REQUIRES at least one of email or phone.
+        // BYPASS: when bypassSanitizer=true, synthesize a placeholder email
+        // so GHL accepts the record. Tag it for downstream cleanup.
+        let syntheticEmailUsed = false;
+        let finalEmail = cleanEmail;
         if (!cleanEmail && !cleanPhone) {
-          skippedMissingContactMethod++;
-          totalSkipped++;
-          await recordItem(supabase, {
-            job_id: jobId,
-            source_id: contact.id,
-            entity_label: contactName,
-            status: 'skipped',
-            error_message: 'No email or phone on source contact (GHL upsert requires at least one)',
-          });
-          continue;
+          if (bypassSanitizer) {
+            const safeIdSlug = String(contact.id || `unknown-${Date.now()}`)
+              .replace(/[^a-zA-Z0-9_-]/g, '')
+              .toLowerCase()
+              .substring(0, 40) || `unknown-${Date.now()}`;
+            finalEmail = `legacy-${safeIdSlug}@migrated.placeholder.local`;
+            syntheticEmailUsed = true;
+          } else {
+            skippedMissingContactMethod++;
+            totalSkipped++;
+            await recordItem(supabase, {
+              job_id: jobId,
+              source_id: contact.id,
+              entity_label: contactName,
+              status: 'skipped',
+              error_message: 'No email or phone on source contact (GHL upsert requires at least one)',
+            });
+            continue;
+          }
         }
 
         // ── Pipeline status as a tag (preserves lifecycle for opportunities worker)
@@ -652,16 +678,25 @@ Deno.serve(async (req) => {
         const pipelineStatus = String(
           contact.pipelineStatus || contact.opportunityStatus || ''
         ).trim();
+        const bypassTags: string[] = [];
+        if (syntheticEmailUsed) {
+          bypassTags.push('Migrated: Synthetic Email', 'Migrated: No Contact Method');
+        }
+        if (junkNameBypassed) {
+          bypassTags.push('Migrated: Bad Name');
+        }
         const mergedTags = preserveCsvStructure
           ? Array.from(new Set([
               ...sourceTags,
               ...(pipelineStatus ? [`Stage: ${pipelineStatus}`] : []),
+              ...bypassTags,
             ]))
           : Array.from(new Set([
               ...sourceTags,
               'NPC Export',                                       // fixed marker (matches reference)
               `Migration: ${sourceAccount}→${targetAccount}`,      // audit tag
               ...(pipelineStatus ? [`Stage: ${pipelineStatus}`] : []),
+              ...bypassTags,
             ]));
 
         // ── Secondary contact name passthrough (custom fields)
@@ -704,7 +739,7 @@ Deno.serve(async (req) => {
         const legacyStructureRecord = {
           first_name: safeFirst || 'Unknown',
           last_name: safeLast || 'Unknown',
-          email: cleanEmail || '',
+          email: finalEmail || '',
           phone: cleanPhone || '',
           tags: mergedTags,
           source: normalizedSource,
@@ -748,10 +783,10 @@ Deno.serve(async (req) => {
           // Rate-gating + Retry-After + backoff is handled inside ghlFetch.
           const writeBody = {
             locationId: targetCreds.locationId,
-            firstName: safeFirst,
-            lastName: safeLast,
-            name: contactName,                                // full_name is the source of truth
-            email: cleanEmail || undefined,
+            firstName: safeFirst || (bypassSanitizer ? 'Unknown' : safeFirst),
+            lastName: safeLast || (bypassSanitizer ? 'Unknown' : safeLast),
+            name: contactName || (bypassSanitizer ? `Legacy Contact ${String(contact.id || '').substring(0, 8)}` : contactName),
+            email: finalEmail || undefined,
             phone: cleanPhone || undefined,
             tags: mergedTags,
             address1: contact.address1 || undefined,

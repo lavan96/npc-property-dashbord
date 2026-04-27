@@ -364,6 +364,7 @@ function MigrationWorkersPanel() {
   const [preserveCsvStructure, setPreserveCsvStructure] = useState(true);
   const [allowNameDedupe, setAllowNameDedupe] = useState(false);
   const [forceReingest, setForceReingest] = useState(true);
+  const [bypassSanitizer, setBypassSanitizer] = useState(false);
   const [jobs, setJobs] = useState<any[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(false);
 
@@ -467,6 +468,7 @@ function MigrationWorkersPanel() {
         reuse_existing_mappings: allowNameDedupe,
         allow_name_dedupe: allowNameDedupe,
         force_reingest: forceReingest,
+        bypass_sanitizer: bypassSanitizer,
       };
       const dispatchDomain = async (dispatchDomain: 'contacts' | 'opportunities' | 'notes' | 'conversations', extraPayload?: Record<string, any>) => {
         return invokeSecureFunction<any>('migration-orchestrator', {
@@ -648,6 +650,22 @@ function MigrationWorkersPanel() {
             />
             <span>
               <strong>Reuse existing mappings/name matches</strong> (off for wiped target accounts): only enable when the target GHL account already contains trusted contacts that should be reused instead of created.
+            </span>
+          </label>
+        </div>
+        <div className={`rounded-md border p-3 ${bypassSanitizer ? 'border-destructive/60 bg-destructive/10' : 'border-border/60 bg-muted/20'}`}>
+          <label className="flex items-start gap-2 text-xs">
+            <input
+              type="checkbox"
+              checked={bypassSanitizer}
+              onChange={(e) => setBypassSanitizer(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              <strong>⚠ Bypass sanitizer — force 100% migration</strong> (use sparingly): copies <em>every</em> legacy contact, even those with junk names or no email/phone.
+              Records missing both email and phone get a synthetic placeholder address (<code>legacy-&lt;id&gt;@migrated.placeholder.local</code>) so GHL accepts the upsert,
+              and are tagged <code>Migrated: Synthetic Email</code> + <code>Migrated: No Contact Method</code>. Junk-name records (phone/email/test as name) get tagged <code>Migrated: Bad Name</code>.
+              Use the tags afterwards to find and clean these records in the new account.
             </span>
           </label>
         </div>
