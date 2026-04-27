@@ -403,6 +403,26 @@ Deno.serve(async (req) => {
     let pageStartAfterId: string | null = checkpoint.cursor.startAfterId || null;
     let firstPage = true;
 
+    // ── Cursor-advance tracking (no-progress guard) ─────────────────────
+    // Snapshot the cursor we STARTED this leg with. If the leg processes
+    // items but never advances past this cursor, we have a stuck loop —
+    // we'll fail the job loudly instead of letting the dispatcher keep
+    // re-claiming it. This is the root-cause fix for the 200-mark
+    // duplicate-flood bug: previously partialExit wrote back the leg's
+    // STARTING cursor, so leg N+1 always restarted from the same place.
+    const legStartCursorId: string | null = pageStartAfterId;
+    const legStartCursorAt: string | null = pageStartAfter;
+    // Track the LAST opp this leg actually touched so partialExit can
+    // checkpoint where we really are (not where we started).
+    let lastProcessedOppId: string | null = null;
+    let lastProcessedOppAt: string | null = null;
+    // Helper: build the cursor we'll persist on partial exit. Prefer the
+    // last opp we touched THIS leg; fall back to the page cursor.
+    const exitCursor = (): { startAfterId: string | null; startAfter: string | null } => ({
+      startAfterId: lastProcessedOppId || pageStartAfterId,
+      startAfter: lastProcessedOppAt || pageStartAfter,
+    });
+
     // ── Cumulative progress across redispatched legs ─────────────────
     // Without these, each leg overwrites migration_jobs counters with just
     // its OWN local counts (which reset to 0 on every cold start), so the
