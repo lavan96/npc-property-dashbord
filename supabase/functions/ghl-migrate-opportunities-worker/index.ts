@@ -366,6 +366,20 @@ Deno.serve(async (req) => {
       if (assignedUserStrategy === 'map_by_email') {
         console.log(`[opps-worker] map_by_email: resolved ${targetUserByEmail.size} target users by email`);
       }
+      // Persist the verdict so the next leg doesn't repeat the probing.
+      const newVerdict: 'works' | 'unsupported' = anyOk ? 'works' : (any404 === userEndpoints.length ? 'unsupported' : 'unknown') as any;
+      if (newVerdict !== userEndpointVerdict && newVerdict !== 'unknown') {
+        userEndpointVerdict = newVerdict;
+        try {
+          const mergedPayload = { ...payload, user_endpoint_verdict: newVerdict };
+          await supabase.from('migration_jobs').update({ payload: mergedPayload }).eq('id', jobId);
+          console.log(`[opps-worker] cached user_endpoint_verdict=${newVerdict} on job payload`);
+        } catch (e: any) {
+          console.warn(`[opps-worker] failed to cache user_endpoint_verdict: ${e.message}`);
+        }
+      }
+    } else if (userEndpointVerdict === 'unsupported') {
+      console.log('[opps-worker] user_endpoint_verdict=unsupported (cached) — skipping probe; opps will POST without assignedTo');
     }
 
     // For map_by_email we also need source users keyed by ID so we can look
