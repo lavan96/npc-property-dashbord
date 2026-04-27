@@ -533,6 +533,12 @@ Deno.serve(async (req) => {
         if (Date.now() - startedAt > MAX_RUNTIME_MS) break;
 
         totalProcessed++;
+        // Track checkpoint position the moment we see this opp. Whether we
+        // skip, fail, or successfully migrate, the cursor must advance —
+        // otherwise the next leg restarts at this same record forever
+        // (the 200-mark duplicate-loop bug).
+        lastProcessedOppId = opp.id || lastProcessedOppId;
+        lastProcessedOppAt = opp.updatedAt || opp.dateAdded || lastProcessedOppAt;
         const oppLabel = opp.name || `Opp ${opp.id?.substring(0, 8)}`;
 
         // Skip closed opportunities unless includeClosedStatuses is on.
@@ -947,6 +953,27 @@ Deno.serve(async (req) => {
       pageStartAfter = last?.updatedAt || last?.dateAdded || null;
       await saveCheckpoint(supabase, jobId,
         { startAfterId: pageStartAfterId, startAfter: pageStartAfter }, last?.id || null);
+
+      // ── No-progress guard ─────────────────────────────────────────────
+      // If this leg processed at least one item but the page cursor is
+      // identical to where the leg started, we have a confirmed
+      // stuck-cursor loop. Fail the job loudly with diagnostic info instead
+      // of letting the dispatcher re-claim it for another duplicate pass.
+      const cursorAdvanced =
+        pageStartAfterId !== legStartCursorId ||
+        pageStartAfter !== legStartCursorAt;
+      if (totalProcessed > 0 && !cursorAdvanced) {
+        const msg =
+          `No-progress guard tripped: leg processed=${totalProcessed} but cursor did not advance ` +
+          `(stuck at id=${legStartCursorId} / at=${legStartCursorAt}). ` +
+          `Likely a GHL pagination cursor or filter issue — needs manual review.`;
+        console.error(`[opps-worker] ${msg}`);
+        await updateJobProgress(supabase, jobId, progressPatch());
+        await finishJob(supabase, jobId, 'failed', msg);
+        return new Response(JSON.stringify({
+          success: false, error: msg, processed: totalProcessed,
+        }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+      }
 
       if (maxItems > 0 && totalProcessed >= maxItems) break;
       // No artificial cap on total records: we keep paging via cursor until
