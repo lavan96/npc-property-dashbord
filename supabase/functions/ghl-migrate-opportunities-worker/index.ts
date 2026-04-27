@@ -343,7 +343,7 @@ Deno.serve(async (req) => {
           console.warn(`[opps-worker] ${url} threw: ${e.message}`);
         }
       }
-      if (!targetAssignedUserId && assignedUserStrategy !== 'omit') {
+      if (!targetAssignedUserId) {
         console.warn('[opps-worker] No target user resolved — opportunities will be created WITHOUT assignedTo (omitted from POST body)');
       }
       if (assignedUserStrategy === 'map_by_email') {
