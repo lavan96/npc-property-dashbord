@@ -739,7 +739,7 @@ Deno.serve(async (req) => {
         const legacyStructureRecord = {
           first_name: safeFirst || 'Unknown',
           last_name: safeLast || 'Unknown',
-          email: cleanEmail || '',
+          email: finalEmail || '',
           phone: cleanPhone || '',
           tags: mergedTags,
           source: normalizedSource,
