@@ -8,20 +8,28 @@
  *
  * Unlike contacts/opportunities/notes, this worker does NOT write to GHL.
  * "dry_run=true" simply enumerates without DB inserts.
+ *
+ * Architectural parity: shares the same cross-isolate rate limiter and
+ * circuit-breaker pattern as the contacts/opportunities workers via
+ * `createGhlFetchContext`. Even though we only READ from GHL, the same
+ * token is used by other workers/cron jobs, so cooperative pacing matters.
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import { getGhlCredentials, validateGhlCredentials, buildGhlHeaders } from '../_shared/ghl-account.ts';
 import {
-  startJob, finishJob, recordItem, updateJobProgress, delay,
+  startJob, finishJob, recordItem, updateJobProgress,
   saveCheckpoint, loadCheckpoint, partialExit, heartbeat,
   readControlSignal,
 } from '../_shared/migration-jobs.ts';
+import { tokenKeyFor } from '../_shared/ghl-rate-limiter.ts';
+import { createGhlFetchContext } from '../_shared/ghl-worker-fetch.ts';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 const PAGE_LIMIT = 100;
-const MAX_RUNTIME_MS = 90_000;
-const RATE_LIMIT_MS = 250;
+// 110s leaves ~40s headroom inside the 150s edge cap for graceful
+// checkpoint + finishJob, mirroring the contacts/opportunities workers.
+const MAX_RUNTIME_MS = 110_000;
 
 function mapDirection(msg: any): string {
   const d = msg.direction;
@@ -81,6 +89,17 @@ Deno.serve(async (req) => {
     }
     const headers = buildGhlHeaders(creds.apiKey!);
 
+    // Shared cross-isolate rate limiter + circuit breaker. Both buckets
+    // point at the same token because conversations only reads from one
+    // account, but the helper still tracks 429s and broadcasts cooldown.
+    const tokenKey = tokenKeyFor(sourceAccount, creds.apiKey);
+    const ctx = createGhlFetchContext({
+      supabase,
+      sourceTokenKey: tokenKey,
+      targetTokenKey: tokenKey,
+      logTag: 'conv-worker',
+    });
+
     console.log(`[conv-worker] job=${jobId} from=${sourceAccount} dry_run=${dryRun}`);
 
     const checkpoint = await loadCheckpoint(supabase, jobId);
@@ -120,6 +139,21 @@ Deno.serve(async (req) => {
         }), { headers: { 'Content-Type': 'application/json' } });
       }
 
+      // Circuit breaker tripped → exit cleanly so the dispatcher resumes
+      // us with a fresh budget after the broadcast cooldown elapses.
+      if (ctx.isCircuitTripped()) {
+        console.warn(`[conv-worker] Circuit breaker tripped at ${totalProcessed} processed — handing off to dispatcher for cool-off`);
+        await partialExit(
+          supabase, jobId,
+          { nextPage },
+          { processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed },
+        );
+        return new Response(JSON.stringify({
+          success: true, partial: true, circuit_breaker: true, processed: totalProcessed,
+          handed_off_to: 'migration-dispatcher',
+        }), { headers: { 'Content-Type': 'application/json' } });
+      }
+
       if (Date.now() - startedAt > MAX_RUNTIME_MS) {
         await partialExit(
           supabase, jobId,
@@ -135,7 +169,7 @@ Deno.serve(async (req) => {
       const p = new URLSearchParams({ locationId: creds.locationId!, limit: String(PAGE_LIMIT) });
       if (nextPage) p.set('startAfter', nextPage);
 
-      const r = await fetch(`${GHL_API_BASE}/conversations/search?${p}`, { headers });
+      const r = await ctx.ghlFetch(`${GHL_API_BASE}/conversations/search?${p}`, { headers }, 3, 'source');
       if (!r.ok) {
         const t = await r.text();
         throw new Error(`Source conversations fetch failed: ${r.status} ${t.substring(0, 200)}`);
@@ -152,6 +186,7 @@ Deno.serve(async (req) => {
       for (const conv of convs) {
         if (maxItems > 0 && totalProcessed >= maxItems) break;
         if (Date.now() - startedAt > MAX_RUNTIME_MS) break;
+        if (ctx.isCircuitTripped()) break;
 
         totalProcessed++;
         const label = conv.contactId ? `Conv with ${conv.contactId}` : conv.id;
@@ -177,9 +212,11 @@ Deno.serve(async (req) => {
             source_account_label: sourceAccount,
           } as any, { onConflict: 'ghl_conversation_id' });
 
-          // Pull recent messages
-          await delay(RATE_LIMIT_MS);
-          const mr = await fetch(`${GHL_API_BASE}/conversations/${conv.id}/messages?limit=${messagesPerConv}`, { headers });
+          // Pull recent messages — pacing handled by the shared limiter.
+          const mr = await ctx.ghlFetch(
+            `${GHL_API_BASE}/conversations/${conv.id}/messages?limit=${messagesPerConv}`,
+            { headers }, 3, 'source',
+          );
           if (mr.ok) {
             const md = await mr.json();
             let messages: any[] = [];
@@ -216,6 +253,9 @@ Deno.serve(async (req) => {
       await updateJobProgress(supabase, jobId, {
         processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed,
       });
+      // Heartbeat extends the dispatcher lease so a long stretch of
+      // upserts doesn't cause the job to be reclaimed mid-page.
+      await heartbeat(supabase, jobId);
 
       nextPage = data.nextPage || null;
       await saveCheckpoint(supabase, jobId, { nextPage });
