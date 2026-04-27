@@ -243,6 +243,14 @@ Deno.serve(async (req) => {
     const reuseExistingMappings = payload.reuse_existing_mappings === true;
     const forceReingest = payload.force_reingest === true || (writeMode === 'create_first' && !reuseExistingMappings);
     const allowNameDedupe = payload.allow_name_dedupe === true && reuseExistingMappings;
+    // BYPASS SANITIZER MODE — forces 100% migration regardless of data quality.
+    //   • Junk-name contacts (email/phone/test as name) are still ingested,
+    //     just tagged "Migrated: Bad Name" for downstream cleanup.
+    //   • Contacts with no email AND no phone get a SYNTHETIC placeholder email
+    //     (legacy-{id}@migrated.placeholder.local) so GHL's upsert API accepts
+    //     them, and are tagged "Migrated: Synthetic Email" + "Migrated: No Contact Method".
+    //   • Use only when you need a 100% bit-for-bit copy of the legacy account.
+    const bypassSanitizer = payload.bypass_sanitizer === true;
 
     if (!jobId) return new Response(JSON.stringify({ error: 'job_id required' }), { status: 400 });
 
