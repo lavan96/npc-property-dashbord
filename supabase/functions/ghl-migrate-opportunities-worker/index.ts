@@ -183,9 +183,9 @@ Deno.serve(async (req) => {
     let targetAssignedUserId: string | null = (payload.target_assigned_user_id as string) || null;
     if (!targetAssignedUserId && !dryRun) {
       try {
-        const usersRes = await fetch(
+        const usersRes = await ctx.ghlFetch(
           `${GHL_API_BASE}/users/?locationId=${targetCreds.locationId}`,
-          { headers: targetHeaders },
+          { headers: targetHeaders }, 2, 'target',
         );
         if (usersRes.ok) {
           const usersData = await usersRes.json();
@@ -261,6 +261,21 @@ Deno.serve(async (req) => {
           handed_off_to: 'migration-dispatcher',
         }), { headers: { 'Content-Type': 'application/json' } });
       }
+      // Circuit breaker tripped → exit cleanly so the dispatcher resumes us
+      // with a fresh budget after the broadcast cooldown elapses.
+      if (ctx.isCircuitTripped()) {
+        console.warn(`[opps-worker] Circuit breaker tripped at ${totalProcessed} processed — handing off to dispatcher for cool-off`);
+        await partialExit(
+          supabase, jobId,
+          { startAfterId: pageStartAfterId, startAfter: pageStartAfter },
+          { processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed },
+          pageStartAfterId,
+        );
+        return new Response(JSON.stringify({
+          success: true, partial: true, circuit_breaker: true, processed: totalProcessed,
+          handed_off_to: 'migration-dispatcher',
+        }), { headers: { 'Content-Type': 'application/json' } });
+      }
 
       const p = new URLSearchParams({ location_id: sourceCreds.locationId!, limit: String(PAGE_LIMIT) });
       if (pageStartAfter) {
@@ -272,7 +287,7 @@ Deno.serve(async (req) => {
       }
       if (pageStartAfterId) p.set('startAfterId', pageStartAfterId);
 
-      const res = await fetch(`${GHL_API_BASE}/opportunities/search?${p}`, { headers: sourceHeaders });
+      const res = await ctx.ghlFetch(`${GHL_API_BASE}/opportunities/search?${p}`, { headers: sourceHeaders }, 3, 'source');
       if (!res.ok) {
         const t = await res.text();
         throw new Error(`Source opportunities fetch failed: ${res.status} ${t.substring(0, 200)}`);
@@ -348,7 +363,7 @@ Deno.serve(async (req) => {
             .maybeSingle();
           if (idMapped?.new_ghl_id) {
             idMappingFound = true;
-            const existsInTarget = dryRun ? true : await targetContactExists(idMapped.new_ghl_id, targetHeaders);
+            const existsInTarget = dryRun ? true : await targetContactExists(ctx, idMapped.new_ghl_id, targetHeaders);
             if (existsInTarget) {
               resolved.newId = idMapped.new_ghl_id;
               resolvedByContactIdMap++;
@@ -374,7 +389,7 @@ Deno.serve(async (req) => {
             excludeNewIds: idMappedButTargetMissing && idMappingFound ? [resolved.newId || ''] : [],
           });
           if (nameResolved.newId) {
-            const nameTargetExists = dryRun ? true : await targetContactExists(nameResolved.newId, targetHeaders);
+            const nameTargetExists = dryRun ? true : await targetContactExists(ctx, nameResolved.newId, targetHeaders);
             if (nameTargetExists) {
               resolvedByNameMap++;
               if (nameResolved.ambiguous) ambiguousNameRoutes++;
@@ -461,13 +476,11 @@ Deno.serve(async (req) => {
         }
 
         try {
-          await delay(RATE_LIMIT_MS);
-          // NOTE: `assignedTo` is intentionally OMITTED. The legacy user IDs
-          // do not exist in the new GHL account, and GHL responds with
-          // "The assigned to field is invalid." (400) when an unknown user
-          // ID is supplied. Without a user-mapping table this field cannot
-          // be safely cascaded — opportunities will land unassigned in the
-          // new account and can be reassigned by the user afterwards.
+          // Pacing is handled by ctx.ghlFetch via the shared rate limiter —
+          // no manual delay needed.
+          // NOTE: legacy `assignedTo` user IDs do not exist in the new GHL
+          // account; we hard-set `assignedTo` to a single resolved target
+          // user (above) instead.
           const createBody: Record<string, unknown> = {
             locationId: targetCreds.locationId,
             pipelineId: pmap.targetPipelineId,
@@ -482,9 +495,9 @@ Deno.serve(async (req) => {
           if (targetAssignedUserId) {
             createBody.assignedTo = targetAssignedUserId;
           }
-          const r = await fetch(`${GHL_API_BASE}/opportunities/`, {
+          const r = await ctx.ghlFetch(`${GHL_API_BASE}/opportunities/`, {
             method: 'POST', headers: targetHeaders, body: JSON.stringify(createBody),
-          });
+          }, 3, 'target');
           if (!r.ok) {
             const t = await r.text();
             const parsed = parseGhlError(t);
