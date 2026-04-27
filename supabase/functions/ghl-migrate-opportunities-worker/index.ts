@@ -45,9 +45,55 @@ async function targetContactExists(
   headers: Record<string, string>,
 ): Promise<boolean> {
   const res = await ctx.ghlFetch(`${GHL_API_BASE}/contacts/${contactId}`, { headers }, 2, 'target');
-  if (res.ok) return true;
   if (res.status === 404 || res.status === 410) return false;
-  return true;
+  if (!res.ok) return true; // unknown error → assume exists, don't drop the mapping
+  // GHL sometimes returns 200 for soft-deleted contacts. Detect that so we
+  // re-resolve via name instead of POSTing an opp that will 400 with
+  // "The opportunity contact is deleted".
+  try {
+    const body = await res.json();
+    const c = body?.contact || body;
+    if (!c || c.deleted === true || c.isDeleted === true || c.status === 'deleted') return false;
+    return true;
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * Look for an existing opportunity in the target account that matches this
+ * (contactId, pipelineId, name). Returns the existing opportunity id if any,
+ * so we can record-and-skip instead of failing with the GHL "duplicate" 400.
+ */
+async function findExistingTargetOpportunity(
+  ctx: GhlFetchContext,
+  locationId: string,
+  contactId: string,
+  pipelineId: string,
+  name: string,
+  headers: Record<string, string>,
+): Promise<string | null> {
+  try {
+    const params = new URLSearchParams({
+      location_id: locationId,
+      contact_id: contactId,
+      pipeline_id: pipelineId,
+      limit: '100',
+    });
+    const res = await ctx.ghlFetch(
+      `${GHL_API_BASE}/opportunities/search?${params}`,
+      { headers }, 2, 'target',
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const opps: any[] = data.opportunities || [];
+    if (opps.length === 0) return null;
+    const wanted = (name || '').trim().toLowerCase();
+    const exact = opps.find((o) => (o.name || '').trim().toLowerCase() === wanted);
+    return (exact?.id || opps[0]?.id) || null;
+  } catch {
+    return null;
+  }
 }
 
 Deno.serve(async (req) => {
