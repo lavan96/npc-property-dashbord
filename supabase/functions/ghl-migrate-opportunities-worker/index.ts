@@ -416,16 +416,23 @@ Deno.serve(async (req) => {
 
         try {
           await delay(RATE_LIMIT_MS);
-          const createBody = {
+          // NOTE: `assignedTo` is intentionally OMITTED. The legacy user IDs
+          // do not exist in the new GHL account, and GHL responds with
+          // "The assigned to field is invalid." (400) when an unknown user
+          // ID is supplied. Without a user-mapping table this field cannot
+          // be safely cascaded — opportunities will land unassigned in the
+          // new account and can be reassigned by the user afterwards.
+          const createBody: Record<string, unknown> = {
             locationId: targetCreds.locationId,
             pipelineId: pmap.targetPipelineId,
             pipelineStageId: targetStageId,
             contactId: contactMap.new_ghl_id,
             name: opp.name,
             status: opp.status || 'open',
-            monetaryValue: opp.monetaryValue,
-            assignedTo: opp.assignedTo,
           };
+          if (typeof opp.monetaryValue === 'number' && !Number.isNaN(opp.monetaryValue)) {
+            createBody.monetaryValue = opp.monetaryValue;
+          }
           const r = await fetch(`${GHL_API_BASE}/opportunities/`, {
             method: 'POST', headers: targetHeaders, body: JSON.stringify(createBody),
           });
