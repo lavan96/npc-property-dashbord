@@ -52,10 +52,14 @@ import {
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 const PAGE_LIMIT = 100;
-// Shorter budget — the cron dispatcher resumes us within ~15s, so we
-// don't need to push 5+ minutes per invocation. Smaller batches mean
-// faster recovery from any single edge-runtime crash.
-const MAX_RUNTIME_MS = 90_000;
+// Edge-function hard cap is ~150s; 110s leaves ~40s headroom for
+// graceful checkpoint + finishJob. Combined with the faster (5s) cron
+// dispatcher tick, this minimises dead time between legs.
+const MAX_RUNTIME_MS = 110_000;
+// Number of contact writes to fan out concurrently within a single page.
+// The shared rate-limiter still enforces the per-token ceiling, so this
+// just lets us keep the pipe full while one request waits on GHL I/O.
+const WRITE_CONCURRENCY = 3;
 
 // ── Shared rate-limiting & circuit breaker ────────────────────────────
 // IMPORTANT: All GHL HTTP traffic goes through `ghlFetch` which delegates
@@ -70,7 +74,10 @@ const MAX_RUNTIME_MS = 90_000;
 // invocation: 3 in a row → exit cleanly so the dispatcher resumes us
 // with a fresh budget after the cooldown window.
 
-const PER_TOKEN_RATE_PER_SEC = 6;        // shared budget per GHL token
+// GHL documented burst is ~10 req/s (100 req / 10s window). 8/s is the
+// pragmatic ceiling — leaves headroom for webhook + cron callers using
+// the same token while still ~33% faster than the previous 6/s.
+const PER_TOKEN_RATE_PER_SEC = 8;        // shared budget per GHL token
 const PER_TOKEN_WINDOW_MS = 1_000;
 const CIRCUIT_BREAKER_THRESHOLD = 3;     // consecutive 429s → trip
 const CIRCUIT_BREAKER_COOLDOWN_MS = 30_000; // broadcast cooldown when tripped
@@ -320,6 +327,23 @@ Deno.serve(async (req) => {
       await startJob(supabase, jobId, 0); // total updated as we discover
     }
 
+    // ── Probe-skip optimisation ───────────────────────────────────────
+    // Any ghl_id_mapping row whose `created_at` is at-or-after the job's
+    // started_at was written by THIS migration job (or a previous leg of
+    // it). We can trust those mappings without round-tripping a probe to
+    // GHL — saves one API call per contact on resumed legs.
+    let jobStartedAtMs = 0;
+    try {
+      const { data: jobRow } = await supabase
+        .from('migration_jobs')
+        .select('started_at')
+        .eq('id', jobId)
+        .maybeSingle();
+      if (jobRow?.started_at) {
+        jobStartedAtMs = new Date(jobRow.started_at).getTime() - 5_000; // 5s skew
+      }
+    } catch { /* non-fatal */ }
+
     while (true) {
       // ── Granular control: pause / cancel / kill ─────────────────────
       const signal = await readControlSignal(supabase, jobId);
@@ -478,10 +502,12 @@ Deno.serve(async (req) => {
 
         if (safeFirst === 'Unknown' || safeLast === 'Unknown') unknownPlaceholderNames++;
 
-        // Check if already mirrored by source contact id
+        // Check if already mirrored by source contact id. Pull `created_at`
+        // too so we can skip the GHL existence probe for mappings written
+        // by THIS migration job (saves ~1 API call per resumed contact).
         const { data: existing } = await supabase
           .from('ghl_id_mapping')
-          .select('new_ghl_id')
+          .select('new_ghl_id, created_at')
           .eq('resource_type', 'contact')
           .eq('old_ghl_id', contact.id)
           .eq('source_account_label', sourceAccount)
@@ -490,6 +516,14 @@ Deno.serve(async (req) => {
 
         if (existing?.new_ghl_id && !forceReingest) {
           let existsInTarget = contactExistenceCache.get(existing.new_ghl_id);
+          // Trust mappings created by this job (or after it started) without
+          // probing GHL — they were just written by us.
+          const mappingMs = existing.created_at ? new Date(existing.created_at).getTime() : 0;
+          const isFreshFromThisJob = jobStartedAtMs > 0 && mappingMs >= jobStartedAtMs;
+          if (existsInTarget === undefined && isFreshFromThisJob) {
+            existsInTarget = true;
+            contactExistenceCache.set(existing.new_ghl_id, true);
+          }
           if (existsInTarget === undefined) {
             existsInTarget = await targetContactExists(existing.new_ghl_id, targetHeaders);
             contactExistenceCache.set(existing.new_ghl_id, existsInTarget);
