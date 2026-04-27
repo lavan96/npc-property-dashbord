@@ -478,30 +478,23 @@ function MigrationWorkersPanel() {
         }, { timeoutMs: 30000 });
       };
 
-      if (domain === 'opportunities') {
-        const paired = await dispatchDomain('contacts', { paired_dispatch: true, paired_for: 'opportunities' });
-        if (paired.error || !paired.data?.success) {
-          toast.error(paired.error?.message || paired.data?.error || 'Contacts pre-dispatch failed');
-          return;
-        }
-        const oppRes = await dispatchDomain('opportunities', {
-          ingestion_validation: { require_contact_mapping: true, dispatch_mode: 'paired' },
-        });
-        if (oppRes.error || !oppRes.data?.success) {
-          toast.error(oppRes.error?.message || oppRes.data?.error || 'Opportunity dispatch failed');
-          return;
-        }
-        toast.success(`Paired jobs dispatched: contacts ${paired.data.job_id.substring(0, 8)} + opportunities ${oppRes.data.job_id.substring(0, 8)}`);
-      } else {
-        const res = await dispatchDomain(domain, {
-          ingestion_validation: { require_contact_mapping: domain === 'contacts' ? false : true },
-        });
-        if (res.error || !res.data?.success) {
-          toast.error(res.error?.message || res.data?.error || 'Dispatch failed');
-          return;
-        }
-        toast.success(`Job ${res.data.job_id.substring(0, 8)} dispatched`);
+      // Opportunities now run in ISOLATION — no auto-paired contacts pre-dispatch.
+      // The worker resolves contacts via existing ghl_id_mapping rows; if a
+      // mapping exists from a prior contacts run it is reused, otherwise the
+      // opportunity is skipped with a clear diagnostic. This keeps domains
+      // independent so re-running opportunities never re-triggers a contacts
+      // migration the user didn't ask for.
+      const res = await dispatchDomain(domain, {
+        ingestion_validation: {
+          require_contact_mapping: domain === 'opportunities' ? true : (domain === 'contacts' ? false : true),
+          dispatch_mode: 'isolated',
+        },
+      });
+      if (res.error || !res.data?.success) {
+        toast.error(res.error?.message || res.data?.error || 'Dispatch failed');
+        return;
       }
+      toast.success(`Job ${res.data.job_id.substring(0, 8)} dispatched`);
       setConfirmation('');
       setTimeout(refreshJobs, 1000);
     } finally {
