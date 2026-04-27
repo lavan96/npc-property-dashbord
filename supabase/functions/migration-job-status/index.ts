@@ -47,7 +47,8 @@ Deno.serve(async (req) => {
         .order('created_at', { ascending: false })
         .limit(limit);
       if (error) throw new Error(error.message);
-      return new Response(JSON.stringify({ success: true, jobs: jobs || [] }), {
+      const enriched = (jobs || []).map((j: any) => annotateHealth(j));
+      return new Response(JSON.stringify({ success: true, jobs: enriched }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
