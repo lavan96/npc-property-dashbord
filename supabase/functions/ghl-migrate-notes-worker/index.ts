@@ -303,6 +303,8 @@ Deno.serve(async (req) => {
 
       if (totalProcessed % 25 === 0) {
         await updateJobProgress(supabase, jobId, progressPatch());
+        // Heartbeat extends our lease so the dispatcher doesn't steal the
+        // job mid-flight while we're churning through a big slice.
         await heartbeat(supabase, jobId);
       }
     }
