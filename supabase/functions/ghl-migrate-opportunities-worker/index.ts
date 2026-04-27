@@ -382,6 +382,17 @@ Deno.serve(async (req) => {
       await startJob(supabase, jobId, 0);
     }
 
+    // ── Scope force_recreate to the FIRST leg only ──────────────────────
+    // forceRecreate=true makes every redo "succeed" at deletion+POST,
+    // which masks no-progress loops (the 200-mark duplicate flood). On a
+    // resumed leg we should treat existing target mappings as a hit and
+    // skip — preserving the operator's original intent for the first pass
+    // without compounding duplicates if the worker gets re-dispatched.
+    const effectiveForceRecreate = forceRecreate && !isResume;
+    if (forceRecreate && isResume) {
+      console.log(`[opps-worker] forceRecreate disabled on resume leg (was ${forceRecreate})`);
+    }
+
     let totalProcessed = 0, totalSucceeded = 0, totalFailed = 0, totalSkipped = 0;
     let resolvedByContactIdMap = 0;
     let resolvedByNameMap = 0;
@@ -391,6 +402,26 @@ Deno.serve(async (req) => {
     let pageStartAfter: string | null = checkpoint.cursor.startAfter || null;
     let pageStartAfterId: string | null = checkpoint.cursor.startAfterId || null;
     let firstPage = true;
+
+    // ── Cursor-advance tracking (no-progress guard) ─────────────────────
+    // Snapshot the cursor we STARTED this leg with. If the leg processes
+    // items but never advances past this cursor, we have a stuck loop —
+    // we'll fail the job loudly instead of letting the dispatcher keep
+    // re-claiming it. This is the root-cause fix for the 200-mark
+    // duplicate-flood bug: previously partialExit wrote back the leg's
+    // STARTING cursor, so leg N+1 always restarted from the same place.
+    const legStartCursorId: string | null = pageStartAfterId;
+    const legStartCursorAt: string | null = pageStartAfter;
+    // Track the LAST opp this leg actually touched so partialExit can
+    // checkpoint where we really are (not where we started).
+    let lastProcessedOppId: string | null = null;
+    let lastProcessedOppAt: string | null = null;
+    // Helper: build the cursor we'll persist on partial exit. Prefer the
+    // last opp we touched THIS leg; fall back to the page cursor.
+    const exitCursor = (): { startAfterId: string | null; startAfter: string | null } => ({
+      startAfterId: lastProcessedOppId || pageStartAfterId,
+      startAfter: lastProcessedOppAt || pageStartAfter,
+    });
 
     // ── Cumulative progress across redispatched legs ─────────────────
     // Without these, each leg overwrites migration_jobs counters with just
@@ -428,12 +459,12 @@ Deno.serve(async (req) => {
         }), { headers: { 'Content-Type': 'application/json' } });
       }
       if (signal === 'pause') {
-        console.log(`[opps-worker] PAUSE signal — checkpointing at ${totalProcessed}`);
+        console.log(`[opps-worker] PAUSE signal — checkpointing at last_processed=${lastProcessedOppId || '(none this leg)'}`);
         await partialExit(
           supabase, jobId,
-          { startAfterId: pageStartAfterId, startAfter: pageStartAfter },
+          exitCursor(),
           progressPatch(),
-          pageStartAfterId,
+          lastProcessedOppId || pageStartAfterId,
         );
         return new Response(JSON.stringify({
           success: true, paused: true, processed: totalProcessed,
@@ -441,11 +472,12 @@ Deno.serve(async (req) => {
       }
 
       if (Date.now() - startedAt > MAX_RUNTIME_MS) {
+        console.log(`[opps-worker] TIME-BUDGET — checkpointing at last_processed=${lastProcessedOppId || '(none this leg)'}`);
         await partialExit(
           supabase, jobId,
-          { startAfterId: pageStartAfterId, startAfter: pageStartAfter },
+          exitCursor(),
           progressPatch(),
-          pageStartAfterId,
+          lastProcessedOppId || pageStartAfterId,
         );
         return new Response(JSON.stringify({
           success: true, partial: true, processed: totalProcessed,
@@ -455,12 +487,12 @@ Deno.serve(async (req) => {
       // Circuit breaker tripped → exit cleanly so the dispatcher resumes us
       // with a fresh budget after the broadcast cooldown elapses.
       if (ctx.isCircuitTripped()) {
-        console.warn(`[opps-worker] Circuit breaker tripped at ${totalProcessed} processed — handing off to dispatcher for cool-off`);
+        console.warn(`[opps-worker] Circuit breaker tripped at ${totalProcessed} processed — handing off to dispatcher for cool-off (last_processed=${lastProcessedOppId || '(none this leg)'})`);
         await partialExit(
           supabase, jobId,
-          { startAfterId: pageStartAfterId, startAfter: pageStartAfter },
+          exitCursor(),
           progressPatch(),
-          pageStartAfterId,
+          lastProcessedOppId || pageStartAfterId,
         );
         return new Response(JSON.stringify({
           success: true, partial: true, circuit_breaker: true, processed: totalProcessed,
@@ -501,6 +533,12 @@ Deno.serve(async (req) => {
         if (Date.now() - startedAt > MAX_RUNTIME_MS) break;
 
         totalProcessed++;
+        // Track checkpoint position the moment we see this opp. Whether we
+        // skip, fail, or successfully migrate, the cursor must advance —
+        // otherwise the next leg restarts at this same record forever
+        // (the 200-mark duplicate-loop bug).
+        lastProcessedOppId = opp.id || lastProcessedOppId;
+        lastProcessedOppAt = opp.updatedAt || opp.dateAdded || lastProcessedOppAt;
         const oppLabel = opp.name || `Opp ${opp.id?.substring(0, 8)}`;
 
         // Skip closed opportunities unless includeClosedStatuses is on.
@@ -666,7 +704,7 @@ Deno.serve(async (req) => {
             });
             continue;
           }
-          if (!forceRecreate && !onlyLowConfidence) {
+          if (!effectiveForceRecreate && !onlyLowConfidence) {
             totalSkipped++;
             await recordItem(supabase, {
               job_id: jobId, source_id: opp.id, target_id: existing.new_ghl_id,
@@ -681,7 +719,7 @@ Deno.serve(async (req) => {
               .from('ghl_id_mapping').delete()
               .eq('resource_type', 'opportunity').eq('old_ghl_id', opp.id)
               .eq('source_account_label', sourceAccount).eq('target_account_label', targetAccount);
-            console.log(`[opps-worker] cleared stale mapping for opp=${opp.id} (forceRecreate=${forceRecreate} onlyLowConfidence=${onlyLowConfidence})`);
+            console.log(`[opps-worker] cleared stale mapping for opp=${opp.id} (effectiveForceRecreate=${effectiveForceRecreate} onlyLowConfidence=${onlyLowConfidence} isResume=${isResume})`);
           }
         } else if (onlyLowConfidence) {
           // No existing mapping → nothing to "re-process". Skip in this mode.
@@ -915,6 +953,27 @@ Deno.serve(async (req) => {
       pageStartAfter = last?.updatedAt || last?.dateAdded || null;
       await saveCheckpoint(supabase, jobId,
         { startAfterId: pageStartAfterId, startAfter: pageStartAfter }, last?.id || null);
+
+      // ── No-progress guard ─────────────────────────────────────────────
+      // If this leg processed at least one item but the page cursor is
+      // identical to where the leg started, we have a confirmed
+      // stuck-cursor loop. Fail the job loudly with diagnostic info instead
+      // of letting the dispatcher re-claim it for another duplicate pass.
+      const cursorAdvanced =
+        pageStartAfterId !== legStartCursorId ||
+        pageStartAfter !== legStartCursorAt;
+      if (totalProcessed > 0 && !cursorAdvanced) {
+        const msg =
+          `No-progress guard tripped: leg processed=${totalProcessed} but cursor did not advance ` +
+          `(stuck at id=${legStartCursorId} / at=${legStartCursorAt}). ` +
+          `Likely a GHL pagination cursor or filter issue — needs manual review.`;
+        console.error(`[opps-worker] ${msg}`);
+        await updateJobProgress(supabase, jobId, progressPatch());
+        await finishJob(supabase, jobId, 'failed', msg);
+        return new Response(JSON.stringify({
+          success: false, error: msg, processed: totalProcessed,
+        }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+      }
 
       if (maxItems > 0 && totalProcessed >= maxItems) break;
       // No artificial cap on total records: we keep paging via cursor until
