@@ -225,29 +225,42 @@ Deno.serve(async (req) => {
 
     // Resolve the single target-account user that all migrated opportunities
     // will be assigned to. Allows override via payload.target_assigned_user_id;
-    // otherwise picks the first user returned by GHL for the target location.
+    // otherwise probes location-scoped user endpoints (the company /users/
+    // endpoint sometimes returns agency users whose IDs are NOT valid for
+    // location-scoped opportunity writes, which is why GHL was returning
+    // "The assigned to field is invalid" 400s).
     let targetAssignedUserId: string | null = (payload.target_assigned_user_id as string) || null;
     if (!targetAssignedUserId && !dryRun) {
-      try {
-        const usersRes = await ctx.ghlFetch(
-          `${GHL_API_BASE}/users/?locationId=${targetCreds.locationId}`,
-          { headers: targetHeaders }, 2, 'target',
-        );
-        if (usersRes.ok) {
-          const usersData = await usersRes.json();
-          const users: any[] = usersData.users || [];
-          if (users.length > 0) {
-            targetAssignedUserId = users[0].id;
-            console.log(`[opps-worker] Hard-set assignedTo target user: ${targetAssignedUserId} (${users[0].name || users[0].email || 'unnamed'}) — ${users.length} user(s) available in target location`);
-          } else {
-            console.warn('[opps-worker] Target location returned 0 users — opportunities will be created unassigned');
+      const userEndpoints = [
+        `${GHL_API_BASE}/locations/${targetCreds.locationId}/users`,
+        `${GHL_API_BASE}/users/?locationId=${targetCreds.locationId}`,
+      ];
+      for (const url of userEndpoints) {
+        try {
+          const usersRes = await ctx.ghlFetch(url, { headers: targetHeaders }, 2, 'target');
+          if (!usersRes.ok) {
+            const errBody = await usersRes.text();
+            console.warn(`[opps-worker] ${url} → ${usersRes.status}: ${errBody.substring(0, 160)}`);
+            continue;
           }
-        } else {
-          const errBody = await usersRes.text();
-          console.warn(`[opps-worker] Failed to fetch target users (${usersRes.status}): ${errBody.substring(0, 200)} — opportunities will be created unassigned`);
+          const usersData = await usersRes.json();
+          const users: any[] = usersData.users || usersData.locationUsers || [];
+          if (users.length === 0) continue;
+          // Prefer users explicitly bound to the target location.
+          const located = users.find((u) =>
+            Array.isArray(u.roles?.locationIds) ? u.roles.locationIds.includes(targetCreds.locationId)
+              : Array.isArray(u.locationIds) ? u.locationIds.includes(targetCreds.locationId)
+              : true,
+          ) || users[0];
+          targetAssignedUserId = located.id;
+          console.log(`[opps-worker] Hard-set assignedTo=${targetAssignedUserId} (${located.name || located.email || 'unnamed'}) via ${url} — ${users.length} candidate(s)`);
+          break;
+        } catch (e: any) {
+          console.warn(`[opps-worker] ${url} threw: ${e.message}`);
         }
-      } catch (e: any) {
-        console.warn(`[opps-worker] Error fetching target users: ${e.message} — opportunities will be created unassigned`);
+      }
+      if (!targetAssignedUserId) {
+        console.warn('[opps-worker] No target user resolved — opportunities will be created WITHOUT assignedTo (omitted from POST body)');
       }
     }
 
