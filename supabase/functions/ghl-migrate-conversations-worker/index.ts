@@ -327,9 +327,7 @@ Deno.serve(async (req) => {
         }
       }
 
-      await updateJobProgress(supabase, jobId, {
-        processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed,
-      });
+      await updateJobProgress(supabase, jobId, progressPatch());
       // Heartbeat extends the dispatcher lease so a long stretch of
       // upserts doesn't cause the job to be reclaimed mid-page.
       await heartbeat(supabase, jobId);
