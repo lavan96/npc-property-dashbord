@@ -678,16 +678,25 @@ Deno.serve(async (req) => {
         const pipelineStatus = String(
           contact.pipelineStatus || contact.opportunityStatus || ''
         ).trim();
+        const bypassTags: string[] = [];
+        if (syntheticEmailUsed) {
+          bypassTags.push('Migrated: Synthetic Email', 'Migrated: No Contact Method');
+        }
+        if (junkNameBypassed) {
+          bypassTags.push('Migrated: Bad Name');
+        }
         const mergedTags = preserveCsvStructure
           ? Array.from(new Set([
               ...sourceTags,
               ...(pipelineStatus ? [`Stage: ${pipelineStatus}`] : []),
+              ...bypassTags,
             ]))
           : Array.from(new Set([
               ...sourceTags,
               'NPC Export',                                       // fixed marker (matches reference)
               `Migration: ${sourceAccount}→${targetAccount}`,      // audit tag
               ...(pipelineStatus ? [`Stage: ${pipelineStatus}`] : []),
+              ...bypassTags,
             ]));
 
         // ── Secondary contact name passthrough (custom fields)
