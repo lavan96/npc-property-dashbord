@@ -502,10 +502,12 @@ Deno.serve(async (req) => {
 
         if (safeFirst === 'Unknown' || safeLast === 'Unknown') unknownPlaceholderNames++;
 
-        // Check if already mirrored by source contact id
+        // Check if already mirrored by source contact id. Pull `created_at`
+        // too so we can skip the GHL existence probe for mappings written
+        // by THIS migration job (saves ~1 API call per resumed contact).
         const { data: existing } = await supabase
           .from('ghl_id_mapping')
-          .select('new_ghl_id')
+          .select('new_ghl_id, created_at')
           .eq('resource_type', 'contact')
           .eq('old_ghl_id', contact.id)
           .eq('source_account_label', sourceAccount)
@@ -514,6 +516,14 @@ Deno.serve(async (req) => {
 
         if (existing?.new_ghl_id && !forceReingest) {
           let existsInTarget = contactExistenceCache.get(existing.new_ghl_id);
+          // Trust mappings created by this job (or after it started) without
+          // probing GHL — they were just written by us.
+          const mappingMs = existing.created_at ? new Date(existing.created_at).getTime() : 0;
+          const isFreshFromThisJob = jobStartedAtMs > 0 && mappingMs >= jobStartedAtMs;
+          if (existsInTarget === undefined && isFreshFromThisJob) {
+            existsInTarget = true;
+            contactExistenceCache.set(existing.new_ghl_id, true);
+          }
           if (existsInTarget === undefined) {
             existsInTarget = await targetContactExists(existing.new_ghl_id, targetHeaders);
             contactExistenceCache.set(existing.new_ghl_id, existsInTarget);
