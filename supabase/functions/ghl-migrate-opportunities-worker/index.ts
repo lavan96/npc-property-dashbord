@@ -761,6 +761,88 @@ Deno.serve(async (req) => {
             const t = await r.text();
             const parsed = parseGhlError(t);
             const code = parsed.error_code || `GHL_${r.status}`;
+            const rawMsg = (parsed.message || t || '').toLowerCase();
+
+            // ── Smart-recover from "duplicate opportunity" 400 ────────────
+            // GHL refuses POSTs when an opportunity already exists for this
+            // contact (regardless of name/value). This is the classic
+            // "loop" symptom: an earlier cancelled run created the opp but
+            // never wrote ghl_id_mapping, so we keep re-trying.
+            // Strategy: search the target for ANY existing opp on this
+            // contact+pipeline, write the mapping, reclassify as `skipped`.
+            const isDuplicate = r.status === 400 && (
+              rawMsg.includes('duplicate opportunity') ||
+              rawMsg.includes('can not create duplicate') ||
+              rawMsg.includes('already exists')
+            );
+            if (isDuplicate) {
+              try {
+                const recover = await findExistingTargetOpportunity(
+                  ctx, targetCreds.locationId!, contactMap.new_ghl_id!,
+                  pmap.targetPipelineId, safeName, sourceMonetary, targetHeaders,
+                );
+                if (recover) {
+                  await recordIdMapping(supabase, {
+                    resource_type: 'opportunity', old_ghl_id: opp.id, new_ghl_id: recover.id,
+                    source_account_label: sourceAccount, target_account_label: targetAccount,
+                    notes: oppLabel, match_confidence: recover.confidence,
+                  });
+                  totalSkipped++;
+                  await recordItem(supabase, {
+                    job_id: jobId, source_id: opp.id, target_id: recover.id, entity_label: oppLabel,
+                    status: 'skipped',
+                    error_message: `Recovered from GHL duplicate-400 — backfilled mapping (confidence=${recover.confidence})`,
+                  });
+                  console.log(`[opps-worker] DUP-RECOVER opp=${opp.id} → target=${recover.id} (${recover.confidence})`);
+                  continue;
+                }
+                // Search came back empty even though GHL says duplicate exists.
+                // Fall back to a broader search (any opp on this contact, any pipeline)
+                // and write a low-confidence mapping so we never re-try the create.
+                const params = new URLSearchParams({
+                  location_id: targetCreds.locationId!,
+                  contact_id: contactMap.new_ghl_id!,
+                  limit: '100',
+                });
+                const broad = await ctx.ghlFetch(
+                  `${GHL_API_BASE}/opportunities/search?${params}`,
+                  { headers: targetHeaders }, 2, 'target',
+                );
+                if (broad.ok) {
+                  const data = await broad.json();
+                  const opps2: any[] = data.opportunities || [];
+                  if (opps2.length > 0) {
+                    // Prefer same-pipeline opps if any, else just take the first
+                    const samePipe = opps2.find((o) => o.pipelineId === pmap.targetPipelineId);
+                    const pick = samePipe || opps2[0];
+                    await recordIdMapping(supabase, {
+                      resource_type: 'opportunity', old_ghl_id: opp.id, new_ghl_id: pick.id,
+                      source_account_label: sourceAccount, target_account_label: targetAccount,
+                      notes: oppLabel, match_confidence: 'low',
+                    });
+                    totalSkipped++;
+                    await recordItem(supabase, {
+                      job_id: jobId, source_id: opp.id, target_id: pick.id, entity_label: oppLabel,
+                      status: 'skipped',
+                      error_message: 'Recovered from GHL duplicate-400 via broad search (low confidence — manual review)',
+                    });
+                    console.log(`[opps-worker] DUP-RECOVER (broad) opp=${opp.id} → target=${pick.id}`);
+                    continue;
+                  }
+                }
+              } catch (recoverErr: any) {
+                console.warn(`[opps-worker] dup-recover threw for opp=${opp.id}: ${recoverErr.message}`);
+              }
+              // Nothing found — record as skipped (not failed) with a clear
+              // diagnostic so we don't keep re-attempting on next dispatch.
+              totalSkipped++;
+              await recordItem(supabase, {
+                job_id: jobId, source_id: opp.id, entity_label: oppLabel, status: 'skipped',
+                error_message: 'GHL says duplicate exists but search returned nothing — needs manual mapping',
+              });
+              continue;
+            }
+
             const authDetail = (r.status === 401 || r.status === 403) && targetAuthHint
               ? ` ${targetAuthHint}`
               : '';
