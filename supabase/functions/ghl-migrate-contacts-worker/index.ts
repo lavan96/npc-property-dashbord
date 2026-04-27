@@ -783,10 +783,10 @@ Deno.serve(async (req) => {
           // Rate-gating + Retry-After + backoff is handled inside ghlFetch.
           const writeBody = {
             locationId: targetCreds.locationId,
-            firstName: safeFirst,
-            lastName: safeLast,
-            name: contactName,                                // full_name is the source of truth
-            email: cleanEmail || undefined,
+            firstName: safeFirst || (bypassSanitizer ? 'Unknown' : safeFirst),
+            lastName: safeLast || (bypassSanitizer ? 'Unknown' : safeLast),
+            name: contactName || (bypassSanitizer ? `Legacy Contact ${String(contact.id || '').substring(0, 8)}` : contactName),
+            email: finalEmail || undefined,
             phone: cleanPhone || undefined,
             tags: mergedTags,
             address1: contact.address1 || undefined,
