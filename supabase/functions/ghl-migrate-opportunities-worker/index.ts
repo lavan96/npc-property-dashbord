@@ -421,9 +421,7 @@ Deno.serve(async (req) => {
       const signal = await readControlSignal(supabase, jobId);
       if (signal === 'kill' || signal === 'cancel') {
         console.log(`[opps-worker] ${signal.toUpperCase()} signal — finalizing cancelled at ${totalProcessed}`);
-        await updateJobProgress(supabase, jobId, {
-          processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed,
-        });
+        await updateJobProgress(supabase, jobId, progressPatch());
         await finishJob(supabase, jobId, 'cancelled', `Cancelled by user (${signal}) at ${totalProcessed} processed`);
         return new Response(JSON.stringify({
           success: true, cancelled: true, signal, processed: totalProcessed,
@@ -434,7 +432,7 @@ Deno.serve(async (req) => {
         await partialExit(
           supabase, jobId,
           { startAfterId: pageStartAfterId, startAfter: pageStartAfter },
-          { processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed },
+          progressPatch(),
           pageStartAfterId,
         );
         return new Response(JSON.stringify({
@@ -446,7 +444,7 @@ Deno.serve(async (req) => {
         await partialExit(
           supabase, jobId,
           { startAfterId: pageStartAfterId, startAfter: pageStartAfter },
-          { processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed },
+          progressPatch(),
           pageStartAfterId,
         );
         return new Response(JSON.stringify({
@@ -461,7 +459,7 @@ Deno.serve(async (req) => {
         await partialExit(
           supabase, jobId,
           { startAfterId: pageStartAfterId, startAfter: pageStartAfter },
-          { processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed },
+          progressPatch(),
           pageStartAfterId,
         );
         return new Response(JSON.stringify({
