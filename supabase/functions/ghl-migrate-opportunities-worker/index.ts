@@ -94,6 +94,17 @@ Deno.serve(async (req) => {
       ? describeGhlWriteAuthFailure(targetAccess.diagnostics)
       : null;
 
+    // Shared cross-isolate rate limiter + circuit breaker.
+    // Every GHL call below routes through ctx.ghlFetch so all workers/cron
+    // jobs cooperate on the per-token rolling window and back off together
+    // on a 429 burst.
+    const ctx = createGhlFetchContext({
+      supabase,
+      sourceTokenKey: tokenKeyFor(sourceAccount, sourceCreds.apiKey),
+      targetTokenKey: tokenKeyFor(targetAccount, targetAccess.accessToken),
+      logTag: 'opps-worker',
+    });
+
     if (!dryRun && targetAccess.diagnostics) {
       console.log('[opps-worker] target token diagnostics:', JSON.stringify({
         token_type_hint: targetAccess.diagnostics.token_type_hint,
@@ -109,9 +120,9 @@ Deno.serve(async (req) => {
     console.log(`[opps-worker] job=${jobId} ${sourceAccount}→${targetAccount} dry_run=${dryRun}`);
 
     // Build pipeline-name → target pipeline+stages map
-    const targetPipelinesRes = await fetch(
+    const targetPipelinesRes = await ctx.ghlFetch(
       `${GHL_API_BASE}/opportunities/pipelines?locationId=${targetCreds.locationId}`,
-      { headers: targetHeaders },
+      { headers: targetHeaders }, 3, 'target',
     );
     if (!targetPipelinesRes.ok) {
       const t = await targetPipelinesRes.text();
@@ -120,9 +131,9 @@ Deno.serve(async (req) => {
     const targetPipelinesData = await targetPipelinesRes.json();
     const targetPipelines: any[] = targetPipelinesData.pipelines || [];
 
-    const sourcePipelinesRes = await fetch(
+    const sourcePipelinesRes = await ctx.ghlFetch(
       `${GHL_API_BASE}/opportunities/pipelines?locationId=${sourceCreds.locationId}`,
-      { headers: sourceHeaders },
+      { headers: sourceHeaders }, 3, 'source',
     );
     if (!sourcePipelinesRes.ok) {
       const t = await sourcePipelinesRes.text();
