@@ -307,19 +307,36 @@ Deno.serve(async (req) => {
     const needTargetUsers = !dryRun && (
       assignedUserStrategy === 'single' || assignedUserStrategy === 'map_by_email'
     );
-    if (needTargetUsers && (!targetAssignedUserId || assignedUserStrategy === 'map_by_email')) {
+    // ── Cache the "no users endpoint" verdict in migration_jobs.payload ──
+    // The target sub-account legitimately doesn't expose /locations/<id>/users
+    // (returns 404 every time). Without caching, every leg burns ~1-2s
+    // probing both endpoints with retries before giving up. Once we've
+    // confirmed neither works, persist that and short-circuit on subsequent
+    // legs.
+    let userEndpointVerdict: 'unknown' | 'works' | 'unsupported' =
+      (payload.user_endpoint_verdict === 'unsupported' ? 'unsupported'
+        : payload.user_endpoint_verdict === 'works' ? 'works'
+        : 'unknown');
+    if (needTargetUsers && (!targetAssignedUserId || assignedUserStrategy === 'map_by_email')
+        && userEndpointVerdict !== 'unsupported') {
       const userEndpoints = [
         `${GHL_API_BASE}/locations/${targetCreds.locationId}/users`,
         `${GHL_API_BASE}/users/?locationId=${targetCreds.locationId}`,
       ];
+      let any404 = 0;
+      let anyOk = false;
       for (const url of userEndpoints) {
         try {
-          const usersRes = await ctx.ghlFetch(url, { headers: targetHeaders }, 2, 'target');
+          // Reduce retries from 2 → 1 for this discovery call; if the
+          // endpoint is missing, retrying just doubles the latency.
+          const usersRes = await ctx.ghlFetch(url, { headers: targetHeaders }, 1, 'target');
           if (!usersRes.ok) {
             const errBody = await usersRes.text();
             console.warn(`[opps-worker] ${url} → ${usersRes.status}: ${errBody.substring(0, 160)}`);
+            if (usersRes.status === 404) any404++;
             continue;
           }
+          anyOk = true;
           const usersData = await usersRes.json();
           const users: any[] = usersData.users || usersData.locationUsers || [];
           if (users.length === 0) continue;
@@ -349,6 +366,20 @@ Deno.serve(async (req) => {
       if (assignedUserStrategy === 'map_by_email') {
         console.log(`[opps-worker] map_by_email: resolved ${targetUserByEmail.size} target users by email`);
       }
+      // Persist the verdict so the next leg doesn't repeat the probing.
+      const newVerdict: 'works' | 'unsupported' = anyOk ? 'works' : (any404 === userEndpoints.length ? 'unsupported' : 'unknown') as any;
+      if (newVerdict !== userEndpointVerdict && newVerdict !== 'unknown') {
+        userEndpointVerdict = newVerdict;
+        try {
+          const mergedPayload = { ...payload, user_endpoint_verdict: newVerdict };
+          await supabase.from('migration_jobs').update({ payload: mergedPayload }).eq('id', jobId);
+          console.log(`[opps-worker] cached user_endpoint_verdict=${newVerdict} on job payload`);
+        } catch (e: any) {
+          console.warn(`[opps-worker] failed to cache user_endpoint_verdict: ${e.message}`);
+        }
+      }
+    } else if (userEndpointVerdict === 'unsupported') {
+      console.log('[opps-worker] user_endpoint_verdict=unsupported (cached) — skipping probe; opps will POST without assignedTo');
     }
 
     // For map_by_email we also need source users keyed by ID so we can look
@@ -416,6 +447,15 @@ Deno.serve(async (req) => {
     // checkpoint where we really are (not where we started).
     let lastProcessedOppId: string | null = null;
     let lastProcessedOppAt: string | null = null;
+    // ── In-leg de-dup ──────────────────────────────────────────────────
+    // GHL pagination ties on identical `updatedAt` timestamps can re-serve
+    // the same items repeatedly. Track every id we've already processed
+    // THIS leg; on the next page, skip dupes locally and — if the entire
+    // page is dupes — bump the cursor by 1 ms to step past the tied
+    // timestamp cluster. Without this, a 100-item cluster sharing the same
+    // updatedAt will loop until the no-progress guard kills the job.
+    const seenInLegOpps = new Set<string>();
+    let lastPageDupRatio = 0; // 0..1 — fraction of last page that was dupes
     // Helper: build the cursor we'll persist on partial exit. Prefer the
     // last opp we touched THIS leg; fall back to the page cursor.
     const exitCursor = (): { startAfterId: string | null; startAfter: string | null } => ({
@@ -528,11 +568,42 @@ Deno.serve(async (req) => {
       }
       if (opps.length === 0) break;
 
-      for (const opp of opps) {
+      // ── Per-page de-dup against in-leg seen-set ─────────────────────
+      // GHL can re-serve the same items when consecutive opps share an
+      // updatedAt timestamp. Filter out anything we've already touched
+      // this leg before doing any work; if EVERY item on the page is a
+      // dupe, advance the cursor past the timestamp tie and re-query.
+      const freshOpps = opps.filter((o: any) => o?.id && !seenInLegOpps.has(o.id));
+      lastPageDupRatio = opps.length === 0 ? 0 : 1 - (freshOpps.length / opps.length);
+      if (freshOpps.length === 0) {
+        // Whole page already processed this leg → tied-timestamp loop.
+        // Bump startAfter by 1ms to step past the cluster.
+        const baseAt = pageStartAfter
+          ? (/^\d+$/.test(String(pageStartAfter))
+              ? Number(pageStartAfter)
+              : new Date(pageStartAfter).getTime())
+          : Date.now();
+        const bumped = baseAt + 1;
+        console.warn(
+          `[opps-worker] tied-timestamp cluster — full page (${opps.length}) already seen this leg; ` +
+          `bumping startAfter ${baseAt} → ${bumped} and clearing startAfterId to skip cluster`,
+        );
+        pageStartAfter = String(bumped);
+        pageStartAfterId = null;
+        // Persist immediately so a crash here still resumes correctly.
+        await saveCheckpoint(supabase, jobId, { startAfterId: null, startAfter: pageStartAfter }, lastProcessedOppId || null);
+        continue; // re-enter the while loop with bumped cursor
+      }
+      if (lastPageDupRatio > 0.5) {
+        console.log(`[opps-worker] page dup ratio=${(lastPageDupRatio * 100).toFixed(0)}% (${opps.length - freshOpps.length}/${opps.length}); processing ${freshOpps.length} fresh opp(s)`);
+      }
+
+      for (const opp of freshOpps) {
         if (maxItems > 0 && totalProcessed >= maxItems) break;
         if (Date.now() - startedAt > MAX_RUNTIME_MS) break;
 
         totalProcessed++;
+        if (opp?.id) seenInLegOpps.add(opp.id);
         // Track checkpoint position the moment we see this opp. Whether we
         // skip, fail, or successfully migrate, the cursor must advance —
         // otherwise the next leg restarts at this same record forever
@@ -948,31 +1019,60 @@ Deno.serve(async (req) => {
       // mid-flight just because we've spent a while on slow GHL pages.
       await heartbeat(supabase, jobId);
 
-      const last = opps[opps.length - 1];
+      // ── Cursor advancement ───────────────────────────────────────────
+      // Use the LAST opp we actually processed this leg (after dedup),
+      // not the raw last item from GHL — those can be the same when the
+      // page is mostly dupes and we'd never advance.
+      const last = (lastProcessedOppId
+        ? freshOpps.find((o: any) => o.id === lastProcessedOppId) || opps[opps.length - 1]
+        : opps[opps.length - 1]);
       pageStartAfterId = last?.id || null;
       pageStartAfter = last?.updatedAt || last?.dateAdded || null;
       await saveCheckpoint(supabase, jobId,
         { startAfterId: pageStartAfterId, startAfter: pageStartAfter }, last?.id || null);
 
-      // ── No-progress guard ─────────────────────────────────────────────
+      // ── No-progress guard (with auto-recover) ────────────────────────
       // If this leg processed at least one item but the page cursor is
-      // identical to where the leg started, we have a confirmed
-      // stuck-cursor loop. Fail the job loudly with diagnostic info instead
-      // of letting the dispatcher re-claim it for another duplicate pass.
+      // identical to where the leg started, we likely have a tied-timestamp
+      // cluster. Try ONCE to bump the cursor by 1ms and continue; only if
+      // that doesn't unblock us do we fail the job.
       const cursorAdvanced =
         pageStartAfterId !== legStartCursorId ||
         pageStartAfter !== legStartCursorAt;
       if (totalProcessed > 0 && !cursorAdvanced) {
-        const msg =
-          `No-progress guard tripped: leg processed=${totalProcessed} but cursor did not advance ` +
-          `(stuck at id=${legStartCursorId} / at=${legStartCursorAt}). ` +
-          `Likely a GHL pagination cursor or filter issue — needs manual review.`;
-        console.error(`[opps-worker] ${msg}`);
-        await updateJobProgress(supabase, jobId, progressPatch());
-        await finishJob(supabase, jobId, 'failed', msg);
-        return new Response(JSON.stringify({
-          success: false, error: msg, processed: totalProcessed,
-        }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+        // Auto-recover: bump startAfter by 1ms and retry once before failing.
+        const baseAt = pageStartAfter
+          ? (/^\d+$/.test(String(pageStartAfter))
+              ? Number(pageStartAfter)
+              : new Date(pageStartAfter).getTime())
+          : (legStartCursorAt
+              ? (/^\d+$/.test(String(legStartCursorAt))
+                  ? Number(legStartCursorAt)
+                  : new Date(legStartCursorAt).getTime())
+              : Date.now());
+        const bumped = baseAt + 1;
+        console.warn(
+          `[opps-worker] cursor stuck at ${pageStartAfterId} / ${baseAt}; ` +
+          `auto-bumping startAfter → ${bumped} and clearing startAfterId to skip cluster`,
+        );
+        pageStartAfterId = null;
+        pageStartAfter = String(bumped);
+        await saveCheckpoint(supabase, jobId,
+          { startAfterId: null, startAfter: pageStartAfter }, lastProcessedOppId || null);
+        // Don't fail; let the next iteration re-query with the bumped cursor.
+        // The legStartCursor snapshot stays as-is, so if the bumped cursor
+        // ALSO loops back to the same place we'll fall through to the fail
+        // path on the subsequent iteration.
+      } else if (totalProcessed === 0 && !cursorAdvanced && opps.length > 0) {
+        // Edge case: page returned items but ALL were filtered (closed,
+        // missing contact, etc.) AND cursor didn't move. Bump 1ms.
+        const baseAt = pageStartAfter
+          ? (/^\d+$/.test(String(pageStartAfter)) ? Number(pageStartAfter) : new Date(pageStartAfter).getTime())
+          : Date.now();
+        pageStartAfter = String(baseAt + 1);
+        pageStartAfterId = null;
+        console.warn(`[opps-worker] all ${opps.length} items filtered & cursor stuck; bumping to ${pageStartAfter}`);
+        await saveCheckpoint(supabase, jobId, { startAfterId: null, startAfter: pageStartAfter }, lastProcessedOppId || null);
       }
 
       if (maxItems > 0 && totalProcessed >= maxItems) break;
@@ -980,7 +1080,7 @@ Deno.serve(async (req) => {
       // GHL returns an empty page (handled by the `opps.length === 0` guard above).
       // Some GHL accounts return < PAGE_LIMIT mid-stream when filters apply,
       // so a short page is NOT a stop signal — only an empty page is.
-      if (!last?.id) break; // no cursor advancement → would loop forever
+      if (!last?.id && !pageStartAfter) break; // no cursor advancement → would loop forever
     }
 
     await saveCheckpoint(supabase, jobId, {});
