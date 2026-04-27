@@ -159,6 +159,34 @@ Deno.serve(async (req) => {
       console.warn(`[opps-worker] Pipelines not found in target by name: ${unmappedPipelines.join(', ')}`);
     }
 
+    // Resolve the single target-account user that all migrated opportunities
+    // will be assigned to. Allows override via payload.target_assigned_user_id;
+    // otherwise picks the first user returned by GHL for the target location.
+    let targetAssignedUserId: string | null = (payload.target_assigned_user_id as string) || null;
+    if (!targetAssignedUserId && !dryRun) {
+      try {
+        const usersRes = await fetch(
+          `${GHL_API_BASE}/users/?locationId=${targetCreds.locationId}`,
+          { headers: targetHeaders },
+        );
+        if (usersRes.ok) {
+          const usersData = await usersRes.json();
+          const users: any[] = usersData.users || [];
+          if (users.length > 0) {
+            targetAssignedUserId = users[0].id;
+            console.log(`[opps-worker] Hard-set assignedTo target user: ${targetAssignedUserId} (${users[0].name || users[0].email || 'unnamed'}) — ${users.length} user(s) available in target location`);
+          } else {
+            console.warn('[opps-worker] Target location returned 0 users — opportunities will be created unassigned');
+          }
+        } else {
+          const errBody = await usersRes.text();
+          console.warn(`[opps-worker] Failed to fetch target users (${usersRes.status}): ${errBody.substring(0, 200)} — opportunities will be created unassigned`);
+        }
+      } catch (e: any) {
+        console.warn(`[opps-worker] Error fetching target users: ${e.message} — opportunities will be created unassigned`);
+      }
+    }
+
     const checkpoint = await loadCheckpoint(supabase, jobId);
     const isResume = body._resume === true || !!checkpoint.cursor.startAfterId;
     if (isResume) {
