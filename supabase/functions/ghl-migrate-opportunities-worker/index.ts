@@ -905,9 +905,10 @@ Deno.serve(async (req) => {
         }
       }
 
-      await updateJobProgress(supabase, jobId, {
-        processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed,
-      });
+      await updateJobProgress(supabase, jobId, progressPatch());
+      // Heartbeat extends our lease so the dispatcher doesn't steal the job
+      // mid-flight just because we've spent a while on slow GHL pages.
+      await heartbeat(supabase, jobId);
 
       const last = opps[opps.length - 1];
       pageStartAfterId = last?.id || null;
