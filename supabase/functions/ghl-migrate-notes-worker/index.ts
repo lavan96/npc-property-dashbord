@@ -302,15 +302,14 @@ Deno.serve(async (req) => {
       }
 
       if (totalProcessed % 25 === 0) {
-        await updateJobProgress(supabase, jobId, {
-          processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed,
-        });
+        await updateJobProgress(supabase, jobId, progressPatch());
+        // Heartbeat extends our lease so the dispatcher doesn't steal the
+        // job mid-flight while we're churning through a big slice.
+        await heartbeat(supabase, jobId);
       }
     }
 
-    await updateJobProgress(supabase, jobId, {
-      processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed,
-    });
+    await updateJobProgress(supabase, jobId, progressPatch());
 
     // ── Granular control exits ──────────────────────────────────────────
     if (cancelledByUser) {
@@ -325,7 +324,7 @@ Deno.serve(async (req) => {
       await partialExit(
         supabase, jobId,
         { offset: currentOffset },
-        { processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed },
+        progressPatch(),
       );
       console.log(`[notes-worker] PAUSED job=${jobId} at ${totalProcessed}`);
       return new Response(JSON.stringify({
@@ -340,7 +339,7 @@ Deno.serve(async (req) => {
       await partialExit(
         supabase, jobId,
         { offset: currentOffset },
-        { processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed },
+        progressPatch(),
       );
       console.log(`[notes-worker] PARTIAL job=${jobId} processed=${totalProcessed} circuit=${circuitTripped} → handed off to dispatcher`);
       return new Response(JSON.stringify({
