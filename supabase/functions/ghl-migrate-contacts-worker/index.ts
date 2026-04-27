@@ -74,7 +74,10 @@ const WRITE_CONCURRENCY = 3;
 // invocation: 3 in a row → exit cleanly so the dispatcher resumes us
 // with a fresh budget after the cooldown window.
 
-const PER_TOKEN_RATE_PER_SEC = 6;        // shared budget per GHL token
+// GHL documented burst is ~10 req/s (100 req / 10s window). 8/s is the
+// pragmatic ceiling — leaves headroom for webhook + cron callers using
+// the same token while still ~33% faster than the previous 6/s.
+const PER_TOKEN_RATE_PER_SEC = 8;        // shared budget per GHL token
 const PER_TOKEN_WINDOW_MS = 1_000;
 const CIRCUIT_BREAKER_THRESHOLD = 3;     // consecutive 429s → trip
 const CIRCUIT_BREAKER_COOLDOWN_MS = 30_000; // broadcast cooldown when tripped
