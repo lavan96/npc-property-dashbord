@@ -507,7 +507,7 @@ Deno.serve(async (req) => {
           supabase, jobId,
           exitCursor(),
           progressPatch(),
-          lastProcessedOppId || pageStartAfterId,
+          lastProcessedOppId,
         );
         return new Response(JSON.stringify({
           success: true, partial: true, processed: totalProcessed,
