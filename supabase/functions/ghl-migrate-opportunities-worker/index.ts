@@ -568,11 +568,42 @@ Deno.serve(async (req) => {
       }
       if (opps.length === 0) break;
 
-      for (const opp of opps) {
+      // ── Per-page de-dup against in-leg seen-set ─────────────────────
+      // GHL can re-serve the same items when consecutive opps share an
+      // updatedAt timestamp. Filter out anything we've already touched
+      // this leg before doing any work; if EVERY item on the page is a
+      // dupe, advance the cursor past the timestamp tie and re-query.
+      const freshOpps = opps.filter((o: any) => o?.id && !seenInLegOpps.has(o.id));
+      lastPageDupRatio = opps.length === 0 ? 0 : 1 - (freshOpps.length / opps.length);
+      if (freshOpps.length === 0) {
+        // Whole page already processed this leg → tied-timestamp loop.
+        // Bump startAfter by 1ms to step past the cluster.
+        const baseAt = pageStartAfter
+          ? (/^\d+$/.test(String(pageStartAfter))
+              ? Number(pageStartAfter)
+              : new Date(pageStartAfter).getTime())
+          : Date.now();
+        const bumped = baseAt + 1;
+        console.warn(
+          `[opps-worker] tied-timestamp cluster — full page (${opps.length}) already seen this leg; ` +
+          `bumping startAfter ${baseAt} → ${bumped} and clearing startAfterId to skip cluster`,
+        );
+        pageStartAfter = String(bumped);
+        pageStartAfterId = null;
+        // Persist immediately so a crash here still resumes correctly.
+        await saveCheckpoint(supabase, jobId, { startAfterId: null, startAfter: pageStartAfter }, lastProcessedOppId || null);
+        continue; // re-enter the while loop with bumped cursor
+      }
+      if (lastPageDupRatio > 0.5) {
+        console.log(`[opps-worker] page dup ratio=${(lastPageDupRatio * 100).toFixed(0)}% (${opps.length - freshOpps.length}/${opps.length}); processing ${freshOpps.length} fresh opp(s)`);
+      }
+
+      for (const opp of freshOpps) {
         if (maxItems > 0 && totalProcessed >= maxItems) break;
         if (Date.now() - startedAt > MAX_RUNTIME_MS) break;
 
         totalProcessed++;
+        if (opp?.id) seenInLegOpps.add(opp.id);
         // Track checkpoint position the moment we see this opp. Whether we
         // skip, fail, or successfully migrate, the cursor must advance —
         // otherwise the next leg restarts at this same record forever
