@@ -318,6 +318,8 @@ Deno.serve(async (req) => {
     const checkpoint = await loadCheckpoint(supabase, jobId);
     let nextStartAfterId: string | null = checkpoint.cursor.startAfterId || null;
     let nextStartAfter: string | null = checkpoint.cursor.startAfter || null;
+    let lastProcessedStartAfterId: string | null = nextStartAfterId;
+    let lastProcessedStartAfter: string | null = nextStartAfter;
     const isResume = body._resume === true || nextStartAfterId !== null;
 
     if (isResume) {
@@ -333,27 +335,37 @@ Deno.serve(async (req) => {
     // it). We can trust those mappings without round-tripping a probe to
     // GHL — saves one API call per contact on resumed legs.
     let jobStartedAtMs = 0;
+    let baseProcessed = 0;
+    let baseSucceeded = 0;
+    let baseFailed = 0;
+    let persistedTotalItems = 0;
     try {
       const { data: jobRow } = await supabase
         .from('migration_jobs')
-        .select('started_at')
+        .select('started_at, processed_items, succeeded_items, failed_items, total_items')
         .eq('id', jobId)
         .maybeSingle();
       if (jobRow?.started_at) {
         jobStartedAtMs = new Date(jobRow.started_at).getTime() - 5_000; // 5s skew
       }
+      baseProcessed = Number(jobRow?.processed_items || 0);
+      baseSucceeded = Number(jobRow?.succeeded_items || 0);
+      baseFailed = Number(jobRow?.failed_items || 0);
+      persistedTotalItems = Number(jobRow?.total_items || 0);
     } catch { /* non-fatal */ }
+
+    const progressPatch = () => ({
+      processed_items: baseProcessed + totalProcessed,
+      succeeded_items: baseSucceeded + totalSucceeded,
+      failed_items: baseFailed + totalFailed,
+    });
 
     while (true) {
       // ── Granular control: pause / cancel / kill ─────────────────────
       const signal = await readControlSignal(supabase, jobId);
       if (signal === 'kill' || signal === 'cancel') {
         console.log(`[contacts-worker] ${signal.toUpperCase()} signal received — finalizing as cancelled at ${totalProcessed} processed`);
-        await updateJobProgress(supabase, jobId, {
-          processed_items: totalProcessed,
-          succeeded_items: totalSucceeded,
-          failed_items: totalFailed,
-        });
+        await updateJobProgress(supabase, jobId, progressPatch());
         await finishJob(supabase, jobId, 'cancelled', `Cancelled by user (${signal}) at ${totalProcessed} processed`);
         return new Response(JSON.stringify({
           success: true, cancelled: true, signal, processed: totalProcessed,
@@ -363,8 +375,8 @@ Deno.serve(async (req) => {
         console.log(`[contacts-worker] PAUSE signal received — checkpointing at ${totalProcessed} processed`);
         await partialExit(
           supabase, jobId,
-          { startAfterId: nextStartAfterId, startAfter: nextStartAfter },
-          { processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed },
+          { startAfterId: lastProcessedStartAfterId, startAfter: lastProcessedStartAfter },
+          progressPatch(),
           nextStartAfterId,
         );
         return new Response(JSON.stringify({
@@ -377,13 +389,9 @@ Deno.serve(async (req) => {
         await partialExit(
           supabase,
           jobId,
-          { startAfterId: nextStartAfterId, startAfter: nextStartAfter },
-          {
-            processed_items: totalProcessed,
-            succeeded_items: totalSucceeded,
-            failed_items: totalFailed,
-          },
-          nextStartAfterId,
+          { startAfterId: lastProcessedStartAfterId, startAfter: lastProcessedStartAfter },
+          progressPatch(),
+          lastProcessedStartAfterId,
         );
         return new Response(JSON.stringify({
           success: true,
@@ -399,13 +407,9 @@ Deno.serve(async (req) => {
         await partialExit(
           supabase,
           jobId,
-          { startAfterId: nextStartAfterId, startAfter: nextStartAfter },
-          {
-            processed_items: totalProcessed,
-            succeeded_items: totalSucceeded,
-            failed_items: totalFailed,
-          },
-          nextStartAfterId,
+          { startAfterId: lastProcessedStartAfterId, startAfter: lastProcessedStartAfter },
+          progressPatch(),
+          lastProcessedStartAfterId,
         );
         return new Response(JSON.stringify({
           success: true,
@@ -439,20 +443,30 @@ Deno.serve(async (req) => {
       const contacts: any[] = data.contacts || [];
       if (firstPage) {
         totalEstimate = data.meta?.total ?? data.total ?? 0;
-        if (totalEstimate > 0) {
+        if (totalEstimate > 0 && (!isResume || persistedTotalItems <= 0)) {
           await updateJobProgress(supabase, jobId, { total_items: maxItems > 0 ? Math.min(maxItems, totalEstimate) : totalEstimate });
         }
         firstPage = false;
       }
 
-      if (contacts.length === 0) break;
+      if (contacts.length === 0) {
+        nextStartAfterId = null;
+        nextStartAfter = null;
+        break;
+      }
 
+      let pageFullyConsumed = true;
       for (const contact of contacts) {
         if (maxItems > 0 && totalProcessed >= maxItems) break;
-        if (Date.now() - startedAt > MAX_RUNTIME_MS) break;
+        if (Date.now() - startedAt > MAX_RUNTIME_MS) {
+          pageFullyConsumed = false;
+          break;
+        }
 
         totalSeen++;
         totalProcessed++;
+        lastProcessedStartAfterId = contact.id || lastProcessedStartAfterId;
+        lastProcessedStartAfter = contact.dateAdded || lastProcessedStartAfter;
 
         // ── SANITIZATION (legacy → new) ────────────────────────────────
         // Apply the SAME shape the reference Client Management Export
@@ -889,27 +903,43 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Update progress + checkpoint every page
-      await updateJobProgress(supabase, jobId, {
-        processed_items: totalProcessed,
-        succeeded_items: totalSucceeded,
-        failed_items: totalFailed,
-      });
+      // Update cumulative progress + checkpoint every page/partial page.
+      await updateJobProgress(supabase, jobId, progressPatch());
       // Heartbeat extends our lease so the dispatcher doesn't steal the job
       // mid-flight just because we've spent a while on slow GHL pages.
       await heartbeat(supabase, jobId);
 
-      // Pagination: GHL returns either nextPage cursor or last contact's startAfter values
-      const last = contacts[contacts.length - 1];
-      nextStartAfterId = last?.id || null;
-      nextStartAfter = last?.dateAdded || null;
+      if (!pageFullyConsumed) {
+        console.log(`[contacts-worker] Time budget exhausted mid-page at ${totalProcessed} processed — checkpointing exact contact cursor`);
+        await partialExit(
+          supabase,
+          jobId,
+          { startAfterId: lastProcessedStartAfterId, startAfter: lastProcessedStartAfter },
+          progressPatch(),
+          lastProcessedStartAfterId,
+        );
+        return new Response(JSON.stringify({
+          success: true,
+          partial: true,
+          processed: totalProcessed,
+          handed_off_to: 'migration-dispatcher',
+        }), { headers: { 'Content-Type': 'application/json' } });
+      }
+
+      // Pagination: prefer GHL's explicit meta cursor. Falling back to the
+      // last contact is unsafe when we only processed part of a page before
+      // timing out — it jumps over the unprocessed remainder. Track the last
+      // processed item separately so partial exits resume without gaps.
+      const pageLast = contacts[contacts.length - 1];
+      nextStartAfterId = data.meta?.startAfterId ?? pageLast?.id ?? null;
+      nextStartAfter = data.meta?.startAfter ?? pageLast?.dateAdded ?? null;
 
       // Persist cursor + last source id so a future redispatch resumes here
       await saveCheckpoint(
         supabase,
         jobId,
         { startAfterId: nextStartAfterId, startAfter: nextStartAfter },
-        last?.id || null,
+        nextStartAfterId,
       );
 
       if (maxItems > 0 && totalProcessed >= maxItems) break;
