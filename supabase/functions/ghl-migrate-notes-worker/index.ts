@@ -132,6 +132,7 @@ Deno.serve(async (req) => {
     let timeBudgetExhausted = false;
     let pausedByUser = false;
     let cancelledByUser: 'pause' | 'cancel' | 'kill' | null = null;
+    let circuitTripped = false;
     for (const note of (notes || [])) {
       // ── Granular control: pause / cancel / kill ─────────────────────
       // (Checked once per item — notes worker has no API page loop.)
@@ -140,6 +141,9 @@ Deno.serve(async (req) => {
         if (sig === 'kill' || sig === 'cancel') { cancelledByUser = sig; break; }
         if (sig === 'pause') { pausedByUser = true; break; }
       }
+      // Circuit breaker tripped → exit cleanly so the dispatcher resumes
+      // us with a fresh budget after the broadcast cooldown elapses.
+      if (ctx.isCircuitTripped()) { circuitTripped = true; break; }
       if (Date.now() - startedAt > MAX_RUNTIME_MS) { timeBudgetExhausted = true; break; }
       if (maxItems > 0 && totalProcessed >= maxItems) break;
 
