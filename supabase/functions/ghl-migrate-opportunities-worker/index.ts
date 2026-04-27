@@ -461,6 +461,9 @@ Deno.serve(async (req) => {
           if (typeof opp.monetaryValue === 'number' && !Number.isNaN(opp.monetaryValue)) {
             createBody.monetaryValue = opp.monetaryValue;
           }
+          if (targetAssignedUserId) {
+            createBody.assignedTo = targetAssignedUserId;
+          }
           const r = await fetch(`${GHL_API_BASE}/opportunities/`, {
             method: 'POST', headers: targetHeaders, body: JSON.stringify(createBody),
           });
