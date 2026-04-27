@@ -318,6 +318,8 @@ Deno.serve(async (req) => {
     const checkpoint = await loadCheckpoint(supabase, jobId);
     let nextStartAfterId: string | null = checkpoint.cursor.startAfterId || null;
     let nextStartAfter: string | null = checkpoint.cursor.startAfter || null;
+    let lastProcessedStartAfterId: string | null = nextStartAfterId;
+    let lastProcessedStartAfter: string | null = nextStartAfter;
     const isResume = body._resume === true || nextStartAfterId !== null;
 
     if (isResume) {
@@ -333,16 +335,30 @@ Deno.serve(async (req) => {
     // it). We can trust those mappings without round-tripping a probe to
     // GHL — saves one API call per contact on resumed legs.
     let jobStartedAtMs = 0;
+    let baseProcessed = 0;
+    let baseSucceeded = 0;
+    let baseFailed = 0;
+    let persistedTotalItems = 0;
     try {
       const { data: jobRow } = await supabase
         .from('migration_jobs')
-        .select('started_at')
+        .select('started_at, processed_items, succeeded_items, failed_items, total_items')
         .eq('id', jobId)
         .maybeSingle();
       if (jobRow?.started_at) {
         jobStartedAtMs = new Date(jobRow.started_at).getTime() - 5_000; // 5s skew
       }
+      baseProcessed = Number(jobRow?.processed_items || 0);
+      baseSucceeded = Number(jobRow?.succeeded_items || 0);
+      baseFailed = Number(jobRow?.failed_items || 0);
+      persistedTotalItems = Number(jobRow?.total_items || 0);
     } catch { /* non-fatal */ }
+
+    const progressPatch = () => ({
+      processed_items: baseProcessed + totalProcessed,
+      succeeded_items: baseSucceeded + totalSucceeded,
+      failed_items: baseFailed + totalFailed,
+    });
 
     while (true) {
       // ── Granular control: pause / cancel / kill ─────────────────────
