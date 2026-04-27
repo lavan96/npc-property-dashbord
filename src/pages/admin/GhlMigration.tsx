@@ -653,6 +653,22 @@ function MigrationWorkersPanel() {
             </span>
           </label>
         </div>
+        <div className={`rounded-md border p-3 ${bypassSanitizer ? 'border-destructive/60 bg-destructive/10' : 'border-border/60 bg-muted/20'}`}>
+          <label className="flex items-start gap-2 text-xs">
+            <input
+              type="checkbox"
+              checked={bypassSanitizer}
+              onChange={(e) => setBypassSanitizer(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              <strong>⚠ Bypass sanitizer — force 100% migration</strong> (use sparingly): copies <em>every</em> legacy contact, even those with junk names or no email/phone.
+              Records missing both email and phone get a synthetic placeholder address (<code>legacy-&lt;id&gt;@migrated.placeholder.local</code>) so GHL accepts the upsert,
+              and are tagged <code>Migrated: Synthetic Email</code> + <code>Migrated: No Contact Method</code>. Junk-name records (phone/email/test as name) get tagged <code>Migrated: Bad Name</code>.
+              Use the tags afterwards to find and clean these records in the new account.
+            </span>
+          </label>
+        </div>
 
         {/* Dispatch form */}
         <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
