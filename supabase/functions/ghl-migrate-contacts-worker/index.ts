@@ -365,11 +365,7 @@ Deno.serve(async (req) => {
       const signal = await readControlSignal(supabase, jobId);
       if (signal === 'kill' || signal === 'cancel') {
         console.log(`[contacts-worker] ${signal.toUpperCase()} signal received — finalizing as cancelled at ${totalProcessed} processed`);
-        await updateJobProgress(supabase, jobId, {
-          processed_items: totalProcessed,
-          succeeded_items: totalSucceeded,
-          failed_items: totalFailed,
-        });
+        await updateJobProgress(supabase, jobId, progressPatch());
         await finishJob(supabase, jobId, 'cancelled', `Cancelled by user (${signal}) at ${totalProcessed} processed`);
         return new Response(JSON.stringify({
           success: true, cancelled: true, signal, processed: totalProcessed,
@@ -379,8 +375,8 @@ Deno.serve(async (req) => {
         console.log(`[contacts-worker] PAUSE signal received — checkpointing at ${totalProcessed} processed`);
         await partialExit(
           supabase, jobId,
-          { startAfterId: nextStartAfterId, startAfter: nextStartAfter },
-          { processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed },
+          { startAfterId: lastProcessedStartAfterId, startAfter: lastProcessedStartAfter },
+          progressPatch(),
           nextStartAfterId,
         );
         return new Response(JSON.stringify({
@@ -393,13 +389,9 @@ Deno.serve(async (req) => {
         await partialExit(
           supabase,
           jobId,
-          { startAfterId: nextStartAfterId, startAfter: nextStartAfter },
-          {
-            processed_items: totalProcessed,
-            succeeded_items: totalSucceeded,
-            failed_items: totalFailed,
-          },
-          nextStartAfterId,
+          { startAfterId: lastProcessedStartAfterId, startAfter: lastProcessedStartAfter },
+          progressPatch(),
+          lastProcessedStartAfterId,
         );
         return new Response(JSON.stringify({
           success: true,
@@ -415,13 +407,9 @@ Deno.serve(async (req) => {
         await partialExit(
           supabase,
           jobId,
-          { startAfterId: nextStartAfterId, startAfter: nextStartAfter },
-          {
-            processed_items: totalProcessed,
-            succeeded_items: totalSucceeded,
-            failed_items: totalFailed,
-          },
-          nextStartAfterId,
+          { startAfterId: lastProcessedStartAfterId, startAfter: lastProcessedStartAfter },
+          progressPatch(),
+          lastProcessedStartAfterId,
         );
         return new Response(JSON.stringify({
           success: true,
