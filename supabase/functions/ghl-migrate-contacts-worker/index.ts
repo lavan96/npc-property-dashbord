@@ -52,10 +52,14 @@ import {
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 const PAGE_LIMIT = 100;
-// Shorter budget — the cron dispatcher resumes us within ~15s, so we
-// don't need to push 5+ minutes per invocation. Smaller batches mean
-// faster recovery from any single edge-runtime crash.
-const MAX_RUNTIME_MS = 90_000;
+// Edge-function hard cap is ~150s; 110s leaves ~40s headroom for
+// graceful checkpoint + finishJob. Combined with the faster (5s) cron
+// dispatcher tick, this minimises dead time between legs.
+const MAX_RUNTIME_MS = 110_000;
+// Number of contact writes to fan out concurrently within a single page.
+// The shared rate-limiter still enforces the per-token ceiling, so this
+// just lets us keep the pipe full while one request waits on GHL I/O.
+const WRITE_CONCURRENCY = 3;
 
 // ── Shared rate-limiting & circuit breaker ────────────────────────────
 // IMPORTANT: All GHL HTTP traffic goes through `ghlFetch` which delegates
