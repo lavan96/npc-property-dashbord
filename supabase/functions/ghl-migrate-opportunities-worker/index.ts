@@ -478,12 +478,12 @@ Deno.serve(async (req) => {
         totalProcessed++;
         const oppLabel = opp.name || `Opp ${opp.id?.substring(0, 8)}`;
 
-        // Skip closed opportunities (Phase 2B focuses on active pipeline)
-        if (opp.status === 'won' || opp.status === 'lost' || opp.status === 'abandoned') {
+        // Skip closed opportunities unless includeClosedStatuses is on.
+        if (!includeClosedStatuses && (opp.status === 'won' || opp.status === 'lost' || opp.status === 'abandoned')) {
           totalSkipped++;
           await recordItem(supabase, {
             job_id: jobId, source_id: opp.id, entity_label: oppLabel,
-            status: 'skipped', error_message: `Status=${opp.status}`,
+            status: 'skipped', error_message: `Status=${opp.status} (set include_closed_statuses=true to migrate)`,
           });
           continue;
         }
@@ -620,17 +620,50 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // Already migrated?
+        // Already migrated? Behaviour depends on flags:
+        //   • forceRecreate=true       → ignore stale mapping, re-create
+        //   • onlyLowConfidence=true   → only process rows whose existing
+        //                                 mapping is match_confidence='low'
+        //                                 (used to clean up known collisions)
+        //   • default                  → skip if mapped at any confidence
         const { data: existing } = await supabase
-          .from('ghl_id_mapping').select('new_ghl_id')
+          .from('ghl_id_mapping').select('new_ghl_id, match_confidence')
           .eq('resource_type', 'opportunity').eq('old_ghl_id', opp.id)
           .eq('source_account_label', sourceAccount).eq('target_account_label', targetAccount)
           .maybeSingle();
         if (existing?.new_ghl_id) {
+          if (onlyLowConfidence && existing.match_confidence !== 'low') {
+            totalSkipped++;
+            await recordItem(supabase, {
+              job_id: jobId, source_id: opp.id, target_id: existing.new_ghl_id,
+              entity_label: oppLabel, status: 'skipped',
+              error_message: `only_low_confidence: existing mapping is ${existing.match_confidence || 'high'}`,
+            });
+            continue;
+          }
+          if (!forceRecreate && !onlyLowConfidence) {
+            totalSkipped++;
+            await recordItem(supabase, {
+              job_id: jobId, source_id: opp.id, target_id: existing.new_ghl_id,
+              entity_label: oppLabel, status: 'skipped', error_message: 'Already mapped',
+            });
+            continue;
+          }
+          // Falling through to re-create. Drop the stale mapping so the
+          // create-success path can write a fresh one.
+          if (!dryRun) {
+            await supabase
+              .from('ghl_id_mapping').delete()
+              .eq('resource_type', 'opportunity').eq('old_ghl_id', opp.id)
+              .eq('source_account_label', sourceAccount).eq('target_account_label', targetAccount);
+            console.log(`[opps-worker] cleared stale mapping for opp=${opp.id} (forceRecreate=${forceRecreate} onlyLowConfidence=${onlyLowConfidence})`);
+          }
+        } else if (onlyLowConfidence) {
+          // No existing mapping → nothing to "re-process". Skip in this mode.
           totalSkipped++;
           await recordItem(supabase, {
-            job_id: jobId, source_id: opp.id, target_id: existing.new_ghl_id,
-            entity_label: oppLabel, status: 'skipped', error_message: 'Already mapped',
+            job_id: jobId, source_id: opp.id, entity_label: oppLabel,
+            status: 'skipped', error_message: 'only_low_confidence: no existing mapping to re-evaluate',
           });
           continue;
         }
