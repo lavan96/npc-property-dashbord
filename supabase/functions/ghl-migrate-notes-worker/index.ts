@@ -20,14 +20,18 @@ import {
   parseGhlError,
 } from '../_shared/ghl-account.ts';
 import {
-  startJob, finishJob, recordItem, recordIdMapping, updateJobProgress, delay,
+  startJob, finishJob, recordItem, recordIdMapping, updateJobProgress,
   saveCheckpoint, loadCheckpoint, partialExit, heartbeat,
   resolveTargetContactByName, readControlSignal, sanitizeContactNameParts,
 } from '../_shared/migration-jobs.ts';
+import { tokenKeyFor } from '../_shared/ghl-rate-limiter.ts';
+import { createGhlFetchContext } from '../_shared/ghl-worker-fetch.ts';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
-const MAX_RUNTIME_MS = 90_000;
-const RATE_LIMIT_MS = 300;
+// 110s leaves ~40s headroom inside the 150s edge cap for graceful
+// checkpoint + finishJob, mirroring the contacts/opportunities/conversations
+// workers.
+const MAX_RUNTIME_MS = 110_000;
 // Pull this many local note rows per dispatch. The dispatcher will
 // re-invoke us until the cursor is exhausted, so this is a per-invocation
 // fetch ceiling, NOT a global cap on total notes processed.
@@ -73,6 +77,17 @@ Deno.serve(async (req) => {
       ? describeGhlWriteAuthFailure(targetAccess.diagnostics)
       : null;
 
+    // Shared cross-isolate rate limiter + circuit breaker. Notes only
+    // writes to the target token, but we register both buckets to the
+    // same key so the helper API stays consistent across workers.
+    const targetTokenKey = tokenKeyFor(targetAccount, targetAccess.accessToken);
+    const ctx = createGhlFetchContext({
+      supabase,
+      sourceTokenKey: targetTokenKey,
+      targetTokenKey,
+      logTag: 'notes-worker',
+    });
+
     if (!dryRun && targetAccess.diagnostics) {
       console.log('[notes-worker] target token diagnostics:', JSON.stringify({
         token_type_hint: targetAccess.diagnostics.token_type_hint,
@@ -117,6 +132,7 @@ Deno.serve(async (req) => {
     let timeBudgetExhausted = false;
     let pausedByUser = false;
     let cancelledByUser: 'pause' | 'cancel' | 'kill' | null = null;
+    let circuitTripped = false;
     for (const note of (notes || [])) {
       // ── Granular control: pause / cancel / kill ─────────────────────
       // (Checked once per item — notes worker has no API page loop.)
@@ -125,6 +141,9 @@ Deno.serve(async (req) => {
         if (sig === 'kill' || sig === 'cancel') { cancelledByUser = sig; break; }
         if (sig === 'pause') { pausedByUser = true; break; }
       }
+      // Circuit breaker tripped → exit cleanly so the dispatcher resumes
+      // us with a fresh budget after the broadcast cooldown elapses.
+      if (ctx.isCircuitTripped()) { circuitTripped = true; break; }
       if (Date.now() - startedAt > MAX_RUNTIME_MS) { timeBudgetExhausted = true; break; }
       if (maxItems > 0 && totalProcessed >= maxItems) break;
 
@@ -198,10 +217,10 @@ Deno.serve(async (req) => {
       }
 
       try {
-        await delay(RATE_LIMIT_MS);
-        const r = await fetch(`${GHL_API_BASE}/contacts/${mapping.new_ghl_id}/notes`, {
+        // Pacing handled by ctx.ghlFetch via the shared rate limiter.
+        const r = await ctx.ghlFetch(`${GHL_API_BASE}/contacts/${mapping.new_ghl_id}/notes`, {
           method: 'POST', headers: targetHeaders, body: JSON.stringify({ body: formatted }),
-        });
+        }, 3, 'target');
         if (!r.ok) {
           const t = await r.text();
           const parsed = parseGhlError(t);
@@ -270,17 +289,17 @@ Deno.serve(async (req) => {
     }
 
     const morePagesAvailable = (notes?.length || 0) >= pullLimit;
-    const shouldRedispatch = !timeBudgetExhausted && morePagesAvailable && !(maxItems > 0 && totalProcessed >= maxItems);
+    const shouldRedispatch = !timeBudgetExhausted && !circuitTripped && morePagesAvailable && !(maxItems > 0 && totalProcessed >= maxItems);
 
-    if (timeBudgetExhausted || shouldRedispatch) {
+    if (timeBudgetExhausted || circuitTripped || shouldRedispatch) {
       await partialExit(
         supabase, jobId,
         { offset: currentOffset },
         { processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed },
       );
-      console.log(`[notes-worker] PARTIAL job=${jobId} processed=${totalProcessed} → handed off to dispatcher`);
+      console.log(`[notes-worker] PARTIAL job=${jobId} processed=${totalProcessed} circuit=${circuitTripped} → handed off to dispatcher`);
       return new Response(JSON.stringify({
-        success: true, partial: true, processed: totalProcessed,
+        success: true, partial: true, circuit_breaker: circuitTripped, processed: totalProcessed,
         handed_off_to: 'migration-dispatcher',
       }), { headers: { 'Content-Type': 'application/json' } });
     }

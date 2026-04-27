@@ -19,25 +19,32 @@ import {
   parseGhlError,
 } from '../_shared/ghl-account.ts';
 import {
-  startJob, finishJob, recordItem, recordIdMapping, updateJobProgress, delay,
+  startJob, finishJob, recordItem, recordIdMapping, updateJobProgress,
   saveCheckpoint, loadCheckpoint, partialExit, heartbeat,
   resolveTargetContactByName, readControlSignal, sanitizeContactNameParts, mergeJobPayload, normalizeContactName,
 } from '../_shared/migration-jobs.ts';
+import { tokenKeyFor } from '../_shared/ghl-rate-limiter.ts';
+import { createGhlFetchContext, type GhlFetchContext } from '../_shared/ghl-worker-fetch.ts';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 // GHL hard-caps /opportunities/search at 100 per page. We request the
 // max and walk every page via cursor — there is NO total-record cap.
 const PAGE_LIMIT = 100;
-const MAX_RUNTIME_MS = 90_000;
-const RATE_LIMIT_MS = 300;
+// 110s leaves ~40s headroom inside the 150s edge cap for graceful
+// checkpoint + finishJob, mirroring the contacts worker.
+const MAX_RUNTIME_MS = 110_000;
 
 function isPlaceholderResolutionName(name: string): boolean {
   const normalized = normalizeContactName(name);
   return !normalized || normalized === 'unknown unknown' || normalized === 'unknown';
 }
 
-async function targetContactExists(contactId: string, headers: Record<string, string>): Promise<boolean> {
-  const res = await fetch(`${GHL_API_BASE}/contacts/${contactId}`, { headers });
+async function targetContactExists(
+  ctx: GhlFetchContext,
+  contactId: string,
+  headers: Record<string, string>,
+): Promise<boolean> {
+  const res = await ctx.ghlFetch(`${GHL_API_BASE}/contacts/${contactId}`, { headers }, 2, 'target');
   if (res.ok) return true;
   if (res.status === 404 || res.status === 410) return false;
   return true;
@@ -87,6 +94,17 @@ Deno.serve(async (req) => {
       ? describeGhlWriteAuthFailure(targetAccess.diagnostics)
       : null;
 
+    // Shared cross-isolate rate limiter + circuit breaker.
+    // Every GHL call below routes through ctx.ghlFetch so all workers/cron
+    // jobs cooperate on the per-token rolling window and back off together
+    // on a 429 burst.
+    const ctx = createGhlFetchContext({
+      supabase,
+      sourceTokenKey: tokenKeyFor(sourceAccount, sourceCreds.apiKey),
+      targetTokenKey: tokenKeyFor(targetAccount, targetAccess.accessToken),
+      logTag: 'opps-worker',
+    });
+
     if (!dryRun && targetAccess.diagnostics) {
       console.log('[opps-worker] target token diagnostics:', JSON.stringify({
         token_type_hint: targetAccess.diagnostics.token_type_hint,
@@ -102,9 +120,9 @@ Deno.serve(async (req) => {
     console.log(`[opps-worker] job=${jobId} ${sourceAccount}→${targetAccount} dry_run=${dryRun}`);
 
     // Build pipeline-name → target pipeline+stages map
-    const targetPipelinesRes = await fetch(
+    const targetPipelinesRes = await ctx.ghlFetch(
       `${GHL_API_BASE}/opportunities/pipelines?locationId=${targetCreds.locationId}`,
-      { headers: targetHeaders },
+      { headers: targetHeaders }, 3, 'target',
     );
     if (!targetPipelinesRes.ok) {
       const t = await targetPipelinesRes.text();
@@ -113,9 +131,9 @@ Deno.serve(async (req) => {
     const targetPipelinesData = await targetPipelinesRes.json();
     const targetPipelines: any[] = targetPipelinesData.pipelines || [];
 
-    const sourcePipelinesRes = await fetch(
+    const sourcePipelinesRes = await ctx.ghlFetch(
       `${GHL_API_BASE}/opportunities/pipelines?locationId=${sourceCreds.locationId}`,
-      { headers: sourceHeaders },
+      { headers: sourceHeaders }, 3, 'source',
     );
     if (!sourcePipelinesRes.ok) {
       const t = await sourcePipelinesRes.text();
@@ -165,9 +183,9 @@ Deno.serve(async (req) => {
     let targetAssignedUserId: string | null = (payload.target_assigned_user_id as string) || null;
     if (!targetAssignedUserId && !dryRun) {
       try {
-        const usersRes = await fetch(
+        const usersRes = await ctx.ghlFetch(
           `${GHL_API_BASE}/users/?locationId=${targetCreds.locationId}`,
-          { headers: targetHeaders },
+          { headers: targetHeaders }, 2, 'target',
         );
         if (usersRes.ok) {
           const usersData = await usersRes.json();
@@ -243,6 +261,21 @@ Deno.serve(async (req) => {
           handed_off_to: 'migration-dispatcher',
         }), { headers: { 'Content-Type': 'application/json' } });
       }
+      // Circuit breaker tripped → exit cleanly so the dispatcher resumes us
+      // with a fresh budget after the broadcast cooldown elapses.
+      if (ctx.isCircuitTripped()) {
+        console.warn(`[opps-worker] Circuit breaker tripped at ${totalProcessed} processed — handing off to dispatcher for cool-off`);
+        await partialExit(
+          supabase, jobId,
+          { startAfterId: pageStartAfterId, startAfter: pageStartAfter },
+          { processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed },
+          pageStartAfterId,
+        );
+        return new Response(JSON.stringify({
+          success: true, partial: true, circuit_breaker: true, processed: totalProcessed,
+          handed_off_to: 'migration-dispatcher',
+        }), { headers: { 'Content-Type': 'application/json' } });
+      }
 
       const p = new URLSearchParams({ location_id: sourceCreds.locationId!, limit: String(PAGE_LIMIT) });
       if (pageStartAfter) {
@@ -254,7 +287,7 @@ Deno.serve(async (req) => {
       }
       if (pageStartAfterId) p.set('startAfterId', pageStartAfterId);
 
-      const res = await fetch(`${GHL_API_BASE}/opportunities/search?${p}`, { headers: sourceHeaders });
+      const res = await ctx.ghlFetch(`${GHL_API_BASE}/opportunities/search?${p}`, { headers: sourceHeaders }, 3, 'source');
       if (!res.ok) {
         const t = await res.text();
         throw new Error(`Source opportunities fetch failed: ${res.status} ${t.substring(0, 200)}`);
@@ -330,7 +363,7 @@ Deno.serve(async (req) => {
             .maybeSingle();
           if (idMapped?.new_ghl_id) {
             idMappingFound = true;
-            const existsInTarget = dryRun ? true : await targetContactExists(idMapped.new_ghl_id, targetHeaders);
+            const existsInTarget = dryRun ? true : await targetContactExists(ctx, idMapped.new_ghl_id, targetHeaders);
             if (existsInTarget) {
               resolved.newId = idMapped.new_ghl_id;
               resolvedByContactIdMap++;
@@ -356,7 +389,7 @@ Deno.serve(async (req) => {
             excludeNewIds: idMappedButTargetMissing && idMappingFound ? [resolved.newId || ''] : [],
           });
           if (nameResolved.newId) {
-            const nameTargetExists = dryRun ? true : await targetContactExists(nameResolved.newId, targetHeaders);
+            const nameTargetExists = dryRun ? true : await targetContactExists(ctx, nameResolved.newId, targetHeaders);
             if (nameTargetExists) {
               resolvedByNameMap++;
               if (nameResolved.ambiguous) ambiguousNameRoutes++;
@@ -443,13 +476,11 @@ Deno.serve(async (req) => {
         }
 
         try {
-          await delay(RATE_LIMIT_MS);
-          // NOTE: `assignedTo` is intentionally OMITTED. The legacy user IDs
-          // do not exist in the new GHL account, and GHL responds with
-          // "The assigned to field is invalid." (400) when an unknown user
-          // ID is supplied. Without a user-mapping table this field cannot
-          // be safely cascaded — opportunities will land unassigned in the
-          // new account and can be reassigned by the user afterwards.
+          // Pacing is handled by ctx.ghlFetch via the shared rate limiter —
+          // no manual delay needed.
+          // NOTE: legacy `assignedTo` user IDs do not exist in the new GHL
+          // account; we hard-set `assignedTo` to a single resolved target
+          // user (above) instead.
           const createBody: Record<string, unknown> = {
             locationId: targetCreds.locationId,
             pipelineId: pmap.targetPipelineId,
@@ -464,9 +495,9 @@ Deno.serve(async (req) => {
           if (targetAssignedUserId) {
             createBody.assignedTo = targetAssignedUserId;
           }
-          const r = await fetch(`${GHL_API_BASE}/opportunities/`, {
+          const r = await ctx.ghlFetch(`${GHL_API_BASE}/opportunities/`, {
             method: 'POST', headers: targetHeaders, body: JSON.stringify(createBody),
-          });
+          }, 3, 'target');
           if (!r.ok) {
             const t = await r.text();
             const parsed = parseGhlError(t);
