@@ -63,12 +63,13 @@ Deno.serve(async (req) => {
     if (!targetCreds.apiKey || !targetCreds.locationId) {
       throw new Error(`Missing GHL credentials for target=${targetAccount}`);
     }
-    const accessToken = await resolveGhlAccessTokenForLocation(targetAccount, targetCreds.apiKey, targetCreds.locationId).catch(() => null);
-    const targetHeaders = buildGhlHeaders(accessToken || targetCreds.apiKey, accessToken ? 'pit' : 'pit');
+    const targetResolved = await resolveGhlAccessTokenForLocation(targetCreds);
+    const targetHeaders = buildGhlHeaders(targetResolved.accessToken);
     const ctx = createGhlFetchContext({
+      supabase,
       sourceTokenKey: tokenKeyFor(sourceAccount, targetCreds.locationId),
       targetTokenKey: tokenKeyFor(targetAccount, targetCreds.locationId),
-      logPrefix: '[backfill-opp-mappings]',
+      logTag: 'backfill-opp-mappings',
     });
 
     // ── Phase A: Backfill from succeeded items that have target_id ─────
