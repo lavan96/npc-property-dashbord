@@ -135,8 +135,29 @@ Deno.serve(async (req) => {
       await startJob(supabase, jobId, notes?.length || 0);
     }
 
+    // ── Cumulative progress across redispatched legs ─────────────────
+    // Mirrors the contacts-worker pattern. Without this, every leg overwrites
+    // migration_jobs counters with this leg's local counts (which start at 0
+    // on each cold start), so progress appears to stall around BATCH size.
+    let baseProcessed = 0, baseSucceeded = 0, baseFailed = 0;
+    try {
+      const { data: jobRow } = await supabase
+        .from('migration_jobs')
+        .select('processed_items, succeeded_items, failed_items')
+        .eq('id', jobId)
+        .maybeSingle();
+      baseProcessed = Number(jobRow?.processed_items || 0);
+      baseSucceeded = Number(jobRow?.succeeded_items || 0);
+      baseFailed = Number(jobRow?.failed_items || 0);
+    } catch { /* non-fatal */ }
+
     let totalProcessed = 0, totalSucceeded = 0, totalFailed = 0, totalSkipped = 0;
     let currentOffset = startOffset;
+    const progressPatch = () => ({
+      processed_items: baseProcessed + totalProcessed,
+      succeeded_items: baseSucceeded + totalSucceeded,
+      failed_items: baseFailed + totalFailed,
+    });
 
     let timeBudgetExhausted = false;
     let pausedByUser = false;
