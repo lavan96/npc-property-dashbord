@@ -455,12 +455,18 @@ Deno.serve(async (req) => {
         break;
       }
 
+      let pageFullyConsumed = true;
       for (const contact of contacts) {
         if (maxItems > 0 && totalProcessed >= maxItems) break;
-        if (Date.now() - startedAt > MAX_RUNTIME_MS) break;
+        if (Date.now() - startedAt > MAX_RUNTIME_MS) {
+          pageFullyConsumed = false;
+          break;
+        }
 
         totalSeen++;
         totalProcessed++;
+        lastProcessedStartAfterId = contact.id || lastProcessedStartAfterId;
+        lastProcessedStartAfter = contact.dateAdded || lastProcessedStartAfter;
 
         // ── SANITIZATION (legacy → new) ────────────────────────────────
         // Apply the SAME shape the reference Client Management Export
@@ -902,6 +908,23 @@ Deno.serve(async (req) => {
       // Heartbeat extends our lease so the dispatcher doesn't steal the job
       // mid-flight just because we've spent a while on slow GHL pages.
       await heartbeat(supabase, jobId);
+
+      if (!pageFullyConsumed) {
+        console.log(`[contacts-worker] Time budget exhausted mid-page at ${totalProcessed} processed — checkpointing exact contact cursor`);
+        await partialExit(
+          supabase,
+          jobId,
+          { startAfterId: lastProcessedStartAfterId, startAfter: lastProcessedStartAfter },
+          progressPatch(),
+          lastProcessedStartAfterId,
+        );
+        return new Response(JSON.stringify({
+          success: true,
+          partial: true,
+          processed: totalProcessed,
+          handed_off_to: 'migration-dispatcher',
+        }), { headers: { 'Content-Type': 'application/json' } });
+      }
 
       // Pagination: prefer GHL's explicit meta cursor. Falling back to the
       // last contact is unsafe when we only processed part of a page before
