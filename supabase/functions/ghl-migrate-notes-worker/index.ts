@@ -20,14 +20,18 @@ import {
   parseGhlError,
 } from '../_shared/ghl-account.ts';
 import {
-  startJob, finishJob, recordItem, recordIdMapping, updateJobProgress, delay,
+  startJob, finishJob, recordItem, recordIdMapping, updateJobProgress,
   saveCheckpoint, loadCheckpoint, partialExit, heartbeat,
   resolveTargetContactByName, readControlSignal, sanitizeContactNameParts,
 } from '../_shared/migration-jobs.ts';
+import { tokenKeyFor } from '../_shared/ghl-rate-limiter.ts';
+import { createGhlFetchContext } from '../_shared/ghl-worker-fetch.ts';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
-const MAX_RUNTIME_MS = 90_000;
-const RATE_LIMIT_MS = 300;
+// 110s leaves ~40s headroom inside the 150s edge cap for graceful
+// checkpoint + finishJob, mirroring the contacts/opportunities/conversations
+// workers.
+const MAX_RUNTIME_MS = 110_000;
 // Pull this many local note rows per dispatch. The dispatcher will
 // re-invoke us until the cursor is exhausted, so this is a per-invocation
 // fetch ceiling, NOT a global cap on total notes processed.
