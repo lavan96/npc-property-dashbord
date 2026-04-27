@@ -61,6 +61,15 @@ Deno.serve(async (req) => {
     const payload = body.payload || {};
     const maxItems = Number(payload.max_items) || 0;
 
+    // ── New flags from Advanced options UI ──────────────────────────────
+    const forceOverwriteExisting = payload.force_overwrite_existing === true;
+    const minContentLength = Number(payload.min_content_length) || 0;
+    const prefixLegacyMarker = payload.prefix_legacy_marker === true;
+    console.log(
+      `[notes-worker] flags force_overwrite=${forceOverwriteExisting} ` +
+      `min_len=${minContentLength} prefix_marker=${prefixLegacyMarker}`,
+    );
+
     if (!jobId) return new Response(JSON.stringify({ error: 'job_id required' }), { status: 400 });
 
     const targetCreds = getGhlCredentials(targetAccount);
