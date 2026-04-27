@@ -118,8 +118,8 @@ Deno.serve(async (req) => {
       // in batch from GHL legacy. For simplicity, look up via the source GHL
       // /opportunities/{id} endpoint per item (rate-limited by ctx.ghlFetch).
       const sourceCreds = getGhlCredentials(sourceAccount);
-      const srcAccess = await resolveGhlAccessTokenForLocation(sourceAccount, sourceCreds.apiKey!, sourceCreds.locationId!).catch(() => null);
-      const sourceHeaders = buildGhlHeaders(srcAccess || sourceCreds.apiKey!, 'pit');
+      const srcResolved = await resolveGhlAccessTokenForLocation(sourceCreds);
+      const sourceHeaders = buildGhlHeaders(srcResolved.accessToken);
 
       for (const row of (failedRows || [])) {
         if (failedSeen.has(row.source_id)) continue;
