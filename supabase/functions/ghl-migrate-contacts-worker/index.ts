@@ -327,6 +327,23 @@ Deno.serve(async (req) => {
       await startJob(supabase, jobId, 0); // total updated as we discover
     }
 
+    // ── Probe-skip optimisation ───────────────────────────────────────
+    // Any ghl_id_mapping row whose `created_at` is at-or-after the job's
+    // started_at was written by THIS migration job (or a previous leg of
+    // it). We can trust those mappings without round-tripping a probe to
+    // GHL — saves one API call per contact on resumed legs.
+    let jobStartedAtMs = 0;
+    try {
+      const { data: jobRow } = await supabase
+        .from('migration_jobs')
+        .select('started_at')
+        .eq('id', jobId)
+        .maybeSingle();
+      if (jobRow?.started_at) {
+        jobStartedAtMs = new Date(jobRow.started_at).getTime() - 5_000; // 5s skew
+      }
+    } catch { /* non-fatal */ }
+
     while (true) {
       // ── Granular control: pause / cancel / kill ─────────────────────
       const signal = await readControlSignal(supabase, jobId);
