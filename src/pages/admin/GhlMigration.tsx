@@ -464,14 +464,11 @@ function MigrationWorkersPanel() {
     setDispatching(true);
     try {
       const max = parseInt(maxItems, 10);
+      const domainPatch = buildDomainPayloadPatch(domain, advancedFlags);
       const payload = {
         ...(max > 0 ? { max_items: max } : {}),
-        preserve_csv_structure: preserveCsvStructure,
         write_mode: 'create_first',
-        reuse_existing_mappings: allowNameDedupe,
-        allow_name_dedupe: allowNameDedupe,
-        force_reingest: forceReingest,
-        bypass_sanitizer: bypassSanitizer,
+        ...domainPatch,
       };
       const dispatchDomain = async (dispatchDomain: 'contacts' | 'opportunities' | 'notes' | 'conversations', extraPayload?: Record<string, any>) => {
         return invokeSecureFunction<any>('migration-orchestrator', {
