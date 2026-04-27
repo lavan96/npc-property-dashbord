@@ -509,7 +509,9 @@ Deno.serve(async (req) => {
         // Reject ONLY when the name is unambiguously junk (email/phone-as-name,
         // "test", repeated chars). "Unknown Unknown" is allowed (matches
         // reference export behaviour).
-        if (junkReason) {
+        // BYPASS: when bypassSanitizer=true, junk names are kept (tagged for cleanup).
+        let junkNameBypassed = false;
+        if (junkReason && !bypassSanitizer) {
           skippedJunkName++;
           totalSkipped++;
           await recordItem(supabase, {
@@ -520,6 +522,9 @@ Deno.serve(async (req) => {
             error_message: `Sanitization rejected: ${junkReason}`,
           });
           continue;
+        }
+        if (junkReason && bypassSanitizer) {
+          junkNameBypassed = true;
         }
 
         if (safeFirst === 'Unknown' || safeLast === 'Unknown') unknownPlaceholderNames++;
