@@ -289,17 +289,17 @@ Deno.serve(async (req) => {
     }
 
     const morePagesAvailable = (notes?.length || 0) >= pullLimit;
-    const shouldRedispatch = !timeBudgetExhausted && morePagesAvailable && !(maxItems > 0 && totalProcessed >= maxItems);
+    const shouldRedispatch = !timeBudgetExhausted && !circuitTripped && morePagesAvailable && !(maxItems > 0 && totalProcessed >= maxItems);
 
-    if (timeBudgetExhausted || shouldRedispatch) {
+    if (timeBudgetExhausted || circuitTripped || shouldRedispatch) {
       await partialExit(
         supabase, jobId,
         { offset: currentOffset },
         { processed_items: totalProcessed, succeeded_items: totalSucceeded, failed_items: totalFailed },
       );
-      console.log(`[notes-worker] PARTIAL job=${jobId} processed=${totalProcessed} → handed off to dispatcher`);
+      console.log(`[notes-worker] PARTIAL job=${jobId} processed=${totalProcessed} circuit=${circuitTripped} → handed off to dispatcher`);
       return new Response(JSON.stringify({
-        success: true, partial: true, processed: totalProcessed,
+        success: true, partial: true, circuit_breaker: circuitTripped, processed: totalProcessed,
         handed_off_to: 'migration-dispatcher',
       }), { headers: { 'Content-Type': 'application/json' } });
     }
