@@ -39,6 +39,38 @@ export async function createJob(supabase: any, params: CreateJobParams): Promise
 }
 
 export async function startJob(supabase: any, jobId: string, total: number): Promise<void> {
+  // ── Resume-clobber guard ───────────────────────────────────────────
+  // If we are (re-)starting a job that already has a non-zero total or
+  // counters, do NOT overwrite them. A fresh leg legitimately calls
+  // startJob() on cold-start; without this guard the second leg would
+  // reset progress to zero and the dashboard would jump backwards.
+  try {
+    const { data: existing } = await supabase
+      .from('migration_jobs')
+      .select('total_items, processed_items, succeeded_items, failed_items, status')
+      .eq('id', jobId)
+      .maybeSingle();
+    const hasProgress =
+      Number(existing?.total_items || 0) > 0 ||
+      Number(existing?.processed_items || 0) > 0 ||
+      Number(existing?.succeeded_items || 0) > 0 ||
+      Number(existing?.failed_items || 0) > 0;
+    if (hasProgress) {
+      console.warn(
+        `[startJob] job=${jobId} already has progress (total=${existing?.total_items} processed=${existing?.processed_items}); ` +
+        `preserving counters and only refreshing status/started_at.`,
+      );
+      const patch: Record<string, any> = { status: 'processing' };
+      if (!existing?.status || existing.status === 'pending') {
+        patch.started_at = new Date().toISOString();
+      }
+      const { error } = await supabase.from('migration_jobs').update(patch).eq('id', jobId);
+      if (error) throw new Error(`startJob(guarded) failed: ${error.message}`);
+      return;
+    }
+  } catch (e: any) {
+    console.error(`[startJob] guard read failed (continuing): ${e?.message}`);
+  }
   const { error } = await supabase
     .from('migration_jobs')
     .update({
@@ -60,8 +92,44 @@ export async function updateJobProgress(
     total_items: number;
   }>,
 ): Promise<void> {
-  const { error } = await supabase.from('migration_jobs').update(patch).eq('id', jobId);
-  if (error) console.error(`updateJobProgress failed: ${error.message}`);
+  // ── Monotonic clamp ──────────────────────────────────────────────────
+  // Counters must NEVER decrease. If a worker accidentally writes a value
+  // lower than what's already persisted (e.g. a stale leg with a reset
+  // local counter), drop that field rather than regress the dashboard.
+  // total_items is also clamped: it can grow (more pages discovered) but
+  // not shrink.
+  try {
+    const { data: current } = await supabase
+      .from('migration_jobs')
+      .select('processed_items, succeeded_items, failed_items, total_items')
+      .eq('id', jobId)
+      .maybeSingle();
+    const clamped: Record<string, number> = {};
+    const keys: Array<keyof typeof patch> = [
+      'processed_items', 'succeeded_items', 'failed_items', 'total_items',
+    ];
+    for (const k of keys) {
+      const v = (patch as any)[k];
+      if (typeof v !== 'number' || Number.isNaN(v)) continue;
+      const cur = Number((current as any)?.[k] || 0);
+      if (v >= cur) {
+        clamped[k as string] = v;
+      } else {
+        console.warn(
+          `[updateJobProgress] job=${jobId} dropped regression on ${String(k)}: ${v} < persisted ${cur}`,
+        );
+      }
+    }
+    if (Object.keys(clamped).length === 0) return;
+    const { error } = await supabase.from('migration_jobs').update(clamped).eq('id', jobId);
+    if (error) console.error(`updateJobProgress failed: ${error.message}`);
+  } catch (e: any) {
+    // Fail open: if the read failed, fall back to the unclamped write so
+    // we don't lose progress entirely.
+    console.error(`updateJobProgress clamp threw: ${e?.message}; falling back to direct write`);
+    const { error } = await supabase.from('migration_jobs').update(patch).eq('id', jobId);
+    if (error) console.error(`updateJobProgress fallback failed: ${error.message}`);
+  }
 }
 
 export async function finishJob(
