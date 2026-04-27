@@ -194,7 +194,19 @@ Deno.serve(async (req) => {
       }
       const mapping = { new_ghl_id: resolved.newId };
 
-      // Already mirrored?
+      // Min content length filter — drops empty/stub notes
+      const rawContent = (note.content || '').trim();
+      if (minContentLength > 0 && rawContent.length < minContentLength) {
+        totalSkipped++;
+        await recordItem(supabase, {
+          job_id: jobId, source_id: note.id, entity_label: label,
+          status: 'skipped',
+          error_message: `Skipped — content length ${rawContent.length} < min ${minContentLength}`,
+        });
+        continue;
+      }
+
+      // Already mirrored? Honour force_overwrite_existing flag.
       const { data: existingNoteMap } = await supabase
         .from('ghl_id_mapping')
         .select('new_ghl_id')
@@ -203,18 +215,21 @@ Deno.serve(async (req) => {
         .eq('source_account_label', sourceAccount)
         .eq('target_account_label', targetAccount)
         .maybeSingle();
-      if (existingNoteMap?.new_ghl_id) {
+      if (existingNoteMap?.new_ghl_id && !forceOverwriteExisting) {
         totalSkipped++;
         await recordItem(supabase, {
           job_id: jobId, source_id: note.id, target_id: existingNoteMap.new_ghl_id,
-          entity_label: label, status: 'skipped', error_message: 'Already mirrored',
+          entity_label: label, status: 'skipped', error_message: 'Already mirrored (use force_overwrite_existing to re-create)',
         });
         continue;
       }
 
-      const formatted = note.note_type && note.note_type !== 'general'
+      let formatted = note.note_type && note.note_type !== 'general'
         ? `[${String(note.note_type).toUpperCase()}] ${note.content}`
         : note.content;
+      if (prefixLegacyMarker) {
+        formatted = `[Migrated] ${formatted}`;
+      }
 
       if (dryRun) {
         totalSucceeded++;
