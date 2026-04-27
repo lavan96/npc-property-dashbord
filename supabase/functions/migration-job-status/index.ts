@@ -117,7 +117,7 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        job,
+        job: annotateHealth(job),
         breakdown,
         error_categories: errorCategories,
         retryable_failures: retryableFailures,
@@ -136,3 +136,72 @@ Deno.serve(async (req) => {
     });
   }
 });
+
+/**
+ * Decorate a migration_jobs row with derived health fields used by the
+ * dashboard health panel:
+ *
+ *   - heartbeat_age_seconds   – seconds since the worker last checked in
+ *   - lease_expires_in_seconds – seconds until worker_lock_until expires
+ *                                (negative ⇒ lease already expired)
+ *   - is_stalled              – true if status='processing' AND either:
+ *                                 • no heartbeat in the last 180s, OR
+ *                                 • lease expired > 60s ago AND no recent
+ *                                   completion update
+ *                                Indicates a worker likely died without
+ *                                calling finishJob/partialExit.
+ *   - current_offset          – best-effort summary of resume_cursor for UI
+ */
+function annotateHealth(job: any): any {
+  if (!job) return job;
+  const now = Date.now();
+  const hbAt = job.heartbeat_at ? new Date(job.heartbeat_at).getTime() : null;
+  const leaseAt = job.worker_lock_until ? new Date(job.worker_lock_until).getTime() : null;
+  const updAt = job.updated_at ? new Date(job.updated_at).getTime() : null;
+
+  const heartbeatAge = hbAt ? Math.floor((now - hbAt) / 1000) : null;
+  const leaseExpiresIn = leaseAt ? Math.floor((leaseAt - now) / 1000) : null;
+  const updatedAge = updAt ? Math.floor((now - updAt) / 1000) : null;
+
+  let isStalled = false;
+  let stallReason: string | null = null;
+  if (job.status === 'processing') {
+    // Heartbeat older than 180s → almost certainly dead worker.
+    if (heartbeatAge !== null && heartbeatAge > 180) {
+      isStalled = true;
+      stallReason = `No heartbeat for ${heartbeatAge}s`;
+    } else if (leaseExpiresIn !== null && leaseExpiresIn < -60 && (updatedAge ?? 999) > 60) {
+      // Lease expired more than a minute ago AND no progress updates →
+      // worker died without releasing the lock or finishing the job.
+      isStalled = true;
+      stallReason = `Lease expired ${Math.abs(leaseExpiresIn)}s ago with no updates`;
+    } else if (heartbeatAge === null && (updatedAge ?? 0) > 240) {
+      // Never sent a heartbeat AND nothing else happened recently.
+      isStalled = true;
+      stallReason = `No heartbeat ever, idle for ${updatedAge}s`;
+    }
+  }
+
+  let currentOffset: string | number | null = null;
+  const cur = job.resume_cursor || {};
+  if (typeof cur.offset === 'number') currentOffset = cur.offset;
+  else if (cur.startAfterId) currentOffset = String(cur.startAfterId).substring(0, 12);
+  else if (cur.nextPage) currentOffset = String(cur.nextPage).substring(0, 12);
+
+  if (isStalled) {
+    console.warn(
+      `[migration-job-status] STALLED job=${job.id} domain=${job.domain} ` +
+      `processed=${job.processed_items}/${job.total_items} reason="${stallReason}"`,
+    );
+  }
+
+  return {
+    ...job,
+    heartbeat_age_seconds: heartbeatAge,
+    lease_expires_in_seconds: leaseExpiresIn,
+    updated_age_seconds: updatedAge,
+    is_stalled: isStalled,
+    stall_reason: stallReason,
+    current_offset: currentOffset,
+  };
+}
