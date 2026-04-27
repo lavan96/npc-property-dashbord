@@ -682,7 +682,7 @@ Deno.serve(async (req) => {
         // The matcher is strict: requires name + monetaryValue agreement
         // for a 'medium' confidence match. Anything weaker is recorded as
         // 'low' so it surfaces for manual review.
-        if (!dryRun) {
+        if (!dryRun && !skipTargetDedupe) {
           const match = await findExistingTargetOpportunity(
             ctx, targetCreds.locationId!, contactMap.new_ghl_id!, pmap.targetPipelineId,
             safeName, sourceMonetary, targetHeaders,
@@ -732,8 +732,27 @@ Deno.serve(async (req) => {
           if (typeof opp.monetaryValue === 'number' && !Number.isNaN(opp.monetaryValue)) {
             createBody.monetaryValue = opp.monetaryValue;
           }
-          if (targetAssignedUserId) {
-            createBody.assignedTo = targetAssignedUserId;
+          // Resolve assignee per assignedUserStrategy:
+          //   • omit         → never set assignedTo
+          //   • map_by_email → look up source assignee's email and rebind to
+          //                    the target user with that same email; fall back
+          //                    to the resolved single user if no email match
+          //   • single       → use the single hard-resolved target user
+          let assignTo: string | null = null;
+          if (assignedUserStrategy === 'omit') {
+            assignTo = null;
+          } else if (assignedUserStrategy === 'map_by_email' && opp.assignedTo) {
+            const srcEmail = sourceUserEmailById.get(opp.assignedTo);
+            if (srcEmail) {
+              const tgt = targetUserByEmail.get(srcEmail);
+              if (tgt) assignTo = tgt;
+            }
+            if (!assignTo) assignTo = targetAssignedUserId;
+          } else {
+            assignTo = targetAssignedUserId;
+          }
+          if (assignTo) {
+            createBody.assignedTo = assignTo;
           }
           const r = await ctx.ghlFetch(`${GHL_API_BASE}/opportunities/`, {
             method: 'POST', headers: targetHeaders, body: JSON.stringify(createBody),
