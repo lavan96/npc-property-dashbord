@@ -459,12 +459,12 @@ Deno.serve(async (req) => {
         }), { headers: { 'Content-Type': 'application/json' } });
       }
       if (signal === 'pause') {
-        console.log(`[opps-worker] PAUSE signal — checkpointing at ${totalProcessed}`);
+        console.log(`[opps-worker] PAUSE signal — checkpointing at last_processed=${lastProcessedOppId || '(none this leg)'}`);
         await partialExit(
           supabase, jobId,
-          { startAfterId: pageStartAfterId, startAfter: pageStartAfter },
+          exitCursor(),
           progressPatch(),
-          pageStartAfterId,
+          lastProcessedOppId || pageStartAfterId,
         );
         return new Response(JSON.stringify({
           success: true, paused: true, processed: totalProcessed,
@@ -472,11 +472,12 @@ Deno.serve(async (req) => {
       }
 
       if (Date.now() - startedAt > MAX_RUNTIME_MS) {
+        console.log(`[opps-worker] TIME-BUDGET — checkpointing at last_processed=${lastProcessedOppId || '(none this leg)'}`);
         await partialExit(
           supabase, jobId,
-          { startAfterId: pageStartAfterId, startAfter: pageStartAfter },
+          exitCursor(),
           progressPatch(),
-          pageStartAfterId,
+          lastProcessedOppId || pageStartAfterId,
         );
         return new Response(JSON.stringify({
           success: true, partial: true, processed: totalProcessed,
@@ -486,12 +487,12 @@ Deno.serve(async (req) => {
       // Circuit breaker tripped → exit cleanly so the dispatcher resumes us
       // with a fresh budget after the broadcast cooldown elapses.
       if (ctx.isCircuitTripped()) {
-        console.warn(`[opps-worker] Circuit breaker tripped at ${totalProcessed} processed — handing off to dispatcher for cool-off`);
+        console.warn(`[opps-worker] Circuit breaker tripped at ${totalProcessed} processed — handing off to dispatcher for cool-off (last_processed=${lastProcessedOppId || '(none this leg)'})`);
         await partialExit(
           supabase, jobId,
-          { startAfterId: pageStartAfterId, startAfter: pageStartAfter },
+          exitCursor(),
           progressPatch(),
-          pageStartAfterId,
+          lastProcessedOppId || pageStartAfterId,
         );
         return new Response(JSON.stringify({
           success: true, partial: true, circuit_breaker: true, processed: totalProcessed,
@@ -697,7 +698,7 @@ Deno.serve(async (req) => {
             });
             continue;
           }
-          if (!forceRecreate && !onlyLowConfidence) {
+          if (!effectiveForceRecreate && !onlyLowConfidence) {
             totalSkipped++;
             await recordItem(supabase, {
               job_id: jobId, source_id: opp.id, target_id: existing.new_ghl_id,
@@ -712,7 +713,7 @@ Deno.serve(async (req) => {
               .from('ghl_id_mapping').delete()
               .eq('resource_type', 'opportunity').eq('old_ghl_id', opp.id)
               .eq('source_account_label', sourceAccount).eq('target_account_label', targetAccount);
-            console.log(`[opps-worker] cleared stale mapping for opp=${opp.id} (forceRecreate=${forceRecreate} onlyLowConfidence=${onlyLowConfidence})`);
+            console.log(`[opps-worker] cleared stale mapping for opp=${opp.id} (effectiveForceRecreate=${effectiveForceRecreate} onlyLowConfidence=${onlyLowConfidence} isResume=${isResume})`);
           }
         } else if (onlyLowConfidence) {
           // No existing mapping → nothing to "re-process". Skip in this mode.
