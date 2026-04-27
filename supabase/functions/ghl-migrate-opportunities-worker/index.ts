@@ -155,6 +155,26 @@ Deno.serve(async (req) => {
     const payload = body.payload || {};
     const maxItems = Number(payload.max_items) || 0;
 
+    // ── Opportunity-specific toggles (mirror the contacts worker pattern)
+    // All default to safe/back-compat values so existing dispatches behave
+    // identically. See GhlMigration UI for user-facing labels.
+    const forceRecreate = payload.force_recreate_opportunities === true;
+    const skipTargetDedupe = payload.skip_target_dedupe_check === true;
+    const onlyLowConfidence = payload.only_low_confidence === true;
+    const includeClosedStatuses = payload.include_closed_statuses === true;
+    const pipelineFilter: string[] = Array.isArray(payload.pipeline_filter)
+      ? payload.pipeline_filter.map((s: any) => String(s).trim().toLowerCase()).filter(Boolean)
+      : [];
+    const stageFilter: string[] = Array.isArray(payload.stage_filter)
+      ? payload.stage_filter.map((s: any) => String(s).trim().toLowerCase()).filter(Boolean)
+      : [];
+    const assignedUserStrategy: 'single' | 'map_by_email' | 'omit' =
+      payload.assigned_user_strategy === 'map_by_email' ? 'map_by_email'
+      : payload.assigned_user_strategy === 'omit' ? 'omit'
+      : 'single';
+
+    console.log(`[opps-worker] flags: forceRecreate=${forceRecreate} skipTargetDedupe=${skipTargetDedupe} onlyLowConfidence=${onlyLowConfidence} includeClosed=${includeClosedStatuses} pipelineFilter=${pipelineFilter.length} stageFilter=${stageFilter.length} assignStrategy=${assignedUserStrategy}`);
+
     if (!jobId) return new Response(JSON.stringify({ error: 'job_id required' }), { status: 400 });
 
     const sourceCreds = getGhlCredentials(sourceAccount);
