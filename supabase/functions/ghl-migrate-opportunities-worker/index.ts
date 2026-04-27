@@ -985,68 +985,53 @@ Deno.serve(async (req) => {
       // mid-flight just because we've spent a while on slow GHL pages.
       await heartbeat(supabase, jobId);
 
-      // ── Cursor advancement ───────────────────────────────────────────
-      // Use the LAST opp we actually processed this leg (after dedup),
-      // not the raw last item from GHL — those can be the same when the
-      // page is mostly dupes and we'd never advance.
-      const last = (lastProcessedOppId
-        ? freshOpps.find((o: any) => o.id === lastProcessedOppId) || opps[opps.length - 1]
-        : opps[opps.length - 1]);
-      pageStartAfterId = last?.id || null;
-      pageStartAfter = last?.updatedAt || last?.dateAdded || null;
-      await saveCheckpoint(supabase, jobId,
-        { startAfterId: pageStartAfterId, startAfter: pageStartAfter }, last?.id || null);
-
-      // ── No-progress guard (with auto-recover) ────────────────────────
-      // If this leg processed at least one item but the page cursor is
-      // identical to where the leg started, we likely have a tied-timestamp
-      // cluster. Try ONCE to bump the cursor by 1ms and continue; only if
-      // that doesn't unblock us do we fail the job.
-      const cursorAdvanced =
-        pageStartAfterId !== legStartCursorId ||
-        pageStartAfter !== legStartCursorAt;
-      if (totalProcessed > 0 && !cursorAdvanced) {
-        // Auto-recover: bump startAfter by 1ms and retry once before failing.
-        const baseAt = pageStartAfter
-          ? (/^\d+$/.test(String(pageStartAfter))
-              ? Number(pageStartAfter)
-              : new Date(pageStartAfter).getTime())
-          : (legStartCursorAt
-              ? (/^\d+$/.test(String(legStartCursorAt))
-                  ? Number(legStartCursorAt)
-                  : new Date(legStartCursorAt).getTime())
-              : Date.now());
-        const bumped = baseAt + 1;
-        console.warn(
-          `[opps-worker] cursor stuck at ${pageStartAfterId} / ${baseAt}; ` +
-          `auto-bumping startAfter → ${bumped} and clearing startAfterId to skip cluster`,
+      // ── Mid-page time-budget exit ────────────────────────────────────
+      // If the per-item loop bailed because of MAX_RUNTIME_MS, partial-exit
+      // here so the next leg resumes at the LAST opp we touched (not at
+      // the page-end cursor that would jump past the unprocessed remainder).
+      if (!pageFullyConsumed) {
+        console.log(`[opps-worker] Time budget exhausted mid-page at ${totalProcessed} processed — checkpointing exact opp cursor (last_processed=${lastProcessedOppId || '(none)'})`);
+        await partialExit(
+          supabase,
+          jobId,
+          exitCursor(),
+          progressPatch(),
+          lastProcessedOppId,
         );
-        pageStartAfterId = null;
-        pageStartAfter = String(bumped);
-        await saveCheckpoint(supabase, jobId,
-          { startAfterId: null, startAfter: pageStartAfter }, lastProcessedOppId || null);
-        // Don't fail; let the next iteration re-query with the bumped cursor.
-        // The legStartCursor snapshot stays as-is, so if the bumped cursor
-        // ALSO loops back to the same place we'll fall through to the fail
-        // path on the subsequent iteration.
-      } else if (totalProcessed === 0 && !cursorAdvanced && opps.length > 0) {
-        // Edge case: page returned items but ALL were filtered (closed,
-        // missing contact, etc.) AND cursor didn't move. Bump 1ms.
-        const baseAt = pageStartAfter
-          ? (/^\d+$/.test(String(pageStartAfter)) ? Number(pageStartAfter) : new Date(pageStartAfter).getTime())
-          : Date.now();
-        pageStartAfter = String(baseAt + 1);
-        pageStartAfterId = null;
-        console.warn(`[opps-worker] all ${opps.length} items filtered & cursor stuck; bumping to ${pageStartAfter}`);
-        await saveCheckpoint(supabase, jobId, { startAfterId: null, startAfter: pageStartAfter }, lastProcessedOppId || null);
+        return new Response(JSON.stringify({
+          success: true,
+          partial: true,
+          processed: totalProcessed,
+          handed_off_to: 'migration-dispatcher',
+        }), { headers: { 'Content-Type': 'application/json' } });
       }
 
+      // ── Pagination: trust GHL's server-supplied meta cursor ──────────
+      // This is the contacts-worker pattern. Earlier versions of this
+      // worker derived the next cursor from `last.updatedAt` of the page
+      // array, which fails when many opps share an identical updatedAt
+      // (the "200-mark" duplicate-flood bug). GHL's `data.meta.startAfterId`
+      // / `data.meta.startAfter` always advance correctly past such
+      // tied-timestamp clusters, so we use them as the primary source and
+      // fall back to the page-tail only when meta is absent.
+      const pageLast = opps[opps.length - 1];
+      nextStartAfterId = data.meta?.startAfterId ?? pageLast?.id ?? null;
+      nextStartAfter = data.meta?.startAfter ?? pageLast?.updatedAt ?? pageLast?.dateAdded ?? null;
+
+      // Persist cursor + last source id so a future redispatch resumes here
+      await saveCheckpoint(
+        supabase,
+        jobId,
+        { startAfterId: nextStartAfterId, startAfter: nextStartAfter },
+        nextStartAfterId,
+      );
+
       if (maxItems > 0 && totalProcessed >= maxItems) break;
-      // No artificial cap on total records: we keep paging via cursor until
-      // GHL returns an empty page (handled by the `opps.length === 0` guard above).
-      // Some GHL accounts return < PAGE_LIMIT mid-stream when filters apply,
-      // so a short page is NOT a stop signal — only an empty page is.
-      if (!last?.id && !pageStartAfter) break; // no cursor advancement → would loop forever
+      // Walk every page via cursor; only an empty page (handled above) or
+      // a missing cursor is a stop signal. A short page is NOT a stop
+      // signal — GHL sometimes returns < PAGE_LIMIT mid-stream when
+      // filters apply.
+      if (!nextStartAfterId) break;
     }
 
     await saveCheckpoint(supabase, jobId, {});
