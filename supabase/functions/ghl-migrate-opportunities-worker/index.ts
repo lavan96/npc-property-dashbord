@@ -392,6 +392,30 @@ Deno.serve(async (req) => {
     let pageStartAfterId: string | null = checkpoint.cursor.startAfterId || null;
     let firstPage = true;
 
+    // ── Cumulative progress across redispatched legs ─────────────────
+    // Without these, each leg overwrites migration_jobs counters with just
+    // its OWN local counts (which reset to 0 on every cold start), so the
+    // dashboard appears to "regress" and the job can never finish even
+    // though work is being done. Mirrors the contacts-worker pattern.
+    let baseProcessed = 0, baseSucceeded = 0, baseFailed = 0;
+    let persistedTotalItems = 0;
+    try {
+      const { data: jobRow } = await supabase
+        .from('migration_jobs')
+        .select('processed_items, succeeded_items, failed_items, total_items')
+        .eq('id', jobId)
+        .maybeSingle();
+      baseProcessed = Number(jobRow?.processed_items || 0);
+      baseSucceeded = Number(jobRow?.succeeded_items || 0);
+      baseFailed = Number(jobRow?.failed_items || 0);
+      persistedTotalItems = Number(jobRow?.total_items || 0);
+    } catch { /* non-fatal */ }
+    const progressPatch = () => ({
+      processed_items: baseProcessed + totalProcessed,
+      succeeded_items: baseSucceeded + totalSucceeded,
+      failed_items: baseFailed + totalFailed,
+    });
+
     while (true) {
       // ── Granular control: pause / cancel / kill ─────────────────────
       const signal = await readControlSignal(supabase, jobId);
