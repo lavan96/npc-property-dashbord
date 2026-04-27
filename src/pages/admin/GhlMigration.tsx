@@ -821,7 +821,35 @@ function MigrationWorkersPanel() {
                                   ×{j.dispatch_count}
                                 </Badge>
                               )}
+                              {j.is_stalled && (
+                                <Badge
+                                  variant="destructive"
+                                  className="gap-1 text-[10px] uppercase"
+                                  title={j.stall_reason || 'Worker appears to have died without finalising the job'}
+                                >
+                                  ⚠ stalled
+                                </Badge>
+                              )}
                             </div>
+                            {/* Worker health summary: heartbeat age, lease, cursor.
+                                Only meaningful while the job is in flight. */}
+                            {(j.status === 'processing' || j.status === 'pending') && (
+                              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground font-mono">
+                                {typeof j.heartbeat_age_seconds === 'number' && (
+                                  <span title="Seconds since worker last checked in">
+                                    ♥ {j.heartbeat_age_seconds}s
+                                  </span>
+                                )}
+                                {typeof j.lease_expires_in_seconds === 'number' && (
+                                  <span title="Seconds until dispatcher can re-claim this job">
+                                    lease {j.lease_expires_in_seconds >= 0 ? `${j.lease_expires_in_seconds}s` : `expired ${Math.abs(j.lease_expires_in_seconds)}s ago`}
+                                  </span>
+                                )}
+                                {j.current_offset != null && j.current_offset !== '' && (
+                                  <span title="Resume cursor / offset">@ {String(j.current_offset)}</span>
+                                )}
+                              </div>
+                            )}
                             {j.error_summary && (
                               <div className="mt-1 max-w-[240px] truncate text-[10px] text-destructive" title={j.error_summary}>
                                 {j.error_summary}
