@@ -19,6 +19,12 @@ import {
   TrendingUp, MessageSquare, StickyNote, GitBranch, MapPin, AlertCircle, CheckCircle2, Lock,
   KeyRound, ExternalLink, XCircle, Download, Play, Repeat, Pause, Square, Zap, Link2,
 } from 'lucide-react';
+import {
+  MigrationAdvancedOptions,
+  DEFAULT_ADVANCED_FLAGS,
+  buildDomainPayloadPatch,
+  type AdvancedFlagsState,
+} from '@/components/admin/MigrationAdvancedOptions';
 
 interface ScopeProbe {
   scope: string;
