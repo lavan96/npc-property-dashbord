@@ -382,6 +382,17 @@ Deno.serve(async (req) => {
       await startJob(supabase, jobId, 0);
     }
 
+    // ── Scope force_recreate to the FIRST leg only ──────────────────────
+    // forceRecreate=true makes every redo "succeed" at deletion+POST,
+    // which masks no-progress loops (the 200-mark duplicate flood). On a
+    // resumed leg we should treat existing target mappings as a hit and
+    // skip — preserving the operator's original intent for the first pass
+    // without compounding duplicates if the worker gets re-dispatched.
+    const effectiveForceRecreate = forceRecreate && !isResume;
+    if (forceRecreate && isResume) {
+      console.log(`[opps-worker] forceRecreate disabled on resume leg (was ${forceRecreate})`);
+    }
+
     let totalProcessed = 0, totalSucceeded = 0, totalFailed = 0, totalSkipped = 0;
     let resolvedByContactIdMap = 0;
     let resolvedByNameMap = 0;

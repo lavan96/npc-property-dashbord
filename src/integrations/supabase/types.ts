@@ -8603,6 +8603,7 @@ export type Database = {
           id: string
           last_dispatched_at: string | null
           last_processed_source_id: string | null
+          max_dispatches: number
           payload: Json
           processed_items: number
           resume_cursor: Json
@@ -8630,6 +8631,7 @@ export type Database = {
           id?: string
           last_dispatched_at?: string | null
           last_processed_source_id?: string | null
+          max_dispatches?: number
           payload?: Json
           processed_items?: number
           resume_cursor?: Json
@@ -8657,6 +8659,7 @@ export type Database = {
           id?: string
           last_dispatched_at?: string | null
           last_processed_source_id?: string | null
+          max_dispatches?: number
           payload?: Json
           processed_items?: number
           resume_cursor?: Json
