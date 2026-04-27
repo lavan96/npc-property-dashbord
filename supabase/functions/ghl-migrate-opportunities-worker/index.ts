@@ -298,7 +298,16 @@ Deno.serve(async (req) => {
     // location-scoped opportunity writes, which is why GHL was returning
     // "The assigned to field is invalid" 400s).
     let targetAssignedUserId: string | null = (payload.target_assigned_user_id as string) || null;
-    if (!targetAssignedUserId && !dryRun) {
+    // Email-keyed map populated when assignedUserStrategy === 'map_by_email'.
+    // Keys are lowercase-trimmed emails; values are target-account user IDs.
+    const targetUserByEmail = new Map<string, string>();
+    // Source-account user lookup (id → email). Populated lazily for map_by_email.
+    const sourceUserEmailById = new Map<string, string>();
+
+    const needTargetUsers = !dryRun && (
+      assignedUserStrategy === 'single' || assignedUserStrategy === 'map_by_email'
+    );
+    if (needTargetUsers && (!targetAssignedUserId || assignedUserStrategy === 'map_by_email')) {
       const userEndpoints = [
         `${GHL_API_BASE}/locations/${targetCreds.locationId}/users`,
         `${GHL_API_BASE}/users/?locationId=${targetCreds.locationId}`,
@@ -314,22 +323,55 @@ Deno.serve(async (req) => {
           const usersData = await usersRes.json();
           const users: any[] = usersData.users || usersData.locationUsers || [];
           if (users.length === 0) continue;
-          // Prefer users explicitly bound to the target location.
-          const located = users.find((u) =>
-            Array.isArray(u.roles?.locationIds) ? u.roles.locationIds.includes(targetCreds.locationId)
-              : Array.isArray(u.locationIds) ? u.locationIds.includes(targetCreds.locationId)
-              : true,
-          ) || users[0];
-          targetAssignedUserId = located.id;
-          console.log(`[opps-worker] Hard-set assignedTo=${targetAssignedUserId} (${located.name || located.email || 'unnamed'}) via ${url} — ${users.length} candidate(s)`);
+          // Build email→ID map for map_by_email strategy.
+          for (const u of users) {
+            const e = (u.email || '').trim().toLowerCase();
+            if (e && u.id) targetUserByEmail.set(e, u.id);
+          }
+          if (!targetAssignedUserId) {
+            // Prefer users explicitly bound to the target location.
+            const located = users.find((u) =>
+              Array.isArray(u.roles?.locationIds) ? u.roles.locationIds.includes(targetCreds.locationId)
+                : Array.isArray(u.locationIds) ? u.locationIds.includes(targetCreds.locationId)
+                : true,
+            ) || users[0];
+            targetAssignedUserId = located.id;
+            console.log(`[opps-worker] Default assignedTo=${targetAssignedUserId} (${located.name || located.email || 'unnamed'}) via ${url} — ${users.length} candidate(s); email_map_size=${targetUserByEmail.size}`);
+          }
           break;
         } catch (e: any) {
           console.warn(`[opps-worker] ${url} threw: ${e.message}`);
         }
       }
-      if (!targetAssignedUserId) {
+      if (!targetAssignedUserId && assignedUserStrategy !== 'omit') {
         console.warn('[opps-worker] No target user resolved — opportunities will be created WITHOUT assignedTo (omitted from POST body)');
       }
+      if (assignedUserStrategy === 'map_by_email') {
+        console.log(`[opps-worker] map_by_email: resolved ${targetUserByEmail.size} target users by email`);
+      }
+    }
+
+    // For map_by_email we also need source users keyed by ID so we can look
+    // up the source assignee's email and rebind to the target by email.
+    if (!dryRun && assignedUserStrategy === 'map_by_email') {
+      const sourceEndpoints = [
+        `${GHL_API_BASE}/locations/${sourceCreds.locationId}/users`,
+        `${GHL_API_BASE}/users/?locationId=${sourceCreds.locationId}`,
+      ];
+      for (const url of sourceEndpoints) {
+        try {
+          const usersRes = await ctx.ghlFetch(url, { headers: sourceHeaders }, 2, 'source');
+          if (!usersRes.ok) continue;
+          const usersData = await usersRes.json();
+          const users: any[] = usersData.users || usersData.locationUsers || [];
+          for (const u of users) {
+            const e = (u.email || '').trim().toLowerCase();
+            if (e && u.id) sourceUserEmailById.set(u.id, e);
+          }
+          if (sourceUserEmailById.size > 0) break;
+        } catch { /* ignore */ }
+      }
+      console.log(`[opps-worker] map_by_email: resolved ${sourceUserEmailById.size} source users by id`);
     }
 
     const checkpoint = await loadCheckpoint(supabase, jobId);
