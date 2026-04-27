@@ -370,8 +370,6 @@ function MigrationWorkersPanel() {
   const [advancedFlags, setAdvancedFlags] = useState<AdvancedFlagsState>(DEFAULT_ADVANCED_FLAGS);
   const [jobs, setJobs] = useState<any[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(false);
-  const [jobs, setJobs] = useState<any[]>([]);
-  const [loadingJobs, setLoadingJobs] = useState(false);
 
   const [audit, setAudit] = useState<CredentialAudit | null>(null);
   const [testingAudit, setTestingAudit] = useState(false);
