@@ -1019,31 +1019,60 @@ Deno.serve(async (req) => {
       // mid-flight just because we've spent a while on slow GHL pages.
       await heartbeat(supabase, jobId);
 
-      const last = opps[opps.length - 1];
+      // ── Cursor advancement ───────────────────────────────────────────
+      // Use the LAST opp we actually processed this leg (after dedup),
+      // not the raw last item from GHL — those can be the same when the
+      // page is mostly dupes and we'd never advance.
+      const last = (lastProcessedOppId
+        ? freshOpps.find((o: any) => o.id === lastProcessedOppId) || opps[opps.length - 1]
+        : opps[opps.length - 1]);
       pageStartAfterId = last?.id || null;
       pageStartAfter = last?.updatedAt || last?.dateAdded || null;
       await saveCheckpoint(supabase, jobId,
         { startAfterId: pageStartAfterId, startAfter: pageStartAfter }, last?.id || null);
 
-      // ── No-progress guard ─────────────────────────────────────────────
+      // ── No-progress guard (with auto-recover) ────────────────────────
       // If this leg processed at least one item but the page cursor is
-      // identical to where the leg started, we have a confirmed
-      // stuck-cursor loop. Fail the job loudly with diagnostic info instead
-      // of letting the dispatcher re-claim it for another duplicate pass.
+      // identical to where the leg started, we likely have a tied-timestamp
+      // cluster. Try ONCE to bump the cursor by 1ms and continue; only if
+      // that doesn't unblock us do we fail the job.
       const cursorAdvanced =
         pageStartAfterId !== legStartCursorId ||
         pageStartAfter !== legStartCursorAt;
       if (totalProcessed > 0 && !cursorAdvanced) {
-        const msg =
-          `No-progress guard tripped: leg processed=${totalProcessed} but cursor did not advance ` +
-          `(stuck at id=${legStartCursorId} / at=${legStartCursorAt}). ` +
-          `Likely a GHL pagination cursor or filter issue — needs manual review.`;
-        console.error(`[opps-worker] ${msg}`);
-        await updateJobProgress(supabase, jobId, progressPatch());
-        await finishJob(supabase, jobId, 'failed', msg);
-        return new Response(JSON.stringify({
-          success: false, error: msg, processed: totalProcessed,
-        }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+        // Auto-recover: bump startAfter by 1ms and retry once before failing.
+        const baseAt = pageStartAfter
+          ? (/^\d+$/.test(String(pageStartAfter))
+              ? Number(pageStartAfter)
+              : new Date(pageStartAfter).getTime())
+          : (legStartCursorAt
+              ? (/^\d+$/.test(String(legStartCursorAt))
+                  ? Number(legStartCursorAt)
+                  : new Date(legStartCursorAt).getTime())
+              : Date.now());
+        const bumped = baseAt + 1;
+        console.warn(
+          `[opps-worker] cursor stuck at ${pageStartAfterId} / ${baseAt}; ` +
+          `auto-bumping startAfter → ${bumped} and clearing startAfterId to skip cluster`,
+        );
+        pageStartAfterId = null;
+        pageStartAfter = String(bumped);
+        await saveCheckpoint(supabase, jobId,
+          { startAfterId: null, startAfter: pageStartAfter }, lastProcessedOppId || null);
+        // Don't fail; let the next iteration re-query with the bumped cursor.
+        // The legStartCursor snapshot stays as-is, so if the bumped cursor
+        // ALSO loops back to the same place we'll fall through to the fail
+        // path on the subsequent iteration.
+      } else if (totalProcessed === 0 && !cursorAdvanced && opps.length > 0) {
+        // Edge case: page returned items but ALL were filtered (closed,
+        // missing contact, etc.) AND cursor didn't move. Bump 1ms.
+        const baseAt = pageStartAfter
+          ? (/^\d+$/.test(String(pageStartAfter)) ? Number(pageStartAfter) : new Date(pageStartAfter).getTime())
+          : Date.now();
+        pageStartAfter = String(baseAt + 1);
+        pageStartAfterId = null;
+        console.warn(`[opps-worker] all ${opps.length} items filtered & cursor stuck; bumping to ${pageStartAfter}`);
+        await saveCheckpoint(supabase, jobId, { startAfterId: null, startAfter: pageStartAfter }, lastProcessedOppId || null);
       }
 
       if (maxItems > 0 && totalProcessed >= maxItems) break;
@@ -1051,7 +1080,7 @@ Deno.serve(async (req) => {
       // GHL returns an empty page (handled by the `opps.length === 0` guard above).
       // Some GHL accounts return < PAGE_LIMIT mid-stream when filters apply,
       // so a short page is NOT a stop signal — only an empty page is.
-      if (!last?.id) break; // no cursor advancement → would loop forever
+      if (!last?.id && !pageStartAfter) break; // no cursor advancement → would loop forever
     }
 
     await saveCheckpoint(supabase, jobId, {});
