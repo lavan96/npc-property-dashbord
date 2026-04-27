@@ -77,6 +77,17 @@ Deno.serve(async (req) => {
       ? describeGhlWriteAuthFailure(targetAccess.diagnostics)
       : null;
 
+    // Shared cross-isolate rate limiter + circuit breaker. Notes only
+    // writes to the target token, but we register both buckets to the
+    // same key so the helper API stays consistent across workers.
+    const targetTokenKey = tokenKeyFor(targetAccount, targetAccess.accessToken);
+    const ctx = createGhlFetchContext({
+      supabase,
+      sourceTokenKey: targetTokenKey,
+      targetTokenKey,
+      logTag: 'notes-worker',
+    });
+
     if (!dryRun && targetAccess.diagnostics) {
       console.log('[notes-worker] target token diagnostics:', JSON.stringify({
         token_type_hint: targetAccess.diagnostics.token_type_hint,
@@ -202,10 +213,10 @@ Deno.serve(async (req) => {
       }
 
       try {
-        await delay(RATE_LIMIT_MS);
-        const r = await fetch(`${GHL_API_BASE}/contacts/${mapping.new_ghl_id}/notes`, {
+        // Pacing handled by ctx.ghlFetch via the shared rate limiter.
+        const r = await ctx.ghlFetch(`${GHL_API_BASE}/contacts/${mapping.new_ghl_id}/notes`, {
           method: 'POST', headers: targetHeaders, body: JSON.stringify({ body: formatted }),
-        });
+        }, 3, 'target');
         if (!r.ok) {
           const t = await r.text();
           const parsed = parseGhlError(t);
