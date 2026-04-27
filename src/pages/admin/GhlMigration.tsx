@@ -468,6 +468,7 @@ function MigrationWorkersPanel() {
         reuse_existing_mappings: allowNameDedupe,
         allow_name_dedupe: allowNameDedupe,
         force_reingest: forceReingest,
+        bypass_sanitizer: bypassSanitizer,
       };
       const dispatchDomain = async (dispatchDomain: 'contacts' | 'opportunities' | 'notes' | 'conversations', extraPayload?: Record<string, any>) => {
         return invokeSecureFunction<any>('migration-orchestrator', {
