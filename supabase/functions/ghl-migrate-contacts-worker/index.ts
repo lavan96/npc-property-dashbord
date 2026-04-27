@@ -645,17 +645,30 @@ Deno.serve(async (req) => {
         const cleanPhone = normalizePhoneE164(phoneForNormalization);
 
         // GHL /contacts/upsert REQUIRES at least one of email or phone.
+        // BYPASS: when bypassSanitizer=true, synthesize a placeholder email
+        // so GHL accepts the record. Tag it for downstream cleanup.
+        let syntheticEmailUsed = false;
+        let finalEmail = cleanEmail;
         if (!cleanEmail && !cleanPhone) {
-          skippedMissingContactMethod++;
-          totalSkipped++;
-          await recordItem(supabase, {
-            job_id: jobId,
-            source_id: contact.id,
-            entity_label: contactName,
-            status: 'skipped',
-            error_message: 'No email or phone on source contact (GHL upsert requires at least one)',
-          });
-          continue;
+          if (bypassSanitizer) {
+            const safeIdSlug = String(contact.id || `unknown-${Date.now()}`)
+              .replace(/[^a-zA-Z0-9_-]/g, '')
+              .toLowerCase()
+              .substring(0, 40) || `unknown-${Date.now()}`;
+            finalEmail = `legacy-${safeIdSlug}@migrated.placeholder.local`;
+            syntheticEmailUsed = true;
+          } else {
+            skippedMissingContactMethod++;
+            totalSkipped++;
+            await recordItem(supabase, {
+              job_id: jobId,
+              source_id: contact.id,
+              entity_label: contactName,
+              status: 'skipped',
+              error_message: 'No email or phone on source contact (GHL upsert requires at least one)',
+            });
+            continue;
+          }
         }
 
         // ── Pipeline status as a tag (preserves lifecycle for opportunities worker)
