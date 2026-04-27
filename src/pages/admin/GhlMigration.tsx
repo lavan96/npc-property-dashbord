@@ -605,63 +605,11 @@ function MigrationWorkersPanel() {
           )}
         </div>
 
-        <div className="rounded-md border border-border/60 bg-muted/20 p-3">
-          <label className="flex items-start gap-2 text-xs">
-            <input
-              type="checkbox"
-              checked={preserveCsvStructure}
-              onChange={(e) => setPreserveCsvStructure(e.target.checked)}
-              className="mt-0.5"
-            />
-            <span>
-              <strong>Preserve legacy CSV structure</strong> (recommended): keep original source/list-like grouping signals
-              (legacy <code>source</code>, tags, and metadata columns like portfolio/debt/pipeline/review fields)
-              instead of flattening all contacts under one export source.
-            </span>
-          </label>
-        </div>
-        <div className="rounded-md border border-border/60 bg-muted/20 p-3">
-          <label className="flex items-start gap-2 text-xs">
-            <input
-              type="checkbox"
-              checked={forceReingest}
-              onChange={(e) => setForceReingest(e.target.checked)}
-              className="mt-0.5"
-            />
-            <span>
-              <strong>Force create-first contact writes</strong> (recommended after target wipe): ignore stale ID mappings and attempt individual <code>POST /contacts/</code> writes before any duplicate fallback.
-            </span>
-          </label>
-        </div>
-        <div className="rounded-md border border-border/60 bg-muted/20 p-3">
-          <label className="flex items-start gap-2 text-xs">
-            <input
-              type="checkbox"
-              checked={allowNameDedupe}
-              onChange={(e) => setAllowNameDedupe(e.target.checked)}
-              className="mt-0.5"
-            />
-            <span>
-              <strong>Reuse existing mappings/name matches</strong> (off for wiped target accounts): only enable when the target GHL account already contains trusted contacts that should be reused instead of created.
-            </span>
-          </label>
-        </div>
-        <div className={`rounded-md border p-3 ${bypassSanitizer ? 'border-destructive/60 bg-destructive/10' : 'border-border/60 bg-muted/20'}`}>
-          <label className="flex items-start gap-2 text-xs">
-            <input
-              type="checkbox"
-              checked={bypassSanitizer}
-              onChange={(e) => setBypassSanitizer(e.target.checked)}
-              className="mt-0.5"
-            />
-            <span>
-              <strong>⚠ Bypass sanitizer — force 100% migration</strong> (use sparingly): copies <em>every</em> legacy contact, even those with junk names or no email/phone.
-              Records missing both email and phone get a synthetic placeholder address (<code>legacy-&lt;id&gt;@migrated.placeholder.local</code>) so GHL accepts the upsert,
-              and are tagged <code>Migrated: Synthetic Email</code> + <code>Migrated: No Contact Method</code>. Junk-name records (phone/email/test as name) get tagged <code>Migrated: Bad Name</code>.
-              Use the tags afterwards to find and clean these records in the new account.
-            </span>
-          </label>
-        </div>
+        <MigrationAdvancedOptions
+          domain={domain}
+          flags={advancedFlags}
+          onChange={setAdvancedFlags}
+        />
 
         {/* Dispatch form */}
         <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
