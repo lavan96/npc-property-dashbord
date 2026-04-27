@@ -155,6 +155,26 @@ Deno.serve(async (req) => {
     const payload = body.payload || {};
     const maxItems = Number(payload.max_items) || 0;
 
+    // ── Opportunity-specific toggles (mirror the contacts worker pattern)
+    // All default to safe/back-compat values so existing dispatches behave
+    // identically. See GhlMigration UI for user-facing labels.
+    const forceRecreate = payload.force_recreate_opportunities === true;
+    const skipTargetDedupe = payload.skip_target_dedupe_check === true;
+    const onlyLowConfidence = payload.only_low_confidence === true;
+    const includeClosedStatuses = payload.include_closed_statuses === true;
+    const pipelineFilter: string[] = Array.isArray(payload.pipeline_filter)
+      ? payload.pipeline_filter.map((s: any) => String(s).trim().toLowerCase()).filter(Boolean)
+      : [];
+    const stageFilter: string[] = Array.isArray(payload.stage_filter)
+      ? payload.stage_filter.map((s: any) => String(s).trim().toLowerCase()).filter(Boolean)
+      : [];
+    const assignedUserStrategy: 'single' | 'map_by_email' | 'omit' =
+      payload.assigned_user_strategy === 'map_by_email' ? 'map_by_email'
+      : payload.assigned_user_strategy === 'omit' ? 'omit'
+      : 'single';
+
+    console.log(`[opps-worker] flags: forceRecreate=${forceRecreate} skipTargetDedupe=${skipTargetDedupe} onlyLowConfidence=${onlyLowConfidence} includeClosed=${includeClosedStatuses} pipelineFilter=${pipelineFilter.length} stageFilter=${stageFilter.length} assignStrategy=${assignedUserStrategy}`);
+
     if (!jobId) return new Response(JSON.stringify({ error: 'job_id required' }), { status: 400 });
 
     const sourceCreds = getGhlCredentials(sourceAccount);
@@ -228,6 +248,14 @@ Deno.serve(async (req) => {
     const unmappedPipelines: string[] = [];
 
     for (const sp of sourcePipelines) {
+      // ── Pipeline filter (allow-list by name, case-insensitive) ──────
+      if (pipelineFilter.length > 0) {
+        const spName = (sp.name || '').trim().toLowerCase();
+        if (!pipelineFilter.includes(spName)) {
+          console.log(`[opps-worker] pipeline_filter: skipping source pipeline "${sp.name}"`);
+          continue;
+        }
+      }
       const tp = targetPipelines.find((p) => p.name?.trim().toLowerCase() === sp.name?.trim().toLowerCase());
       if (!tp) {
         unmappedPipelines.push(sp.name);
@@ -235,6 +263,11 @@ Deno.serve(async (req) => {
       }
       const stageMap = new Map<string, string>();
       for (const ss of (sp.stages || [])) {
+        // ── Stage filter (allow-list by name, case-insensitive) ───────
+        if (stageFilter.length > 0) {
+          const ssName = (ss.name || '').trim().toLowerCase();
+          if (!stageFilter.includes(ssName)) continue;
+        }
         const ts = (tp.stages || []).find((s: any) => s.name?.trim().toLowerCase() === ss.name?.trim().toLowerCase());
         if (ts) stageMap.set(ss.id, ts.id);
       }
@@ -265,7 +298,16 @@ Deno.serve(async (req) => {
     // location-scoped opportunity writes, which is why GHL was returning
     // "The assigned to field is invalid" 400s).
     let targetAssignedUserId: string | null = (payload.target_assigned_user_id as string) || null;
-    if (!targetAssignedUserId && !dryRun) {
+    // Email-keyed map populated when assignedUserStrategy === 'map_by_email'.
+    // Keys are lowercase-trimmed emails; values are target-account user IDs.
+    const targetUserByEmail = new Map<string, string>();
+    // Source-account user lookup (id → email). Populated lazily for map_by_email.
+    const sourceUserEmailById = new Map<string, string>();
+
+    const needTargetUsers = !dryRun && (
+      assignedUserStrategy === 'single' || assignedUserStrategy === 'map_by_email'
+    );
+    if (needTargetUsers && (!targetAssignedUserId || assignedUserStrategy === 'map_by_email')) {
       const userEndpoints = [
         `${GHL_API_BASE}/locations/${targetCreds.locationId}/users`,
         `${GHL_API_BASE}/users/?locationId=${targetCreds.locationId}`,
@@ -281,14 +323,21 @@ Deno.serve(async (req) => {
           const usersData = await usersRes.json();
           const users: any[] = usersData.users || usersData.locationUsers || [];
           if (users.length === 0) continue;
-          // Prefer users explicitly bound to the target location.
-          const located = users.find((u) =>
-            Array.isArray(u.roles?.locationIds) ? u.roles.locationIds.includes(targetCreds.locationId)
-              : Array.isArray(u.locationIds) ? u.locationIds.includes(targetCreds.locationId)
-              : true,
-          ) || users[0];
-          targetAssignedUserId = located.id;
-          console.log(`[opps-worker] Hard-set assignedTo=${targetAssignedUserId} (${located.name || located.email || 'unnamed'}) via ${url} — ${users.length} candidate(s)`);
+          // Build email→ID map for map_by_email strategy.
+          for (const u of users) {
+            const e = (u.email || '').trim().toLowerCase();
+            if (e && u.id) targetUserByEmail.set(e, u.id);
+          }
+          if (!targetAssignedUserId) {
+            // Prefer users explicitly bound to the target location.
+            const located = users.find((u) =>
+              Array.isArray(u.roles?.locationIds) ? u.roles.locationIds.includes(targetCreds.locationId)
+                : Array.isArray(u.locationIds) ? u.locationIds.includes(targetCreds.locationId)
+                : true,
+            ) || users[0];
+            targetAssignedUserId = located.id;
+            console.log(`[opps-worker] Default assignedTo=${targetAssignedUserId} (${located.name || located.email || 'unnamed'}) via ${url} — ${users.length} candidate(s); email_map_size=${targetUserByEmail.size}`);
+          }
           break;
         } catch (e: any) {
           console.warn(`[opps-worker] ${url} threw: ${e.message}`);
@@ -297,6 +346,32 @@ Deno.serve(async (req) => {
       if (!targetAssignedUserId) {
         console.warn('[opps-worker] No target user resolved — opportunities will be created WITHOUT assignedTo (omitted from POST body)');
       }
+      if (assignedUserStrategy === 'map_by_email') {
+        console.log(`[opps-worker] map_by_email: resolved ${targetUserByEmail.size} target users by email`);
+      }
+    }
+
+    // For map_by_email we also need source users keyed by ID so we can look
+    // up the source assignee's email and rebind to the target by email.
+    if (!dryRun && assignedUserStrategy === 'map_by_email') {
+      const sourceEndpoints = [
+        `${GHL_API_BASE}/locations/${sourceCreds.locationId}/users`,
+        `${GHL_API_BASE}/users/?locationId=${sourceCreds.locationId}`,
+      ];
+      for (const url of sourceEndpoints) {
+        try {
+          const usersRes = await ctx.ghlFetch(url, { headers: sourceHeaders }, 2, 'source');
+          if (!usersRes.ok) continue;
+          const usersData = await usersRes.json();
+          const users: any[] = usersData.users || usersData.locationUsers || [];
+          for (const u of users) {
+            const e = (u.email || '').trim().toLowerCase();
+            if (e && u.id) sourceUserEmailById.set(u.id, e);
+          }
+          if (sourceUserEmailById.size > 0) break;
+        } catch { /* ignore */ }
+      }
+      console.log(`[opps-worker] map_by_email: resolved ${sourceUserEmailById.size} source users by id`);
     }
 
     const checkpoint = await loadCheckpoint(supabase, jobId);
@@ -403,12 +478,12 @@ Deno.serve(async (req) => {
         totalProcessed++;
         const oppLabel = opp.name || `Opp ${opp.id?.substring(0, 8)}`;
 
-        // Skip closed opportunities (Phase 2B focuses on active pipeline)
-        if (opp.status === 'won' || opp.status === 'lost' || opp.status === 'abandoned') {
+        // Skip closed opportunities unless includeClosedStatuses is on.
+        if (!includeClosedStatuses && (opp.status === 'won' || opp.status === 'lost' || opp.status === 'abandoned')) {
           totalSkipped++;
           await recordItem(supabase, {
             job_id: jobId, source_id: opp.id, entity_label: oppLabel,
-            status: 'skipped', error_message: `Status=${opp.status}`,
+            status: 'skipped', error_message: `Status=${opp.status} (set include_closed_statuses=true to migrate)`,
           });
           continue;
         }
@@ -545,17 +620,50 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // Already migrated?
+        // Already migrated? Behaviour depends on flags:
+        //   • forceRecreate=true       → ignore stale mapping, re-create
+        //   • onlyLowConfidence=true   → only process rows whose existing
+        //                                 mapping is match_confidence='low'
+        //                                 (used to clean up known collisions)
+        //   • default                  → skip if mapped at any confidence
         const { data: existing } = await supabase
-          .from('ghl_id_mapping').select('new_ghl_id')
+          .from('ghl_id_mapping').select('new_ghl_id, match_confidence')
           .eq('resource_type', 'opportunity').eq('old_ghl_id', opp.id)
           .eq('source_account_label', sourceAccount).eq('target_account_label', targetAccount)
           .maybeSingle();
         if (existing?.new_ghl_id) {
+          if (onlyLowConfidence && existing.match_confidence !== 'low') {
+            totalSkipped++;
+            await recordItem(supabase, {
+              job_id: jobId, source_id: opp.id, target_id: existing.new_ghl_id,
+              entity_label: oppLabel, status: 'skipped',
+              error_message: `only_low_confidence: existing mapping is ${existing.match_confidence || 'high'}`,
+            });
+            continue;
+          }
+          if (!forceRecreate && !onlyLowConfidence) {
+            totalSkipped++;
+            await recordItem(supabase, {
+              job_id: jobId, source_id: opp.id, target_id: existing.new_ghl_id,
+              entity_label: oppLabel, status: 'skipped', error_message: 'Already mapped',
+            });
+            continue;
+          }
+          // Falling through to re-create. Drop the stale mapping so the
+          // create-success path can write a fresh one.
+          if (!dryRun) {
+            await supabase
+              .from('ghl_id_mapping').delete()
+              .eq('resource_type', 'opportunity').eq('old_ghl_id', opp.id)
+              .eq('source_account_label', sourceAccount).eq('target_account_label', targetAccount);
+            console.log(`[opps-worker] cleared stale mapping for opp=${opp.id} (forceRecreate=${forceRecreate} onlyLowConfidence=${onlyLowConfidence})`);
+          }
+        } else if (onlyLowConfidence) {
+          // No existing mapping → nothing to "re-process". Skip in this mode.
           totalSkipped++;
           await recordItem(supabase, {
-            job_id: jobId, source_id: opp.id, target_id: existing.new_ghl_id,
-            entity_label: oppLabel, status: 'skipped', error_message: 'Already mapped',
+            job_id: jobId, source_id: opp.id, entity_label: oppLabel,
+            status: 'skipped', error_message: 'only_low_confidence: no existing mapping to re-evaluate',
           });
           continue;
         }
@@ -574,7 +682,7 @@ Deno.serve(async (req) => {
         // The matcher is strict: requires name + monetaryValue agreement
         // for a 'medium' confidence match. Anything weaker is recorded as
         // 'low' so it surfaces for manual review.
-        if (!dryRun) {
+        if (!dryRun && !skipTargetDedupe) {
           const match = await findExistingTargetOpportunity(
             ctx, targetCreds.locationId!, contactMap.new_ghl_id!, pmap.targetPipelineId,
             safeName, sourceMonetary, targetHeaders,
@@ -624,8 +732,27 @@ Deno.serve(async (req) => {
           if (typeof opp.monetaryValue === 'number' && !Number.isNaN(opp.monetaryValue)) {
             createBody.monetaryValue = opp.monetaryValue;
           }
-          if (targetAssignedUserId) {
-            createBody.assignedTo = targetAssignedUserId;
+          // Resolve assignee per assignedUserStrategy:
+          //   • omit         → never set assignedTo
+          //   • map_by_email → look up source assignee's email and rebind to
+          //                    the target user with that same email; fall back
+          //                    to the resolved single user if no email match
+          //   • single       → use the single hard-resolved target user
+          let assignTo: string | null = null;
+          if (assignedUserStrategy === 'omit') {
+            assignTo = null;
+          } else if (assignedUserStrategy === 'map_by_email' && opp.assignedTo) {
+            const srcEmail = sourceUserEmailById.get(opp.assignedTo);
+            if (srcEmail) {
+              const tgt = targetUserByEmail.get(srcEmail);
+              if (tgt) assignTo = tgt;
+            }
+            if (!assignTo) assignTo = targetAssignedUserId;
+          } else {
+            assignTo = targetAssignedUserId;
+          }
+          if (assignTo) {
+            createBody.assignedTo = assignTo;
           }
           const r = await ctx.ghlFetch(`${GHL_API_BASE}/opportunities/`, {
             method: 'POST', headers: targetHeaders, body: JSON.stringify(createBody),
@@ -706,6 +833,17 @@ Deno.serve(async (req) => {
           ambiguous_name_routes: ambiguousNameRoutes,
           resolved_total: resolvedTotal,
           coverage_pct: coveragePct,
+        },
+        flags: {
+          force_recreate_opportunities: forceRecreate,
+          skip_target_dedupe_check: skipTargetDedupe,
+          only_low_confidence: onlyLowConfidence,
+          include_closed_statuses: includeClosedStatuses,
+          pipeline_filter: pipelineFilter,
+          stage_filter: stageFilter,
+          assigned_user_strategy: assignedUserStrategy,
+          target_user_email_map_size: targetUserByEmail.size,
+          source_user_email_map_size: sourceUserEmailById.size,
         },
         processed: totalProcessed,
         succeeded: totalSucceeded,
