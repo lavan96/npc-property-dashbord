@@ -7192,6 +7192,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          match_confidence: string
           new_ghl_id: string | null
           notes: string | null
           old_ghl_id: string
@@ -7204,6 +7205,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          match_confidence?: string
           new_ghl_id?: string | null
           notes?: string | null
           old_ghl_id: string
@@ -7216,6 +7218,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          match_confidence?: string
           new_ghl_id?: string | null
           notes?: string | null
           old_ghl_id?: string

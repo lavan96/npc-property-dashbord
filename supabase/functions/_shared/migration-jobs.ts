@@ -357,6 +357,15 @@ export async function recordIdMapping(
     source_account_label: 'legacy' | 'new';
     target_account_label: 'legacy' | 'new';
     notes?: string;
+    /**
+     * Confidence of the (old_ghl_id → new_ghl_id) match.
+     *   high   = we created the target record ourselves (deterministic)
+     *   medium = matched an existing target record on strong signals
+     *            (e.g. contact + pipeline + name + monetary value)
+     *   low    = matched on weak signals only — needs manual review
+     * Defaults to 'high' so existing call sites keep their semantics.
+     */
+    match_confidence?: 'high' | 'medium' | 'low';
   },
 ): Promise<void> {
   // The live `ghl_id_mapping` table has a UNIQUE constraint on
@@ -369,6 +378,7 @@ export async function recordIdMapping(
       source_account_label: params.source_account_label,
       target_account_label: params.target_account_label,
       notes: params.notes ?? null,
+      match_confidence: params.match_confidence ?? 'high',
       remapped_at: new Date().toISOString(),
     },
     { onConflict: 'resource_type,old_ghl_id' },
