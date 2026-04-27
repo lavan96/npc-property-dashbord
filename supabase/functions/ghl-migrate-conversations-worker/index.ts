@@ -204,6 +204,28 @@ Deno.serve(async (req) => {
         if (Date.now() - startedAt > MAX_RUNTIME_MS) break;
         if (ctx.isCircuitTripped()) break;
 
+        const convChannel = mapChannel(conv.type);
+        const lastMsgTs = conv.lastMessageDate ? new Date(conv.lastMessageDate).getTime()
+                       : conv.dateUpdated ? new Date(conv.dateUpdated).getTime() : 0;
+
+        // Conversation-level filters (channel + activity recency)
+        if (channelFilter.size > 0 && !channelFilter.has(convChannel)) {
+          totalSkipped++;
+          await recordItem(supabase, {
+            job_id: jobId, source_id: conv.id, entity_label: conv.id,
+            status: 'skipped', error_message: `Skipped — channel '${convChannel}' not in filter`,
+          });
+          continue;
+        }
+        if (sinceTs > 0 && lastMsgTs > 0 && lastMsgTs < sinceTs) {
+          totalSkipped++;
+          await recordItem(supabase, {
+            job_id: jobId, source_id: conv.id, entity_label: conv.id,
+            status: 'skipped', error_message: `Skipped — last activity older than ${dateRangeDays}d window`,
+          });
+          continue;
+        }
+
         totalProcessed++;
         const label = conv.contactId ? `Conv with ${conv.contactId}` : conv.id;
 
@@ -221,7 +243,7 @@ Deno.serve(async (req) => {
           await supabase.from('ghl_conversations').upsert({
             ghl_conversation_id: conv.id,
             ghl_contact_id: conv.contactId,
-            channel_type: mapChannel(conv.type),
+            channel_type: convChannel,
             last_message_body: (conv.lastMessageBody || conv.snippet || '').substring(0, 1000),
             last_message_at: conv.lastMessageDate || conv.dateUpdated || null,
             unread_count: conv.unreadCount || 0,
@@ -240,15 +262,29 @@ Deno.serve(async (req) => {
             else if (Array.isArray(md.messages)) messages = md.messages;
 
             for (const msg of messages) {
-              await supabase.from('ghl_conversation_messages').upsert({
+              const msgDir = mapDirection(msg);
+              const msgChannel = mapChannel(msg.messageType || msg.source || conv.type);
+              const msgTs = msg.dateAdded ? new Date(msg.dateAdded).getTime()
+                          : msg.dateCreated ? new Date(msg.dateCreated).getTime() : 0;
+
+              // Per-message filters
+              if (messageDirection !== 'all' && msgDir !== messageDirection) continue;
+              if (channelFilter.size > 0 && !channelFilter.has(msgChannel)) continue;
+              if (sinceTs > 0 && msgTs > 0 && msgTs < sinceTs) continue;
+
+              const row: any = {
                 ghl_message_id: msg.id,
                 ghl_conversation_id: conv.id,
-                direction: mapDirection(msg),
-                channel_type: mapChannel(msg.messageType || msg.source || conv.type),
+                direction: msgDir,
+                channel_type: msgChannel,
                 body: (msg.body || msg.message || '').substring(0, 4000),
                 sent_at: msg.dateAdded || msg.dateCreated || null,
                 source_account_label: sourceAccount,
-              } as any, { onConflict: 'ghl_message_id' });
+              };
+              if (!skipAttachments && msg.attachments) {
+                row.attachments = msg.attachments;
+              }
+              await supabase.from('ghl_conversation_messages').upsert(row, { onConflict: 'ghl_message_id' });
             }
           }
 
