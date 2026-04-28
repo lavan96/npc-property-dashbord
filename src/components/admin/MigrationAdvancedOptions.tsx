@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Settings2 } from 'lucide-react';
 
-export type MigrationDomain = 'contacts' | 'opportunities' | 'conversations' | 'notes';
+export type MigrationDomain = 'contacts' | 'opportunities' | 'conversations' | 'conversations_replay' | 'notes';
 
 export interface AdvancedFlagsState {
   // Contacts (existing — kept for parity, controlled by parent)
@@ -31,10 +31,14 @@ export interface AdvancedFlagsState {
   date_range_days: string; // numeric string; '' = no limit
   skip_attachments: boolean;
 
-  // Notes
+  // Notes (also reused by conversations_replay)
   force_overwrite_existing: boolean;
   min_content_length: string; // numeric string
   prefix_legacy_marker: boolean;
+
+  // Conversations replay
+  skip_activity: boolean;
+  max_messages_per_conv: string; // numeric string; '' = no cap
 }
 
 export const DEFAULT_ADVANCED_FLAGS: AdvancedFlagsState = {
@@ -62,6 +66,9 @@ export const DEFAULT_ADVANCED_FLAGS: AdvancedFlagsState = {
   force_overwrite_existing: false,
   min_content_length: '',
   prefix_legacy_marker: false,
+
+  skip_activity: true,
+  max_messages_per_conv: '',
 };
 
 /**
