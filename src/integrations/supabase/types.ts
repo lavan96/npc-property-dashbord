@@ -6940,7 +6940,10 @@ export type Database = {
           ghl_message_id: string
           id: string
           message_status: string | null
+          new_ghl_message_id: string | null
           recipient_number: string | null
+          replay_skipped_reason: string | null
+          replayed_at: string | null
           sender_name: string | null
           sender_number: string | null
           updated_at: string
@@ -6957,7 +6960,10 @@ export type Database = {
           ghl_message_id: string
           id?: string
           message_status?: string | null
+          new_ghl_message_id?: string | null
           recipient_number?: string | null
+          replay_skipped_reason?: string | null
+          replayed_at?: string | null
           sender_name?: string | null
           sender_number?: string | null
           updated_at?: string
@@ -6974,7 +6980,10 @@ export type Database = {
           ghl_message_id?: string
           id?: string
           message_status?: string | null
+          new_ghl_message_id?: string | null
           recipient_number?: string | null
+          replay_skipped_reason?: string | null
+          replayed_at?: string | null
           sender_name?: string | null
           sender_number?: string | null
           updated_at?: string
@@ -7003,6 +7012,8 @@ export type Database = {
           last_message_date: string | null
           last_message_direction: string | null
           last_synced_at: string | null
+          new_ghl_conversation_id: string | null
+          replayed_at: string | null
           unread_count: number
           updated_at: string
         }
@@ -7019,6 +7030,8 @@ export type Database = {
           last_message_date?: string | null
           last_message_direction?: string | null
           last_synced_at?: string | null
+          new_ghl_conversation_id?: string | null
+          replayed_at?: string | null
           unread_count?: number
           updated_at?: string
         }
@@ -7035,6 +7048,8 @@ export type Database = {
           last_message_date?: string | null
           last_message_direction?: string | null
           last_synced_at?: string | null
+          new_ghl_conversation_id?: string | null
+          replayed_at?: string | null
           unread_count?: number
           updated_at?: string
         }
