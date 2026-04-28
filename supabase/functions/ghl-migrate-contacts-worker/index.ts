@@ -600,6 +600,8 @@ Deno.serve(async (req) => {
       }
 
       let pageFullyConsumed = true;
+      // Absolute offset within the uploaded source (only used in upload mode).
+      let uploadCursor = uploadedRecords ? (Number(nextStartAfter) || 0) : 0;
       for (const contact of contacts) {
         if (maxItems > 0 && totalProcessed >= maxItems) break;
         if (Date.now() - startedAt > MAX_RUNTIME_MS) {
