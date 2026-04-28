@@ -50,6 +50,9 @@ export const DEFAULT_ADVANCED_FLAGS: AdvancedFlagsState = {
   pipeline_filter: '',
   stage_filter: '',
   assigned_user_strategy: 'single',
+  skip_count: '',
+  start_after_iso: '',
+  start_after_id: '',
 
   message_direction: 'all',
   channel_filter: '',
