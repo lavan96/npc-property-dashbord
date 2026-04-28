@@ -112,7 +112,7 @@ function buildXlsxBuffer(rows: any[][]): Uint8Array {
   }, { level: 6 });
 }
 
-async function withRetry<T>(label: string, fn: () => Promise<T>, attempts = 3): Promise<T> {
+async function withRetry<T>(label: string, fn: () => PromiseLike<T> | T, attempts = 3): Promise<T> {
   let lastErr: any;
   for (let i = 0; i < attempts; i++) {
     try { return await fn(); }
