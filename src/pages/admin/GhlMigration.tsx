@@ -818,13 +818,18 @@ function MigrationWorkersPanel() {
                 </thead>
                 <tbody>
                   {jobs.map((j) => {
-                    const total = j.total_items || 0;
+                    const rawTotal = j.total_items || 0;
                     const succeeded = j.succeeded_items || 0;
                     const failed = j.failed_items || 0;
                     const skipped = j.skipped_items || 0;
                     const processed = j.processed_items || (succeeded + failed + skipped);
+                    // Some workers (e.g. conversations_replay) only know the
+                    // current page size, so processed can exceed total. Treat
+                    // the larger number as the working total to avoid >100%.
+                    const total = Math.max(rawTotal, processed);
+                    const totalIsKnown = rawTotal > 0 && processed <= rawTotal;
                     const denom = total > 0 ? total : Math.max(processed, 1);
-                    const pct = total > 0 ? Math.round((processed / total) * 100) : 0;
+                    const pct = total > 0 ? Math.min(100, Math.round((processed / total) * 100)) : 0;
                     const widthOf = (n: number) => `${Math.min(100, (n / denom) * 100)}%`;
                     const isOpen = expandedJobId === j.id;
                     const isLive = j.status === 'processing' || j.status === 'pending';
