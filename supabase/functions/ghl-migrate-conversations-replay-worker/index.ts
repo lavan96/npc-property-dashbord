@@ -260,42 +260,76 @@ Deno.serve(async (req) => {
     const isResume = body._resume === true || (checkpoint.cursor.offset || 0) > 0;
     const startOffset = Number(checkpoint.cursor.offset) || 0;
 
-    // Build the conversations query with optional channel + date filters.
+    // Source branch: uploaded CSV/XLSX (preferred when present) vs local mirror.
+    const uploadId: string | null = payload.upload_id ? String(payload.upload_id) : null;
     const pullLimit = maxItems > 0 ? Math.min(maxItems, BATCH) : BATCH;
-    let convQuery = supabase
-      .from('ghl_conversations')
-      .select('id, ghl_conversation_id, ghl_contact_id, channel_type, last_message_date, new_ghl_conversation_id, client_id, clients(primary_first_name, primary_surname)')
-      .order('created_at', { ascending: true })
-      .range(startOffset, startOffset + pullLimit - 1);
-    if (channelFilter.length > 0) {
-      convQuery = convQuery.in('channel_type', channelFilter);
-    }
-    if (sinceTs) {
-      convQuery = convQuery.gte('last_message_date', sinceTs);
-    }
+    let conversations: any[] | null = null;
 
-    const { data: conversations, error: convErr } = await convQuery;
-    if (convErr) throw new Error(`Conversations query failed: ${convErr.message}`);
-
-    if (isResume) {
-      console.log(`[conv-replay] RESUMING job=${jobId} dispatch#${checkpoint.dispatchCount} offset=${startOffset} pulled=${conversations?.length || 0}`);
-    } else {
-      // Compute the TRUE total (not just this batch) so the UI progress bar is accurate.
-      let trueTotal = conversations?.length || 0;
-      try {
-        let countQuery = supabase
-          .from('ghl_conversations')
-          .select('id', { count: 'exact', head: true });
-        if (channelFilter.length > 0) countQuery = countQuery.in('channel_type', channelFilter);
-        if (sinceTs) countQuery = countQuery.gte('last_message_date', sinceTs);
-        const { count } = await countQuery;
-        if (typeof count === 'number' && count > 0) {
-          trueTotal = maxItems > 0 ? Math.min(maxItems, count) : count;
-        }
-      } catch (e) {
-        console.warn('[conv-replay] total count query failed, using batch size:', (e as any)?.message);
+    if (uploadId) {
+      const { data: uploadRow, error: upErr } = await supabase
+        .from('migration_uploaded_sources')
+        .select('id, domain, records, row_count')
+        .eq('id', uploadId)
+        .single();
+      if (upErr || !uploadRow) {
+        const msg = `Uploaded source ${uploadId} not found: ${upErr?.message || 'missing'}`;
+        await finishJob(supabase, jobId, 'failed', msg);
+        return new Response(JSON.stringify({ error: msg }), { status: 400 });
       }
-      await startJob(supabase, jobId, trueTotal);
+      if (uploadRow.domain !== 'conversations_replay') {
+        const msg = `Uploaded source domain mismatch: got '${uploadRow.domain}', expected 'conversations_replay'`;
+        await finishJob(supabase, jobId, 'failed', msg);
+        return new Response(JSON.stringify({ error: msg }), { status: 400 });
+      }
+      const allRows = (uploadRow.records as any[]) || [];
+      const slice = allRows.slice(startOffset, startOffset + pullLimit);
+      conversations = slice.map((r, i) => normaliseUploadedReplayConversation(r, startOffset + i));
+      console.log(`[conv-replay] using upload ${uploadId} rows=${allRows.length} slice=[${startOffset},${startOffset + slice.length})`);
+
+      if (!isResume) {
+        const trueTotal = maxItems > 0 ? Math.min(maxItems, allRows.length) : allRows.length;
+        await startJob(supabase, jobId, trueTotal);
+      } else {
+        console.log(`[conv-replay] RESUMING upload job=${jobId} dispatch#${checkpoint.dispatchCount} offset=${startOffset} pulled=${slice.length}`);
+      }
+    } else {
+      // Build the conversations query with optional channel + date filters.
+      let convQuery = supabase
+        .from('ghl_conversations')
+        .select('id, ghl_conversation_id, ghl_contact_id, channel_type, last_message_date, new_ghl_conversation_id, client_id, clients(primary_first_name, primary_surname)')
+        .order('created_at', { ascending: true })
+        .range(startOffset, startOffset + pullLimit - 1);
+      if (channelFilter.length > 0) {
+        convQuery = convQuery.in('channel_type', channelFilter);
+      }
+      if (sinceTs) {
+        convQuery = convQuery.gte('last_message_date', sinceTs);
+      }
+
+      const { data: rows, error: convErr } = await convQuery;
+      if (convErr) throw new Error(`Conversations query failed: ${convErr.message}`);
+      conversations = rows;
+
+      if (isResume) {
+        console.log(`[conv-replay] RESUMING job=${jobId} dispatch#${checkpoint.dispatchCount} offset=${startOffset} pulled=${conversations?.length || 0}`);
+      } else {
+        // Compute the TRUE total (not just this batch) so the UI progress bar is accurate.
+        let trueTotal = conversations?.length || 0;
+        try {
+          let countQuery = supabase
+            .from('ghl_conversations')
+            .select('id', { count: 'exact', head: true });
+          if (channelFilter.length > 0) countQuery = countQuery.in('channel_type', channelFilter);
+          if (sinceTs) countQuery = countQuery.gte('last_message_date', sinceTs);
+          const { count } = await countQuery;
+          if (typeof count === 'number' && count > 0) {
+            trueTotal = maxItems > 0 ? Math.min(maxItems, count) : count;
+          }
+        } catch (e) {
+          console.warn('[conv-replay] total count query failed, using batch size:', (e as any)?.message);
+        }
+        await startJob(supabase, jobId, trueTotal);
+      }
     }
 
     // Cumulative counters
