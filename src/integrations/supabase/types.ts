@@ -8771,35 +8771,79 @@ export type Database = {
           },
         ]
       }
+      migration_uploaded_source_chunks: {
+        Row: {
+          chunk_index: number
+          created_at: string
+          id: string
+          records: Json
+          row_count: number
+          upload_id: string
+        }
+        Insert: {
+          chunk_index: number
+          created_at?: string
+          id?: string
+          records: Json
+          row_count: number
+          upload_id: string
+        }
+        Update: {
+          chunk_index?: number
+          created_at?: string
+          id?: string
+          records?: Json
+          row_count?: number
+          upload_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "migration_uploaded_source_chunks_upload_id_fkey"
+            columns: ["upload_id"]
+            isOneToOne: false
+            referencedRelation: "migration_uploaded_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       migration_uploaded_sources: {
         Row: {
           created_at: string
           domain: string
+          expected_rows: number | null
           file_name: string | null
           id: string
           notes: string | null
+          progress_percent: number
           records: Json
           row_count: number
+          status: string
           uploaded_by: string | null
         }
         Insert: {
           created_at?: string
           domain: string
+          expected_rows?: number | null
           file_name?: string | null
           id?: string
           notes?: string | null
+          progress_percent?: number
           records?: Json
           row_count?: number
+          status?: string
           uploaded_by?: string | null
         }
         Update: {
           created_at?: string
           domain?: string
+          expected_rows?: number | null
           file_name?: string | null
           id?: string
           notes?: string | null
+          progress_percent?: number
           records?: Json
           row_count?: number
+          status?: string
           uploaded_by?: string | null
         }
         Relationships: []
@@ -10492,6 +10536,21 @@ export type Database = {
       }
     }
     Functions: {
+      append_migration_upload_chunk: {
+        Args: {
+          _chunk_index: number
+          _expected_rows?: number
+          _max_records?: number
+          _records: Json
+          _upload_id: string
+        }
+        Returns: {
+          id: string
+          progress_percent: number
+          row_count: number
+          status: string
+        }[]
+      }
       append_migration_upload_records: {
         Args: { _max_records?: number; _records: Json; _upload_id: string }
         Returns: {
@@ -10534,6 +10593,14 @@ export type Database = {
       cleanup_expired_transport_cache: { Args: never; Returns: undefined }
       cleanup_old_health_logs: { Args: never; Returns: undefined }
       extract_email_address: { Args: { raw_text: string }; Returns: string }
+      finalize_migration_upload: {
+        Args: { _upload_id: string }
+        Returns: {
+          id: string
+          row_count: number
+          status: string
+        }[]
+      }
       fp_resolve_partner_for_deal: {
         Args: { _deal_id: string }
         Returns: {
@@ -10578,6 +10645,16 @@ export type Database = {
           expired_entries: number
           live_data: number
           total_entries: number
+        }[]
+      }
+      get_migration_upload_progress: {
+        Args: { _upload_id: string }
+        Returns: {
+          expected_rows: number
+          id: string
+          progress_percent: number
+          row_count: number
+          status: string
         }[]
       }
       get_recent_activities: {
