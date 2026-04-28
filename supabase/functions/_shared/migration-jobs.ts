@@ -419,7 +419,7 @@ export function classifyError(msg: string): { category: string; retryable: boole
 export async function recordIdMapping(
   supabase: any,
   params: {
-    resource_type: 'contact' | 'opportunity' | 'conversation' | 'note' | 'pipeline' | 'pipeline_stage';
+    resource_type: 'contact' | 'opportunity' | 'conversation' | 'conversation_message' | 'note' | 'pipeline' | 'pipeline_stage';
     old_ghl_id: string;
     new_ghl_id: string;
     source_account_label: 'legacy' | 'new';
