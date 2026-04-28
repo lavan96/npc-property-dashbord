@@ -322,23 +322,44 @@ Deno.serve(async (req) => {
         }), { headers: { 'Content-Type': 'application/json' } });
       }
 
-      const p = new URLSearchParams({ locationId: creds.locationId!, limit: String(PAGE_LIMIT) });
-      if (nextStartAfterId) p.set('startAfterId', nextStartAfterId);
-      if (nextStartAfter) {
-        // GHL requires `startAfter` as a numeric millisecond timestamp.
-        const numeric = /^\d+$/.test(String(nextStartAfter))
-          ? String(nextStartAfter)
-          : String(new Date(nextStartAfter).getTime());
-        p.set('startAfter', numeric);
-      }
+      let convs: any[];
+      let data: any = {};
+      if (uploadedRecords) {
+        // Iterate the staged rows in PAGE_LIMIT-sized slices using a
+        // numeric offset stored in `nextStartAfter`. The cursor advances
+        // at the bottom of the loop just like the live path.
+        const offset = Number(nextStartAfter) || 0;
+        const slice = uploadedRecords.slice(offset, offset + PAGE_LIMIT);
+        convs = slice.map((rec, i) => normaliseUploadedConversation(rec, offset + i));
+        data = {
+          conversations: convs,
+          total: uploadedRecords.length,
+          meta: {
+            total: uploadedRecords.length,
+            startAfter: offset + slice.length < uploadedRecords.length
+              ? String(offset + slice.length) : null,
+            startAfterId: null,
+          },
+        };
+      } else {
+        const p = new URLSearchParams({ locationId: creds.locationId!, limit: String(PAGE_LIMIT) });
+        if (nextStartAfterId) p.set('startAfterId', nextStartAfterId);
+        if (nextStartAfter) {
+          // GHL requires `startAfter` as a numeric millisecond timestamp.
+          const numeric = /^\d+$/.test(String(nextStartAfter))
+            ? String(nextStartAfter)
+            : String(new Date(nextStartAfter).getTime());
+          p.set('startAfter', numeric);
+        }
 
-      const r = await ctx.ghlFetch(`${GHL_API_BASE}/conversations/search?${p}`, { headers }, 3, 'source');
-      if (!r.ok) {
-        const t = await r.text();
-        throw new Error(`Source conversations fetch failed: ${r.status} ${t.substring(0, 200)}`);
+        const r = await ctx.ghlFetch(`${GHL_API_BASE}/conversations/search?${p}`, { headers }, 3, 'source');
+        if (!r.ok) {
+          const t = await r.text();
+          throw new Error(`Source conversations fetch failed: ${r.status} ${t.substring(0, 200)}`);
+        }
+        data = await r.json();
+        convs = data.conversations || [];
       }
-      const data = await r.json();
-      const convs: any[] = data.conversations || [];
       if (firstPage) {
         const total = data.total ?? data.meta?.total ?? 0;
         // Don't clobber a healthy persisted total on resume.
