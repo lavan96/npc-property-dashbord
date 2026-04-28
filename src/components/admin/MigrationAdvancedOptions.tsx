@@ -20,6 +20,10 @@ export interface AdvancedFlagsState {
   pipeline_filter: string; // comma-separated names
   stage_filter: string;    // comma-separated names
   assigned_user_strategy: 'single' | 'map_by_email' | 'omit';
+  /** Range/offset operator controls — workaround for GHL ordering quirks. */
+  skip_count: string;       // numeric string; '' = no skip
+  start_after_iso: string;  // ISO timestamp; '' = no seed
+  start_after_id: string;   // optional companion to start_after_iso
 
   // Conversations
   message_direction: 'all' | 'inbound' | 'outbound';
