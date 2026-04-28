@@ -391,6 +391,111 @@ export default function Conversations() {
     return format(d, 'dd/MM/yy');
   };
 
+  // ── Full message history export (one row per message) ──
+  const exportFullMessageHistory = async (fileFormat: 'csv' | 'xlsx') => {
+    if (filteredConversations.length === 0) {
+      toast.error('No conversations in current view to export');
+      return;
+    }
+    setIsExportingHistory(true);
+    const toastId = toast.loading(`Preparing ${filteredConversations.length} conversations...`);
+    try {
+      const headers = [
+        'Conversation #', 'Message #', 'Client Name', 'Client Email',
+        'Channel', 'Contact ID (GHL)', 'Conversation ID (GHL)', 'Message ID (GHL)',
+        'Direction', 'Sender', 'Date', 'Time', 'Timestamp (ISO)',
+        'Message Type', 'Status', 'Body', 'Attachments',
+      ];
+      const indexed = filteredConversations.map((c, i) => ({ conv: c, idx: i + 1 }));
+      const rows: (string | number)[][] = [];
+      const queue = [...indexed];
+      let processed = 0;
+
+      const fetchConvMessages = async (conv: ConversationRow) => {
+        const { data, error } = await invokeSecureFunction('get-client-data', {
+          listMode: true,
+          listOptions: {
+            table: 'ghl_conversation_messages',
+            filters: { conversation_id: conv.id },
+            orderBy: 'ghl_date_added',
+            order_asc: true,
+          },
+        });
+        if (error) throw new Error(error.message);
+        return (data?.records || []) as Message[];
+      };
+
+      const concurrency = Math.min(5, queue.length);
+      const workers = Array.from({ length: concurrency }, async () => {
+        while (queue.length > 0) {
+          const item = queue.shift();
+          if (!item) break;
+          const { conv, idx } = item;
+          try {
+            const msgs = await fetchConvMessages(conv);
+            if (msgs.length === 0) {
+              rows.push([
+                idx, 0, conv.client_name || '', conv.client_email || '',
+                normalizeChannel(conv.channel_type), conv.ghl_contact_id || '',
+                conv.ghl_conversation_id || '', '', '', '', '', '', '', '', '',
+                '(no messages)', '',
+              ]);
+            } else {
+              msgs.forEach((m, i) => {
+                const d = m.ghl_date_added ? new Date(m.ghl_date_added) : null;
+                rows.push([
+                  idx, i + 1, conv.client_name || '', conv.client_email || '',
+                  normalizeChannel(m.channel_type || conv.channel_type),
+                  conv.ghl_contact_id || '', conv.ghl_conversation_id || '',
+                  m.ghl_message_id || '', m.direction || '', m.sender_name || '',
+                  d ? format(d, 'yyyy-MM-dd') : '', d ? format(d, 'HH:mm:ss') : '',
+                  d ? d.toISOString() : '', m.message_type || m.content_type || '',
+                  m.message_status || '', m.body || '',
+                  (m.attachment_urls || []).join(' | '),
+                ]);
+              });
+            }
+          } catch (e: any) {
+            console.warn('[exportFullMessageHistory] failed for conv', conv.id, e?.message);
+          } finally {
+            processed++;
+            if (processed % 10 === 0 || processed === filteredConversations.length) {
+              toast.loading(`Fetched ${processed}/${filteredConversations.length} conversations...`, { id: toastId });
+            }
+          }
+        }
+      });
+      await Promise.all(workers);
+
+      // Sort by conversation index then message index for deterministic output
+      rows.sort((a, b) => (a[0] as number) - (b[0] as number) || (a[1] as number) - (b[1] as number));
+
+      const fileBase = `ghl-conversations-full-history-${format(new Date(), 'yyyy-MM-dd')}`;
+      if (fileFormat === 'csv') {
+        const escape = (v: any) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+        const csv = [headers, ...rows].map(r => r.map(escape).join(',')).join('\n');
+        const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `${fileBase}.csv`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      } else {
+        const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+        ws['!cols'] = headers.map((h) => ({ wch: Math.min(Math.max(h.length + 2, 14), 60) }));
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Message History');
+        XLSX.writeFile(wb, `${fileBase}.xlsx`);
+      }
+      toast.success(`Exported ${rows.length} messages from ${filteredConversations.length} conversations`, { id: toastId });
+    } catch (err: any) {
+      console.error('Full history export failed:', err);
+      toast.error(`Export failed: ${err?.message || 'Unknown error'}`, { id: toastId });
+    } finally {
+      setIsExportingHistory(false);
+    }
+  };
+
   const ghlExportFields = [
     { key: 'first_name', label: 'First Name' },
     { key: 'last_name', label: 'Last Name' },
