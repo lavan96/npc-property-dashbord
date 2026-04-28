@@ -467,6 +467,12 @@ export default function Conversations() {
 
         if (!job) continue;
 
+        const lastServerUpdate = job.updated_at || job.started_at || job.created_at;
+        const staleMs = lastServerUpdate ? Date.now() - new Date(lastServerUpdate).getTime() : 0;
+        if ((job.status === 'pending' || job.status === 'processing') && staleMs > 3 * 60 * 1000) {
+          throw new Error('Export worker stopped responding. Please retry the export.');
+        }
+
         setExportJobStatus({
           jobId,
           status: job.status,
