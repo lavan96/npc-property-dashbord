@@ -460,12 +460,27 @@ Deno.serve(async (req) => {
     // around that single bug.
     let nextStartAfterId: string | null = checkpoint.cursor.startAfterId || null;
     let nextStartAfter: string | null = checkpoint.cursor.startAfter || null;
+    // Apply operator-supplied seed cursor ONLY on a fresh dispatch (no
+    // existing checkpoint), so a "skip past the stuck region" instruction
+    // doesn't get clobbered, and a normal resume isn't accidentally rewound.
+    if (!nextStartAfterId && !nextStartAfter && (seedStartAfterIso || seedStartAfterId)) {
+      nextStartAfter = seedStartAfterIso;
+      nextStartAfterId = seedStartAfterId;
+      console.log(`[opps-worker] Seeded cursor from payload: startAfter=${nextStartAfter || '(none)'} startAfterId=${nextStartAfterId || '(none)'}`);
+    }
     // Track the LAST opp this leg actually touched so partialExit can
     // checkpoint exactly where we are mid-page (not where we started, and
     // not the page-end cursor that jumps over unprocessed items).
     let lastProcessedOppId: string | null = nextStartAfterId;
     let lastProcessedOppAt: string | null = nextStartAfter;
     let firstPage = true;
+    // skip_count is honoured ONCE per job (first leg only). Persist a flag
+    // in payload so resumes don't re-skip another N records.
+    let skipRemaining = (skipCount > 0 && !isResume && !payload.skip_count_consumed)
+      ? skipCount : 0;
+    if (skipRemaining > 0) {
+      console.log(`[opps-worker] Will skip first ${skipRemaining} opps from API response (one-time, before processing).`);
+    }
     const exitCursor = (): { startAfterId: string | null; startAfter: string | null } => ({
       startAfterId: lastProcessedOppId,
       startAfter: lastProcessedOppAt,
