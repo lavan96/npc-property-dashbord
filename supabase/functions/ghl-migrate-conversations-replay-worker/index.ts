@@ -320,8 +320,39 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // ── STAGE 1: Create the conversation shell in target ──────────
+      // ── STAGE 1: Find-or-create the conversation shell in target ──
+      // GHL returns 400 "Conversation already exists" when a contact already
+      // has a conversation of the same channel. In that case we must look up
+      // the existing conversation and reuse its id instead of failing.
       let newConvId: string | null = null;
+      const lookupExistingConv = async (): Promise<string | null> => {
+        try {
+          const params = new URLSearchParams({
+            locationId: targetCreds.locationId,
+            contactId: targetContactId,
+          });
+          const r = await ctx.ghlFetch(
+            `${GHL_API_BASE}/conversations/search?${params}`,
+            { method: 'GET', headers: targetHeaders },
+            3, 'target',
+          );
+          if (!r.ok) return null;
+          const j = await r.json();
+          const list: any[] = j?.conversations || [];
+          if (list.length === 0) return null;
+          // Prefer same channel/type, else most recently updated
+          const sameType = list.find((c) =>
+            String(c.type || '').toLowerCase() === String(conv.channel_type || '').toLowerCase()
+            || mapChannelLoose(c.type) === conv.channel_type
+          );
+          const pick = sameType || list.sort((a, b) =>
+            new Date(b.dateUpdated || b.lastMessageDate || 0).getTime() -
+            new Date(a.dateUpdated || a.lastMessageDate || 0).getTime()
+          )[0];
+          return pick?.id || null;
+        } catch { return null; }
+      };
+
       try {
         const shellRes = await ctx.ghlFetch(`${GHL_API_BASE}/conversations/`, {
           method: 'POST',
@@ -335,27 +366,53 @@ Deno.serve(async (req) => {
         if (!shellRes.ok) {
           const t = await shellRes.text();
           const parsed = parseGhlError(t);
-          const code = parsed.error_code || `GHL_${shellRes.status}`;
-          const authDetail = (shellRes.status === 401 || shellRes.status === 403) && targetAuthHint
-            ? ` ${targetAuthHint}` : '';
-          totalFailed++;
-          await recordItem(supabase, {
-            job_id: jobId, source_id: conv.id, entity_label: label,
-            status: 'failed',
-            error_message: `Shell create [${code}] ${shellRes.status}: ${(parsed.message || t).substring(0, 240)}${authDetail}`.substring(0, 900),
-          });
-          continue;
-        }
+          const msg = (parsed.message || t || '').toLowerCase();
+          const isAlreadyExists =
+            shellRes.status === 400 &&
+            (msg.includes('already exists') || msg.includes('conversation already'));
 
-        const shellData = await shellRes.json();
-        newConvId = shellData?.conversation?.id || shellData?.id || null;
-        if (!newConvId) {
-          totalFailed++;
-          await recordItem(supabase, {
-            job_id: jobId, source_id: conv.id, entity_label: label,
-            status: 'failed', error_message: 'Shell create returned no conversation id',
-          });
-          continue;
+          if (isAlreadyExists) {
+            // Reuse existing conversation in target
+            const existingId = await lookupExistingConv();
+            if (existingId) {
+              newConvId = existingId;
+              console.log(`[conv-replay] Reusing existing target conversation ${existingId} for contact ${targetContactId}`);
+            } else {
+              totalFailed++;
+              await recordItem(supabase, {
+                job_id: jobId, source_id: conv.id, entity_label: label,
+                status: 'failed',
+                error_message: `Shell exists in target but lookup returned no conversation for contact ${targetContactId}`,
+              });
+              continue;
+            }
+          } else {
+            const code = parsed.error_code || `GHL_${shellRes.status}`;
+            const authDetail = (shellRes.status === 401 || shellRes.status === 403) && targetAuthHint
+              ? ` ${targetAuthHint}` : '';
+            totalFailed++;
+            await recordItem(supabase, {
+              job_id: jobId, source_id: conv.id, entity_label: label,
+              status: 'failed',
+              error_message: `Shell create [${code}] ${shellRes.status}: ${(parsed.message || t).substring(0, 240)}${authDetail}`.substring(0, 900),
+            });
+            continue;
+          }
+        } else {
+          const shellData = await shellRes.json();
+          newConvId = shellData?.conversation?.id || shellData?.id || null;
+          if (!newConvId) {
+            // Some GHL responses omit the id on 200 — fall back to lookup
+            newConvId = await lookupExistingConv();
+          }
+          if (!newConvId) {
+            totalFailed++;
+            await recordItem(supabase, {
+              job_id: jobId, source_id: conv.id, entity_label: label,
+              status: 'failed', error_message: 'Shell create returned no conversation id',
+            });
+            continue;
+          }
         }
 
         // Persist mapping immediately so re-runs don't re-create the shell
