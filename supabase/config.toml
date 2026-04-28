@@ -606,6 +606,10 @@ request_timeout = 400
 verify_jwt = false
 request_timeout = 400
 
+[functions.ghl-migrate-conversations-replay-worker]
+verify_jwt = false
+request_timeout = 400
+
 [functions.ghl-test-credentials]
 verify_jwt = false
 request_timeout = 30
