@@ -341,10 +341,11 @@ Deno.serve(async (req) => {
           const list: any[] = j?.conversations || [];
           if (list.length === 0) return null;
           // Prefer same channel/type, else most recently updated
-          const sameType = list.find((c) =>
-            String(c.type || '').toLowerCase() === String(conv.channel_type || '').toLowerCase()
-            || mapChannelLoose(c.type) === conv.channel_type
-          );
+          const wantType = String(conv.channel_type || '').toLowerCase();
+          const sameType = list.find((c) => {
+            const t = String(c.type || '').toLowerCase();
+            return t === wantType || t.includes(wantType) || wantType.includes(t);
+          });
           const pick = sameType || list.sort((a, b) =>
             new Date(b.dateUpdated || b.lastMessageDate || 0).getTime() -
             new Date(a.dateUpdated || a.lastMessageDate || 0).getTime()
