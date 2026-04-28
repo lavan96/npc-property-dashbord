@@ -96,6 +96,83 @@ function isActivityChannel(channel: string | null | undefined): boolean {
   return c === 'activity' || c.startsWith('activity_') || c === 'system';
 }
 
+// ─── Uploaded CSV/XLSX support (one row per conversation, messages embedded) ───
+// Accepts flexible column headers exported from spreadsheets. The replay
+// worker treats each row as a self-contained conversation: a contact full
+// name + channel + a JSON / delimited list of messages. The worker then
+// resolves the contact in the target GHL by name and replays the messages
+// in chronological order — exactly like the mirror-driven path.
+function pickFirst(row: Record<string, any>, keys: string[]): string {
+  for (const k of keys) {
+    const variants = [k, k.toLowerCase(), k.toUpperCase(), k.replace(/_/g, ' ')];
+    for (const v of variants) {
+      if (row[v] !== undefined && row[v] !== null && String(row[v]).trim() !== '') {
+        return String(row[v]).trim();
+      }
+    }
+  }
+  return '';
+}
+
+function parseUploadedMessages(raw: string): any[] {
+  if (!raw) return [];
+  // 1) JSON array of message objects
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed;
+  } catch { /* not JSON */ }
+  // 2) Newline-delimited "[direction|channel|date] body" (best-effort)
+  const lines = raw.split(/\r?\n+/).map((l) => l.trim()).filter(Boolean);
+  return lines.map((line) => {
+    const m = line.match(/^\[(inbound|outbound)?\|?([a-z_]*)?\|?([^\]]*)\]\s*(.*)$/i);
+    if (m) {
+      return {
+        direction: (m[1] || 'outbound').toLowerCase(),
+        channel_type: m[2] || null,
+        ghl_date_added: m[3] || null,
+        body: m[4] || '',
+      };
+    }
+    return { direction: 'outbound', body: line };
+  });
+}
+
+function normaliseUploadedReplayConversation(row: Record<string, any>, idx: number) {
+  const fullName = pickFirst(row, [
+    'full_name', 'fullName', 'contact_full_name', 'contact_name', 'name',
+  ]) || [pickFirst(row, ['first_name', 'firstName', 'primary_first_name']),
+          pickFirst(row, ['last_name', 'lastName', 'surname', 'primary_surname'])]
+        .filter(Boolean).join(' ').trim();
+
+  const channel = pickFirst(row, ['channel', 'channel_type', 'type']) || 'sms';
+  const messagesRaw = pickFirst(row, [
+    'messages', 'messages_json', 'message_log', 'history', 'conversation',
+  ]);
+  const embeddedMessages = parseUploadedMessages(messagesRaw);
+  const lastMsgDate = pickFirst(row, ['last_message_date', 'last_message_at', 'updated_at']);
+  return {
+    // Mimic the shape returned by the supabase select() so downstream code
+    // doesn't need to branch beyond the message source.
+    id: `upload:${idx}`,
+    ghl_conversation_id: pickFirst(row, ['ghl_conversation_id', 'conversation_id']) || `upload-${idx}`,
+    ghl_contact_id: pickFirst(row, ['ghl_contact_id', 'contact_id']) || null,
+    channel_type: channel,
+    last_message_date: lastMsgDate || null,
+    new_ghl_conversation_id: null,
+    client_id: null,
+    clients: { primary_first_name: fullName.split(' ')[0] || '', primary_surname: fullName.split(' ').slice(1).join(' ') || '' },
+    __uploadedMessages: embeddedMessages.map((m, j) => ({
+      id: `upload:${idx}:${j}`,
+      ghl_message_id: m.ghl_message_id || `upload-${idx}-${j}`,
+      direction: (m.direction || 'outbound').toLowerCase(),
+      channel_type: m.channel_type || channel,
+      body: m.body ?? m.message ?? '',
+      attachment_urls: Array.isArray(m.attachment_urls) ? m.attachment_urls : [],
+      ghl_date_added: m.ghl_date_added || m.date || null,
+      new_ghl_message_id: null,
+    })),
+  };
+
 Deno.serve(async (req) => {
   const startedAt = Date.now();
   if (req.method === 'OPTIONS') return new Response('ok');
