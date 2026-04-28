@@ -131,7 +131,70 @@ async function findExistingTargetOpportunity(
   }
 }
 
-Deno.serve(async (req) => {
+/**
+ * Normalise an uploaded CSV/XLSX row to the same shape /opportunities/search
+ * returns. Resolves pipeline/stage by NAME against the live source pipelines
+ * when only names are supplied (so analysts don't need raw GHL ids).
+ */
+function normaliseUploadedOpportunity(
+  rec: any,
+  index: number,
+  sourcePipelines: any[],
+): any {
+  const get = (...keys: string[]): string => {
+    if (!rec || typeof rec !== 'object') return '';
+    const lower: Record<string, any> = {};
+    for (const k of Object.keys(rec)) lower[k.toLowerCase().trim().replace(/[\s_-]+/g, '')] = rec[k];
+    for (const k of keys) {
+      const norm = k.toLowerCase().trim().replace(/[\s_-]+/g, '');
+      const v = lower[norm];
+      if (v !== undefined && v !== null && String(v).trim() !== '') return String(v).trim();
+    }
+    return '';
+  };
+  const num = (s: string): number | null => {
+    if (!s) return null;
+    const n = Number(s.replace(/[$,\s]/g, ''));
+    return Number.isFinite(n) ? n : null;
+  };
+
+  // Pipeline resolution: prefer explicit pipelineId, otherwise look up by name
+  let pipelineId = get('pipelineId', 'pipeline_id');
+  let pipelineStageId = get('pipelineStageId', 'pipeline_stage_id', 'stageId', 'stage_id');
+  const pipelineName = get('pipelineName', 'pipeline_name', 'pipeline');
+  const stageName = get('stageName', 'stage_name', 'pipelineStageName', 'pipeline_stage_name', 'stage');
+
+  if (!pipelineId && pipelineName) {
+    const sp = sourcePipelines.find((p) => String(p.name || '').trim().toLowerCase() === pipelineName.toLowerCase());
+    if (sp) pipelineId = sp.id;
+  }
+  if (!pipelineStageId && pipelineId && stageName) {
+    const sp = sourcePipelines.find((p) => p.id === pipelineId);
+    const st = sp?.stages?.find((s: any) => String(s.name || '').trim().toLowerCase() === stageName.toLowerCase());
+    if (st) pipelineStageId = st.id;
+  }
+
+  return {
+    id: get('id', 'opportunityId', 'opportunity_id', 'legacy_id') || `upload-opp-${index}`,
+    name: get('name', 'title', 'opportunityName', 'opportunity_name'),
+    contactId: get('contactId', 'contact_id', 'ghl_contact_id'),
+    contactName: get('contactName', 'contact_name'),
+    firstName: get('firstName', 'first_name'),
+    lastName: get('lastName', 'last_name'),
+    email: get('email'),
+    phone: get('phone'),
+    pipelineId,
+    pipelineStageId,
+    monetaryValue: num(get('monetaryValue', 'monetary_value', 'value', 'amount')),
+    status: get('status').toLowerCase() || 'open',
+    assignedTo: get('assignedTo', 'assigned_to', 'assigned_user_id'),
+    source: get('source'),
+    dateAdded: get('dateAdded', 'date_added', 'created_at') || null,
+    updatedAt: get('updatedAt', 'updated_at', 'date_updated') || null,
+  };
+}
+
+
   const startedAt = Date.now();
   if (req.method === 'OPTIONS') return new Response('ok');
   if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 });
