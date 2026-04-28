@@ -195,6 +195,37 @@ Deno.serve(async (req) => {
 
     if (!jobId) return new Response(JSON.stringify({ error: 'job_id required' }), { status: 400 });
 
+    // ── Uploaded-source mode ──────────────────────────────────────────
+    // When `payload.upload_id` is supplied, the worker replaces live GHL
+    // pagination with an in-memory iteration over the staged CSV/XLSX rows.
+    // The pipeline/stage/contact resolution layers downstream are unchanged
+    // — uploaded rows are normalised to the same shape /opportunities/search
+    // returns. Users may supply pipeline/stage by NAME (pipelineName,
+    // stageName); the worker resolves those against source pipelines fetched
+    // below so the existing `pipelineMap` lookup keeps working.
+    const uploadId: string | null = typeof payload.upload_id === 'string' && payload.upload_id
+      ? payload.upload_id : null;
+    let uploadedRecords: any[] | null = null;
+    let uploadFileName: string | null = null;
+    if (uploadId) {
+      const { data: uploadRow, error: uploadErr } = await supabase
+        .from('migration_uploaded_sources')
+        .select('domain, file_name, records')
+        .eq('id', uploadId)
+        .maybeSingle();
+      if (uploadErr || !uploadRow) {
+        await finishJob(supabase, jobId, 'failed', `Upload ${uploadId} not found: ${uploadErr?.message || 'no row'}`);
+        return new Response(JSON.stringify({ error: 'upload_not_found' }), { status: 400 });
+      }
+      if (uploadRow.domain !== 'opportunities') {
+        await finishJob(supabase, jobId, 'failed', `Upload ${uploadId} is for domain "${uploadRow.domain}", expected "opportunities"`);
+        return new Response(JSON.stringify({ error: 'upload_domain_mismatch' }), { status: 400 });
+      }
+      uploadedRecords = Array.isArray(uploadRow.records) ? uploadRow.records : [];
+      uploadFileName = uploadRow.file_name;
+      console.log(`[opps-worker] uploaded-source mode: upload_id=${uploadId} file="${uploadFileName}" rows=${uploadedRecords.length}`);
+    }
+
     const sourceCreds = getGhlCredentials(sourceAccount);
     const targetCreds = getGhlCredentials(targetAccount);
     const sErr = validateGhlCredentials(sourceCreds);
