@@ -34,6 +34,8 @@ import {
   RefreshCw,
   ChevronDown,
   ExternalLink,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -116,6 +118,18 @@ interface Message {
   sender_name: string | null;
 }
 
+interface ExportJobStatus {
+  jobId: string;
+  status: 'starting' | 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
+  fileFormat: 'csv' | 'xlsx';
+  totalItems: number;
+  processedItems: number;
+  totalMessages: number;
+  signedUrl?: string | null;
+  fileSizeBytes?: number | null;
+  errorSummary?: string | null;
+}
+
 // ── Sync helper ──────────────────────────────────────────────
 async function triggerGhlSync() {
   const { data, error } = await invokeSecureFunction('sync-ghl-conversations', { mode: 'incremental' });
@@ -143,6 +157,7 @@ export default function Conversations() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [isExportingHistory, setIsExportingHistory] = useState(false);
+  const [exportJobStatus, setExportJobStatus] = useState<ExportJobStatus | null>(null);
   
   // Resizable panel state
   const [convPanelWidth, setConvPanelWidth] = useState(360);
