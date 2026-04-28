@@ -603,6 +603,23 @@ Deno.serve(async (req) => {
           break;
         }
 
+        // ── One-time skip_count: drop the first N opps we see, advancing
+        // the cursor along the way so a resume picks up after the skipped
+        // region (not at the original start of the list).
+        if (skipRemaining > 0) {
+          skipRemaining--;
+          lastProcessedOppId = opp.id || lastProcessedOppId;
+          lastProcessedOppAt = opp.updatedAt || opp.dateAdded || lastProcessedOppAt;
+          if (skipRemaining === 0) {
+            // Persist the "consumed" flag so future legs don't re-skip.
+            try {
+              await mergeJobPayload(supabase, jobId, { skip_count_consumed: true });
+            } catch { /* non-fatal */ }
+            console.log(`[opps-worker] skip_count exhausted; resuming normal processing at id=${lastProcessedOppId}`);
+          }
+          continue;
+        }
+
         totalProcessed++;
         // Track checkpoint position the moment we see this opp. Whether we
         // skip, fail, or successfully migrate, the cursor must advance —
