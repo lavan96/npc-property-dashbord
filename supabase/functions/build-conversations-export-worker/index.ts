@@ -117,8 +117,8 @@ Deno.serve(async (req) => {
 
     // ── 1. Fetch all conversation rows in pages of 1000 by id ──
     const conversations: any[] = [];
-    for (let i = 0; i < conversationIds.length; i += PAGE_SIZE) {
-      const chunk = conversationIds.slice(i, i + PAGE_SIZE);
+    for (let i = 0; i < conversationIds.length; i += IN_CHUNK_SIZE) {
+      const chunk = conversationIds.slice(i, i + IN_CHUNK_SIZE);
       const { data, error } = await withRetry('fetch conversations', () =>
         supabase.from('ghl_conversations')
           .select('id, ghl_conversation_id, ghl_contact_id, channel_type, client_id')
