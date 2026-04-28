@@ -360,7 +360,7 @@ export default function GhlMigration() {
 // Phase 2B: Worker dispatch + job monitor
 // ────────────────────────────────────────────────────────────────────────────
 function MigrationWorkersPanel() {
-  const [domain, setDomain] = useState<'contacts' | 'opportunities' | 'conversations' | 'notes'>('contacts');
+  const [domain, setDomain] = useState<'contacts' | 'opportunities' | 'conversations' | 'conversations_replay' | 'notes'>('contacts');
   const [source, setSource] = useState<Account>('legacy');
   const [target, setTarget] = useState<Account>('new');
   const [dryRun, setDryRun] = useState(true);
@@ -470,7 +470,7 @@ function MigrationWorkersPanel() {
         write_mode: 'create_first',
         ...domainPatch,
       };
-      const dispatchDomain = async (dispatchDomain: 'contacts' | 'opportunities' | 'notes' | 'conversations', extraPayload?: Record<string, any>) => {
+      const dispatchDomain = async (dispatchDomain: 'contacts' | 'opportunities' | 'notes' | 'conversations' | 'conversations_replay', extraPayload?: Record<string, any>) => {
         return invokeSecureFunction<any>('migration-orchestrator', {
           domain: dispatchDomain, source_account: source, target_account: target, dry_run: dryRun,
           confirmation: dryRun ? undefined : 'MIGRATE-LIVE',
