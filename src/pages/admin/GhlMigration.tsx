@@ -383,24 +383,53 @@ function MigrationWorkersPanel() {
   const runBackfill = async (dryRun: boolean) => {
     setBackfilling(true);
     setBackfillResult(null);
+    const totals = {
+      phase1: { empty_shells_found: 0, processed: 0, messages_added: 0 },
+      phase2: { missing_contacts_found: 0, processed: 0, conversations_added: 0, messages_added: 0, genuinely_empty: 0 },
+      final_audit: { total_conversations: 0, total_messages: 0 },
+    };
     try {
-      const res = await invokeSecureFunction<any>(
-        'ghl-legacy-backfill-gaps',
-        { dry_run: dryRun, max_shells: 1000, max_contacts: 1000 },
-        { timeoutMs: 380000 },
-      );
-      if (res.error || !res.data?.success) {
-        toast.error(res.error?.message || res.data?.error || 'Backfill failed');
-      } else {
-        setBackfillResult(res.data);
-        const p1 = res.data.phase1;
-        const p2 = res.data.phase2;
-        toast.success(
-          dryRun
-            ? `Dry run: ${p1.empty_shells_found} shells, ${p2.missing_contacts_found} missing contacts`
-            : `Backfilled +${p1.messages_added} msgs (shells), +${p2.conversations_added}c/${p2.messages_added}m (contacts)`,
-        );
+      for (const phase of [1, 2] as const) {
+        let cursor = 0;
+        let safety = 0;
+        // loop chunks until done
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          if (++safety > 500) { toast.error('Backfill exceeded safety iterations'); break; }
+          const res = await invokeSecureFunction<any>(
+            'ghl-legacy-backfill-gaps',
+            { dry_run: dryRun, phase, cursor, batch_size: phase === 1 ? 25 : 12 },
+            { timeoutMs: 140000 },
+          );
+          if (res.error || !res.data?.success) {
+            toast.error(res.error?.message || res.data?.error || `Phase ${phase} failed`);
+            return;
+          }
+          const d = res.data;
+          if (phase === 1) {
+            totals.phase1.empty_shells_found = d.phase_total;
+            totals.phase1.processed += d.processed_in_batch || 0;
+            totals.phase1.messages_added += d.messages_added || 0;
+          } else {
+            totals.phase2.missing_contacts_found = d.phase_total;
+            totals.phase2.processed += d.processed_in_batch || 0;
+            totals.phase2.conversations_added += d.conversations_added || 0;
+            totals.phase2.messages_added += d.messages_added || 0;
+            totals.phase2.genuinely_empty += d.genuinely_empty_in_batch || 0;
+          }
+          if (d.final_audit) totals.final_audit = d.final_audit;
+          setBackfillResult({ ...totals });
+          if (dryRun || d.done) break;
+          cursor = d.cursor;
+          if (d.processed_in_batch === 0) break; // safety
+        }
+        // for dry-run, still loop both phases (each returns immediately with totals)
       }
+      toast.success(
+        dryRun
+          ? `Dry run: ${totals.phase1.empty_shells_found} shells, ${totals.phase2.missing_contacts_found} missing contacts`
+          : `Backfilled +${totals.phase1.messages_added} msgs (shells), +${totals.phase2.conversations_added}c/${totals.phase2.messages_added}m (contacts)`,
+      );
     } finally { setBackfilling(false); }
   };
 
