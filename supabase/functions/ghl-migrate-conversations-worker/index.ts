@@ -176,7 +176,7 @@ Deno.serve(async (req) => {
         console.log(`[conv-worker] PAUSE signal — checkpointing at ${totalProcessed}`);
         await partialExit(
           supabase, jobId,
-          { nextPage },
+          { startAfter: nextStartAfter, startAfterId: nextStartAfterId },
           progressPatch(),
         );
         return new Response(JSON.stringify({
@@ -190,7 +190,7 @@ Deno.serve(async (req) => {
         console.warn(`[conv-worker] Circuit breaker tripped at ${totalProcessed} processed — handing off to dispatcher for cool-off`);
         await partialExit(
           supabase, jobId,
-          { nextPage },
+          { startAfter: nextStartAfter, startAfterId: nextStartAfterId },
           progressPatch(),
         );
         return new Response(JSON.stringify({
@@ -202,7 +202,7 @@ Deno.serve(async (req) => {
       if (Date.now() - startedAt > MAX_RUNTIME_MS) {
         await partialExit(
           supabase, jobId,
-          { nextPage },
+          { startAfter: nextStartAfter, startAfterId: nextStartAfterId },
           progressPatch(),
         );
         return new Response(JSON.stringify({
@@ -212,7 +212,14 @@ Deno.serve(async (req) => {
       }
 
       const p = new URLSearchParams({ locationId: creds.locationId!, limit: String(PAGE_LIMIT) });
-      if (nextPage) p.set('startAfter', nextPage);
+      if (nextStartAfterId) p.set('startAfterId', nextStartAfterId);
+      if (nextStartAfter) {
+        // GHL requires `startAfter` as a numeric millisecond timestamp.
+        const numeric = /^\d+$/.test(String(nextStartAfter))
+          ? String(nextStartAfter)
+          : String(new Date(nextStartAfter).getTime());
+        p.set('startAfter', numeric);
+      }
 
       const r = await ctx.ghlFetch(`${GHL_API_BASE}/conversations/search?${p}`, { headers }, 3, 'source');
       if (!r.ok) {
