@@ -122,6 +122,20 @@ export function buildDomainPayloadPatch(domain: MigrationDomain, f: AdvancedFlag
       prefix_legacy_marker: f.prefix_legacy_marker,
     };
   }
+  if (domain === 'conversations_replay') {
+    const splitCsv = (s: string) => s.split(',').map((x) => x.trim()).filter(Boolean);
+    const days = parseInt(f.date_range_days, 10);
+    const maxMsgs = parseInt(f.max_messages_per_conv, 10);
+    return {
+      force_overwrite_existing: f.force_overwrite_existing,
+      skip_attachments: f.skip_attachments,
+      skip_activity: f.skip_activity,
+      prefix_legacy_marker: f.prefix_legacy_marker,
+      ...(f.channel_filter ? { channel_filter: splitCsv(f.channel_filter).map((s) => s.toLowerCase()) } : {}),
+      ...(Number.isFinite(days) && days > 0 ? { date_range_days: days } : {}),
+      ...(Number.isFinite(maxMsgs) && maxMsgs > 0 ? { max_messages_per_conv: maxMsgs } : {}),
+    };
+  }
   return {};
 }
 
