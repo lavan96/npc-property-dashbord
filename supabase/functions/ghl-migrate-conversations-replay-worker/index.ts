@@ -172,6 +172,7 @@ function normaliseUploadedReplayConversation(row: Record<string, any>, idx: numb
       new_ghl_message_id: null,
     })),
   };
+}
 
 Deno.serve(async (req) => {
   const startedAt = Date.now();
