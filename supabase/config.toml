@@ -618,3 +618,7 @@ request_timeout = 30
 verify_jwt = false
 request_timeout = 30
 
+
+[functions.ghl-legacy-backfill-gaps]
+verify_jwt = false
+request_timeout = 400
