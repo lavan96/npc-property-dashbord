@@ -54,6 +54,81 @@ function mapChannel(t: any): string {
   return m[s] || s;
 }
 
+/**
+ * Normalise a CSV/XLSX row into the same shape as a GHL `/conversations/search`
+ * conversation object, so the rest of the worker can iterate uploaded rows
+ * with no branching beyond "skip the live messages fetch".
+ *
+ * Recognised columns (case/spacing/underscore-insensitive):
+ *   id / conversation_id / ghl_conversation_id
+ *   contact_id / ghl_contact_id
+ *   type / channel / channel_type
+ *   last_message_body / snippet / body / message
+ *   last_message_date / last_message_at / date_updated / updated_at
+ *   unread_count / unread
+ *   direction / inbound (for single-message rows)
+ *   sent_at / date_added / date_created (for single-message rows)
+ *   message_id / ghl_message_id
+ */
+function normaliseUploadedConversation(rec: any, index: number): any {
+  const get = (...keys: string[]): string => {
+    if (!rec || typeof rec !== 'object') return '';
+    const lower: Record<string, any> = {};
+    for (const k of Object.keys(rec)) {
+      lower[k.toLowerCase().trim().replace(/[\s_-]+/g, '')] = rec[k];
+    }
+    for (const k of keys) {
+      const norm = k.toLowerCase().trim().replace(/[\s_-]+/g, '');
+      const v = lower[norm];
+      if (v !== undefined && v !== null && String(v).trim() !== '') return String(v).trim();
+    }
+    return '';
+  };
+
+  const id = get('id', 'conversation_id', 'ghl_conversation_id', 'conversationId')
+    || `upload-conv-${index}`;
+  const contactId = get('contact_id', 'ghl_contact_id', 'contactId') || null;
+  const type = get('type', 'channel', 'channel_type', 'message_type') || 'sms';
+  const lastBody = get('last_message_body', 'snippet', 'body', 'message', 'last_message');
+  const lastDate = get('last_message_date', 'last_message_at', 'date_updated', 'updated_at', 'date');
+  const unread = Number(get('unread_count', 'unread') || '0') || 0;
+
+  // Optional embedded single-message payload for "one row per message"
+  // exports — these get upserted alongside the conversation row.
+  const msgId = get('message_id', 'ghl_message_id');
+  const msgBody = get('message_body', 'message_text') || lastBody;
+  const msgDate = get('sent_at', 'date_added', 'date_created') || lastDate;
+  const msgDirRaw = get('direction', 'message_direction');
+  const inbound = String(get('inbound', 'is_inbound') || '').toLowerCase();
+  let msgDirection: string | undefined;
+  if (msgDirRaw) msgDirection = String(msgDirRaw).toLowerCase();
+  else if (inbound === 'true' || inbound === '1' || inbound === 'yes') msgDirection = 'inbound';
+  else if (inbound === 'false' || inbound === '0' || inbound === 'no') msgDirection = 'outbound';
+
+  const embeddedMessages: any[] = [];
+  if (msgId || (msgBody && msgDate)) {
+    embeddedMessages.push({
+      id: msgId || `${id}-msg-${index}`,
+      direction: msgDirection || 'outbound',
+      messageType: get('message_channel', 'msg_channel') || type,
+      body: msgBody,
+      dateAdded: msgDate,
+    });
+  }
+
+  return {
+    id,
+    contactId,
+    type,
+    snippet: lastBody,
+    lastMessageBody: lastBody,
+    lastMessageDate: lastDate || null,
+    dateUpdated: lastDate || null,
+    unreadCount: unread,
+    __uploadedMessages: embeddedMessages,
+  };
+}
+
 Deno.serve(async (req) => {
   const startedAt = Date.now();
   if (req.method === 'OPTIONS') return new Response('ok');
