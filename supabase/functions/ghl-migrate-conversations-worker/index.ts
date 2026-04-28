@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
     console.log(`[conv-worker] job=${jobId} from=${sourceAccount} dry_run=${dryRun}`);
 
     const checkpoint = await loadCheckpoint(supabase, jobId);
-    const isResume = body._resume === true || !!checkpoint.cursor.nextPage;
+    const isResume = body._resume === true || !!checkpoint.cursor.startAfter || !!checkpoint.cursor.startAfterId || !!checkpoint.cursor.nextPage;
     if (isResume) {
       console.log(`[conv-worker] RESUMING job=${jobId} dispatch#${checkpoint.dispatchCount}`);
     } else {
