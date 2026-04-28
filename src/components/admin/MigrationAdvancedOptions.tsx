@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Settings2 } from 'lucide-react';
 
-export type MigrationDomain = 'contacts' | 'opportunities' | 'conversations' | 'notes';
+export type MigrationDomain = 'contacts' | 'opportunities' | 'conversations' | 'conversations_replay' | 'notes';
 
 export interface AdvancedFlagsState {
   // Contacts (existing — kept for parity, controlled by parent)
@@ -31,10 +31,14 @@ export interface AdvancedFlagsState {
   date_range_days: string; // numeric string; '' = no limit
   skip_attachments: boolean;
 
-  // Notes
+  // Notes (also reused by conversations_replay)
   force_overwrite_existing: boolean;
   min_content_length: string; // numeric string
   prefix_legacy_marker: boolean;
+
+  // Conversations replay
+  skip_activity: boolean;
+  max_messages_per_conv: string; // numeric string; '' = no cap
 }
 
 export const DEFAULT_ADVANCED_FLAGS: AdvancedFlagsState = {
@@ -62,6 +66,9 @@ export const DEFAULT_ADVANCED_FLAGS: AdvancedFlagsState = {
   force_overwrite_existing: false,
   min_content_length: '',
   prefix_legacy_marker: false,
+
+  skip_activity: true,
+  max_messages_per_conv: '',
 };
 
 /**
@@ -113,6 +120,20 @@ export function buildDomainPayloadPatch(domain: MigrationDomain, f: AdvancedFlag
       force_overwrite_existing: f.force_overwrite_existing,
       ...(Number.isFinite(minLen) && minLen > 0 ? { min_content_length: minLen } : {}),
       prefix_legacy_marker: f.prefix_legacy_marker,
+    };
+  }
+  if (domain === 'conversations_replay') {
+    const splitCsv = (s: string) => s.split(',').map((x) => x.trim()).filter(Boolean);
+    const days = parseInt(f.date_range_days, 10);
+    const maxMsgs = parseInt(f.max_messages_per_conv, 10);
+    return {
+      force_overwrite_existing: f.force_overwrite_existing,
+      skip_attachments: f.skip_attachments,
+      skip_activity: f.skip_activity,
+      prefix_legacy_marker: f.prefix_legacy_marker,
+      ...(f.channel_filter ? { channel_filter: splitCsv(f.channel_filter).map((s) => s.toLowerCase()) } : {}),
+      ...(Number.isFinite(days) && days > 0 ? { date_range_days: days } : {}),
+      ...(Number.isFinite(maxMsgs) && maxMsgs > 0 ? { max_messages_per_conv: maxMsgs } : {}),
     };
   }
   return {};
@@ -364,6 +385,68 @@ export const MigrationAdvancedOptions: React.FC<Props> = ({ domain, flags, onCha
             onChange={(v) => set('prefix_legacy_marker', v)}
             title="Prefix migrated notes with [Migrated]"
             description="Prepends a marker to the note body so it's easy to identify and clean up in the target account later."
+          />
+        </div>
+      )}
+
+      {domain === 'conversations_replay' && (
+        <div className="space-y-3">
+          <div className="rounded-md border border-warning/40 bg-warning/5 p-3 text-[11px] leading-relaxed text-warning-foreground">
+            <strong>Heads-up:</strong> This worker re-creates legacy conversations in the
+            target account by calling <code>POST /conversations/</code> then replaying each
+            message via <code>POST /conversations/messages</code> with a historical{' '}
+            <code>date</code>. We omit <code>conversationProviderId</code> on outbound
+            messages so GHL records-only and does <strong>not</strong> actually re-send
+            SMS/email. Always run DRY RUN first against a single test contact.
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <TextField
+              label="Channel filter (comma-separated)"
+              value={flags.channel_filter}
+              onChange={(v) => set('channel_filter', v)}
+              placeholder="sms, email, whatsapp"
+              description="Empty = all channels. Matches our internal channel_type values."
+            />
+            <TextField
+              label="Date range (last N days)"
+              value={flags.date_range_days}
+              onChange={(v) => set('date_range_days', v)}
+              placeholder="180"
+              description="Only replay conversations whose last message is within N days. Empty = no limit."
+              type="number"
+            />
+          </div>
+          <TextField
+            label="Max messages per conversation (0 = all)"
+            value={flags.max_messages_per_conv}
+            onChange={(v) => set('max_messages_per_conv', v)}
+            placeholder="0"
+            description="Hard cap on messages replayed per conversation shell. Useful for first runs."
+            type="number"
+          />
+          <Toggle
+            checked={flags.skip_activity}
+            onChange={(v) => set('skip_activity', v)}
+            title="Skip system / activity messages"
+            description="Recommended ON. GHL activity events (call recordings, automation logs) cannot be re-created via the messages API."
+          />
+          <Toggle
+            checked={flags.skip_attachments}
+            onChange={(v) => set('skip_attachments', v)}
+            title="Skip attachments"
+            description="Drop attachment URLs from the replayed messages. Faster and avoids stale-URL fetch failures."
+          />
+          <Toggle
+            checked={flags.prefix_legacy_marker}
+            onChange={(v) => set('prefix_legacy_marker', v)}
+            title="Prefix replayed messages with [Migrated]"
+            description="Prepends a marker to each message body so the target inbox shows what came from the legacy account."
+          />
+          <Toggle
+            checked={flags.force_overwrite_existing}
+            onChange={(v) => set('force_overwrite_existing', v)}
+            title="Force overwrite existing replays"
+            description="Re-create the conversation shell + messages even if a target mapping already exists. Required after a target wipe."
           />
         </div>
       )}

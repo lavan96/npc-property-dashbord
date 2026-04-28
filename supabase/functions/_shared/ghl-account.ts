@@ -225,6 +225,7 @@ export type GhlScopeKey =
   | 'opportunities.write'
   | 'contacts/notes.write'
   | 'conversations.readonly'
+  | 'conversations.write'
   | 'locations.readonly';
 
 export interface GhlScopeProbeResult {
@@ -289,6 +290,12 @@ export function requiredScopesForDomain(domain: string): GhlScopeKey[] {
       return ['locations.readonly', 'contacts.readonly', 'contacts/notes.write'];
     case 'conversations':
       return ['locations.readonly', 'conversations.readonly'];
+    case 'conversations_replay':
+      // Replay needs read on source AND write on target. Probe both reads
+      // (cheap) plus the write scope. The orchestrator probes the TARGET
+      // account's scopes; the source account is already trusted for reads
+      // by the original mirror sync that produced our snapshot.
+      return ['locations.readonly', 'conversations.readonly', 'conversations.write'];
     default:
       return ['locations.readonly'];
   }
@@ -359,9 +366,19 @@ const PROBES: ProbeSpec[] = [
   },
   {
     scope: 'conversations.readonly',
-    required_for: ['conversations'],
+    required_for: ['conversations', 'conversations_replay'],
     method: 'GET',
     buildUrl: (loc) => `${GHL_API_BASE}/conversations/search?locationId=${loc}&limit=1`,
+  },
+  {
+    scope: 'conversations.write',
+    required_for: ['conversations_replay'],
+    method: 'POST',
+    // Deliberately invalid: missing required contactId. GHL returns 400/422
+    // when scope is OK; 401/403 when it isn't.
+    buildUrl: () => `${GHL_API_BASE}/conversations/`,
+    body: (loc) => ({ locationId: loc /* missing contactId → 422, not 401 */ }),
+    okStatuses: [200, 201, 400, 422],
   },
 ];
 

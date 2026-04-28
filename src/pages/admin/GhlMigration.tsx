@@ -360,7 +360,7 @@ export default function GhlMigration() {
 // Phase 2B: Worker dispatch + job monitor
 // ────────────────────────────────────────────────────────────────────────────
 function MigrationWorkersPanel() {
-  const [domain, setDomain] = useState<'contacts' | 'opportunities' | 'conversations' | 'notes'>('contacts');
+  const [domain, setDomain] = useState<'contacts' | 'opportunities' | 'conversations' | 'conversations_replay' | 'notes'>('contacts');
   const [source, setSource] = useState<Account>('legacy');
   const [target, setTarget] = useState<Account>('new');
   const [dryRun, setDryRun] = useState(true);
@@ -470,7 +470,7 @@ function MigrationWorkersPanel() {
         write_mode: 'create_first',
         ...domainPatch,
       };
-      const dispatchDomain = async (dispatchDomain: 'contacts' | 'opportunities' | 'notes' | 'conversations', extraPayload?: Record<string, any>) => {
+      const dispatchDomain = async (dispatchDomain: 'contacts' | 'opportunities' | 'notes' | 'conversations' | 'conversations_replay', extraPayload?: Record<string, any>) => {
         return invokeSecureFunction<any>('migration-orchestrator', {
           domain: dispatchDomain, source_account: source, target_account: target, dry_run: dryRun,
           confirmation: dryRun ? undefined : 'MIGRATE-LIVE',
@@ -486,7 +486,9 @@ function MigrationWorkersPanel() {
       // migration the user didn't ask for.
       const res = await dispatchDomain(domain, {
         ingestion_validation: {
-          require_contact_mapping: domain === 'opportunities' ? true : (domain === 'contacts' ? false : true),
+          require_contact_mapping: domain === 'opportunities' || domain === 'notes' || domain === 'conversations_replay'
+            ? true
+            : (domain === 'contacts' ? false : true),
           dispatch_mode: 'isolated',
         },
       });
@@ -622,6 +624,7 @@ function MigrationWorkersPanel() {
                 <SelectItem value="opportunities">Opportunities</SelectItem>
                 <SelectItem value="notes">Notes</SelectItem>
                 <SelectItem value="conversations">Conversations (read-only mirror)</SelectItem>
+                <SelectItem value="conversations_replay">Conversations REPLAY (write to target)</SelectItem>
               </SelectContent>
             </Select>
           </div>
