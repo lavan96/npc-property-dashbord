@@ -172,13 +172,49 @@ Deno.serve(async (req) => {
 
     if (!jobId) return new Response(JSON.stringify({ error: 'job_id required' }), { status: 400 });
 
-    const creds = getGhlCredentials(sourceAccount);
-    const err = validateGhlCredentials(creds);
-    if (err) {
-      await finishJob(supabase, jobId, 'failed', err);
-      return new Response(JSON.stringify({ error: err }), { status: 400 });
+    // ── Uploaded-source mode ─────────────────────────────────────────
+    // When `payload.upload_id` is supplied, we iterate parsed CSV/XLSX
+    // rows instead of paginating the live GHL `/conversations/search`
+    // endpoint. We still tag the resulting rows with `source_account_label`
+    // so the dashboard knows which account they came from logically, but
+    // we never call GHL.
+    const uploadId: string | null = typeof payload.upload_id === 'string' && payload.upload_id
+      ? payload.upload_id : null;
+    let uploadedRecords: any[] | null = null;
+    let uploadFileName: string | null = null;
+    if (uploadId) {
+      const sbForLoad = createClient(supabaseUrl, serviceRoleKey);
+      const { data: uploadRow, error: uploadErr } = await sbForLoad
+        .from('migration_uploaded_sources')
+        .select('domain, file_name, records')
+        .eq('id', uploadId)
+        .maybeSingle();
+      if (uploadErr || !uploadRow) {
+        await finishJob(supabase, jobId, 'failed', `Upload ${uploadId} not found: ${uploadErr?.message || 'no row'}`);
+        return new Response(JSON.stringify({ error: 'upload_not_found' }), { status: 400 });
+      }
+      if (uploadRow.domain !== 'conversations') {
+        await finishJob(supabase, jobId, 'failed', `Upload ${uploadId} is for domain "${uploadRow.domain}", expected "conversations"`);
+        return new Response(JSON.stringify({ error: 'upload_domain_mismatch' }), { status: 400 });
+      }
+      uploadedRecords = Array.isArray(uploadRow.records) ? uploadRow.records : [];
+      uploadFileName = uploadRow.file_name;
+      console.log(`[conv-worker] uploaded-source mode: upload_id=${uploadId} file="${uploadFileName}" rows=${uploadedRecords.length}`);
     }
-    const headers = buildGhlHeaders(creds.apiKey!);
+
+    // Credentials are only required for live-fetch mode. Upload mode skips
+    // GHL entirely and writes straight to the mirror tables.
+    const creds = uploadedRecords
+      ? { apiKey: '', locationId: '' }
+      : getGhlCredentials(sourceAccount);
+    if (!uploadedRecords) {
+      const err = validateGhlCredentials(creds);
+      if (err) {
+        await finishJob(supabase, jobId, 'failed', err);
+        return new Response(JSON.stringify({ error: err }), { status: 400 });
+      }
+    }
+    const headers = uploadedRecords ? {} : buildGhlHeaders(creds.apiKey!);
 
     // Shared cross-isolate rate limiter + circuit breaker. Both buckets
     // point at the same token because conversations only reads from one
