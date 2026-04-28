@@ -20,7 +20,7 @@ import {
 const VALID_DOMAINS = ['contacts', 'opportunities', 'conversations', 'conversations_replay'] as const;
 type Domain = typeof VALID_DOMAINS[number];
 
-const MAX_RECORDS = 50_000; // hard ceiling to protect the JSONB column
+const MAX_RECORDS = 200_000; // hard ceiling to protect the JSONB column
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
@@ -81,6 +81,9 @@ Deno.serve(async (req) => {
     }
 
     // ── Append a chunk to an existing upload ─────────────────────────
+    // Uses the append_migration_upload_records RPC so we don't re-read and
+    // re-write the entire JSONB blob on every chunk (was O(n^2), causing
+    // large uploads to appear "stuck" past ~10k rows).
     if (action === 'append') {
       const id = String(body.upload_id || '');
       if (!id) return jsonError(corsHeaders, 'upload_id required', 400);
@@ -88,23 +91,18 @@ Deno.serve(async (req) => {
       if (!Array.isArray(records) || records.length === 0) {
         return jsonError(corsHeaders, 'records (non-empty array) required', 400);
       }
-      const { data: existing, error: getErr } = await supabase
-        .from('migration_uploaded_sources')
-        .select('id, records, row_count')
-        .eq('id', id)
-        .single();
-      if (getErr || !existing) return jsonError(corsHeaders, `Upload not found: ${getErr?.message || id}`, 404);
-      const merged = [...(existing.records as any[]), ...records];
-      if (merged.length > MAX_RECORDS) {
-        return jsonError(corsHeaders, `Total rows would exceed cap of ${MAX_RECORDS}`, 400);
+      const { data: rpcRows, error: rpcErr } = await supabase.rpc(
+        'append_migration_upload_records',
+        { _upload_id: id, _records: records, _max_records: MAX_RECORDS },
+      );
+      if (rpcErr) {
+        const msg = rpcErr.message || 'Append failed';
+        const status = msg.includes('exceed cap') ? 400 : msg.includes('not found') ? 404 : 500;
+        console.error(`[migration-upload-source] append rpc error upload=${id}: ${msg}`);
+        return jsonError(corsHeaders, msg, status);
       }
-      const { data: updated, error: updErr } = await supabase
-        .from('migration_uploaded_sources')
-        .update({ records: merged, row_count: merged.length })
-        .eq('id', id)
-        .select('id, domain, file_name, row_count, created_at')
-        .single();
-      if (updErr) return jsonError(corsHeaders, `Append failed: ${updErr.message}`, 500);
+      const updated = Array.isArray(rpcRows) ? rpcRows[0] : rpcRows;
+      if (!updated) return jsonError(corsHeaders, 'Upload not found after append', 404);
       console.log(`[migration-upload-source] append upload=${id} +${records.length} → ${updated.row_count}`);
       return jsonOk(corsHeaders, { upload: updated });
     }
