@@ -171,9 +171,10 @@ Deno.serve(async (req) => {
       while (true) {
         const { data, error } = await withRetry(`messages conv=${conv.id} from=${from}`, () =>
           supabase.from('ghl_conversation_messages')
-            .select('ghl_message_id, direction, sender_name, ghl_date_added, message_type, content_type, message_status, body, attachment_urls, channel_type')
+            .select('ghl_message_id, direction, sender_name, ghl_date_added, content_type, message_status, body, attachment_urls, channel_type')
             .eq('conversation_id', conv.id)
             .order('ghl_date_added', { ascending: true })
+            .order('created_at', { ascending: true })
             .range(from, from + PAGE_SIZE - 1)
         );
         if (error) throw new Error(`messages fetch failed (conv ${conv.id}): ${error.message}`);
@@ -199,7 +200,7 @@ Deno.serve(async (req) => {
             conv.ghl_contact_id || '', conv.ghl_conversation_id || '',
             m.ghl_message_id || '', m.direction || '', m.sender_name || '',
             d ? fmtDate(d) : '', d ? fmtTime(d) : '',
-            d ? d.toISOString() : '', m.message_type || m.content_type || '',
+            d ? d.toISOString() : '', m.content_type || '',
             m.message_status || '', m.body || '',
             (m.attachment_urls || []).join(' | '),
           ]);
