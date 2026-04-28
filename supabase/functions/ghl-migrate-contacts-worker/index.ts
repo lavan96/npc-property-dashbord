@@ -610,7 +610,12 @@ Deno.serve(async (req) => {
         totalSeen++;
         totalProcessed++;
         lastProcessedStartAfterId = contact.id || lastProcessedStartAfterId;
-        lastProcessedStartAfter = contact.dateAdded || lastProcessedStartAfter;
+        if (uploadedRecords) {
+          // In upload mode, the cursor is a numeric offset into the array.
+          lastProcessedStartAfter = String(totalProcessed); // 1-based offset of next item
+        } else {
+          lastProcessedStartAfter = contact.dateAdded || lastProcessedStartAfter;
+        }
 
         // ── SANITIZATION (legacy → new) ────────────────────────────────
         // Apply the SAME shape the reference Client Management Export
