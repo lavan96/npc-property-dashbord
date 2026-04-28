@@ -163,31 +163,45 @@ Deno.serve(async (req) => {
     conversations.sort((a, b) =>
       (idOrderIndex.get(a.id) || 0) - (idOrderIndex.get(b.id) || 0));
 
-    for (const conv of conversations) {
-      const idx = idOrderIndex.get(conv.id) || 0;
-      const clientInfo = conv.client_id ? clientMap.get(conv.client_id) : null;
-      const clientName = clientInfo?.name || (conv.client_id ? 'Unknown' : 'Unlinked Contact');
-      const clientEmail = clientInfo?.email || '';
-
-      // Page through messages
-      const msgs: any[] = [];
+    for (let chunkStart = 0; chunkStart < conversations.length; chunkStart += MESSAGE_CONVERSATION_CHUNK_SIZE) {
+      const conversationChunk = conversations.slice(chunkStart, chunkStart + MESSAGE_CONVERSATION_CHUNK_SIZE);
+      const chunkConversationIds = conversationChunk.map((conv) => conv.id);
+      const messagesByConversation = new Map<string, any[]>();
       let from = 0;
+
+      // Page through all messages for this conversation chunk in batches.
+      // This avoids one DB round-trip per conversation while still bypassing
+      // the default 1000-row cap.
       // eslint-disable-next-line no-constant-condition
       while (true) {
-        const { data, error } = await withRetry(`messages conv=${conv.id} from=${from}`, () =>
+        const { data, error } = await withRetry(`messages chunk=${chunkStart} from=${from}`, () =>
           supabase.from('ghl_conversation_messages')
-            .select('ghl_message_id, direction, sender_name, ghl_date_added, content_type, message_status, body, attachment_urls, channel_type')
-            .eq('conversation_id', conv.id)
+            .select('conversation_id, ghl_message_id, direction, sender_name, ghl_date_added, content_type, message_status, body, attachment_urls, channel_type, created_at')
+            .in('conversation_id', chunkConversationIds)
             .order('ghl_date_added', { ascending: true })
             .order('created_at', { ascending: true })
             .range(from, from + PAGE_SIZE - 1)
         );
-        if (error) throw new Error(`messages fetch failed (conv ${conv.id}): ${error.message}`);
+        if (error) throw new Error(`messages fetch failed (chunk ${chunkStart}): ${error.message}`);
         const page = data || [];
-        msgs.push(...page);
+        page.forEach((message: any) => {
+          const list = messagesByConversation.get(message.conversation_id) || [];
+          list.push(message);
+          messagesByConversation.set(message.conversation_id, list);
+        });
         if (page.length < PAGE_SIZE) break;
         from += PAGE_SIZE;
       }
+
+      for (const conv of conversationChunk) {
+        const idx = idOrderIndex.get(conv.id) || 0;
+        const clientInfo = conv.client_id ? clientMap.get(conv.client_id) : null;
+        const clientName = clientInfo?.name || (conv.client_id ? 'Unknown' : 'Unlinked Contact');
+        const clientEmail = clientInfo?.email || '';
+        const msgs = (messagesByConversation.get(conv.id) || []).sort((a, b) =>
+          timeMs(a.ghl_date_added) - timeMs(b.ghl_date_added)
+          || timeMs(a.created_at) - timeMs(b.created_at)
+        );
 
       if (msgs.length === 0) {
         rows.push([
@@ -223,6 +237,7 @@ Deno.serve(async (req) => {
           total_messages: totalMessages,
         }).eq('id', jobId);
       }
+    }
     }
 
     console.log(`[worker] built ${rows.length} rows from ${processed} conversations (${totalMessages} messages)`);
