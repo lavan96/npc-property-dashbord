@@ -421,42 +421,48 @@ Deno.serve(async (req) => {
             source_account_label: sourceAccount,
           } as any, { onConflict: 'ghl_conversation_id' });
 
-          // Pull recent messages — pacing handled by the shared limiter.
-          const mr = await ctx.ghlFetch(
-            `${GHL_API_BASE}/conversations/${conv.id}/messages?limit=${messagesPerConv}`,
-            { headers }, 3, 'source',
-          );
-          if (mr.ok) {
-            const md = await mr.json();
-            let messages: any[] = [];
-            if (md.messages?.messages && Array.isArray(md.messages.messages)) messages = md.messages.messages;
-            else if (Array.isArray(md.messages)) messages = md.messages;
-
-            for (const msg of messages) {
-              const msgDir = mapDirection(msg);
-              const msgChannel = mapChannel(msg.messageType || msg.source || conv.type);
-              const msgTs = msg.dateAdded ? new Date(msg.dateAdded).getTime()
-                          : msg.dateCreated ? new Date(msg.dateCreated).getTime() : 0;
-
-              // Per-message filters
-              if (messageDirection !== 'all' && msgDir !== messageDirection) continue;
-              if (channelFilter.size > 0 && !channelFilter.has(msgChannel)) continue;
-              if (sinceTs > 0 && msgTs > 0 && msgTs < sinceTs) continue;
-
-              const row: any = {
-                ghl_message_id: msg.id,
-                ghl_conversation_id: conv.id,
-                direction: msgDir,
-                channel_type: msgChannel,
-                body: (msg.body || msg.message || '').substring(0, 4000),
-                sent_at: msg.dateAdded || msg.dateCreated || null,
-                source_account_label: sourceAccount,
-              };
-              if (!skipAttachments && msg.attachments) {
-                row.attachments = msg.attachments;
-              }
-              await supabase.from('ghl_conversation_messages').upsert(row, { onConflict: 'ghl_message_id' });
+          // In upload mode we use the embedded message (if any) from the
+          // CSV/XLSX row. Otherwise, pull recent messages from GHL — pacing
+          // handled by the shared limiter.
+          let messages: any[] = [];
+          if (uploadedRecords) {
+            messages = Array.isArray(conv.__uploadedMessages) ? conv.__uploadedMessages : [];
+          } else {
+            const mr = await ctx.ghlFetch(
+              `${GHL_API_BASE}/conversations/${conv.id}/messages?limit=${messagesPerConv}`,
+              { headers }, 3, 'source',
+            );
+            if (mr.ok) {
+              const md = await mr.json();
+              if (md.messages?.messages && Array.isArray(md.messages.messages)) messages = md.messages.messages;
+              else if (Array.isArray(md.messages)) messages = md.messages;
             }
+          }
+
+          for (const msg of messages) {
+            const msgDir = mapDirection(msg);
+            const msgChannel = mapChannel(msg.messageType || msg.source || conv.type);
+            const msgTs = msg.dateAdded ? new Date(msg.dateAdded).getTime()
+                        : msg.dateCreated ? new Date(msg.dateCreated).getTime() : 0;
+
+            // Per-message filters
+            if (messageDirection !== 'all' && msgDir !== messageDirection) continue;
+            if (channelFilter.size > 0 && !channelFilter.has(msgChannel)) continue;
+            if (sinceTs > 0 && msgTs > 0 && msgTs < sinceTs) continue;
+
+            const row: any = {
+              ghl_message_id: msg.id,
+              ghl_conversation_id: conv.id,
+              direction: msgDir,
+              channel_type: msgChannel,
+              body: (msg.body || msg.message || '').substring(0, 4000),
+              sent_at: msg.dateAdded || msg.dateCreated || null,
+              source_account_label: sourceAccount,
+            };
+            if (!skipAttachments && msg.attachments) {
+              row.attachments = msg.attachments;
+            }
+            await supabase.from('ghl_conversation_messages').upsert(row, { onConflict: 'ghl_message_id' });
           }
 
           totalSucceeded++;
