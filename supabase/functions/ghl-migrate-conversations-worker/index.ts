@@ -127,7 +127,14 @@ Deno.serve(async (req) => {
     }
 
     let totalProcessed = 0, totalSucceeded = 0, totalFailed = 0, totalSkipped = 0;
-    let nextPage: string | null = checkpoint.cursor.nextPage || null;
+    // GHL `/conversations/search` paginates with `startAfter` (numeric ms
+    // timestamp) and `startAfterId` cursors returned in `data.meta`,
+    // mirroring the contacts/opportunities endpoints. The previous worker
+    // read `data.nextPage` (which is only present on the messages
+    // sub-endpoint) and so always exited after page 1 (~100 records).
+    let nextStartAfter: string | null =
+      checkpoint.cursor.startAfter || checkpoint.cursor.nextPage || null;
+    let nextStartAfterId: string | null = checkpoint.cursor.startAfterId || null;
     let firstPage = true;
 
     // ── Cumulative progress across redispatched legs ─────────────────
