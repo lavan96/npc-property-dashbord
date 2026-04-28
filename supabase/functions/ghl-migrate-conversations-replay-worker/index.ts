@@ -571,11 +571,14 @@ Deno.serve(async (req) => {
           }
         }
 
-        // Persist mapping immediately so re-runs don't re-create the shell
-        await supabase
-          .from('ghl_conversations')
-          .update({ new_ghl_conversation_id: newConvId, replayed_at: new Date().toISOString() })
-          .eq('id', conv.id);
+        // Persist mapping immediately so re-runs don't re-create the shell.
+        // Skip for uploaded sources — conv.id is synthetic ('upload:N').
+        if (!uploadId) {
+          await supabase
+            .from('ghl_conversations')
+            .update({ new_ghl_conversation_id: newConvId, replayed_at: new Date().toISOString() })
+            .eq('id', conv.id);
+        }
 
         await recordIdMapping(supabase, {
           resource_type: 'conversation',
