@@ -709,9 +709,12 @@ function MigrationWorkersPanel() {
           onChange={setAdvancedFlags}
         />
 
-        {/* placeholder to preserve diff alignment */}
-        {false && (
-          <MigrationAdvancedOptions domain={domain} flags={advancedFlags} onChange={setAdvancedFlags} />
+        {(domain === 'contacts' || domain === 'opportunities') && (
+          <MigrationSourceUploader
+            domain={domain}
+            selectedUploadId={uploadId}
+            onSelect={(id) => setUploadId(id)}
+          />
         )}
 
         {/* Dispatch form */}
