@@ -1541,7 +1541,12 @@ function JobDetailRow({ job, onChanged }: { job: any; onChanged?: () => void }) 
               <div>
                 <span className="text-muted-foreground">processed:</span>{' '}
                 <span className="font-mono">{liveJob.processed_items ?? 0}</span>
-                {liveJob.total_items > 0 && <span className="text-muted-foreground"> / {liveJob.total_items}</span>}
+                {liveJob.total_items > 0 && (
+                  <span className="text-muted-foreground">
+                    {' '}/ {liveJob.total_items}
+                    {(liveJob.processed_items ?? 0) > liveJob.total_items ? '+' : ''}
+                  </span>
+                )}
               </div>
               <div>
                 <span className="text-muted-foreground">succeeded:</span>{' '}
