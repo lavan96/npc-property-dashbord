@@ -254,6 +254,35 @@ Deno.serve(async (req) => {
 
     if (!jobId) return new Response(JSON.stringify({ error: 'job_id required' }), { status: 400 });
 
+    // ── Uploaded-source mode ──────────────────────────────────────────
+    // When `payload.upload_id` is supplied, the worker replaces live GHL
+    // pagination with an in-memory iteration over the staged CSV/XLSX rows.
+    // We still need source/target credentials for the WRITE leg (target),
+    // and we still record id-mappings, but we never call /contacts/?...
+    // against the source account.
+    const uploadId: string | null = typeof payload.upload_id === 'string' && payload.upload_id
+      ? payload.upload_id : null;
+    let uploadedRecords: any[] | null = null;
+    let uploadFileName: string | null = null;
+    if (uploadId) {
+      const { data: uploadRow, error: uploadErr } = await supabase
+        .from('migration_uploaded_sources')
+        .select('domain, file_name, records')
+        .eq('id', uploadId)
+        .maybeSingle();
+      if (uploadErr || !uploadRow) {
+        await finishJob(supabase, jobId, 'failed', `Upload ${uploadId} not found: ${uploadErr?.message || 'no row'}`);
+        return new Response(JSON.stringify({ error: 'upload_not_found' }), { status: 400 });
+      }
+      if (uploadRow.domain !== 'contacts') {
+        await finishJob(supabase, jobId, 'failed', `Upload ${uploadId} is for domain "${uploadRow.domain}", expected "contacts"`);
+        return new Response(JSON.stringify({ error: 'upload_domain_mismatch' }), { status: 400 });
+      }
+      uploadedRecords = Array.isArray(uploadRow.records) ? uploadRow.records : [];
+      uploadFileName = uploadRow.file_name;
+      console.log(`[contacts-worker] uploaded-source mode: upload_id=${uploadId} file="${uploadFileName}" rows=${uploadedRecords.length}`);
+    }
+
     const sourceCreds = getGhlCredentials(sourceAccount);
     const targetCreds = getGhlCredentials(targetAccount);
     const sourceErr = validateGhlCredentials(sourceCreds);
