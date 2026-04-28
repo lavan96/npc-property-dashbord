@@ -271,7 +271,7 @@ Deno.serve(async (req) => {
         ]);
       } else {
         msgs.forEach((m, i) => {
-          const d = m.ghl_date_added ? new Date(m.ghl_date_added) : null;
+          const d = parseValidDate(m.ghl_date_added);
           rows.push([
             idx, i + 1, clientName, clientEmail,
             normalizeChannel(m.channel_type || conv.channel_type),
@@ -312,16 +312,9 @@ Deno.serve(async (req) => {
       const escape = (v: any) => `"${String(v ?? '').replace(/"/g, '""')}"`;
       const csv = [HEADERS, ...rows].map((r) => r.map(escape).join(',')).join('\n');
       fileBuffer = new TextEncoder().encode('\uFEFF' + csv);
-      contentType = 'text/csv;charset=utf-8';
+      contentType = 'text/csv';
     } else {
-      const ws = XLSX.utils.aoa_to_sheet([HEADERS, ...rows]);
-      (ws as any)['!cols'] = HEADERS.map((h) => ({
-        wch: Math.min(Math.max(h.length + 2, 14), 60),
-      }));
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Message History');
-      const arr = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-      fileBuffer = new Uint8Array(arr);
+      fileBuffer = buildXlsxBuffer(rows);
       contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
     }
 
