@@ -596,14 +596,26 @@ export default function Conversations() {
         <div className="flex items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" disabled={isExportingHistory}>
                 <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
-                Export
+                {isExportingHistory ? 'Exporting...' : 'Export'}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="w-64">
               <DropdownMenuItem onClick={() => setShowExportDialog(true)}>
-                Export current view
+                Conversation summary (GHL contacts)
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => exportFullMessageHistory('xlsx')}
+                disabled={isExportingHistory}
+              >
+                Full message history (.xlsx)
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => exportFullMessageHistory('csv')}
+                disabled={isExportingHistory}
+              >
+                Full message history (.csv)
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
