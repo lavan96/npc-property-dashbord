@@ -416,6 +416,14 @@ export default function Conversations() {
       return;
     }
     setIsExportingHistory(true);
+    setExportJobStatus({
+      jobId: 'starting',
+      status: 'starting',
+      fileFormat,
+      totalItems: filteredConversations.length,
+      processedItems: 0,
+      totalMessages: 0,
+    });
     const toastId = toast.loading(
       `Starting export of ${filteredConversations.length} conversations...`
     );
@@ -430,6 +438,7 @@ export default function Conversations() {
       if (startErr) throw new Error(startErr.message || 'Failed to start export');
       const jobId = (startData as any)?.job_id;
       if (!jobId) throw new Error('No job_id returned from server');
+      setExportJobStatus((prev) => prev ? { ...prev, jobId, status: 'pending' } : null);
 
       // 2. Poll status (up to 10 minutes)
       const pollIntervalMs = 2500;
@@ -457,6 +466,18 @@ export default function Conversations() {
         }
 
         if (!job) continue;
+
+        setExportJobStatus({
+          jobId,
+          status: job.status,
+          fileFormat,
+          totalItems: job.total_items || filteredConversations.length,
+          processedItems: job.processed_items || 0,
+          totalMessages: job.total_messages || 0,
+          signedUrl: job.signed_url,
+          fileSizeBytes: job.file_size_bytes,
+          errorSummary: job.error_summary,
+        });
 
         if (job.processed_items !== lastProcessed) {
           lastProcessed = job.processed_items;
@@ -486,6 +507,7 @@ export default function Conversations() {
               (sizeMB ? ` (${sizeMB} MB)` : ''),
             { id: toastId, duration: 8000 },
           );
+          setExportJobStatus((prev) => prev ? { ...prev, status: 'completed' } : null);
           return;
         }
 
@@ -496,6 +518,11 @@ export default function Conversations() {
       throw new Error('Export timed out after 10 minutes. Check the export jobs table for status.');
     } catch (err: any) {
       console.error('Full history export failed:', err);
+      setExportJobStatus((prev) => prev ? {
+        ...prev,
+        status: 'failed',
+        errorSummary: err?.message || 'Unknown error',
+      } : null);
       toast.error(`Export failed: ${err?.message || 'Unknown error'}`, { id: toastId });
     } finally {
       setIsExportingHistory(false);
