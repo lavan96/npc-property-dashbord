@@ -709,6 +709,8 @@ function normaliseUploadedOpportunity(
       // partial-exit instead of advancing the page cursor (otherwise we'd
       // skip over unprocessed opps on the next leg).
       let pageFullyConsumed = true;
+      // Absolute offset within the uploaded source (only used in upload mode).
+      let uploadCursor = uploadedRecords ? (Number(nextStartAfter) || 0) : 0;
       for (const opp of opps) {
         if (maxItems > 0 && totalProcessed >= maxItems) break;
         if (Date.now() - startedAt > MAX_RUNTIME_MS) {
