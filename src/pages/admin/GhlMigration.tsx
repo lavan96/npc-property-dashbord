@@ -818,13 +818,18 @@ function MigrationWorkersPanel() {
                 </thead>
                 <tbody>
                   {jobs.map((j) => {
-                    const total = j.total_items || 0;
+                    const rawTotal = j.total_items || 0;
                     const succeeded = j.succeeded_items || 0;
                     const failed = j.failed_items || 0;
                     const skipped = j.skipped_items || 0;
                     const processed = j.processed_items || (succeeded + failed + skipped);
+                    // Some workers (e.g. conversations_replay) only know the
+                    // current page size, so processed can exceed total. Treat
+                    // the larger number as the working total to avoid >100%.
+                    const total = Math.max(rawTotal, processed);
+                    const totalIsKnown = rawTotal > 0 && processed <= rawTotal;
                     const denom = total > 0 ? total : Math.max(processed, 1);
-                    const pct = total > 0 ? Math.round((processed / total) * 100) : 0;
+                    const pct = total > 0 ? Math.min(100, Math.round((processed / total) * 100)) : 0;
                     const widthOf = (n: number) => `${Math.min(100, (n / denom) * 100)}%`;
                     const isOpen = expandedJobId === j.id;
                     const isLive = j.status === 'processing' || j.status === 'pending';
@@ -874,7 +879,7 @@ function MigrationWorkersPanel() {
                           <td className="p-2">
                             <div className="flex items-center justify-between gap-2 mb-1">
                               <span className="font-mono tabular-nums text-[11px]">
-                                {processed.toLocaleString()}{total > 0 ? `/${total.toLocaleString()}` : ''}
+                                {processed.toLocaleString()}{rawTotal > 0 ? `/${rawTotal.toLocaleString()}${!totalIsKnown ? '+' : ''}` : ''}
                                 <span className="ml-1 text-muted-foreground">({pct}%)</span>
                               </span>
                               {isLive && !isPaused && (
@@ -1439,9 +1444,13 @@ function JobDetailRow({ job, onChanged }: { job: any; onChanged?: () => void }) 
             const skippedN = breakdown.skipped || 0;
             const pendingN = breakdown.pending || 0;
             const recorded = succeeded + failedN + skippedN + pendingN;
-            // Use total_items if known, else derive from recorded items
-            const total = liveJob.total_items && liveJob.total_items > 0
-              ? Math.max(liveJob.total_items, recorded)
+            // Use total_items if known, else derive from recorded items.
+            // Workers that paginate (conversations_replay) may have processed
+            // more than the originally-reported batch — show "N+" in that case.
+            const rawTotal = liveJob.total_items || 0;
+            const totalIsKnown = rawTotal > 0 && recorded <= rawTotal;
+            const total = rawTotal > 0
+              ? Math.max(rawTotal, recorded)
               : Math.max(recorded, liveJob.processed_items ?? 0, 1);
             const pct = (n: number) => total > 0 ? (n / total) * 100 : 0;
             const overallPct = total > 0
@@ -1452,7 +1461,7 @@ function JobDetailRow({ job, onChanged }: { job: any; onChanged?: () => void }) 
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="font-semibold">Progress</span>
                   <span className="font-mono text-muted-foreground">
-                    {succeeded + failedN + skippedN}{liveJob.total_items > 0 ? ` / ${liveJob.total_items}` : ''} ({overallPct}%)
+                    {succeeded + failedN + skippedN}{rawTotal > 0 ? ` / ${rawTotal}${!totalIsKnown ? '+' : ''}` : ''} ({overallPct}%)
                   </span>
                 </div>
                 <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-muted ring-1 ring-border/40">
@@ -1532,7 +1541,12 @@ function JobDetailRow({ job, onChanged }: { job: any; onChanged?: () => void }) 
               <div>
                 <span className="text-muted-foreground">processed:</span>{' '}
                 <span className="font-mono">{liveJob.processed_items ?? 0}</span>
-                {liveJob.total_items > 0 && <span className="text-muted-foreground"> / {liveJob.total_items}</span>}
+                {liveJob.total_items > 0 && (
+                  <span className="text-muted-foreground">
+                    {' '}/ {liveJob.total_items}
+                    {(liveJob.processed_items ?? 0) > liveJob.total_items ? '+' : ''}
+                  </span>
+                )}
               </div>
               <div>
                 <span className="text-muted-foreground">succeeded:</span>{' '}
