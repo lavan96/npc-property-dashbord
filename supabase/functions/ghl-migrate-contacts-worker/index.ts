@@ -613,8 +613,8 @@ Deno.serve(async (req) => {
         totalProcessed++;
         lastProcessedStartAfterId = contact.id || lastProcessedStartAfterId;
         if (uploadedRecords) {
-          // In upload mode, the cursor is a numeric offset into the array.
-          lastProcessedStartAfter = String(totalProcessed); // 1-based offset of next item
+          uploadCursor++;
+          lastProcessedStartAfter = String(uploadCursor);
         } else {
           lastProcessedStartAfter = contact.dateAdded || lastProcessedStartAfter;
         }
