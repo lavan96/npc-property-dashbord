@@ -388,6 +388,68 @@ export const MigrationAdvancedOptions: React.FC<Props> = ({ domain, flags, onCha
           />
         </div>
       )}
+
+      {domain === 'conversations_replay' && (
+        <div className="space-y-3">
+          <div className="rounded-md border border-warning/40 bg-warning/5 p-3 text-[11px] leading-relaxed text-warning-foreground">
+            <strong>Heads-up:</strong> This worker re-creates legacy conversations in the
+            target account by calling <code>POST /conversations/</code> then replaying each
+            message via <code>POST /conversations/messages</code> with a historical{' '}
+            <code>date</code>. We omit <code>conversationProviderId</code> on outbound
+            messages so GHL records-only and does <strong>not</strong> actually re-send
+            SMS/email. Always run DRY RUN first against a single test contact.
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <TextField
+              label="Channel filter (comma-separated)"
+              value={flags.channel_filter}
+              onChange={(v) => set('channel_filter', v)}
+              placeholder="sms, email, whatsapp"
+              description="Empty = all channels. Matches our internal channel_type values."
+            />
+            <TextField
+              label="Date range (last N days)"
+              value={flags.date_range_days}
+              onChange={(v) => set('date_range_days', v)}
+              placeholder="180"
+              description="Only replay conversations whose last message is within N days. Empty = no limit."
+              type="number"
+            />
+          </div>
+          <TextField
+            label="Max messages per conversation (0 = all)"
+            value={flags.max_messages_per_conv}
+            onChange={(v) => set('max_messages_per_conv', v)}
+            placeholder="0"
+            description="Hard cap on messages replayed per conversation shell. Useful for first runs."
+            type="number"
+          />
+          <Toggle
+            checked={flags.skip_activity}
+            onChange={(v) => set('skip_activity', v)}
+            title="Skip system / activity messages"
+            description="Recommended ON. GHL activity events (call recordings, automation logs) cannot be re-created via the messages API."
+          />
+          <Toggle
+            checked={flags.skip_attachments}
+            onChange={(v) => set('skip_attachments', v)}
+            title="Skip attachments"
+            description="Drop attachment URLs from the replayed messages. Faster and avoids stale-URL fetch failures."
+          />
+          <Toggle
+            checked={flags.prefix_legacy_marker}
+            onChange={(v) => set('prefix_legacy_marker', v)}
+            title="Prefix replayed messages with [Migrated]"
+            description="Prepends a marker to each message body so the target inbox shows what came from the legacy account."
+          />
+          <Toggle
+            checked={flags.force_overwrite_existing}
+            onChange={(v) => set('force_overwrite_existing', v)}
+            title="Force overwrite existing replays"
+            description="Re-create the conversation shell + messages even if a target mapping already exists. Required after a target wipe."
+          />
+        </div>
+      )}
     </div>
   );
 };
