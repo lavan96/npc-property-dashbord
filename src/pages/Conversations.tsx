@@ -603,6 +603,13 @@ export default function Conversations() {
     });
   };
 
+  const exportProgressPercent = exportJobStatus?.totalItems
+    ? Math.min(100, Math.round((exportJobStatus.processedItems / exportJobStatus.totalItems) * 100))
+    : 0;
+  const exportSizeMB = exportJobStatus?.fileSizeBytes
+    ? (exportJobStatus.fileSizeBytes / (1024 * 1024)).toFixed(2)
+    : null;
+
   // ── Show thread on mobile (hide list) ──
   const showThread = !!selectedId && isMobile;
   const showList = !selectedId || !isMobile;
@@ -663,6 +670,57 @@ export default function Conversations() {
           </Button>
         </div>
       </div>
+
+      {exportJobStatus && (
+        <div className="border-b bg-muted/30 px-4 py-3 shrink-0">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="min-w-0 space-y-1">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                {exportJobStatus.status === 'completed' ? (
+                  <CheckCircle2 className="h-4 w-4 text-success" />
+                ) : exportJobStatus.status === 'failed' ? (
+                  <XCircle className="h-4 w-4 text-destructive" />
+                ) : (
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                )}
+                <span>
+                  {exportJobStatus.status === 'completed'
+                    ? 'Conversation export ready'
+                    : exportJobStatus.status === 'failed'
+                      ? 'Conversation export failed'
+                      : `Exporting full message history (${exportJobStatus.fileFormat.toUpperCase()})`}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground truncate">
+                {exportJobStatus.status === 'failed'
+                  ? exportJobStatus.errorSummary
+                  : `${exportJobStatus.processedItems}/${exportJobStatus.totalItems} conversations · ${exportJobStatus.totalMessages} messages`}
+                {exportSizeMB ? ` · ${exportSizeMB} MB` : ''}
+              </p>
+              {exportJobStatus.status !== 'completed' && exportJobStatus.status !== 'failed' && (
+                <div className="h-1.5 w-full max-w-xl overflow-hidden rounded-full bg-background">
+                  <div className="h-full bg-primary transition-all" style={{ width: `${exportProgressPercent}%` }} />
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {exportJobStatus.status === 'completed' && exportJobStatus.signedUrl && (
+                <Button size="sm" asChild>
+                  <a href={exportJobStatus.signedUrl} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                    Download
+                  </a>
+                </Button>
+              )}
+              {(exportJobStatus.status === 'completed' || exportJobStatus.status === 'failed') && (
+                <Button size="sm" variant="ghost" onClick={() => setExportJobStatus(null)}>
+                  Dismiss
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <GHLExportDialog
         open={showExportDialog}
