@@ -422,20 +422,34 @@ Deno.serve(async (req) => {
       }
       const targetContactId = resolved.newId;
 
-      // Pull messages for this conversation in chronological order
-      const { data: messages, error: msgErr } = await supabase
-        .from('ghl_conversation_messages')
-        .select('id, ghl_message_id, direction, channel_type, body, attachment_urls, ghl_date_added, new_ghl_message_id')
-        .eq('conversation_id', conv.id)
-        .order('ghl_date_added', { ascending: true, nullsFirst: false });
-
-      if (msgErr) {
-        totalFailed++;
-        await recordItem(supabase, {
-          job_id: jobId, source_id: conv.id, entity_label: label,
-          status: 'failed', error_message: `Messages query failed: ${msgErr.message}`,
+      // Pull messages for this conversation in chronological order.
+      // For uploaded sources, messages are embedded on the conv object — skip the
+      // mirror lookup entirely (which would fail because conv.id is synthetic).
+      let messages: any[] | null;
+      if (uploadId) {
+        messages = ((conv as any).__uploadedMessages || []) as any[];
+        // Sort embedded messages by date when present (best-effort).
+        messages = [...messages].sort((a, b) => {
+          const ad = a.ghl_date_added ? Date.parse(a.ghl_date_added) : 0;
+          const bd = b.ghl_date_added ? Date.parse(b.ghl_date_added) : 0;
+          return ad - bd;
         });
-        continue;
+      } else {
+        const { data: dbMessages, error: msgErr } = await supabase
+          .from('ghl_conversation_messages')
+          .select('id, ghl_message_id, direction, channel_type, body, attachment_urls, ghl_date_added, new_ghl_message_id')
+          .eq('conversation_id', conv.id)
+          .order('ghl_date_added', { ascending: true, nullsFirst: false });
+
+        if (msgErr) {
+          totalFailed++;
+          await recordItem(supabase, {
+            job_id: jobId, source_id: conv.id, entity_label: label,
+            status: 'failed', error_message: `Messages query failed: ${msgErr.message}`,
+          });
+          continue;
+        }
+        messages = dbMessages;
       }
 
       if (!messages || messages.length === 0) {
