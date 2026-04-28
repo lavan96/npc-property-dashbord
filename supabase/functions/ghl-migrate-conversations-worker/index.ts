@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
     console.log(`[conv-worker] job=${jobId} from=${sourceAccount} dry_run=${dryRun}`);
 
     const checkpoint = await loadCheckpoint(supabase, jobId);
-    const isResume = body._resume === true || !!checkpoint.cursor.nextPage;
+    const isResume = body._resume === true || !!checkpoint.cursor.startAfter || !!checkpoint.cursor.startAfterId || !!checkpoint.cursor.nextPage;
     if (isResume) {
       console.log(`[conv-worker] RESUMING job=${jobId} dispatch#${checkpoint.dispatchCount}`);
     } else {
@@ -127,7 +127,14 @@ Deno.serve(async (req) => {
     }
 
     let totalProcessed = 0, totalSucceeded = 0, totalFailed = 0, totalSkipped = 0;
-    let nextPage: string | null = checkpoint.cursor.nextPage || null;
+    // GHL `/conversations/search` paginates with `startAfter` (numeric ms
+    // timestamp) and `startAfterId` cursors returned in `data.meta`,
+    // mirroring the contacts/opportunities endpoints. The previous worker
+    // read `data.nextPage` (which is only present on the messages
+    // sub-endpoint) and so always exited after page 1 (~100 records).
+    let nextStartAfter: string | null =
+      checkpoint.cursor.startAfter || checkpoint.cursor.nextPage || null;
+    let nextStartAfterId: string | null = checkpoint.cursor.startAfterId || null;
     let firstPage = true;
 
     // ── Cumulative progress across redispatched legs ─────────────────
@@ -169,7 +176,7 @@ Deno.serve(async (req) => {
         console.log(`[conv-worker] PAUSE signal — checkpointing at ${totalProcessed}`);
         await partialExit(
           supabase, jobId,
-          { nextPage },
+          { startAfter: nextStartAfter, startAfterId: nextStartAfterId },
           progressPatch(),
         );
         return new Response(JSON.stringify({
@@ -183,7 +190,7 @@ Deno.serve(async (req) => {
         console.warn(`[conv-worker] Circuit breaker tripped at ${totalProcessed} processed — handing off to dispatcher for cool-off`);
         await partialExit(
           supabase, jobId,
-          { nextPage },
+          { startAfter: nextStartAfter, startAfterId: nextStartAfterId },
           progressPatch(),
         );
         return new Response(JSON.stringify({
@@ -195,7 +202,7 @@ Deno.serve(async (req) => {
       if (Date.now() - startedAt > MAX_RUNTIME_MS) {
         await partialExit(
           supabase, jobId,
-          { nextPage },
+          { startAfter: nextStartAfter, startAfterId: nextStartAfterId },
           progressPatch(),
         );
         return new Response(JSON.stringify({
@@ -205,7 +212,14 @@ Deno.serve(async (req) => {
       }
 
       const p = new URLSearchParams({ locationId: creds.locationId!, limit: String(PAGE_LIMIT) });
-      if (nextPage) p.set('startAfter', nextPage);
+      if (nextStartAfterId) p.set('startAfterId', nextStartAfterId);
+      if (nextStartAfter) {
+        // GHL requires `startAfter` as a numeric millisecond timestamp.
+        const numeric = /^\d+$/.test(String(nextStartAfter))
+          ? String(nextStartAfter)
+          : String(new Date(nextStartAfter).getTime());
+        p.set('startAfter', numeric);
+      }
 
       const r = await ctx.ghlFetch(`${GHL_API_BASE}/conversations/search?${p}`, { headers }, 3, 'source');
       if (!r.ok) {
@@ -332,13 +346,19 @@ Deno.serve(async (req) => {
       // upserts doesn't cause the job to be reclaimed mid-page.
       await heartbeat(supabase, jobId);
 
-      nextPage = data.nextPage || null;
-      await saveCheckpoint(supabase, jobId, { nextPage });
+      // Trust GHL's server-supplied cursor first, fall back to the page tail.
+      // Mirrors the contacts/opportunities workers — using `data.nextPage`
+      // (which only exists on the messages sub-endpoint) made this worker
+      // exit after page 1 every time.
+      const pageLast = convs[convs.length - 1];
+      nextStartAfterId = data.meta?.startAfterId ?? pageLast?.id ?? null;
+      const lastTs = pageLast?.lastMessageDate || pageLast?.dateUpdated || pageLast?.dateAdded || null;
+      nextStartAfter = data.meta?.startAfter ?? lastTs ?? null;
+      await saveCheckpoint(supabase, jobId, { startAfter: nextStartAfter, startAfterId: nextStartAfterId });
 
       if (maxItems > 0 && totalProcessed >= maxItems) break;
-      // Walk every page until GHL stops returning a nextPage cursor; do
-      // NOT break early on a short page (uncapped total).
-      if (!nextPage) break;
+      // Walk every page until GHL stops returning a cursor (uncapped total).
+      if (!nextStartAfterId && !nextStartAfter) break;
     }
 
     await saveCheckpoint(supabase, jobId, {});

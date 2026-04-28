@@ -173,7 +173,25 @@ Deno.serve(async (req) => {
       : payload.assigned_user_strategy === 'omit' ? 'omit'
       : 'single';
 
-    console.log(`[opps-worker] flags: forceRecreate=${forceRecreate} skipTargetDedupe=${skipTargetDedupe} onlyLowConfidence=${onlyLowConfidence} includeClosed=${includeClosedStatuses} pipelineFilter=${pipelineFilter.length} stageFilter=${stageFilter.length} assignStrategy=${assignedUserStrategy}`);
+    // ── Operator range controls (workaround for GHL ordering quirks) ──
+    // GHL `/opportunities/search` sorts by `date_added desc` and the cursor
+    // can stick on tied/duplicate `updatedAt` clusters. These let an
+    // operator skip over a stuck region (or the already-migrated head):
+    //   • payload.skip_count       → drop the first N opps the API returns
+    //                                (counted before any filter, before
+    //                                 the per-leg time budget kicks in).
+    //   • payload.start_after_iso  → seed the cursor with this ISO timestamp
+    //                                so we ask GHL to start AFTER it. Useful
+    //                                to jump past a known-bad cluster.
+    //   • payload.start_after_id   → optional companion to start_after_iso.
+    //   • payload.max_items        → existing per-run cap, unchanged.
+    const skipCount = Math.max(0, Number(payload.skip_count) || 0);
+    const seedStartAfterIso: string | null = typeof payload.start_after_iso === 'string'
+      ? payload.start_after_iso : null;
+    const seedStartAfterId: string | null = typeof payload.start_after_id === 'string'
+      ? payload.start_after_id : null;
+
+    console.log(`[opps-worker] flags: forceRecreate=${forceRecreate} skipTargetDedupe=${skipTargetDedupe} onlyLowConfidence=${onlyLowConfidence} includeClosed=${includeClosedStatuses} pipelineFilter=${pipelineFilter.length} stageFilter=${stageFilter.length} assignStrategy=${assignedUserStrategy} skipCount=${skipCount} seedStartAfterIso=${seedStartAfterIso || '(none)'} seedStartAfterId=${seedStartAfterId || '(none)'}`);
 
     if (!jobId) return new Response(JSON.stringify({ error: 'job_id required' }), { status: 400 });
 
@@ -442,12 +460,27 @@ Deno.serve(async (req) => {
     // around that single bug.
     let nextStartAfterId: string | null = checkpoint.cursor.startAfterId || null;
     let nextStartAfter: string | null = checkpoint.cursor.startAfter || null;
+    // Apply operator-supplied seed cursor ONLY on a fresh dispatch (no
+    // existing checkpoint), so a "skip past the stuck region" instruction
+    // doesn't get clobbered, and a normal resume isn't accidentally rewound.
+    if (!nextStartAfterId && !nextStartAfter && (seedStartAfterIso || seedStartAfterId)) {
+      nextStartAfter = seedStartAfterIso;
+      nextStartAfterId = seedStartAfterId;
+      console.log(`[opps-worker] Seeded cursor from payload: startAfter=${nextStartAfter || '(none)'} startAfterId=${nextStartAfterId || '(none)'}`);
+    }
     // Track the LAST opp this leg actually touched so partialExit can
     // checkpoint exactly where we are mid-page (not where we started, and
     // not the page-end cursor that jumps over unprocessed items).
     let lastProcessedOppId: string | null = nextStartAfterId;
     let lastProcessedOppAt: string | null = nextStartAfter;
     let firstPage = true;
+    // skip_count is honoured ONCE per job (first leg only). Persist a flag
+    // in payload so resumes don't re-skip another N records.
+    let skipRemaining = (skipCount > 0 && !isResume && !payload.skip_count_consumed)
+      ? skipCount : 0;
+    if (skipRemaining > 0) {
+      console.log(`[opps-worker] Will skip first ${skipRemaining} opps from API response (one-time, before processing).`);
+    }
     const exitCursor = (): { startAfterId: string | null; startAfter: string | null } => ({
       startAfterId: lastProcessedOppId,
       startAfter: lastProcessedOppAt,
@@ -568,6 +601,23 @@ Deno.serve(async (req) => {
         if (Date.now() - startedAt > MAX_RUNTIME_MS) {
           pageFullyConsumed = false;
           break;
+        }
+
+        // ── One-time skip_count: drop the first N opps we see, advancing
+        // the cursor along the way so a resume picks up after the skipped
+        // region (not at the original start of the list).
+        if (skipRemaining > 0) {
+          skipRemaining--;
+          lastProcessedOppId = opp.id || lastProcessedOppId;
+          lastProcessedOppAt = opp.updatedAt || opp.dateAdded || lastProcessedOppAt;
+          if (skipRemaining === 0) {
+            // Persist the "consumed" flag so future legs don't re-skip.
+            try {
+              await mergeJobPayload(supabase, jobId, { skip_count_consumed: true });
+            } catch { /* non-fatal */ }
+            console.log(`[opps-worker] skip_count exhausted; resuming normal processing at id=${lastProcessedOppId}`);
+          }
+          continue;
         }
 
         totalProcessed++;

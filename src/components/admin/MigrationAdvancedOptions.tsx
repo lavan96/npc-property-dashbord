@@ -20,6 +20,10 @@ export interface AdvancedFlagsState {
   pipeline_filter: string; // comma-separated names
   stage_filter: string;    // comma-separated names
   assigned_user_strategy: 'single' | 'map_by_email' | 'omit';
+  /** Range/offset operator controls — workaround for GHL ordering quirks. */
+  skip_count: string;       // numeric string; '' = no skip
+  start_after_iso: string;  // ISO timestamp; '' = no seed
+  start_after_id: string;   // optional companion to start_after_iso
 
   // Conversations
   message_direction: 'all' | 'inbound' | 'outbound';
@@ -46,6 +50,9 @@ export const DEFAULT_ADVANCED_FLAGS: AdvancedFlagsState = {
   pipeline_filter: '',
   stage_filter: '',
   assigned_user_strategy: 'single',
+  skip_count: '',
+  start_after_iso: '',
+  start_after_id: '',
 
   message_direction: 'all',
   channel_filter: '',
@@ -74,6 +81,9 @@ export function buildDomainPayloadPatch(domain: MigrationDomain, f: AdvancedFlag
   }
   if (domain === 'opportunities') {
     const splitCsv = (s: string) => s.split(',').map((x) => x.trim()).filter(Boolean);
+    const skipN = parseInt(f.skip_count, 10);
+    const seedIso = f.start_after_iso.trim();
+    const seedId = f.start_after_id.trim();
     return {
       force_recreate_opportunities: f.force_recreate_opportunities,
       skip_target_dedupe_check: f.skip_target_dedupe_check,
@@ -82,6 +92,9 @@ export function buildDomainPayloadPatch(domain: MigrationDomain, f: AdvancedFlag
       ...(f.pipeline_filter ? { pipeline_filter: splitCsv(f.pipeline_filter) } : {}),
       ...(f.stage_filter ? { stage_filter: splitCsv(f.stage_filter) } : {}),
       assigned_user_strategy: f.assigned_user_strategy,
+      ...(Number.isFinite(skipN) && skipN > 0 ? { skip_count: skipN } : {}),
+      ...(seedIso ? { start_after_iso: seedIso } : {}),
+      ...(seedId ? { start_after_id: seedId } : {}),
     };
   }
   if (domain === 'conversations') {
@@ -255,6 +268,38 @@ export const MigrationAdvancedOptions: React.FC<Props> = ({ domain, flags, onCha
             <p className="text-[11px] text-muted-foreground">
               <code>map_by_email</code> falls back to the configured single user when no email match is found.
             </p>
+          </div>
+
+          <div className="rounded-md border border-primary/30 bg-primary/5 p-3 space-y-2">
+            <div className="text-xs font-semibold text-primary">Range / resume controls</div>
+            <p className="text-[11px] text-muted-foreground">
+              GHL <code>/opportunities/search</code> sorts newest-first by <code>date_added</code>. Use these to
+              jump past an already-migrated head or a stuck cluster — applied <strong>once</strong> per fresh job.
+            </p>
+            <div className="grid gap-3 md:grid-cols-3">
+              <TextField
+                label="Skip first N opportunities"
+                type="number"
+                value={flags.skip_count}
+                onChange={(v) => set('skip_count', v)}
+                placeholder="e.g. 600"
+                description="Drops the first N records the API returns before processing. One-time, persisted on the job."
+              />
+              <TextField
+                label="Start after ISO timestamp"
+                value={flags.start_after_iso}
+                onChange={(v) => set('start_after_iso', v)}
+                placeholder="2025-12-04T07:40:26.247Z"
+                description="Seeds the cursor so GHL returns records older than this. Use a known-bad cluster's timestamp to skip past it."
+              />
+              <TextField
+                label="Start after opp ID (optional)"
+                value={flags.start_after_id}
+                onChange={(v) => set('start_after_id', v)}
+                placeholder="qYbgt9XzQT3sVCl8ppDf"
+                description="Companion to ISO seed when GHL needs both. Leave blank if unsure."
+              />
+            </div>
           </div>
         </div>
       )}
