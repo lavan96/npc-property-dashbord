@@ -879,7 +879,7 @@ function MigrationWorkersPanel() {
                           <td className="p-2">
                             <div className="flex items-center justify-between gap-2 mb-1">
                               <span className="font-mono tabular-nums text-[11px]">
-                                {processed.toLocaleString()}{total > 0 ? `/${total.toLocaleString()}` : ''}
+                                {processed.toLocaleString()}{rawTotal > 0 ? `/${rawTotal.toLocaleString()}${!totalIsKnown ? '+' : ''}` : ''}
                                 <span className="ml-1 text-muted-foreground">({pct}%)</span>
                               </span>
                               {isLive && !isPaused && (
