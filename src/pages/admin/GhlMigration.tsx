@@ -746,13 +746,19 @@ function MigrationWorkersPanel() {
           </div>
           <div className="space-y-1">
             <label className="text-xs text-muted-foreground">Source</label>
-            <Select value={source} onValueChange={(v) => setSource(v as Account)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="legacy">LEGACY</SelectItem>
-                <SelectItem value="new">NEW</SelectItem>
-              </SelectContent>
-            </Select>
+            {domain === 'conversations_replay' ? (
+              <div className="flex h-10 items-center rounded-md border bg-muted/30 px-3 text-sm text-muted-foreground">
+                Supabase mirror (local)
+              </div>
+            ) : (
+              <Select value={source} onValueChange={(v) => setSource(v as Account)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="legacy">LEGACY</SelectItem>
+                  <SelectItem value="new">NEW</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
           </div>
           <div className="space-y-1">
             <label className="text-xs text-muted-foreground">Target</label>
