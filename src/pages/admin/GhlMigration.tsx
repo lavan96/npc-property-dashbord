@@ -377,6 +377,32 @@ function MigrationWorkersPanel() {
   const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
   const [resumeTarget, setResumeTarget] = useState<any | null>(null);
   const [resuming, setResuming] = useState(false);
+  const [backfilling, setBackfilling] = useState(false);
+  const [backfillResult, setBackfillResult] = useState<any | null>(null);
+
+  const runBackfill = async (dryRun: boolean) => {
+    setBackfilling(true);
+    setBackfillResult(null);
+    try {
+      const res = await invokeSecureFunction<any>(
+        'ghl-legacy-backfill-gaps',
+        { dry_run: dryRun, max_shells: 1000, max_contacts: 1000 },
+        { timeoutMs: 380000 },
+      );
+      if (res.error || !res.data?.success) {
+        toast.error(res.error?.message || res.data?.error || 'Backfill failed');
+      } else {
+        setBackfillResult(res.data);
+        const p1 = res.data.phase1;
+        const p2 = res.data.phase2;
+        toast.success(
+          dryRun
+            ? `Dry run: ${p1.empty_shells_found} shells, ${p2.missing_contacts_found} missing contacts`
+            : `Backfilled +${p1.messages_added} msgs (shells), +${p2.conversations_added}c/${p2.messages_added}m (contacts)`,
+        );
+      }
+    } finally { setBackfilling(false); }
+  };
 
   const testCredentials = async (acct: Account) => {
     setTestingAudit(true);
