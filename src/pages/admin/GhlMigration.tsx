@@ -423,7 +423,7 @@ function MigrationWorkersPanel() {
           cursor = d.cursor;
           if (d.processed_in_batch === 0) break; // safety
         }
-        if (dryRun) break === undefined; // continue to phase 2 dry-run too
+        // for dry-run, still loop both phases (each returns immediately with totals)
       }
       toast.success(
         dryRun
