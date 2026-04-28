@@ -5403,6 +5403,80 @@ export type Database = {
         }
         Relationships: []
       }
+      export_jobs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          error_summary: string | null
+          export_type: string
+          file_format: string
+          file_size_bytes: number | null
+          id: string
+          processed_items: number
+          scope: Json
+          signed_url: string | null
+          signed_url_expires_at: string | null
+          started_at: string | null
+          status: string
+          storage_bucket: string | null
+          storage_path: string | null
+          total_items: number
+          total_messages: number
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          error_summary?: string | null
+          export_type: string
+          file_format: string
+          file_size_bytes?: number | null
+          id?: string
+          processed_items?: number
+          scope?: Json
+          signed_url?: string | null
+          signed_url_expires_at?: string | null
+          started_at?: string | null
+          status?: string
+          storage_bucket?: string | null
+          storage_path?: string | null
+          total_items?: number
+          total_messages?: number
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          error_summary?: string | null
+          export_type?: string
+          file_format?: string
+          file_size_bytes?: number | null
+          id?: string
+          processed_items?: number
+          scope?: Json
+          signed_url?: string | null
+          signed_url_expires_at?: string | null
+          started_at?: string | null
+          status?: string
+          storage_bucket?: string | null
+          storage_path?: string | null
+          total_items?: number
+          total_messages?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "export_jobs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       finance_agent_contacts: {
         Row: {
           abn: string | null
