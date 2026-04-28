@@ -724,7 +724,12 @@ function normaliseUploadedOpportunity(
         if (skipRemaining > 0) {
           skipRemaining--;
           lastProcessedOppId = opp.id || lastProcessedOppId;
-          lastProcessedOppAt = opp.updatedAt || opp.dateAdded || lastProcessedOppAt;
+          if (uploadedRecords) {
+            uploadCursor++;
+            lastProcessedOppAt = String(uploadCursor);
+          } else {
+            lastProcessedOppAt = opp.updatedAt || opp.dateAdded || lastProcessedOppAt;
+          }
           if (skipRemaining === 0) {
             // Persist the "consumed" flag so future legs don't re-skip.
             try {
