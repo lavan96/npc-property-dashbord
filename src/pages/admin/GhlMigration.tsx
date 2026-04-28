@@ -17,7 +17,7 @@ import { toast } from 'sonner';
 import {
   ShieldAlert, RefreshCw, Eye, ArrowLeftRight, Database, Users,
   TrendingUp, MessageSquare, StickyNote, GitBranch, MapPin, AlertCircle, CheckCircle2, Lock,
-  KeyRound, ExternalLink, XCircle, Download, Play, Repeat, Pause, Square, Zap, Link2,
+  KeyRound, ExternalLink, XCircle, Download, Play, Repeat, Pause, Square, Zap, Link2, Loader2,
 } from 'lucide-react';
 import {
   MigrationAdvancedOptions,
