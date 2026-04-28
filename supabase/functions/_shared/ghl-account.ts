@@ -289,6 +289,12 @@ export function requiredScopesForDomain(domain: string): GhlScopeKey[] {
       return ['locations.readonly', 'contacts.readonly', 'contacts/notes.write'];
     case 'conversations':
       return ['locations.readonly', 'conversations.readonly'];
+    case 'conversations_replay':
+      // Replay needs read on source AND write on target. Probe both reads
+      // (cheap) plus the write scope. The orchestrator probes the TARGET
+      // account's scopes; the source account is already trusted for reads
+      // by the original mirror sync that produced our snapshot.
+      return ['locations.readonly', 'conversations.readonly', 'conversations.write'];
     default:
       return ['locations.readonly'];
   }
