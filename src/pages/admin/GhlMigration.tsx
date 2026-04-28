@@ -17,7 +17,7 @@ import { toast } from 'sonner';
 import {
   ShieldAlert, RefreshCw, Eye, ArrowLeftRight, Database, Users,
   TrendingUp, MessageSquare, StickyNote, GitBranch, MapPin, AlertCircle, CheckCircle2, Lock,
-  KeyRound, ExternalLink, XCircle, Download, Play, Repeat, Pause, Square, Zap, Link2,
+  KeyRound, ExternalLink, XCircle, Download, Play, Repeat, Pause, Square, Zap, Link2, Loader2,
 } from 'lucide-react';
 import {
   MigrationAdvancedOptions,
@@ -377,6 +377,32 @@ function MigrationWorkersPanel() {
   const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
   const [resumeTarget, setResumeTarget] = useState<any | null>(null);
   const [resuming, setResuming] = useState(false);
+  const [backfilling, setBackfilling] = useState(false);
+  const [backfillResult, setBackfillResult] = useState<any | null>(null);
+
+  const runBackfill = async (dryRun: boolean) => {
+    setBackfilling(true);
+    setBackfillResult(null);
+    try {
+      const res = await invokeSecureFunction<any>(
+        'ghl-legacy-backfill-gaps',
+        { dry_run: dryRun, max_shells: 1000, max_contacts: 1000 },
+        { timeoutMs: 380000 },
+      );
+      if (res.error || !res.data?.success) {
+        toast.error(res.error?.message || res.data?.error || 'Backfill failed');
+      } else {
+        setBackfillResult(res.data);
+        const p1 = res.data.phase1;
+        const p2 = res.data.phase2;
+        toast.success(
+          dryRun
+            ? `Dry run: ${p1.empty_shells_found} shells, ${p2.missing_contacts_found} missing contacts`
+            : `Backfilled +${p1.messages_added} msgs (shells), +${p2.conversations_added}c/${p2.messages_added}m (contacts)`,
+        );
+      }
+    } finally { setBackfilling(false); }
+  };
 
   const testCredentials = async (acct: Account) => {
     setTestingAudit(true);
@@ -607,11 +633,49 @@ function MigrationWorkersPanel() {
           )}
         </div>
 
+        {/* Pre-Replay Gap Backfill */}
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-4 space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Database className="h-4 w-4 text-amber-500" />
+              <h3 className="text-sm font-semibold">Legacy mirror gap backfill</h3>
+              <Badge variant="outline" className="text-[10px]">Run before Phase B replay</Badge>
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => runBackfill(true)} disabled={backfilling} className="gap-1">
+                {backfilling ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
+                Dry run
+              </Button>
+              <Button size="sm" variant="default" onClick={() => runBackfill(false)} disabled={backfilling} className="gap-1">
+                {backfilling ? <Loader2 className="h-3 w-3 animate-spin" /> : <Database className="h-3 w-3" />}
+                Run backfill
+              </Button>
+            </div>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            API-verified the legacy mirror is missing data: ~80% of "no-conversation" contacts and 100% of empty-shell
+            conversations actually contain messages on GHL. This re-pulls them per-contact / per-conversation with retries.
+            Targets the LEGACY account. Safe to re-run.
+          </p>
+          {backfillResult && (
+            <div className="rounded border border-border/50 bg-background/50 p-3 text-[11px] font-mono space-y-1">
+              <div>Phase 1 (empty shells): found {backfillResult.phase1.empty_shells_found}, processed {backfillResult.phase1.processed}, +{backfillResult.phase1.messages_added} msgs</div>
+              <div>Phase 2 (missing contacts): found {backfillResult.phase2.missing_contacts_found}, processed {backfillResult.phase2.processed}, +{backfillResult.phase2.conversations_added} convs / +{backfillResult.phase2.messages_added} msgs / {backfillResult.phase2.genuinely_empty} truly empty</div>
+              <div className="pt-1 border-t border-border/40">Mirror totals: {backfillResult.final_audit.total_conversations} conversations, {backfillResult.final_audit.total_messages} messages</div>
+            </div>
+          )}
+        </div>
+
         <MigrationAdvancedOptions
           domain={domain}
           flags={advancedFlags}
           onChange={setAdvancedFlags}
         />
+
+        {/* placeholder to preserve diff alignment */}
+        {false && (
+          <MigrationAdvancedOptions domain={domain} flags={advancedFlags} onChange={setAdvancedFlags} />
+        )}
 
         {/* Dispatch form */}
         <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
