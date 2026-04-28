@@ -516,7 +516,13 @@ function MigrationWorkersPanel() {
   }, [jobs]);
 
   const dispatch = async () => {
-    if (source === target) {
+    // Replay reads from Supabase mirror, not GHL — auto-set source to the
+    // opposite account so the source≠target invariant holds and the legacy
+    // contact-name fallback in the worker resolves against the correct tenant.
+    const effectiveSource: Account = domain === 'conversations_replay'
+      ? (target === 'new' ? 'legacy' : 'new')
+      : source;
+    if (effectiveSource === target) {
       toast.error('Source and target must differ'); return;
     }
     if (!dryRun && confirmation !== 'MIGRATE-LIVE') {
