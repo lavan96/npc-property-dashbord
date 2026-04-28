@@ -596,6 +596,11 @@ Deno.serve(async (req) => {
       }
 
       // ── STAGE 2: Replay messages chronologically ──────────────────
+      // Helper: skip mirror writebacks for uploaded sources (synthetic ids).
+      const updateMirrorMessage = async (msgId: string, patch: Record<string, any>) => {
+        if (uploadId) return; // upload rows aren't in the mirror
+        await supabase.from('ghl_conversation_messages').update(patch).eq('id', msgId);
+      };
       let convMsgOk = 0, convMsgFail = 0, convMsgSkip = 0;
       const messagesToReplay = maxMessagesPerConv > 0
         ? messages.slice(0, maxMessagesPerConv)
