@@ -17,7 +17,7 @@ import {
   createForbiddenResponse,
 } from '../_shared/auth.ts';
 
-const VALID_DOMAINS = ['contacts', 'opportunities', 'conversations'] as const;
+const VALID_DOMAINS = ['contacts', 'opportunities', 'conversations', 'conversations_replay'] as const;
 type Domain = typeof VALID_DOMAINS[number];
 
 const MAX_RECORDS = 50_000; // hard ceiling to protect the JSONB column
