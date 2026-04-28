@@ -16,6 +16,7 @@ import { createCorsHeaders } from '../_shared/auth.ts';
 
 const PAGE_SIZE = 1000;             // pagination page size for messages
 const IN_CHUNK_SIZE = 100;           // max IDs per .in() call (URL length limit)
+const MESSAGE_CONVERSATION_CHUNK_SIZE = 50; // conversation IDs per message batch
 const SIGNED_URL_TTL_SECONDS = 60 * 60 * 24; // 24h
 const STORAGE_BUCKET = 'qa_exports';
 
@@ -46,6 +47,10 @@ function fmtDate(d: Date) {
 }
 function fmtTime(d: Date) {
   return `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}:${pad2(d.getUTCSeconds())}`;
+}
+
+function timeMs(value: string | null | undefined): number {
+  return value ? new Date(value).getTime() || 0 : 0;
 }
 
 async function withRetry<T>(label: string, fn: () => Promise<T>, attempts = 3): Promise<T> {
