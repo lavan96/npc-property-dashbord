@@ -721,7 +721,7 @@ function MigrationWorkersPanel() {
         <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
           <div className="space-y-1">
             <label className="text-xs text-muted-foreground">Domain</label>
-            <Select value={domain} onValueChange={(v) => setDomain(v as any)}>
+            <Select value={domain} onValueChange={(v) => { setDomain(v as any); setUploadId(null); }}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="contacts">Contacts</SelectItem>
