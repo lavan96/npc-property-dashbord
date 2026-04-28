@@ -8697,6 +8697,39 @@ export type Database = {
           },
         ]
       }
+      migration_uploaded_sources: {
+        Row: {
+          created_at: string
+          domain: string
+          file_name: string | null
+          id: string
+          notes: string | null
+          records: Json
+          row_count: number
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          domain: string
+          file_name?: string | null
+          id?: string
+          notes?: string | null
+          records?: Json
+          row_count?: number
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          domain?: string
+          file_name?: string | null
+          id?: string
+          notes?: string | null
+          records?: Json
+          row_count?: number
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
       model_catalog_cache: {
         Row: {
           capabilities: string[] | null
