@@ -225,6 +225,7 @@ export type GhlScopeKey =
   | 'opportunities.write'
   | 'contacts/notes.write'
   | 'conversations.readonly'
+  | 'conversations.write'
   | 'locations.readonly';
 
 export interface GhlScopeProbeResult {
@@ -365,9 +366,19 @@ const PROBES: ProbeSpec[] = [
   },
   {
     scope: 'conversations.readonly',
-    required_for: ['conversations'],
+    required_for: ['conversations', 'conversations_replay'],
     method: 'GET',
     buildUrl: (loc) => `${GHL_API_BASE}/conversations/search?locationId=${loc}&limit=1`,
+  },
+  {
+    scope: 'conversations.write',
+    required_for: ['conversations_replay'],
+    method: 'POST',
+    // Deliberately invalid: missing required contactId. GHL returns 400/422
+    // when scope is OK; 401/403 when it isn't.
+    buildUrl: () => `${GHL_API_BASE}/conversations/`,
+    body: (loc) => ({ locationId: loc /* missing contactId → 422, not 401 */ }),
+    okStatuses: [200, 201, 400, 422],
   },
 ];
 
