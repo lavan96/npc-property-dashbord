@@ -269,6 +269,38 @@ export const MigrationAdvancedOptions: React.FC<Props> = ({ domain, flags, onCha
               <code>map_by_email</code> falls back to the configured single user when no email match is found.
             </p>
           </div>
+
+          <div className="rounded-md border border-primary/30 bg-primary/5 p-3 space-y-2">
+            <div className="text-xs font-semibold text-primary">Range / resume controls</div>
+            <p className="text-[11px] text-muted-foreground">
+              GHL <code>/opportunities/search</code> sorts newest-first by <code>date_added</code>. Use these to
+              jump past an already-migrated head or a stuck cluster — applied <strong>once</strong> per fresh job.
+            </p>
+            <div className="grid gap-3 md:grid-cols-3">
+              <TextField
+                label="Skip first N opportunities"
+                type="number"
+                value={flags.skip_count}
+                onChange={(v) => set('skip_count', v)}
+                placeholder="e.g. 600"
+                description="Drops the first N records the API returns before processing. One-time, persisted on the job."
+              />
+              <TextField
+                label="Start after ISO timestamp"
+                value={flags.start_after_iso}
+                onChange={(v) => set('start_after_iso', v)}
+                placeholder="2025-12-04T07:40:26.247Z"
+                description="Seeds the cursor so GHL returns records older than this. Use a known-bad cluster's timestamp to skip past it."
+              />
+              <TextField
+                label="Start after opp ID (optional)"
+                value={flags.start_after_id}
+                onChange={(v) => set('start_after_id', v)}
+                placeholder="qYbgt9XzQT3sVCl8ppDf"
+                description="Companion to ISO seed when GHL needs both. Leave blank if unsure."
+              />
+            </div>
+          </div>
         </div>
       )}
 
