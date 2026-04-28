@@ -526,7 +526,7 @@ function MigrationWorkersPanel() {
     try {
       const max = parseInt(maxItems, 10);
       const domainPatch = buildDomainPayloadPatch(domain, advancedFlags);
-      const useUpload = (domain === 'contacts' || domain === 'opportunities') && !!uploadId;
+      const useUpload = (domain === 'contacts' || domain === 'opportunities' || domain === 'conversations' || domain === 'conversations_replay') && !!uploadId;
       const payload = {
         ...(max > 0 ? { max_items: max } : {}),
         write_mode: 'create_first',
