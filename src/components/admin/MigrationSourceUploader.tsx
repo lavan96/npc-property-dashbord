@@ -101,9 +101,11 @@ export function MigrationSourceUploader({
       }
       setUploading(true);
       try {
-        // Chunk to keep each request body well under the preview proxy's
-        // ~1MB limit. 500 rows ≈ 200-500KB depending on column count.
-        const CHUNK = 500;
+        // Each append is now an O(1) server-side JSONB concat, so we can
+        // push much larger chunks without the previous quadratic slowdown.
+        // 2,000 rows ≈ 0.8-2 MB depending on column count — well under the
+        // preview proxy's request body cap.
+        const CHUNK = 2000;
         const firstChunk = records.slice(0, CHUNK);
         const createRes = await invokeSecureFunction<{ upload: StagedUpload }>(
           'migration-upload-source',
