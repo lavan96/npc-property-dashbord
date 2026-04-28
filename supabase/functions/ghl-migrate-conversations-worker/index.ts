@@ -346,13 +346,19 @@ Deno.serve(async (req) => {
       // upserts doesn't cause the job to be reclaimed mid-page.
       await heartbeat(supabase, jobId);
 
-      nextPage = data.nextPage || null;
-      await saveCheckpoint(supabase, jobId, { nextPage });
+      // Trust GHL's server-supplied cursor first, fall back to the page tail.
+      // Mirrors the contacts/opportunities workers — using `data.nextPage`
+      // (which only exists on the messages sub-endpoint) made this worker
+      // exit after page 1 every time.
+      const pageLast = convs[convs.length - 1];
+      nextStartAfterId = data.meta?.startAfterId ?? pageLast?.id ?? null;
+      const lastTs = pageLast?.lastMessageDate || pageLast?.dateUpdated || pageLast?.dateAdded || null;
+      nextStartAfter = data.meta?.startAfter ?? lastTs ?? null;
+      await saveCheckpoint(supabase, jobId, { startAfter: nextStartAfter, startAfterId: nextStartAfterId });
 
       if (maxItems > 0 && totalProcessed >= maxItems) break;
-      // Walk every page until GHL stops returning a nextPage cursor; do
-      // NOT break early on a short page (uncapped total).
-      if (!nextPage) break;
+      // Walk every page until GHL stops returning a cursor (uncapped total).
+      if (!nextStartAfterId && !nextStartAfter) break;
     }
 
     await saveCheckpoint(supabase, jobId, {});
