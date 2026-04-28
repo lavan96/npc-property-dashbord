@@ -230,7 +230,7 @@ function normaliseUploadedContact(rec: any, index: number): any {
   };
 }
 
-
+function getCustomFieldValue(contact: any, ...keys: string[]): string {
   const candidates = Array.isArray(contact?.customFields) ? contact.customFields : [];
   if (!candidates.length) return '';
   const normalized = keys.map((k) => k.trim().toLowerCase());
