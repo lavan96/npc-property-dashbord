@@ -541,7 +541,7 @@ function MigrationWorkersPanel() {
       };
       const dispatchDomain = async (dispatchDomain: 'contacts' | 'opportunities' | 'notes' | 'conversations' | 'conversations_replay', extraPayload?: Record<string, any>) => {
         return invokeSecureFunction<any>('migration-orchestrator', {
-          domain: dispatchDomain, source_account: source, target_account: target, dry_run: dryRun,
+          domain: dispatchDomain, source_account: effectiveSource, target_account: target, dry_run: dryRun,
           confirmation: dryRun ? undefined : 'MIGRATE-LIVE',
           payload: { ...payload, ...(extraPayload || {}) },
         }, { timeoutMs: 30000 });
