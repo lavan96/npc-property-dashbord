@@ -617,20 +617,14 @@ Deno.serve(async (req) => {
 
         if (skipActivity && isActivityChannel(msg.channel_type)) {
           convMsgSkip++;
-          await supabase
-            .from('ghl_conversation_messages')
-            .update({ replay_skipped_reason: 'activity_channel' })
-            .eq('id', msg.id);
+          await updateMirrorMessage(msg.id, { replay_skipped_reason: 'activity_channel' });
           continue;
         }
 
         const rawBody = (msg.body || '').toString();
         if (!rawBody.trim() && (skipAttachments || !Array.isArray(msg.attachment_urls) || msg.attachment_urls.length === 0)) {
           convMsgSkip++;
-          await supabase
-            .from('ghl_conversation_messages')
-            .update({ replay_skipped_reason: 'empty_body_no_attachments' })
-            .eq('id', msg.id);
+          await updateMirrorMessage(msg.id, { replay_skipped_reason: 'empty_body_no_attachments' });
           continue;
         }
 
@@ -640,10 +634,7 @@ Deno.serve(async (req) => {
         if (!ghlType) {
           // Unknown / non-replayable channel — skip rather than masquerade as SMS
           convMsgSkip++;
-          await supabase
-            .from('ghl_conversation_messages')
-            .update({ replay_skipped_reason: `unsupported_channel:${normaliseChannel(msg.channel_type)}` })
-            .eq('id', msg.id);
+          await updateMirrorMessage(msg.id, { replay_skipped_reason: `unsupported_channel:${normaliseChannel(msg.channel_type)}` });
           continue;
         }
         const direction = msg.direction === 'inbound' ? 'inbound' : 'outbound';
@@ -685,23 +676,17 @@ Deno.serve(async (req) => {
             const parsed = parseGhlError(t);
             const code = parsed.error_code || `GHL_${r.status}`;
             convMsgFail++;
-            await supabase
-              .from('ghl_conversation_messages')
-              .update({ replay_skipped_reason: `[${code}] ${(parsed.message || t).substring(0, 200)}` })
-              .eq('id', msg.id);
+            await updateMirrorMessage(msg.id, { replay_skipped_reason: `[${code}] ${(parsed.message || t).substring(0, 200)}` });
             continue;
           }
           const data = await r.json();
           const newMsgId = data?.messageId || data?.message?.id || data?.id || null;
           if (newMsgId) {
-            await supabase
-              .from('ghl_conversation_messages')
-              .update({
-                new_ghl_message_id: newMsgId,
-                replayed_at: new Date().toISOString(),
-                replay_skipped_reason: null,
-              })
-              .eq('id', msg.id);
+            await updateMirrorMessage(msg.id, {
+              new_ghl_message_id: newMsgId,
+              replayed_at: new Date().toISOString(),
+              replay_skipped_reason: null,
+            });
             await recordIdMapping(supabase, {
               resource_type: 'conversation_message',
               old_ghl_id: msg.ghl_message_id,
@@ -715,10 +700,7 @@ Deno.serve(async (req) => {
           totalMessagesReplayed++;
         } catch (e: any) {
           convMsgFail++;
-          await supabase
-            .from('ghl_conversation_messages')
-            .update({ replay_skipped_reason: `Replay threw: ${(e.message || '').substring(0, 200)}` })
-            .eq('id', msg.id);
+          await updateMirrorMessage(msg.id, { replay_skipped_reason: `Replay threw: ${(e.message || '').substring(0, 200)}` });
         }
       }
 
