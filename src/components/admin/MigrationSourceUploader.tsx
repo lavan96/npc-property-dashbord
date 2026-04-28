@@ -32,8 +32,8 @@ const ACCEPT = {
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
 } as const;
 
-const MAX_FILE_BYTES = 25 * 1024 * 1024; // 25MB raw
-const MAX_ROWS = 50_000;
+const MAX_FILE_BYTES = 50 * 1024 * 1024; // 50MB raw
+const MAX_ROWS = 200_000;
 
 async function parseFile(file: File): Promise<Record<string, any>[]> {
   const buf = await file.arrayBuffer();
