@@ -142,6 +142,7 @@ export default function Conversations() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
+  const [isExportingHistory, setIsExportingHistory] = useState(false);
   
   // Resizable panel state
   const [convPanelWidth, setConvPanelWidth] = useState(360);
