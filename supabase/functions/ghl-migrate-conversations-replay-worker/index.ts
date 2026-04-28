@@ -188,7 +188,22 @@ Deno.serve(async (req) => {
     if (isResume) {
       console.log(`[conv-replay] RESUMING job=${jobId} dispatch#${checkpoint.dispatchCount} offset=${startOffset} pulled=${conversations?.length || 0}`);
     } else {
-      await startJob(supabase, jobId, conversations?.length || 0);
+      // Compute the TRUE total (not just this batch) so the UI progress bar is accurate.
+      let trueTotal = conversations?.length || 0;
+      try {
+        let countQuery = supabase
+          .from('ghl_conversations')
+          .select('id', { count: 'exact', head: true });
+        if (channelFilter.length > 0) countQuery = countQuery.in('channel_type', channelFilter);
+        if (sinceTs) countQuery = countQuery.gte('last_message_date', sinceTs);
+        const { count } = await countQuery;
+        if (typeof count === 'number' && count > 0) {
+          trueTotal = maxItems > 0 ? Math.min(maxItems, count) : count;
+        }
+      } catch (e) {
+        console.warn('[conv-replay] total count query failed, using batch size:', (e as any)?.message);
+      }
+      await startJob(supabase, jobId, trueTotal);
     }
 
     // Cumulative counters
