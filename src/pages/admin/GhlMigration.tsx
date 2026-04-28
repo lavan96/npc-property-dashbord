@@ -486,7 +486,9 @@ function MigrationWorkersPanel() {
       // migration the user didn't ask for.
       const res = await dispatchDomain(domain, {
         ingestion_validation: {
-          require_contact_mapping: domain === 'opportunities' ? true : (domain === 'contacts' ? false : true),
+          require_contact_mapping: domain === 'opportunities' || domain === 'notes' || domain === 'conversations_replay'
+            ? true
+            : (domain === 'contacts' ? false : true),
           dispatch_mode: 'isolated',
         },
       });
@@ -622,6 +624,7 @@ function MigrationWorkersPanel() {
                 <SelectItem value="opportunities">Opportunities</SelectItem>
                 <SelectItem value="notes">Notes</SelectItem>
                 <SelectItem value="conversations">Conversations (read-only mirror)</SelectItem>
+                <SelectItem value="conversations_replay">Conversations REPLAY (write to target)</SelectItem>
               </SelectContent>
             </Select>
           </div>
