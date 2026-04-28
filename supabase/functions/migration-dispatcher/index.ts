@@ -24,6 +24,7 @@ const WORKER_MAP: Record<string, string> = {
   contacts: 'ghl-migrate-contacts-worker',
   opportunities: 'ghl-migrate-opportunities-worker',
   conversations: 'ghl-migrate-conversations-worker',
+  conversations_replay: 'ghl-migrate-conversations-replay-worker',
   notes: 'ghl-migrate-notes-worker',
 };
 

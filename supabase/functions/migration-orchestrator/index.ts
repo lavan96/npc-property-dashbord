@@ -27,13 +27,14 @@ import {
   GHL_SCOPE_DOCS_URL,
 } from '../_shared/ghl-account.ts';
 
-const VALID_DOMAINS: MigrationDomain[] = ['contacts', 'opportunities', 'conversations', 'notes'];
+const VALID_DOMAINS: MigrationDomain[] = ['contacts', 'opportunities', 'conversations', 'conversations_replay', 'notes'];
 const LIVE_WRITE_CONFIRMATION = 'MIGRATE-LIVE';
 
 const WORKER_MAP: Record<MigrationDomain, string> = {
   contacts: 'ghl-migrate-contacts-worker',
   opportunities: 'ghl-migrate-opportunities-worker',
   conversations: 'ghl-migrate-conversations-worker',
+  conversations_replay: 'ghl-migrate-conversations-replay-worker',
   notes: 'ghl-migrate-notes-worker',
 };
 
