@@ -709,12 +709,24 @@ function MigrationWorkersPanel() {
           onChange={setAdvancedFlags}
         />
 
-        {(domain === 'contacts' || domain === 'opportunities' || domain === 'conversations') && (
+        {(domain === 'contacts' || domain === 'opportunities' || domain === 'conversations' || domain === 'conversations_replay') && (
           <MigrationSourceUploader
-            domain={domain as 'contacts' | 'opportunities' | 'conversations'}
+            domain={domain as 'contacts' | 'opportunities' | 'conversations' | 'conversations_replay'}
             selectedUploadId={uploadId}
             onSelect={(id) => setUploadId(id)}
           />
+        )}
+
+        {domain === 'conversations_replay' && (
+          <Alert className="border-primary/30 bg-primary/5">
+            <AlertTitle className="text-xs">Replay reads from Supabase, not GHL</AlertTitle>
+            <AlertDescription className="text-[11px] text-muted-foreground">
+              Source data comes from the local <code className="rounded bg-muted px-1">ghl_conversations</code> mirror
+              (or your uploaded CSV/XLSX above). Target contacts are resolved by{' '}
+              <strong>full name</strong> against the target account — not by contact ID — matching the
+              notes / opportunities replay pattern.
+            </AlertDescription>
+          </Alert>
         )}
 
         {/* Dispatch form */}
