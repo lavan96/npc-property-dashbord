@@ -45,7 +45,7 @@ import { GHLExportDialog } from '@/components/shared/GHLExportDialog';
 import { format, isToday, isYesterday } from 'date-fns';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
-import * as XLSX from 'xlsx';
+
 
 // ── Channel helpers ──────────────────────────────────────────
 function normalizeChannel(ch: string | undefined): string {
