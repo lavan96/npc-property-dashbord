@@ -10492,6 +10492,16 @@ export type Database = {
       }
     }
     Functions: {
+      append_migration_upload_records: {
+        Args: { _max_records?: number; _records: Json; _upload_id: string }
+        Returns: {
+          created_at: string
+          domain: string
+          file_name: string
+          id: string
+          row_count: number
+        }[]
+      }
       calculate_data_quality_score: {
         Args: { report_id: string }
         Returns: number
