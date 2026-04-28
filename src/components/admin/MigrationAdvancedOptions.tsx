@@ -81,6 +81,9 @@ export function buildDomainPayloadPatch(domain: MigrationDomain, f: AdvancedFlag
   }
   if (domain === 'opportunities') {
     const splitCsv = (s: string) => s.split(',').map((x) => x.trim()).filter(Boolean);
+    const skipN = parseInt(f.skip_count, 10);
+    const seedIso = f.start_after_iso.trim();
+    const seedId = f.start_after_id.trim();
     return {
       force_recreate_opportunities: f.force_recreate_opportunities,
       skip_target_dedupe_check: f.skip_target_dedupe_check,
@@ -89,6 +92,9 @@ export function buildDomainPayloadPatch(domain: MigrationDomain, f: AdvancedFlag
       ...(f.pipeline_filter ? { pipeline_filter: splitCsv(f.pipeline_filter) } : {}),
       ...(f.stage_filter ? { stage_filter: splitCsv(f.stage_filter) } : {}),
       assigned_user_strategy: f.assigned_user_strategy,
+      ...(Number.isFinite(skipN) && skipN > 0 ? { skip_count: skipN } : {}),
+      ...(seedIso ? { start_after_iso: seedIso } : {}),
+      ...(seedId ? { start_after_id: seedId } : {}),
     };
   }
   if (domain === 'conversations') {
