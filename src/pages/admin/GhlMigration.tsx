@@ -709,9 +709,9 @@ function MigrationWorkersPanel() {
           onChange={setAdvancedFlags}
         />
 
-        {(domain === 'contacts' || domain === 'opportunities') && (
+        {(domain === 'contacts' || domain === 'opportunities' || domain === 'conversations') && (
           <MigrationSourceUploader
-            domain={domain}
+            domain={domain as 'contacts' | 'opportunities' | 'conversations'}
             selectedUploadId={uploadId}
             onSelect={(id) => setUploadId(id)}
           />
