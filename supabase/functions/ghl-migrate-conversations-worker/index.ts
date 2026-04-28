@@ -54,6 +54,81 @@ function mapChannel(t: any): string {
   return m[s] || s;
 }
 
+/**
+ * Normalise a CSV/XLSX row into the same shape as a GHL `/conversations/search`
+ * conversation object, so the rest of the worker can iterate uploaded rows
+ * with no branching beyond "skip the live messages fetch".
+ *
+ * Recognised columns (case/spacing/underscore-insensitive):
+ *   id / conversation_id / ghl_conversation_id
+ *   contact_id / ghl_contact_id
+ *   type / channel / channel_type
+ *   last_message_body / snippet / body / message
+ *   last_message_date / last_message_at / date_updated / updated_at
+ *   unread_count / unread
+ *   direction / inbound (for single-message rows)
+ *   sent_at / date_added / date_created (for single-message rows)
+ *   message_id / ghl_message_id
+ */
+function normaliseUploadedConversation(rec: any, index: number): any {
+  const get = (...keys: string[]): string => {
+    if (!rec || typeof rec !== 'object') return '';
+    const lower: Record<string, any> = {};
+    for (const k of Object.keys(rec)) {
+      lower[k.toLowerCase().trim().replace(/[\s_-]+/g, '')] = rec[k];
+    }
+    for (const k of keys) {
+      const norm = k.toLowerCase().trim().replace(/[\s_-]+/g, '');
+      const v = lower[norm];
+      if (v !== undefined && v !== null && String(v).trim() !== '') return String(v).trim();
+    }
+    return '';
+  };
+
+  const id = get('id', 'conversation_id', 'ghl_conversation_id', 'conversationId')
+    || `upload-conv-${index}`;
+  const contactId = get('contact_id', 'ghl_contact_id', 'contactId') || null;
+  const type = get('type', 'channel', 'channel_type', 'message_type') || 'sms';
+  const lastBody = get('last_message_body', 'snippet', 'body', 'message', 'last_message');
+  const lastDate = get('last_message_date', 'last_message_at', 'date_updated', 'updated_at', 'date');
+  const unread = Number(get('unread_count', 'unread') || '0') || 0;
+
+  // Optional embedded single-message payload for "one row per message"
+  // exports — these get upserted alongside the conversation row.
+  const msgId = get('message_id', 'ghl_message_id');
+  const msgBody = get('message_body', 'message_text') || lastBody;
+  const msgDate = get('sent_at', 'date_added', 'date_created') || lastDate;
+  const msgDirRaw = get('direction', 'message_direction');
+  const inbound = String(get('inbound', 'is_inbound') || '').toLowerCase();
+  let msgDirection: string | undefined;
+  if (msgDirRaw) msgDirection = String(msgDirRaw).toLowerCase();
+  else if (inbound === 'true' || inbound === '1' || inbound === 'yes') msgDirection = 'inbound';
+  else if (inbound === 'false' || inbound === '0' || inbound === 'no') msgDirection = 'outbound';
+
+  const embeddedMessages: any[] = [];
+  if (msgId || (msgBody && msgDate)) {
+    embeddedMessages.push({
+      id: msgId || `${id}-msg-${index}`,
+      direction: msgDirection || 'outbound',
+      messageType: get('message_channel', 'msg_channel') || type,
+      body: msgBody,
+      dateAdded: msgDate,
+    });
+  }
+
+  return {
+    id,
+    contactId,
+    type,
+    snippet: lastBody,
+    lastMessageBody: lastBody,
+    lastMessageDate: lastDate || null,
+    dateUpdated: lastDate || null,
+    unreadCount: unread,
+    __uploadedMessages: embeddedMessages,
+  };
+}
+
 Deno.serve(async (req) => {
   const startedAt = Date.now();
   if (req.method === 'OPTIONS') return new Response('ok');
@@ -97,13 +172,49 @@ Deno.serve(async (req) => {
 
     if (!jobId) return new Response(JSON.stringify({ error: 'job_id required' }), { status: 400 });
 
-    const creds = getGhlCredentials(sourceAccount);
-    const err = validateGhlCredentials(creds);
-    if (err) {
-      await finishJob(supabase, jobId, 'failed', err);
-      return new Response(JSON.stringify({ error: err }), { status: 400 });
+    // ── Uploaded-source mode ─────────────────────────────────────────
+    // When `payload.upload_id` is supplied, we iterate parsed CSV/XLSX
+    // rows instead of paginating the live GHL `/conversations/search`
+    // endpoint. We still tag the resulting rows with `source_account_label`
+    // so the dashboard knows which account they came from logically, but
+    // we never call GHL.
+    const uploadId: string | null = typeof payload.upload_id === 'string' && payload.upload_id
+      ? payload.upload_id : null;
+    let uploadedRecords: any[] | null = null;
+    let uploadFileName: string | null = null;
+    if (uploadId) {
+      const sbForLoad = createClient(supabaseUrl, serviceRoleKey);
+      const { data: uploadRow, error: uploadErr } = await sbForLoad
+        .from('migration_uploaded_sources')
+        .select('domain, file_name, records')
+        .eq('id', uploadId)
+        .maybeSingle();
+      if (uploadErr || !uploadRow) {
+        await finishJob(supabase, jobId, 'failed', `Upload ${uploadId} not found: ${uploadErr?.message || 'no row'}`);
+        return new Response(JSON.stringify({ error: 'upload_not_found' }), { status: 400 });
+      }
+      if (uploadRow.domain !== 'conversations') {
+        await finishJob(supabase, jobId, 'failed', `Upload ${uploadId} is for domain "${uploadRow.domain}", expected "conversations"`);
+        return new Response(JSON.stringify({ error: 'upload_domain_mismatch' }), { status: 400 });
+      }
+      uploadedRecords = Array.isArray(uploadRow.records) ? uploadRow.records : [];
+      uploadFileName = uploadRow.file_name;
+      console.log(`[conv-worker] uploaded-source mode: upload_id=${uploadId} file="${uploadFileName}" rows=${uploadedRecords.length}`);
     }
-    const headers = buildGhlHeaders(creds.apiKey!);
+
+    // Credentials are only required for live-fetch mode. Upload mode skips
+    // GHL entirely and writes straight to the mirror tables.
+    const creds = uploadedRecords
+      ? { apiKey: '', locationId: '' }
+      : getGhlCredentials(sourceAccount);
+    if (!uploadedRecords) {
+      const err = validateGhlCredentials(creds);
+      if (err) {
+        await finishJob(supabase, jobId, 'failed', err);
+        return new Response(JSON.stringify({ error: err }), { status: 400 });
+      }
+    }
+    const headers = uploadedRecords ? {} : buildGhlHeaders(creds.apiKey!);
 
     // Shared cross-isolate rate limiter + circuit breaker. Both buckets
     // point at the same token because conversations only reads from one
@@ -211,23 +322,44 @@ Deno.serve(async (req) => {
         }), { headers: { 'Content-Type': 'application/json' } });
       }
 
-      const p = new URLSearchParams({ locationId: creds.locationId!, limit: String(PAGE_LIMIT) });
-      if (nextStartAfterId) p.set('startAfterId', nextStartAfterId);
-      if (nextStartAfter) {
-        // GHL requires `startAfter` as a numeric millisecond timestamp.
-        const numeric = /^\d+$/.test(String(nextStartAfter))
-          ? String(nextStartAfter)
-          : String(new Date(nextStartAfter).getTime());
-        p.set('startAfter', numeric);
-      }
+      let convs: any[];
+      let data: any = {};
+      if (uploadedRecords) {
+        // Iterate the staged rows in PAGE_LIMIT-sized slices using a
+        // numeric offset stored in `nextStartAfter`. The cursor advances
+        // at the bottom of the loop just like the live path.
+        const offset = Number(nextStartAfter) || 0;
+        const slice = uploadedRecords.slice(offset, offset + PAGE_LIMIT);
+        convs = slice.map((rec, i) => normaliseUploadedConversation(rec, offset + i));
+        data = {
+          conversations: convs,
+          total: uploadedRecords.length,
+          meta: {
+            total: uploadedRecords.length,
+            startAfter: offset + slice.length < uploadedRecords.length
+              ? String(offset + slice.length) : null,
+            startAfterId: null,
+          },
+        };
+      } else {
+        const p = new URLSearchParams({ locationId: creds.locationId!, limit: String(PAGE_LIMIT) });
+        if (nextStartAfterId) p.set('startAfterId', nextStartAfterId);
+        if (nextStartAfter) {
+          // GHL requires `startAfter` as a numeric millisecond timestamp.
+          const numeric = /^\d+$/.test(String(nextStartAfter))
+            ? String(nextStartAfter)
+            : String(new Date(nextStartAfter).getTime());
+          p.set('startAfter', numeric);
+        }
 
-      const r = await ctx.ghlFetch(`${GHL_API_BASE}/conversations/search?${p}`, { headers }, 3, 'source');
-      if (!r.ok) {
-        const t = await r.text();
-        throw new Error(`Source conversations fetch failed: ${r.status} ${t.substring(0, 200)}`);
+        const r = await ctx.ghlFetch(`${GHL_API_BASE}/conversations/search?${p}`, { headers }, 3, 'source');
+        if (!r.ok) {
+          const t = await r.text();
+          throw new Error(`Source conversations fetch failed: ${r.status} ${t.substring(0, 200)}`);
+        }
+        data = await r.json();
+        convs = data.conversations || [];
       }
-      const data = await r.json();
-      const convs: any[] = data.conversations || [];
       if (firstPage) {
         const total = data.total ?? data.meta?.total ?? 0;
         // Don't clobber a healthy persisted total on resume.
@@ -289,42 +421,48 @@ Deno.serve(async (req) => {
             source_account_label: sourceAccount,
           } as any, { onConflict: 'ghl_conversation_id' });
 
-          // Pull recent messages — pacing handled by the shared limiter.
-          const mr = await ctx.ghlFetch(
-            `${GHL_API_BASE}/conversations/${conv.id}/messages?limit=${messagesPerConv}`,
-            { headers }, 3, 'source',
-          );
-          if (mr.ok) {
-            const md = await mr.json();
-            let messages: any[] = [];
-            if (md.messages?.messages && Array.isArray(md.messages.messages)) messages = md.messages.messages;
-            else if (Array.isArray(md.messages)) messages = md.messages;
-
-            for (const msg of messages) {
-              const msgDir = mapDirection(msg);
-              const msgChannel = mapChannel(msg.messageType || msg.source || conv.type);
-              const msgTs = msg.dateAdded ? new Date(msg.dateAdded).getTime()
-                          : msg.dateCreated ? new Date(msg.dateCreated).getTime() : 0;
-
-              // Per-message filters
-              if (messageDirection !== 'all' && msgDir !== messageDirection) continue;
-              if (channelFilter.size > 0 && !channelFilter.has(msgChannel)) continue;
-              if (sinceTs > 0 && msgTs > 0 && msgTs < sinceTs) continue;
-
-              const row: any = {
-                ghl_message_id: msg.id,
-                ghl_conversation_id: conv.id,
-                direction: msgDir,
-                channel_type: msgChannel,
-                body: (msg.body || msg.message || '').substring(0, 4000),
-                sent_at: msg.dateAdded || msg.dateCreated || null,
-                source_account_label: sourceAccount,
-              };
-              if (!skipAttachments && msg.attachments) {
-                row.attachments = msg.attachments;
-              }
-              await supabase.from('ghl_conversation_messages').upsert(row, { onConflict: 'ghl_message_id' });
+          // In upload mode we use the embedded message (if any) from the
+          // CSV/XLSX row. Otherwise, pull recent messages from GHL — pacing
+          // handled by the shared limiter.
+          let messages: any[] = [];
+          if (uploadedRecords) {
+            messages = Array.isArray(conv.__uploadedMessages) ? conv.__uploadedMessages : [];
+          } else {
+            const mr = await ctx.ghlFetch(
+              `${GHL_API_BASE}/conversations/${conv.id}/messages?limit=${messagesPerConv}`,
+              { headers }, 3, 'source',
+            );
+            if (mr.ok) {
+              const md = await mr.json();
+              if (md.messages?.messages && Array.isArray(md.messages.messages)) messages = md.messages.messages;
+              else if (Array.isArray(md.messages)) messages = md.messages;
             }
+          }
+
+          for (const msg of messages) {
+            const msgDir = mapDirection(msg);
+            const msgChannel = mapChannel(msg.messageType || msg.source || conv.type);
+            const msgTs = msg.dateAdded ? new Date(msg.dateAdded).getTime()
+                        : msg.dateCreated ? new Date(msg.dateCreated).getTime() : 0;
+
+            // Per-message filters
+            if (messageDirection !== 'all' && msgDir !== messageDirection) continue;
+            if (channelFilter.size > 0 && !channelFilter.has(msgChannel)) continue;
+            if (sinceTs > 0 && msgTs > 0 && msgTs < sinceTs) continue;
+
+            const row: any = {
+              ghl_message_id: msg.id,
+              ghl_conversation_id: conv.id,
+              direction: msgDir,
+              channel_type: msgChannel,
+              body: (msg.body || msg.message || '').substring(0, 4000),
+              sent_at: msg.dateAdded || msg.dateCreated || null,
+              source_account_label: sourceAccount,
+            };
+            if (!skipAttachments && msg.attachments) {
+              row.attachments = msg.attachments;
+            }
+            await supabase.from('ghl_conversation_messages').upsert(row, { onConflict: 'ghl_message_id' });
           }
 
           totalSucceeded++;
