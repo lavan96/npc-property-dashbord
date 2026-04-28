@@ -132,8 +132,8 @@ Deno.serve(async (req) => {
     // ── 2. Resolve client names/emails ──
     const clientIds = [...new Set(conversations.map((c) => c.client_id).filter(Boolean))];
     const clientMap = new Map<string, { name: string; email: string | null }>();
-    for (let i = 0; i < clientIds.length; i += PAGE_SIZE) {
-      const chunk = clientIds.slice(i, i + PAGE_SIZE);
+    for (let i = 0; i < clientIds.length; i += IN_CHUNK_SIZE) {
+      const chunk = clientIds.slice(i, i + IN_CHUNK_SIZE);
       const { data, error } = await withRetry('fetch clients', () =>
         supabase.from('clients')
           .select('id, primary_first_name, primary_surname, primary_email')
