@@ -145,8 +145,92 @@ async function ghlFetch(
 }
 
 
+/**
+ * Normalise an uploaded CSV/XLSX row to the same shape the GHL
+ * `/contacts/?...` endpoint returns, so the rest of the worker pipeline
+ * (sanitization, dedupe, write) can run unchanged.
+ *
+ * Accepts a wide range of header spellings (snake/camel/title case, with
+ * or without spaces) so analysts can drop in exports straight from GHL,
+ * Mailchimp, HubSpot, etc., without re-mapping columns.
+ */
+function normaliseUploadedContact(rec: any, index: number): any {
+  const get = (...keys: string[]): string => {
+    if (!rec || typeof rec !== 'object') return '';
+    const lower: Record<string, any> = {};
+    for (const k of Object.keys(rec)) {
+      lower[k.toLowerCase().trim().replace(/[\s_-]+/g, '')] = rec[k];
+    }
+    for (const k of keys) {
+      const norm = k.toLowerCase().trim().replace(/[\s_-]+/g, '');
+      const v = lower[norm];
+      if (v !== undefined && v !== null && String(v).trim() !== '') return String(v).trim();
+    }
+    return '';
+  };
 
-function getCustomFieldValue(contact: any, ...keys: string[]): string {
+  // Tags: accept either an array, or a comma/semicolon/pipe separated string
+  let tags: string[] = [];
+  const rawTags = rec?.tags ?? rec?.Tags ?? rec?.tag_list ?? rec?.['Tag List'];
+  if (Array.isArray(rawTags)) {
+    tags = rawTags.map((t) => String(t || '').trim()).filter(Boolean);
+  } else if (rawTags) {
+    tags = String(rawTags).split(/[,;|]/).map((t) => t.trim()).filter(Boolean);
+  }
+
+  // Custom-field passthrough: any column we didn't explicitly map becomes
+  // a customField so analysts can preserve arbitrary data without code
+  // changes. Only stringy/scalar values are passed through.
+  const RECOGNISED = new Set([
+    'id', 'contactid', 'ghlcontactid', 'legacyid', 'legacycontactid',
+    'firstname', 'lastname', 'name', 'contactname', 'fullname',
+    'email', 'emailaddress', 'phone', 'phonenumber', 'mobile',
+    'tags', 'taglist', 'source',
+    'address1', 'address', 'streetaddress', 'city', 'state', 'province',
+    'postalcode', 'postcode', 'zip', 'zipcode', 'country',
+    'dateadded', 'datecreated', 'createdat',
+    'secondaryfirstname', 'secondarylastname',
+    'pipelinestatus', 'opportunitystatus',
+  ]);
+  const customFields: Array<{ key: string; field_value: string }> = [];
+  for (const k of Object.keys(rec || {})) {
+    const norm = k.toLowerCase().trim().replace(/[\s_-]+/g, '');
+    if (RECOGNISED.has(norm)) continue;
+    const v = rec[k];
+    if (v === null || v === undefined) continue;
+    const s = typeof v === 'object' ? JSON.stringify(v) : String(v);
+    if (!s.trim()) continue;
+    customFields.push({ key: k.trim(), field_value: s });
+  }
+
+  const id = get('id', 'contact_id', 'ghl_contact_id', 'legacy_id', 'legacy_contact_id')
+    || `upload-${index}`;
+
+  return {
+    id,
+    firstName: get('firstName', 'first_name', 'First Name', 'givenName'),
+    lastName: get('lastName', 'last_name', 'Last Name', 'surname', 'familyName'),
+    name: get('name', 'fullName', 'contactName', 'Full Name'),
+    contactName: get('contactName', 'contact_name'),
+    email: get('email', 'email_address', 'Email Address'),
+    phone: get('phone', 'phone_number', 'mobile', 'Mobile'),
+    tags,
+    source: get('source'),
+    address1: get('address1', 'address', 'street_address', 'Street Address'),
+    city: get('city'),
+    state: get('state', 'province'),
+    postalCode: get('postalCode', 'postal_code', 'postcode', 'zip', 'zipcode', 'Zip Code'),
+    country: get('country') || 'Australia',
+    dateAdded: get('dateAdded', 'date_added', 'date_created', 'created_at') || null,
+    secondaryFirstName: get('secondaryFirstName', 'secondary_first_name'),
+    secondaryLastName: get('secondaryLastName', 'secondary_last_name'),
+    pipelineStatus: get('pipelineStatus', 'pipeline_status'),
+    opportunityStatus: get('opportunityStatus', 'opportunity_status'),
+    customFields,
+  };
+}
+
+
   const candidates = Array.isArray(contact?.customFields) ? contact.customFields : [];
   if (!candidates.length) return '';
   const normalized = keys.map((k) => k.trim().toLowerCase());
