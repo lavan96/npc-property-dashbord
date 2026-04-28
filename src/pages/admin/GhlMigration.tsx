@@ -21,10 +21,11 @@ import {
 } from 'lucide-react';
 import {
   MigrationAdvancedOptions,
+  type AdvancedFlagsState,
   DEFAULT_ADVANCED_FLAGS,
   buildDomainPayloadPatch,
-  type AdvancedFlagsState,
 } from '@/components/admin/MigrationAdvancedOptions';
+import { MigrationSourceUploader } from '@/components/admin/MigrationSourceUploader';
 
 interface ScopeProbe {
   scope: string;
