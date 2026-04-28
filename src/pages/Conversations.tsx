@@ -391,103 +391,94 @@ export default function Conversations() {
     return format(d, 'dd/MM/yy');
   };
 
-  // ── Full message history export (one row per message) ──
+  // ── Full message history export (server-side, async) ──
+  // Spawns a background edge worker that paginates everything (no 1000-row
+  // cap), builds the file, uploads to storage, returns a signed URL.
+  // The browser only polls a small status row.
   const exportFullMessageHistory = async (fileFormat: 'csv' | 'xlsx') => {
     if (filteredConversations.length === 0) {
       toast.error('No conversations in current view to export');
       return;
     }
     setIsExportingHistory(true);
-    const toastId = toast.loading(`Preparing ${filteredConversations.length} conversations...`);
+    const toastId = toast.loading(
+      `Starting export of ${filteredConversations.length} conversations...`
+    );
     try {
-      const headers = [
-        'Conversation #', 'Message #', 'Client Name', 'Client Email',
-        'Channel', 'Contact ID (GHL)', 'Conversation ID (GHL)', 'Message ID (GHL)',
-        'Direction', 'Sender', 'Date', 'Time', 'Timestamp (ISO)',
-        'Message Type', 'Status', 'Body', 'Attachments',
-      ];
-      const indexed = filteredConversations.map((c, i) => ({ conv: c, idx: i + 1 }));
-      const rows: (string | number)[][] = [];
-      const queue = [...indexed];
-      let processed = 0;
+      // 1. Kick off the job
+      const conversationIds = filteredConversations.map((c) => c.id);
+      const { data: startData, error: startErr } = await invokeSecureFunction<any>(
+        'start-conversations-export',
+        { conversation_ids: conversationIds, file_format: fileFormat },
+        { timeoutMs: 30000 },
+      );
+      if (startErr) throw new Error(startErr.message || 'Failed to start export');
+      const jobId = (startData as any)?.job_id;
+      if (!jobId) throw new Error('No job_id returned from server');
 
-      const fetchConvMessages = async (conv: ConversationRow) => {
-        const { data, error } = await invokeSecureFunction('get-client-data', {
-          listMode: true,
-          listOptions: {
-            table: 'ghl_conversation_messages',
-            filters: { conversation_id: conv.id },
-            orderBy: 'ghl_date_added',
-            order_asc: true,
-          },
-        });
-        if (error) throw new Error(error.message);
-        return (data?.records || []) as Message[];
-      };
+      // 2. Poll status (up to 10 minutes)
+      const pollIntervalMs = 2500;
+      const maxAttempts = Math.ceil((10 * 60 * 1000) / pollIntervalMs);
+      let lastProcessed = -1;
 
-      const concurrency = Math.min(5, queue.length);
-      const workers = Array.from({ length: concurrency }, async () => {
-        while (queue.length > 0) {
-          const item = queue.shift();
-          if (!item) break;
-          const { conv, idx } = item;
-          try {
-            const msgs = await fetchConvMessages(conv);
-            if (msgs.length === 0) {
-              rows.push([
-                idx, 0, conv.client_name || '', conv.client_email || '',
-                normalizeChannel(conv.channel_type), conv.ghl_contact_id || '',
-                conv.ghl_conversation_id || '', '', '', '', '', '', '', '', '',
-                '(no messages)', '',
-              ]);
-            } else {
-              msgs.forEach((m, i) => {
-                const d = m.ghl_date_added ? new Date(m.ghl_date_added) : null;
-                rows.push([
-                  idx, i + 1, conv.client_name || '', conv.client_email || '',
-                  normalizeChannel(m.channel_type || conv.channel_type),
-                  conv.ghl_contact_id || '', conv.ghl_conversation_id || '',
-                  m.ghl_message_id || '', m.direction || '', m.sender_name || '',
-                  d ? format(d, 'yyyy-MM-dd') : '', d ? format(d, 'HH:mm:ss') : '',
-                  d ? d.toISOString() : '', m.message_type || m.content_type || '',
-                  m.message_status || '', m.body || '',
-                  (m.attachment_urls || []).join(' | '),
-                ]);
-              });
-            }
-          } catch (e: any) {
-            console.warn('[exportFullMessageHistory] failed for conv', conv.id, e?.message);
-          } finally {
-            processed++;
-            if (processed % 10 === 0 || processed === filteredConversations.length) {
-              toast.loading(`Fetched ${processed}/${filteredConversations.length} conversations...`, { id: toastId });
-            }
-          }
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        await new Promise((r) => setTimeout(r, pollIntervalMs));
+
+        let job: any = null;
+        try {
+          const { data, error } = await invokeSecureFunction<any>(
+            'get-client-data',
+            {
+              listMode: true,
+              listOptions: { table: 'export_jobs', filters: { id: jobId }, limit: 1 },
+            },
+            { timeoutMs: 15000 },
+          );
+          if (error) throw new Error(error.message);
+          job = ((data as any)?.records || [])[0];
+        } catch (e: any) {
+          console.warn('[exportFullMessageHistory] poll error:', e?.message);
+          continue;
         }
-      });
-      await Promise.all(workers);
 
-      // Sort by conversation index then message index for deterministic output
-      rows.sort((a, b) => (a[0] as number) - (b[0] as number) || (a[1] as number) - (b[1] as number));
+        if (!job) continue;
 
-      const fileBase = `ghl-conversations-full-history-${format(new Date(), 'yyyy-MM-dd')}`;
-      if (fileFormat === 'csv') {
-        const escape = (v: any) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-        const csv = [headers, ...rows].map(r => r.map(escape).join(',')).join('\n');
-        const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `${fileBase}.csv`;
-        a.click();
-        URL.revokeObjectURL(a.href);
-      } else {
-        const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-        ws['!cols'] = headers.map((h) => ({ wch: Math.min(Math.max(h.length + 2, 14), 60) }));
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Message History');
-        XLSX.writeFile(wb, `${fileBase}.xlsx`);
+        if (job.processed_items !== lastProcessed) {
+          lastProcessed = job.processed_items;
+          toast.loading(
+            `Processed ${job.processed_items}/${job.total_items} conversations` +
+              (job.total_messages ? ` · ${job.total_messages} messages` : ''),
+            { id: toastId },
+          );
+        }
+
+        if (job.status === 'completed') {
+          if (!job.signed_url) throw new Error('Export completed but no download URL was provided');
+          const a = document.createElement('a');
+          a.href = job.signed_url;
+          a.download = '';
+          a.target = '_blank';
+          a.rel = 'noopener';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+
+          const sizeMB = job.file_size_bytes
+            ? (job.file_size_bytes / (1024 * 1024)).toFixed(2)
+            : null;
+          toast.success(
+            `Export ready · ${job.total_messages} messages from ${job.processed_items} conversations` +
+              (sizeMB ? ` (${sizeMB} MB)` : ''),
+            { id: toastId, duration: 8000 },
+          );
+          return;
+        }
+
+        if (job.status === 'failed') throw new Error(job.error_summary || 'Export worker failed');
+        if (job.status === 'cancelled') throw new Error('Export was cancelled');
       }
-      toast.success(`Exported ${rows.length} messages from ${filteredConversations.length} conversations`, { id: toastId });
+
+      throw new Error('Export timed out after 10 minutes. Check the export jobs table for status.');
     } catch (err: any) {
       console.error('Full history export failed:', err);
       toast.error(`Export failed: ${err?.message || 'Unknown error'}`, { id: toastId });
