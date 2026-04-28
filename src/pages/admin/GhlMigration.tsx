@@ -1444,9 +1444,13 @@ function JobDetailRow({ job, onChanged }: { job: any; onChanged?: () => void }) 
             const skippedN = breakdown.skipped || 0;
             const pendingN = breakdown.pending || 0;
             const recorded = succeeded + failedN + skippedN + pendingN;
-            // Use total_items if known, else derive from recorded items
-            const total = liveJob.total_items && liveJob.total_items > 0
-              ? Math.max(liveJob.total_items, recorded)
+            // Use total_items if known, else derive from recorded items.
+            // Workers that paginate (conversations_replay) may have processed
+            // more than the originally-reported batch — show "N+" in that case.
+            const rawTotal = liveJob.total_items || 0;
+            const totalIsKnown = rawTotal > 0 && recorded <= rawTotal;
+            const total = rawTotal > 0
+              ? Math.max(rawTotal, recorded)
               : Math.max(recorded, liveJob.processed_items ?? 0, 1);
             const pct = (n: number) => total > 0 ? (n / total) * 100 : 0;
             const overallPct = total > 0
@@ -1457,7 +1461,7 @@ function JobDetailRow({ job, onChanged }: { job: any; onChanged?: () => void }) 
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="font-semibold">Progress</span>
                   <span className="font-mono text-muted-foreground">
-                    {succeeded + failedN + skippedN}{liveJob.total_items > 0 ? ` / ${liveJob.total_items}` : ''} ({overallPct}%)
+                    {succeeded + failedN + skippedN}{rawTotal > 0 ? ` / ${rawTotal}${!totalIsKnown ? '+' : ''}` : ''} ({overallPct}%)
                   </span>
                 </div>
                 <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-muted ring-1 ring-border/40">
