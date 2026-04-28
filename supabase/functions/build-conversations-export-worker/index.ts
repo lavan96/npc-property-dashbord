@@ -14,7 +14,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import * as XLSX from 'https://esm.sh/xlsx@0.18.5';
 import { createCorsHeaders } from '../_shared/auth.ts';
 
-const PAGE_SIZE = 1000;
+const PAGE_SIZE = 1000;             // pagination page size for messages
+const IN_CHUNK_SIZE = 100;           // max IDs per .in() call (URL length limit)
 const SIGNED_URL_TTL_SECONDS = 60 * 60 * 24; // 24h
 const STORAGE_BUCKET = 'qa_exports';
 
