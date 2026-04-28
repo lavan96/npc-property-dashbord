@@ -101,22 +101,49 @@ export function MigrationSourceUploader({
       }
       setUploading(true);
       try {
-        const res = await invokeSecureFunction<{ upload: StagedUpload }>('migration-upload-source', {
-          action: 'create',
-          domain,
-          file_name: file.name,
-          records,
-        });
-        if (res.error || !res.data?.upload) {
-          toast.error(res.error?.message || 'Upload failed');
+        // Chunk to keep each request body well under the preview proxy's
+        // ~1MB limit. 500 rows ≈ 200-500KB depending on column count.
+        const CHUNK = 500;
+        const firstChunk = records.slice(0, CHUNK);
+        const createRes = await invokeSecureFunction<{ upload: StagedUpload }>(
+          'migration-upload-source',
+          {
+            action: 'create',
+            domain,
+            file_name: file.name,
+            records: firstChunk,
+          },
+        );
+        if (createRes.error || !createRes.data?.upload) {
+          toast.error(createRes.error?.message || 'Upload failed (initial chunk)');
           return;
         }
-        toast.success(`Staged ${res.data.upload.row_count} ${domain} rows from ${file.name}`);
-        onSelect(res.data.upload.id, {
-          rowCount: res.data.upload.row_count,
-          fileName: res.data.upload.file_name,
+        const uploadId = createRes.data.upload.id;
+        let lastSummary = createRes.data.upload;
+
+        for (let offset = CHUNK; offset < records.length; offset += CHUNK) {
+          const slice = records.slice(offset, offset + CHUNK);
+          const appendRes = await invokeSecureFunction<{ upload: StagedUpload }>(
+            'migration-upload-source',
+            { action: 'append', upload_id: uploadId, records: slice },
+          );
+          if (appendRes.error || !appendRes.data?.upload) {
+            toast.error(
+              `Append failed at row ${offset}: ${appendRes.error?.message || 'unknown'}. Partial upload kept — delete it and retry.`,
+            );
+            return;
+          }
+          lastSummary = appendRes.data.upload;
+        }
+
+        toast.success(`Staged ${lastSummary.row_count} ${domain} rows from ${file.name}`);
+        onSelect(uploadId, {
+          rowCount: lastSummary.row_count,
+          fileName: lastSummary.file_name,
         });
         await refreshRecents();
+      } catch (err: any) {
+        toast.error(err?.message || 'Upload failed');
       } finally {
         setUploading(false);
       }

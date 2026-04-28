@@ -80,16 +80,43 @@ Deno.serve(async (req) => {
       return jsonOk(corsHeaders, { deleted: id });
     }
 
+    // ── Append a chunk to an existing upload ─────────────────────────
+    if (action === 'append') {
+      const id = String(body.upload_id || '');
+      if (!id) return jsonError(corsHeaders, 'upload_id required', 400);
+      const records = body.records;
+      if (!Array.isArray(records) || records.length === 0) {
+        return jsonError(corsHeaders, 'records (non-empty array) required', 400);
+      }
+      const { data: existing, error: getErr } = await supabase
+        .from('migration_uploaded_sources')
+        .select('id, records, row_count')
+        .eq('id', id)
+        .single();
+      if (getErr || !existing) return jsonError(corsHeaders, `Upload not found: ${getErr?.message || id}`, 404);
+      const merged = [...(existing.records as any[]), ...records];
+      if (merged.length > MAX_RECORDS) {
+        return jsonError(corsHeaders, `Total rows would exceed cap of ${MAX_RECORDS}`, 400);
+      }
+      const { data: updated, error: updErr } = await supabase
+        .from('migration_uploaded_sources')
+        .update({ records: merged, row_count: merged.length })
+        .eq('id', id)
+        .select('id, domain, file_name, row_count, created_at')
+        .single();
+      if (updErr) return jsonError(corsHeaders, `Append failed: ${updErr.message}`, 500);
+      console.log(`[migration-upload-source] append upload=${id} +${records.length} → ${updated.row_count}`);
+      return jsonOk(corsHeaders, { upload: updated });
+    }
+
     // ── Default: create a new upload from parsed records ────────────
     const domain = String(body.domain || '') as Domain;
     if (!VALID_DOMAINS.includes(domain)) {
       return jsonError(corsHeaders, `domain must be one of: ${VALID_DOMAINS.join(', ')}`, 400);
     }
 
-    const records = body.records;
-    if (!Array.isArray(records) || records.length === 0) {
-      return jsonError(corsHeaders, 'records (non-empty array) required', 400);
-    }
+    const records = Array.isArray(body.records) ? body.records : [];
+    // Allow empty initial create when chunked uploads will follow via 'append'
     if (records.length > MAX_RECORDS) {
       return jsonError(
         corsHeaders,
