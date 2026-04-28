@@ -1280,21 +1280,29 @@ function JobDetailRow({ job, onChanged }: { job: any; onChanged?: () => void }) 
       setLoading(false);
       return false;
     }
-    const res = await invokeSecureFunction<any>(
-      'migration-job-status', { job_id: job.id }, { timeoutMs: 15000 },
-    );
-    if (res.data?.success) {
-      setItems(res.data?.items || res.data?.recent_items || []);
-      setBreakdown(res.data?.breakdown || {});
-      setErrorCategories(res.data?.error_categories || {});
-      setRetryableFailures(res.data?.retryable_failures || 0);
-      setNonRetryableFailures(res.data?.non_retryable_failures || 0);
-      if (res.data?.job) setLiveJob(res.data.job);
+    try {
+      const res = await invokeSecureFunction<any>(
+        'migration-job-status', { job_id: job.id }, { timeoutMs: 15000 },
+      );
+      if (res.data?.success) {
+        setItems(res.data?.items || res.data?.recent_items || []);
+        setBreakdown(res.data?.breakdown || {});
+        setErrorCategories(res.data?.error_categories || {});
+        setRetryableFailures(res.data?.retryable_failures || 0);
+        setNonRetryableFailures(res.data?.non_retryable_failures || 0);
+        if (res.data?.job) setLiveJob(res.data.job);
+        setLoading(false);
+        return true;
+      }
       setLoading(false);
-      return true;
+      return false;
+    } catch (e: any) {
+      // Edge runtime degradations (503) and transient network errors must not
+      // crash the panel — the polling effect will retry with backoff.
+      console.warn('[fetchStatus] transient error:', e?.message || e);
+      setLoading(false);
+      return false;
     }
-    setLoading(false);
-    return false;
   };
 
   useEffect(() => {
