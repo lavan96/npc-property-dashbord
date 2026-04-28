@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { invokeSecureFunction, isAuthExhausted, hasActiveSession } from '@/lib/secureInvoke';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -453,6 +453,10 @@ function MigrationWorkersPanel() {
 
   // Returns true on success, false on error/timeout — used by backoff scheduler.
   const refreshJobs = async (): Promise<boolean> => {
+    if (isAuthExhausted() || !hasActiveSession()) {
+      setLoadingJobs(false);
+      return false;
+    }
     setLoadingJobs(true);
     try {
       const res = await invokeSecureFunction<{ success: boolean; jobs: any[] }>(
@@ -1239,7 +1243,12 @@ function JobDetailRow({ job, onChanged }: { job: any; onChanged?: () => void }) 
 
   useEffect(() => { setLiveJob(job); }, [job]);
 
-  const fetchStatus = async () => {
+  const fetchStatus = async (): Promise<boolean> => {
+    // Don't hammer the server with 401s when the user has no session
+    if (isAuthExhausted() || !hasActiveSession()) {
+      setLoading(false);
+      return false;
+    }
     const res = await invokeSecureFunction<any>(
       'migration-job-status', { job_id: job.id }, { timeoutMs: 15000 },
     );
@@ -1250,8 +1259,11 @@ function JobDetailRow({ job, onChanged }: { job: any; onChanged?: () => void }) 
       setRetryableFailures(res.data?.retryable_failures || 0);
       setNonRetryableFailures(res.data?.non_retryable_failures || 0);
       if (res.data?.job) setLiveJob(res.data.job);
+      setLoading(false);
+      return true;
     }
     setLoading(false);
+    return false;
   };
 
   useEffect(() => {
@@ -1262,12 +1274,39 @@ function JobDetailRow({ job, onChanged }: { job: any; onChanged?: () => void }) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [job.id]);
 
-  // Live-poll while job is active
+  // Live-poll while job is active — with adaptive backoff on auth/network errors
+  // so a stale session can't trigger an infinite 401 storm.
   useEffect(() => {
     const active = liveJob?.status === 'pending' || liveJob?.status === 'processing';
     if (!active) return;
-    const id = setInterval(fetchStatus, 3000);
-    return () => clearInterval(id);
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let failures = 0;
+    const BASE = 3000;
+    const MAX = 60000;
+
+    const schedule = (delay: number) => {
+      timer = setTimeout(async () => {
+        if (cancelled) return;
+        if (isAuthExhausted() || !hasActiveSession()) {
+          // Stop polling entirely — user must re-login
+          return;
+        }
+        const ok = await fetchStatus();
+        if (cancelled) return;
+        if (ok) {
+          failures = 0;
+          schedule(BASE);
+        } else {
+          failures = Math.min(failures + 1, 6);
+          schedule(Math.min(MAX, BASE * Math.pow(2, failures)));
+        }
+      }, delay);
+    };
+
+    schedule(BASE);
+    return () => { cancelled = true; if (timer) clearTimeout(timer); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liveJob?.status, job.id]);
 
