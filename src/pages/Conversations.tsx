@@ -34,6 +34,8 @@ import {
   RefreshCw,
   ChevronDown,
   ExternalLink,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -116,6 +118,18 @@ interface Message {
   sender_name: string | null;
 }
 
+interface ExportJobStatus {
+  jobId: string;
+  status: 'starting' | 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
+  fileFormat: 'csv' | 'xlsx';
+  totalItems: number;
+  processedItems: number;
+  totalMessages: number;
+  signedUrl?: string | null;
+  fileSizeBytes?: number | null;
+  errorSummary?: string | null;
+}
+
 // ── Sync helper ──────────────────────────────────────────────
 async function triggerGhlSync() {
   const { data, error } = await invokeSecureFunction('sync-ghl-conversations', { mode: 'incremental' });
@@ -143,6 +157,7 @@ export default function Conversations() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [isExportingHistory, setIsExportingHistory] = useState(false);
+  const [exportJobStatus, setExportJobStatus] = useState<ExportJobStatus | null>(null);
   
   // Resizable panel state
   const [convPanelWidth, setConvPanelWidth] = useState(360);
@@ -401,6 +416,14 @@ export default function Conversations() {
       return;
     }
     setIsExportingHistory(true);
+    setExportJobStatus({
+      jobId: 'starting',
+      status: 'starting',
+      fileFormat,
+      totalItems: filteredConversations.length,
+      processedItems: 0,
+      totalMessages: 0,
+    });
     const toastId = toast.loading(
       `Starting export of ${filteredConversations.length} conversations...`
     );
@@ -415,6 +438,7 @@ export default function Conversations() {
       if (startErr) throw new Error(startErr.message || 'Failed to start export');
       const jobId = (startData as any)?.job_id;
       if (!jobId) throw new Error('No job_id returned from server');
+      setExportJobStatus((prev) => prev ? { ...prev, jobId, status: 'pending' } : null);
 
       // 2. Poll status (up to 10 minutes)
       const pollIntervalMs = 2500;
@@ -442,6 +466,18 @@ export default function Conversations() {
         }
 
         if (!job) continue;
+
+        setExportJobStatus({
+          jobId,
+          status: job.status,
+          fileFormat,
+          totalItems: job.total_items || filteredConversations.length,
+          processedItems: job.processed_items || 0,
+          totalMessages: job.total_messages || 0,
+          signedUrl: job.signed_url,
+          fileSizeBytes: job.file_size_bytes,
+          errorSummary: job.error_summary,
+        });
 
         if (job.processed_items !== lastProcessed) {
           lastProcessed = job.processed_items;
@@ -471,6 +507,7 @@ export default function Conversations() {
               (sizeMB ? ` (${sizeMB} MB)` : ''),
             { id: toastId, duration: 8000 },
           );
+          setExportJobStatus((prev) => prev ? { ...prev, status: 'completed' } : null);
           return;
         }
 
@@ -481,6 +518,11 @@ export default function Conversations() {
       throw new Error('Export timed out after 10 minutes. Check the export jobs table for status.');
     } catch (err: any) {
       console.error('Full history export failed:', err);
+      setExportJobStatus((prev) => prev ? {
+        ...prev,
+        status: 'failed',
+        errorSummary: err?.message || 'Unknown error',
+      } : null);
       toast.error(`Export failed: ${err?.message || 'Unknown error'}`, { id: toastId });
     } finally {
       setIsExportingHistory(false);
@@ -561,6 +603,13 @@ export default function Conversations() {
     });
   };
 
+  const exportProgressPercent = exportJobStatus?.totalItems
+    ? Math.min(100, Math.round((exportJobStatus.processedItems / exportJobStatus.totalItems) * 100))
+    : 0;
+  const exportSizeMB = exportJobStatus?.fileSizeBytes
+    ? (exportJobStatus.fileSizeBytes / (1024 * 1024)).toFixed(2)
+    : null;
+
   // ── Show thread on mobile (hide list) ──
   const showThread = !!selectedId && isMobile;
   const showList = !selectedId || !isMobile;
@@ -621,6 +670,57 @@ export default function Conversations() {
           </Button>
         </div>
       </div>
+
+      {exportJobStatus && (
+        <div className="border-b bg-muted/30 px-4 py-3 shrink-0">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="min-w-0 space-y-1">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                {exportJobStatus.status === 'completed' ? (
+                  <CheckCircle2 className="h-4 w-4 text-success" />
+                ) : exportJobStatus.status === 'failed' ? (
+                  <XCircle className="h-4 w-4 text-destructive" />
+                ) : (
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                )}
+                <span>
+                  {exportJobStatus.status === 'completed'
+                    ? 'Conversation export ready'
+                    : exportJobStatus.status === 'failed'
+                      ? 'Conversation export failed'
+                      : `Exporting full message history (${exportJobStatus.fileFormat.toUpperCase()})`}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground truncate">
+                {exportJobStatus.status === 'failed'
+                  ? exportJobStatus.errorSummary
+                  : `${exportJobStatus.processedItems}/${exportJobStatus.totalItems} conversations · ${exportJobStatus.totalMessages} messages`}
+                {exportSizeMB ? ` · ${exportSizeMB} MB` : ''}
+              </p>
+              {exportJobStatus.status !== 'completed' && exportJobStatus.status !== 'failed' && (
+                <div className="h-1.5 w-full max-w-xl overflow-hidden rounded-full bg-background">
+                  <div className="h-full bg-primary transition-all" style={{ width: `${exportProgressPercent}%` }} />
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {exportJobStatus.status === 'completed' && exportJobStatus.signedUrl && (
+                <Button size="sm" asChild>
+                  <a href={exportJobStatus.signedUrl} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                    Download
+                  </a>
+                </Button>
+              )}
+              {(exportJobStatus.status === 'completed' || exportJobStatus.status === 'failed') && (
+                <Button size="sm" variant="ghost" onClick={() => setExportJobStatus(null)}>
+                  Dismiss
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <GHLExportDialog
         open={showExportDialog}
