@@ -55,12 +55,23 @@ const MAX_RUNTIME_MS = 110_000;
 // cursor exhaustion.
 const BATCH = 200;
 
+// Normalise the channel value stored in our mirror (legacy GHL emits
+// values like `type_sms`, `type_email`, `type_activity_opportunity`,
+// `TYPE_PHONE`, plain `sms`, etc.). Strips the `type_` prefix so the
+// downstream switch is consistent.
+function normaliseChannel(channel: string | null | undefined): string {
+  const raw = (channel || '').toLowerCase().trim();
+  return raw.startsWith('type_') ? raw.slice(5) : raw;
+}
+
 // Map our internal channel_type → GHL message `type` field for write API.
 // Reference: https://highlevel.stoplight.io/docs/integrations/messages-api
-function mapToGhlMessageType(channel: string | null | undefined): string {
-  const c = (channel || '').toLowerCase();
+// Returns null when the channel cannot safely be replayed (caller skips).
+function mapToGhlMessageType(channel: string | null | undefined): string | null {
+  const c = normaliseChannel(channel);
   switch (c) {
-    case 'sms': return 'SMS';
+    case 'sms':
+    case 'phone': return 'SMS';
     case 'email': return 'Email';
     case 'whatsapp': return 'WhatsApp';
     case 'fb':
@@ -72,13 +83,16 @@ function mapToGhlMessageType(channel: string | null | undefined): string {
     case 'gmb':
     case 'google_my_business': return 'GMB';
     case 'custom': return 'Custom';
-    default: return 'SMS'; // safe default — most legacy convos are SMS
+    case 'sms_reaction': return null; // not replayable via write API
+    default: return null; // unknown / activity → skip rather than masquerade
   }
 }
 
 // Activity messages aren't real conversations and shouldn't be replayed.
+// Handles both raw (`activity_*`, `system`) and prefixed (`type_activity_*`,
+// `type_system`) variants emitted by the legacy mirror.
 function isActivityChannel(channel: string | null | undefined): boolean {
-  const c = (channel || '').toLowerCase();
+  const c = normaliseChannel(channel);
   return c === 'activity' || c.startsWith('activity_') || c === 'system';
 }
 
@@ -492,20 +506,38 @@ Deno.serve(async (req) => {
         const messageBody = prefixLegacyMarker && rawBody
           ? `[Migrated] ${rawBody}` : rawBody;
         const ghlType = mapToGhlMessageType(msg.channel_type);
+        if (!ghlType) {
+          // Unknown / non-replayable channel — skip rather than masquerade as SMS
+          convMsgSkip++;
+          await supabase
+            .from('ghl_conversation_messages')
+            .update({ replay_skipped_reason: `unsupported_channel:${normaliseChannel(msg.channel_type)}` })
+            .eq('id', msg.id);
+          continue;
+        }
         const direction = msg.direction === 'inbound' ? 'inbound' : 'outbound';
 
-        // Use POST /conversations/messages with `type` + `direction`.
-        // For inbound, GHL records as historical inbound. For outbound,
-        // include `conversationProviderId` if available — for replay we
-        // omit provider so GHL records-only and does NOT actually send.
+        // Use the HISTORICAL IMPORT endpoints — these record the message
+        // into the GHL inbox without dispatching via a real provider, and
+        // honour `altId`/`altType`/backdated `date`. The plain
+        // `/conversations/messages` endpoint queues a live send and the
+        // record disappears when no provider is wired up.
+        //   POST /conversations/messages/inbound   (historical inbound)
+        //   POST /conversations/messages/outbound  (historical outbound)
+        const importPath = direction === 'inbound'
+          ? '/conversations/messages/inbound'
+          : '/conversations/messages/outbound';
+
         const msgPayload: Record<string, any> = {
           type: ghlType,
-          contactId: targetContactId,
           conversationId: newConvId,
+          conversationProviderId: undefined, // omitted intentionally for replay
           message: messageBody,
-          direction,
+          // GHL accepts `altId`/`altType` to scope to the target location
+          altId: targetCreds.locationId,
+          altType: 'location',
         };
-        // Preserve historical timestamp if available
+        // Preserve historical timestamp (ISO 8601 expected by GHL)
         if (msg.ghl_date_added) msgPayload.date = msg.ghl_date_added;
         // Attachments (URLs only — GHL fetches them server-side)
         if (!skipAttachments && Array.isArray(msg.attachment_urls) && msg.attachment_urls.length > 0) {
@@ -513,7 +545,7 @@ Deno.serve(async (req) => {
         }
 
         try {
-          const r = await ctx.ghlFetch(`${GHL_API_BASE}/conversations/messages`, {
+          const r = await ctx.ghlFetch(`${GHL_API_BASE}${importPath}`, {
             method: 'POST', headers: targetHeaders, body: JSON.stringify(msgPayload),
           }, 3, 'target');
 
