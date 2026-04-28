@@ -145,6 +145,90 @@ async function ghlFetch(
 }
 
 
+/**
+ * Normalise an uploaded CSV/XLSX row to the same shape the GHL
+ * `/contacts/?...` endpoint returns, so the rest of the worker pipeline
+ * (sanitization, dedupe, write) can run unchanged.
+ *
+ * Accepts a wide range of header spellings (snake/camel/title case, with
+ * or without spaces) so analysts can drop in exports straight from GHL,
+ * Mailchimp, HubSpot, etc., without re-mapping columns.
+ */
+function normaliseUploadedContact(rec: any, index: number): any {
+  const get = (...keys: string[]): string => {
+    if (!rec || typeof rec !== 'object') return '';
+    const lower: Record<string, any> = {};
+    for (const k of Object.keys(rec)) {
+      lower[k.toLowerCase().trim().replace(/[\s_-]+/g, '')] = rec[k];
+    }
+    for (const k of keys) {
+      const norm = k.toLowerCase().trim().replace(/[\s_-]+/g, '');
+      const v = lower[norm];
+      if (v !== undefined && v !== null && String(v).trim() !== '') return String(v).trim();
+    }
+    return '';
+  };
+
+  // Tags: accept either an array, or a comma/semicolon/pipe separated string
+  let tags: string[] = [];
+  const rawTags = rec?.tags ?? rec?.Tags ?? rec?.tag_list ?? rec?.['Tag List'];
+  if (Array.isArray(rawTags)) {
+    tags = rawTags.map((t) => String(t || '').trim()).filter(Boolean);
+  } else if (rawTags) {
+    tags = String(rawTags).split(/[,;|]/).map((t) => t.trim()).filter(Boolean);
+  }
+
+  // Custom-field passthrough: any column we didn't explicitly map becomes
+  // a customField so analysts can preserve arbitrary data without code
+  // changes. Only stringy/scalar values are passed through.
+  const RECOGNISED = new Set([
+    'id', 'contactid', 'ghlcontactid', 'legacyid', 'legacycontactid',
+    'firstname', 'lastname', 'name', 'contactname', 'fullname',
+    'email', 'emailaddress', 'phone', 'phonenumber', 'mobile',
+    'tags', 'taglist', 'source',
+    'address1', 'address', 'streetaddress', 'city', 'state', 'province',
+    'postalcode', 'postcode', 'zip', 'zipcode', 'country',
+    'dateadded', 'datecreated', 'createdat',
+    'secondaryfirstname', 'secondarylastname',
+    'pipelinestatus', 'opportunitystatus',
+  ]);
+  const customFields: Array<{ key: string; field_value: string }> = [];
+  for (const k of Object.keys(rec || {})) {
+    const norm = k.toLowerCase().trim().replace(/[\s_-]+/g, '');
+    if (RECOGNISED.has(norm)) continue;
+    const v = rec[k];
+    if (v === null || v === undefined) continue;
+    const s = typeof v === 'object' ? JSON.stringify(v) : String(v);
+    if (!s.trim()) continue;
+    customFields.push({ key: k.trim(), field_value: s });
+  }
+
+  const id = get('id', 'contact_id', 'ghl_contact_id', 'legacy_id', 'legacy_contact_id')
+    || `upload-${index}`;
+
+  return {
+    id,
+    firstName: get('firstName', 'first_name', 'First Name', 'givenName'),
+    lastName: get('lastName', 'last_name', 'Last Name', 'surname', 'familyName'),
+    name: get('name', 'fullName', 'contactName', 'Full Name'),
+    contactName: get('contactName', 'contact_name'),
+    email: get('email', 'email_address', 'Email Address'),
+    phone: get('phone', 'phone_number', 'mobile', 'Mobile'),
+    tags,
+    source: get('source'),
+    address1: get('address1', 'address', 'street_address', 'Street Address'),
+    city: get('city'),
+    state: get('state', 'province'),
+    postalCode: get('postalCode', 'postal_code', 'postcode', 'zip', 'zipcode', 'Zip Code'),
+    country: get('country') || 'Australia',
+    dateAdded: get('dateAdded', 'date_added', 'date_created', 'created_at') || null,
+    secondaryFirstName: get('secondaryFirstName', 'secondary_first_name'),
+    secondaryLastName: get('secondaryLastName', 'secondary_last_name'),
+    pipelineStatus: get('pipelineStatus', 'pipeline_status'),
+    opportunityStatus: get('opportunityStatus', 'opportunity_status'),
+    customFields,
+  };
+}
 
 function getCustomFieldValue(contact: any, ...keys: string[]): string {
   const candidates = Array.isArray(contact?.customFields) ? contact.customFields : [];
@@ -253,6 +337,35 @@ Deno.serve(async (req) => {
     const bypassSanitizer = payload.bypass_sanitizer === true;
 
     if (!jobId) return new Response(JSON.stringify({ error: 'job_id required' }), { status: 400 });
+
+    // ── Uploaded-source mode ──────────────────────────────────────────
+    // When `payload.upload_id` is supplied, the worker replaces live GHL
+    // pagination with an in-memory iteration over the staged CSV/XLSX rows.
+    // We still need source/target credentials for the WRITE leg (target),
+    // and we still record id-mappings, but we never call /contacts/?...
+    // against the source account.
+    const uploadId: string | null = typeof payload.upload_id === 'string' && payload.upload_id
+      ? payload.upload_id : null;
+    let uploadedRecords: any[] | null = null;
+    let uploadFileName: string | null = null;
+    if (uploadId) {
+      const { data: uploadRow, error: uploadErr } = await supabase
+        .from('migration_uploaded_sources')
+        .select('domain, file_name, records')
+        .eq('id', uploadId)
+        .maybeSingle();
+      if (uploadErr || !uploadRow) {
+        await finishJob(supabase, jobId, 'failed', `Upload ${uploadId} not found: ${uploadErr?.message || 'no row'}`);
+        return new Response(JSON.stringify({ error: 'upload_not_found' }), { status: 400 });
+      }
+      if (uploadRow.domain !== 'contacts') {
+        await finishJob(supabase, jobId, 'failed', `Upload ${uploadId} is for domain "${uploadRow.domain}", expected "contacts"`);
+        return new Response(JSON.stringify({ error: 'upload_domain_mismatch' }), { status: 400 });
+      }
+      uploadedRecords = Array.isArray(uploadRow.records) ? uploadRow.records : [];
+      uploadFileName = uploadRow.file_name;
+      console.log(`[contacts-worker] uploaded-source mode: upload_id=${uploadId} file="${uploadFileName}" rows=${uploadedRecords.length}`);
+    }
 
     const sourceCreds = getGhlCredentials(sourceAccount);
     const targetCreds = getGhlCredentials(targetAccount);
@@ -427,28 +540,51 @@ Deno.serve(async (req) => {
         }), { headers: { 'Content-Type': 'application/json' } });
       }
 
-      const params = new URLSearchParams({
-        locationId: sourceCreds.locationId!,
-        limit: String(PAGE_LIMIT),
-      });
-      if (nextStartAfterId) params.set('startAfterId', nextStartAfterId);
-      if (nextStartAfter) {
-        // GHL requires `startAfter` as a numeric millisecond timestamp,
-        // NOT an ISO date string. Convert if needed (cursor may have been
-        // saved as ISO from `contact.dateAdded` in older runs).
-        const numeric = /^\d+$/.test(String(nextStartAfter))
-          ? String(nextStartAfter)
-          : String(new Date(nextStartAfter).getTime());
-        params.set('startAfter', numeric);
+      let contacts: any[] = [];
+      let data: any = { meta: {} };
+
+      if (uploadedRecords) {
+        // ── In-memory page from uploaded source ─────────────────────
+        // Resume cursor for uploads is a numeric offset stored in
+        // `nextStartAfter` (we ignore startAfterId in this mode).
+        const offset = Number(nextStartAfter) || 0;
+        const slice = uploadedRecords.slice(offset, offset + PAGE_LIMIT);
+        contacts = slice.map((rec, i) => normaliseUploadedContact(rec, offset + i));
+        data = {
+          contacts,
+          meta: {
+            total: uploadedRecords.length,
+            startAfter: offset + slice.length < uploadedRecords.length
+              ? String(offset + slice.length) : null,
+            startAfterId: offset + slice.length < uploadedRecords.length
+              ? String(offset + slice.length) : null,
+          },
+        };
+      } else {
+        const params = new URLSearchParams({
+          locationId: sourceCreds.locationId!,
+          limit: String(PAGE_LIMIT),
+        });
+        if (nextStartAfterId) params.set('startAfterId', nextStartAfterId);
+        if (nextStartAfter) {
+          // GHL requires `startAfter` as a numeric millisecond timestamp,
+          // NOT an ISO date string. Convert if needed (cursor may have been
+          // saved as ISO from `contact.dateAdded` in older runs).
+          const numeric = /^\d+$/.test(String(nextStartAfter))
+            ? String(nextStartAfter)
+            : String(new Date(nextStartAfter).getTime());
+          params.set('startAfter', numeric);
+        }
+
+        const res = await ghlFetch(`${GHL_API_BASE}/contacts/?${params}`, { headers: sourceHeaders }, 3, 'source');
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(`Source contacts fetch failed: ${res.status} ${text.substring(0, 200)}`);
+        }
+        data = await res.json();
+        contacts = data.contacts || [];
       }
 
-      const res = await ghlFetch(`${GHL_API_BASE}/contacts/?${params}`, { headers: sourceHeaders }, 3, 'source');
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Source contacts fetch failed: ${res.status} ${text.substring(0, 200)}`);
-      }
-      const data = await res.json();
-      const contacts: any[] = data.contacts || [];
       if (firstPage) {
         totalEstimate = data.meta?.total ?? data.total ?? 0;
         if (totalEstimate > 0 && (!isResume || persistedTotalItems <= 0)) {
@@ -464,6 +600,8 @@ Deno.serve(async (req) => {
       }
 
       let pageFullyConsumed = true;
+      // Absolute offset within the uploaded source (only used in upload mode).
+      let uploadCursor = uploadedRecords ? (Number(nextStartAfter) || 0) : 0;
       for (const contact of contacts) {
         if (maxItems > 0 && totalProcessed >= maxItems) break;
         if (Date.now() - startedAt > MAX_RUNTIME_MS) {
@@ -474,7 +612,12 @@ Deno.serve(async (req) => {
         totalSeen++;
         totalProcessed++;
         lastProcessedStartAfterId = contact.id || lastProcessedStartAfterId;
-        lastProcessedStartAfter = contact.dateAdded || lastProcessedStartAfter;
+        if (uploadedRecords) {
+          uploadCursor++;
+          lastProcessedStartAfter = String(uploadCursor);
+        } else {
+          lastProcessedStartAfter = contact.dateAdded || lastProcessedStartAfter;
+        }
 
         // ── SANITIZATION (legacy → new) ────────────────────────────────
         // Apply the SAME shape the reference Client Management Export

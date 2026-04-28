@@ -131,7 +131,70 @@ async function findExistingTargetOpportunity(
   }
 }
 
-Deno.serve(async (req) => {
+/**
+ * Normalise an uploaded CSV/XLSX row to the same shape /opportunities/search
+ * returns. Resolves pipeline/stage by NAME against the live source pipelines
+ * when only names are supplied (so analysts don't need raw GHL ids).
+ */
+function normaliseUploadedOpportunity(
+  rec: any,
+  index: number,
+  sourcePipelines: any[],
+): any {
+  const get = (...keys: string[]): string => {
+    if (!rec || typeof rec !== 'object') return '';
+    const lower: Record<string, any> = {};
+    for (const k of Object.keys(rec)) lower[k.toLowerCase().trim().replace(/[\s_-]+/g, '')] = rec[k];
+    for (const k of keys) {
+      const norm = k.toLowerCase().trim().replace(/[\s_-]+/g, '');
+      const v = lower[norm];
+      if (v !== undefined && v !== null && String(v).trim() !== '') return String(v).trim();
+    }
+    return '';
+  };
+  const num = (s: string): number | null => {
+    if (!s) return null;
+    const n = Number(s.replace(/[$,\s]/g, ''));
+    return Number.isFinite(n) ? n : null;
+  };
+
+  // Pipeline resolution: prefer explicit pipelineId, otherwise look up by name
+  let pipelineId = get('pipelineId', 'pipeline_id');
+  let pipelineStageId = get('pipelineStageId', 'pipeline_stage_id', 'stageId', 'stage_id');
+  const pipelineName = get('pipelineName', 'pipeline_name', 'pipeline');
+  const stageName = get('stageName', 'stage_name', 'pipelineStageName', 'pipeline_stage_name', 'stage');
+
+  if (!pipelineId && pipelineName) {
+    const sp = sourcePipelines.find((p) => String(p.name || '').trim().toLowerCase() === pipelineName.toLowerCase());
+    if (sp) pipelineId = sp.id;
+  }
+  if (!pipelineStageId && pipelineId && stageName) {
+    const sp = sourcePipelines.find((p) => p.id === pipelineId);
+    const st = sp?.stages?.find((s: any) => String(s.name || '').trim().toLowerCase() === stageName.toLowerCase());
+    if (st) pipelineStageId = st.id;
+  }
+
+  return {
+    id: get('id', 'opportunityId', 'opportunity_id', 'legacy_id') || `upload-opp-${index}`,
+    name: get('name', 'title', 'opportunityName', 'opportunity_name'),
+    contactId: get('contactId', 'contact_id', 'ghl_contact_id'),
+    contactName: get('contactName', 'contact_name'),
+    firstName: get('firstName', 'first_name'),
+    lastName: get('lastName', 'last_name'),
+    email: get('email'),
+    phone: get('phone'),
+    pipelineId,
+    pipelineStageId,
+    monetaryValue: num(get('monetaryValue', 'monetary_value', 'value', 'amount')),
+    status: get('status').toLowerCase() || 'open',
+    assignedTo: get('assignedTo', 'assigned_to', 'assigned_user_id'),
+    source: get('source'),
+    dateAdded: get('dateAdded', 'date_added', 'created_at') || null,
+    updatedAt: get('updatedAt', 'updated_at', 'date_updated') || null,
+  };
+}
+
+
   const startedAt = Date.now();
   if (req.method === 'OPTIONS') return new Response('ok');
   if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 });
@@ -194,6 +257,37 @@ Deno.serve(async (req) => {
     console.log(`[opps-worker] flags: forceRecreate=${forceRecreate} skipTargetDedupe=${skipTargetDedupe} onlyLowConfidence=${onlyLowConfidence} includeClosed=${includeClosedStatuses} pipelineFilter=${pipelineFilter.length} stageFilter=${stageFilter.length} assignStrategy=${assignedUserStrategy} skipCount=${skipCount} seedStartAfterIso=${seedStartAfterIso || '(none)'} seedStartAfterId=${seedStartAfterId || '(none)'}`);
 
     if (!jobId) return new Response(JSON.stringify({ error: 'job_id required' }), { status: 400 });
+
+    // ── Uploaded-source mode ──────────────────────────────────────────
+    // When `payload.upload_id` is supplied, the worker replaces live GHL
+    // pagination with an in-memory iteration over the staged CSV/XLSX rows.
+    // The pipeline/stage/contact resolution layers downstream are unchanged
+    // — uploaded rows are normalised to the same shape /opportunities/search
+    // returns. Users may supply pipeline/stage by NAME (pipelineName,
+    // stageName); the worker resolves those against source pipelines fetched
+    // below so the existing `pipelineMap` lookup keeps working.
+    const uploadId: string | null = typeof payload.upload_id === 'string' && payload.upload_id
+      ? payload.upload_id : null;
+    let uploadedRecords: any[] | null = null;
+    let uploadFileName: string | null = null;
+    if (uploadId) {
+      const { data: uploadRow, error: uploadErr } = await supabase
+        .from('migration_uploaded_sources')
+        .select('domain, file_name, records')
+        .eq('id', uploadId)
+        .maybeSingle();
+      if (uploadErr || !uploadRow) {
+        await finishJob(supabase, jobId, 'failed', `Upload ${uploadId} not found: ${uploadErr?.message || 'no row'}`);
+        return new Response(JSON.stringify({ error: 'upload_not_found' }), { status: 400 });
+      }
+      if (uploadRow.domain !== 'opportunities') {
+        await finishJob(supabase, jobId, 'failed', `Upload ${uploadId} is for domain "${uploadRow.domain}", expected "opportunities"`);
+        return new Response(JSON.stringify({ error: 'upload_domain_mismatch' }), { status: 400 });
+      }
+      uploadedRecords = Array.isArray(uploadRow.records) ? uploadRow.records : [];
+      uploadFileName = uploadRow.file_name;
+      console.log(`[opps-worker] uploaded-source mode: upload_id=${uploadId} file="${uploadFileName}" rows=${uploadedRecords.length}`);
+    }
 
     const sourceCreds = getGhlCredentials(sourceAccount);
     const targetCreds = getGhlCredentials(targetAccount);
@@ -563,23 +657,42 @@ Deno.serve(async (req) => {
         }), { headers: { 'Content-Type': 'application/json' } });
       }
 
-      const p = new URLSearchParams({ location_id: sourceCreds.locationId!, limit: String(PAGE_LIMIT) });
-      if (nextStartAfterId) p.set('startAfterId', nextStartAfterId);
-      if (nextStartAfter) {
-        // GHL requires `startAfter` as a numeric millisecond timestamp, not ISO.
-        const numeric = /^\d+$/.test(String(nextStartAfter))
-          ? String(nextStartAfter)
-          : String(new Date(nextStartAfter).getTime());
-        p.set('startAfter', numeric);
-      }
+      let opps: any[] = [];
+      let data: any = { meta: {} };
 
-      const res = await ctx.ghlFetch(`${GHL_API_BASE}/opportunities/search?${p}`, { headers: sourceHeaders }, 3, 'source');
-      if (!res.ok) {
-        const t = await res.text();
-        throw new Error(`Source opportunities fetch failed: ${res.status} ${t.substring(0, 200)}`);
+      if (uploadedRecords) {
+        // ── In-memory page from uploaded source ─────────────────────
+        const offset = Number(nextStartAfter) || 0;
+        const slice = uploadedRecords.slice(offset, offset + PAGE_LIMIT);
+        opps = slice.map((rec, i) => normaliseUploadedOpportunity(rec, offset + i, sourcePipelines));
+        const nextOffset = offset + slice.length;
+        data = {
+          opportunities: opps,
+          meta: {
+            total: uploadedRecords.length,
+            startAfter: nextOffset < uploadedRecords.length ? String(nextOffset) : null,
+            startAfterId: nextOffset < uploadedRecords.length ? String(nextOffset) : null,
+          },
+        };
+      } else {
+        const p = new URLSearchParams({ location_id: sourceCreds.locationId!, limit: String(PAGE_LIMIT) });
+        if (nextStartAfterId) p.set('startAfterId', nextStartAfterId);
+        if (nextStartAfter) {
+          // GHL requires `startAfter` as a numeric millisecond timestamp, not ISO.
+          const numeric = /^\d+$/.test(String(nextStartAfter))
+            ? String(nextStartAfter)
+            : String(new Date(nextStartAfter).getTime());
+          p.set('startAfter', numeric);
+        }
+
+        const res = await ctx.ghlFetch(`${GHL_API_BASE}/opportunities/search?${p}`, { headers: sourceHeaders }, 3, 'source');
+        if (!res.ok) {
+          const t = await res.text();
+          throw new Error(`Source opportunities fetch failed: ${res.status} ${t.substring(0, 200)}`);
+        }
+        data = await res.json();
+        opps = data.opportunities || [];
       }
-      const data = await res.json();
-      const opps: any[] = data.opportunities || [];
 
       if (firstPage) {
         const total = data.meta?.total ?? 0;
@@ -596,6 +709,8 @@ Deno.serve(async (req) => {
       // partial-exit instead of advancing the page cursor (otherwise we'd
       // skip over unprocessed opps on the next leg).
       let pageFullyConsumed = true;
+      // Absolute offset within the uploaded source (only used in upload mode).
+      let uploadCursor = uploadedRecords ? (Number(nextStartAfter) || 0) : 0;
       for (const opp of opps) {
         if (maxItems > 0 && totalProcessed >= maxItems) break;
         if (Date.now() - startedAt > MAX_RUNTIME_MS) {
@@ -609,7 +724,12 @@ Deno.serve(async (req) => {
         if (skipRemaining > 0) {
           skipRemaining--;
           lastProcessedOppId = opp.id || lastProcessedOppId;
-          lastProcessedOppAt = opp.updatedAt || opp.dateAdded || lastProcessedOppAt;
+          if (uploadedRecords) {
+            uploadCursor++;
+            lastProcessedOppAt = String(uploadCursor);
+          } else {
+            lastProcessedOppAt = opp.updatedAt || opp.dateAdded || lastProcessedOppAt;
+          }
           if (skipRemaining === 0) {
             // Persist the "consumed" flag so future legs don't re-skip.
             try {
@@ -625,7 +745,12 @@ Deno.serve(async (req) => {
         // skip, fail, or successfully migrate, the cursor must advance —
         // a future partialExit needs to resume after this exact record.
         lastProcessedOppId = opp.id || lastProcessedOppId;
-        lastProcessedOppAt = opp.updatedAt || opp.dateAdded || lastProcessedOppAt;
+        if (uploadedRecords) {
+          uploadCursor++;
+          lastProcessedOppAt = String(uploadCursor);
+        } else {
+          lastProcessedOppAt = opp.updatedAt || opp.dateAdded || lastProcessedOppAt;
+        }
         const oppLabel = opp.name || `Opp ${opp.id?.substring(0, 8)}`;
 
         // Skip closed opportunities unless includeClosedStatuses is on.

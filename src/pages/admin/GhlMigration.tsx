@@ -21,10 +21,11 @@ import {
 } from 'lucide-react';
 import {
   MigrationAdvancedOptions,
+  type AdvancedFlagsState,
   DEFAULT_ADVANCED_FLAGS,
   buildDomainPayloadPatch,
-  type AdvancedFlagsState,
 } from '@/components/admin/MigrationAdvancedOptions';
+import { MigrationSourceUploader } from '@/components/admin/MigrationSourceUploader';
 
 interface ScopeProbe {
   scope: string;
@@ -370,6 +371,7 @@ function MigrationWorkersPanel() {
   const [advancedFlags, setAdvancedFlags] = useState<AdvancedFlagsState>(DEFAULT_ADVANCED_FLAGS);
   const [jobs, setJobs] = useState<any[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(false);
+  const [uploadId, setUploadId] = useState<string | null>(null);
 
   const [audit, setAudit] = useState<CredentialAudit | null>(null);
   const [testingAudit, setTestingAudit] = useState(false);
@@ -524,9 +526,11 @@ function MigrationWorkersPanel() {
     try {
       const max = parseInt(maxItems, 10);
       const domainPatch = buildDomainPayloadPatch(domain, advancedFlags);
+      const useUpload = (domain === 'contacts' || domain === 'opportunities') && !!uploadId;
       const payload = {
         ...(max > 0 ? { max_items: max } : {}),
         write_mode: 'create_first',
+        ...(useUpload ? { upload_id: uploadId } : {}),
         ...domainPatch,
       };
       const dispatchDomain = async (dispatchDomain: 'contacts' | 'opportunities' | 'notes' | 'conversations' | 'conversations_replay', extraPayload?: Record<string, any>) => {
@@ -705,16 +709,19 @@ function MigrationWorkersPanel() {
           onChange={setAdvancedFlags}
         />
 
-        {/* placeholder to preserve diff alignment */}
-        {false && (
-          <MigrationAdvancedOptions domain={domain} flags={advancedFlags} onChange={setAdvancedFlags} />
+        {(domain === 'contacts' || domain === 'opportunities') && (
+          <MigrationSourceUploader
+            domain={domain}
+            selectedUploadId={uploadId}
+            onSelect={(id) => setUploadId(id)}
+          />
         )}
 
         {/* Dispatch form */}
         <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
           <div className="space-y-1">
             <label className="text-xs text-muted-foreground">Domain</label>
-            <Select value={domain} onValueChange={(v) => setDomain(v as any)}>
+            <Select value={domain} onValueChange={(v) => { setDomain(v as any); setUploadId(null); }}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="contacts">Contacts</SelectItem>
