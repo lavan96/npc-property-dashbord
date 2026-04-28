@@ -453,6 +453,10 @@ function MigrationWorkersPanel() {
 
   // Returns true on success, false on error/timeout — used by backoff scheduler.
   const refreshJobs = async (): Promise<boolean> => {
+    if (isAuthExhausted() || !hasActiveSession()) {
+      setLoadingJobs(false);
+      return false;
+    }
     setLoadingJobs(true);
     try {
       const res = await invokeSecureFunction<{ success: boolean; jobs: any[] }>(
