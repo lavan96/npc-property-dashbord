@@ -9,7 +9,7 @@ import { Loader2, Upload, FileSpreadsheet, X, CheckCircle2, AlertCircle } from '
 import { toast } from 'sonner';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 
-type UploadDomain = 'contacts' | 'opportunities' | 'conversations';
+type UploadDomain = 'contacts' | 'opportunities' | 'conversations' | 'conversations_replay';
 
 interface StagedUpload {
   id: string;

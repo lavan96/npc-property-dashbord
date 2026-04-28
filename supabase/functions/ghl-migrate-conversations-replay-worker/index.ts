@@ -96,6 +96,84 @@ function isActivityChannel(channel: string | null | undefined): boolean {
   return c === 'activity' || c.startsWith('activity_') || c === 'system';
 }
 
+// ─── Uploaded CSV/XLSX support (one row per conversation, messages embedded) ───
+// Accepts flexible column headers exported from spreadsheets. The replay
+// worker treats each row as a self-contained conversation: a contact full
+// name + channel + a JSON / delimited list of messages. The worker then
+// resolves the contact in the target GHL by name and replays the messages
+// in chronological order — exactly like the mirror-driven path.
+function pickFirst(row: Record<string, any>, keys: string[]): string {
+  for (const k of keys) {
+    const variants = [k, k.toLowerCase(), k.toUpperCase(), k.replace(/_/g, ' ')];
+    for (const v of variants) {
+      if (row[v] !== undefined && row[v] !== null && String(row[v]).trim() !== '') {
+        return String(row[v]).trim();
+      }
+    }
+  }
+  return '';
+}
+
+function parseUploadedMessages(raw: string): any[] {
+  if (!raw) return [];
+  // 1) JSON array of message objects
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed;
+  } catch { /* not JSON */ }
+  // 2) Newline-delimited "[direction|channel|date] body" (best-effort)
+  const lines = raw.split(/\r?\n+/).map((l) => l.trim()).filter(Boolean);
+  return lines.map((line) => {
+    const m = line.match(/^\[(inbound|outbound)?\|?([a-z_]*)?\|?([^\]]*)\]\s*(.*)$/i);
+    if (m) {
+      return {
+        direction: (m[1] || 'outbound').toLowerCase(),
+        channel_type: m[2] || null,
+        ghl_date_added: m[3] || null,
+        body: m[4] || '',
+      };
+    }
+    return { direction: 'outbound', body: line };
+  });
+}
+
+function normaliseUploadedReplayConversation(row: Record<string, any>, idx: number) {
+  const fullName = pickFirst(row, [
+    'full_name', 'fullName', 'contact_full_name', 'contact_name', 'name',
+  ]) || [pickFirst(row, ['first_name', 'firstName', 'primary_first_name']),
+          pickFirst(row, ['last_name', 'lastName', 'surname', 'primary_surname'])]
+        .filter(Boolean).join(' ').trim();
+
+  const channel = pickFirst(row, ['channel', 'channel_type', 'type']) || 'sms';
+  const messagesRaw = pickFirst(row, [
+    'messages', 'messages_json', 'message_log', 'history', 'conversation',
+  ]);
+  const embeddedMessages = parseUploadedMessages(messagesRaw);
+  const lastMsgDate = pickFirst(row, ['last_message_date', 'last_message_at', 'updated_at']);
+  return {
+    // Mimic the shape returned by the supabase select() so downstream code
+    // doesn't need to branch beyond the message source.
+    id: `upload:${idx}`,
+    ghl_conversation_id: pickFirst(row, ['ghl_conversation_id', 'conversation_id']) || `upload-${idx}`,
+    ghl_contact_id: pickFirst(row, ['ghl_contact_id', 'contact_id']) || null,
+    channel_type: channel,
+    last_message_date: lastMsgDate || null,
+    new_ghl_conversation_id: null,
+    client_id: null,
+    clients: { primary_first_name: fullName.split(' ')[0] || '', primary_surname: fullName.split(' ').slice(1).join(' ') || '' },
+    __uploadedMessages: embeddedMessages.map((m, j) => ({
+      id: `upload:${idx}:${j}`,
+      ghl_message_id: m.ghl_message_id || `upload-${idx}-${j}`,
+      direction: (m.direction || 'outbound').toLowerCase(),
+      channel_type: m.channel_type || channel,
+      body: m.body ?? m.message ?? '',
+      attachment_urls: Array.isArray(m.attachment_urls) ? m.attachment_urls : [],
+      ghl_date_added: m.ghl_date_added || m.date || null,
+      new_ghl_message_id: null,
+    })),
+  };
+}
+
 Deno.serve(async (req) => {
   const startedAt = Date.now();
   if (req.method === 'OPTIONS') return new Response('ok');
@@ -182,42 +260,76 @@ Deno.serve(async (req) => {
     const isResume = body._resume === true || (checkpoint.cursor.offset || 0) > 0;
     const startOffset = Number(checkpoint.cursor.offset) || 0;
 
-    // Build the conversations query with optional channel + date filters.
+    // Source branch: uploaded CSV/XLSX (preferred when present) vs local mirror.
+    const uploadId: string | null = payload.upload_id ? String(payload.upload_id) : null;
     const pullLimit = maxItems > 0 ? Math.min(maxItems, BATCH) : BATCH;
-    let convQuery = supabase
-      .from('ghl_conversations')
-      .select('id, ghl_conversation_id, ghl_contact_id, channel_type, last_message_date, new_ghl_conversation_id, client_id, clients(primary_first_name, primary_surname)')
-      .order('created_at', { ascending: true })
-      .range(startOffset, startOffset + pullLimit - 1);
-    if (channelFilter.length > 0) {
-      convQuery = convQuery.in('channel_type', channelFilter);
-    }
-    if (sinceTs) {
-      convQuery = convQuery.gte('last_message_date', sinceTs);
-    }
+    let conversations: any[] | null = null;
 
-    const { data: conversations, error: convErr } = await convQuery;
-    if (convErr) throw new Error(`Conversations query failed: ${convErr.message}`);
-
-    if (isResume) {
-      console.log(`[conv-replay] RESUMING job=${jobId} dispatch#${checkpoint.dispatchCount} offset=${startOffset} pulled=${conversations?.length || 0}`);
-    } else {
-      // Compute the TRUE total (not just this batch) so the UI progress bar is accurate.
-      let trueTotal = conversations?.length || 0;
-      try {
-        let countQuery = supabase
-          .from('ghl_conversations')
-          .select('id', { count: 'exact', head: true });
-        if (channelFilter.length > 0) countQuery = countQuery.in('channel_type', channelFilter);
-        if (sinceTs) countQuery = countQuery.gte('last_message_date', sinceTs);
-        const { count } = await countQuery;
-        if (typeof count === 'number' && count > 0) {
-          trueTotal = maxItems > 0 ? Math.min(maxItems, count) : count;
-        }
-      } catch (e) {
-        console.warn('[conv-replay] total count query failed, using batch size:', (e as any)?.message);
+    if (uploadId) {
+      const { data: uploadRow, error: upErr } = await supabase
+        .from('migration_uploaded_sources')
+        .select('id, domain, records, row_count')
+        .eq('id', uploadId)
+        .single();
+      if (upErr || !uploadRow) {
+        const msg = `Uploaded source ${uploadId} not found: ${upErr?.message || 'missing'}`;
+        await finishJob(supabase, jobId, 'failed', msg);
+        return new Response(JSON.stringify({ error: msg }), { status: 400 });
       }
-      await startJob(supabase, jobId, trueTotal);
+      if (uploadRow.domain !== 'conversations_replay') {
+        const msg = `Uploaded source domain mismatch: got '${uploadRow.domain}', expected 'conversations_replay'`;
+        await finishJob(supabase, jobId, 'failed', msg);
+        return new Response(JSON.stringify({ error: msg }), { status: 400 });
+      }
+      const allRows = (uploadRow.records as any[]) || [];
+      const slice = allRows.slice(startOffset, startOffset + pullLimit);
+      conversations = slice.map((r, i) => normaliseUploadedReplayConversation(r, startOffset + i));
+      console.log(`[conv-replay] using upload ${uploadId} rows=${allRows.length} slice=[${startOffset},${startOffset + slice.length})`);
+
+      if (!isResume) {
+        const trueTotal = maxItems > 0 ? Math.min(maxItems, allRows.length) : allRows.length;
+        await startJob(supabase, jobId, trueTotal);
+      } else {
+        console.log(`[conv-replay] RESUMING upload job=${jobId} dispatch#${checkpoint.dispatchCount} offset=${startOffset} pulled=${slice.length}`);
+      }
+    } else {
+      // Build the conversations query with optional channel + date filters.
+      let convQuery = supabase
+        .from('ghl_conversations')
+        .select('id, ghl_conversation_id, ghl_contact_id, channel_type, last_message_date, new_ghl_conversation_id, client_id, clients(primary_first_name, primary_surname)')
+        .order('created_at', { ascending: true })
+        .range(startOffset, startOffset + pullLimit - 1);
+      if (channelFilter.length > 0) {
+        convQuery = convQuery.in('channel_type', channelFilter);
+      }
+      if (sinceTs) {
+        convQuery = convQuery.gte('last_message_date', sinceTs);
+      }
+
+      const { data: rows, error: convErr } = await convQuery;
+      if (convErr) throw new Error(`Conversations query failed: ${convErr.message}`);
+      conversations = rows;
+
+      if (isResume) {
+        console.log(`[conv-replay] RESUMING job=${jobId} dispatch#${checkpoint.dispatchCount} offset=${startOffset} pulled=${conversations?.length || 0}`);
+      } else {
+        // Compute the TRUE total (not just this batch) so the UI progress bar is accurate.
+        let trueTotal = conversations?.length || 0;
+        try {
+          let countQuery = supabase
+            .from('ghl_conversations')
+            .select('id', { count: 'exact', head: true });
+          if (channelFilter.length > 0) countQuery = countQuery.in('channel_type', channelFilter);
+          if (sinceTs) countQuery = countQuery.gte('last_message_date', sinceTs);
+          const { count } = await countQuery;
+          if (typeof count === 'number' && count > 0) {
+            trueTotal = maxItems > 0 ? Math.min(maxItems, count) : count;
+          }
+        } catch (e) {
+          console.warn('[conv-replay] total count query failed, using batch size:', (e as any)?.message);
+        }
+        await startJob(supabase, jobId, trueTotal);
+      }
     }
 
     // Cumulative counters
@@ -310,20 +422,34 @@ Deno.serve(async (req) => {
       }
       const targetContactId = resolved.newId;
 
-      // Pull messages for this conversation in chronological order
-      const { data: messages, error: msgErr } = await supabase
-        .from('ghl_conversation_messages')
-        .select('id, ghl_message_id, direction, channel_type, body, attachment_urls, ghl_date_added, new_ghl_message_id')
-        .eq('conversation_id', conv.id)
-        .order('ghl_date_added', { ascending: true, nullsFirst: false });
-
-      if (msgErr) {
-        totalFailed++;
-        await recordItem(supabase, {
-          job_id: jobId, source_id: conv.id, entity_label: label,
-          status: 'failed', error_message: `Messages query failed: ${msgErr.message}`,
+      // Pull messages for this conversation in chronological order.
+      // For uploaded sources, messages are embedded on the conv object — skip the
+      // mirror lookup entirely (which would fail because conv.id is synthetic).
+      let messages: any[] | null;
+      if (uploadId) {
+        messages = ((conv as any).__uploadedMessages || []) as any[];
+        // Sort embedded messages by date when present (best-effort).
+        messages = [...messages].sort((a, b) => {
+          const ad = a.ghl_date_added ? Date.parse(a.ghl_date_added) : 0;
+          const bd = b.ghl_date_added ? Date.parse(b.ghl_date_added) : 0;
+          return ad - bd;
         });
-        continue;
+      } else {
+        const { data: dbMessages, error: msgErr } = await supabase
+          .from('ghl_conversation_messages')
+          .select('id, ghl_message_id, direction, channel_type, body, attachment_urls, ghl_date_added, new_ghl_message_id')
+          .eq('conversation_id', conv.id)
+          .order('ghl_date_added', { ascending: true, nullsFirst: false });
+
+        if (msgErr) {
+          totalFailed++;
+          await recordItem(supabase, {
+            job_id: jobId, source_id: conv.id, entity_label: label,
+            status: 'failed', error_message: `Messages query failed: ${msgErr.message}`,
+          });
+          continue;
+        }
+        messages = dbMessages;
       }
 
       if (!messages || messages.length === 0) {
@@ -445,11 +571,14 @@ Deno.serve(async (req) => {
           }
         }
 
-        // Persist mapping immediately so re-runs don't re-create the shell
-        await supabase
-          .from('ghl_conversations')
-          .update({ new_ghl_conversation_id: newConvId, replayed_at: new Date().toISOString() })
-          .eq('id', conv.id);
+        // Persist mapping immediately so re-runs don't re-create the shell.
+        // Skip for uploaded sources — conv.id is synthetic ('upload:N').
+        if (!uploadId) {
+          await supabase
+            .from('ghl_conversations')
+            .update({ new_ghl_conversation_id: newConvId, replayed_at: new Date().toISOString() })
+            .eq('id', conv.id);
+        }
 
         await recordIdMapping(supabase, {
           resource_type: 'conversation',
@@ -470,6 +599,11 @@ Deno.serve(async (req) => {
       }
 
       // ── STAGE 2: Replay messages chronologically ──────────────────
+      // Helper: skip mirror writebacks for uploaded sources (synthetic ids).
+      const updateMirrorMessage = async (msgId: string, patch: Record<string, any>) => {
+        if (uploadId) return; // upload rows aren't in the mirror
+        await supabase.from('ghl_conversation_messages').update(patch).eq('id', msgId);
+      };
       let convMsgOk = 0, convMsgFail = 0, convMsgSkip = 0;
       const messagesToReplay = maxMessagesPerConv > 0
         ? messages.slice(0, maxMessagesPerConv)
@@ -486,20 +620,14 @@ Deno.serve(async (req) => {
 
         if (skipActivity && isActivityChannel(msg.channel_type)) {
           convMsgSkip++;
-          await supabase
-            .from('ghl_conversation_messages')
-            .update({ replay_skipped_reason: 'activity_channel' })
-            .eq('id', msg.id);
+          await updateMirrorMessage(msg.id, { replay_skipped_reason: 'activity_channel' });
           continue;
         }
 
         const rawBody = (msg.body || '').toString();
         if (!rawBody.trim() && (skipAttachments || !Array.isArray(msg.attachment_urls) || msg.attachment_urls.length === 0)) {
           convMsgSkip++;
-          await supabase
-            .from('ghl_conversation_messages')
-            .update({ replay_skipped_reason: 'empty_body_no_attachments' })
-            .eq('id', msg.id);
+          await updateMirrorMessage(msg.id, { replay_skipped_reason: 'empty_body_no_attachments' });
           continue;
         }
 
@@ -509,10 +637,7 @@ Deno.serve(async (req) => {
         if (!ghlType) {
           // Unknown / non-replayable channel — skip rather than masquerade as SMS
           convMsgSkip++;
-          await supabase
-            .from('ghl_conversation_messages')
-            .update({ replay_skipped_reason: `unsupported_channel:${normaliseChannel(msg.channel_type)}` })
-            .eq('id', msg.id);
+          await updateMirrorMessage(msg.id, { replay_skipped_reason: `unsupported_channel:${normaliseChannel(msg.channel_type)}` });
           continue;
         }
         const direction = msg.direction === 'inbound' ? 'inbound' : 'outbound';
@@ -554,23 +679,17 @@ Deno.serve(async (req) => {
             const parsed = parseGhlError(t);
             const code = parsed.error_code || `GHL_${r.status}`;
             convMsgFail++;
-            await supabase
-              .from('ghl_conversation_messages')
-              .update({ replay_skipped_reason: `[${code}] ${(parsed.message || t).substring(0, 200)}` })
-              .eq('id', msg.id);
+            await updateMirrorMessage(msg.id, { replay_skipped_reason: `[${code}] ${(parsed.message || t).substring(0, 200)}` });
             continue;
           }
           const data = await r.json();
           const newMsgId = data?.messageId || data?.message?.id || data?.id || null;
           if (newMsgId) {
-            await supabase
-              .from('ghl_conversation_messages')
-              .update({
-                new_ghl_message_id: newMsgId,
-                replayed_at: new Date().toISOString(),
-                replay_skipped_reason: null,
-              })
-              .eq('id', msg.id);
+            await updateMirrorMessage(msg.id, {
+              new_ghl_message_id: newMsgId,
+              replayed_at: new Date().toISOString(),
+              replay_skipped_reason: null,
+            });
             await recordIdMapping(supabase, {
               resource_type: 'conversation_message',
               old_ghl_id: msg.ghl_message_id,
@@ -584,10 +703,7 @@ Deno.serve(async (req) => {
           totalMessagesReplayed++;
         } catch (e: any) {
           convMsgFail++;
-          await supabase
-            .from('ghl_conversation_messages')
-            .update({ replay_skipped_reason: `Replay threw: ${(e.message || '').substring(0, 200)}` })
-            .eq('id', msg.id);
+          await updateMirrorMessage(msg.id, { replay_skipped_reason: `Replay threw: ${(e.message || '').substring(0, 200)}` });
         }
       }
 

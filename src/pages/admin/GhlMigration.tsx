@@ -516,7 +516,13 @@ function MigrationWorkersPanel() {
   }, [jobs]);
 
   const dispatch = async () => {
-    if (source === target) {
+    // Replay reads from Supabase mirror, not GHL — auto-set source to the
+    // opposite account so the source≠target invariant holds and the legacy
+    // contact-name fallback in the worker resolves against the correct tenant.
+    const effectiveSource: Account = domain === 'conversations_replay'
+      ? (target === 'new' ? 'legacy' : 'new')
+      : source;
+    if (effectiveSource === target) {
       toast.error('Source and target must differ'); return;
     }
     if (!dryRun && confirmation !== 'MIGRATE-LIVE') {
@@ -526,7 +532,7 @@ function MigrationWorkersPanel() {
     try {
       const max = parseInt(maxItems, 10);
       const domainPatch = buildDomainPayloadPatch(domain, advancedFlags);
-      const useUpload = (domain === 'contacts' || domain === 'opportunities') && !!uploadId;
+      const useUpload = (domain === 'contacts' || domain === 'opportunities' || domain === 'conversations' || domain === 'conversations_replay') && !!uploadId;
       const payload = {
         ...(max > 0 ? { max_items: max } : {}),
         write_mode: 'create_first',
@@ -535,7 +541,7 @@ function MigrationWorkersPanel() {
       };
       const dispatchDomain = async (dispatchDomain: 'contacts' | 'opportunities' | 'notes' | 'conversations' | 'conversations_replay', extraPayload?: Record<string, any>) => {
         return invokeSecureFunction<any>('migration-orchestrator', {
-          domain: dispatchDomain, source_account: source, target_account: target, dry_run: dryRun,
+          domain: dispatchDomain, source_account: effectiveSource, target_account: target, dry_run: dryRun,
           confirmation: dryRun ? undefined : 'MIGRATE-LIVE',
           payload: { ...payload, ...(extraPayload || {}) },
         }, { timeoutMs: 30000 });
@@ -709,12 +715,24 @@ function MigrationWorkersPanel() {
           onChange={setAdvancedFlags}
         />
 
-        {(domain === 'contacts' || domain === 'opportunities' || domain === 'conversations') && (
+        {(domain === 'contacts' || domain === 'opportunities' || domain === 'conversations' || domain === 'conversations_replay') && (
           <MigrationSourceUploader
-            domain={domain as 'contacts' | 'opportunities' | 'conversations'}
+            domain={domain as 'contacts' | 'opportunities' | 'conversations' | 'conversations_replay'}
             selectedUploadId={uploadId}
             onSelect={(id) => setUploadId(id)}
           />
+        )}
+
+        {domain === 'conversations_replay' && (
+          <Alert className="border-primary/30 bg-primary/5">
+            <AlertTitle className="text-xs">Replay reads from Supabase, not GHL</AlertTitle>
+            <AlertDescription className="text-[11px] text-muted-foreground">
+              Source data comes from the local <code className="rounded bg-muted px-1">ghl_conversations</code> mirror
+              (or your uploaded CSV/XLSX above). Target contacts are resolved by{' '}
+              <strong>full name</strong> against the target account — not by contact ID — matching the
+              notes / opportunities replay pattern.
+            </AlertDescription>
+          </Alert>
         )}
 
         {/* Dispatch form */}
@@ -734,13 +752,19 @@ function MigrationWorkersPanel() {
           </div>
           <div className="space-y-1">
             <label className="text-xs text-muted-foreground">Source</label>
-            <Select value={source} onValueChange={(v) => setSource(v as Account)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="legacy">LEGACY</SelectItem>
-                <SelectItem value="new">NEW</SelectItem>
-              </SelectContent>
-            </Select>
+            {domain === 'conversations_replay' ? (
+              <div className="flex h-10 items-center rounded-md border bg-muted/30 px-3 text-sm text-muted-foreground">
+                Supabase mirror (local)
+              </div>
+            ) : (
+              <Select value={source} onValueChange={(v) => setSource(v as Account)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="legacy">LEGACY</SelectItem>
+                  <SelectItem value="new">NEW</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
           </div>
           <div className="space-y-1">
             <label className="text-xs text-muted-foreground">Target</label>
