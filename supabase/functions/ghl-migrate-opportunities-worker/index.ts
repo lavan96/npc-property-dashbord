@@ -657,23 +657,42 @@ function normaliseUploadedOpportunity(
         }), { headers: { 'Content-Type': 'application/json' } });
       }
 
-      const p = new URLSearchParams({ location_id: sourceCreds.locationId!, limit: String(PAGE_LIMIT) });
-      if (nextStartAfterId) p.set('startAfterId', nextStartAfterId);
-      if (nextStartAfter) {
-        // GHL requires `startAfter` as a numeric millisecond timestamp, not ISO.
-        const numeric = /^\d+$/.test(String(nextStartAfter))
-          ? String(nextStartAfter)
-          : String(new Date(nextStartAfter).getTime());
-        p.set('startAfter', numeric);
-      }
+      let opps: any[] = [];
+      let data: any = { meta: {} };
 
-      const res = await ctx.ghlFetch(`${GHL_API_BASE}/opportunities/search?${p}`, { headers: sourceHeaders }, 3, 'source');
-      if (!res.ok) {
-        const t = await res.text();
-        throw new Error(`Source opportunities fetch failed: ${res.status} ${t.substring(0, 200)}`);
+      if (uploadedRecords) {
+        // ── In-memory page from uploaded source ─────────────────────
+        const offset = Number(nextStartAfter) || 0;
+        const slice = uploadedRecords.slice(offset, offset + PAGE_LIMIT);
+        opps = slice.map((rec, i) => normaliseUploadedOpportunity(rec, offset + i, sourcePipelines));
+        const nextOffset = offset + slice.length;
+        data = {
+          opportunities: opps,
+          meta: {
+            total: uploadedRecords.length,
+            startAfter: nextOffset < uploadedRecords.length ? String(nextOffset) : null,
+            startAfterId: nextOffset < uploadedRecords.length ? String(nextOffset) : null,
+          },
+        };
+      } else {
+        const p = new URLSearchParams({ location_id: sourceCreds.locationId!, limit: String(PAGE_LIMIT) });
+        if (nextStartAfterId) p.set('startAfterId', nextStartAfterId);
+        if (nextStartAfter) {
+          // GHL requires `startAfter` as a numeric millisecond timestamp, not ISO.
+          const numeric = /^\d+$/.test(String(nextStartAfter))
+            ? String(nextStartAfter)
+            : String(new Date(nextStartAfter).getTime());
+          p.set('startAfter', numeric);
+        }
+
+        const res = await ctx.ghlFetch(`${GHL_API_BASE}/opportunities/search?${p}`, { headers: sourceHeaders }, 3, 'source');
+        if (!res.ok) {
+          const t = await res.text();
+          throw new Error(`Source opportunities fetch failed: ${res.status} ${t.substring(0, 200)}`);
+        }
+        data = await res.json();
+        opps = data.opportunities || [];
       }
-      const data = await res.json();
-      const opps: any[] = data.opportunities || [];
 
       if (firstPage) {
         const total = data.meta?.total ?? 0;
