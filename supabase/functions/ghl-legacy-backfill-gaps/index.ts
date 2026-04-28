@@ -1,15 +1,23 @@
 /**
- * One-shot backfill: fixes gaps in the legacy GHL mirror before Phase B replay.
+ * Chunked backfill: fixes gaps in the legacy GHL mirror before Phase B replay.
+ *
+ * Time-bounded per invocation (default 110s) to stay well below the 150s edge limit.
+ * The UI calls this repeatedly with the returned cursor until `done: true`.
  *
  * Phase 1: For every ghl_conversations row with zero messages, re-fetch
  *          ALL pages of /conversations/{id}/messages and upsert.
  * Phase 2: For every client.ghl_contact_id NOT present in ghl_conversations,
  *          re-run /conversations/search and recursively pull messages.
  *
- * Uses the LEGACY (default) GHL credentials. Superadmin-only.
- *
- * Body: { dry_run?: boolean, max_contacts?: number, max_shells?: number }
- * Returns: { phase1: {...}, phase2: {...}, final_audit: {...} }
+ * Body: {
+ *   dry_run?: boolean,
+ *   phase?: 1 | 2,           // which phase to run this invocation (default: 1, then UI switches to 2)
+ *   cursor?: number,         // index within the phase's worklist
+ *   batch_size?: number,     // items per invocation (default 25 for phase1, 12 for phase2)
+ *   soft_deadline_ms?: number // (default 110000)
+ * }
+ * Returns: { phase, cursor, processed_in_batch, messages_added, conversations_added,
+ *            phase_total, done, final_audit? }
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import {
@@ -65,12 +73,11 @@ function mapCT(c?: string): string {
 }
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function ghlGet(url: string, headers: Record<string, string>, retries = 5): Promise<Response> {
+async function ghlGet(url: string, headers: Record<string, string>, retries = 4): Promise<Response> {
   for (let i = 0; i < retries; i++) {
     const r = await fetch(url, { headers });
     if (r.status === 429 || r.status >= 500) {
-      const wait = Math.min(8000, 800 * Math.pow(2, i));
-      console.log(`  ⏳ ${r.status}, retry in ${wait}ms`);
+      const wait = Math.min(6000, 600 * Math.pow(2, i));
       await sleep(wait);
       continue;
     }
@@ -91,10 +98,7 @@ async function fetchAllMessages(
     const p = new URLSearchParams({ limit: '100' });
     if (lastMsgId) p.set('lastMessageId', lastMsgId);
     const r = await ghlGet(`${GHL_BASE}/conversations/${ghlConvId}/messages?${p}`, headers);
-    if (!r.ok) {
-      console.log(`    msgs ${ghlConvId} ${r.status}`);
-      return total;
-    }
+    if (!r.ok) return total;
     const j = await r.json();
     let msgs: any[] = [];
     let hasMore = false;
@@ -123,13 +127,11 @@ async function fetchAllMessages(
     const { error } = await sb
       .from('ghl_conversation_messages')
       .upsert(rows, { onConflict: 'ghl_message_id', ignoreDuplicates: false });
-    if (error && (error as any).code !== '23505') {
-      console.log(`    upsert err ${error.message}`);
-    }
+    if (error && (error as any).code !== '23505') console.log(`upsert err ${error.message}`);
     total += msgs.length;
     if (!hasMore || msgs.length < 100) break;
     lastMsgId = msgs[msgs.length - 1]?.id;
-    await sleep(150);
+    await sleep(120);
   }
   return total;
 }
@@ -145,10 +147,7 @@ async function syncContact(
     `${GHL_BASE}/conversations/search?locationId=${locationId}&contactId=${ghlContactId}`,
     headers,
   );
-  if (!r.ok) {
-    console.log(`  search ${ghlContactId} ${r.status}`);
-    return { convs: 0, msgs: 0 };
-  }
+  if (!r.ok) return { convs: 0, msgs: 0 };
   const j = await r.json();
   const convs = j.conversations || [];
   let cTotal = 0, mTotal = 0;
@@ -171,16 +170,44 @@ async function syncContact(
       }, { onConflict: 'ghl_conversation_id' })
       .select('id')
       .single();
-    if (error || !up) {
-      console.log(`  conv upsert err ${error?.message}`);
-      continue;
-    }
+    if (error || !up) continue;
     cTotal++;
-    await sleep(120);
+    await sleep(100);
     mTotal += await fetchAllMessages(c.id, up.id, headers, sb);
-    await sleep(120);
+    await sleep(100);
   }
   return { convs: cTotal, msgs: mTotal };
+}
+
+async function buildEmptyShells(sb: any): Promise<{ id: string; ghl_conversation_id: string }[]> {
+  const { data: allConvs } = await sb.from('ghl_conversations').select('id, ghl_conversation_id').limit(10000);
+  const empties: { id: string; ghl_conversation_id: string }[] = [];
+  for (let i = 0; i < (allConvs || []).length; i += 100) {
+    const slice = (allConvs || []).slice(i, i + 100);
+    const { data: have } = await sb
+      .from('ghl_conversation_messages')
+      .select('conversation_id')
+      .in('conversation_id', slice.map((s: any) => s.id));
+    const hSet = new Set((have || []).map((m: any) => m.conversation_id));
+    for (const s of slice) if (!hSet.has(s.id)) empties.push(s);
+  }
+  return empties;
+}
+
+async function buildMissingContacts(sb: any): Promise<{ id: string; ghl_contact_id: string }[]> {
+  const { data: clients } = await sb
+    .from('clients').select('id, ghl_contact_id').not('ghl_contact_id', 'is', null).limit(2000);
+  const have = new Set<string>();
+  let from = 0;
+  while (true) {
+    const { data: chunk } = await sb
+      .from('ghl_conversations').select('ghl_contact_id').range(from, from + 999);
+    if (!chunk || chunk.length === 0) break;
+    for (const c of chunk) if (c.ghl_contact_id) have.add(c.ghl_contact_id);
+    if (chunk.length < 1000) break;
+    from += 1000;
+  }
+  return (clients || []).filter((c: any) => !have.has(c.ghl_contact_id));
 }
 
 Deno.serve(async (req) => {
@@ -188,6 +215,7 @@ Deno.serve(async (req) => {
   const cors = createCorsHeaders(origin);
   if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
 
+  const start = Date.now();
   try {
     const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
     const body = await req.json().catch(() => ({}));
@@ -205,74 +233,78 @@ Deno.serve(async (req) => {
     const headers = { Authorization: `Bearer ${KEY}`, Version: '2021-07-28', Accept: 'application/json' };
 
     const dryRun = body.dry_run === true;
-    const maxShells = body.max_shells ?? 1000;
-    const maxContacts = body.max_contacts ?? 1000;
+    const phase: 1 | 2 = body.phase === 2 ? 2 : 1;
+    const cursor: number = Math.max(0, Number(body.cursor) || 0);
+    const softDeadline: number = Number(body.soft_deadline_ms) || 110000;
+    const batchSize: number = Number(body.batch_size) || (phase === 1 ? 25 : 12);
 
-    // ── Phase 1: empty-shell conversations ──
-    console.log('=== PHASE 1: empty shells ===');
-    const { data: allConvs } = await sb.from('ghl_conversations').select('id, ghl_conversation_id').limit(5000);
-    const empties: { id: string; ghl_conversation_id: string }[] = [];
-    for (let i = 0; i < (allConvs || []).length; i += 100) {
-      const slice = (allConvs || []).slice(i, i + 100);
-      const { data: have } = await sb
-        .from('ghl_conversation_messages')
-        .select('conversation_id')
-        .in('conversation_id', slice.map((s: any) => s.id));
-      const hSet = new Set((have || []).map((m: any) => m.conversation_id));
-      for (const s of slice) if (!hSet.has(s.id)) empties.push(s);
-    }
-    console.log(`Found ${empties.length} empty-shell conversations`);
+    const overDeadline = () => Date.now() - start > softDeadline;
 
-    let p1c = 0, p1m = 0;
-    if (!dryRun) {
-      for (const [i, s] of empties.slice(0, maxShells).entries()) {
+    let processed = 0, msgsAdded = 0, convsAdded = 0, emptyContacts = 0;
+    let phaseTotal = 0;
+    let nextCursor = cursor;
+
+    if (phase === 1) {
+      const empties = await buildEmptyShells(sb);
+      phaseTotal = empties.length;
+      if (dryRun) {
+        return new Response(JSON.stringify({
+          success: true, dry_run: true, phase: 1, phase_total: phaseTotal,
+          cursor: 0, done: true, processed_in_batch: 0, messages_added: 0,
+        }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+      }
+      const slice = empties.slice(cursor, cursor + batchSize);
+      for (const s of slice) {
+        if (overDeadline()) break;
         const n = await fetchAllMessages(s.ghl_conversation_id, s.id, headers, sb);
-        p1m += n; p1c++;
-        if (i % 5 === 0) console.log(`  [${i + 1}/${Math.min(empties.length, maxShells)}] +${n} (total ${p1m})`);
-        await sleep(120);
+        msgsAdded += n;
+        processed++;
+        nextCursor++;
+        await sleep(100);
       }
-    }
-    console.log(`PHASE 1: ${p1c} convs / ${p1m} msgs added`);
-
-    // ── Phase 2: contacts with no conversations ──
-    console.log('=== PHASE 2: missing-conversation contacts ===');
-    const { data: clients } = await sb
-      .from('clients').select('id, ghl_contact_id').not('ghl_contact_id', 'is', null).limit(2000);
-    const have = new Set<string>();
-    let from = 0;
-    while (true) {
-      const { data: chunk } = await sb
-        .from('ghl_conversations').select('ghl_contact_id').range(from, from + 999);
-      if (!chunk || chunk.length === 0) break;
-      for (const c of chunk) if (c.ghl_contact_id) have.add(c.ghl_contact_id);
-      if (chunk.length < 1000) break;
-      from += 1000;
-    }
-    const missing = (clients || []).filter((c: any) => !have.has(c.ghl_contact_id));
-    console.log(`Found ${missing.length} contacts with no conversations`);
-
-    let p2contacts = 0, p2c = 0, p2m = 0, p2empty = 0;
-    if (!dryRun) {
-      for (const [i, c] of missing.slice(0, maxContacts).entries()) {
+    } else {
+      const missing = await buildMissingContacts(sb);
+      phaseTotal = missing.length;
+      if (dryRun) {
+        return new Response(JSON.stringify({
+          success: true, dry_run: true, phase: 2, phase_total: phaseTotal,
+          cursor: 0, done: true, processed_in_batch: 0, messages_added: 0, conversations_added: 0,
+        }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+      }
+      const slice = missing.slice(cursor, cursor + batchSize);
+      for (const c of slice) {
+        if (overDeadline()) break;
         const r = await syncContact(c.id, c.ghl_contact_id, LOC, headers, sb);
-        p2contacts++; p2c += r.convs; p2m += r.msgs;
-        if (r.convs === 0) p2empty++;
-        if (i % 5 === 0) console.log(`  [${i + 1}/${Math.min(missing.length, maxContacts)}] +${r.convs}c/${r.msgs}m (totals ${p2c}/${p2m}, genuinely empty: ${p2empty})`);
-        await sleep(180);
+        if (r.convs === 0) emptyContacts++;
+        convsAdded += r.convs;
+        msgsAdded += r.msgs;
+        processed++;
+        nextCursor++;
+        await sleep(150);
       }
     }
-    console.log(`PHASE 2: ${p2contacts} contacts / ${p2c} convs / ${p2m} msgs / ${p2empty} truly empty`);
 
-    // ── Final audit ──
-    const { count: totalConvs } = await sb.from('ghl_conversations').select('*', { count: 'exact', head: true });
-    const { count: totalMsgs } = await sb.from('ghl_conversation_messages').select('*', { count: 'exact', head: true });
+    const done = nextCursor >= phaseTotal;
+    let final_audit: any = undefined;
+    if (done) {
+      const { count: totalConvs } = await sb.from('ghl_conversations').select('*', { count: 'exact', head: true });
+      const { count: totalMsgs } = await sb.from('ghl_conversation_messages').select('*', { count: 'exact', head: true });
+      final_audit = { total_conversations: totalConvs, total_messages: totalMsgs };
+    }
 
     return new Response(JSON.stringify({
       success: true,
-      dry_run: dryRun,
-      phase1: { empty_shells_found: empties.length, processed: p1c, messages_added: p1m },
-      phase2: { missing_contacts_found: missing.length, processed: p2contacts, conversations_added: p2c, messages_added: p2m, genuinely_empty: p2empty },
-      final_audit: { total_conversations: totalConvs, total_messages: totalMsgs },
+      dry_run: false,
+      phase,
+      cursor: nextCursor,
+      phase_total: phaseTotal,
+      processed_in_batch: processed,
+      messages_added: msgsAdded,
+      conversations_added: convsAdded,
+      genuinely_empty_in_batch: emptyContacts,
+      done,
+      elapsed_ms: Date.now() - start,
+      final_audit,
     }), { headers: { ...cors, 'Content-Type': 'application/json' } });
   } catch (e: any) {
     console.error('[backfill] error', e);
