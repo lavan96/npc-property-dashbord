@@ -456,28 +456,51 @@ Deno.serve(async (req) => {
         }), { headers: { 'Content-Type': 'application/json' } });
       }
 
-      const params = new URLSearchParams({
-        locationId: sourceCreds.locationId!,
-        limit: String(PAGE_LIMIT),
-      });
-      if (nextStartAfterId) params.set('startAfterId', nextStartAfterId);
-      if (nextStartAfter) {
-        // GHL requires `startAfter` as a numeric millisecond timestamp,
-        // NOT an ISO date string. Convert if needed (cursor may have been
-        // saved as ISO from `contact.dateAdded` in older runs).
-        const numeric = /^\d+$/.test(String(nextStartAfter))
-          ? String(nextStartAfter)
-          : String(new Date(nextStartAfter).getTime());
-        params.set('startAfter', numeric);
+      let contacts: any[] = [];
+      let data: any = { meta: {} };
+
+      if (uploadedRecords) {
+        // ── In-memory page from uploaded source ─────────────────────
+        // Resume cursor for uploads is a numeric offset stored in
+        // `nextStartAfter` (we ignore startAfterId in this mode).
+        const offset = Number(nextStartAfter) || 0;
+        const slice = uploadedRecords.slice(offset, offset + PAGE_LIMIT);
+        contacts = slice.map((rec, i) => normaliseUploadedContact(rec, offset + i));
+        data = {
+          contacts,
+          meta: {
+            total: uploadedRecords.length,
+            startAfter: offset + slice.length < uploadedRecords.length
+              ? String(offset + slice.length) : null,
+            startAfterId: offset + slice.length < uploadedRecords.length
+              ? String(offset + slice.length) : null,
+          },
+        };
+      } else {
+        const params = new URLSearchParams({
+          locationId: sourceCreds.locationId!,
+          limit: String(PAGE_LIMIT),
+        });
+        if (nextStartAfterId) params.set('startAfterId', nextStartAfterId);
+        if (nextStartAfter) {
+          // GHL requires `startAfter` as a numeric millisecond timestamp,
+          // NOT an ISO date string. Convert if needed (cursor may have been
+          // saved as ISO from `contact.dateAdded` in older runs).
+          const numeric = /^\d+$/.test(String(nextStartAfter))
+            ? String(nextStartAfter)
+            : String(new Date(nextStartAfter).getTime());
+          params.set('startAfter', numeric);
+        }
+
+        const res = await ghlFetch(`${GHL_API_BASE}/contacts/?${params}`, { headers: sourceHeaders }, 3, 'source');
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(`Source contacts fetch failed: ${res.status} ${text.substring(0, 200)}`);
+        }
+        data = await res.json();
+        contacts = data.contacts || [];
       }
 
-      const res = await ghlFetch(`${GHL_API_BASE}/contacts/?${params}`, { headers: sourceHeaders }, 3, 'source');
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Source contacts fetch failed: ${res.status} ${text.substring(0, 200)}`);
-      }
-      const data = await res.json();
-      const contacts: any[] = data.contacts || [];
       if (firstPage) {
         totalEstimate = data.meta?.total ?? data.total ?? 0;
         if (totalEstimate > 0 && (!isResume || persistedTotalItems <= 0)) {
