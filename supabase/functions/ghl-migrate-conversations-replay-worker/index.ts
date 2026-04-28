@@ -55,12 +55,23 @@ const MAX_RUNTIME_MS = 110_000;
 // cursor exhaustion.
 const BATCH = 200;
 
+// Normalise the channel value stored in our mirror (legacy GHL emits
+// values like `type_sms`, `type_email`, `type_activity_opportunity`,
+// `TYPE_PHONE`, plain `sms`, etc.). Strips the `type_` prefix so the
+// downstream switch is consistent.
+function normaliseChannel(channel: string | null | undefined): string {
+  const raw = (channel || '').toLowerCase().trim();
+  return raw.startsWith('type_') ? raw.slice(5) : raw;
+}
+
 // Map our internal channel_type → GHL message `type` field for write API.
 // Reference: https://highlevel.stoplight.io/docs/integrations/messages-api
-function mapToGhlMessageType(channel: string | null | undefined): string {
-  const c = (channel || '').toLowerCase();
+// Returns null when the channel cannot safely be replayed (caller skips).
+function mapToGhlMessageType(channel: string | null | undefined): string | null {
+  const c = normaliseChannel(channel);
   switch (c) {
-    case 'sms': return 'SMS';
+    case 'sms':
+    case 'phone': return 'SMS';
     case 'email': return 'Email';
     case 'whatsapp': return 'WhatsApp';
     case 'fb':
@@ -72,13 +83,16 @@ function mapToGhlMessageType(channel: string | null | undefined): string {
     case 'gmb':
     case 'google_my_business': return 'GMB';
     case 'custom': return 'Custom';
-    default: return 'SMS'; // safe default — most legacy convos are SMS
+    case 'sms_reaction': return null; // not replayable via write API
+    default: return null; // unknown / activity → skip rather than masquerade
   }
 }
 
 // Activity messages aren't real conversations and shouldn't be replayed.
+// Handles both raw (`activity_*`, `system`) and prefixed (`type_activity_*`,
+// `type_system`) variants emitted by the legacy mirror.
 function isActivityChannel(channel: string | null | undefined): boolean {
-  const c = (channel || '').toLowerCase();
+  const c = normaliseChannel(channel);
   return c === 'activity' || c.startsWith('activity_') || c === 'system';
 }
 
