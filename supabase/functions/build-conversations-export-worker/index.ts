@@ -14,7 +14,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import * as XLSX from 'https://esm.sh/xlsx@0.18.5';
 import { createCorsHeaders } from '../_shared/auth.ts';
 
-const PAGE_SIZE = 1000;
+const PAGE_SIZE = 1000;             // pagination page size for messages
+const IN_CHUNK_SIZE = 100;           // max IDs per .in() call (URL length limit)
 const SIGNED_URL_TTL_SECONDS = 60 * 60 * 24; // 24h
 const STORAGE_BUCKET = 'qa_exports';
 
@@ -116,8 +117,8 @@ Deno.serve(async (req) => {
 
     // ── 1. Fetch all conversation rows in pages of 1000 by id ──
     const conversations: any[] = [];
-    for (let i = 0; i < conversationIds.length; i += PAGE_SIZE) {
-      const chunk = conversationIds.slice(i, i + PAGE_SIZE);
+    for (let i = 0; i < conversationIds.length; i += IN_CHUNK_SIZE) {
+      const chunk = conversationIds.slice(i, i + IN_CHUNK_SIZE);
       const { data, error } = await withRetry('fetch conversations', () =>
         supabase.from('ghl_conversations')
           .select('id, ghl_conversation_id, ghl_contact_id, channel_type, client_id')
@@ -131,8 +132,8 @@ Deno.serve(async (req) => {
     // ── 2. Resolve client names/emails ──
     const clientIds = [...new Set(conversations.map((c) => c.client_id).filter(Boolean))];
     const clientMap = new Map<string, { name: string; email: string | null }>();
-    for (let i = 0; i < clientIds.length; i += PAGE_SIZE) {
-      const chunk = clientIds.slice(i, i + PAGE_SIZE);
+    for (let i = 0; i < clientIds.length; i += IN_CHUNK_SIZE) {
+      const chunk = clientIds.slice(i, i + IN_CHUNK_SIZE);
       const { data, error } = await withRetry('fetch clients', () =>
         supabase.from('clients')
           .select('id, primary_first_name, primary_surname, primary_email')
