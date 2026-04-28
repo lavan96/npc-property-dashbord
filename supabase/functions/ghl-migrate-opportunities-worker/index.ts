@@ -745,7 +745,12 @@ function normaliseUploadedOpportunity(
         // skip, fail, or successfully migrate, the cursor must advance —
         // a future partialExit needs to resume after this exact record.
         lastProcessedOppId = opp.id || lastProcessedOppId;
-        lastProcessedOppAt = opp.updatedAt || opp.dateAdded || lastProcessedOppAt;
+        if (uploadedRecords) {
+          uploadCursor++;
+          lastProcessedOppAt = String(uploadCursor);
+        } else {
+          lastProcessedOppAt = opp.updatedAt || opp.dateAdded || lastProcessedOppAt;
+        }
         const oppLabel = opp.name || `Opp ${opp.id?.substring(0, 8)}`;
 
         // Skip closed opportunities unless includeClosedStatuses is on.
