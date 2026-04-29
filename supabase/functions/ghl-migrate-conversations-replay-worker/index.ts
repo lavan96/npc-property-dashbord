@@ -886,6 +886,41 @@ Deno.serve(async (req) => {
           continue;
         }
 
+        // Pre-skip outbound FB/IG when the target contact has no fb/ig id —
+        // GHL 400s with "Contact has no Facebook id, skipping" otherwise.
+        if (!isInbound && ghlType === 'FB' && !targetContactFbId) {
+          convMsgSkip++;
+          bumpReason(skipReasons, 'fb_missing_contact_id');
+          await updateMirrorMessage(msg.id, {
+            replayed_at: new Date().toISOString(),
+            replay_skipped_reason: 'terminal_skip:contact_has_no_fb_id',
+          });
+          continue;
+        }
+        if (!isInbound && ghlType === 'IG' && !targetContactIgId) {
+          convMsgSkip++;
+          bumpReason(skipReasons, 'ig_missing_contact_id');
+          await updateMirrorMessage(msg.id, {
+            replayed_at: new Date().toISOString(),
+            replay_skipped_reason: 'terminal_skip:contact_has_no_ig_id',
+          });
+          continue;
+        }
+
+        // Pre-skip outbound SMS without a resolvable phone — required by spec.
+        if (!isInbound && ghlType === 'SMS') {
+          const msgPhone = (msg as any).sender_number || (msg as any).recipient_number || null;
+          if (!msgPhone && !targetContactPhone) {
+            convMsgSkip++;
+            bumpReason(skipReasons, 'sms_missing_phone');
+            await updateMirrorMessage(msg.id, {
+              replayed_at: new Date().toISOString(),
+              replay_skipped_reason: 'terminal_skip:sms_missing_phone',
+            });
+            continue;
+          }
+        }
+
         // Build the payload starting from the spec-required common fields.
         const msgPayload: Record<string, any> = {
           type: ghlType,
