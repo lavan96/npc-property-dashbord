@@ -358,12 +358,17 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: msg }), { status: 400 });
       }
       const allRows = (uploadRow.records as any[]) || [];
-      const slice = allRows.slice(startOffset, startOffset + pullLimit);
-      conversations = slice.map((r, i) => normaliseUploadedReplayConversation(r, startOffset + i));
-      console.log(`[conv-replay] using upload ${uploadId} rows=${allRows.length} slice=[${startOffset},${startOffset + slice.length})`);
+      // Group flat one-row-per-message exports into per-conversation
+      // groups BEFORE slicing — otherwise messages of the same conversation
+      // that straddle a page boundary would be split into separate shells.
+      const allGroups = groupUploadedRowsByConversation(allRows);
+      const slice = allGroups.slice(startOffset, startOffset + pullLimit);
+      // Re-stamp synthetic ids so they're stable across pages.
+      conversations = slice.map((g, i) => ({ ...g, id: `upload:${startOffset + i}` }));
+      console.log(`[conv-replay] using upload ${uploadId} raw_rows=${allRows.length} grouped_convs=${allGroups.length} slice=[${startOffset},${startOffset + slice.length})`);
 
       if (!isResume) {
-        const trueTotal = maxItems > 0 ? Math.min(maxItems, allRows.length) : allRows.length;
+        const trueTotal = maxItems > 0 ? Math.min(maxItems, allGroups.length) : allGroups.length;
         await startJob(supabase, jobId, trueTotal);
       } else {
         console.log(`[conv-replay] RESUMING upload job=${jobId} dispatch#${checkpoint.dispatchCount} offset=${startOffset} pulled=${slice.length}`);
