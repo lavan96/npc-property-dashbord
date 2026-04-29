@@ -101,13 +101,21 @@ async function getDocuSignAccessToken(): Promise<string> {
   // Import the key using jose
   const privateKey = await importPKCS8(rsaPrivateKey, 'RS256');
 
+  // Determine OAuth host: production vs demo. Auto-detect from DOCUSIGN_BASE_URL if not explicitly set.
+  const restBase = (Deno.env.get('DOCUSIGN_BASE_URL') || '').toLowerCase();
+  const isProduction = restBase.includes('//www.docusign.net') || restBase.includes('//na') || restBase.includes('//eu') || restBase.includes('//au');
+  const oauthHost = Deno.env.get('DOCUSIGN_OAUTH_HOST')?.trim()
+    || (isProduction ? 'account.docusign.com' : 'account-d.docusign.com');
+
+  console.log('[DocuSign JWT] Using OAuth host:', oauthHost, '(production:', isProduction, ')');
+
   const now = Math.floor(Date.now() / 1000);
 
   // Create and sign JWT
   const jwtToken = await new SignJWT({
     iss: integrationKey,
     sub: userId,
-    aud: 'account-d.docusign.com',
+    aud: oauthHost,
     scope: 'signature impersonation',
   })
     .setProtectedHeader({ alg: 'RS256', typ: 'JWT' })
@@ -117,16 +125,20 @@ async function getDocuSignAccessToken(): Promise<string> {
 
   // Exchange JWT for access token
   console.log('[DocuSign] Exchanging JWT for access token...');
-  const tokenResponse = await fetch('https://account-d.docusign.com/oauth/token', {
+  const tokenResponse = await fetch(`https://${oauthHost}/oauth/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwtToken}`,
   });
 
   const tokenData = await tokenResponse.json();
-  
+
   if (!tokenResponse.ok) {
     console.error('[DocuSign] Token exchange failed:', JSON.stringify(tokenData));
+    if (tokenData.error === 'consent_required') {
+      const consentUrl = `https://${oauthHost}/oauth/auth?response_type=code&scope=signature%20impersonation&client_id=${integrationKey}&redirect_uri=https://www.docusign.com`;
+      throw new Error(`DocuSign consent_required. Open this URL in a browser, sign in as the impersonated user, and click "Accept": ${consentUrl}`);
+    }
     throw new Error(`DocuSign token exchange failed: ${tokenData.error || tokenData.error_description || 'Unknown error'}`);
   }
 
