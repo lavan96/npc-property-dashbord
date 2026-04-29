@@ -513,28 +513,51 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // Resolve target contact by name (matches notes/opportunities pattern)
-      const resolved = await resolveTargetContactByName(supabase, {
-        fullName,
-        sourceAccount,
-        targetAccount,
-      });
+      // ─── Resolve target contact: ID-FIRST, name fallback ───
+      // The XLSX export carries the legacy `Contact ID (GHL)` for every
+      // row, and 100% of those IDs are already in `ghl_id_mapping`. Using
+      // ID resolution recovers all rows whose Client Name is "Unknown
+      // Unknown" or empty (the dominant skip reason in production).
+      let targetContactId: string | null = null;
+      let resolvedVia: 'id' | 'name' = 'id';
+      let nameAmbiguous = false;
+      if (conv.ghl_contact_id) {
+        const byId = await resolveTargetContactBySourceId(supabase, {
+          sourceContactId: conv.ghl_contact_id,
+          sourceAccount,
+          targetAccount,
+        });
+        targetContactId = byId.newId;
+      }
+      if (!targetContactId) {
+        const resolved = await resolveTargetContactByName(supabase, {
+          fullName, sourceAccount, targetAccount,
+        });
+        targetContactId = resolved.newId;
+        resolvedVia = 'name';
+        nameAmbiguous = resolved.ambiguous;
+        if (resolved.ambiguous) {
+          console.warn(`[conv-replay] Ambiguous "${fullName}" → ${resolved.candidateCount}; routing to latest=${resolved.newId}`);
+        }
+      }
 
-      if (!resolved.newId) {
+      if (!targetContactId) {
         totalSkipped++;
+        const reason = conv.ghl_contact_id
+          ? `No mapping for legacy contact ${conv.ghl_contact_id} and no name match for "${fullName || '(empty)'}" — run contacts worker first`
+          : (fullName
+            ? `No target contact named "${fullName}" — run contacts worker first`
+            : 'Conversation has no client name or contact id to resolve target');
+        bumpReason(skipReasons, conv.ghl_contact_id ? 'no_contact_mapping' : 'no_name_or_id');
         await recordItem(supabase, {
           job_id: jobId, source_id: conv.id, entity_label: label,
-          status: 'skipped',
-          error_message: fullName
-            ? `No target contact named "${fullName}" — run contacts worker first`
-            : 'Conversation has no client name to match a target contact',
+          status: 'skipped', error_message: reason,
         });
         continue;
       }
-      if (resolved.ambiguous) {
-        console.warn(`[conv-replay] Ambiguous "${fullName}" → ${resolved.candidateCount}; routing to latest=${resolved.newId}`);
+      if (resolvedVia === 'name' && nameAmbiguous) {
+        // already logged above
       }
-      const targetContactId = resolved.newId;
 
       // Pull messages for this conversation in chronological order.
       // For uploaded sources, messages are embedded on the conv object — skip the
