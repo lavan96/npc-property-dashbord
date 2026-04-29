@@ -1155,7 +1155,14 @@ Deno.serve(async (req) => {
 
         // Empty/whitespace names cause 422 "name should not be empty".
         // Fall back to a deterministic placeholder so we never POST blank.
-        const safeName = (opp.name || '').trim() || `Opportunity ${String(opp.id).slice(-6)}`;
+        // Title fallback chain (per user policy):
+        //   1. Use the opportunity's own name from the source/CSV
+        //   2. Fall back to the resolved contact name
+        //   3. Last-resort deterministic placeholder so we never POST blank
+        //      (GHL returns 422 "name should not be empty" otherwise)
+        const safeName = (opp.name || '').trim()
+          || (oppContactName || '').trim()
+          || `Opportunity ${String(opp.id).slice(-6)}`;
         const sourceMonetary =
           typeof opp.monetaryValue === 'number' && !Number.isNaN(opp.monetaryValue)
             ? opp.monetaryValue
