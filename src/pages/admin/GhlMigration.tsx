@@ -838,8 +838,11 @@ function MigrationWorkersPanel() {
               No jobs yet. Dispatch one above to see it appear here.
             </div>
           ) : (
-            <div className="overflow-hidden rounded-md border border-border/60">
-              <table className="w-full text-xs">
+            <div className="rounded-md border border-border/60 overflow-x-auto -mx-2 sm:mx-0">
+              <p className="sm:hidden px-2 pt-2 text-[10px] text-muted-foreground italic">
+                Swipe horizontally to see all columns and action buttons →
+              </p>
+              <table className="w-full text-xs min-w-[900px]">
                 <thead className="bg-muted/40 uppercase text-muted-foreground">
                   <tr>
                     <th className="p-2 text-left">When</th>
