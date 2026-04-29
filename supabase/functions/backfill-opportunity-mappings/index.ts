@@ -151,10 +151,22 @@ Deno.serve(async (req) => {
             .maybeSingle();
           if (!contactMap?.new_ghl_id) { phaseBUnresolved++; continue; }
 
-          // 3. Search target for any opp on this contact
+          // 3. Translate source pipelineId → target pipelineId via mapping
+          //    so we can scope the search. Without this, we'd silently bind
+          //    mappings to opps in the wrong pipeline (the original bug).
+          const srcPipelineId = srcOpp?.pipelineId;
+          if (!srcPipelineId) { phaseBUnresolved++; continue; }
+          const { data: pipelineMap } = await supabase
+            .from('ghl_id_mapping').select('new_ghl_id')
+            .eq('resource_type', 'pipeline').eq('old_ghl_id', srcPipelineId)
+            .maybeSingle();
+          if (!pipelineMap?.new_ghl_id) { phaseBUnresolved++; continue; }
+
+          // 4. Search target SCOPED to the correct pipeline
           const params = new URLSearchParams({
             location_id: targetCreds.locationId!,
             contact_id: contactMap.new_ghl_id,
+            pipeline_id: pipelineMap.new_ghl_id,
             limit: '100',
           });
           const tRes = await ctx.ghlFetch(
@@ -163,7 +175,11 @@ Deno.serve(async (req) => {
           );
           if (!tRes.ok) { phaseBUnresolved++; continue; }
           const tBody = await tRes.json();
-          const tOpps: any[] = tBody?.opportunities || [];
+          // Belt-and-braces: filter again client-side in case GHL ignores the
+          // pipeline_id param.
+          const tOpps: any[] = (tBody?.opportunities || []).filter(
+            (o: any) => o.pipelineId === pipelineMap.new_ghl_id,
+          );
           if (tOpps.length === 0) { phaseBUnresolved++; continue; }
 
           // Best match: name (case-insensitive trim) + monetaryValue if available

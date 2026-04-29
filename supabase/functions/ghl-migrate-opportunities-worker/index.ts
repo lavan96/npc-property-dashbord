@@ -1369,24 +1369,30 @@ Deno.serve(async (req) => {
                   continue;
                 }
                 // Search came back empty even though GHL says duplicate exists.
-                // Fall back to a broader search (any opp on this contact, any pipeline)
-                // and write a low-confidence mapping so we never re-try the create.
+                // Fall back to a SAME-PIPELINE-ONLY search. We deliberately
+                // do NOT cross pipelines here — that's how 589 phantom
+                // mappings got bound to the Voice Agent Test Pipeline in
+                // the prior bug. If the contact only has opps in other
+                // pipelines, GHL should still let us create one in OUR
+                // target pipeline; if it doesn't, fail loudly so a human
+                // can investigate rather than silently mis-mapping.
                 const params = new URLSearchParams({
                   location_id: targetCreds.locationId!,
                   contact_id: contactMap.new_ghl_id!,
+                  pipeline_id: pmap.targetPipelineId,
                   limit: '100',
                 });
-                const broad = await ctx.ghlFetch(
+                const sameOnly = await ctx.ghlFetch(
                   `${GHL_API_BASE}/opportunities/search?${params}`,
                   { headers: targetHeaders }, 2, 'target',
                 );
-                if (broad.ok) {
-                  const data = await broad.json();
-                  const opps2: any[] = data.opportunities || [];
+                if (sameOnly.ok) {
+                  const data = await sameOnly.json();
+                  const opps2: any[] = (data.opportunities || []).filter(
+                    (o: any) => o.pipelineId === pmap.targetPipelineId,
+                  );
                   if (opps2.length > 0) {
-                    // Prefer same-pipeline opps if any, else just take the first
-                    const samePipe = opps2.find((o) => o.pipelineId === pmap.targetPipelineId);
-                    const pick = samePipe || opps2[0];
+                    const pick = opps2[0];
                     await recordIdMapping(supabase, {
                       resource_type: 'opportunity', old_ghl_id: opp.id, new_ghl_id: pick.id,
                       source_account_label: sourceAccount, target_account_label: targetAccount,
@@ -1396,12 +1402,21 @@ Deno.serve(async (req) => {
                     await recordItem(supabase, {
                       job_id: jobId, source_id: opp.id, target_id: pick.id, entity_label: oppLabel,
                       status: 'skipped',
-                      error_message: 'Recovered from GHL duplicate-400 via broad search (low confidence — manual review)',
+                      error_message: 'Recovered from GHL duplicate-400 via same-pipeline search (low confidence)',
                     });
-                    console.log(`[opps-worker] DUP-RECOVER (broad) opp=${opp.id} → target=${pick.id}`);
+                    console.log(`[opps-worker] DUP-RECOVER (same-pipe) opp=${opp.id} → target=${pick.id}`);
                     continue;
                   }
                 }
+                // No same-pipeline match. Record as FAILED (not skipped) so
+                // the operator notices and we don't silently lose the opp.
+                totalFailed++;
+                await recordItem(supabase, {
+                  job_id: jobId, source_id: opp.id, entity_label: oppLabel, status: 'failed',
+                  error_message: `GHL says duplicate but no opp exists in target pipeline "${pmap.targetPipelineName}" for contact ${contactMap.new_ghl_id} — likely cross-pipeline conflict; needs manual review`,
+                });
+                console.warn(`[opps-worker] DUP-NO-SAME-PIPE opp=${opp.id} contact=${contactMap.new_ghl_id} pipeline=${pmap.targetPipelineId}`);
+                continue;
               } catch (recoverErr: any) {
                 console.warn(`[opps-worker] dup-recover threw for opp=${opp.id}: ${recoverErr.message}`);
               }
