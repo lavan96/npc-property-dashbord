@@ -43,7 +43,7 @@ import {
 import {
   startJob, finishJob, recordItem, recordIdMapping, updateJobProgress,
   saveCheckpoint, loadCheckpoint, partialExit, heartbeat,
-  resolveTargetContactByName, readControlSignal,
+  resolveTargetContactByName, resolveTargetContactBySourceId, readControlSignal,
 } from '../_shared/migration-jobs.ts';
 import { tokenKeyFor } from '../_shared/ghl-rate-limiter.ts';
 import { createGhlFetchContext } from '../_shared/ghl-worker-fetch.ts';
