@@ -235,12 +235,14 @@ export function MigrationSourceUploader({
     [handleUpload],
   );
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+  const { getRootProps, getInputProps, isDragActive, open: openFilePicker } = useDropzone({
     onDrop,
     accept: ACCEPT,
     maxFiles: 1,
     multiple: false,
     disabled: parsing || uploading,
+    noClick: false,
+    noKeyboard: false,
   });
 
   const selected = useMemo(
@@ -299,6 +301,20 @@ export function MigrationSourceUploader({
           <div className="text-[10px] text-muted-foreground">
             Accepts .csv, .xlsx · Max 50 MB · Max {MAX_ROWS.toLocaleString()} rows
           </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="mt-1 h-8"
+            disabled={parsing || uploading}
+            onClick={(e) => {
+              e.stopPropagation();
+              openFilePicker();
+            }}
+          >
+            <Upload className="mr-1 h-3 w-3" />
+            Browse files
+          </Button>
         </div>
 
         {progress && (
@@ -341,8 +357,8 @@ export function MigrationSourceUploader({
             <div className="text-[10px] font-semibold uppercase text-muted-foreground">
               Recent {domain} uploads
             </div>
-            <div className="overflow-hidden rounded border border-border/40">
-              <table className="w-full text-[11px]">
+            <div className="overflow-x-auto rounded border border-border/40">
+              <table className="w-full text-[11px] min-w-[520px]">
                 <thead className="bg-muted/30 uppercase text-muted-foreground">
                   <tr>
                     <th className="p-1.5 text-left">File</th>

@@ -227,7 +227,7 @@ export default function GhlMigration() {
   if (!isSuperadmin) return null;
 
   return (
-    <div className="container mx-auto space-y-6 p-6">
+    <div className="container mx-auto space-y-6 p-3 sm:p-6">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -633,8 +633,8 @@ function MigrationWorkersPanel() {
                   Required scopes <ExternalLink className="h-3 w-3" />
                 </a>
               </div>
-              <div className="overflow-hidden rounded border border-border/40">
-                <table className="w-full text-[11px]">
+              <div className="overflow-x-auto rounded border border-border/40">
+                <table className="w-full text-[11px] min-w-[600px]">
                   <thead className="bg-muted/40 uppercase text-muted-foreground">
                     <tr>
                       <th className="p-1.5 text-left">Scope</th>
@@ -838,8 +838,11 @@ function MigrationWorkersPanel() {
               No jobs yet. Dispatch one above to see it appear here.
             </div>
           ) : (
-            <div className="overflow-hidden rounded-md border border-border/60">
-              <table className="w-full text-xs">
+            <div className="rounded-md border border-border/60 overflow-x-auto -mx-2 sm:mx-0">
+              <p className="sm:hidden px-2 pt-2 text-[10px] text-muted-foreground italic">
+                Swipe horizontally to see all columns and action buttons →
+              </p>
+              <table className="w-full text-xs min-w-[900px]">
                 <thead className="bg-muted/40 uppercase text-muted-foreground">
                   <tr>
                     <th className="p-2 text-left">When</th>
@@ -992,8 +995,8 @@ function MigrationWorkersPanel() {
                               </div>
                             )}
                           </td>
-                          <td className="p-2 text-right">
-                            <div className="flex items-center justify-end gap-1 flex-wrap">
+                          <td className="p-2 text-right whitespace-nowrap">
+                            <div className="flex items-center justify-end gap-1 flex-nowrap">
                               {canPause && (
                                 <Button
                                   size="sm"
