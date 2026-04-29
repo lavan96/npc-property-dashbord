@@ -182,6 +182,7 @@ async function createStubTargetContact(
     console.warn(`[opps-worker] stub-contact threw: ${(e as Error).message}`);
     return null;
   }
+}
 
 /**
  * Look for an existing opportunity in the target account that matches this
