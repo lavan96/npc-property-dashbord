@@ -140,22 +140,62 @@ function parseUploadedMessages(raw: string): any[] {
 function normaliseUploadedReplayConversation(row: Record<string, any>, idx: number) {
   const fullName = pickFirst(row, [
     'full_name', 'fullName', 'contact_full_name', 'contact_name', 'name',
+    'Client Name', 'client_name',
   ]) || [pickFirst(row, ['first_name', 'firstName', 'primary_first_name']),
           pickFirst(row, ['last_name', 'lastName', 'surname', 'primary_surname'])]
         .filter(Boolean).join(' ').trim();
 
-  const channel = pickFirst(row, ['channel', 'channel_type', 'type']) || 'sms';
+  // Source contact id (preferred for ID-based resolution, immune to
+  // placeholder names like "Unknown Unknown")
+  const sourceContactId = pickFirst(row, [
+    'ghl_contact_id', 'contact_id', 'Contact ID (GHL)', 'contact_id_ghl',
+  ]);
+  const sourceConvId = pickFirst(row, [
+    'ghl_conversation_id', 'conversation_id', 'Conversation ID (GHL)',
+  ]);
+  const channel = pickFirst(row, ['channel', 'channel_type', 'type', 'Channel']) || 'sms';
   const messagesRaw = pickFirst(row, [
     'messages', 'messages_json', 'message_log', 'history', 'conversation',
   ]);
   const embeddedMessages = parseUploadedMessages(messagesRaw);
+
+  // If the upload is one-row-per-message (the export shape we see in
+  // production), there's no embedded messages array — synthesise a single
+  // message from the row's columns. The grouping by Contact/Conversation
+  // happens upstream in the worker (see groupUploadedRowsByConversation).
+  if (embeddedMessages.length === 0) {
+    const body = pickFirst(row, ['body', 'Body', 'message', 'Message', 'text']);
+    const direction = (pickFirst(row, ['direction', 'Direction']) || 'outbound').toLowerCase();
+    const ts = pickFirst(row, ['Timestamp (ISO)', 'timestamp_iso', 'timestamp', 'ghl_date_added']) ||
+               (pickFirst(row, ['Date', 'date']) && pickFirst(row, ['Time', 'time'])
+                 ? `${pickFirst(row, ['Date', 'date'])}T${pickFirst(row, ['Time', 'time'])}Z`
+                 : null);
+    const sender = pickFirst(row, ['Sender', 'sender', 'from', 'phone', 'email']);
+    const messageId = pickFirst(row, ['Message ID (GHL)', 'message_id_ghl', 'ghl_message_id']);
+    const attachmentsRaw = pickFirst(row, ['Attachments', 'attachments', 'attachment_urls']);
+    const attachmentList = attachmentsRaw
+      ? attachmentsRaw.split(/[,;\s]+/).map(s => s.trim()).filter(s => /^https?:\/\//i.test(s))
+      : [];
+    if (body || attachmentList.length > 0) {
+      embeddedMessages.push({
+        ghl_message_id: messageId || `upload-${idx}`,
+        direction,
+        channel_type: channel,
+        body,
+        ghl_date_added: ts,
+        sender_number: sender,
+        attachment_urls: attachmentList,
+      });
+    }
+  }
+
   const lastMsgDate = pickFirst(row, ['last_message_date', 'last_message_at', 'updated_at']);
   return {
     // Mimic the shape returned by the supabase select() so downstream code
     // doesn't need to branch beyond the message source.
     id: `upload:${idx}`,
-    ghl_conversation_id: pickFirst(row, ['ghl_conversation_id', 'conversation_id']) || `upload-${idx}`,
-    ghl_contact_id: pickFirst(row, ['ghl_contact_id', 'contact_id']) || null,
+    ghl_conversation_id: sourceConvId || `upload-${idx}`,
+    ghl_contact_id: sourceContactId || null,
     channel_type: channel,
     last_message_date: lastMsgDate || null,
     new_ghl_conversation_id: null,
@@ -169,9 +209,45 @@ function normaliseUploadedReplayConversation(row: Record<string, any>, idx: numb
       body: m.body ?? m.message ?? '',
       attachment_urls: Array.isArray(m.attachment_urls) ? m.attachment_urls : [],
       ghl_date_added: m.ghl_date_added || m.date || null,
+      sender_number: m.sender_number || m.sender || null,
       new_ghl_message_id: null,
     })),
   };
+}
+
+/**
+ * Group flat one-row-per-message upload rows by (Contact ID, Conversation ID).
+ * The XLSX export shape is one row per message; without grouping, the worker
+ * creates one shell per message and never replays history. After grouping each
+ * "conversation" carries its full message timeline.
+ */
+function groupUploadedRowsByConversation(rows: any[]): any[] {
+  const groups = new Map<string, any>();
+  for (let i = 0; i < rows.length; i++) {
+    const norm = normaliseUploadedReplayConversation(rows[i], i);
+    // If the row already contained an embedded message array (legacy shape),
+    // keep it as its own conversation — those uploads are pre-grouped.
+    const isPreGrouped = norm.__uploadedMessages.length > 1 ||
+      (norm.__uploadedMessages.length === 1 && !rows[i]['Body'] && !rows[i]['body']);
+    const key = isPreGrouped
+      ? `pre:${i}`
+      : `${norm.ghl_contact_id || 'noc'}::${norm.ghl_conversation_id}::${norm.channel_type}`;
+    const existing = groups.get(key);
+    if (!existing) {
+      groups.set(key, norm);
+    } else {
+      existing.__uploadedMessages.push(...norm.__uploadedMessages);
+      // Prefer non-Unknown name when merging
+      const newName = [norm.clients.primary_first_name, norm.clients.primary_surname].join(' ').trim();
+      const oldName = [existing.clients.primary_first_name, existing.clients.primary_surname].join(' ').trim();
+      if (newName && newName !== 'Unknown Unknown' && (oldName === '' || oldName === 'Unknown Unknown')) {
+        existing.clients = norm.clients;
+      }
+      // Prefer real source contact id
+      if (!existing.ghl_contact_id && norm.ghl_contact_id) existing.ghl_contact_id = norm.ghl_contact_id;
+    }
+  }
+  return Array.from(groups.values());
 }
 
 Deno.serve(async (req) => {
