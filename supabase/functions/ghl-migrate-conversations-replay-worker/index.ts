@@ -650,10 +650,13 @@ Deno.serve(async (req) => {
         } catch { return null; }
       };
 
+      // Per GHL spec (https://marketplace.gohighlevel.com/docs/ghl/conversations/create-conversation)
+      // Create Conversation requires Version: 2021-04-15.
+      const createConvHeaders = { ...targetHeaders, Version: '2021-04-15', Accept: 'application/json' };
       try {
         const shellRes = await ctx.ghlFetch(`${GHL_API_BASE}/conversations/`, {
           method: 'POST',
-          headers: { ...targetHeaders, Version: '2021-04-15' },
+          headers: createConvHeaders,
           body: JSON.stringify({
             locationId: targetCreds.locationId,
             contactId: targetContactId,
