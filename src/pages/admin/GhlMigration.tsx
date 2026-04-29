@@ -227,7 +227,7 @@ export default function GhlMigration() {
   if (!isSuperadmin) return null;
 
   return (
-    <div className="container mx-auto space-y-6 p-6">
+    <div className="container mx-auto space-y-6 p-3 sm:p-6">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
