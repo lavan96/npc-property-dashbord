@@ -494,6 +494,7 @@ Deno.serve(async (req) => {
       // Activity-channel filter
       if (skipActivity && isActivityChannel(conv.channel_type)) {
         totalSkipped++;
+        bumpReason(skipReasons, 'activity_channel');
         await recordItem(supabase, {
           job_id: jobId, source_id: conv.id, entity_label: label,
           status: 'skipped',
@@ -505,6 +506,7 @@ Deno.serve(async (req) => {
       // Already replayed?
       if (conv.new_ghl_conversation_id && !forceOverwriteExisting) {
         totalSkipped++;
+        bumpReason(skipReasons, 'already_replayed');
         await recordItem(supabase, {
           job_id: jobId, source_id: conv.id, target_id: conv.new_ghl_conversation_id,
           entity_label: label, status: 'skipped',
