@@ -440,6 +440,39 @@ Deno.serve(async (req) => {
     let cancelledByUser: 'pause' | 'cancel' | 'kill' | null = null;
     let circuitTripped = false;
 
+    // ─── Conversation provider cache (one lookup per channel per dispatch) ───
+    // GHL's import endpoints reject many channels (notably custom and
+    // sometimes WhatsApp/IG/FB) without a `conversationProviderId`. We
+    // resolve the location's default provider per channel once and reuse.
+    const providerCache = new Map<string, string | null>();
+    async function resolveConversationProviderId(channel: string): Promise<string | null> {
+      const key = channel.toLowerCase();
+      if (providerCache.has(key)) return providerCache.get(key)!;
+      if (dryRun) { providerCache.set(key, null); return null; }
+      try {
+        const params = new URLSearchParams({ locationId: targetCreds.locationId, type: channel });
+        const r = await ctx.ghlFetch(
+          `${GHL_API_BASE}/conversations/providers?${params}`,
+          { method: 'GET', headers: targetHeaders },
+          2, 'target',
+        );
+        if (!r.ok) { providerCache.set(key, null); return null; }
+        const j = await r.json();
+        const list: any[] = j?.providers || j?.conversationProviders || [];
+        const pick = list.find((p) => p.isDefault) || list[0];
+        const id = pick?.id || pick?.providerId || null;
+        providerCache.set(key, id);
+        if (id) console.log(`[conv-replay] provider for ${channel} → ${id}`);
+        return id;
+      } catch { providerCache.set(key, null); return null; }
+    }
+
+    // Track per-reason counters for the final error_summary (helps
+    // dashboard triage without scanning migration_job_items).
+    const skipReasons = new Map<string, number>();
+    const failReasons = new Map<string, number>();
+    const bumpReason = (m: Map<string, number>, k: string) => m.set(k, (m.get(k) || 0) + 1);
+
     for (const conv of (conversations || [])) {
       // Granular control checks
       if (totalProcessed % 5 === 0) {
