@@ -391,7 +391,7 @@ Deno.serve(async (req) => {
     const seedStartAfterId: string | null = typeof payload.start_after_id === 'string'
       ? payload.start_after_id : null;
 
-    console.log(`[opps-worker] flags: forceRecreate=${forceRecreate} skipTargetDedupe=${skipTargetDedupe} onlyLowConfidence=${onlyLowConfidence} includeClosed=${includeClosedStatuses} pipelineFilter=${pipelineFilter.length} stageFilter=${stageFilter.length} assignStrategy=${assignedUserStrategy} skipCount=${skipCount} seedStartAfterIso=${seedStartAfterIso || '(none)'} seedStartAfterId=${seedStartAfterId || '(none)'}`);
+    console.log(`[opps-worker] flags: forceRecreate=${forceRecreate} skipTargetDedupe=${skipTargetDedupe} onlyLowConfidence=${onlyLowConfidence} includeClosed=${includeClosedStatuses} pipelineFilter=${pipelineFilter.length} stageFilter=${stageFilter.length} assignStrategy=${assignedUserStrategy} skipCount=${skipCount} autoCreateMissingContacts=${autoCreateMissingContacts} includePlaceholderContacts=${includePlaceholderContacts} seedStartAfterIso=${seedStartAfterIso || '(none)'} seedStartAfterId=${seedStartAfterId || '(none)'}`);
 
     if (!jobId) return new Response(JSON.stringify({ error: 'job_id required' }), { status: 400 });
 
