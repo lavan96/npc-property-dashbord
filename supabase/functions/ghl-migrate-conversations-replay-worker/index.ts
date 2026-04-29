@@ -833,118 +833,117 @@ Deno.serve(async (req) => {
         }
         const direction = msg.direction === 'inbound' ? 'inbound' : 'outbound';
 
-        // Use the HISTORICAL IMPORT endpoints — these record the message
-        // into the GHL inbox without dispatching via a real provider, and
-        // honour `altId`/`altType`/backdated `date`. The plain
-        // `/conversations/messages` endpoint queues a live send and the
-        // record disappears when no provider is wired up.
-        //   POST /conversations/messages/inbound   (historical inbound)
-        //   POST /conversations/messages/outbound  (historical outbound)
-        const importPath = direction === 'inbound'
+        // ─── Endpoint + payload selection per GHL Conversations API spec ───
+        // INBOUND historical messages → POST /conversations/messages/inbound
+        //   Version: 2023-02-21
+        //   Required: type, conversationProviderId, (conversationId OR contactId)
+        //   Body: type, message, conversationId, conversationProviderId,
+        //         attachments?, html?, subject?, emailFrom?, emailTo?,
+        //         emailMessageId?, altId?, date?, direction?
+        // OUTBOUND historical messages → POST /conversations/messages
+        //   Version: 2021-04-15
+        //   Required: type, contactId, status
+        //   Body: type, contactId, message, status, attachments?, html?,
+        //         subject?, emailFrom?, emailTo?, fromNumber?, toNumber?,
+        //         conversationProviderId?
+        //
+        // NOTE: We deliberately do NOT use /conversations/messages/outbound —
+        // that endpoint is reserved for `type: "Call"` only per the spec
+        // (https://marketplace.gohighlevel.com/docs/ghl/conversations/add-an-outbound-message).
+        const isInbound = direction === 'inbound';
+        const importPath = isInbound
           ? '/conversations/messages/inbound'
-          : '/conversations/messages/outbound';
+          : '/conversations/messages';
+        const apiVersion = isInbound ? '2023-02-21' : '2021-04-15';
 
-        // Resolve provider id for this channel (cached). GHL rejects many
-        // channels (custom, sometimes IG/FB/WhatsApp) without it.
+        // Resolve provider id for this channel (cached). Per spec, the
+        // INBOUND endpoint requires conversationProviderId for ALL channels;
+        // outbound /messages accepts it as optional but GHL routes the import
+        // through it when present, so we attach it whenever resolvable.
         const providerId = await resolveConversationProviderId(ghlType);
-        // Pre-skip when the location has no provider configured for this
-        // channel — the POST will deterministically 400 with
-        // "No conversationProviderId passed in body".
-        if (!providerId && (ghlType === 'FB' || ghlType === 'IG' || ghlType === 'WhatsApp' || ghlType === 'GMB' || ghlType === 'Live_Chat' || ghlType === 'Custom')) {
+
+        // Hard pre-skip when inbound replay has no provider — GHL will 400.
+        if (isInbound && !providerId) {
           convMsgSkip++;
-          bumpReason(skipReasons, `no_provider:${ghlType}`);
+          bumpReason(skipReasons, `no_provider_inbound:${ghlType}`);
           await updateMirrorMessage(msg.id, {
             replayed_at: new Date().toISOString(),
-            replay_skipped_reason: `terminal_skip:no_conversation_provider_for_${ghlType}`,
+            replay_skipped_reason: `terminal_skip:no_conversation_provider_for_inbound_${ghlType}`,
+          });
+          continue;
+        }
+        // For exotic outbound channels (FB/IG/WhatsApp/GMB/Live_Chat/Custom)
+        // GHL also requires the provider; skip if absent.
+        if (!isInbound && !providerId &&
+            (ghlType === 'FB' || ghlType === 'IG' || ghlType === 'WhatsApp' ||
+             ghlType === 'GMB' || ghlType === 'Live_Chat' || ghlType === 'Custom')) {
+          convMsgSkip++;
+          bumpReason(skipReasons, `no_provider_outbound:${ghlType}`);
+          await updateMirrorMessage(msg.id, {
+            replayed_at: new Date().toISOString(),
+            replay_skipped_reason: `terminal_skip:no_conversation_provider_for_outbound_${ghlType}`,
           });
           continue;
         }
 
-        // Pre-skip SMS without a resolvable phone number — GHL 422s with
-        // "Missing phone number" otherwise.
-        if (ghlType === 'SMS') {
-          const msgPhone = (msg as any).sender_number || (msg as any).recipient_number || null;
-          const phone = msgPhone || targetContactPhone;
-          if (!phone) {
-            convMsgSkip++;
-            bumpReason(skipReasons, 'sms_missing_phone');
-            await updateMirrorMessage(msg.id, {
-              replayed_at: new Date().toISOString(),
-              replay_skipped_reason: 'terminal_skip:sms_missing_phone',
-            });
-            continue;
-          }
-        }
-
-        // Pre-skip Facebook/Instagram when the contact has no fb/ig id —
-        // GHL 400s with "Contact has no Facebook id, skipping" otherwise.
-        if (ghlType === 'FB' && !targetContactFbId) {
-          convMsgSkip++;
-          bumpReason(skipReasons, 'fb_missing_contact_id');
-          await updateMirrorMessage(msg.id, {
-            replayed_at: new Date().toISOString(),
-            replay_skipped_reason: 'terminal_skip:contact_has_no_fb_id',
-          });
-          continue;
-        }
-        if (ghlType === 'IG' && !targetContactIgId) {
-          convMsgSkip++;
-          bumpReason(skipReasons, 'ig_missing_contact_id');
-          await updateMirrorMessage(msg.id, {
-            replayed_at: new Date().toISOString(),
-            replay_skipped_reason: 'terminal_skip:contact_has_no_ig_id',
-          });
-          continue;
-        }
-
+        // Build the payload starting from the spec-required common fields.
         const msgPayload: Record<string, any> = {
           type: ghlType,
-          conversationId: newConvId,
           message: messageBody,
-          altId: targetCreds.locationId,
-          altType: 'location',
         };
         if (providerId) msgPayload.conversationProviderId = providerId;
+        // altId helps GHL associate the import with our location for audit.
+        if (targetCreds.locationId) msgPayload.altId = targetCreds.locationId;
 
-        // ── Channel-specific envelope fields ──────────────────────────
-        // SMS / Phone: GHL requires a phone number on the import payload.
-        // Use the message's recorded sender/recipient when available, else
-        // fall back to the target contact's phone.
+        if (isInbound) {
+          // Inbound endpoint addresses by conversationId (preferred) or contactId.
+          msgPayload.conversationId = newConvId;
+          // direction is documented optional; explicit for safety.
+          msgPayload.direction = 'inbound';
+        } else {
+          // Outbound /conversations/messages requires contactId + status.
+          msgPayload.contactId = targetContactId;
+          msgPayload.status = 'delivered'; // historical record, not a live send
+        }
+
+        // ── Channel-specific envelope fields ─────────────────────────────
         if (ghlType === 'SMS') {
           const msgPhone = (msg as any).sender_number || (msg as any).recipient_number || null;
           const phone = msgPhone || targetContactPhone;
           if (phone) {
-            msgPayload.phone = phone;
-            if (direction === 'inbound') msgPayload.fromNumber = phone;
-            else msgPayload.toNumber = phone;
+            // Inbound endpoint does NOT accept fromNumber/toNumber per spec.
+            // Outbound endpoint accepts fromNumber/toNumber.
+            if (!isInbound) {
+              msgPayload.toNumber = phone;
+              if (targetContactPhone && targetContactPhone !== phone) {
+                msgPayload.fromNumber = targetContactPhone;
+              }
+            }
           }
         }
 
-        // Email: GHL requires emailFrom / emailTo / subject. We synthesise
-        // sane defaults when the source row didn't carry them — better to
-        // import with a placeholder subject than to lose the message.
         if (ghlType === 'Email') {
           const subj = (msg as any).subject || (msg as any).email_subject ||
-            `Migrated ${direction === 'inbound' ? 'inbound' : 'outbound'} email`;
+            `Migrated ${isInbound ? 'inbound' : 'outbound'} email`;
           const fromAddr = (msg as any).email_from || (msg as any).sender_number ||
-            (direction === 'outbound' ? null : targetContactEmail);
+            (isInbound ? targetContactEmail : null);
           const toAddr = (msg as any).email_to ||
-            (direction === 'inbound' ? null : targetContactEmail);
+            (isInbound ? null : targetContactEmail);
           if (fromAddr) msgPayload.emailFrom = fromAddr;
           if (toAddr) msgPayload.emailTo = toAddr;
           msgPayload.subject = subj;
-          // GHL accepts `html` separately from `message` for email
-          if (!msgPayload.html && messageBody) msgPayload.html = messageBody;
+          if (messageBody) msgPayload.html = messageBody;
         }
 
         if (msg.ghl_date_added) msgPayload.date = msg.ghl_date_added;
-        if (hasAttachments) {
-          msgPayload.attachments = msg.attachment_urls;
-        }
+        if (hasAttachments) msgPayload.attachments = msg.attachment_urls;
+
+        // Endpoint-specific Version header per spec.
+        const replayHeaders = { ...targetHeaders, Version: apiVersion, Accept: 'application/json' };
 
         try {
           const r = await ctx.ghlFetch(`${GHL_API_BASE}${importPath}`, {
-            method: 'POST', headers: targetHeaders, body: JSON.stringify(msgPayload),
+            method: 'POST', headers: replayHeaders, body: JSON.stringify(msgPayload),
           }, 3, 'target');
 
           if (!r.ok) {
