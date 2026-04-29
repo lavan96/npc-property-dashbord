@@ -633,8 +633,8 @@ function MigrationWorkersPanel() {
                   Required scopes <ExternalLink className="h-3 w-3" />
                 </a>
               </div>
-              <div className="overflow-hidden rounded border border-border/40">
-                <table className="w-full text-[11px]">
+              <div className="overflow-x-auto rounded border border-border/40">
+                <table className="w-full text-[11px] min-w-[600px]">
                   <thead className="bg-muted/40 uppercase text-muted-foreground">
                     <tr>
                       <th className="p-1.5 text-left">Scope</th>
