@@ -827,6 +827,20 @@ export default function ClientTracker() {
             >
               <RefreshCw className="h-3.5 w-3.5" />
             </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 text-xs">
+                  <Download className="h-3.5 w-3.5 mr-1" />
+                  Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setShowExportDialog(true)}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Export current view
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         ) : (
           <div className="flex items-center gap-3 flex-wrap">
