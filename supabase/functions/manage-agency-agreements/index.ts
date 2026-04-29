@@ -132,9 +132,13 @@ async function getDocuSignAccessToken(): Promise<string> {
   });
 
   const tokenData = await tokenResponse.json();
-  
+
   if (!tokenResponse.ok) {
     console.error('[DocuSign] Token exchange failed:', JSON.stringify(tokenData));
+    if (tokenData.error === 'consent_required') {
+      const consentUrl = `https://${oauthHost}/oauth/auth?response_type=code&scope=signature%20impersonation&client_id=${integrationKey}&redirect_uri=https://www.docusign.com`;
+      throw new Error(`DocuSign consent_required. Open this URL in a browser, sign in as the impersonated user, and click "Accept": ${consentUrl}`);
+    }
     throw new Error(`DocuSign token exchange failed: ${tokenData.error || tokenData.error_description || 'Unknown error'}`);
   }
 
