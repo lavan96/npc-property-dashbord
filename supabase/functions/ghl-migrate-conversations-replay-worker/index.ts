@@ -816,18 +816,51 @@ Deno.serve(async (req) => {
           ? '/conversations/messages/inbound'
           : '/conversations/messages/outbound';
 
+        // Resolve provider id for this channel (cached). GHL rejects many
+        // channels (custom, sometimes IG/FB/WhatsApp) without it.
+        const providerId = await resolveConversationProviderId(ghlType);
+
         const msgPayload: Record<string, any> = {
           type: ghlType,
           conversationId: newConvId,
-          conversationProviderId: undefined, // omitted intentionally for replay
           message: messageBody,
-          // GHL accepts `altId`/`altType` to scope to the target location
           altId: targetCreds.locationId,
           altType: 'location',
         };
-        // Preserve historical timestamp (ISO 8601 expected by GHL)
+        if (providerId) msgPayload.conversationProviderId = providerId;
+
+        // ── Channel-specific envelope fields ──────────────────────────
+        // SMS / Phone: GHL requires a phone number on the import payload.
+        // Use the message's recorded sender/recipient when available, else
+        // fall back to the target contact's phone.
+        if (ghlType === 'SMS') {
+          const msgPhone = (msg as any).sender_number || (msg as any).recipient_number || null;
+          const phone = msgPhone || targetContactPhone;
+          if (phone) {
+            msgPayload.phone = phone;
+            if (direction === 'inbound') msgPayload.fromNumber = phone;
+            else msgPayload.toNumber = phone;
+          }
+        }
+
+        // Email: GHL requires emailFrom / emailTo / subject. We synthesise
+        // sane defaults when the source row didn't carry them — better to
+        // import with a placeholder subject than to lose the message.
+        if (ghlType === 'Email') {
+          const subj = (msg as any).subject || (msg as any).email_subject ||
+            `Migrated ${direction === 'inbound' ? 'inbound' : 'outbound'} email`;
+          const fromAddr = (msg as any).email_from || (msg as any).sender_number ||
+            (direction === 'outbound' ? null : targetContactEmail);
+          const toAddr = (msg as any).email_to ||
+            (direction === 'inbound' ? null : targetContactEmail);
+          if (fromAddr) msgPayload.emailFrom = fromAddr;
+          if (toAddr) msgPayload.emailTo = toAddr;
+          msgPayload.subject = subj;
+          // GHL accepts `html` separately from `message` for email
+          if (!msgPayload.html && messageBody) msgPayload.html = messageBody;
+        }
+
         if (msg.ghl_date_added) msgPayload.date = msg.ghl_date_added;
-        // Attachments (URLs only — GHL fetches them server-side)
         if (!skipAttachments && Array.isArray(msg.attachment_urls) && msg.attachment_urls.length > 0) {
           msgPayload.attachments = msg.attachment_urls;
         }
@@ -842,6 +875,7 @@ Deno.serve(async (req) => {
             const parsed = parseGhlError(t);
             const code = parsed.error_code || `GHL_${r.status}`;
             convMsgFail++;
+            bumpReason(failReasons, `msg_${r.status}:${(parsed.message || '').substring(0, 60)}`);
             await updateMirrorMessage(msg.id, { replay_skipped_reason: `[${code}] ${(parsed.message || t).substring(0, 200)}` });
             continue;
           }
