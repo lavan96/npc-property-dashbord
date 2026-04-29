@@ -702,9 +702,11 @@ export default function ClientTracker() {
     { key: 'phone', label: 'Phone' },
     { key: 'tags', label: 'Tags' },
     { key: 'source', label: 'Source' },
+    { key: 'opportunity_name', label: 'Opportunity Name' },
     { key: 'pipeline', label: 'Pipeline' },
     { key: 'stage', label: 'Stage' },
     { key: 'opportunity_status', label: 'Opportunity Status' },
+    { key: 'monetary_value', label: 'Monetary Value' },
     { key: 'follow_up_date', label: 'Follow Up Date' },
     { key: 'borrowing_capacity', label: 'Borrowing Capacity' },
     { key: 'proposed_rental_income', label: 'Proposed Rental Income' },
@@ -716,6 +718,8 @@ export default function ClientTracker() {
   const ghlExportRecords = filteredClients.map((client) => {
     const stageInfo = getStageInfo(client.current_stage_id, client.pipeline_status);
     const pipeline = pipelines.find((item) => item.id === client.current_pipeline_id);
+    const fullName = [client.primary_first_name, client.primary_surname].filter(Boolean).join(' ').trim();
+    const opp = opportunities.find((o: any) => o.client_id === client.id) as any;
     return {
       first_name: client.primary_first_name || '',
       last_name: client.primary_surname || '',
@@ -723,16 +727,18 @@ export default function ClientTracker() {
       phone: client.primary_mobile || '',
       tags: 'Tracker Export',
       source: 'Client Tracker',
-      pipeline: pipeline?.name || '',
-      stage: stageInfo.name || '',
-      opportunity_status: client.opportunity_status || '',
+      opportunity_name: opp?.opportunity_name || (fullName ? `${fullName}${pipeline?.name ? ` — ${pipeline.name}` : ''}` : ''),
+      pipeline: pipeline?.name || opp?.pipeline_name || '',
+      stage: stageInfo.name || opp?.stage_name || '',
+      opportunity_status: client.opportunity_status || opp?.opportunity_status || '',
+      monetary_value: opp?.monetary_value?.toString() || '',
       follow_up_date: client.follow_up_date ? format(new Date(client.follow_up_date), 'yyyy-MM-dd') : '',
       borrowing_capacity: client.borrowing_capacity?.toString() || '',
       proposed_rental_income: client.proposed_rental_income?.toString() || '',
       equity_release: client.equity_release?.toString() || '',
-      pipeline_notes: client.pipeline_notes || '',
+      pipeline_notes: client.pipeline_notes || opp?.notes || '',
       ghl_contact_id: client.ghl_contact_id || '',
-      ghl_opportunity_id: client.ghl_opportunity_id || '',
+      ghl_opportunity_id: client.ghl_opportunity_id || opp?.ghl_opportunity_id || '',
     };
   });
 

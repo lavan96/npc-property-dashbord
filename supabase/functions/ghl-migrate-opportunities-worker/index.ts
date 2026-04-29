@@ -298,21 +298,62 @@ function normaliseUploadedOpportunity(
     if (st) pipelineStageId = st.id;
   }
 
+  // Build identity fields. Client Tracker exports use "GHL Opportunity ID"
+  // / "GHL Contact ID" headers — normalised lookup handles those aliases.
+  const firstName = get('firstName', 'first_name');
+  const lastName = get('lastName', 'last_name');
+  const contactName =
+    get('contactName', 'contact_name', 'fullName', 'full_name') ||
+    [firstName, lastName].filter(Boolean).join(' ').trim();
+
+  // Synthesize an opportunity name when the upload doesn't carry one
+  // (e.g. Client Tracker GHL-import exports are contact-shaped). Without a
+  // name the dedupe + create paths bail out and the row appears "skipped".
+  let oppName = get(
+    'name', 'title', 'opportunityName', 'opportunity_name',
+    'opportunity', 'dealName', 'deal_name', 'dealTitle', 'deal_title',
+  );
+  if (!oppName) {
+    if (contactName && (pipelineName || stageName)) {
+      oppName = `${contactName} — ${pipelineName || stageName}`.trim();
+    } else if (contactName) {
+      oppName = contactName;
+    } else if (pipelineName || stageName) {
+      oppName = `${pipelineName || ''} ${stageName || ''}`.trim();
+    } else {
+      oppName = `Imported opportunity #${index + 1}`;
+    }
+  }
+
+  // Status: tolerate "Open"/"Won"/"Lost"/"Abandoned" + GHL's "open"/"won" lowercase.
+  const rawStatus = get('status', 'opportunityStatus', 'opportunity_status').toLowerCase();
+  const status = ['open', 'won', 'lost', 'abandoned'].includes(rawStatus) ? rawStatus : 'open';
+
   return {
-    id: get('id', 'opportunityId', 'opportunity_id', 'legacy_id') || `upload-opp-${index}`,
-    name: get('name', 'title', 'opportunityName', 'opportunity_name'),
-    contactId: get('contactId', 'contact_id', 'ghl_contact_id'),
-    contactName: get('contactName', 'contact_name'),
-    firstName: get('firstName', 'first_name'),
-    lastName: get('lastName', 'last_name'),
+    id: get(
+      'id', 'opportunityId', 'opportunity_id', 'legacy_id',
+      'ghlOpportunityId', 'ghl_opportunity_id',
+    ) || `upload-opp-${index}`,
+    name: oppName,
+    contactId: get(
+      'contactId', 'contact_id', 'ghl_contact_id', 'ghlContactId',
+    ),
+    contactName,
+    firstName,
+    lastName,
     email: get('email'),
-    phone: get('phone'),
+    phone: get('phone', 'mobile'),
     pipelineId,
     pipelineStageId,
-    monetaryValue: num(get('monetaryValue', 'monetary_value', 'value', 'amount')),
-    status: get('status').toLowerCase() || 'open',
+    monetaryValue: num(get(
+      'monetaryValue', 'monetary_value', 'value', 'amount',
+      'opportunityValue', 'opportunity_value', 'dealValue', 'deal_value',
+    )),
+    status,
     assignedTo: get('assignedTo', 'assigned_to', 'assigned_user_id'),
     source: get('source'),
+    notes: get('notes', 'pipelineNotes', 'pipeline_notes'),
+    followUpDate: get('followUpDate', 'follow_up_date') || null,
     dateAdded: get('dateAdded', 'date_added', 'created_at') || null,
     updatedAt: get('updatedAt', 'updated_at', 'date_updated') || null,
   };
