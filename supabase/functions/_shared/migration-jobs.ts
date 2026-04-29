@@ -667,3 +667,33 @@ export async function resolveTargetContactByName(
     normalizedKey: key,
   };
 }
+
+/**
+ * Resolve a SOURCE contact id → TARGET ghl contact id deterministically
+ * via `ghl_id_mapping`. This is preferred over name-based resolution
+ * because it survives placeholder names ("Unknown Unknown"), duplicate
+ * names, and casing/punctuation drift.
+ */
+export async function resolveTargetContactBySourceId(
+  supabase: any,
+  params: {
+    sourceContactId: string | null | undefined;
+    sourceAccount: 'legacy' | 'new';
+    targetAccount: 'legacy' | 'new';
+  },
+): Promise<{ newId: string | null; matchedName: string | null }> {
+  const id = (params.sourceContactId || '').trim();
+  if (!id) return { newId: null, matchedName: null };
+  const { data, error } = await supabase
+    .from('ghl_id_mapping')
+    .select('new_ghl_id, notes')
+    .eq('resource_type', 'contact')
+    .eq('source_account_label', params.sourceAccount)
+    .eq('target_account_label', params.targetAccount)
+    .eq('old_ghl_id', id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error || !data) return { newId: null, matchedName: null };
+  return { newId: data.new_ghl_id, matchedName: data.notes || null };
+}
