@@ -744,6 +744,29 @@ Deno.serve(async (req) => {
         if (uploadId) return; // upload rows aren't in the mirror
         await supabase.from('ghl_conversation_messages').update(patch).eq('id', msgId);
       };
+
+      // Pre-fetch the target contact's phone/email ONCE per conversation
+      // so we can populate `phone`/`fromNumber`/`toNumber` for SMS imports
+      // and `emailFrom`/`emailTo` for Email imports. GHL's import endpoints
+      // 422 without these for many channels.
+      let targetContactPhone: string | null = null;
+      let targetContactEmail: string | null = null;
+      if (!dryRun) {
+        try {
+          const r = await ctx.ghlFetch(
+            `${GHL_API_BASE}/contacts/${targetContactId}`,
+            { method: 'GET', headers: targetHeaders },
+            2, 'target',
+          );
+          if (r.ok) {
+            const j = await r.json();
+            const c = j?.contact || j;
+            targetContactPhone = c?.phone || null;
+            targetContactEmail = c?.email || null;
+          }
+        } catch { /* non-fatal */ }
+      }
+
       let convMsgOk = 0, convMsgFail = 0, convMsgSkip = 0;
       const messagesToReplay = maxMessagesPerConv > 0
         ? messages.slice(0, maxMessagesPerConv)
