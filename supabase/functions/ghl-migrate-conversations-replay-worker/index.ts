@@ -43,7 +43,7 @@ import {
 import {
   startJob, finishJob, recordItem, recordIdMapping, updateJobProgress,
   saveCheckpoint, loadCheckpoint, partialExit, heartbeat,
-  resolveTargetContactByName, readControlSignal,
+  resolveTargetContactByName, resolveTargetContactBySourceId, readControlSignal,
 } from '../_shared/migration-jobs.ts';
 import { tokenKeyFor } from '../_shared/ghl-rate-limiter.ts';
 import { createGhlFetchContext } from '../_shared/ghl-worker-fetch.ts';
@@ -140,22 +140,62 @@ function parseUploadedMessages(raw: string): any[] {
 function normaliseUploadedReplayConversation(row: Record<string, any>, idx: number) {
   const fullName = pickFirst(row, [
     'full_name', 'fullName', 'contact_full_name', 'contact_name', 'name',
+    'Client Name', 'client_name',
   ]) || [pickFirst(row, ['first_name', 'firstName', 'primary_first_name']),
           pickFirst(row, ['last_name', 'lastName', 'surname', 'primary_surname'])]
         .filter(Boolean).join(' ').trim();
 
-  const channel = pickFirst(row, ['channel', 'channel_type', 'type']) || 'sms';
+  // Source contact id (preferred for ID-based resolution, immune to
+  // placeholder names like "Unknown Unknown")
+  const sourceContactId = pickFirst(row, [
+    'ghl_contact_id', 'contact_id', 'Contact ID (GHL)', 'contact_id_ghl',
+  ]);
+  const sourceConvId = pickFirst(row, [
+    'ghl_conversation_id', 'conversation_id', 'Conversation ID (GHL)',
+  ]);
+  const channel = pickFirst(row, ['channel', 'channel_type', 'type', 'Channel']) || 'sms';
   const messagesRaw = pickFirst(row, [
     'messages', 'messages_json', 'message_log', 'history', 'conversation',
   ]);
   const embeddedMessages = parseUploadedMessages(messagesRaw);
+
+  // If the upload is one-row-per-message (the export shape we see in
+  // production), there's no embedded messages array — synthesise a single
+  // message from the row's columns. The grouping by Contact/Conversation
+  // happens upstream in the worker (see groupUploadedRowsByConversation).
+  if (embeddedMessages.length === 0) {
+    const body = pickFirst(row, ['body', 'Body', 'message', 'Message', 'text']);
+    const direction = (pickFirst(row, ['direction', 'Direction']) || 'outbound').toLowerCase();
+    const ts = pickFirst(row, ['Timestamp (ISO)', 'timestamp_iso', 'timestamp', 'ghl_date_added']) ||
+               (pickFirst(row, ['Date', 'date']) && pickFirst(row, ['Time', 'time'])
+                 ? `${pickFirst(row, ['Date', 'date'])}T${pickFirst(row, ['Time', 'time'])}Z`
+                 : null);
+    const sender = pickFirst(row, ['Sender', 'sender', 'from', 'phone', 'email']);
+    const messageId = pickFirst(row, ['Message ID (GHL)', 'message_id_ghl', 'ghl_message_id']);
+    const attachmentsRaw = pickFirst(row, ['Attachments', 'attachments', 'attachment_urls']);
+    const attachmentList = attachmentsRaw
+      ? attachmentsRaw.split(/[,;\s]+/).map(s => s.trim()).filter(s => /^https?:\/\//i.test(s))
+      : [];
+    if (body || attachmentList.length > 0) {
+      embeddedMessages.push({
+        ghl_message_id: messageId || `upload-${idx}`,
+        direction,
+        channel_type: channel,
+        body,
+        ghl_date_added: ts,
+        sender_number: sender,
+        attachment_urls: attachmentList,
+      });
+    }
+  }
+
   const lastMsgDate = pickFirst(row, ['last_message_date', 'last_message_at', 'updated_at']);
   return {
     // Mimic the shape returned by the supabase select() so downstream code
     // doesn't need to branch beyond the message source.
     id: `upload:${idx}`,
-    ghl_conversation_id: pickFirst(row, ['ghl_conversation_id', 'conversation_id']) || `upload-${idx}`,
-    ghl_contact_id: pickFirst(row, ['ghl_contact_id', 'contact_id']) || null,
+    ghl_conversation_id: sourceConvId || `upload-${idx}`,
+    ghl_contact_id: sourceContactId || null,
     channel_type: channel,
     last_message_date: lastMsgDate || null,
     new_ghl_conversation_id: null,
@@ -169,9 +209,45 @@ function normaliseUploadedReplayConversation(row: Record<string, any>, idx: numb
       body: m.body ?? m.message ?? '',
       attachment_urls: Array.isArray(m.attachment_urls) ? m.attachment_urls : [],
       ghl_date_added: m.ghl_date_added || m.date || null,
+      sender_number: m.sender_number || m.sender || null,
       new_ghl_message_id: null,
     })),
   };
+}
+
+/**
+ * Group flat one-row-per-message upload rows by (Contact ID, Conversation ID).
+ * The XLSX export shape is one row per message; without grouping, the worker
+ * creates one shell per message and never replays history. After grouping each
+ * "conversation" carries its full message timeline.
+ */
+function groupUploadedRowsByConversation(rows: any[]): any[] {
+  const groups = new Map<string, any>();
+  for (let i = 0; i < rows.length; i++) {
+    const norm = normaliseUploadedReplayConversation(rows[i], i);
+    // If the row already contained an embedded message array (legacy shape),
+    // keep it as its own conversation — those uploads are pre-grouped.
+    const isPreGrouped = norm.__uploadedMessages.length > 1 ||
+      (norm.__uploadedMessages.length === 1 && !rows[i]['Body'] && !rows[i]['body']);
+    const key = isPreGrouped
+      ? `pre:${i}`
+      : `${norm.ghl_contact_id || 'noc'}::${norm.ghl_conversation_id}::${norm.channel_type}`;
+    const existing = groups.get(key);
+    if (!existing) {
+      groups.set(key, norm);
+    } else {
+      existing.__uploadedMessages.push(...norm.__uploadedMessages);
+      // Prefer non-Unknown name when merging
+      const newName = [norm.clients.primary_first_name, norm.clients.primary_surname].join(' ').trim();
+      const oldName = [existing.clients.primary_first_name, existing.clients.primary_surname].join(' ').trim();
+      if (newName && newName !== 'Unknown Unknown' && (oldName === '' || oldName === 'Unknown Unknown')) {
+        existing.clients = norm.clients;
+      }
+      // Prefer real source contact id
+      if (!existing.ghl_contact_id && norm.ghl_contact_id) existing.ghl_contact_id = norm.ghl_contact_id;
+    }
+  }
+  return Array.from(groups.values());
 }
 
 Deno.serve(async (req) => {
@@ -282,12 +358,17 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: msg }), { status: 400 });
       }
       const allRows = (uploadRow.records as any[]) || [];
-      const slice = allRows.slice(startOffset, startOffset + pullLimit);
-      conversations = slice.map((r, i) => normaliseUploadedReplayConversation(r, startOffset + i));
-      console.log(`[conv-replay] using upload ${uploadId} rows=${allRows.length} slice=[${startOffset},${startOffset + slice.length})`);
+      // Group flat one-row-per-message exports into per-conversation
+      // groups BEFORE slicing — otherwise messages of the same conversation
+      // that straddle a page boundary would be split into separate shells.
+      const allGroups = groupUploadedRowsByConversation(allRows);
+      const slice = allGroups.slice(startOffset, startOffset + pullLimit);
+      // Re-stamp synthetic ids so they're stable across pages.
+      conversations = slice.map((g, i) => ({ ...g, id: `upload:${startOffset + i}` }));
+      console.log(`[conv-replay] using upload ${uploadId} raw_rows=${allRows.length} grouped_convs=${allGroups.length} slice=[${startOffset},${startOffset + slice.length})`);
 
       if (!isResume) {
-        const trueTotal = maxItems > 0 ? Math.min(maxItems, allRows.length) : allRows.length;
+        const trueTotal = maxItems > 0 ? Math.min(maxItems, allGroups.length) : allGroups.length;
         await startJob(supabase, jobId, trueTotal);
       } else {
         console.log(`[conv-replay] RESUMING upload job=${jobId} dispatch#${checkpoint.dispatchCount} offset=${startOffset} pulled=${slice.length}`);
@@ -359,6 +440,39 @@ Deno.serve(async (req) => {
     let cancelledByUser: 'pause' | 'cancel' | 'kill' | null = null;
     let circuitTripped = false;
 
+    // ─── Conversation provider cache (one lookup per channel per dispatch) ───
+    // GHL's import endpoints reject many channels (notably custom and
+    // sometimes WhatsApp/IG/FB) without a `conversationProviderId`. We
+    // resolve the location's default provider per channel once and reuse.
+    const providerCache = new Map<string, string | null>();
+    async function resolveConversationProviderId(channel: string): Promise<string | null> {
+      const key = channel.toLowerCase();
+      if (providerCache.has(key)) return providerCache.get(key)!;
+      if (dryRun) { providerCache.set(key, null); return null; }
+      try {
+        const params = new URLSearchParams({ locationId: targetCreds.locationId, type: channel });
+        const r = await ctx.ghlFetch(
+          `${GHL_API_BASE}/conversations/providers?${params}`,
+          { method: 'GET', headers: targetHeaders },
+          2, 'target',
+        );
+        if (!r.ok) { providerCache.set(key, null); return null; }
+        const j = await r.json();
+        const list: any[] = j?.providers || j?.conversationProviders || [];
+        const pick = list.find((p) => p.isDefault) || list[0];
+        const id = pick?.id || pick?.providerId || null;
+        providerCache.set(key, id);
+        if (id) console.log(`[conv-replay] provider for ${channel} → ${id}`);
+        return id;
+      } catch { providerCache.set(key, null); return null; }
+    }
+
+    // Track per-reason counters for the final error_summary (helps
+    // dashboard triage without scanning migration_job_items).
+    const skipReasons = new Map<string, number>();
+    const failReasons = new Map<string, number>();
+    const bumpReason = (m: Map<string, number>, k: string) => m.set(k, (m.get(k) || 0) + 1);
+
     for (const conv of (conversations || [])) {
       // Granular control checks
       if (totalProcessed % 5 === 0) {
@@ -380,6 +494,7 @@ Deno.serve(async (req) => {
       // Activity-channel filter
       if (skipActivity && isActivityChannel(conv.channel_type)) {
         totalSkipped++;
+        bumpReason(skipReasons, 'activity_channel');
         await recordItem(supabase, {
           job_id: jobId, source_id: conv.id, entity_label: label,
           status: 'skipped',
@@ -391,6 +506,7 @@ Deno.serve(async (req) => {
       // Already replayed?
       if (conv.new_ghl_conversation_id && !forceOverwriteExisting) {
         totalSkipped++;
+        bumpReason(skipReasons, 'already_replayed');
         await recordItem(supabase, {
           job_id: jobId, source_id: conv.id, target_id: conv.new_ghl_conversation_id,
           entity_label: label, status: 'skipped',
@@ -399,28 +515,51 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // Resolve target contact by name (matches notes/opportunities pattern)
-      const resolved = await resolveTargetContactByName(supabase, {
-        fullName,
-        sourceAccount,
-        targetAccount,
-      });
+      // ─── Resolve target contact: ID-FIRST, name fallback ───
+      // The XLSX export carries the legacy `Contact ID (GHL)` for every
+      // row, and 100% of those IDs are already in `ghl_id_mapping`. Using
+      // ID resolution recovers all rows whose Client Name is "Unknown
+      // Unknown" or empty (the dominant skip reason in production).
+      let targetContactId: string | null = null;
+      let resolvedVia: 'id' | 'name' = 'id';
+      let nameAmbiguous = false;
+      if (conv.ghl_contact_id) {
+        const byId = await resolveTargetContactBySourceId(supabase, {
+          sourceContactId: conv.ghl_contact_id,
+          sourceAccount,
+          targetAccount,
+        });
+        targetContactId = byId.newId;
+      }
+      if (!targetContactId) {
+        const resolved = await resolveTargetContactByName(supabase, {
+          fullName, sourceAccount, targetAccount,
+        });
+        targetContactId = resolved.newId;
+        resolvedVia = 'name';
+        nameAmbiguous = resolved.ambiguous;
+        if (resolved.ambiguous) {
+          console.warn(`[conv-replay] Ambiguous "${fullName}" → ${resolved.candidateCount}; routing to latest=${resolved.newId}`);
+        }
+      }
 
-      if (!resolved.newId) {
+      if (!targetContactId) {
         totalSkipped++;
+        const reason = conv.ghl_contact_id
+          ? `No mapping for legacy contact ${conv.ghl_contact_id} and no name match for "${fullName || '(empty)'}" — run contacts worker first`
+          : (fullName
+            ? `No target contact named "${fullName}" — run contacts worker first`
+            : 'Conversation has no client name or contact id to resolve target');
+        bumpReason(skipReasons, conv.ghl_contact_id ? 'no_contact_mapping' : 'no_name_or_id');
         await recordItem(supabase, {
           job_id: jobId, source_id: conv.id, entity_label: label,
-          status: 'skipped',
-          error_message: fullName
-            ? `No target contact named "${fullName}" — run contacts worker first`
-            : 'Conversation has no client name to match a target contact',
+          status: 'skipped', error_message: reason,
         });
         continue;
       }
-      if (resolved.ambiguous) {
-        console.warn(`[conv-replay] Ambiguous "${fullName}" → ${resolved.candidateCount}; routing to latest=${resolved.newId}`);
+      if (resolvedVia === 'name' && nameAmbiguous) {
+        // already logged above
       }
-      const targetContactId = resolved.newId;
 
       // Pull messages for this conversation in chronological order.
       // For uploaded sources, messages are embedded on the conv object — skip the
@@ -437,12 +576,13 @@ Deno.serve(async (req) => {
       } else {
         const { data: dbMessages, error: msgErr } = await supabase
           .from('ghl_conversation_messages')
-          .select('id, ghl_message_id, direction, channel_type, body, attachment_urls, ghl_date_added, new_ghl_message_id')
+          .select('id, ghl_message_id, direction, channel_type, body, attachment_urls, ghl_date_added, sender_number, recipient_number, new_ghl_message_id')
           .eq('conversation_id', conv.id)
           .order('ghl_date_added', { ascending: true, nullsFirst: false });
 
         if (msgErr) {
           totalFailed++;
+          bumpReason(failReasons, 'mirror_msg_query_failed');
           await recordItem(supabase, {
             job_id: jobId, source_id: conv.id, entity_label: label,
             status: 'failed', error_message: `Messages query failed: ${msgErr.message}`,
@@ -454,6 +594,7 @@ Deno.serve(async (req) => {
 
       if (!messages || messages.length === 0) {
         totalSkipped++;
+        bumpReason(skipReasons, 'no_messages');
         await recordItem(supabase, {
           job_id: jobId, source_id: conv.id, entity_label: label,
           status: 'skipped', error_message: 'No messages to replay',
@@ -522,23 +663,25 @@ Deno.serve(async (req) => {
         if (!shellRes.ok) {
           const t = await shellRes.text();
           const parsed = parseGhlError(t);
-          const msg = (parsed.message || t || '').toLowerCase();
-          const isAlreadyExists =
-            shellRes.status === 400 &&
-            (msg.includes('already exists') || msg.includes('conversation already'));
-
-          if (isAlreadyExists) {
-            // Reuse existing conversation in target
+          // GHL returns 400 with various phrasings ("Conversation already
+          // exists", "already exist", "Conversation already created", or
+          // sometimes a duplicate-key code) when a contact already has a
+          // conversation. Be permissive: on ANY 400, attempt the lookup —
+          // if we find an existing conversation, reuse it; only fail when
+          // the lookup also returns nothing.
+          if (shellRes.status === 400) {
             const existingId = await lookupExistingConv();
             if (existingId) {
               newConvId = existingId;
-              console.log(`[conv-replay] Reusing existing target conversation ${existingId} for contact ${targetContactId}`);
+              console.log(`[conv-replay] Reusing existing target conversation ${existingId} for contact ${targetContactId} (shell 400: ${(parsed.message || t).substring(0, 120)})`);
             } else {
+              const code = parsed.error_code || 'GHL_400';
               totalFailed++;
+              bumpReason(failReasons, `shell_400:${code}`);
               await recordItem(supabase, {
                 job_id: jobId, source_id: conv.id, entity_label: label,
                 status: 'failed',
-                error_message: `Shell exists in target but lookup returned no conversation for contact ${targetContactId}`,
+                error_message: `Shell create [${code}] 400: ${(parsed.message || t).substring(0, 240)} (lookup also returned no conversation for contact ${targetContactId})`.substring(0, 900),
               });
               continue;
             }
@@ -547,6 +690,7 @@ Deno.serve(async (req) => {
             const authDetail = (shellRes.status === 401 || shellRes.status === 403) && targetAuthHint
               ? ` ${targetAuthHint}` : '';
             totalFailed++;
+            bumpReason(failReasons, `shell_${shellRes.status}:${code}`);
             await recordItem(supabase, {
               job_id: jobId, source_id: conv.id, entity_label: label,
               status: 'failed',
@@ -604,6 +748,29 @@ Deno.serve(async (req) => {
         if (uploadId) return; // upload rows aren't in the mirror
         await supabase.from('ghl_conversation_messages').update(patch).eq('id', msgId);
       };
+
+      // Pre-fetch the target contact's phone/email ONCE per conversation
+      // so we can populate `phone`/`fromNumber`/`toNumber` for SMS imports
+      // and `emailFrom`/`emailTo` for Email imports. GHL's import endpoints
+      // 422 without these for many channels.
+      let targetContactPhone: string | null = null;
+      let targetContactEmail: string | null = null;
+      if (!dryRun) {
+        try {
+          const r = await ctx.ghlFetch(
+            `${GHL_API_BASE}/contacts/${targetContactId}`,
+            { method: 'GET', headers: targetHeaders },
+            2, 'target',
+          );
+          if (r.ok) {
+            const j = await r.json();
+            const c = j?.contact || j;
+            targetContactPhone = c?.phone || null;
+            targetContactEmail = c?.email || null;
+          }
+        } catch { /* non-fatal */ }
+      }
+
       let convMsgOk = 0, convMsgFail = 0, convMsgSkip = 0;
       const messagesToReplay = maxMessagesPerConv > 0
         ? messages.slice(0, maxMessagesPerConv)
@@ -653,18 +820,51 @@ Deno.serve(async (req) => {
           ? '/conversations/messages/inbound'
           : '/conversations/messages/outbound';
 
+        // Resolve provider id for this channel (cached). GHL rejects many
+        // channels (custom, sometimes IG/FB/WhatsApp) without it.
+        const providerId = await resolveConversationProviderId(ghlType);
+
         const msgPayload: Record<string, any> = {
           type: ghlType,
           conversationId: newConvId,
-          conversationProviderId: undefined, // omitted intentionally for replay
           message: messageBody,
-          // GHL accepts `altId`/`altType` to scope to the target location
           altId: targetCreds.locationId,
           altType: 'location',
         };
-        // Preserve historical timestamp (ISO 8601 expected by GHL)
+        if (providerId) msgPayload.conversationProviderId = providerId;
+
+        // ── Channel-specific envelope fields ──────────────────────────
+        // SMS / Phone: GHL requires a phone number on the import payload.
+        // Use the message's recorded sender/recipient when available, else
+        // fall back to the target contact's phone.
+        if (ghlType === 'SMS') {
+          const msgPhone = (msg as any).sender_number || (msg as any).recipient_number || null;
+          const phone = msgPhone || targetContactPhone;
+          if (phone) {
+            msgPayload.phone = phone;
+            if (direction === 'inbound') msgPayload.fromNumber = phone;
+            else msgPayload.toNumber = phone;
+          }
+        }
+
+        // Email: GHL requires emailFrom / emailTo / subject. We synthesise
+        // sane defaults when the source row didn't carry them — better to
+        // import with a placeholder subject than to lose the message.
+        if (ghlType === 'Email') {
+          const subj = (msg as any).subject || (msg as any).email_subject ||
+            `Migrated ${direction === 'inbound' ? 'inbound' : 'outbound'} email`;
+          const fromAddr = (msg as any).email_from || (msg as any).sender_number ||
+            (direction === 'outbound' ? null : targetContactEmail);
+          const toAddr = (msg as any).email_to ||
+            (direction === 'inbound' ? null : targetContactEmail);
+          if (fromAddr) msgPayload.emailFrom = fromAddr;
+          if (toAddr) msgPayload.emailTo = toAddr;
+          msgPayload.subject = subj;
+          // GHL accepts `html` separately from `message` for email
+          if (!msgPayload.html && messageBody) msgPayload.html = messageBody;
+        }
+
         if (msg.ghl_date_added) msgPayload.date = msg.ghl_date_added;
-        // Attachments (URLs only — GHL fetches them server-side)
         if (!skipAttachments && Array.isArray(msg.attachment_urls) && msg.attachment_urls.length > 0) {
           msgPayload.attachments = msg.attachment_urls;
         }
@@ -679,6 +879,7 @@ Deno.serve(async (req) => {
             const parsed = parseGhlError(t);
             const code = parsed.error_code || `GHL_${r.status}`;
             convMsgFail++;
+            bumpReason(failReasons, `msg_${r.status}:${(parsed.message || '').substring(0, 60)}`);
             await updateMirrorMessage(msg.id, { replay_skipped_reason: `[${code}] ${(parsed.message || t).substring(0, 200)}` });
             continue;
           }
@@ -769,17 +970,33 @@ Deno.serve(async (req) => {
 
     await saveCheckpoint(supabase, jobId, {});
     try { await supabase.rpc('release_migration_job_lock', { p_job_id: jobId }); } catch { }
+
+    // Aggregate top reasons into the error_summary so dashboards show a
+    // breakdown without scanning migration_job_items.
+    const fmtReasons = (m: Map<string, number>) =>
+      Array.from(m.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 6)
+        .map(([k, n]) => `${k}=${n}`).join(', ');
+    const skipSummary = skipReasons.size ? ` | skip: ${fmtReasons(skipReasons)}` : '';
+    const failSummary = failReasons.size ? ` | fail: ${fmtReasons(failReasons)}` : '';
+    const summary = (totalFailed > 0 || totalSkipped > 0)
+      ? `Completed: ${totalSucceeded} ok, ${totalFailed} failed, ${totalSkipped} skipped, ${totalMessagesReplayed} messages replayed${failSummary}${skipSummary}`
+      : `Completed: ${totalSucceeded} ok, ${totalMessagesReplayed} messages replayed`;
+
     await finishJob(supabase, jobId,
       totalFailed > 0 && totalSucceeded === 0 ? 'failed' : 'completed',
-      totalFailed > 0 ? `Completed with ${totalFailed} conversation failures (${totalMessagesReplayed} messages replayed)` : undefined,
+      summary,
     );
 
-    console.log(`[conv-replay] DONE job=${jobId} ok=${totalSucceeded} fail=${totalFailed} skip=${totalSkipped} msgs=${totalMessagesReplayed}`);
+    console.log(`[conv-replay] DONE job=${jobId} ok=${totalSucceeded} fail=${totalFailed} skip=${totalSkipped} msgs=${totalMessagesReplayed}${failSummary}${skipSummary}`);
 
     return new Response(JSON.stringify({
       success: true, job_id: jobId,
       processed: totalProcessed, succeeded: totalSucceeded, failed: totalFailed,
       skipped: totalSkipped, messages_replayed: totalMessagesReplayed,
+      skip_reasons: Object.fromEntries(skipReasons),
+      fail_reasons: Object.fromEntries(failReasons),
     }), { headers: { 'Content-Type': 'application/json' } });
   } catch (err: any) {
     console.error('[conv-replay] FATAL:', err);
