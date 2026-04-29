@@ -970,17 +970,33 @@ Deno.serve(async (req) => {
 
     await saveCheckpoint(supabase, jobId, {});
     try { await supabase.rpc('release_migration_job_lock', { p_job_id: jobId }); } catch { }
+
+    // Aggregate top reasons into the error_summary so dashboards show a
+    // breakdown without scanning migration_job_items.
+    const fmtReasons = (m: Map<string, number>) =>
+      Array.from(m.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 6)
+        .map(([k, n]) => `${k}=${n}`).join(', ');
+    const skipSummary = skipReasons.size ? ` | skip: ${fmtReasons(skipReasons)}` : '';
+    const failSummary = failReasons.size ? ` | fail: ${fmtReasons(failReasons)}` : '';
+    const summary = (totalFailed > 0 || totalSkipped > 0)
+      ? `Completed: ${totalSucceeded} ok, ${totalFailed} failed, ${totalSkipped} skipped, ${totalMessagesReplayed} messages replayed${failSummary}${skipSummary}`
+      : `Completed: ${totalSucceeded} ok, ${totalMessagesReplayed} messages replayed`;
+
     await finishJob(supabase, jobId,
       totalFailed > 0 && totalSucceeded === 0 ? 'failed' : 'completed',
-      totalFailed > 0 ? `Completed with ${totalFailed} conversation failures (${totalMessagesReplayed} messages replayed)` : undefined,
+      summary,
     );
 
-    console.log(`[conv-replay] DONE job=${jobId} ok=${totalSucceeded} fail=${totalFailed} skip=${totalSkipped} msgs=${totalMessagesReplayed}`);
+    console.log(`[conv-replay] DONE job=${jobId} ok=${totalSucceeded} fail=${totalFailed} skip=${totalSkipped} msgs=${totalMessagesReplayed}${failSummary}${skipSummary}`);
 
     return new Response(JSON.stringify({
       success: true, job_id: jobId,
       processed: totalProcessed, succeeded: totalSucceeded, failed: totalFailed,
       skipped: totalSkipped, messages_replayed: totalMessagesReplayed,
+      skip_reasons: Object.fromEntries(skipReasons),
+      fail_reasons: Object.fromEntries(failReasons),
     }), { headers: { 'Content-Type': 'application/json' } });
   } catch (err: any) {
     console.error('[conv-replay] FATAL:', err);
