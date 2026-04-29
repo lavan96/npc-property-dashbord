@@ -662,15 +662,22 @@ Deno.serve(async (req) => {
       await startJob(supabase, jobId, 0);
     }
 
-    // ── Scope force_recreate to the FIRST leg only ──────────────────────
-    // forceRecreate=true makes every redo "succeed" at deletion+POST,
-    // which masks no-progress loops (the 200-mark duplicate flood). On a
-    // resumed leg we should treat existing target mappings as a hit and
-    // skip — preserving the operator's original intent for the first pass
-    // without compounding duplicates if the worker gets re-dispatched.
-    const effectiveForceRecreate = forceRecreate && !isResume;
+    // ── force_recreate now honoured across ALL dispatches ───────────────
+    // Previously force_recreate was silently disabled on resume legs (to
+    // avoid duplicate POST loops if the worker re-dispatched on the same
+    // leg). In practice that produced the opposite problem: a job dispatched
+    // with force_recreate=true would do real work on dispatch #1, then every
+    // resume would skip ~98% of the remaining rows as "Already mapped"
+    // because their stale mappings still pointed at deleted/wrong targets
+    // (e.g. job 87ea983a: 75 succeeded, 321 skipped).
+    //
+    // Per operator intent: if you set force_recreate=true at dispatch, the
+    // entire job (every leg) should rewrite. Cursor-based pagination already
+    // prevents re-processing the same opp twice within one job, so the
+    // duplicate-loop risk no longer applies.
+    const effectiveForceRecreate = forceRecreate;
     if (forceRecreate && isResume) {
-      console.log(`[opps-worker] forceRecreate disabled on resume leg (was ${forceRecreate})`);
+      console.log(`[opps-worker] forceRecreate honoured on resume leg (cursor prevents re-processing)`);
     }
 
     let totalProcessed = 0, totalSucceeded = 0, totalFailed = 0, totalSkipped = 0;
