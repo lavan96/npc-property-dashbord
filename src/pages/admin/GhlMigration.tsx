@@ -995,8 +995,8 @@ function MigrationWorkersPanel() {
                               </div>
                             )}
                           </td>
-                          <td className="p-2 text-right">
-                            <div className="flex items-center justify-end gap-1 flex-wrap">
+                          <td className="p-2 text-right whitespace-nowrap">
+                            <div className="flex items-center justify-end gap-1 flex-nowrap">
                               {canPause && (
                                 <Button
                                   size="sm"
