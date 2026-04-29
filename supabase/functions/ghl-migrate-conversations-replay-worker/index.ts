@@ -576,12 +576,13 @@ Deno.serve(async (req) => {
       } else {
         const { data: dbMessages, error: msgErr } = await supabase
           .from('ghl_conversation_messages')
-          .select('id, ghl_message_id, direction, channel_type, body, attachment_urls, ghl_date_added, new_ghl_message_id')
+          .select('id, ghl_message_id, direction, channel_type, body, attachment_urls, ghl_date_added, sender_number, recipient_number, new_ghl_message_id')
           .eq('conversation_id', conv.id)
           .order('ghl_date_added', { ascending: true, nullsFirst: false });
 
         if (msgErr) {
           totalFailed++;
+          bumpReason(failReasons, 'mirror_msg_query_failed');
           await recordItem(supabase, {
             job_id: jobId, source_id: conv.id, entity_label: label,
             status: 'failed', error_message: `Messages query failed: ${msgErr.message}`,
@@ -593,6 +594,7 @@ Deno.serve(async (req) => {
 
       if (!messages || messages.length === 0) {
         totalSkipped++;
+        bumpReason(skipReasons, 'no_messages');
         await recordItem(supabase, {
           job_id: jobId, source_id: conv.id, entity_label: label,
           status: 'skipped', error_message: 'No messages to replay',
