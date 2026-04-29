@@ -235,6 +235,19 @@ Deno.serve(async (req) => {
       payload.assigned_user_strategy === 'map_by_email' ? 'map_by_email'
       : payload.assigned_user_strategy === 'omit' ? 'omit'
       : 'single';
+    // When true (default), the worker NEVER skips a row for "no contact found".
+    // It will mint a stub contact in the target account using whatever
+    // identity data the row carries (email/phone/name — even "Unknown
+    // Unknown") so the opportunity can still be created. Operators wanting
+    // strict cleanup can flip this to false and rows without a resolvable
+    // contact will skip with a clear reason instead.
+    const autoCreateMissingContacts = payload.auto_create_missing_contacts !== false;
+    // When true (default), placeholder names like "Unknown Unknown" are
+    // INCLUDED in the migration rather than filtered out. They flow through
+    // ID/email/phone resolution first; if all tiers miss, the auto-create
+    // path captures them. Set false to revert to old "skip placeholders"
+    // behaviour.
+    const includePlaceholderContacts = payload.include_placeholder_contacts !== false;
 
     // ── Operator range controls (workaround for GHL ordering quirks) ──
     // GHL `/opportunities/search` sorts by `date_added desc` and the cursor
