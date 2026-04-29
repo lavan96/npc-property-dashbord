@@ -235,12 +235,14 @@ export function MigrationSourceUploader({
     [handleUpload],
   );
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+  const { getRootProps, getInputProps, isDragActive, open: openFilePicker } = useDropzone({
     onDrop,
     accept: ACCEPT,
     maxFiles: 1,
     multiple: false,
     disabled: parsing || uploading,
+    noClick: false,
+    noKeyboard: false,
   });
 
   const selected = useMemo(
