@@ -962,7 +962,51 @@ Deno.serve(async (req) => {
           }
         }
 
-        if (!resolved.newId && oppContactName && !isPlaceholderResolutionName(oppContactName)) {
+        // ── Tier 2: email lookup against target GHL ──────────────────
+        // CSV exports almost always carry an email; this is the most
+        // reliable identifier when the source contactId is missing or
+        // the contact wasn't migrated yet.
+        const oppEmail = (opp.email || opp.contact?.email || '').trim().toLowerCase() || null;
+        const oppPhone = normalizePhoneForLookup(opp.phone || opp.contact?.phone);
+        if (!resolved.newId && oppEmail && !dryRun) {
+          const found = await lookupTargetContactByEmailOrPhone(
+            ctx, targetCreds.locationId!, targetHeaders, { email: oppEmail },
+          );
+          if (found) {
+            resolved.newId = found;
+            if (opp.contactId) {
+              await recordIdMapping(supabase, {
+                resource_type: 'contact', old_ghl_id: opp.contactId, new_ghl_id: found,
+                source_account_label: sourceAccount, target_account_label: targetAccount,
+                notes: oppContactName || oppEmail,
+              });
+            }
+          }
+        }
+
+        // ── Tier 3: phone lookup against target GHL ──────────────────
+        if (!resolved.newId && oppPhone && !dryRun) {
+          const found = await lookupTargetContactByEmailOrPhone(
+            ctx, targetCreds.locationId!, targetHeaders, { phone: oppPhone },
+          );
+          if (found) {
+            resolved.newId = found;
+            if (opp.contactId) {
+              await recordIdMapping(supabase, {
+                resource_type: 'contact', old_ghl_id: opp.contactId, new_ghl_id: found,
+                source_account_label: sourceAccount, target_account_label: targetAccount,
+                notes: oppContactName || oppPhone,
+              });
+            }
+          }
+        }
+
+        // ── Tier 4: name lookup in ghl_id_mapping ────────────────────
+        // Placeholder names like "Unknown Unknown" are allowed through
+        // when includePlaceholderContacts is on (default), so they have
+        // a chance to match a previously-mapped placeholder contact.
+        if (!resolved.newId && oppContactName
+            && (includePlaceholderContacts || !isPlaceholderResolutionName(oppContactName))) {
           const nameResolved = await resolveTargetContactByName(supabase, {
             fullName: oppContactName,
             sourceAccount,
@@ -991,6 +1035,35 @@ Deno.serve(async (req) => {
           }
         }
 
+        // ── Tier 5: auto-create stub contact in target ───────────────
+        // Last-resort path so an upload row is NEVER skipped purely for
+        // "no contact found". Mints a placeholder contact in target using
+        // every identity hint the row carries (firstName/lastName/email/
+        // phone). Tagged 'migration-auto-stub' for cleanup later.
+        if (!resolved.newId && autoCreateMissingContacts && !dryRun) {
+          const stub = await createStubTargetContact(
+            ctx, targetCreds.locationId!, targetHeaders, {
+              firstName: sanitized.firstName || opp.firstName,
+              lastName: sanitized.lastName || opp.lastName,
+              fullName: oppContactName,
+              email: oppEmail,
+              phone: oppPhone,
+              sourceContactId: opp.contactId,
+            },
+          );
+          if (stub) {
+            resolved.newId = stub.id;
+            if (opp.contactId) {
+              await recordIdMapping(supabase, {
+                resource_type: 'contact', old_ghl_id: opp.contactId, new_ghl_id: stub.id,
+                source_account_label: sourceAccount, target_account_label: targetAccount,
+                notes: oppContactName || oppEmail || oppPhone || 'Auto-stub',
+              });
+            }
+            console.log(`[opps-worker] auto-created stub contact ${stub.id} for opp=${opp.id} (createdNew=${stub.createdNew})`);
+          }
+        }
+
         if (!resolved.newId) {
           if (opp.contactId) unresolvedWithContactId++;
           else missingContactReference++;
@@ -999,10 +1072,10 @@ Deno.serve(async (req) => {
             job_id: jobId, source_id: opp.id, entity_label: oppLabel,
             status: 'skipped',
             error_message: opp.contactId
-              ? `No live target contact mapping for source contactId=${opp.contactId}${idMappedButTargetMissing ? ' (stale target contact was deleted)' : ''}${oppContactName ? ` (name "${oppContactName}")` : ''} — rerun contacts migration before opportunities`
-              : (oppContactName
-                  ? `No target contact named "${oppContactName}" — run contacts worker first`
-                  : 'Opportunity has no contactId or contact name to match against'),
+              ? `No resolvable contact identity for source contactId=${opp.contactId}${idMappedButTargetMissing ? ' (stale target contact was deleted)' : ''}${oppContactName ? ` (name "${oppContactName}")` : ''}${oppEmail ? ` (email "${oppEmail}")` : ''} — tried ID/email/phone/name${autoCreateMissingContacts ? ' + auto-create' : ''}`
+              : (oppContactName || oppEmail || oppPhone
+                  ? `No target contact found by name="${oppContactName || ''}", email="${oppEmail || ''}", phone="${oppPhone || ''}"${autoCreateMissingContacts ? ' (auto-create also failed)' : ''}`
+                  : 'Opportunity row has no contactId, name, email, or phone to match against'),
           });
           continue;
         }
