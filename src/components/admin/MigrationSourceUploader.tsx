@@ -39,10 +39,12 @@ const ACCEPT = {
 const MAX_FILE_BYTES = 50 * 1024 * 1024; // 50MB raw
 const MAX_ROWS = 200_000;
 
-// Small chunk size keeps each edge-function request well under any timeout
-// and keeps progress updates frequent. With chunk-table architecture this
-// is now safe (no quadratic blowup).
-const CHUNK_SIZE = 1000;
+// Smaller chunks (250 rows) keep request bodies well under the edge
+// function's ~6 MB cap even when GHL exports carry wide rows with verbose
+// custom fields. Combined with concurrency=3 this is still fast (~3 chunks/s
+// for typical exports) and the small unit means a single failure surfaces
+// quickly with most of the upload already persisted.
+const CHUNK_SIZE = 250;
 const APPEND_CONCURRENCY = 3;
 
 async function parseFile(file: File): Promise<Record<string, any>[]> {
@@ -155,7 +157,18 @@ export function MigrationSourceUploader({
               },
             );
             if (res.error) {
-              failed = { index: next.index, message: res.error.message || 'unknown' };
+              const msg = res.error.message || 'unknown error';
+              failed = { index: next.index, message: msg };
+              // Surface IMMEDIATELY so the user sees what happened instead
+              // of a stuck-looking spinner. The aggregate toast still fires
+              // below for the user-visible "delete + retry" guidance.
+              toast.error(`Upload chunk ${next.index} failed: ${msg.substring(0, 200)}`, {
+                duration: 10_000,
+              });
+              console.error(
+                `[MigrationSourceUploader] append_chunk failed`,
+                { uploadId, chunkIndex: next.index, rows: next.rows.length, error: res.error },
+              );
               return;
             }
             uploadedRows += next.rows.length;
@@ -176,7 +189,12 @@ export function MigrationSourceUploader({
         );
 
         if (failed) {
-          toast.error(`Chunk ${failed.index} failed: ${failed.message}. Partial upload kept — delete it and retry.`);
+          toast.error(
+            `Stopped at chunk ${failed.index} (${(failed.index * CHUNK_SIZE).toLocaleString()} of ${records.length.toLocaleString()} rows). Delete the partial upload below and retry.`,
+            { duration: 12_000 },
+          );
+          // Refresh the list so the user can see and delete the partial row.
+          await refreshRecents();
           return;
         }
 

@@ -662,15 +662,22 @@ Deno.serve(async (req) => {
       await startJob(supabase, jobId, 0);
     }
 
-    // ── Scope force_recreate to the FIRST leg only ──────────────────────
-    // forceRecreate=true makes every redo "succeed" at deletion+POST,
-    // which masks no-progress loops (the 200-mark duplicate flood). On a
-    // resumed leg we should treat existing target mappings as a hit and
-    // skip — preserving the operator's original intent for the first pass
-    // without compounding duplicates if the worker gets re-dispatched.
-    const effectiveForceRecreate = forceRecreate && !isResume;
+    // ── force_recreate now honoured across ALL dispatches ───────────────
+    // Previously force_recreate was silently disabled on resume legs (to
+    // avoid duplicate POST loops if the worker re-dispatched on the same
+    // leg). In practice that produced the opposite problem: a job dispatched
+    // with force_recreate=true would do real work on dispatch #1, then every
+    // resume would skip ~98% of the remaining rows as "Already mapped"
+    // because their stale mappings still pointed at deleted/wrong targets
+    // (e.g. job 87ea983a: 75 succeeded, 321 skipped).
+    //
+    // Per operator intent: if you set force_recreate=true at dispatch, the
+    // entire job (every leg) should rewrite. Cursor-based pagination already
+    // prevents re-processing the same opp twice within one job, so the
+    // duplicate-loop risk no longer applies.
+    const effectiveForceRecreate = forceRecreate;
     if (forceRecreate && isResume) {
-      console.log(`[opps-worker] forceRecreate disabled on resume leg (was ${forceRecreate})`);
+      console.log(`[opps-worker] forceRecreate honoured on resume leg (cursor prevents re-processing)`);
     }
 
     let totalProcessed = 0, totalSucceeded = 0, totalFailed = 0, totalSkipped = 0;
@@ -1254,6 +1261,79 @@ Deno.serve(async (req) => {
             const parsed = parseGhlError(t);
             const code = parsed.error_code || `GHL_${r.status}`;
             const rawMsg = (parsed.message || t || '').toLowerCase();
+
+            // ── Smart-recover from "contact is deleted" 400 ──────────────
+            // Race: targetContactExists() said the contact was alive when we
+            // resolved, but it was deleted between resolution and POST. Wipe
+            // the stale mapping, mint a fresh stub from whatever identity
+            // hints we have, and retry the POST once. Honours the operator
+            // policy "never skip a row purely for missing contact".
+            const isDeletedContact = r.status === 400 && (
+              rawMsg.includes('contact is deleted') ||
+              rawMsg.includes('opportunity contact is deleted') ||
+              rawMsg.includes('contact does not exist') ||
+              rawMsg.includes('contact not found')
+            );
+            if (isDeletedContact && autoCreateMissingContacts && !dryRun) {
+              try {
+                // Wipe stale contact mapping so we never resurrect this id.
+                if (opp.contactId) {
+                  await supabase
+                    .from('ghl_id_mapping').delete()
+                    .eq('resource_type', 'contact').eq('old_ghl_id', opp.contactId)
+                    .eq('source_account_label', sourceAccount).eq('target_account_label', targetAccount);
+                }
+                const stub = await createStubTargetContact(
+                  ctx, targetCreds.locationId!, targetHeaders, {
+                    firstName: sanitized.firstName || opp.firstName,
+                    lastName: sanitized.lastName || opp.lastName,
+                    fullName: oppContactName,
+                    email: oppEmail,
+                    phone: oppPhone,
+                    sourceContactId: opp.contactId,
+                  },
+                );
+                if (stub) {
+                  if (opp.contactId) {
+                    await recordIdMapping(supabase, {
+                      resource_type: 'contact', old_ghl_id: opp.contactId, new_ghl_id: stub.id,
+                      source_account_label: sourceAccount, target_account_label: targetAccount,
+                      notes: `Replacement (prior target deleted): ${oppContactName || oppEmail || oppPhone || 'auto-stub'}`,
+                    });
+                  }
+                  // Retry POST with new contactId
+                  createBody.contactId = stub.id;
+                  const r2 = await ctx.ghlFetch(`${GHL_API_BASE}/opportunities/`, {
+                    method: 'POST', headers: targetHeaders, body: JSON.stringify(createBody),
+                  }, 3, 'target');
+                  if (r2.ok) {
+                    const newOpp2 = await r2.json();
+                    const newId2 = newOpp2?.opportunity?.id || newOpp2?.id;
+                    if (newId2) {
+                      await recordIdMapping(supabase, {
+                        resource_type: 'opportunity', old_ghl_id: opp.id, new_ghl_id: newId2,
+                        source_account_label: sourceAccount, target_account_label: targetAccount,
+                        notes: `${oppLabel} (recovered via fresh stub contact)`,
+                      });
+                      totalSucceeded++;
+                      await recordItem(supabase, {
+                        job_id: jobId, source_id: opp.id, target_id: newId2, entity_label: oppLabel,
+                        status: 'succeeded',
+                        error_message: 'Recovered: prior contact deleted in target → minted fresh stub and re-POSTed',
+                      });
+                      console.log(`[opps-worker] DELETED-CONTACT-RECOVER opp=${opp.id} → target=${newId2} via stub=${stub.id}`);
+                      continue;
+                    }
+                  } else {
+                    const t2 = await r2.text().catch(() => '');
+                    console.warn(`[opps-worker] retry-after-stub failed opp=${opp.id} status=${r2.status} body=${t2.substring(0, 200)}`);
+                  }
+                }
+              } catch (recoverErr: any) {
+                console.warn(`[opps-worker] deleted-contact recover threw for opp=${opp.id}: ${recoverErr.message}`);
+              }
+              // Recovery failed → fall through to record as failed
+            }
 
             // ── Smart-recover from "duplicate opportunity" 400 ────────────
             // GHL refuses POSTs when an opportunity already exists for this
