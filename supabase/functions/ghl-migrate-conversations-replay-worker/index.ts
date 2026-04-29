@@ -755,6 +755,8 @@ Deno.serve(async (req) => {
       // 422 without these for many channels.
       let targetContactPhone: string | null = null;
       let targetContactEmail: string | null = null;
+      let targetContactFbId: string | null = null;
+      let targetContactIgId: string | null = null;
       if (!dryRun) {
         try {
           const r = await ctx.ghlFetch(
@@ -767,6 +769,11 @@ Deno.serve(async (req) => {
             const c = j?.contact || j;
             targetContactPhone = c?.phone || null;
             targetContactEmail = c?.email || null;
+            // GHL stores social ids on the contact's attributionSource /
+            // additionalEmails / customFields blocks depending on tenant.
+            // Be permissive — check the obvious top-level shapes.
+            targetContactFbId = c?.fbMessengerId || c?.fbId || c?.facebookId || null;
+            targetContactIgId = c?.igId || c?.instagramId || null;
           }
         } catch { /* non-fatal */ }
       }
