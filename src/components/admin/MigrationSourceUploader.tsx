@@ -341,8 +341,8 @@ export function MigrationSourceUploader({
             <div className="text-[10px] font-semibold uppercase text-muted-foreground">
               Recent {domain} uploads
             </div>
-            <div className="overflow-hidden rounded border border-border/40">
-              <table className="w-full text-[11px]">
+            <div className="overflow-x-auto rounded border border-border/40">
+              <table className="w-full text-[11px] min-w-[520px]">
                 <thead className="bg-muted/30 uppercase text-muted-foreground">
                   <tr>
                     <th className="p-1.5 text-left">File</th>
