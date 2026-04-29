@@ -659,23 +659,25 @@ Deno.serve(async (req) => {
         if (!shellRes.ok) {
           const t = await shellRes.text();
           const parsed = parseGhlError(t);
-          const msg = (parsed.message || t || '').toLowerCase();
-          const isAlreadyExists =
-            shellRes.status === 400 &&
-            (msg.includes('already exists') || msg.includes('conversation already'));
-
-          if (isAlreadyExists) {
-            // Reuse existing conversation in target
+          // GHL returns 400 with various phrasings ("Conversation already
+          // exists", "already exist", "Conversation already created", or
+          // sometimes a duplicate-key code) when a contact already has a
+          // conversation. Be permissive: on ANY 400, attempt the lookup —
+          // if we find an existing conversation, reuse it; only fail when
+          // the lookup also returns nothing.
+          if (shellRes.status === 400) {
             const existingId = await lookupExistingConv();
             if (existingId) {
               newConvId = existingId;
-              console.log(`[conv-replay] Reusing existing target conversation ${existingId} for contact ${targetContactId}`);
+              console.log(`[conv-replay] Reusing existing target conversation ${existingId} for contact ${targetContactId} (shell 400: ${(parsed.message || t).substring(0, 120)})`);
             } else {
+              const code = parsed.error_code || 'GHL_400';
               totalFailed++;
+              bumpReason(failReasons, `shell_400:${code}`);
               await recordItem(supabase, {
                 job_id: jobId, source_id: conv.id, entity_label: label,
                 status: 'failed',
-                error_message: `Shell exists in target but lookup returned no conversation for contact ${targetContactId}`,
+                error_message: `Shell create [${code}] 400: ${(parsed.message || t).substring(0, 240)} (lookup also returned no conversation for contact ${targetContactId})`.substring(0, 900),
               });
               continue;
             }
@@ -684,6 +686,7 @@ Deno.serve(async (req) => {
             const authDetail = (shellRes.status === 401 || shellRes.status === 403) && targetAuthHint
               ? ` ${targetAuthHint}` : '';
             totalFailed++;
+            bumpReason(failReasons, `shell_${shellRes.status}:${code}`);
             await recordItem(supabase, {
               job_id: jobId, source_id: conv.id, entity_label: label,
               status: 'failed',
