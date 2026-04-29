@@ -755,6 +755,8 @@ Deno.serve(async (req) => {
       // 422 without these for many channels.
       let targetContactPhone: string | null = null;
       let targetContactEmail: string | null = null;
+      let targetContactFbId: string | null = null;
+      let targetContactIgId: string | null = null;
       if (!dryRun) {
         try {
           const r = await ctx.ghlFetch(
@@ -767,6 +769,11 @@ Deno.serve(async (req) => {
             const c = j?.contact || j;
             targetContactPhone = c?.phone || null;
             targetContactEmail = c?.email || null;
+            // GHL stores social ids on the contact's attributionSource /
+            // additionalEmails / customFields blocks depending on tenant.
+            // Be permissive — check the obvious top-level shapes.
+            targetContactFbId = c?.fbMessengerId || c?.fbId || c?.facebookId || null;
+            targetContactIgId = c?.igId || c?.instagramId || null;
           }
         } catch { /* non-fatal */ }
       }
@@ -792,9 +799,20 @@ Deno.serve(async (req) => {
         }
 
         const rawBody = (msg.body || '').toString();
-        if (!rawBody.trim() && (skipAttachments || !Array.isArray(msg.attachment_urls) || msg.attachment_urls.length === 0)) {
+        const hasAttachments = !skipAttachments && Array.isArray(msg.attachment_urls) && msg.attachment_urls.length > 0;
+        // GHL's import endpoint rejects attachment-only payloads with
+        // "There is no message or attachments for this message. Skip
+        // sending." in many tenants because the URLs aren't fetchable.
+        // Be strict: require a non-empty body. Attachment-only rows are
+        // marked as terminal-skipped so re-runs don't loop on them.
+        if (!rawBody.trim()) {
           convMsgSkip++;
-          await updateMirrorMessage(msg.id, { replay_skipped_reason: 'empty_body_no_attachments' });
+          await updateMirrorMessage(msg.id, {
+            replayed_at: new Date().toISOString(),
+            replay_skipped_reason: hasAttachments
+              ? 'terminal_skip:attachment_only_unsendable'
+              : 'terminal_skip:empty_body_no_attachments',
+          });
           continue;
         }
 
@@ -804,7 +822,10 @@ Deno.serve(async (req) => {
         if (!ghlType) {
           // Unknown / non-replayable channel — skip rather than masquerade as SMS
           convMsgSkip++;
-          await updateMirrorMessage(msg.id, { replay_skipped_reason: `unsupported_channel:${normaliseChannel(msg.channel_type)}` });
+          await updateMirrorMessage(msg.id, {
+            replayed_at: new Date().toISOString(),
+            replay_skipped_reason: `terminal_skip:unsupported_channel:${normaliseChannel(msg.channel_type)}`,
+          });
           continue;
         }
         const direction = msg.direction === 'inbound' ? 'inbound' : 'outbound';
@@ -823,6 +844,55 @@ Deno.serve(async (req) => {
         // Resolve provider id for this channel (cached). GHL rejects many
         // channels (custom, sometimes IG/FB/WhatsApp) without it.
         const providerId = await resolveConversationProviderId(ghlType);
+        // Pre-skip when the location has no provider configured for this
+        // channel — the POST will deterministically 400 with
+        // "No conversationProviderId passed in body".
+        if (!providerId && (ghlType === 'FB' || ghlType === 'IG' || ghlType === 'WhatsApp' || ghlType === 'GMB' || ghlType === 'Live_Chat' || ghlType === 'Custom')) {
+          convMsgSkip++;
+          bumpReason(skipReasons, `no_provider:${ghlType}`);
+          await updateMirrorMessage(msg.id, {
+            replayed_at: new Date().toISOString(),
+            replay_skipped_reason: `terminal_skip:no_conversation_provider_for_${ghlType}`,
+          });
+          continue;
+        }
+
+        // Pre-skip SMS without a resolvable phone number — GHL 422s with
+        // "Missing phone number" otherwise.
+        if (ghlType === 'SMS') {
+          const msgPhone = (msg as any).sender_number || (msg as any).recipient_number || null;
+          const phone = msgPhone || targetContactPhone;
+          if (!phone) {
+            convMsgSkip++;
+            bumpReason(skipReasons, 'sms_missing_phone');
+            await updateMirrorMessage(msg.id, {
+              replayed_at: new Date().toISOString(),
+              replay_skipped_reason: 'terminal_skip:sms_missing_phone',
+            });
+            continue;
+          }
+        }
+
+        // Pre-skip Facebook/Instagram when the contact has no fb/ig id —
+        // GHL 400s with "Contact has no Facebook id, skipping" otherwise.
+        if (ghlType === 'FB' && !targetContactFbId) {
+          convMsgSkip++;
+          bumpReason(skipReasons, 'fb_missing_contact_id');
+          await updateMirrorMessage(msg.id, {
+            replayed_at: new Date().toISOString(),
+            replay_skipped_reason: 'terminal_skip:contact_has_no_fb_id',
+          });
+          continue;
+        }
+        if (ghlType === 'IG' && !targetContactIgId) {
+          convMsgSkip++;
+          bumpReason(skipReasons, 'ig_missing_contact_id');
+          await updateMirrorMessage(msg.id, {
+            replayed_at: new Date().toISOString(),
+            replay_skipped_reason: 'terminal_skip:contact_has_no_ig_id',
+          });
+          continue;
+        }
 
         const msgPayload: Record<string, any> = {
           type: ghlType,
@@ -865,7 +935,7 @@ Deno.serve(async (req) => {
         }
 
         if (msg.ghl_date_added) msgPayload.date = msg.ghl_date_added;
-        if (!skipAttachments && Array.isArray(msg.attachment_urls) && msg.attachment_urls.length > 0) {
+        if (hasAttachments) {
           msgPayload.attachments = msg.attachment_urls;
         }
 
@@ -878,9 +948,26 @@ Deno.serve(async (req) => {
             const t = await r.text();
             const parsed = parseGhlError(t);
             const code = parsed.error_code || `GHL_${r.status}`;
+            const reasonText = (parsed.message || t).toLowerCase();
+            // Recognise GHL's terminal "won't ever work" responses and
+            // stamp replayed_at so future re-runs don't keep retrying
+            // them. These cover phrasings we discovered in production:
+            //   - "Skip sending"
+            //   - "Missing phone number"
+            //   - "No conversationProviderId"
+            //   - "Contact has no Facebook id"
+            const isTerminal =
+              reasonText.includes('skip sending') ||
+              reasonText.includes('missing phone') ||
+              reasonText.includes('no conversationproviderid') ||
+              reasonText.includes('contact has no facebook') ||
+              reasonText.includes('contact has no instagram');
             convMsgFail++;
             bumpReason(failReasons, `msg_${r.status}:${(parsed.message || '').substring(0, 60)}`);
-            await updateMirrorMessage(msg.id, { replay_skipped_reason: `[${code}] ${(parsed.message || t).substring(0, 200)}` });
+            await updateMirrorMessage(msg.id, {
+              ...(isTerminal ? { replayed_at: new Date().toISOString() } : {}),
+              replay_skipped_reason: `${isTerminal ? 'terminal_' : ''}[${code}] ${(parsed.message || t).substring(0, 200)}`,
+            });
             continue;
           }
           const data = await r.json();
