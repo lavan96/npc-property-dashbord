@@ -61,6 +61,129 @@ async function targetContactExists(
 }
 
 /**
+ * Normalize a phone string to digits-only E.164-ish form for lookup.
+ * Strips spaces, dashes, parens. Keeps a leading '+' if present.
+ * Returns null if fewer than 6 digits remain (likely junk).
+ */
+function normalizePhoneForLookup(phone: string | null | undefined): string | null {
+  if (!phone) return null;
+  const trimmed = String(phone).trim();
+  if (!trimmed) return null;
+  const hasPlus = trimmed.startsWith('+');
+  const digits = trimmed.replace(/\D/g, '');
+  if (digits.length < 6) return null;
+  return hasPlus ? `+${digits}` : digits;
+}
+
+/**
+ * GHL `/contacts/lookup` accepts ?email= or ?phone= and returns matching
+ * contacts in the queried location. Returns the first contact id, or null.
+ * Used as Tier-2/3 contact resolution before falling back to name matching.
+ */
+async function lookupTargetContactByEmailOrPhone(
+  ctx: GhlFetchContext,
+  locationId: string,
+  headers: Record<string, string>,
+  params: { email?: string | null; phone?: string | null },
+): Promise<string | null> {
+  const qp = new URLSearchParams({ locationId });
+  if (params.email) qp.set('email', params.email.trim().toLowerCase());
+  else if (params.phone) qp.set('phone', params.phone);
+  else return null;
+  try {
+    const res = await ctx.ghlFetch(
+      `${GHL_API_BASE}/contacts/lookup?${qp}`,
+      { headers }, 2, 'target',
+    );
+    if (!res.ok) return null;
+    const body = await res.json().catch(() => ({}));
+    const contacts: any[] = body?.contacts || [];
+    const first = contacts.find((c) => c?.id);
+    return first?.id || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Create a stub contact in the target account when an opportunity row has
+ * no resolvable contact via ID/email/phone/name. Uses every identity hint
+ * available so the new contact is at least minimally findable in GHL.
+ * Returns the new contact id, or null on hard failure.
+ */
+async function createStubTargetContact(
+  ctx: GhlFetchContext,
+  locationId: string,
+  headers: Record<string, string>,
+  hints: {
+    firstName?: string | null;
+    lastName?: string | null;
+    fullName?: string | null;
+    email?: string | null;
+    phone?: string | null;
+    sourceContactId?: string | null;
+  },
+): Promise<{ id: string; createdNew: boolean } | null> {
+  // Idempotency: if email or phone is present, try lookup first to avoid
+  // duplicating a contact that already exists in target.
+  if (hints.email || hints.phone) {
+    const found = await lookupTargetContactByEmailOrPhone(ctx, locationId, headers, {
+      email: hints.email, phone: hints.phone,
+    });
+    if (found) return { id: found, createdNew: false };
+  }
+
+  let firstName = (hints.firstName || '').trim();
+  let lastName = (hints.lastName || '').trim();
+  if (!firstName && !lastName && hints.fullName) {
+    const parts = hints.fullName.trim().split(/\s+/);
+    firstName = parts[0] || '';
+    lastName = parts.slice(1).join(' ') || '';
+  }
+  if (!firstName) firstName = 'Unknown';
+  if (!lastName) lastName = 'Unknown';
+
+  const body: Record<string, unknown> = {
+    locationId,
+    firstName,
+    lastName,
+    source: hints.sourceContactId
+      ? `migration-stub:${hints.sourceContactId}`
+      : 'migration-stub',
+    tags: ['migration-auto-stub'],
+  };
+  if (hints.email) body.email = hints.email.trim().toLowerCase();
+  if (hints.phone) body.phone = hints.phone;
+
+  try {
+    const res = await ctx.ghlFetch(
+      `${GHL_API_BASE}/contacts/`,
+      { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify(body) },
+      2, 'target',
+    );
+    if (res.status === 200 || res.status === 201) {
+      const data = await res.json().catch(() => ({}));
+      const newId = data?.contact?.id || data?.id;
+      if (newId) return { id: newId, createdNew: true };
+    }
+    // GHL returns 400 with the existing contact id when there's a
+    // duplicate by email/phone. Recover by extracting it.
+    if (res.status === 400) {
+      const errBody = await res.text();
+      const m = errBody.match(/contactId["':\s]+([a-zA-Z0-9]{12,})/);
+      if (m?.[1]) return { id: m[1], createdNew: false };
+      console.warn(`[opps-worker] stub-contact 400: ${errBody.substring(0, 240)}`);
+    } else {
+      const errBody = await res.text();
+      console.warn(`[opps-worker] stub-contact create failed ${res.status}: ${errBody.substring(0, 240)}`);
+    }
+    return null;
+  } catch (e) {
+    console.warn(`[opps-worker] stub-contact threw: ${(e as Error).message}`);
+    return null;
+  }
+
+/**
  * Look for an existing opportunity in the target account that matches this
  * source opportunity. We use a strict matcher: contactId + pipelineId scope
  * the search, and we only declare a match when name (case-insensitive,
