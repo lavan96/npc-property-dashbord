@@ -301,6 +301,20 @@ export function MigrationSourceUploader({
           <div className="text-[10px] text-muted-foreground">
             Accepts .csv, .xlsx · Max 50 MB · Max {MAX_ROWS.toLocaleString()} rows
           </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="mt-1 h-8"
+            disabled={parsing || uploading}
+            onClick={(e) => {
+              e.stopPropagation();
+              openFilePicker();
+            }}
+          >
+            <Upload className="mr-1 h-3 w-3" />
+            Browse files
+          </Button>
         </div>
 
         {progress && (
