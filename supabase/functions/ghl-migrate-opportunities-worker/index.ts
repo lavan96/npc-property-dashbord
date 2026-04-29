@@ -61,6 +61,130 @@ async function targetContactExists(
 }
 
 /**
+ * Normalize a phone string to digits-only E.164-ish form for lookup.
+ * Strips spaces, dashes, parens. Keeps a leading '+' if present.
+ * Returns null if fewer than 6 digits remain (likely junk).
+ */
+function normalizePhoneForLookup(phone: string | null | undefined): string | null {
+  if (!phone) return null;
+  const trimmed = String(phone).trim();
+  if (!trimmed) return null;
+  const hasPlus = trimmed.startsWith('+');
+  const digits = trimmed.replace(/\D/g, '');
+  if (digits.length < 6) return null;
+  return hasPlus ? `+${digits}` : digits;
+}
+
+/**
+ * GHL `/contacts/lookup` accepts ?email= or ?phone= and returns matching
+ * contacts in the queried location. Returns the first contact id, or null.
+ * Used as Tier-2/3 contact resolution before falling back to name matching.
+ */
+async function lookupTargetContactByEmailOrPhone(
+  ctx: GhlFetchContext,
+  locationId: string,
+  headers: Record<string, string>,
+  params: { email?: string | null; phone?: string | null },
+): Promise<string | null> {
+  const qp = new URLSearchParams({ locationId });
+  if (params.email) qp.set('email', params.email.trim().toLowerCase());
+  else if (params.phone) qp.set('phone', params.phone);
+  else return null;
+  try {
+    const res = await ctx.ghlFetch(
+      `${GHL_API_BASE}/contacts/lookup?${qp}`,
+      { headers }, 2, 'target',
+    );
+    if (!res.ok) return null;
+    const body = await res.json().catch(() => ({}));
+    const contacts: any[] = body?.contacts || [];
+    const first = contacts.find((c) => c?.id);
+    return first?.id || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Create a stub contact in the target account when an opportunity row has
+ * no resolvable contact via ID/email/phone/name. Uses every identity hint
+ * available so the new contact is at least minimally findable in GHL.
+ * Returns the new contact id, or null on hard failure.
+ */
+async function createStubTargetContact(
+  ctx: GhlFetchContext,
+  locationId: string,
+  headers: Record<string, string>,
+  hints: {
+    firstName?: string | null;
+    lastName?: string | null;
+    fullName?: string | null;
+    email?: string | null;
+    phone?: string | null;
+    sourceContactId?: string | null;
+  },
+): Promise<{ id: string; createdNew: boolean } | null> {
+  // Idempotency: if email or phone is present, try lookup first to avoid
+  // duplicating a contact that already exists in target.
+  if (hints.email || hints.phone) {
+    const found = await lookupTargetContactByEmailOrPhone(ctx, locationId, headers, {
+      email: hints.email, phone: hints.phone,
+    });
+    if (found) return { id: found, createdNew: false };
+  }
+
+  let firstName = (hints.firstName || '').trim();
+  let lastName = (hints.lastName || '').trim();
+  if (!firstName && !lastName && hints.fullName) {
+    const parts = hints.fullName.trim().split(/\s+/);
+    firstName = parts[0] || '';
+    lastName = parts.slice(1).join(' ') || '';
+  }
+  if (!firstName) firstName = 'Unknown';
+  if (!lastName) lastName = 'Unknown';
+
+  const body: Record<string, unknown> = {
+    locationId,
+    firstName,
+    lastName,
+    source: hints.sourceContactId
+      ? `migration-stub:${hints.sourceContactId}`
+      : 'migration-stub',
+    tags: ['migration-auto-stub'],
+  };
+  if (hints.email) body.email = hints.email.trim().toLowerCase();
+  if (hints.phone) body.phone = hints.phone;
+
+  try {
+    const res = await ctx.ghlFetch(
+      `${GHL_API_BASE}/contacts/`,
+      { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify(body) },
+      2, 'target',
+    );
+    if (res.status === 200 || res.status === 201) {
+      const data = await res.json().catch(() => ({}));
+      const newId = data?.contact?.id || data?.id;
+      if (newId) return { id: newId, createdNew: true };
+    }
+    // GHL returns 400 with the existing contact id when there's a
+    // duplicate by email/phone. Recover by extracting it.
+    if (res.status === 400) {
+      const errBody = await res.text();
+      const m = errBody.match(/contactId["':\s]+([a-zA-Z0-9]{12,})/);
+      if (m?.[1]) return { id: m[1], createdNew: false };
+      console.warn(`[opps-worker] stub-contact 400: ${errBody.substring(0, 240)}`);
+    } else {
+      const errBody = await res.text();
+      console.warn(`[opps-worker] stub-contact create failed ${res.status}: ${errBody.substring(0, 240)}`);
+    }
+    return null;
+  } catch (e) {
+    console.warn(`[opps-worker] stub-contact threw: ${(e as Error).message}`);
+    return null;
+  }
+}
+
+/**
  * Look for an existing opportunity in the target account that matches this
  * source opportunity. We use a strict matcher: contactId + pipelineId scope
  * the search, and we only declare a match when name (case-insensitive,
@@ -235,6 +359,19 @@ Deno.serve(async (req) => {
       payload.assigned_user_strategy === 'map_by_email' ? 'map_by_email'
       : payload.assigned_user_strategy === 'omit' ? 'omit'
       : 'single';
+    // When true (default), the worker NEVER skips a row for "no contact found".
+    // It will mint a stub contact in the target account using whatever
+    // identity data the row carries (email/phone/name — even "Unknown
+    // Unknown") so the opportunity can still be created. Operators wanting
+    // strict cleanup can flip this to false and rows without a resolvable
+    // contact will skip with a clear reason instead.
+    const autoCreateMissingContacts = payload.auto_create_missing_contacts !== false;
+    // When true (default), placeholder names like "Unknown Unknown" are
+    // INCLUDED in the migration rather than filtered out. They flow through
+    // ID/email/phone resolution first; if all tiers miss, the auto-create
+    // path captures them. Set false to revert to old "skip placeholders"
+    // behaviour.
+    const includePlaceholderContacts = payload.include_placeholder_contacts !== false;
 
     // ── Operator range controls (workaround for GHL ordering quirks) ──
     // GHL `/opportunities/search` sorts by `date_added desc` and the cursor
@@ -254,7 +391,7 @@ Deno.serve(async (req) => {
     const seedStartAfterId: string | null = typeof payload.start_after_id === 'string'
       ? payload.start_after_id : null;
 
-    console.log(`[opps-worker] flags: forceRecreate=${forceRecreate} skipTargetDedupe=${skipTargetDedupe} onlyLowConfidence=${onlyLowConfidence} includeClosed=${includeClosedStatuses} pipelineFilter=${pipelineFilter.length} stageFilter=${stageFilter.length} assignStrategy=${assignedUserStrategy} skipCount=${skipCount} seedStartAfterIso=${seedStartAfterIso || '(none)'} seedStartAfterId=${seedStartAfterId || '(none)'}`);
+    console.log(`[opps-worker] flags: forceRecreate=${forceRecreate} skipTargetDedupe=${skipTargetDedupe} onlyLowConfidence=${onlyLowConfidence} includeClosed=${includeClosedStatuses} pipelineFilter=${pipelineFilter.length} stageFilter=${stageFilter.length} assignStrategy=${assignedUserStrategy} skipCount=${skipCount} autoCreateMissingContacts=${autoCreateMissingContacts} includePlaceholderContacts=${includePlaceholderContacts} seedStartAfterIso=${seedStartAfterIso || '(none)'} seedStartAfterId=${seedStartAfterId || '(none)'}`);
 
     if (!jobId) return new Response(JSON.stringify({ error: 'job_id required' }), { status: 400 });
 
@@ -825,7 +962,51 @@ Deno.serve(async (req) => {
           }
         }
 
-        if (!resolved.newId && oppContactName && !isPlaceholderResolutionName(oppContactName)) {
+        // ── Tier 2: email lookup against target GHL ──────────────────
+        // CSV exports almost always carry an email; this is the most
+        // reliable identifier when the source contactId is missing or
+        // the contact wasn't migrated yet.
+        const oppEmail = (opp.email || opp.contact?.email || '').trim().toLowerCase() || null;
+        const oppPhone = normalizePhoneForLookup(opp.phone || opp.contact?.phone);
+        if (!resolved.newId && oppEmail && !dryRun) {
+          const found = await lookupTargetContactByEmailOrPhone(
+            ctx, targetCreds.locationId!, targetHeaders, { email: oppEmail },
+          );
+          if (found) {
+            resolved.newId = found;
+            if (opp.contactId) {
+              await recordIdMapping(supabase, {
+                resource_type: 'contact', old_ghl_id: opp.contactId, new_ghl_id: found,
+                source_account_label: sourceAccount, target_account_label: targetAccount,
+                notes: oppContactName || oppEmail,
+              });
+            }
+          }
+        }
+
+        // ── Tier 3: phone lookup against target GHL ──────────────────
+        if (!resolved.newId && oppPhone && !dryRun) {
+          const found = await lookupTargetContactByEmailOrPhone(
+            ctx, targetCreds.locationId!, targetHeaders, { phone: oppPhone },
+          );
+          if (found) {
+            resolved.newId = found;
+            if (opp.contactId) {
+              await recordIdMapping(supabase, {
+                resource_type: 'contact', old_ghl_id: opp.contactId, new_ghl_id: found,
+                source_account_label: sourceAccount, target_account_label: targetAccount,
+                notes: oppContactName || oppPhone,
+              });
+            }
+          }
+        }
+
+        // ── Tier 4: name lookup in ghl_id_mapping ────────────────────
+        // Placeholder names like "Unknown Unknown" are allowed through
+        // when includePlaceholderContacts is on (default), so they have
+        // a chance to match a previously-mapped placeholder contact.
+        if (!resolved.newId && oppContactName
+            && (includePlaceholderContacts || !isPlaceholderResolutionName(oppContactName))) {
           const nameResolved = await resolveTargetContactByName(supabase, {
             fullName: oppContactName,
             sourceAccount,
@@ -854,6 +1035,35 @@ Deno.serve(async (req) => {
           }
         }
 
+        // ── Tier 5: auto-create stub contact in target ───────────────
+        // Last-resort path so an upload row is NEVER skipped purely for
+        // "no contact found". Mints a placeholder contact in target using
+        // every identity hint the row carries (firstName/lastName/email/
+        // phone). Tagged 'migration-auto-stub' for cleanup later.
+        if (!resolved.newId && autoCreateMissingContacts && !dryRun) {
+          const stub = await createStubTargetContact(
+            ctx, targetCreds.locationId!, targetHeaders, {
+              firstName: sanitized.firstName || opp.firstName,
+              lastName: sanitized.lastName || opp.lastName,
+              fullName: oppContactName,
+              email: oppEmail,
+              phone: oppPhone,
+              sourceContactId: opp.contactId,
+            },
+          );
+          if (stub) {
+            resolved.newId = stub.id;
+            if (opp.contactId) {
+              await recordIdMapping(supabase, {
+                resource_type: 'contact', old_ghl_id: opp.contactId, new_ghl_id: stub.id,
+                source_account_label: sourceAccount, target_account_label: targetAccount,
+                notes: oppContactName || oppEmail || oppPhone || 'Auto-stub',
+              });
+            }
+            console.log(`[opps-worker] auto-created stub contact ${stub.id} for opp=${opp.id} (createdNew=${stub.createdNew})`);
+          }
+        }
+
         if (!resolved.newId) {
           if (opp.contactId) unresolvedWithContactId++;
           else missingContactReference++;
@@ -862,10 +1072,10 @@ Deno.serve(async (req) => {
             job_id: jobId, source_id: opp.id, entity_label: oppLabel,
             status: 'skipped',
             error_message: opp.contactId
-              ? `No live target contact mapping for source contactId=${opp.contactId}${idMappedButTargetMissing ? ' (stale target contact was deleted)' : ''}${oppContactName ? ` (name "${oppContactName}")` : ''} — rerun contacts migration before opportunities`
-              : (oppContactName
-                  ? `No target contact named "${oppContactName}" — run contacts worker first`
-                  : 'Opportunity has no contactId or contact name to match against'),
+              ? `No resolvable contact identity for source contactId=${opp.contactId}${idMappedButTargetMissing ? ' (stale target contact was deleted)' : ''}${oppContactName ? ` (name "${oppContactName}")` : ''}${oppEmail ? ` (email "${oppEmail}")` : ''} — tried ID/email/phone/name${autoCreateMissingContacts ? ' + auto-create' : ''}`
+              : (oppContactName || oppEmail || oppPhone
+                  ? `No target contact found by name="${oppContactName || ''}", email="${oppEmail || ''}", phone="${oppPhone || ''}"${autoCreateMissingContacts ? ' (auto-create also failed)' : ''}`
+                  : 'Opportunity row has no contactId, name, email, or phone to match against'),
           });
           continue;
         }
@@ -945,7 +1155,14 @@ Deno.serve(async (req) => {
 
         // Empty/whitespace names cause 422 "name should not be empty".
         // Fall back to a deterministic placeholder so we never POST blank.
-        const safeName = (opp.name || '').trim() || `Opportunity ${String(opp.id).slice(-6)}`;
+        // Title fallback chain (per user policy):
+        //   1. Use the opportunity's own name from the source/CSV
+        //   2. Fall back to the resolved contact name
+        //   3. Last-resort deterministic placeholder so we never POST blank
+        //      (GHL returns 422 "name should not be empty" otherwise)
+        const safeName = (opp.name || '').trim()
+          || (oppContactName || '').trim()
+          || `Opportunity ${String(opp.id).slice(-6)}`;
         const sourceMonetary =
           typeof opp.monetaryValue === 'number' && !Number.isNaN(opp.monetaryValue)
             ? opp.monetaryValue
