@@ -157,7 +157,18 @@ export function MigrationSourceUploader({
               },
             );
             if (res.error) {
-              failed = { index: next.index, message: res.error.message || 'unknown' };
+              const msg = res.error.message || 'unknown error';
+              failed = { index: next.index, message: msg };
+              // Surface IMMEDIATELY so the user sees what happened instead
+              // of a stuck-looking spinner. The aggregate toast still fires
+              // below for the user-visible "delete + retry" guidance.
+              toast.error(`Upload chunk ${next.index} failed: ${msg.substring(0, 200)}`, {
+                duration: 10_000,
+              });
+              console.error(
+                `[MigrationSourceUploader] append_chunk failed`,
+                { uploadId, chunkIndex: next.index, rows: next.rows.length, error: res.error },
+              );
               return;
             }
             uploadedRows += next.rows.length;
@@ -178,7 +189,12 @@ export function MigrationSourceUploader({
         );
 
         if (failed) {
-          toast.error(`Chunk ${failed.index} failed: ${failed.message}. Partial upload kept — delete it and retry.`);
+          toast.error(
+            `Stopped at chunk ${failed.index} (${(failed.index * CHUNK_SIZE).toLocaleString()} of ${records.length.toLocaleString()} rows). Delete the partial upload below and retry.`,
+            { duration: 12_000 },
+          );
+          // Refresh the list so the user can see and delete the partial row.
+          await refreshRecents();
           return;
         }
 
