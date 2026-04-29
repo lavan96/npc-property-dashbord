@@ -1181,7 +1181,13 @@ Deno.serve(async (req) => {
         // The matcher is strict: requires name + monetaryValue agreement
         // for a 'medium' confidence match. Anything weaker is recorded as
         // 'low' so it surfaces for manual review.
-        if (!dryRun && !skipTargetDedupe) {
+        // When force_recreate=true, we have already wiped the local mapping
+        // intentionally — we WANT to POST a fresh record. Running the
+        // pre-flight dedupe here would just re-bind the existing target opp
+        // (the very thing the operator asked us to overwrite), causing the
+        // worker to spin forever marking the same items as "skipped" and
+        // never advancing meaningful work. Bypass dedupe in that mode.
+        if (!dryRun && !skipTargetDedupe && !effectiveForceRecreate) {
           const match = await findExistingTargetOpportunity(
             ctx, targetCreds.locationId!, contactMap.new_ghl_id!, pmap.targetPipelineId,
             safeName, sourceMonetary, targetHeaders,
