@@ -531,75 +531,86 @@ Deno.serve(async (req) => {
             const generationId = createData.generationId || createData.id;
             console.log('[Gamma] Generation started, generationId:', generationId);
 
-            // Always store the generationId immediately so we can retry later
+            // Store generationId immediately and mark as pending_pdf.
+            // The actual polling + PDF download happens in a background task
+            // (EdgeRuntime.waitUntil) so we don't block the request and hit the
+            // edge function timeout. The frontend / retry_pdf action will pick
+            // up the completed PDF once it's ready.
             await supabase.from('agency_agreements').update({
+              status: 'pending_pdf',
               gamma_document_id: generationId,
             }).eq('id', agreement.id);
 
-            // Poll for completion (max 150 seconds = 50 polls × 3s)
-            let gammaResult: any = null;
-            for (let i = 0; i < 50; i++) {
-              await new Promise(r => setTimeout(r, 3000));
-              const pollRes = await fetch(`${GAMMA_API_URL}/generations/${generationId}`, {
-                headers: { 'X-API-KEY': gammaApiKey },
-              });
-              const pollText = await pollRes.text();
-              let pollData: any;
-              try { pollData = JSON.parse(pollText); } catch { pollData = {}; }
-              console.log(`[Gamma] Poll ${i + 1}/50: status=${pollData.status}, keys=${Object.keys(pollData).join(',')}`);
-
-              if (pollData.status === 'completed') {
-                gammaResult = pollData;
-                console.log('[Gamma] COMPLETED - full response:', JSON.stringify(pollData).substring(0, 1000));
-                break;
-              } else if (pollData.status === 'failed' || pollData.status === 'error') {
-                console.error('[Gamma] Generation failed:', JSON.stringify(pollData));
-                break;
-              }
-            }
-
-            if (gammaResult) {
-              const gammaUrl = gammaResult.gammaUrl || gammaResult.url;
-              const pdfUrl = gammaResult.exportUrl || gammaResult.pdfUrl || gammaResult.fileUrl;
-              const gammaDocId = gammaResult.gammaId || generationId;
-
-              console.log('[Gamma] gammaUrl:', gammaUrl, 'pdfUrl:', pdfUrl, 'gammaDocId:', gammaDocId);
-
-              const updateData: Record<string, any> = {
-                status: 'generated',
-                gamma_document_id: gammaDocId,
-                gamma_document_url: gammaUrl,
-              };
-
-              // Download and store PDF — with content-type validation & explicit export fallback
-              const pdfBuffer = await fetchGammaPdfBuffer(pdfUrl, gammaDocId, gammaApiKey!);
-              if (pdfBuffer) {
-                const storagePath = `agreements/${agreement.id}/agreement.pdf`;
-                const { error: uploadErr } = await supabase.storage
-                  .from('agency-agreements')
-                  .upload(storagePath, new Uint8Array(pdfBuffer), {
-                    contentType: 'application/pdf',
-                    upsert: true,
+            const backgroundTask = (async () => {
+              try {
+                let gammaResult: any = null;
+                for (let i = 0; i < 50; i++) {
+                  await new Promise(r => setTimeout(r, 3000));
+                  const pollRes = await fetch(`${GAMMA_API_URL}/generations/${generationId}`, {
+                    headers: { 'X-API-KEY': gammaApiKey },
                   });
-                if (!uploadErr) {
-                  updateData.pdf_storage_path = storagePath;
-                  console.log('[Gamma] PDF stored at:', storagePath);
-                } else {
-                  console.error('[Gamma] PDF upload error:', uploadErr.message);
-                }
-              } else {
-                console.warn('[Gamma] Could not obtain a valid PDF for this agreement');
-              }
+                  const pollText = await pollRes.text();
+                  let pollData: any;
+                  try { pollData = JSON.parse(pollText); } catch { pollData = {}; }
+                  console.log(`[Gamma:bg] Poll ${i + 1}/50: status=${pollData.status}`);
 
-              await supabase.from('agency_agreements').update(updateData).eq('id', agreement.id);
-              console.log('[Gamma] Agreement record updated');
+                  if (pollData.status === 'completed') {
+                    gammaResult = pollData;
+                    break;
+                  } else if (pollData.status === 'failed' || pollData.status === 'error') {
+                    console.error('[Gamma:bg] Generation failed:', JSON.stringify(pollData));
+                    return;
+                  }
+                }
+
+                if (!gammaResult) {
+                  console.warn('[Gamma:bg] Polling timed out — generationId stored for deferred retry:', generationId);
+                  return;
+                }
+
+                const gammaUrl = gammaResult.gammaUrl || gammaResult.url;
+                const pdfUrl = gammaResult.exportUrl || gammaResult.pdfUrl || gammaResult.fileUrl;
+                const gammaDocId = gammaResult.gammaId || generationId;
+
+                const updateData: Record<string, any> = {
+                  status: 'generated',
+                  gamma_document_id: gammaDocId,
+                  gamma_document_url: gammaUrl,
+                };
+
+                const pdfBuffer = await fetchGammaPdfBuffer(pdfUrl, gammaDocId, gammaApiKey!);
+                if (pdfBuffer) {
+                  const storagePath = `agreements/${agreement.id}/agreement.pdf`;
+                  const { error: uploadErr } = await supabase.storage
+                    .from('agency-agreements')
+                    .upload(storagePath, new Uint8Array(pdfBuffer), {
+                      contentType: 'application/pdf',
+                      upsert: true,
+                    });
+                  if (!uploadErr) {
+                    updateData.pdf_storage_path = storagePath;
+                    console.log('[Gamma:bg] PDF stored at:', storagePath);
+                  } else {
+                    console.error('[Gamma:bg] PDF upload error:', uploadErr.message);
+                  }
+                } else {
+                  console.warn('[Gamma:bg] Could not obtain a valid PDF for this agreement');
+                }
+
+                await supabase.from('agency_agreements').update(updateData).eq('id', agreement.id);
+                console.log('[Gamma:bg] Agreement record updated');
+              } catch (bgErr: any) {
+                console.error('[Gamma:bg] Background task error:', bgErr.message, bgErr.stack);
+              }
+            })();
+
+            // @ts-ignore - EdgeRuntime is available in Supabase Edge Runtime
+            if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
+              // @ts-ignore
+              EdgeRuntime.waitUntil(backgroundTask);
             } else {
-              // Timed out but generationId is already stored — can retry later
-              await supabase.from('agency_agreements').update({
-                status: 'pending_pdf',
-                gamma_document_id: generationId,
-              }).eq('id', agreement.id);
-              console.warn('[Gamma] Timed out — generationId stored for deferred retry:', generationId);
+              // Fallback: don't await, but the runtime may kill it
+              backgroundTask;
             }
           } else {
             console.error('[Gamma] Create failed - status:', createRes.status, 'body:', createText.substring(0, 500));
