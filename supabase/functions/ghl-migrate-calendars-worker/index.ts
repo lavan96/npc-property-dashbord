@@ -254,13 +254,11 @@ Deno.serve(async (req) => {
         warnings.push(`Dropped ${droppedMembers.length} unmapped team member(s): ${droppedMembers.slice(0, 3).join(',')}${droppedMembers.length > 3 ? '…' : ''}`);
       }
 
-      // Fallback: GHL requires >=1 team member. If everything was unmapped,
-      // assign the configured default_user_id (must exist in target account).
-      let usedDefaultUser = false;
-      if (mappedMembers.length === 0 && defaultUserId) {
-        mappedMembers.push({ userId: defaultUserId, priority: 0.5, selected: true });
-        usedDefaultUser = true;
-        warnings.push(`No mapped team members — assigned default_user_id ${defaultUserId}`);
+      // Fallback: GHL requires >=1 team member. Use configured OR auto-fetched fallback userId.
+      const fallbackUserId = resolvedDefaultUserId;
+      if (mappedMembers.length === 0 && fallbackUserId) {
+        mappedMembers.push({ userId: fallbackUserId, priority: 0.5, selected: true });
+        warnings.push(`No mapped team members — assigned fallback userId ${fallbackUserId}`);
       }
 
       // PERSONAL calendars accept exactly one team member.
@@ -277,18 +275,22 @@ Deno.serve(async (req) => {
       if (hasZoom) warnings.push('Zoom integration must be reconnected in target account');
       if (hasMeet) warnings.push('Google Meet integration must be reconnected in target account');
 
-      // Build payload — strip account-specific fields and fields GHL POST rejects
-      const stripped: any = { ...full };
-      const REJECTED_FIELDS = [
-        'id', '_id', 'calendarId', 'locationId', 'dateAdded', 'dateUpdated',
-        'formSubmitRedirectUrl', // GHL: "property formSubmitRedirectUrl should not exist"
-        'traceId', 'createdAt', 'updatedAt', 'isActive',
-      ];
-      for (const f of REJECTED_FIELDS) delete stripped[f];
+      // Build payload via strict ALLOWLIST — drop everything GHL doesn't accept on POST.
+      const stripped: any = {};
+      for (const k of Object.keys(full)) {
+        if (ALLOWED_FIELDS.has(k)) stripped[k] = full[k];
+      }
       stripped.locationId = targetCreds.locationId;
       if (mappedGroupId) stripped.groupId = mappedGroupId;
-      else delete stripped.groupId;
-      stripped.teamMembers = mappedMembers;
+      // Normalise teamMembers shape (PERSONAL requires {userId, priority, selected})
+      stripped.teamMembers = mappedMembers.map((tm: any) => ({
+        userId: tm.userId,
+        priority: typeof tm.priority === 'number' ? tm.priority : 0.5,
+        selected: tm.selected !== false,
+        ...(tm.meetingLocationType ? { meetingLocationType: tm.meetingLocationType } : {}),
+        ...(tm.meetingLocation ? { meetingLocation: tm.meetingLocation } : {}),
+        ...(tm.locationConfigurations ? { locationConfigurations: tm.locationConfigurations } : {}),
+      }));
 
       // Skip when there are still no team members — GHL will reject.
       if (mappedMembers.length === 0) {
