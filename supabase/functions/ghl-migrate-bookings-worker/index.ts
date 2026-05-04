@@ -193,31 +193,35 @@ Deno.serve(async (req) => {
       const newCalId = calMap.new_ghl_id;
       const calLabel = calMap.notes || oldCalId;
 
-      // Paginate events for this calendar starting from calendarOffset
-      let pageOffset = calendarOffset;
-      while (true) {
+      // GHL /calendars/events does NOT support limit/skip — it returns all events in [startTime,endTime].
+      // We chunk the time window into ~30-day slices to keep responses bounded and resumable.
+      const WINDOW_SLICE_MS = 30 * 86400_000;
+      let sliceStart = win.startTime + (calendarOffset * WINDOW_SLICE_MS);
+      let sliceIndex = calendarOffset;
+      while (sliceStart < win.endTime) {
         if (Date.now() - startedAt > MAX_RUNTIME_MS) { timeBudgetExhausted = true; break outer; }
         const sig = await readControlSignal(supabase, jobId);
         if (sig === 'kill' || sig === 'cancel') { cancelledByUser = sig; break outer; }
         if (sig === 'pause') { pausedByUser = true; break outer; }
 
-        const url = `${GHL_API_BASE}/calendars/events?locationId=${sourceCreds.locationId}&calendarId=${oldCalId}&startTime=${win.startTime}&endTime=${win.endTime}&limit=${PAGE_SIZE}&skip=${pageOffset}`;
+        const sliceEnd = Math.min(sliceStart + WINDOW_SLICE_MS, win.endTime);
+        const url = `${GHL_API_BASE}/calendars/events?locationId=${sourceCreds.locationId}&calendarId=${oldCalId}&startTime=${sliceStart}&endTime=${sliceEnd}`;
         const r = await ctx.ghlFetch(url, { method: 'GET', headers: sourceHeaders }, 3, 'source');
         if (!r.ok) {
           const t = await r.text();
-          console.error(`[bookings-worker] List events failed cal=${oldCalId} ${r.status}: ${t.substring(0, 200)}`);
-          // Move to next calendar; record one failed item against the calendar so dashboard surfaces it
+          console.error(`[bookings-worker] List events failed cal=${oldCalId} slice=${sliceIndex} ${r.status}: ${t.substring(0, 200)}`);
           totalFailed++;
           await recordItem(supabase, {
-            job_id: jobId, source_id: `cal:${oldCalId}:page:${pageOffset}`,
+            job_id: jobId, source_id: `cal:${oldCalId}:slice:${sliceIndex}`,
             entity_label: `Calendar ${calLabel}`, status: 'failed',
             error_message: `List events failed: ${r.status} ${t.substring(0, 200)}`,
           });
-          break;
+          sliceStart = sliceEnd;
+          sliceIndex++;
+          continue;
         }
         const data = await r.json();
         const events: any[] = data?.events || data?.data || [];
-        if (events.length === 0) break;
 
         for (const ev of events) {
           if (Date.now() - startedAt > MAX_RUNTIME_MS) { timeBudgetExhausted = true; break outer; }
@@ -226,7 +230,7 @@ Deno.serve(async (req) => {
           const oldEventId = ev.id;
           const evLabel = `${ev.title || 'Appointment'} @ ${ev.startTime || ''}`;
           totalProcessed++;
-          pageOffset++;
+          
 
           // Already mirrored?
           const existing = await lookupMapping(supabase, 'appointment', oldEventId, sourceAccount, targetAccount);
@@ -336,9 +340,11 @@ Deno.serve(async (req) => {
           }
         }
 
-        if (events.length < PAGE_SIZE) break; // last page
+        sliceStart = sliceEnd;
+        sliceIndex++;
+        calendarOffset = sliceIndex;
       }
-      // Done with this calendar — reset offset for the next one
+      // Done with this calendar — reset slice index for the next one
       calendarOffset = 0;
     }
 
