@@ -26,6 +26,9 @@ const WORKER_MAP: Record<string, string> = {
   conversations: 'ghl-migrate-conversations-worker',
   conversations_replay: 'ghl-migrate-conversations-replay-worker',
   notes: 'ghl-migrate-notes-worker',
+  calendar_groups: 'ghl-migrate-calendar-groups-worker',
+  calendars: 'ghl-migrate-calendars-worker',
+  bookings: 'ghl-migrate-bookings-worker',
 };
 
 // How many jobs to fan out per tick. Each job runs in its own worker
