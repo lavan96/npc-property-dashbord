@@ -392,6 +392,51 @@ const PROBES: ProbeSpec[] = [
     body: (loc) => ({ locationId: loc /* missing contactId → 422, not 401 */ }),
     okStatuses: [200, 201, 400, 422],
   },
+  {
+    scope: 'calendars/groups.readonly',
+    required_for: ['calendar_groups', 'calendars'],
+    method: 'GET',
+    buildUrl: (loc) => `${GHL_API_BASE}/calendars/groups?locationId=${loc}`,
+  },
+  {
+    scope: 'calendars/groups.write',
+    required_for: ['calendar_groups'],
+    method: 'POST',
+    buildUrl: () => `${GHL_API_BASE}/calendars/groups`,
+    // Missing required name → 400/422 if scope OK; 401/403 if not.
+    body: (loc) => ({ locationId: loc }),
+    okStatuses: [200, 201, 400, 422],
+  },
+  {
+    scope: 'calendars.readonly',
+    required_for: ['calendars', 'bookings'],
+    method: 'GET',
+    buildUrl: (loc) => `${GHL_API_BASE}/calendars/?locationId=${loc}`,
+  },
+  {
+    scope: 'calendars.write',
+    required_for: ['calendars'],
+    method: 'POST',
+    buildUrl: () => `${GHL_API_BASE}/calendars/`,
+    body: (loc) => ({ locationId: loc /* missing required fields */ }),
+    okStatuses: [200, 201, 400, 422],
+  },
+  {
+    scope: 'calendars/events.readonly',
+    required_for: ['bookings'],
+    method: 'GET',
+    // calendarId is required by this endpoint; an obviously-fake one returns
+    // 404/422 when scope is OK and 401/403 when it's not.
+    buildUrl: (loc) => `${GHL_API_BASE}/calendars/events?locationId=${loc}&calendarId=__lovable_probe_invalid__&startTime=0&endTime=1`,
+  },
+  {
+    scope: 'calendars/events.write',
+    required_for: ['bookings'],
+    method: 'POST',
+    buildUrl: () => `${GHL_API_BASE}/calendars/events/appointments`,
+    body: (loc) => ({ locationId: loc /* missing calendarId/contactId → 422 */ }),
+    okStatuses: [200, 201, 400, 422],
+  },
 ];
 
 /**
