@@ -162,8 +162,10 @@ Deno.serve(async (req) => {
     let calendarOffset = Number(checkpoint.cursor.calendarOffset) || 0;
 
     if (!isResume) {
-      // Total is unknowable without reading every page; use calendars.length as a lower bound,
-      // workers refine total_items as they go via updateJobProgress.
+      // Use the count of mapped calendars as the initial total. The worker
+      // refines this upward as actual events are discovered (one event = one
+      // unit) so the dashboard reflects real bookings progress, not just
+      // calendar count.
       await startJob(supabase, jobId, calendars.length);
     }
 
