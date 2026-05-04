@@ -165,6 +165,8 @@ export function buildDomainPayloadPatch(domain: MigrationDomain, f: AdvancedFlag
       mode: f.bookings_mode,
       notify_attendees: f.bookings_notify_attendees,
     };
+    const uid = f.default_user_id.trim();
+    if (uid) patch.default_assigned_user_id = uid;
     if (f.bookings_mode === 'window') {
       if (f.bookings_start_date) patch.start_date = new Date(f.bookings_start_date).toISOString();
       if (f.bookings_end_date) patch.end_date = new Date(f.bookings_end_date).toISOString();
@@ -555,6 +557,13 @@ export const MigrationAdvancedOptions: React.FC<Props> = ({ domain, flags, onCha
               />
             </div>
           )}
+          <TextField
+            label="Default assigned userId (target account)"
+            value={flags.default_user_id}
+            onChange={(v) => set('default_user_id', v)}
+            placeholder="e.g. 0SXXXXXXXXXXXXXXXXXX"
+            description="Required by GHL when source event has no mappable assignedUserId. Use the active user in the new GHL account (Settings → My Staff → user → Profile URL)."
+          />
           <Toggle
             checked={flags.bookings_notify_attendees}
             onChange={(v) => set('bookings_notify_attendees', v)}
