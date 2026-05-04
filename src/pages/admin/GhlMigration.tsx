@@ -56,7 +56,7 @@ interface CredentialAudit {
 }
 
 type Account = 'legacy' | 'new';
-type Domain = 'location' | 'contacts' | 'opportunities' | 'conversations' | 'notes' | 'pipelines';
+type Domain = 'location' | 'contacts' | 'opportunities' | 'conversations' | 'notes' | 'pipelines' | 'calendar_groups' | 'calendars' | 'bookings';
 
 interface DomainResult {
   domain: Domain;
