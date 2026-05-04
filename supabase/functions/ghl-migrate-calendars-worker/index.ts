@@ -87,6 +87,26 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: msg }), { status: 400 });
     }
 
+    // Allowlist of fields accepted by POST /calendars/ (LeadConnector v2)
+    // Anything not in this list will be dropped from the source payload.
+    const ALLOWED_FIELDS = new Set<string>([
+      'name', 'description', 'slug', 'widgetSlug',
+      'calendarType', 'widgetType', 'eventType', 'eventTitle', 'eventColor',
+      'slotDuration', 'slotDurationUnit', 'slotInterval', 'slotIntervalUnit',
+      'slotBuffer', 'slotBufferUnit', 'preBuffer', 'preBufferUnit',
+      'appoinmentPerSlot', 'appoinmentPerDay', 'appointmentPerSlot', 'appointmentPerDay',
+      'allowBookingAfter', 'allowBookingAfterUnit', 'allowBookingFor', 'allowBookingForUnit',
+      'openHours', 'enableRecurring', 'recurring',
+      'formId', 'stickyContact', 'isLivePaymentMode',
+      'autoConfirm', 'shouldSendAlertEmailsToAssignedMember', 'alertEmail',
+      'googleInvitationEmails', 'allowReschedule', 'allowCancellation',
+      'shouldAssignContactToTeamMember', 'shouldSkipAssigningContactForExisting',
+      'notes', 'pixelId', 'formSubmitType', 'formSubmitThanksMessage',
+      'availabilityType', 'availabilities', 'guestType', 'consentLabel', 'consentLabelV2',
+      'calendarCoverImage', 'lookBusyConfig',
+      // Set explicitly below: locationId, teamMembers, groupId
+    ]);
+
     const sourceAccess = await resolveGhlAccessTokenForLocation(sourceCreds);
     const targetAccess = dryRun
       ? { accessToken: targetCreds.apiKey!, diagnostics: null as any }
