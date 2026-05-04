@@ -72,6 +72,8 @@ export const DEFAULT_ADVANCED_FLAGS: AdvancedFlagsState = {
 
   skip_activity: true,
   max_messages_per_conv: '',
+
+  default_user_id: '',
 };
 
 /**
