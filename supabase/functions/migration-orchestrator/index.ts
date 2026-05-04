@@ -160,6 +160,23 @@ Deno.serve(async (req) => {
     const workerName = WORKER_MAP[domain];
     const workerUrl = `${supabaseUrl}/functions/v1/${workerName}`;
 
+    // ── Pre-lease the job to suppress duplicate cron dispatch ────────────
+    // Without this, the dispatcher cron (every 15s) immediately claims the
+    // same pending job and fires a second worker leg in parallel. Pre-stamp
+    // status=processing + a short worker_lock_until so claim_migration_jobs()
+    // skips it. The worker we directly invoke will refresh the lease via
+    // its own startJob/heartbeat path.
+    try {
+      await supabase.from('migration_jobs').update({
+        status: 'processing',
+        last_dispatched_at: new Date().toISOString(),
+        worker_lock_until: new Date(Date.now() + 180_000).toISOString(),
+        dispatch_count: 1,
+      }).eq('id', jobId);
+    } catch (preLeaseErr: any) {
+      console.warn(`[migration-orchestrator] pre-lease failed for ${jobId}: ${preLeaseErr?.message}`);
+    }
+
     // Use EdgeRuntime.waitUntil if available (Supabase Deno) so the worker
     // call survives after we return the response to the client.
     const dispatch = fetch(workerUrl, {
