@@ -77,15 +77,18 @@ interface PreviewResponse {
 }
 
 const DOMAIN_META: Record<Domain, { label: string; icon: any; description: string }> = {
-  location:      { label: 'Location',      icon: MapPin,         description: 'GHL account identity & timezone' },
-  contacts:      { label: 'Contacts',      icon: Users,          description: 'Total contacts in the account' },
-  opportunities: { label: 'Opportunities', icon: TrendingUp,     description: 'Open deals across all pipelines' },
-  conversations: { label: 'Conversations', icon: MessageSquare,  description: 'SMS/email/IG threads' },
-  notes:         { label: 'Notes',         icon: StickyNote,     description: 'Per-contact notes (preview not enumerable)' },
-  pipelines:     { label: 'Pipelines',     icon: GitBranch,      description: 'Pipelines & their stage layouts' },
+  location:        { label: 'Location',        icon: MapPin,         description: 'GHL account identity & timezone' },
+  contacts:        { label: 'Contacts',        icon: Users,          description: 'Total contacts in the account' },
+  opportunities:   { label: 'Opportunities',   icon: TrendingUp,     description: 'Open deals across all pipelines' },
+  conversations:   { label: 'Conversations',   icon: MessageSquare,  description: 'SMS/email/IG threads' },
+  notes:           { label: 'Notes',           icon: StickyNote,     description: 'Per-contact notes (preview not enumerable)' },
+  pipelines:       { label: 'Pipelines',       icon: GitBranch,      description: 'Pipelines & their stage layouts' },
+  calendar_groups: { label: 'Calendar Groups', icon: FolderTree,     description: 'Folders/groups that organise calendars' },
+  calendars:       { label: 'Calendars',       icon: CalendarDays,   description: 'Bookable calendars & team assignments' },
+  bookings:        { label: 'Bookings',        icon: CalendarClock,  description: 'Appointments (per-calendar; preview not enumerable)' },
 };
 
-const ALL_DOMAINS: Domain[] = ['location', 'contacts', 'pipelines', 'opportunities', 'conversations', 'notes'];
+const ALL_DOMAINS: Domain[] = ['location', 'contacts', 'pipelines', 'opportunities', 'conversations', 'notes', 'calendar_groups', 'calendars', 'bookings'];
 
 function fmtCount(n: number | null): string {
   if (n === null || n === undefined) return '—';
