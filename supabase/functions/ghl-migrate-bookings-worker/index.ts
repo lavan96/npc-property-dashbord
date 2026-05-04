@@ -300,9 +300,17 @@ Deno.serve(async (req) => {
             endTime: ev.endTime,
             title: ev.title || 'Appointment',
             appointmentStatus: ev.appointmentStatus || ev.status || 'confirmed',
+            // Critical: bypass GHL availability/slot validation so historic & overlapping
+            // bookings can be re-created during migration.
             ignoreDateRange: true,
+            ignoreFreeSlotValidation: true,
             toNotify: notifyAttendees,
           };
+          // GHL requires selectedTimezone whenever ignoreFreeSlotValidation is set.
+          const evTz = ev.selectedTimezone || ev.timezone || ev.timeZone || 'Australia/Sydney';
+          apptBody.selectedTimezone = evTz;
+          // selectedSlot mirrors the start time and is required by some GHL versions.
+          if (ev.startTime) apptBody.selectedSlot = ev.startTime;
           if (mappedAssignedUser) apptBody.assignedUserId = mappedAssignedUser;
           if (ev.address) apptBody.address = ev.address;
           if (ev.meetingLocationType) apptBody.meetingLocationType = ev.meetingLocationType;
