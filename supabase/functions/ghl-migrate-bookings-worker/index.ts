@@ -180,12 +180,20 @@ Deno.serve(async (req) => {
     } catch {}
 
     let totalProcessed = 0, totalSucceeded = 0, totalFailed = 0, totalSkipped = 0;
+    let totalEventsDiscovered = 0;
+    let calendarsScanned = 0;
     let timeBudgetExhausted = false, pausedByUser = false;
     let cancelledByUser: 'pause' | 'cancel' | 'kill' | null = null;
     const progressPatch = () => ({
-      processed_items: baseProcessed + totalProcessed,
+      // "Processed" = events handled (succeeded+failed+skipped) + calendars
+      // scanned with zero events. This makes the dashboard meaningful even
+      // when calendars are empty (otherwise jobs sit at 0/N and look broken).
+      processed_items: baseProcessed + totalProcessed + calendarsScanned,
       succeeded_items: baseSucceeded + totalSucceeded,
       failed_items: baseFailed + totalFailed,
+      // Refine total upward as we discover real events. Floor at calendars.length
+      // so the bar never shrinks if all calendars turn out empty.
+      total_items: Math.max(calendars.length, totalEventsDiscovered + calendars.length),
     });
 
     outer:
