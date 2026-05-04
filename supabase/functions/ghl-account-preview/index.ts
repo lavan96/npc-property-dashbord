@@ -4,7 +4,7 @@ import { getGhlCredentials, validateGhlCredentials, buildGhlHeaders, type GhlAcc
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 
-type Domain = 'contacts' | 'opportunities' | 'conversations' | 'notes' | 'pipelines' | 'location';
+type Domain = 'contacts' | 'opportunities' | 'conversations' | 'notes' | 'pipelines' | 'location' | 'calendar_groups' | 'calendars' | 'bookings';
 
 interface DomainResult {
   domain: Domain;
@@ -56,9 +56,10 @@ Deno.serve(async (req) => {
     }
 
     const account: GhlAccount = body.account === 'new' ? 'new' : 'legacy';
+    const ALLOWED: Domain[] = ['contacts', 'opportunities', 'conversations', 'notes', 'pipelines', 'location', 'calendar_groups', 'calendars', 'bookings'];
     const domains: Domain[] = Array.isArray(body.domains) && body.domains.length > 0
-      ? body.domains.filter((d: string) => ['contacts', 'opportunities', 'conversations', 'notes', 'pipelines', 'location'].includes(d))
-      : ['location', 'contacts', 'opportunities', 'conversations', 'notes', 'pipelines'];
+      ? body.domains.filter((d: string) => (ALLOWED as string[]).includes(d))
+      : ['location', 'contacts', 'pipelines', 'opportunities', 'conversations', 'notes', 'calendar_groups', 'calendars', 'bookings'];
 
     const creds = getGhlCredentials(account);
     const credErr = validateGhlCredentials(creds);
@@ -127,7 +128,70 @@ async function fetchDomain(
       return await fetchNotes(locationId, headers);
     case 'pipelines':
       return await fetchPipelines(locationId, headers);
+    case 'calendar_groups':
+      return await fetchCalendarGroups(locationId, headers);
+    case 'calendars':
+      return await fetchCalendars(locationId, headers);
+    case 'bookings':
+      return await fetchBookings(locationId, headers);
   }
+}
+
+async function fetchCalendarGroups(locationId: string, headers: Record<string, string>): Promise<DomainResult> {
+  const params = new URLSearchParams({ locationId });
+  const res = await fetch(`${GHL_API_BASE}/calendars/groups?${params}`, {
+    method: 'GET',
+    headers: { ...headers, Version: '2021-04-15' },
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    return { domain: 'calendar_groups', count: null, sample: [], error: `HTTP ${res.status}: ${text.substring(0, 200)}` };
+  }
+  const data = await res.json();
+  const groups = data.groups || [];
+  return {
+    domain: 'calendar_groups',
+    count: groups.length,
+    sample: groups.slice(0, 5).map((g: any) => ({ id: g.id, name: g.name, slug: g.slug, isActive: g.isActive })),
+  };
+}
+
+async function fetchCalendars(locationId: string, headers: Record<string, string>): Promise<DomainResult> {
+  const params = new URLSearchParams({ locationId });
+  const res = await fetch(`${GHL_API_BASE}/calendars/?${params}`, {
+    method: 'GET',
+    headers: { ...headers, Version: '2021-04-15' },
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    return { domain: 'calendars', count: null, sample: [], error: `HTTP ${res.status}: ${text.substring(0, 200)}` };
+  }
+  const data = await res.json();
+  const calendars = data.calendars || [];
+  return {
+    domain: 'calendars',
+    count: calendars.length,
+    sample: calendars.slice(0, 5).map((c: any) => ({
+      id: c.id,
+      name: c.name,
+      groupId: c.groupId,
+      slug: c.slug,
+      isActive: c.isActive,
+      teamMembers: (c.teamMembers || []).length,
+    })),
+  };
+}
+
+async function fetchBookings(_locationId: string, _headers: Record<string, string>): Promise<DomainResult> {
+  // Bookings are per-calendar in GHL API; counts are derivable only by iterating calendars.
+  return {
+    domain: 'bookings',
+    count: null,
+    sample: [],
+    meta: {
+      info: 'Bookings are per-calendar in GHL; counts are derivable only by iterating calendars. Available in dedicated worker.',
+    },
+  };
 }
 
 async function fetchLocation(locationId: string, headers: Record<string, string>): Promise<DomainResult> {
