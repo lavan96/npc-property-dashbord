@@ -610,6 +610,18 @@ request_timeout = 400
 verify_jwt = false
 request_timeout = 400
 
+[functions.ghl-migrate-calendar-groups-worker]
+verify_jwt = false
+request_timeout = 400
+
+[functions.ghl-migrate-calendars-worker]
+verify_jwt = false
+request_timeout = 400
+
+[functions.ghl-migrate-bookings-worker]
+verify_jwt = false
+request_timeout = 400
+
 [functions.ghl-test-credentials]
 verify_jwt = false
 request_timeout = 30
