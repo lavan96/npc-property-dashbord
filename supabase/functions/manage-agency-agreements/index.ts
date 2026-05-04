@@ -764,7 +764,7 @@ Deno.serve(async (req) => {
 
       // DocuSign API credentials - auto-generate token via JWT
       const docusignAccountId = Deno.env.get('DOCUSIGN_ACCOUNT_ID');
-      const docusignBaseUrl = Deno.env.get('DOCUSIGN_BASE_URL') || 'https://demo.docusign.net/restapi';
+      const docusignBaseUrl = getDocuSignRestBaseUrl();
 
       if (!docusignAccountId) {
         return new Response(
@@ -949,7 +949,7 @@ Deno.serve(async (req) => {
       }
 
       const docusignAccountId = Deno.env.get('DOCUSIGN_ACCOUNT_ID');
-      const docusignBaseUrl = Deno.env.get('DOCUSIGN_BASE_URL') || 'https://demo.docusign.net/restapi';
+      const docusignBaseUrl = getDocuSignRestBaseUrl();
 
       if (!docusignAccountId) {
         return new Response(
@@ -1029,7 +1029,7 @@ Deno.serve(async (req) => {
       // Void in DocuSign if applicable
       if (agreement?.docusign_envelope_id) {
         const docusignAccountId = Deno.env.get('DOCUSIGN_ACCOUNT_ID');
-        const docusignBaseUrl = Deno.env.get('DOCUSIGN_BASE_URL') || 'https://demo.docusign.net/restapi';
+        const docusignBaseUrl = getDocuSignRestBaseUrl();
 
         if (docusignAccountId) {
           try {
