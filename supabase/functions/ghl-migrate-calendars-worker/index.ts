@@ -242,6 +242,29 @@ Deno.serve(async (req) => {
         continue;
       }
 
+      // Idempotent match: existing target calendar with same slug or name.
+      const matchBySlug =
+        (c.slug && targetBySlug.get(String(c.slug).toLowerCase())) ||
+        (c.widgetSlug && targetBySlug.get(String(c.widgetSlug).toLowerCase())) ||
+        null;
+      const matchByName = !matchBySlug && c.name
+        ? targetByName.get(String(c.name).toLowerCase().trim()) : null;
+      const preExisting = matchBySlug || matchByName;
+      if (preExisting && !dryRun) {
+        await recordIdMapping(supabase, {
+          resource_type: 'calendar', old_ghl_id: oldId, new_ghl_id: preExisting.id,
+          source_account_label: sourceAccount, target_account_label: targetAccount,
+          notes: `${label} (linked to existing target by ${matchBySlug ? 'slug' : 'name'})`,
+        });
+        totalSkipped++;
+        await recordItem(supabase, {
+          job_id: jobId, source_id: oldId, target_id: preExisting.id,
+          entity_label: label, status: 'skipped',
+          error_message: `Linked to existing target calendar by ${matchBySlug ? 'slug' : 'name'} (no new calendar created)`,
+        });
+        continue;
+      }
+
       // Fetch full config
       let full: any = c;
       try {
