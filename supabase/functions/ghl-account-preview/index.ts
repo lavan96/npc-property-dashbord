@@ -56,9 +56,10 @@ Deno.serve(async (req) => {
     }
 
     const account: GhlAccount = body.account === 'new' ? 'new' : 'legacy';
+    const ALLOWED: Domain[] = ['contacts', 'opportunities', 'conversations', 'notes', 'pipelines', 'location', 'calendar_groups', 'calendars', 'bookings'];
     const domains: Domain[] = Array.isArray(body.domains) && body.domains.length > 0
-      ? body.domains.filter((d: string) => ['contacts', 'opportunities', 'conversations', 'notes', 'pipelines', 'location'].includes(d))
-      : ['location', 'contacts', 'opportunities', 'conversations', 'notes', 'pipelines'];
+      ? body.domains.filter((d: string) => (ALLOWED as string[]).includes(d))
+      : ['location', 'contacts', 'pipelines', 'opportunities', 'conversations', 'notes', 'calendar_groups', 'calendars', 'bookings'];
 
     const creds = getGhlCredentials(account);
     const credErr = validateGhlCredentials(creds);
