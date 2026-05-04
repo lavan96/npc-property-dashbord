@@ -4,7 +4,7 @@ import { getGhlCredentials, validateGhlCredentials, buildGhlHeaders, type GhlAcc
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 
-type Domain = 'contacts' | 'opportunities' | 'conversations' | 'notes' | 'pipelines' | 'location';
+type Domain = 'contacts' | 'opportunities' | 'conversations' | 'notes' | 'pipelines' | 'location' | 'calendar_groups' | 'calendars' | 'bookings';
 
 interface DomainResult {
   domain: Domain;
