@@ -165,6 +165,8 @@ export function buildDomainPayloadPatch(domain: MigrationDomain, f: AdvancedFlag
       mode: f.bookings_mode,
       notify_attendees: f.bookings_notify_attendees,
     };
+    const uid = f.default_user_id.trim();
+    if (uid) patch.default_assigned_user_id = uid;
     if (f.bookings_mode === 'window') {
       if (f.bookings_start_date) patch.start_date = new Date(f.bookings_start_date).toISOString();
       if (f.bookings_end_date) patch.end_date = new Date(f.bookings_end_date).toISOString();
