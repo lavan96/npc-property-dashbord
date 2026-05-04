@@ -232,6 +232,7 @@ Deno.serve(async (req) => {
         }
         const data = await r.json();
         const events: any[] = data?.events || data?.data || [];
+        totalEventsDiscovered += events.length;
 
         for (const ev of events) {
           if (Date.now() - startedAt > MAX_RUNTIME_MS) { timeBudgetExhausted = true; break outer; }
