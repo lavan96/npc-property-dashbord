@@ -211,6 +211,22 @@ Deno.serve(async (req) => {
         warnings.push(`Dropped ${droppedMembers.length} unmapped team member(s): ${droppedMembers.slice(0, 3).join(',')}${droppedMembers.length > 3 ? '…' : ''}`);
       }
 
+      // Fallback: GHL requires >=1 team member. If everything was unmapped,
+      // assign the configured default_user_id (must exist in target account).
+      let usedDefaultUser = false;
+      if (mappedMembers.length === 0 && defaultUserId) {
+        mappedMembers.push({ userId: defaultUserId, priority: 0.5, selected: true });
+        usedDefaultUser = true;
+        warnings.push(`No mapped team members — assigned default_user_id ${defaultUserId}`);
+      }
+
+      // PERSONAL calendars accept exactly one team member.
+      const calendarType = String(full.calendarType || '').toUpperCase();
+      if (calendarType === 'PERSONAL' && mappedMembers.length > 1) {
+        warnings.push(`PERSONAL calendar trimmed from ${mappedMembers.length} to 1 team member`);
+        mappedMembers.length = 1;
+      }
+
       // External integrations cannot transfer
       const hasZoom = JSON.stringify(full).toLowerCase().includes('zoom');
       const hasMeet = JSON.stringify(full).toLowerCase().includes('googlemeet') ||
@@ -218,18 +234,29 @@ Deno.serve(async (req) => {
       if (hasZoom) warnings.push('Zoom integration must be reconnected in target account');
       if (hasMeet) warnings.push('Google Meet integration must be reconnected in target account');
 
-      // Build payload — strip account-specific fields
+      // Build payload — strip account-specific fields and fields GHL POST rejects
       const stripped: any = { ...full };
-      delete stripped.id;
-      delete stripped.locationId;
-      delete stripped.dateAdded;
-      delete stripped.dateUpdated;
-      delete stripped.calendarId;
-      delete stripped._id;
+      const REJECTED_FIELDS = [
+        'id', '_id', 'calendarId', 'locationId', 'dateAdded', 'dateUpdated',
+        'formSubmitRedirectUrl', // GHL: "property formSubmitRedirectUrl should not exist"
+        'traceId', 'createdAt', 'updatedAt', 'isActive',
+      ];
+      for (const f of REJECTED_FIELDS) delete stripped[f];
       stripped.locationId = targetCreds.locationId;
       if (mappedGroupId) stripped.groupId = mappedGroupId;
       else delete stripped.groupId;
       stripped.teamMembers = mappedMembers;
+
+      // Skip when there are still no team members — GHL will reject.
+      if (mappedMembers.length === 0) {
+        totalFailed++;
+        await recordItem(supabase, {
+          job_id: jobId, source_id: oldId, entity_label: label, status: 'failed',
+          error_message: `No team members could be mapped. Migrate users first OR pass payload.default_user_id (a userId in the target account).${warnings.length ? ' | ' + warnings.join('; ') : ''}`.substring(0, 900),
+        });
+        continue;
+      }
+
 
       if (dryRun) {
         totalSucceeded++;
