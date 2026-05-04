@@ -87,6 +87,26 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: msg }), { status: 400 });
     }
 
+    // Allowlist of fields accepted by POST /calendars/ (LeadConnector v2)
+    // Anything not in this list will be dropped from the source payload.
+    const ALLOWED_FIELDS = new Set<string>([
+      'name', 'description', 'slug', 'widgetSlug',
+      'calendarType', 'widgetType', 'eventType', 'eventTitle', 'eventColor',
+      'slotDuration', 'slotDurationUnit', 'slotInterval', 'slotIntervalUnit',
+      'slotBuffer', 'slotBufferUnit', 'preBuffer', 'preBufferUnit',
+      'appoinmentPerSlot', 'appoinmentPerDay', 'appointmentPerSlot', 'appointmentPerDay',
+      'allowBookingAfter', 'allowBookingAfterUnit', 'allowBookingFor', 'allowBookingForUnit',
+      'openHours', 'enableRecurring', 'recurring',
+      'formId', 'stickyContact', 'isLivePaymentMode',
+      'autoConfirm', 'shouldSendAlertEmailsToAssignedMember', 'alertEmail',
+      'googleInvitationEmails', 'allowReschedule', 'allowCancellation',
+      'shouldAssignContactToTeamMember', 'shouldSkipAssigningContactForExisting',
+      'notes', 'pixelId', 'formSubmitType', 'formSubmitThanksMessage',
+      'availabilityType', 'availabilities', 'guestType', 'consentLabel', 'consentLabelV2',
+      'calendarCoverImage', 'lookBusyConfig',
+      // Set explicitly below: locationId, teamMembers, groupId
+    ]);
+
     const sourceAccess = await resolveGhlAccessTokenForLocation(sourceCreds);
     const targetAccess = dryRun
       ? { accessToken: targetCreds.apiKey!, diagnostics: null as any }
@@ -124,6 +144,29 @@ Deno.serve(async (req) => {
     const startOffset = Number(checkpoint.cursor.offset) || 0;
 
     if (!isResume) await startJob(supabase, jobId, calendars.length);
+
+    // Auto-resolve a fallback userId from the target account if none provided.
+    let resolvedDefaultUserId: string | null = defaultUserId;
+    if (!dryRun && !resolvedDefaultUserId) {
+      try {
+        const ur = await ctx.ghlFetch(
+          `${GHL_API_BASE}/users/?locationId=${targetCreds.locationId}`,
+          { method: 'GET', headers: targetHeaders }, 2, 'target',
+        );
+        if (ur.ok) {
+          const ud = await ur.json();
+          const users: any[] = ud?.users || ud?.data || [];
+          if (users.length > 0) {
+            resolvedDefaultUserId = users[0].id;
+            console.log(`[calendars-worker] Auto-resolved default_user_id=${resolvedDefaultUserId} (${users[0].name || users[0].email || ''})`);
+          }
+        } else {
+          console.warn(`[calendars-worker] Could not fetch target users for default fallback: ${ur.status}`);
+        }
+      } catch (e: any) {
+        console.warn(`[calendars-worker] Default user resolve threw: ${e.message}`);
+      }
+    }
 
     let baseProcessed = 0, baseSucceeded = 0, baseFailed = 0;
     try {
@@ -211,13 +254,11 @@ Deno.serve(async (req) => {
         warnings.push(`Dropped ${droppedMembers.length} unmapped team member(s): ${droppedMembers.slice(0, 3).join(',')}${droppedMembers.length > 3 ? '…' : ''}`);
       }
 
-      // Fallback: GHL requires >=1 team member. If everything was unmapped,
-      // assign the configured default_user_id (must exist in target account).
-      let usedDefaultUser = false;
-      if (mappedMembers.length === 0 && defaultUserId) {
-        mappedMembers.push({ userId: defaultUserId, priority: 0.5, selected: true });
-        usedDefaultUser = true;
-        warnings.push(`No mapped team members — assigned default_user_id ${defaultUserId}`);
+      // Fallback: GHL requires >=1 team member. Use configured OR auto-fetched fallback userId.
+      const fallbackUserId = resolvedDefaultUserId;
+      if (mappedMembers.length === 0 && fallbackUserId) {
+        mappedMembers.push({ userId: fallbackUserId, priority: 0.5, selected: true });
+        warnings.push(`No mapped team members — assigned fallback userId ${fallbackUserId}`);
       }
 
       // PERSONAL calendars accept exactly one team member.
@@ -234,18 +275,22 @@ Deno.serve(async (req) => {
       if (hasZoom) warnings.push('Zoom integration must be reconnected in target account');
       if (hasMeet) warnings.push('Google Meet integration must be reconnected in target account');
 
-      // Build payload — strip account-specific fields and fields GHL POST rejects
-      const stripped: any = { ...full };
-      const REJECTED_FIELDS = [
-        'id', '_id', 'calendarId', 'locationId', 'dateAdded', 'dateUpdated',
-        'formSubmitRedirectUrl', // GHL: "property formSubmitRedirectUrl should not exist"
-        'traceId', 'createdAt', 'updatedAt', 'isActive',
-      ];
-      for (const f of REJECTED_FIELDS) delete stripped[f];
+      // Build payload via strict ALLOWLIST — drop everything GHL doesn't accept on POST.
+      const stripped: any = {};
+      for (const k of Object.keys(full)) {
+        if (ALLOWED_FIELDS.has(k)) stripped[k] = full[k];
+      }
       stripped.locationId = targetCreds.locationId;
       if (mappedGroupId) stripped.groupId = mappedGroupId;
-      else delete stripped.groupId;
-      stripped.teamMembers = mappedMembers;
+      // Normalise teamMembers shape (PERSONAL requires {userId, priority, selected})
+      stripped.teamMembers = mappedMembers.map((tm: any) => ({
+        userId: tm.userId,
+        priority: typeof tm.priority === 'number' ? tm.priority : 0.5,
+        selected: tm.selected !== false,
+        ...(tm.meetingLocationType ? { meetingLocationType: tm.meetingLocationType } : {}),
+        ...(tm.meetingLocation ? { meetingLocation: tm.meetingLocation } : {}),
+        ...(tm.locationConfigurations ? { locationConfigurations: tm.locationConfigurations } : {}),
+      }));
 
       // Skip when there are still no team members — GHL will reject.
       if (mappedMembers.length === 0) {
