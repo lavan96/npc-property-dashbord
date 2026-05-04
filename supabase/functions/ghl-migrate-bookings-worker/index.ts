@@ -274,11 +274,15 @@ Deno.serve(async (req) => {
             continue;
           }
 
-          // Optional assignedUserId remap
+          // Optional assignedUserId remap, with explicit default fallback
           let mappedAssignedUser: string | undefined;
           if (ev.assignedUserId) {
             const m = await lookupMapping(supabase, 'user', ev.assignedUserId, sourceAccount, targetAccount);
             if (m) mappedAssignedUser = m;
+          }
+          const defaultAssignedUserId = (payload.default_assigned_user_id || payload.default_user_id || '').toString().trim();
+          if (!mappedAssignedUser && defaultAssignedUserId) {
+            mappedAssignedUser = defaultAssignedUserId;
           }
 
           if (dryRun) {
