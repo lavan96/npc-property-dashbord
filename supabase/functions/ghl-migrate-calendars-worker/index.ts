@@ -365,9 +365,56 @@ Deno.serve(async (req) => {
       }
 
       try {
-        const r = await ctx.ghlFetch(`${GHL_API_BASE}/calendars/`, {
+        let r = await ctx.ghlFetch(`${GHL_API_BASE}/calendars/`, {
           method: 'POST', headers: targetHeaders, body: JSON.stringify(stripped),
         }, 3, 'target');
+
+        // Slug-taken recovery: re-query target by slug/name; if found, link
+        // instead of erroring. Otherwise try once with a unique slug suffix.
+        if (!r.ok) {
+          const peek = await r.clone().text();
+          const isSlugTaken = /slug\s+is\s+already\s+taken/i.test(peek) ||
+                              /already\s+exists/i.test(peek);
+          if (isSlugTaken) {
+            try {
+              const tr = await ctx.ghlFetch(
+                `${GHL_API_BASE}/calendars/?locationId=${targetCreds.locationId}`,
+                { method: 'GET', headers: targetHeaders }, 2, 'target',
+              );
+              if (tr.ok) {
+                const td = await tr.json();
+                const tcals: any[] = td?.calendars || td?.data || [];
+                const hit = tcals.find((tc) =>
+                  (stripped.slug && (tc.slug === stripped.slug || tc.widgetSlug === stripped.slug)) ||
+                  (stripped.name && String(tc.name || '').toLowerCase().trim() === String(stripped.name).toLowerCase().trim())
+                );
+                if (hit?.id) {
+                  await recordIdMapping(supabase, {
+                    resource_type: 'calendar', old_ghl_id: oldId, new_ghl_id: hit.id,
+                    source_account_label: sourceAccount, target_account_label: targetAccount,
+                    notes: `${label} (linked on slug-taken recovery)`,
+                  });
+                  totalSkipped++;
+                  await recordItem(supabase, {
+                    job_id: jobId, source_id: oldId, target_id: hit.id,
+                    entity_label: label, status: 'skipped',
+                    error_message: 'Slug already taken — linked to existing target calendar',
+                  });
+                  continue;
+                }
+              }
+            } catch {}
+            // Retry once with a unique slug suffix
+            const suffix = `-${Date.now().toString(36).slice(-5)}`;
+            if (stripped.slug) stripped.slug = String(stripped.slug).substring(0, 45) + suffix;
+            if (stripped.widgetSlug) stripped.widgetSlug = String(stripped.widgetSlug).substring(0, 45) + suffix;
+            warnings.push(`Original slug taken — created with suffix ${suffix}`);
+            r = await ctx.ghlFetch(`${GHL_API_BASE}/calendars/`, {
+              method: 'POST', headers: targetHeaders, body: JSON.stringify(stripped),
+            }, 2, 'target');
+          }
+        }
+
         if (!r.ok) {
           const t = await r.text();
           const parsed = parseGhlError(t);
