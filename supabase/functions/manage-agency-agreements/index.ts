@@ -146,6 +146,17 @@ async function getDocuSignAccessToken(): Promise<string> {
   return tokenData.access_token;
 }
 
+function getDocuSignRestBaseUrl(): string {
+  const configuredBaseUrl = (Deno.env.get('DOCUSIGN_BASE_URL') || 'https://demo.docusign.net/restapi').trim();
+  const normalizedBaseUrl = configuredBaseUrl.replace(/\/+$/, '');
+
+  if (normalizedBaseUrl.toLowerCase().endsWith('/restapi')) {
+    return normalizedBaseUrl;
+  }
+
+  return `${normalizedBaseUrl}/restapi`;
+}
+
 
 // ─── Helper: Fetch PDF from Gamma with content-type validation ────
 async function fetchGammaPdfBuffer(
