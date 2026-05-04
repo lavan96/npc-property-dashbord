@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Settings2 } from 'lucide-react';
 
-export type MigrationDomain = 'contacts' | 'opportunities' | 'conversations' | 'conversations_replay' | 'notes';
+export type MigrationDomain = 'contacts' | 'opportunities' | 'conversations' | 'conversations_replay' | 'notes' | 'calendar_groups' | 'calendars' | 'bookings';
 
 export interface AdvancedFlagsState {
   // Contacts (existing — kept for parity, controlled by parent)

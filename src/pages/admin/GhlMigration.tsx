@@ -361,7 +361,7 @@ export default function GhlMigration() {
 // Phase 2B: Worker dispatch + job monitor
 // ────────────────────────────────────────────────────────────────────────────
 function MigrationWorkersPanel() {
-  const [domain, setDomain] = useState<'contacts' | 'opportunities' | 'conversations' | 'conversations_replay' | 'notes'>('contacts');
+  const [domain, setDomain] = useState<'contacts' | 'opportunities' | 'conversations' | 'conversations_replay' | 'notes' | 'calendar_groups' | 'calendars' | 'bookings'>('contacts');
   const [source, setSource] = useState<Account>('legacy');
   const [target, setTarget] = useState<Account>('new');
   const [dryRun, setDryRun] = useState(true);
@@ -539,7 +539,7 @@ function MigrationWorkersPanel() {
         ...(useUpload ? { upload_id: uploadId } : {}),
         ...domainPatch,
       };
-      const dispatchDomain = async (dispatchDomain: 'contacts' | 'opportunities' | 'notes' | 'conversations' | 'conversations_replay', extraPayload?: Record<string, any>) => {
+      const dispatchDomain = async (dispatchDomain: 'contacts' | 'opportunities' | 'notes' | 'conversations' | 'conversations_replay' | 'calendar_groups' | 'calendars' | 'bookings', extraPayload?: Record<string, any>) => {
         return invokeSecureFunction<any>('migration-orchestrator', {
           domain: dispatchDomain, source_account: effectiveSource, target_account: target, dry_run: dryRun,
           confirmation: dryRun ? undefined : 'MIGRATE-LIVE',
@@ -747,6 +747,9 @@ function MigrationWorkersPanel() {
                 <SelectItem value="notes">Notes</SelectItem>
                 <SelectItem value="conversations">Conversations (read-only mirror)</SelectItem>
                 <SelectItem value="conversations_replay">Conversations REPLAY (write to target)</SelectItem>
+                <SelectItem value="calendar_groups">Calendar Groups (run first)</SelectItem>
+                <SelectItem value="calendars">Calendars (after groups)</SelectItem>
+                <SelectItem value="bookings">Bookings / Appointments (after calendars + contacts)</SelectItem>
               </SelectContent>
             </Select>
           </div>
