@@ -141,6 +141,10 @@ export function buildDomainPayloadPatch(domain: MigrationDomain, f: AdvancedFlag
       ...(Number.isFinite(maxMsgs) && maxMsgs > 0 ? { max_messages_per_conv: maxMsgs } : {}),
     };
   }
+  if (domain === 'calendars') {
+    const uid = f.default_user_id.trim();
+    return uid ? { default_user_id: uid } : {};
+  }
   return {};
 }
 
