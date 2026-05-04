@@ -302,6 +302,12 @@ export function requiredScopesForDomain(domain: string): GhlScopeKey[] {
       // account's scopes; the source account is already trusted for reads
       // by the original mirror sync that produced our snapshot.
       return ['locations.readonly', 'conversations.readonly', 'conversations.write'];
+    case 'calendar_groups':
+      return ['locations.readonly', 'calendars/groups.readonly', 'calendars/groups.write'];
+    case 'calendars':
+      return ['locations.readonly', 'calendars.readonly', 'calendars.write', 'calendars/groups.readonly'];
+    case 'bookings':
+      return ['locations.readonly', 'calendars.readonly', 'calendars/events.readonly', 'calendars/events.write'];
     default:
       return ['locations.readonly'];
   }
