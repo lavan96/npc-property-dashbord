@@ -230,7 +230,7 @@ Deno.serve(async (req) => {
           const oldEventId = ev.id;
           const evLabel = `${ev.title || 'Appointment'} @ ${ev.startTime || ''}`;
           totalProcessed++;
-          pageOffset++;
+          
 
           // Already mirrored?
           const existing = await lookupMapping(supabase, 'appointment', oldEventId, sourceAccount, targetAccount);
