@@ -74,6 +74,7 @@ Deno.serve(async (req) => {
     const dryRun = body.dry_run !== false;
     const payload = body.payload || {};
     const dropUnmappedTeamMembers = payload.drop_unmapped_team_members !== false; // default true
+    const defaultUserId: string | null = payload.default_user_id || null; // fallback when no team members map
     if (!jobId) return new Response(JSON.stringify({ error: 'job_id required' }), { status: 400 });
 
     const sourceCreds = getGhlCredentials(sourceAccount);
