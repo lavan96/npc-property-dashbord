@@ -787,23 +787,52 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Build the DocuSign envelope
-      // We use a document generated on-the-fly containing the agreement text
-      // In production, this would use the stored PDF. For now, we create an HTML document.
-      const agreementHtml = await generateAgreementHtml(agreement);
-      const base64Doc = btoa(unescape(encodeURIComponent(agreementHtml)));
+       // Build the DocuSign envelope using the Gamma-generated PDF if available.
+       // Fall back to inline HTML only if no PDF is stored yet.
+       let docName = 'Buyers Agent Agreement.pdf';
+       let docExt = 'pdf';
+       let base64Doc = '';
 
-      const envelopeDefinition = {
-        emailSubject: `Buyer's Agent Agreement`,
-        emailBlurb: `Dear ${agreement.buyer_names},\n\nPlease review and sign the attached Buyer's Agent Agreement.\n\nKind regards`,
-        documents: [
-          {
-            documentBase64: base64Doc,
-            name: 'Buyers Agent Agreement.html',
-            fileExtension: 'html',
-            documentId: '1',
-          },
-        ],
+       if (agreement.pdf_storage_path) {
+         console.log('[DocuSign] Downloading Gamma PDF from storage:', agreement.pdf_storage_path);
+         const { data: pdfBlob, error: dlErr } = await supabase.storage
+           .from('agency-agreements')
+           .download(agreement.pdf_storage_path);
+         if (dlErr || !pdfBlob) {
+           console.error('[DocuSign] Failed to download stored PDF:', dlErr?.message);
+           return new Response(
+             JSON.stringify({ error: `Failed to load Gamma PDF from storage: ${dlErr?.message || 'not found'}` }),
+             { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+           );
+         }
+         const pdfBytes = new Uint8Array(await pdfBlob.arrayBuffer());
+         // Base64 encode in chunks to avoid call-stack overflow on large PDFs
+         let binary = '';
+         const chunk = 0x8000;
+         for (let i = 0; i < pdfBytes.length; i += chunk) {
+           binary += String.fromCharCode(...pdfBytes.subarray(i, i + chunk));
+         }
+         base64Doc = btoa(binary);
+         console.log('[DocuSign] Encoded PDF size:', pdfBytes.length, 'bytes');
+       } else {
+         console.warn('[DocuSign] No pdf_storage_path on agreement; falling back to inline HTML');
+         const agreementHtml = await generateAgreementHtml(agreement);
+         base64Doc = btoa(unescape(encodeURIComponent(agreementHtml)));
+         docName = 'Buyers Agent Agreement.html';
+         docExt = 'html';
+       }
+
+       const envelopeDefinition = {
+         emailSubject: `Buyer's Agent Agreement`,
+         emailBlurb: `Dear ${agreement.buyer_names},\n\nPlease review and sign the attached Buyer's Agent Agreement.\n\nKind regards`,
+         documents: [
+           {
+             documentBase64: base64Doc,
+             name: docName,
+             fileExtension: docExt,
+             documentId: '1',
+           },
+         ],
         recipients: {
           signers: [
             {
