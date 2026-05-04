@@ -361,7 +361,7 @@ export default function GhlMigration() {
 // Phase 2B: Worker dispatch + job monitor
 // ────────────────────────────────────────────────────────────────────────────
 function MigrationWorkersPanel() {
-  const [domain, setDomain] = useState<'contacts' | 'opportunities' | 'conversations' | 'conversations_replay' | 'notes'>('contacts');
+  const [domain, setDomain] = useState<'contacts' | 'opportunities' | 'conversations' | 'conversations_replay' | 'notes' | 'calendar_groups' | 'calendars' | 'bookings'>('contacts');
   const [source, setSource] = useState<Account>('legacy');
   const [target, setTarget] = useState<Account>('new');
   const [dryRun, setDryRun] = useState(true);
