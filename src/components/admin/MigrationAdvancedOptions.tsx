@@ -5,6 +5,8 @@ import { Settings2 } from 'lucide-react';
 
 export type MigrationDomain = 'contacts' | 'opportunities' | 'conversations' | 'conversations_replay' | 'notes' | 'calendar_groups' | 'calendars' | 'bookings';
 
+export type BookingsMode = 'all' | 'future_only' | 'window';
+
 export interface AdvancedFlagsState {
   // Contacts (existing — kept for parity, controlled by parent)
   preserve_csv_structure: boolean;
