@@ -508,6 +508,61 @@ export const MigrationAdvancedOptions: React.FC<Props> = ({ domain, flags, onCha
           />
         </div>
       )}
+
+      {domain === 'bookings' && (
+        <div className="space-y-3">
+          <div className="rounded-md border border-warning/40 bg-warning/5 p-3 text-[11px] leading-relaxed">
+            <strong>Heads-up:</strong> Bookings are migrated per mapped calendar.
+            Default <code>all</code> mode sweeps 5 years back → 2 years forward.
+            Use <code>future_only</code> for ongoing catch-up syncs and{' '}
+            <code>window</code> for surgical re-runs of a specific date range.
+            Contact mappings must already exist (run contacts worker first).
+          </div>
+          <div className="rounded-md border border-border/60 bg-muted/20 p-3 space-y-1.5">
+            <label className="text-xs font-medium">Time-window mode</label>
+            <Select value={flags.bookings_mode} onValueChange={(v) => set('bookings_mode', v as BookingsMode)}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All — 5 years back → 2 years forward (recommended for first migration)</SelectItem>
+                <SelectItem value="future_only">Future only — last N days → 1 year forward</SelectItem>
+                <SelectItem value="window">Custom window — explicit start/end dates</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {flags.bookings_mode === 'future_only' && (
+            <TextField
+              label="Lookback days"
+              type="number"
+              value={flags.bookings_lookback_days}
+              onChange={(v) => set('bookings_lookback_days', v)}
+              placeholder="7"
+              description="How many days into the past to include (captures recently-completed bookings)."
+            />
+          )}
+          {flags.bookings_mode === 'window' && (
+            <div className="grid gap-3 md:grid-cols-2">
+              <TextField
+                label="Start date (YYYY-MM-DD)"
+                value={flags.bookings_start_date}
+                onChange={(v) => set('bookings_start_date', v)}
+                placeholder="2024-01-01"
+              />
+              <TextField
+                label="End date (YYYY-MM-DD)"
+                value={flags.bookings_end_date}
+                onChange={(v) => set('bookings_end_date', v)}
+                placeholder="2027-12-31"
+              />
+            </div>
+          )}
+          <Toggle
+            checked={flags.bookings_notify_attendees}
+            onChange={(v) => set('bookings_notify_attendees', v)}
+            title="Notify attendees on creation"
+            description="Off by default — prevents GHL from re-emailing contacts about historical bookings."
+          />
+        </div>
+      )}
     </div>
   );
 };
