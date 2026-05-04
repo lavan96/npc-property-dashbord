@@ -340,9 +340,11 @@ Deno.serve(async (req) => {
           }
         }
 
-        if (events.length < PAGE_SIZE) break; // last page
+        sliceStart = sliceEnd;
+        sliceIndex++;
+        calendarOffset = sliceIndex;
       }
-      // Done with this calendar — reset offset for the next one
+      // Done with this calendar — reset slice index for the next one
       calendarOffset = 0;
     }
 
