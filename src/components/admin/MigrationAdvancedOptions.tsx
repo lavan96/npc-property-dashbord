@@ -557,6 +557,13 @@ export const MigrationAdvancedOptions: React.FC<Props> = ({ domain, flags, onCha
               />
             </div>
           )}
+          <TextField
+            label="Default assigned userId (target account)"
+            value={flags.default_user_id}
+            onChange={(v) => set('default_user_id', v)}
+            placeholder="e.g. 0SXXXXXXXXXXXXXXXXXX"
+            description="Required by GHL when source event has no mappable assignedUserId. Use the active user in the new GHL account (Settings → My Staff → user → Profile URL)."
+          />
           <Toggle
             checked={flags.bookings_notify_attendees}
             onChange={(v) => set('bookings_notify_attendees', v)}
