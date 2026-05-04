@@ -145,6 +145,29 @@ Deno.serve(async (req) => {
 
     if (!isResume) await startJob(supabase, jobId, calendars.length);
 
+    // Auto-resolve a fallback userId from the target account if none provided.
+    let resolvedDefaultUserId: string | null = defaultUserId;
+    if (!dryRun && !resolvedDefaultUserId) {
+      try {
+        const ur = await ctx.ghlFetch(
+          `${GHL_API_BASE}/users/?locationId=${targetCreds.locationId}`,
+          { method: 'GET', headers: targetHeaders }, 2, 'target',
+        );
+        if (ur.ok) {
+          const ud = await ur.json();
+          const users: any[] = ud?.users || ud?.data || [];
+          if (users.length > 0) {
+            resolvedDefaultUserId = users[0].id;
+            console.log(`[calendars-worker] Auto-resolved default_user_id=${resolvedDefaultUserId} (${users[0].name || users[0].email || ''})`);
+          }
+        } else {
+          console.warn(`[calendars-worker] Could not fetch target users for default fallback: ${ur.status}`);
+        }
+      } catch (e: any) {
+        console.warn(`[calendars-worker] Default user resolve threw: ${e.message}`);
+      }
+    }
+
     let baseProcessed = 0, baseSucceeded = 0, baseFailed = 0;
     try {
       const { data: jobRow } = await supabase
