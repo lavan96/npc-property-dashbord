@@ -226,7 +226,13 @@ export type GhlScopeKey =
   | 'contacts/notes.write'
   | 'conversations.readonly'
   | 'conversations.write'
-  | 'locations.readonly';
+  | 'locations.readonly'
+  | 'calendars.readonly'
+  | 'calendars.write'
+  | 'calendars/groups.readonly'
+  | 'calendars/groups.write'
+  | 'calendars/events.readonly'
+  | 'calendars/events.write';
 
 export interface GhlScopeProbeResult {
   scope: GhlScopeKey;
