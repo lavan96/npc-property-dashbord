@@ -145,6 +145,35 @@ Deno.serve(async (req) => {
 
     if (!isResume) await startJob(supabase, jobId, calendars.length);
 
+    // Pre-load existing target calendars for idempotent slug/name matching.
+    // Without this, re-runs after a partial migration fail with
+    // "Calendar slug is already taken" because the worker tries to recreate
+    // calendars that already exist in the target account.
+    const targetBySlug = new Map<string, any>();
+    const targetByName = new Map<string, any>();
+    if (!dryRun) {
+      try {
+        const tr = await ctx.ghlFetch(
+          `${GHL_API_BASE}/calendars/?locationId=${targetCreds.locationId}`,
+          { method: 'GET', headers: targetHeaders }, 2, 'target',
+        );
+        if (tr.ok) {
+          const td = await tr.json();
+          const tcals: any[] = td?.calendars || td?.data || [];
+          for (const tc of tcals) {
+            if (tc.slug) targetBySlug.set(String(tc.slug).toLowerCase(), tc);
+            if (tc.widgetSlug) targetBySlug.set(String(tc.widgetSlug).toLowerCase(), tc);
+            if (tc.name) targetByName.set(String(tc.name).toLowerCase().trim(), tc);
+          }
+          console.log(`[calendars-worker] Pre-loaded ${tcals.length} target calendars for idempotent matching`);
+        } else {
+          console.warn(`[calendars-worker] Could not pre-load target calendars: ${tr.status}`);
+        }
+      } catch (e: any) {
+        console.warn(`[calendars-worker] Target pre-load threw: ${e.message}`);
+      }
+    }
+
     // Auto-resolve a fallback userId from the target account if none provided.
     let resolvedDefaultUserId: string | null = defaultUserId;
     if (!dryRun && !resolvedDefaultUserId) {
