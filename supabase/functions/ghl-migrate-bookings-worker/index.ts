@@ -355,7 +355,16 @@ Deno.serve(async (req) => {
         sliceIndex++;
         calendarOffset = sliceIndex;
       }
-      // Done with this calendar — reset slice index for the next one
+      // Done with this calendar — count the scan, log a summary item, reset slice index.
+      calendarsScanned++;
+      await recordItem(supabase, {
+        job_id: jobId,
+        source_id: `cal-scan:${oldCalId}`,
+        entity_label: `Calendar ${calLabel}`,
+        status: 'succeeded',
+        error_message: `Calendar scanned: ${sliceIndex} time-slice(s), 0 events in window`,
+      }).catch(() => {});
+      await updateJobProgress(supabase, jobId, progressPatch()).catch(() => {});
       calendarOffset = 0;
     }
 
