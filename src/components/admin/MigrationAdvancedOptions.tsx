@@ -160,6 +160,21 @@ export function buildDomainPayloadPatch(domain: MigrationDomain, f: AdvancedFlag
     const uid = f.default_user_id.trim();
     return uid ? { default_user_id: uid } : {};
   }
+  if (domain === 'bookings') {
+    const patch: Record<string, any> = {
+      mode: f.bookings_mode,
+      notify_attendees: f.bookings_notify_attendees,
+    };
+    if (f.bookings_mode === 'window') {
+      if (f.bookings_start_date) patch.start_date = new Date(f.bookings_start_date).toISOString();
+      if (f.bookings_end_date) patch.end_date = new Date(f.bookings_end_date).toISOString();
+    }
+    if (f.bookings_mode === 'future_only') {
+      const lb = parseInt(f.bookings_lookback_days, 10);
+      if (Number.isFinite(lb) && lb > 0) patch.future_only_lookback_days = lb;
+    }
+    return patch;
+  }
   return {};
 }
 
