@@ -7,7 +7,15 @@
  * They bypass RLS intentionally — workers are the only writers to these tables.
  */
 
-export type MigrationDomain = 'contacts' | 'opportunities' | 'conversations' | 'conversations_replay' | 'notes';
+export type MigrationDomain =
+  | 'contacts'
+  | 'opportunities'
+  | 'conversations'
+  | 'conversations_replay'
+  | 'notes'
+  | 'calendar_groups'
+  | 'calendars'
+  | 'bookings';
 export type MigrationStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
 export type ItemStatus = 'pending' | 'succeeded' | 'failed' | 'skipped';
 
