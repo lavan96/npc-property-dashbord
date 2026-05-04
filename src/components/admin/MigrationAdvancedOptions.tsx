@@ -459,6 +459,26 @@ export const MigrationAdvancedOptions: React.FC<Props> = ({ domain, flags, onCha
           />
         </div>
       )}
+
+      {domain === 'calendars' && (
+        <div className="space-y-3">
+          <div className="rounded-md border border-warning/40 bg-warning/5 p-3 text-[11px] leading-relaxed">
+            <strong>Heads-up:</strong> GHL requires every calendar to have at least one
+            team member. If users have not been migrated yet (no <code>user</code> mappings
+            in <code>ghl_id_mapping</code>), provide a <strong>default fallback userId</strong>{' '}
+            from the <em>target</em> account below. <strong>PERSONAL</strong> calendars are
+            auto-trimmed to one team member.
+          </div>
+          <TextField
+            label="Default fallback userId (target account)"
+            value={flags.default_user_id}
+            onChange={(v) => set('default_user_id', v)}
+            placeholder="e.g. 0SXXXXXXXXXXXXXXXXXX"
+            description="Used only when no team members can be mapped. Must be a valid userId in the target GHL account (Settings → My Staff → user → Profile URL)."
+          />
+        </div>
+      )}
     </div>
   );
 };
+
