@@ -162,8 +162,10 @@ Deno.serve(async (req) => {
     let calendarOffset = Number(checkpoint.cursor.calendarOffset) || 0;
 
     if (!isResume) {
-      // Total is unknowable without reading every page; use calendars.length as a lower bound,
-      // workers refine total_items as they go via updateJobProgress.
+      // Use the count of mapped calendars as the initial total. The worker
+      // refines this upward as actual events are discovered (one event = one
+      // unit) so the dashboard reflects real bookings progress, not just
+      // calendar count.
       await startJob(supabase, jobId, calendars.length);
     }
 
@@ -178,12 +180,20 @@ Deno.serve(async (req) => {
     } catch {}
 
     let totalProcessed = 0, totalSucceeded = 0, totalFailed = 0, totalSkipped = 0;
+    let totalEventsDiscovered = 0;
+    let calendarsScanned = 0;
     let timeBudgetExhausted = false, pausedByUser = false;
     let cancelledByUser: 'pause' | 'cancel' | 'kill' | null = null;
     const progressPatch = () => ({
-      processed_items: baseProcessed + totalProcessed,
+      // "Processed" = events handled (succeeded+failed+skipped) + calendars
+      // scanned with zero events. This makes the dashboard meaningful even
+      // when calendars are empty (otherwise jobs sit at 0/N and look broken).
+      processed_items: baseProcessed + totalProcessed + calendarsScanned,
       succeeded_items: baseSucceeded + totalSucceeded,
       failed_items: baseFailed + totalFailed,
+      // Refine total upward as we discover real events. Floor at calendars.length
+      // so the bar never shrinks if all calendars turn out empty.
+      total_items: Math.max(calendars.length, totalEventsDiscovered + calendars.length),
     });
 
     outer:
@@ -222,6 +232,7 @@ Deno.serve(async (req) => {
         }
         const data = await r.json();
         const events: any[] = data?.events || data?.data || [];
+        totalEventsDiscovered += events.length;
 
         for (const ev of events) {
           if (Date.now() - startedAt > MAX_RUNTIME_MS) { timeBudgetExhausted = true; break outer; }
@@ -344,7 +355,16 @@ Deno.serve(async (req) => {
         sliceIndex++;
         calendarOffset = sliceIndex;
       }
-      // Done with this calendar — reset slice index for the next one
+      // Done with this calendar — count the scan, log a summary item, reset slice index.
+      calendarsScanned++;
+      await recordItem(supabase, {
+        job_id: jobId,
+        source_id: `cal-scan:${oldCalId}`,
+        entity_label: `Calendar ${calLabel}`,
+        status: 'succeeded',
+        error_message: `Calendar scanned: ${sliceIndex} time-slice(s), 0 events in window`,
+      }).catch(() => {});
+      await updateJobProgress(supabase, jobId, progressPatch()).catch(() => {});
       calendarOffset = 0;
     }
 
