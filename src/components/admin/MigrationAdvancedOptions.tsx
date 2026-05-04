@@ -83,6 +83,12 @@ export const DEFAULT_ADVANCED_FLAGS: AdvancedFlagsState = {
   max_messages_per_conv: '',
 
   default_user_id: '',
+
+  bookings_mode: 'all',
+  bookings_start_date: '',
+  bookings_end_date: '',
+  bookings_lookback_days: '7',
+  bookings_notify_attendees: false,
 };
 
 /**
