@@ -27,7 +27,7 @@ import {
   GHL_SCOPE_DOCS_URL,
 } from '../_shared/ghl-account.ts';
 
-const VALID_DOMAINS: MigrationDomain[] = ['contacts', 'opportunities', 'conversations', 'conversations_replay', 'notes'];
+const VALID_DOMAINS: MigrationDomain[] = ['contacts', 'opportunities', 'conversations', 'conversations_replay', 'notes', 'calendar_groups', 'calendars', 'bookings'];
 const LIVE_WRITE_CONFIRMATION = 'MIGRATE-LIVE';
 
 const WORKER_MAP: Record<MigrationDomain, string> = {
@@ -36,6 +36,9 @@ const WORKER_MAP: Record<MigrationDomain, string> = {
   conversations: 'ghl-migrate-conversations-worker',
   conversations_replay: 'ghl-migrate-conversations-replay-worker',
   notes: 'ghl-migrate-notes-worker',
+  calendar_groups: 'ghl-migrate-calendar-groups-worker',
+  calendars: 'ghl-migrate-calendars-worker',
+  bookings: 'ghl-migrate-bookings-worker',
 };
 
 Deno.serve(async (req) => {
