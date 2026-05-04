@@ -39,6 +39,9 @@ export interface AdvancedFlagsState {
   // Conversations replay
   skip_activity: boolean;
   max_messages_per_conv: string; // numeric string; '' = no cap
+
+  // Calendars
+  default_user_id: string; // target-account userId fallback when no team members map
 }
 
 export const DEFAULT_ADVANCED_FLAGS: AdvancedFlagsState = {
