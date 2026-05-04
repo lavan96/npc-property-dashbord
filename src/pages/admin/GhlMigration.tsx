@@ -747,6 +747,9 @@ function MigrationWorkersPanel() {
                 <SelectItem value="notes">Notes</SelectItem>
                 <SelectItem value="conversations">Conversations (read-only mirror)</SelectItem>
                 <SelectItem value="conversations_replay">Conversations REPLAY (write to target)</SelectItem>
+                <SelectItem value="calendar_groups">Calendar Groups (run first)</SelectItem>
+                <SelectItem value="calendars">Calendars (after groups)</SelectItem>
+                <SelectItem value="bookings">Bookings / Appointments (after calendars + contacts)</SelectItem>
               </SelectContent>
             </Select>
           </div>
