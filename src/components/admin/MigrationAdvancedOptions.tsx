@@ -44,6 +44,13 @@ export interface AdvancedFlagsState {
 
   // Calendars
   default_user_id: string; // target-account userId fallback when no team members map
+
+  // Bookings
+  bookings_mode: BookingsMode;
+  bookings_start_date: string; // ISO date (YYYY-MM-DD), used when mode='window'
+  bookings_end_date: string;   // ISO date (YYYY-MM-DD), used when mode='window'
+  bookings_lookback_days: string; // numeric, used when mode='future_only'
+  bookings_notify_attendees: boolean;
 }
 
 export const DEFAULT_ADVANCED_FLAGS: AdvancedFlagsState = {
