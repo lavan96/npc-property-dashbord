@@ -27,7 +27,11 @@ import {
   GHL_SCOPE_DOCS_URL,
 } from '../_shared/ghl-account.ts';
 
-const VALID_DOMAINS: MigrationDomain[] = ['contacts', 'opportunities', 'conversations', 'conversations_replay', 'notes', 'calendar_groups', 'calendars', 'bookings'];
+const VALID_DOMAINS: MigrationDomain[] = [
+  'contacts','opportunities','conversations','conversations_replay','notes',
+  'calendar_groups','calendars','bookings',
+  'workflows_snapshot','workflow_enrollments_backfill','workflow_reenroll',
+];
 const LIVE_WRITE_CONFIRMATION = 'MIGRATE-LIVE';
 
 const WORKER_MAP: Record<MigrationDomain, string> = {
@@ -39,7 +43,19 @@ const WORKER_MAP: Record<MigrationDomain, string> = {
   calendar_groups: 'ghl-migrate-calendar-groups-worker',
   calendars: 'ghl-migrate-calendars-worker',
   bookings: 'ghl-migrate-bookings-worker',
+  workflows_snapshot: 'ghl-migrate-workflows-snapshot-worker',
+  workflow_enrollments_backfill: 'ghl-migrate-workflow-enrollments-worker',
+  workflow_reenroll: 'ghl-migrate-workflow-reenroll-worker',
 };
+
+// Domains that don't write to a target GHL account during their snapshot
+// phase — they only READ + persist locally. These bypass the live-write
+// confirmation gate AND the target-scope preflight.
+const READ_ONLY_DOMAINS: Set<MigrationDomain> = new Set([
+  'workflows_snapshot',
+  'workflow_enrollments_backfill',
+  'conversations',
+]);
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
