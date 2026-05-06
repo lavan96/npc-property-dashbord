@@ -29,6 +29,9 @@ const WORKER_MAP: Record<string, string> = {
   calendar_groups: 'ghl-migrate-calendar-groups-worker',
   calendars: 'ghl-migrate-calendars-worker',
   bookings: 'ghl-migrate-bookings-worker',
+  workflows_snapshot: 'ghl-migrate-workflows-snapshot-worker',
+  workflow_enrollments_backfill: 'ghl-migrate-workflow-enrollments-worker',
+  workflow_reenroll: 'ghl-migrate-workflow-reenroll-worker',
 };
 
 // How many jobs to fan out per tick. Each job runs in its own worker

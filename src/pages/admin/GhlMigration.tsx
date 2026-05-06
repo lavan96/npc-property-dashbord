@@ -357,6 +357,9 @@ export default function GhlMigration() {
 
       {/* Phase 2B — Migration workers */}
       <MigrationWorkersPanel />
+
+      {/* Phase 3 — Workflow migration (snapshot + enrollment mirror + re-enroll) */}
+      <WorkflowMigrationPanel />
     </div>
   );
 }
@@ -1820,5 +1823,217 @@ function JobDetailRow({ job, onChanged }: { job: any; onChanged?: () => void }) 
         </div>
       </td>
     </tr>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Phase 3: Workflow Migration Panel
+// Snapshot legacy + new GHL workflows, mirror contact enrollments, then
+// re-enroll matched contacts into rebuilt new-account workflows.
+// ────────────────────────────────────────────────────────────────────────────
+function WorkflowMigrationPanel() {
+  const [stats, setStats] = useState<{
+    legacyWorkflows: number;
+    newWorkflows: number;
+    matched: number;
+    enrollments: number;
+    pending: number;
+    succeeded: number;
+    failed: number;
+    blocked: number;
+  } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [running, setRunning] = useState<string | null>(null);
+  const [reenrollDryRun, setReenrollDryRun] = useState(true);
+  const [onlyActive, setOnlyActive] = useState(true);
+
+  const refreshStats = async () => {
+    setLoading(true);
+    try {
+      const res = await invokeSecureFunction<any>(
+        'migration-job-status',
+        { workflow_stats: true },
+        { timeoutMs: 15000 },
+      );
+      if (res.data?.success && res.data?.workflow_stats) {
+        setStats(res.data.workflow_stats);
+      }
+    } finally { setLoading(false); }
+  };
+
+  useEffect(() => { refreshStats(); }, []);
+
+  const dispatch = async (
+    domain: 'workflows_snapshot' | 'workflow_enrollments_backfill' | 'workflow_reenroll',
+    extraPayload: Record<string, any> = {},
+    dryRun = false,
+  ) => {
+    setRunning(domain);
+    try {
+      const res = await invokeSecureFunction<any>(
+        'migration-orchestrator',
+        {
+          domain,
+          source_account: 'legacy',
+          target_account: domain === 'workflow_enrollments_backfill' ? 'legacy' : 'new',
+          dry_run: dryRun,
+          payload: extraPayload,
+        },
+        { timeoutMs: 30000 },
+      );
+      if (res.error || !res.data?.success) {
+        toast.error(res.error?.message || res.data?.error || `${domain} dispatch failed`);
+        return;
+      }
+      toast.success(`${domain} job dispatched (${res.data.job_id?.substring(0, 8)})`);
+      // refresh stats after a short delay so UI shows progress
+      setTimeout(() => { refreshStats(); }, 4000);
+    } finally { setRunning(null); }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <GitBranch className="h-5 w-5" /> Workflow Migration (Phase 3)
+        </CardTitle>
+        <CardDescription>
+          GHL has no API to clone workflows across agencies. This tool snapshots
+          every workflow on both accounts, mirrors who-was-in-what from the
+          legacy account, and re-enrolls contacts into your manually-rebuilt
+          workflows in the new account.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Stats grid */}
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <StatTile label="Legacy workflows" value={stats?.legacyWorkflows ?? '—'} />
+          <StatTile label="New workflows" value={stats?.newWorkflows ?? '—'} />
+          <StatTile label="Matched (mapped)" value={stats?.matched ?? '—'} />
+          <StatTile label="Enrollments mirrored" value={stats?.enrollments ?? '—'} />
+          <StatTile label="Re-enroll pending" value={stats?.pending ?? '—'} />
+          <StatTile label="Re-enroll succeeded" value={stats?.succeeded ?? '—'} tone="success" />
+          <StatTile label="Re-enroll failed" value={stats?.failed ?? '—'} tone="destructive" />
+          <StatTile label="Blocked (no mapping)" value={stats?.blocked ?? '—'} tone="warning" />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Button size="sm" variant="outline" onClick={refreshStats} disabled={loading}>
+            <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
+          </Button>
+        </div>
+
+        {/* Step 1 */}
+        <div className="rounded-lg border border-border/60 p-4 space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h4 className="font-semibold text-sm flex items-center gap-2">
+                <span className="rounded-full bg-primary/10 text-primary px-2 py-0.5 text-xs">Step 1</span>
+                Snapshot workflows (both accounts)
+              </h4>
+              <p className="text-xs text-muted-foreground mt-1">
+                Lists workflows from LEGACY + NEW accounts and tries to name-match them.
+                Run this any time you rebuild a workflow in the new account.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => dispatch('workflows_snapshot', {}, false)}
+              disabled={running !== null}
+            >
+              {running === 'workflows_snapshot' ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Play className="mr-1.5 h-3.5 w-3.5" />}
+              Run snapshot
+            </Button>
+          </div>
+        </div>
+
+        {/* Step 2 */}
+        <div className="rounded-lg border border-border/60 p-4 space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h4 className="font-semibold text-sm flex items-center gap-2">
+                <span className="rounded-full bg-primary/10 text-primary px-2 py-0.5 text-xs">Step 2</span>
+                Backfill enrollments (LEGACY only — one-shot)
+              </h4>
+              <p className="text-xs text-muted-foreground mt-1">
+                For every snapshotted legacy workflow, fetch and store the contacts
+                currently enrolled. <strong>Run this BEFORE you cancel the legacy account</strong> —
+                this data is unrecoverable afterwards.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => dispatch('workflow_enrollments_backfill', {}, false)}
+              disabled={running !== null}
+            >
+              {running === 'workflow_enrollments_backfill' ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-1.5 h-3.5 w-3.5" />}
+              Backfill enrollments
+            </Button>
+          </div>
+        </div>
+
+        {/* Step 3 */}
+        <div className="rounded-lg border border-border/60 p-4 space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h4 className="font-semibold text-sm flex items-center gap-2">
+                <span className="rounded-full bg-primary/10 text-primary px-2 py-0.5 text-xs">Step 3</span>
+                Re-enroll contacts (LEGACY → NEW)
+              </h4>
+              <p className="text-xs text-muted-foreground mt-1">
+                Adds each mirrored contact into the matched workflow on the NEW account.
+                Requires Steps 1 + 2 done, contacts migration done, and your manually-rebuilt
+                workflows present in NEW. Rows missing a mapping are marked "blocked" and you can
+                fix + retry them.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-3 text-xs">
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked={onlyActive} onChange={(e) => setOnlyActive(e.target.checked)} />
+              Only active enrollments
+            </label>
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked={reenrollDryRun} onChange={(e) => setReenrollDryRun(e.target.checked)} />
+              Dry-run (no GHL writes)
+            </label>
+            <Button
+              size="sm"
+              variant={reenrollDryRun ? 'outline' : 'default'}
+              onClick={() => dispatch('workflow_reenroll', { only_active: onlyActive }, reenrollDryRun)}
+              disabled={running !== null || !stats || stats.pending === 0}
+            >
+              {running === 'workflow_reenroll' ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Repeat className="mr-1.5 h-3.5 w-3.5" />}
+              {reenrollDryRun ? 'Dry-run re-enroll' : 'LIVE re-enroll'}
+            </Button>
+          </div>
+        </div>
+
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Manual rebuild required</AlertTitle>
+          <AlertDescription className="text-xs">
+            GHL does not expose any "create workflow" API across agencies. After Step 1
+            tells you which legacy workflows have no match in NEW, rebuild them manually
+            in the new GHL account, then re-run Step 1. Once every needed workflow is
+            mapped, run Step 3 (live) to re-enroll contacts.
+          </AlertDescription>
+        </Alert>
+      </CardContent>
+    </Card>
+  );
+}
+
+function StatTile({ label, value, tone }: { label: string; value: number | string; tone?: 'success' | 'destructive' | 'warning' }) {
+  const toneClass =
+    tone === 'success' ? 'text-success' :
+    tone === 'destructive' ? 'text-destructive' :
+    tone === 'warning' ? 'text-warning' :
+    'text-foreground';
+  return (
+    <div className="rounded-md border border-border/60 bg-muted/20 p-3">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className={`text-2xl font-semibold ${toneClass}`}>{value}</div>
+    </div>
   );
 }

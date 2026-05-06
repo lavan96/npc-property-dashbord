@@ -7001,6 +7001,57 @@ export type Database = {
           },
         ]
       }
+      ghl_contact_workflow_enrollments: {
+        Row: {
+          account: string
+          contact_id: string
+          created_at: string
+          enrolled_at: string | null
+          id: string
+          new_contact_id: string | null
+          new_workflow_id: string | null
+          raw_json: Json | null
+          re_enrollment_attempted_at: string | null
+          re_enrollment_error: string | null
+          re_enrollment_status: string
+          status: string | null
+          updated_at: string
+          workflow_id: string
+        }
+        Insert: {
+          account: string
+          contact_id: string
+          created_at?: string
+          enrolled_at?: string | null
+          id?: string
+          new_contact_id?: string | null
+          new_workflow_id?: string | null
+          raw_json?: Json | null
+          re_enrollment_attempted_at?: string | null
+          re_enrollment_error?: string | null
+          re_enrollment_status?: string
+          status?: string | null
+          updated_at?: string
+          workflow_id: string
+        }
+        Update: {
+          account?: string
+          contact_id?: string
+          created_at?: string
+          enrolled_at?: string | null
+          id?: string
+          new_contact_id?: string | null
+          new_workflow_id?: string | null
+          raw_json?: Json | null
+          re_enrollment_attempted_at?: string | null
+          re_enrollment_error?: string | null
+          re_enrollment_status?: string
+          status?: string | null
+          updated_at?: string
+          workflow_id?: string
+        }
+        Relationships: []
+      }
       ghl_conversation_messages: {
         Row: {
           attachment_urls: string[] | null
@@ -7453,6 +7504,57 @@ export type Database = {
           updated_at?: string
           window_count?: number
           window_start_ms?: number
+        }
+        Relationships: []
+      }
+      ghl_workflow_snapshots: {
+        Row: {
+          account: string
+          created_at: string
+          fetched_at: string
+          first_seen_at: string
+          id: string
+          is_stale: boolean
+          last_seen_at: string
+          location_id: string | null
+          name: string | null
+          raw_json: Json
+          status: string | null
+          updated_at: string
+          version: number | null
+          workflow_id: string
+        }
+        Insert: {
+          account: string
+          created_at?: string
+          fetched_at?: string
+          first_seen_at?: string
+          id?: string
+          is_stale?: boolean
+          last_seen_at?: string
+          location_id?: string | null
+          name?: string | null
+          raw_json?: Json
+          status?: string | null
+          updated_at?: string
+          version?: number | null
+          workflow_id: string
+        }
+        Update: {
+          account?: string
+          created_at?: string
+          fetched_at?: string
+          first_seen_at?: string
+          id?: string
+          is_stale?: boolean
+          last_seen_at?: string
+          location_id?: string | null
+          name?: string | null
+          raw_json?: Json
+          status?: string | null
+          updated_at?: string
+          version?: number | null
+          workflow_id?: string
         }
         Relationships: []
       }
