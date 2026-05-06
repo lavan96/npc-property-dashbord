@@ -15,7 +15,10 @@ export type MigrationDomain =
   | 'notes'
   | 'calendar_groups'
   | 'calendars'
-  | 'bookings';
+  | 'bookings'
+  | 'workflows_snapshot'
+  | 'workflow_enrollments_backfill'
+  | 'workflow_reenroll';
 export type MigrationStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
 export type ItemStatus = 'pending' | 'succeeded' | 'failed' | 'skipped';
 
