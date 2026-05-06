@@ -39,6 +39,32 @@ Deno.serve(async (req) => {
       if (!isSuperadmin) return createForbiddenResponse('Superadmin access required', corsHeaders);
     }
 
+    if (body.workflow_stats) {
+      const [legacyWf, newWf, mapped, enrollments, pending, succeeded, failed, blocked] = await Promise.all([
+        supabase.from('ghl_workflow_snapshots').select('id', { count: 'exact', head: true }).eq('account', 'legacy'),
+        supabase.from('ghl_workflow_snapshots').select('id', { count: 'exact', head: true }).eq('account', 'new'),
+        supabase.from('ghl_id_mapping').select('id', { count: 'exact', head: true }).eq('resource_type', 'workflow'),
+        supabase.from('ghl_contact_workflow_enrollments').select('id', { count: 'exact', head: true }).eq('account', 'legacy'),
+        supabase.from('ghl_contact_workflow_enrollments').select('id', { count: 'exact', head: true }).eq('account', 'legacy').eq('re_enrollment_status', 'pending'),
+        supabase.from('ghl_contact_workflow_enrollments').select('id', { count: 'exact', head: true }).eq('account', 'legacy').eq('re_enrollment_status', 'succeeded'),
+        supabase.from('ghl_contact_workflow_enrollments').select('id', { count: 'exact', head: true }).eq('account', 'legacy').eq('re_enrollment_status', 'failed'),
+        supabase.from('ghl_contact_workflow_enrollments').select('id', { count: 'exact', head: true }).eq('account', 'legacy').eq('re_enrollment_status', 'blocked'),
+      ]);
+      return new Response(JSON.stringify({
+        success: true,
+        workflow_stats: {
+          legacyWorkflows: legacyWf.count || 0,
+          newWorkflows: newWf.count || 0,
+          matched: mapped.count || 0,
+          enrollments: enrollments.count || 0,
+          pending: pending.count || 0,
+          succeeded: succeeded.count || 0,
+          failed: failed.count || 0,
+          blocked: blocked.count || 0,
+        },
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     if (body.list) {
       const limit = Math.min(Number(body.limit) || 25, 100);
       const { data: jobs, error } = await supabase
