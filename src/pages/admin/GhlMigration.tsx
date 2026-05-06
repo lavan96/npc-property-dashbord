@@ -357,6 +357,9 @@ export default function GhlMigration() {
 
       {/* Phase 2B — Migration workers */}
       <MigrationWorkersPanel />
+
+      {/* Phase 3 — Workflow migration (snapshot + enrollment mirror + re-enroll) */}
+      <WorkflowMigrationPanel />
     </div>
   );
 }
