@@ -97,12 +97,15 @@ Deno.serve(async (req) => {
     const target_account = body.target_account === 'new' ? 'new' : 'legacy';
     const dry_run = body.dry_run !== false; // default true
 
-    if (source_account === target_account) {
+    const isReadOnly = READ_ONLY_DOMAINS.has(domain);
+
+    if (source_account === target_account && !isReadOnly) {
       return jsonError(corsHeaders, 'source_account and target_account must differ', 400);
     }
 
-    // Live writes require typed confirmation
-    if (!dry_run && body.confirmation !== LIVE_WRITE_CONFIRMATION) {
+    // Live writes require typed confirmation (read-only domains exempt — they
+    // never write to GHL, only to our own snapshot tables).
+    if (!dry_run && !isReadOnly && body.confirmation !== LIVE_WRITE_CONFIRMATION) {
       return jsonError(
         corsHeaders,
         `Live writes require confirmation. Pass { confirmation: "${LIVE_WRITE_CONFIRMATION}" }.`,
@@ -117,8 +120,9 @@ Deno.serve(async (req) => {
     //   2. this is a resume of an in-progress job (the original dispatch
     //      already audited the token; re-probing burns ~3-4 calls of the
     //      same daily budget the worker is about to need).
+    //   3. domain is read-only (no target writes happen)
     const isResume = body._resume === true || body.resume === true;
-    const skipPreflight = body.skip_preflight === true || isResume;
+    const skipPreflight = body.skip_preflight === true || isResume || isReadOnly;
 
     // ── Scope preflight (live writes only) ────────────────────────────────
     // Probe the TARGET account for the scopes this domain needs. Block if
