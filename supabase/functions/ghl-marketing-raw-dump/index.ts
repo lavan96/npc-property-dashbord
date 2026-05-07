@@ -494,7 +494,7 @@ Deno.serve(async (req) => {
     // default: list (summary)
     const { data, error } = await supabase
       .from('ghl_marketing_raw_dumps')
-      .select('id,resource_type,ghl_id,name,parent_ghl_id,full_url,fetch_status,fetch_error,last_fetched_at,html_content,raw_html_content,markdown_content,css_content,embed_code,screenshot_url,links,metadata,submissions_sample,enrichment_sources')
+      .select('id,resource_type,ghl_id,name,parent_ghl_id,full_url,fetch_status,fetch_error,last_fetched_at,html_content,raw_html_content,markdown_content,css_content,embed_code,screenshot_url,links,metadata,submissions_sample,enrichment_sources,portable_html_path,inlined_css,asset_count,asset_bytes,asset_manifest')
       .order('resource_type', { ascending: true })
       .order('name', { ascending: true });
     if (error) throw error;
@@ -513,11 +513,15 @@ Deno.serve(async (req) => {
       has_raw_html: !!r.raw_html_content,
       has_markdown: !!r.markdown_content,
       has_css: !!r.css_content,
+      has_inlined_css: !!r.inlined_css,
       has_embed: !!r.embed_code,
       has_screenshot: !!r.screenshot_url,
       has_links: !!r.links,
       has_metadata: !!r.metadata,
       has_submissions: !!r.submissions_sample,
+      has_portable: !!r.portable_html_path,
+      asset_count: r.asset_count || 0,
+      asset_bytes: r.asset_bytes || 0,
     }));
     const counts: Record<string, number> = {};
     for (const r of summary) counts[r.resource_type] = (counts[r.resource_type] || 0) + 1;
