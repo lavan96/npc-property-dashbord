@@ -27,8 +27,15 @@ interface SummaryRow {
   fetch_error: string | null;
   last_fetched_at: string;
   has_html: boolean;
+  has_raw_html?: boolean;
+  has_markdown?: boolean;
   has_css: boolean;
   has_embed: boolean;
+  has_screenshot?: boolean;
+  has_links?: boolean;
+  has_metadata?: boolean;
+  has_submissions?: boolean;
+  enrichment_sources?: any;
 }
 
 const TYPE_COLOR: Record<string, string> = {
@@ -213,8 +220,14 @@ export function GhlMarketingRawDump() {
                     <div className="flex flex-wrap gap-1">
                       <Badge variant="outline" className="text-[10px]">JSON</Badge>
                       {r.has_html && <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-400">HTML</Badge>}
+                      {r.has_raw_html && <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-300">RawHTML</Badge>}
+                      {r.has_markdown && <Badge variant="outline" className="text-[10px] bg-cyan-500/10 text-cyan-400">MD</Badge>}
                       {r.has_css && <Badge variant="outline" className="text-[10px] bg-blue-500/10 text-blue-400">CSS</Badge>}
                       {r.has_embed && <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-400">Embed</Badge>}
+                      {r.has_screenshot && <Badge variant="outline" className="text-[10px] bg-fuchsia-500/10 text-fuchsia-400">Shot</Badge>}
+                      {r.has_links && <Badge variant="outline" className="text-[10px] bg-indigo-500/10 text-indigo-400">Links</Badge>}
+                      {r.has_metadata && <Badge variant="outline" className="text-[10px] bg-slate-500/10 text-slate-300">Meta</Badge>}
+                      {r.has_submissions && <Badge variant="outline" className="text-[10px] bg-rose-500/10 text-rose-400">Subs</Badge>}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -261,11 +274,17 @@ export function GhlMarketingRawDump() {
             </div>
           ) : (
             <Tabs defaultValue="json" className="flex-1 flex flex-col overflow-hidden">
-              <TabsList>
+              <TabsList className="flex-wrap h-auto">
                 <TabsTrigger value="json"><FileJson className="h-3.5 w-3.5 mr-1" />JSON</TabsTrigger>
                 <TabsTrigger value="html" disabled={!detail.full.html_content}><Code className="h-3.5 w-3.5 mr-1" />HTML</TabsTrigger>
+                <TabsTrigger value="rawhtml" disabled={!detail.full.raw_html_content}>Raw HTML</TabsTrigger>
+                <TabsTrigger value="markdown" disabled={!detail.full.markdown_content}>Markdown</TabsTrigger>
                 <TabsTrigger value="css" disabled={!detail.full.css_content}>CSS</TabsTrigger>
                 <TabsTrigger value="embed" disabled={!detail.full.embed_code}>Embed</TabsTrigger>
+                <TabsTrigger value="screenshot" disabled={!detail.full.screenshot_url}>Shot</TabsTrigger>
+                <TabsTrigger value="links" disabled={!detail.full.links}>Links</TabsTrigger>
+                <TabsTrigger value="metadata" disabled={!detail.full.metadata}>Metadata</TabsTrigger>
+                <TabsTrigger value="submissions" disabled={!detail.full.submissions_sample}>Submissions</TabsTrigger>
                 <TabsTrigger value="meta">Endpoints</TabsTrigger>
               </TabsList>
               <TabsContent value="json" className="flex-1 overflow-hidden mt-2">
@@ -303,6 +322,53 @@ export function GhlMarketingRawDump() {
               <TabsContent value="embed" className="flex-1 overflow-hidden mt-2">
                 <ScrollArea className="h-full border border-border/40 rounded-md">
                   <pre className="text-[11px] p-3 font-mono whitespace-pre-wrap break-all">{detail.full.embed_code}</pre>
+                </ScrollArea>
+              </TabsContent>
+              <TabsContent value="rawhtml" className="flex-1 overflow-hidden mt-2">
+                <div className="flex justify-end mb-2">
+                  <Button size="sm" variant="outline" onClick={() => download(`${detail.summary.resource_type}-${detail.summary.ghl_id}.raw.html`, detail.full.raw_html_content || '', 'text/html')}>
+                    <Download className="h-3.5 w-3.5 mr-1" /> Download Raw HTML
+                  </Button>
+                </div>
+                <ScrollArea className="h-full border border-border/40 rounded-md">
+                  <pre className="text-[11px] p-3 font-mono whitespace-pre-wrap break-all">{detail.full.raw_html_content}</pre>
+                </ScrollArea>
+              </TabsContent>
+              <TabsContent value="markdown" className="flex-1 overflow-hidden mt-2">
+                <div className="flex justify-end mb-2">
+                  <Button size="sm" variant="outline" onClick={() => download(`${detail.summary.resource_type}-${detail.summary.ghl_id}.md`, detail.full.markdown_content || '', 'text/markdown')}>
+                    <Download className="h-3.5 w-3.5 mr-1" /> Download Markdown
+                  </Button>
+                </div>
+                <ScrollArea className="h-full border border-border/40 rounded-md">
+                  <pre className="text-[11px] p-3 font-mono whitespace-pre-wrap break-words">{detail.full.markdown_content}</pre>
+                </ScrollArea>
+              </TabsContent>
+              <TabsContent value="screenshot" className="flex-1 overflow-hidden mt-2">
+                <ScrollArea className="h-full border border-border/40 rounded-md">
+                  {detail.full.screenshot_url && (
+                    <img src={detail.full.screenshot_url} alt="page screenshot" className="w-full" />
+                  )}
+                </ScrollArea>
+              </TabsContent>
+              <TabsContent value="links" className="flex-1 overflow-hidden mt-2">
+                <ScrollArea className="h-full border border-border/40 rounded-md">
+                  <pre className="text-[11px] p-3 font-mono whitespace-pre-wrap break-all">{JSON.stringify(detail.full.links, null, 2)}</pre>
+                </ScrollArea>
+              </TabsContent>
+              <TabsContent value="metadata" className="flex-1 overflow-hidden mt-2">
+                <ScrollArea className="h-full border border-border/40 rounded-md">
+                  <pre className="text-[11px] p-3 font-mono whitespace-pre-wrap break-all">{JSON.stringify(detail.full.metadata, null, 2)}</pre>
+                </ScrollArea>
+              </TabsContent>
+              <TabsContent value="submissions" className="flex-1 overflow-hidden mt-2">
+                <div className="flex justify-end mb-2">
+                  <Button size="sm" variant="outline" onClick={() => download(`${detail.summary.resource_type}-${detail.summary.ghl_id}.submissions.json`, JSON.stringify(detail.full.submissions_sample, null, 2), 'application/json')}>
+                    <Download className="h-3.5 w-3.5 mr-1" /> Download
+                  </Button>
+                </div>
+                <ScrollArea className="h-full border border-border/40 rounded-md">
+                  <pre className="text-[11px] p-3 font-mono whitespace-pre-wrap break-all">{JSON.stringify(detail.full.submissions_sample, null, 2)}</pre>
                 </ScrollArea>
               </TabsContent>
               <TabsContent value="meta" className="flex-1 overflow-hidden mt-2">
