@@ -7376,6 +7376,7 @@ export type Database = {
           css_content: string | null
           embed_code: string | null
           endpoints_tried: Json | null
+          enrichment_sources: Json | null
           fetch_error: string | null
           fetch_status: string | null
           full_url: string | null
@@ -7383,11 +7384,17 @@ export type Database = {
           html_content: string | null
           id: string
           last_fetched_at: string
+          links: Json | null
           location_id: string | null
+          markdown_content: string | null
+          metadata: Json | null
           name: string | null
           parent_ghl_id: string | null
+          raw_html_content: string | null
           raw_payload: Json | null
           resource_type: string
+          screenshot_url: string | null
+          submissions_sample: Json | null
           updated_at: string
         }
         Insert: {
@@ -7395,6 +7402,7 @@ export type Database = {
           css_content?: string | null
           embed_code?: string | null
           endpoints_tried?: Json | null
+          enrichment_sources?: Json | null
           fetch_error?: string | null
           fetch_status?: string | null
           full_url?: string | null
@@ -7402,11 +7410,17 @@ export type Database = {
           html_content?: string | null
           id?: string
           last_fetched_at?: string
+          links?: Json | null
           location_id?: string | null
+          markdown_content?: string | null
+          metadata?: Json | null
           name?: string | null
           parent_ghl_id?: string | null
+          raw_html_content?: string | null
           raw_payload?: Json | null
           resource_type: string
+          screenshot_url?: string | null
+          submissions_sample?: Json | null
           updated_at?: string
         }
         Update: {
@@ -7414,6 +7428,7 @@ export type Database = {
           css_content?: string | null
           embed_code?: string | null
           endpoints_tried?: Json | null
+          enrichment_sources?: Json | null
           fetch_error?: string | null
           fetch_status?: string | null
           full_url?: string | null
@@ -7421,11 +7436,17 @@ export type Database = {
           html_content?: string | null
           id?: string
           last_fetched_at?: string
+          links?: Json | null
           location_id?: string | null
+          markdown_content?: string | null
+          metadata?: Json | null
           name?: string | null
           parent_ghl_id?: string | null
+          raw_html_content?: string | null
           raw_payload?: Json | null
           resource_type?: string
+          screenshot_url?: string | null
+          submissions_sample?: Json | null
           updated_at?: string
         }
         Relationships: []

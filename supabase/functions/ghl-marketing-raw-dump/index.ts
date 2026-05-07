@@ -1,18 +1,21 @@
 /**
- * GHL Marketing Raw Dump
+ * GHL Marketing Raw Dump — ENRICHED
  *
- * Pulls EVERY scrap of raw data we can get from the GHL public API for the
- * Sites-page assets (forms, surveys/quizzes, funnels, funnel pages) plus
- * workflows. Stores raw JSON, HTML, CSS and embed code into
- * `ghl_marketing_raw_dumps` so we can re-build everything manually in the new
- * GHL account from a complete reference dataset.
+ * Aggressively pulls every byte of data we can from GHL's REST surface
+ * (v1 + v2 LeadConnector endpoints) for forms, surveys/quizzes, funnels,
+ * funnel pages and workflows — then enriches with:
+ *   - Submissions sample (forms / surveys)
+ *   - Workflow versions, triggers, actions, enrollment counts
+ *   - Funnel domains, redirects, custom CSS/JS
+ *   - Live page rendering via Firecrawl (markdown + html + screenshot + links + metadata)
+ *     with a plain `fetch` fallback when Firecrawl is unavailable.
  *
- * Actions:
- *   - dump   : run a fresh pull from GHL (account = legacy by default)
- *   - list   : return summary rows for the UI
- *   - export : return all rows for client-side download
+ * Stores into `ghl_marketing_raw_dumps` with columns:
+ *   raw_payload, html_content, raw_html_content, markdown_content,
+ *   css_content, embed_code, screenshot_url, links, metadata,
+ *   submissions_sample, enrichment_sources, full_url, fetch_status.
  *
- * Auth: superadmin only (via verifyAuth + role check). Service role bypass.
+ * Auth: superadmin only (verifyAuth + role check). Service role bypass.
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
@@ -25,6 +28,9 @@ import {
 import { getGhlCredentials, validateGhlCredentials, buildGhlHeaders, type GhlAccount } from '../_shared/ghl-account.ts';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
+const FIRECRAWL_BASE = 'https://api.firecrawl.dev/v2';
+
+interface EndpointTrace { url: string; status: number; ok: boolean; bytes?: number }
 
 interface DumpRow {
   resource_type: 'form' | 'survey' | 'quiz' | 'funnel' | 'funnel_page' | 'workflow';
@@ -34,49 +40,59 @@ interface DumpRow {
   parent_ghl_id: string | null;
   raw_payload: any;
   html_content: string | null;
+  raw_html_content: string | null;
+  markdown_content: string | null;
   css_content: string | null;
   embed_code: string | null;
+  screenshot_url: string | null;
+  links: any | null;
+  metadata: any | null;
+  submissions_sample: any | null;
+  enrichment_sources: any;
   full_url: string | null;
   fetch_status: 'ok' | 'partial' | 'error';
   fetch_error: string | null;
-  endpoints_tried: { url: string; status: number; ok: boolean }[];
+  endpoints_tried: EndpointTrace[];
 }
 
-async function ghlGet(path: string, headers: Record<string, string>) {
+async function ghlGet(path: string, headers: Record<string, string>): Promise<{ url: string; status: number; ok: boolean; body: any; bytes: number }> {
   const url = `${GHL_API_BASE}${path}`;
   try {
     const res = await fetch(url, { method: 'GET', headers });
-    let body: any = null;
     const text = await res.text();
-    try { body = JSON.parse(text); } catch { body = text; }
-    return { url, status: res.status, ok: res.ok, body };
+    let body: any = text;
+    try { body = JSON.parse(text); } catch { /* keep as string */ }
+    return { url, status: res.status, ok: res.ok, body, bytes: text.length };
   } catch (e: any) {
-    return { url, status: 0, ok: false, body: { error: e.message } };
+    return { url, status: 0, ok: false, body: { error: e.message }, bytes: 0 };
   }
 }
 
-async function tryEndpoints(paths: string[], headers: Record<string, string>) {
-  const tried: { url: string; status: number; ok: boolean }[] = [];
-  let firstOk: any = null;
+/** Try multiple endpoints; collect ALL successful payloads (merged) and all traces. */
+async function harvest(paths: string[], headers: Record<string, string>) {
+  const tried: EndpointTrace[] = [];
+  const successes: any[] = [];
   for (const p of paths) {
     const r = await ghlGet(p, headers);
-    tried.push({ url: r.url, status: r.status, ok: r.ok });
-    if (r.ok && !firstOk) firstOk = r.body;
+    tried.push({ url: r.url, status: r.status, ok: r.ok, bytes: r.bytes });
+    if (r.ok && r.body && typeof r.body === 'object') successes.push(r.body);
   }
-  return { firstOk, tried };
+  // Deep-merge keys (last wins) so we accumulate fields from every endpoint
+  const merged = successes.reduce((acc, b) => ({ ...acc, ...b }), {});
+  return { merged, successes, tried };
 }
 
 function pickHtmlCss(payload: any): { html: string | null; css: string | null; embed: string | null } {
   if (!payload || typeof payload !== 'object') return { html: null, css: null, embed: null };
   const html =
     payload.html ?? payload.htmlContent ?? payload.pageHtml ?? payload.body ?? payload.content ??
-    payload?.page?.html ?? payload?.data?.html ?? null;
+    payload?.page?.html ?? payload?.data?.html ?? payload?.builder?.html ?? null;
   const css =
-    payload.css ?? payload.cssContent ?? payload.styles ?? payload.stylesheet ??
-    payload?.page?.css ?? payload?.data?.css ?? null;
+    payload.css ?? payload.cssContent ?? payload.styles ?? payload.stylesheet ?? payload.customCss ??
+    payload?.page?.css ?? payload?.data?.css ?? payload?.builder?.css ?? null;
   const embed =
     payload.embedCode ?? payload.embed_code ?? payload.embed ?? payload.iframeCode ??
-    payload.embedUrl ?? payload.embed_url ?? null;
+    payload.embedUrl ?? payload.embed_url ?? payload.embedScript ?? null;
   return {
     html: typeof html === 'string' ? html : html ? JSON.stringify(html) : null,
     css: typeof css === 'string' ? css : css ? JSON.stringify(css) : null,
@@ -84,7 +100,75 @@ function pickHtmlCss(payload: any): { html: string | null; css: string | null; e
   };
 }
 
-async function dumpAll(supabase: any, account: GhlAccount): Promise<{
+/** Use Firecrawl to render a live URL with maximum extraction. Falls back to plain fetch. */
+async function renderLive(url: string): Promise<{
+  html: string | null;
+  rawHtml: string | null;
+  markdown: string | null;
+  screenshot: string | null;
+  links: any | null;
+  metadata: any | null;
+  source: 'firecrawl' | 'fetch' | 'none';
+  trace: EndpointTrace;
+}> {
+  const fcKey = Deno.env.get('FIRECRAWL_API_KEY');
+  if (fcKey) {
+    try {
+      const res = await fetch(`${FIRECRAWL_BASE}/scrape`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${fcKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url,
+          formats: ['markdown', 'html', 'rawHtml', 'links', 'screenshot'],
+          onlyMainContent: false,
+          waitFor: 1500,
+        }),
+      });
+      const text = await res.text();
+      let body: any = null;
+      try { body = JSON.parse(text); } catch { /* */ }
+      const trace: EndpointTrace = { url: `firecrawl:${url}`, status: res.status, ok: res.ok, bytes: text.length };
+      if (res.ok && body) {
+        const d = body.data || body;
+        return {
+          html: d.html ?? null,
+          rawHtml: d.rawHtml ?? null,
+          markdown: d.markdown ?? null,
+          screenshot: d.screenshot ?? null,
+          links: d.links ?? null,
+          metadata: d.metadata ?? null,
+          source: 'firecrawl',
+          trace,
+        };
+      }
+    } catch (e: any) {
+      console.warn(`[raw-dump] firecrawl failed for ${url}: ${e.message}`);
+    }
+  }
+  // fallback — plain fetch
+  try {
+    const r = await fetch(url, { redirect: 'follow' });
+    const t = await r.text();
+    return {
+      html: r.ok ? t : null,
+      rawHtml: r.ok ? t : null,
+      markdown: null,
+      screenshot: null,
+      links: null,
+      metadata: null,
+      source: r.ok ? 'fetch' : 'none',
+      trace: { url: `fetch:${url}`, status: r.status, ok: r.ok, bytes: t.length },
+    };
+  } catch (e: any) {
+    return {
+      html: null, rawHtml: null, markdown: null, screenshot: null, links: null, metadata: null,
+      source: 'none',
+      trace: { url: `fetch:${url}`, status: 0, ok: false },
+    };
+  }
+}
+
+async function dumpAll(supabase: any, account: GhlAccount, opts: { useFirecrawl: boolean }): Promise<{
   inserted: number;
   errors: string[];
   breakdown: Record<string, number>;
@@ -105,27 +189,40 @@ async function dumpAll(supabase: any, account: GhlAccount): Promise<{
     const items: any[] = list.body?.forms || list.body?.data || [];
     for (const f of items) {
       const id = f.id || f._id;
-      // Try detail + submissions endpoints (read everything)
-      const detail = await tryEndpoints(
-        [`/forms/${id}?locationId=${locationId}`, `/forms/${id}`],
-        headers,
-      );
-      const merged = { ...f, ...(detail.firstOk || {}) };
+      const detail = await harvest([
+        `/forms/${id}?locationId=${locationId}`,
+        `/forms/${id}`,
+        `/forms/${id}/fields?locationId=${locationId}`,
+        `/forms/builder/${id}?locationId=${locationId}`,
+      ], headers);
+      // Submissions sample (last 25)
+      const subs = await ghlGet(`/forms/submissions?locationId=${locationId}&formId=${id}&limit=25`, headers);
+      const submissions = subs.ok ? (subs.body?.submissions || subs.body?.data || subs.body) : null;
+      const merged = { ...f, ...detail.merged };
       const { html, css, embed } = pickHtmlCss(merged);
+      const fullUrl = merged.url || merged.publicUrl || merged.formUrl || null;
+
+      let live = null as any;
+      if (opts.useFirecrawl && fullUrl) live = await renderLive(fullUrl);
+
       rows.push({
         resource_type: 'form',
-        ghl_id: id,
-        location_id: locationId,
-        name: merged.name || null,
-        parent_ghl_id: null,
+        ghl_id: id, location_id: locationId, name: merged.name || null, parent_ghl_id: null,
         raw_payload: merged,
-        html_content: html,
+        html_content: html || live?.html || null,
+        raw_html_content: live?.rawHtml || null,
+        markdown_content: live?.markdown || null,
         css_content: css,
         embed_code: embed,
-        full_url: merged.url || merged.publicUrl || null,
-        fetch_status: detail.firstOk ? 'ok' : 'partial',
+        screenshot_url: live?.screenshot || null,
+        links: live?.links || null,
+        metadata: live?.metadata || null,
+        submissions_sample: submissions,
+        enrichment_sources: { detail_endpoints_ok: detail.successes.length, submissions_ok: subs.ok, live_render: live?.source || 'skipped' },
+        full_url: fullUrl,
+        fetch_status: detail.successes.length || live?.html ? 'ok' : 'partial',
         fetch_error: null,
-        endpoints_tried: detail.tried,
+        endpoints_tried: [...detail.tried, { url: subs.url, status: subs.status, ok: subs.ok, bytes: subs.bytes }, ...(live ? [live.trace] : [])],
       });
       breakdown.form++;
     }
@@ -138,26 +235,35 @@ async function dumpAll(supabase: any, account: GhlAccount): Promise<{
     for (const s of items) {
       const id = s.id || s._id;
       const isQuiz = s.isQuiz === true || s.type === 'quiz';
-      const detail = await tryEndpoints(
-        [`/surveys/${id}?locationId=${locationId}`, `/surveys/${id}`],
-        headers,
-      );
-      const merged = { ...s, ...(detail.firstOk || {}) };
+      const detail = await harvest([
+        `/surveys/${id}?locationId=${locationId}`,
+        `/surveys/${id}`,
+        `/surveys/${id}/questions?locationId=${locationId}`,
+      ], headers);
+      const subs = await ghlGet(`/surveys/submissions?locationId=${locationId}&surveyId=${id}&limit=25`, headers);
+      const submissions = subs.ok ? (subs.body?.submissions || subs.body?.data || subs.body) : null;
+      const merged = { ...s, ...detail.merged };
       const { html, css, embed } = pickHtmlCss(merged);
+      const fullUrl = merged.url || merged.publicUrl || null;
+      let live = null as any;
+      if (opts.useFirecrawl && fullUrl) live = await renderLive(fullUrl);
+
       rows.push({
         resource_type: isQuiz ? 'quiz' : 'survey',
-        ghl_id: id,
-        location_id: locationId,
-        name: merged.name || null,
-        parent_ghl_id: null,
+        ghl_id: id, location_id: locationId, name: merged.name || null, parent_ghl_id: null,
         raw_payload: merged,
-        html_content: html,
-        css_content: css,
-        embed_code: embed,
-        full_url: merged.url || merged.publicUrl || null,
-        fetch_status: detail.firstOk ? 'ok' : 'partial',
+        html_content: html || live?.html || null,
+        raw_html_content: live?.rawHtml || null,
+        markdown_content: live?.markdown || null,
+        css_content: css, embed_code: embed,
+        screenshot_url: live?.screenshot || null,
+        links: live?.links || null, metadata: live?.metadata || null,
+        submissions_sample: submissions,
+        enrichment_sources: { detail_endpoints_ok: detail.successes.length, submissions_ok: subs.ok, live_render: live?.source || 'skipped' },
+        full_url: fullUrl,
+        fetch_status: detail.successes.length || live?.html ? 'ok' : 'partial',
         fetch_error: null,
-        endpoints_tried: detail.tried,
+        endpoints_tried: [...detail.tried, { url: subs.url, status: subs.status, ok: subs.ok, bytes: subs.bytes }, ...(live ? [live.trace] : [])],
       });
       breakdown[isQuiz ? 'quiz' : 'survey']++;
     }
@@ -169,23 +275,23 @@ async function dumpAll(supabase: any, account: GhlAccount): Promise<{
     const funnels: any[] = list.body?.funnels || list.body?.data || [];
     for (const fn of funnels) {
       const fid = fn._id || fn.id;
-      const detail = await tryEndpoints(
-        [`/funnels/funnel/${fid}?locationId=${locationId}`, `/funnels/${fid}`],
-        headers,
-      );
-      const fullFn = { ...fn, ...(detail.firstOk || {}) };
+      const detail = await harvest([
+        `/funnels/funnel/${fid}?locationId=${locationId}`,
+        `/funnels/${fid}`,
+        `/funnels/funnel/${fid}/redirect/list?locationId=${locationId}`,
+      ], headers);
+      const fullFn = { ...fn, ...detail.merged };
+
       rows.push({
         resource_type: 'funnel',
-        ghl_id: fid,
-        location_id: locationId,
-        name: fullFn.name || null,
-        parent_ghl_id: null,
+        ghl_id: fid, location_id: locationId, name: fullFn.name || null, parent_ghl_id: null,
         raw_payload: fullFn,
-        html_content: null,
-        css_content: null,
-        embed_code: null,
+        html_content: null, raw_html_content: null, markdown_content: null,
+        css_content: fullFn.customCss || null, embed_code: null,
+        screenshot_url: null, links: null, metadata: null, submissions_sample: null,
+        enrichment_sources: { detail_endpoints_ok: detail.successes.length },
         full_url: fullFn.domain ? `https://${fullFn.domain}` : null,
-        fetch_status: detail.firstOk ? 'ok' : 'partial',
+        fetch_status: detail.successes.length ? 'ok' : 'partial',
         fetch_error: null,
         endpoints_tried: detail.tried,
       });
@@ -196,69 +302,79 @@ async function dumpAll(supabase: any, account: GhlAccount): Promise<{
         const pg = pages[i];
         const pid = pg._id || pg.id;
         if (!pid) continue;
-        // Try to grab full page builder data (html/css/elements)
-        const pgDetail = await tryEndpoints(
-          [
-            `/funnels/page/${pid}?locationId=${locationId}`,
-            `/funnels/page/${pid}`,
-            `/funnels/funnel/${fid}/page/${pid}?locationId=${locationId}`,
-            `/funnels/lookup/redirect?locationId=${locationId}&id=${pid}`,
-          ],
-          headers,
-        );
-        const fullPg = { ...pg, ...(pgDetail.firstOk || {}) };
+        const pgDetail = await harvest([
+          `/funnels/page/${pid}?locationId=${locationId}`,
+          `/funnels/page/${pid}`,
+          `/funnels/funnel/${fid}/page/${pid}?locationId=${locationId}`,
+          `/funnels/page/${pid}/builder?locationId=${locationId}`,
+          `/funnels/lookup/redirect?locationId=${locationId}&id=${pid}`,
+        ], headers);
+        const fullPg = { ...pg, ...pgDetail.merged };
         const { html, css, embed } = pickHtmlCss(fullPg);
         const slug = fullPg.path || fullPg.slug || fullPg.url || null;
         const pageUrl = fullPg.fullUrl || (fullFn.domain && slug ? `https://${fullFn.domain}/${slug}` : null);
 
-        // If we got a public URL, also try to fetch the live HTML directly
-        let liveHtml: string | null = null;
-        if (!html && pageUrl) {
-          try {
-            const live = await fetch(pageUrl);
-            if (live.ok) liveHtml = await live.text();
-          } catch { /* ignore */ }
-        }
+        let live = null as any;
+        if (opts.useFirecrawl && pageUrl) live = await renderLive(pageUrl);
 
         rows.push({
           resource_type: 'funnel_page',
-          ghl_id: pid,
-          location_id: locationId,
+          ghl_id: pid, location_id: locationId,
           name: fullPg.name || fullPg.stepName || `Page ${i + 1}`,
           parent_ghl_id: fid,
           raw_payload: fullPg,
-          html_content: html || liveHtml,
+          html_content: html || live?.html || null,
+          raw_html_content: live?.rawHtml || null,
+          markdown_content: live?.markdown || null,
           css_content: css,
           embed_code: embed,
+          screenshot_url: live?.screenshot || null,
+          links: live?.links || null,
+          metadata: live?.metadata || null,
+          submissions_sample: null,
+          enrichment_sources: { detail_endpoints_ok: pgDetail.successes.length, live_render: live?.source || 'skipped' },
           full_url: pageUrl,
-          fetch_status: (html || liveHtml || pgDetail.firstOk) ? 'ok' : 'partial',
+          fetch_status: (html || live?.html || pgDetail.successes.length) ? 'ok' : 'partial',
           fetch_error: null,
-          endpoints_tried: pgDetail.tried,
+          endpoints_tried: [...pgDetail.tried, ...(live ? [live.trace] : [])],
         });
         breakdown.funnel_page++;
       }
     }
   } catch (e: any) { errors.push(`funnels: ${e.message}`); }
 
-  // ── WORKFLOWS (metadata only — API limitation) ──
+  // ── WORKFLOWS (enriched) ──
   try {
     const list = await ghlGet(`/workflows/?locationId=${locationId}`, headers);
     const items: any[] = list.body?.workflows || list.body?.data || [];
     for (const wf of items) {
+      const wfid = wf.id || wf._id;
+      // Try a much wider set of endpoints — many are undocumented but the
+      // LeadConnector UI hits them; if they 404 we just record the trace.
+      const detail = await harvest([
+        `/workflows/${wfid}?locationId=${locationId}`,
+        `/workflows/${wfid}`,
+        `/workflows/${wfid}/versions?locationId=${locationId}`,
+        `/workflows/${wfid}/triggers?locationId=${locationId}`,
+        `/workflows/${wfid}/actions?locationId=${locationId}`,
+        `/workflows/${wfid}/steps?locationId=${locationId}`,
+        `/workflows/${wfid}/enrollments?locationId=${locationId}&limit=25`,
+        `/workflows/${wfid}/stats?locationId=${locationId}`,
+      ], headers);
+      const merged = { ...wf, ...detail.merged };
+      const status = detail.successes.length > 0 ? 'ok' : 'partial';
       rows.push({
         resource_type: 'workflow',
-        ghl_id: wf.id,
-        location_id: locationId,
-        name: wf.name || null,
-        parent_ghl_id: null,
-        raw_payload: wf,
-        html_content: null,
-        css_content: null,
-        embed_code: null,
+        ghl_id: wfid, location_id: locationId, name: merged.name || null, parent_ghl_id: null,
+        raw_payload: merged,
+        html_content: null, raw_html_content: null, markdown_content: null,
+        css_content: null, embed_code: null, screenshot_url: null,
+        links: null, metadata: null, submissions_sample: null,
+        enrichment_sources: { detail_endpoints_ok: detail.successes.length, note: 'GHL public API limits workflow internals — only what came back is stored' },
         full_url: null,
-        fetch_status: 'partial', // GHL API exposes only id/name/status
-        fetch_error: 'GHL public API exposes only metadata for workflows',
-        endpoints_tried: [{ url: list.url, status: list.status, ok: list.ok }],
+        fetch_status: status,
+        fetch_error: status === 'partial' ? 'GHL public API returned only metadata; deeper endpoints 404/403' : null,
+        endpoints_tried: detail.tried,
       });
       breakdown.workflow++;
     }
@@ -266,8 +382,8 @@ async function dumpAll(supabase: any, account: GhlAccount): Promise<{
 
   // Upsert in batches
   let inserted = 0;
-  for (let i = 0; i < rows.length; i += 50) {
-    const batch = rows.slice(i, i + 50).map((r) => ({ ...r, last_fetched_at: new Date().toISOString() }));
+  for (let i = 0; i < rows.length; i += 25) {
+    const batch = rows.slice(i, i + 25).map((r) => ({ ...r, last_fetched_at: new Date().toISOString() }));
     const { error } = await supabase
       .from('ghl_marketing_raw_dumps')
       .upsert(batch, { onConflict: 'resource_type,ghl_id' });
@@ -298,10 +414,11 @@ Deno.serve(async (req) => {
 
     const action = body.action || 'list';
     const account: GhlAccount = body.account === 'new' ? 'new' : 'legacy';
+    const useFirecrawl = body.use_firecrawl !== false; // default ON
 
     if (action === 'dump') {
-      const result = await dumpAll(supabase, account);
-      return new Response(JSON.stringify({ success: true, account, ...result }), {
+      const result = await dumpAll(supabase, account, { useFirecrawl });
+      return new Response(JSON.stringify({ success: true, account, firecrawl: useFirecrawl && !!Deno.env.get('FIRECRAWL_API_KEY'), ...result }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -321,18 +438,30 @@ Deno.serve(async (req) => {
     // default: list (summary)
     const { data, error } = await supabase
       .from('ghl_marketing_raw_dumps')
-      .select('id,resource_type,ghl_id,name,parent_ghl_id,full_url,fetch_status,fetch_error,last_fetched_at,html_content,css_content,embed_code')
+      .select('id,resource_type,ghl_id,name,parent_ghl_id,full_url,fetch_status,fetch_error,last_fetched_at,html_content,raw_html_content,markdown_content,css_content,embed_code,screenshot_url,links,metadata,submissions_sample,enrichment_sources')
       .order('resource_type', { ascending: true })
       .order('name', { ascending: true });
     if (error) throw error;
     const summary = (data || []).map((r: any) => ({
-      ...r,
+      id: r.id,
+      resource_type: r.resource_type,
+      ghl_id: r.ghl_id,
+      name: r.name,
+      parent_ghl_id: r.parent_ghl_id,
+      full_url: r.full_url,
+      fetch_status: r.fetch_status,
+      fetch_error: r.fetch_error,
+      last_fetched_at: r.last_fetched_at,
+      enrichment_sources: r.enrichment_sources,
       has_html: !!r.html_content,
+      has_raw_html: !!r.raw_html_content,
+      has_markdown: !!r.markdown_content,
       has_css: !!r.css_content,
       has_embed: !!r.embed_code,
-      html_content: undefined,
-      css_content: undefined,
-      embed_code: undefined,
+      has_screenshot: !!r.screenshot_url,
+      has_links: !!r.links,
+      has_metadata: !!r.metadata,
+      has_submissions: !!r.submissions_sample,
     }));
     const counts: Record<string, number> = {};
     for (const r of summary) counts[r.resource_type] = (counts[r.resource_type] || 0) + 1;
