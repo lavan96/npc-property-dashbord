@@ -309,6 +309,8 @@ export function ReminderActions({
   }
 
   return (
+    <>
+    {editDialog}
     <div className="flex gap-0.5 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0" onClick={(e) => e.stopPropagation()}>
       {isEditable && canEdit && (
         <>
