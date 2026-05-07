@@ -366,6 +366,14 @@ export function GhlWorkflowVisualizer() {
                               >
                                 <Eye className="h-3 w-3" /> Raw JSON
                               </button>
+                              <button
+                                onClick={() => setBlueprintFor(l)}
+                                className={`text-[11px] inline-flex items-center gap-1 ${l.rebuild_blueprint ? 'text-success' : 'text-primary'} hover:underline`}
+                              >
+                                <WorkflowIcon className="h-3 w-3" />
+                                {l.rebuild_blueprint && ((l.rebuild_blueprint.triggers?.length || 0) + (l.rebuild_blueprint.steps?.length || 0)) > 0
+                                  ? 'View blueprint' : 'Build blueprint'}
+                              </button>
                             </div>
                           </div>
                         </div>
