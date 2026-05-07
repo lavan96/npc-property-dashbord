@@ -167,7 +167,7 @@ export function ReminderActions({
   const isEditable = source === 'client_reminder';
 
   const editDialog = isEditable && canEdit ? (
-    <Dialog open={showEdit} onOpenChange={setShowEdit}>
+    <Dialog open={showEdit} onOpenChange={(o) => { if (!o) requestCloseEdit(); else setShowEdit(true); }}>
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <DialogHeader>
           <DialogTitle>Edit reminder</DialogTitle>
