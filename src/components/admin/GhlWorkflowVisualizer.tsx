@@ -48,6 +48,7 @@ interface Snapshot {
   rebuild_notes: string | null;
   rebuild_marked_done_at: string | null;
   rebuild_marked_done_by: string | null;
+  rebuild_blueprint?: Blueprint | null;
 }
 interface Mapping {
   old_ghl_id: string;
