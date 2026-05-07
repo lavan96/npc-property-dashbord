@@ -274,11 +274,17 @@ export function GhlMarketingRawDump() {
             </div>
           ) : (
             <Tabs defaultValue="json" className="flex-1 flex flex-col overflow-hidden">
-              <TabsList>
+              <TabsList className="flex-wrap h-auto">
                 <TabsTrigger value="json"><FileJson className="h-3.5 w-3.5 mr-1" />JSON</TabsTrigger>
                 <TabsTrigger value="html" disabled={!detail.full.html_content}><Code className="h-3.5 w-3.5 mr-1" />HTML</TabsTrigger>
+                <TabsTrigger value="rawhtml" disabled={!detail.full.raw_html_content}>Raw HTML</TabsTrigger>
+                <TabsTrigger value="markdown" disabled={!detail.full.markdown_content}>Markdown</TabsTrigger>
                 <TabsTrigger value="css" disabled={!detail.full.css_content}>CSS</TabsTrigger>
                 <TabsTrigger value="embed" disabled={!detail.full.embed_code}>Embed</TabsTrigger>
+                <TabsTrigger value="screenshot" disabled={!detail.full.screenshot_url}>Shot</TabsTrigger>
+                <TabsTrigger value="links" disabled={!detail.full.links}>Links</TabsTrigger>
+                <TabsTrigger value="metadata" disabled={!detail.full.metadata}>Metadata</TabsTrigger>
+                <TabsTrigger value="submissions" disabled={!detail.full.submissions_sample}>Submissions</TabsTrigger>
                 <TabsTrigger value="meta">Endpoints</TabsTrigger>
               </TabsList>
               <TabsContent value="json" className="flex-1 overflow-hidden mt-2">
