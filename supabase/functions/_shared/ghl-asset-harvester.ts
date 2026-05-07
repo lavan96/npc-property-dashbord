@@ -108,9 +108,13 @@ export async function renderLive(url: string, useFirecrawl: boolean): Promise<Re
         headers: { Authorization: `Bearer ${fcKey}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           url,
-          formats: ['markdown', 'html', 'rawHtml', 'links', 'screenshot'],
+          formats: ['markdown', 'html', 'rawHtml', 'links', 'screenshot@fullPage'],
           onlyMainContent: false,
-          waitFor: 3000,
+          waitFor: 6000,
+          timeout: 60000,
+          blockAds: false,
+          mobile: false,
+          skipTlsVerification: false,
         }),
       });
       const text = await res.text();
@@ -121,7 +125,7 @@ export async function renderLive(url: string, useFirecrawl: boolean): Promise<Re
         const d = body.data || body;
         return {
           html: d.html ?? null,
-          rawHtml: d.rawHtml ?? null,
+          rawHtml: d.rawHtml ?? d.html ?? null,
           markdown: d.markdown ?? null,
           screenshot: d.screenshot ?? null,
           links: d.links ?? null,
@@ -135,7 +139,7 @@ export async function renderLive(url: string, useFirecrawl: boolean): Promise<Re
     }
   }
   try {
-    const r = await fetch(url, { redirect: 'follow' });
+    const r = await fetch(url, { redirect: 'follow', headers: { 'User-Agent': 'Mozilla/5.0 (compatible; GHL-Harvester/1.0)' } });
     const t = await r.text();
     return {
       html: r.ok ? t : null,
@@ -153,6 +157,49 @@ export async function renderLive(url: string, useFirecrawl: boolean): Promise<Re
       source: 'none', trace: { url: `fetch:${url}`, status: 0, ok: false },
     };
   }
+}
+
+/**
+ * Use Firecrawl /v2/map to enumerate every public URL on a domain.
+ * Lets us discover funnel step URLs the GHL API doesn't surface.
+ */
+export async function firecrawlMap(domain: string, search?: string): Promise<string[]> {
+  const fcKey = Deno.env.get('FIRECRAWL_API_KEY');
+  if (!fcKey || !domain) return [];
+  try {
+    const res = await fetch(`${FIRECRAWL_BASE}/map`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${fcKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        url: domain.startsWith('http') ? domain : `https://${domain}`,
+        search,
+        limit: 500,
+        includeSubdomains: false,
+      }),
+    });
+    if (!res.ok) { await res.text(); return []; }
+    const body = await res.json().catch(() => null);
+    const links: string[] = body?.links || body?.data?.links || [];
+    return Array.isArray(links) ? links : [];
+  } catch { return []; }
+}
+
+/**
+ * Persist a Firecrawl screenshot URL into our storage bucket so it
+ * doesn't expire. Returns the storage path or null on failure.
+ */
+export async function persistScreenshot(supabase: any, screenshotUrl: string | null, storagePrefix: string): Promise<string | null> {
+  if (!screenshotUrl || !screenshotUrl.startsWith('http')) return null;
+  try {
+    const r = await fetch(screenshotUrl);
+    if (!r.ok) { await r.text(); return null; }
+    const buf = new Uint8Array(await r.arrayBuffer());
+    const path = `${storagePrefix}/screenshot.png`;
+    const { error } = await supabase.storage.from(BUCKET).upload(path, buf, {
+      contentType: 'image/png', upsert: true,
+    });
+    return error ? null : path;
+  } catch { return null; }
 }
 
 // ── Asset extraction & download ─────────────────────────────────
@@ -462,17 +509,18 @@ export async function processAsset(
 
   if (task.resource_type === 'funnel_page') {
     const seed = task.seed || {};
-    const detail = await harvest([
-      `/funnels/page/${id}?locationId=${locationId}`,
-      `/funnels/page/${id}`,
-      `/funnels/funnel/${task.parent_ghl_id}/page/${id}?locationId=${locationId}`,
-      `/funnels/page/${id}/builder?locationId=${locationId}`,
-      `/funnels/lookup/redirect?locationId=${locationId}&id=${id}`,
-    ], headers);
+    const isSyntheticSitePage = id.startsWith('site:');
+    const detail = isSyntheticSitePage
+      ? { merged: {}, successes: [], tried: [] as EndpointTrace[] }
+      : await harvest([
+        `/funnels/page/${id}?locationId=${locationId}`,
+        `/funnels/page/${id}`,
+        `/funnels/funnel/${task.parent_ghl_id}/page/${id}?locationId=${locationId}`,
+        `/funnels/page/${id}/builder?locationId=${locationId}`,
+        `/funnels/lookup/redirect?locationId=${locationId}&id=${id}`,
+      ], headers);
     const merged = { ...seed, ...detail.merged };
     const { html, css, embed } = pickHtmlCss(merged);
-    // Build a public URL: priority is explicit override → seed.fullUrl
-    // → constructed from parentDomain + parentSlug + parentStepUrl.
     const cleanJoin = (...parts: string[]) =>
       '/' + parts.map((p) => (p || '').replace(/^\/+|\/+$/g, '')).filter(Boolean).join('/');
     const pageUrl: string | null = merged.fullUrl || seed.fullUrl
@@ -485,16 +533,21 @@ export async function processAsset(
 
     let manifest: any = null, inlinedCss: string | null = null, portablePath: string | null = null;
     let assetCount = 0, assetBytes = 0;
+    let screenshotPath: string | null = null;
     const renderedHtml = live.rawHtml || live.html || html;
+    const safeStorageId = id.replace(/[^a-z0-9_-]+/gi, '_');
     if (downloadAssets && renderedHtml && pageUrl) {
       const urls = extractAssetUrls(renderedHtml, pageUrl);
-      const r = await downloadAndStoreAssets(supabase, urls, `funnel_pages/${id}/assets`);
-      const portable = await buildPortableHtml(supabase, renderedHtml, r.assets, r.cssTexts, `funnel_pages/${id}`);
+      const r = await downloadAndStoreAssets(supabase, urls, `funnel_pages/${safeStorageId}/assets`);
+      const portable = await buildPortableHtml(supabase, renderedHtml, r.assets, r.cssTexts, `funnel_pages/${safeStorageId}`);
       manifest = r.assets;
       inlinedCss = portable.inlinedCss;
       portablePath = portable.portablePath;
       assetCount = r.assets.filter((a) => a.storage_path).length;
       assetBytes = r.totalBytes;
+    }
+    if (live.screenshot) {
+      screenshotPath = await persistScreenshot(supabase, live.screenshot, `funnel_pages/${safeStorageId}`);
     }
 
     return {
@@ -508,7 +561,9 @@ export async function processAsset(
       css_content: css,
       inlined_css: inlinedCss,
       embed_code: embed,
-      screenshot_url: live.screenshot,
+      screenshot_url: screenshotPath
+        ? `${Deno.env.get('SUPABASE_URL')}/storage/v1/object/public/${BUCKET}/${screenshotPath}`
+        : live.screenshot,
       links: live.links,
       metadata: live.metadata,
       submissions_sample: null,
@@ -516,8 +571,10 @@ export async function processAsset(
       asset_count: assetCount,
       asset_bytes: assetBytes,
       portable_html_path: portablePath,
-      reconstruction_notes: 'GHL funnel-builder JSON is API-locked. Use the screenshot + portable HTML + asset manifest to rebuild this page section-by-section in the GHL Funnels editor.',
-      enrichment_sources: { detail_endpoints_ok: detail.successes.length, live_render: live.source },
+      reconstruction_notes: isSyntheticSitePage
+        ? 'Discovered via Firecrawl /map (not surfaced by GHL funnel API). Use rendered HTML + screenshot to identify which funnel/step it belongs to.'
+        : 'GHL funnel-builder JSON is API-locked. Use the screenshot + portable HTML + asset manifest to rebuild this page section-by-section in the GHL Funnels editor.',
+      enrichment_sources: { detail_endpoints_ok: detail.successes.length, live_render: live.source, discovered_via: seed._discoveredVia || 'ghl_api' },
       full_url: pageUrl,
       fetch_status: (renderedHtml || detail.successes.length) ? 'ok' : 'partial',
       fetch_error: pageUrl ? null : 'No public URL available; live render skipped',
@@ -658,23 +715,31 @@ export async function buildQueue(
   if (resources.includes('funnel')) {
     const list = await ghlGet(`/funnels/funnel/list?locationId=${locationId}`, headers);
     const funnels: any[] = list.body?.funnels || list.body?.data || [];
+
+    // First domain we see → used to enumerate the entire public site.
+    const primaryDomain = Object.values(overrides).find(Boolean) || null;
+    const sitePages: string[] = primaryDomain ? await firecrawlMap(primaryDomain) : [];
+    const sitePageSet = new Set(sitePages.map((u) => {
+      try { return new URL(u).pathname.replace(/\/+$/, '') || '/'; } catch { return u; }
+    }));
+    console.log(`[harvester] Firecrawl /map discovered ${sitePages.length} URLs on ${primaryDomain || 'no-domain'}`);
+
+    const claimedPaths = new Set<string>();
+
     for (const fn of funnels) {
       const fid = fn._id || fn.id;
       if (!fid) continue;
-      const overrideDomain = overrides[fid] || null;
-      // Hydrate seed with funnel-level domain + slug for downstream URL building
+      const overrideDomain = overrides[fid] || primaryDomain;
       tasks.push({
         resource_type: 'funnel',
         ghl_id: fid,
         seed: { ...fn, _publishedDomain: overrideDomain },
       });
-      // Use the canonical /funnels/page list for full step+page resolution
       const pageList = await ghlGet(
         `/funnels/page?locationId=${locationId}&funnelId=${fid}&limit=100&offset=0`,
         headers,
       );
       const pages: any[] = Array.isArray(pageList.body) ? pageList.body : (pageList.body?.data || []);
-      // Map step ID → step.url so we can build the public path
       const stepUrlById: Record<string, string> = {};
       for (const st of (fn.steps || [])) {
         const sid = st.id || st._id;
@@ -684,6 +749,10 @@ export async function buildQueue(
         const pid = pg._id || pg.id;
         if (!pid) continue;
         const stepPath = pg.stepId ? (stepUrlById[pg.stepId] || '') : '';
+        const slug = (fn.url || '').replace(/^\/+|\/+$/g, '');
+        const sp = (stepPath || '').replace(/^\/+|\/+$/g, '');
+        const fullPath = '/' + [slug, sp].filter(Boolean).join('/');
+        claimedPaths.add(fullPath.replace(/\/+$/, '') || '/');
         tasks.push({
           resource_type: 'funnel_page',
           ghl_id: pid,
@@ -697,6 +766,35 @@ export async function buildQueue(
           },
         });
       }
+    }
+
+    // Add Firecrawl-discovered pages that no GHL funnel claimed (extra
+    // top-level marketing pages, thank-you pages, sub-steps under a slug
+    // the API didn't list, etc.). These render through the same code path.
+    if (primaryDomain) {
+      let added = 0;
+      for (const url of sitePages) {
+        let path = '/';
+        try { path = new URL(url).pathname.replace(/\/+$/, '') || '/'; } catch {}
+        if (claimedPaths.has(path)) continue;
+        // Skip GHL widget/admin URLs
+        if (/\/(widget|api|hooks|webhooks)\//.test(path)) continue;
+        const synthId = `site:${path.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || 'root'}`;
+        tasks.push({
+          resource_type: 'funnel_page',
+          ghl_id: synthId,
+          parent_ghl_id: null,
+          seed: {
+            name: `Site page ${path}`,
+            fullUrl: url,
+            parentDomain: primaryDomain,
+            _discoveredVia: 'firecrawl_map',
+          },
+        });
+        added++;
+        if (added >= 200) break;
+      }
+      console.log(`[harvester] Added ${added} extra site pages from /map`);
     }
   }
 
