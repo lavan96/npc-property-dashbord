@@ -35,6 +35,7 @@ interface ReminderActionsProps {
   reminderId: string;
   rawId: string;
   title: string;
+  description?: string | null;
   dueDate: string;
   priority: string;
   assignedTo?: string[] | null;
@@ -47,6 +48,7 @@ export function ReminderActions({
   reminderId,
   rawId,
   title,
+  description,
   dueDate,
   priority,
   assignedTo,
@@ -57,8 +59,13 @@ export function ReminderActions({
   const [showEdit, setShowEdit] = useState(false);
   const [showSnooze, setShowSnooze] = useState(false);
   const [editTitle, setEditTitle] = useState(title);
+  const [editDescription, setEditDescription] = useState(description || '');
   const [editPriority, setEditPriority] = useState(priority);
   const [editAssigned, setEditAssigned] = useState<string[]>(assignedTo || []);
+  const [editDueDate, setEditDueDate] = useState<Date | undefined>(dueDate ? new Date(dueDate) : undefined);
+  const [editDueTime, setEditDueTime] = useState<string>(
+    dueDate ? format(new Date(dueDate), 'HH:mm') : '09:00'
+  );
   const [customSnoozeDate, setCustomSnoozeDate] = useState<Date | undefined>();
 
   const updateMutation = useUpdateReminder();
