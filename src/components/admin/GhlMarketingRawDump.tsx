@@ -133,7 +133,18 @@ export function GhlMarketingRawDump() {
 
   const handleStartJob = async () => {
     toast.info('Building queue and starting harvest…');
-    const res = await invokeSecureFunction('ghl-marketing-dump-enqueue', { account: 'legacy' });
+    // Apply the same domain to every funnel by passing a wildcard '*' the
+    // backend supports — but to keep the API simple we list known funnel ids
+    // from the current rows. If none yet, the backend will skip page rendering
+    // and just store metadata.
+    const funnelIds = Array.from(new Set(rows.filter(r => r.resource_type === 'funnel').map(r => r.ghl_id)));
+    const funnel_domains: Record<string, string> = {};
+    const cleaned = funnelDomain.trim().replace(/^https?:\/\//, '').replace(/\/+$/, '');
+    if (cleaned) {
+      for (const fid of funnelIds) funnel_domains[fid] = cleaned;
+      localStorage.setItem('ghl_funnel_domain', cleaned);
+    }
+    const res = await invokeSecureFunction('ghl-marketing-dump-enqueue', { account: 'legacy', funnel_domains });
     if (res.error) { toast.error(res.error.message); return; }
     const jobId = res.data?.job_id;
     setJob({ id: jobId, status: 'running', total_assets: res.data?.total_assets || 0, processed_assets: 0, failed_assets: 0, current_label: null, started_at: null, finished_at: null });
