@@ -220,8 +220,14 @@ export function GhlMarketingRawDump() {
                     <div className="flex flex-wrap gap-1">
                       <Badge variant="outline" className="text-[10px]">JSON</Badge>
                       {r.has_html && <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-400">HTML</Badge>}
+                      {r.has_raw_html && <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-300">RawHTML</Badge>}
+                      {r.has_markdown && <Badge variant="outline" className="text-[10px] bg-cyan-500/10 text-cyan-400">MD</Badge>}
                       {r.has_css && <Badge variant="outline" className="text-[10px] bg-blue-500/10 text-blue-400">CSS</Badge>}
                       {r.has_embed && <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-400">Embed</Badge>}
+                      {r.has_screenshot && <Badge variant="outline" className="text-[10px] bg-fuchsia-500/10 text-fuchsia-400">Shot</Badge>}
+                      {r.has_links && <Badge variant="outline" className="text-[10px] bg-indigo-500/10 text-indigo-400">Links</Badge>}
+                      {r.has_metadata && <Badge variant="outline" className="text-[10px] bg-slate-500/10 text-slate-300">Meta</Badge>}
+                      {r.has_submissions && <Badge variant="outline" className="text-[10px] bg-rose-500/10 text-rose-400">Subs</Badge>}
                     </div>
                   </TableCell>
                   <TableCell>
