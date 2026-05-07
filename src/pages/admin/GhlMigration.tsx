@@ -361,6 +361,9 @@ export default function GhlMigration() {
 
       {/* Phase 3 — Workflow migration (snapshot + enrollment mirror + re-enroll) */}
       <WorkflowMigrationPanel />
+
+      {/* Phase 3 — Manual rebuild visualizer */}
+      <GhlWorkflowVisualizer />
     </div>
   );
 }
