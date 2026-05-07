@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
     if (action === 'list') {
       const [snapsRes, mapsRes, enrollAgg] = await Promise.all([
         supabase.from('ghl_workflow_snapshots')
-          .select('id, account, workflow_id, location_id, name, status, version, raw_json, last_seen_at, fetched_at, rebuild_notes, rebuild_marked_done_at, rebuild_marked_done_by')
+          .select('id, account, workflow_id, location_id, name, status, version, raw_json, last_seen_at, fetched_at, rebuild_notes, rebuild_marked_done_at, rebuild_marked_done_by, rebuild_blueprint')
           .order('account', { ascending: true })
           .order('name', { ascending: true })
           .limit(2000),
