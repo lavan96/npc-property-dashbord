@@ -7370,6 +7370,66 @@ export type Database = {
         }
         Relationships: []
       }
+      ghl_marketing_raw_dumps: {
+        Row: {
+          created_at: string
+          css_content: string | null
+          embed_code: string | null
+          endpoints_tried: Json | null
+          fetch_error: string | null
+          fetch_status: string | null
+          full_url: string | null
+          ghl_id: string
+          html_content: string | null
+          id: string
+          last_fetched_at: string
+          location_id: string | null
+          name: string | null
+          parent_ghl_id: string | null
+          raw_payload: Json | null
+          resource_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          css_content?: string | null
+          embed_code?: string | null
+          endpoints_tried?: Json | null
+          fetch_error?: string | null
+          fetch_status?: string | null
+          full_url?: string | null
+          ghl_id: string
+          html_content?: string | null
+          id?: string
+          last_fetched_at?: string
+          location_id?: string | null
+          name?: string | null
+          parent_ghl_id?: string | null
+          raw_payload?: Json | null
+          resource_type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          css_content?: string | null
+          embed_code?: string | null
+          endpoints_tried?: Json | null
+          fetch_error?: string | null
+          fetch_status?: string | null
+          full_url?: string | null
+          ghl_id?: string
+          html_content?: string | null
+          id?: string
+          last_fetched_at?: string
+          location_id?: string | null
+          name?: string | null
+          parent_ghl_id?: string | null
+          raw_payload?: Json | null
+          resource_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ghl_migration_baseline: {
         Row: {
           captured_at: string
