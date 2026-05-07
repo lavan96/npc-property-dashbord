@@ -227,6 +227,15 @@ export function GhlMarketingRawDump() {
               </CardDescription>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1.5">
+                <Input
+                  value={funnelDomain}
+                  onChange={(e) => setFunnelDomain(e.target.value)}
+                  placeholder="Funnel published domain (e.g. npcservices.com.au)"
+                  className="h-9 w-[280px] text-xs"
+                  title="Required to render funnel pages with Firecrawl. GHL's API does not expose published domains."
+                />
+              </div>
               <Button variant="outline" size="sm" onClick={refresh} disabled={loading}>
                 <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                 Refresh
