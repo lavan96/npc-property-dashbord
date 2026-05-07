@@ -96,6 +96,7 @@ export function GhlMarketingRawDump() {
   const [exporting, setExporting] = useState(false);
   const [bridge, setBridge] = useState<BridgeRow[]>([]);
   const [bridgeEdits, setBridgeEdits] = useState<Record<string, Partial<BridgeRow>>>({});
+  const [funnelDomain, setFunnelDomain] = useState<string>(() => localStorage.getItem('ghl_funnel_domain') || '');
   const pollRef = useRef<number | null>(null);
 
   const refresh = async () => {
@@ -132,7 +133,18 @@ export function GhlMarketingRawDump() {
 
   const handleStartJob = async () => {
     toast.info('Building queue and starting harvest…');
-    const res = await invokeSecureFunction('ghl-marketing-dump-enqueue', { account: 'legacy' });
+    // Apply the same domain to every funnel by passing a wildcard '*' the
+    // backend supports — but to keep the API simple we list known funnel ids
+    // from the current rows. If none yet, the backend will skip page rendering
+    // and just store metadata.
+    const funnelIds = Array.from(new Set(rows.filter(r => r.resource_type === 'funnel').map(r => r.ghl_id)));
+    const funnel_domains: Record<string, string> = {};
+    const cleaned = funnelDomain.trim().replace(/^https?:\/\//, '').replace(/\/+$/, '');
+    if (cleaned) {
+      for (const fid of funnelIds) funnel_domains[fid] = cleaned;
+      localStorage.setItem('ghl_funnel_domain', cleaned);
+    }
+    const res = await invokeSecureFunction('ghl-marketing-dump-enqueue', { account: 'legacy', funnel_domains });
     if (res.error) { toast.error(res.error.message); return; }
     const jobId = res.data?.job_id;
     setJob({ id: jobId, status: 'running', total_assets: res.data?.total_assets || 0, processed_assets: 0, failed_assets: 0, current_label: null, started_at: null, finished_at: null });
@@ -215,6 +227,15 @@ export function GhlMarketingRawDump() {
               </CardDescription>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1.5">
+                <Input
+                  value={funnelDomain}
+                  onChange={(e) => setFunnelDomain(e.target.value)}
+                  placeholder="Funnel published domain (e.g. npcservices.com.au)"
+                  className="h-9 w-[280px] text-xs"
+                  title="Required to render funnel pages with Firecrawl. GHL's API does not expose published domains."
+                />
+              </div>
               <Button variant="outline" size="sm" onClick={refresh} disabled={loading}>
                 <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                 Refresh

@@ -19,7 +19,7 @@ const ASSET_CONCURRENCY = 5;
 export interface EndpointTrace { url: string; status: number; ok: boolean; bytes?: number }
 
 export interface DumpRow {
-  resource_type: 'form' | 'survey' | 'quiz' | 'funnel' | 'funnel_page' | 'workflow';
+  resource_type: 'form' | 'survey' | 'quiz' | 'funnel' | 'funnel_page' | 'workflow' | 'location_custom_schema';
   ghl_id: string;
   location_id: string;
   name: string | null;
@@ -453,7 +453,7 @@ export async function processAsset(
       portable_html_path: null,
       reconstruction_notes: 'Funnel container — recreate in GHL Sites → Funnels with this name and domain, then rebuild each page (see funnel_page rows where parent_ghl_id matches).',
       enrichment_sources: { detail_endpoints_ok: detail.successes.length },
-      full_url: merged.domain ? `https://${merged.domain}` : null,
+      full_url: merged._publishedDomain ? `https://${merged._publishedDomain.replace(/^https?:\/\//,'').replace(/\/+$/,'')}${merged.url || ''}` : null,
       fetch_status: detail.successes.length ? 'ok' : 'partial',
       fetch_error: null,
       endpoints_tried: detail.tried,
@@ -471,8 +471,14 @@ export async function processAsset(
     ], headers);
     const merged = { ...seed, ...detail.merged };
     const { html, css, embed } = pickHtmlCss(merged);
+    // Build a public URL: priority is explicit override → seed.fullUrl
+    // → constructed from parentDomain + parentSlug + parentStepUrl.
+    const cleanJoin = (...parts: string[]) =>
+      '/' + parts.map((p) => (p || '').replace(/^\/+|\/+$/g, '')).filter(Boolean).join('/');
     const pageUrl: string | null = merged.fullUrl || seed.fullUrl
-      || (seed.parentDomain && (merged.path || merged.slug) ? `https://${seed.parentDomain}/${merged.path || merged.slug}` : null);
+      || (seed.parentDomain
+        ? `https://${seed.parentDomain.replace(/^https?:\/\//, '').replace(/\/+$/, '')}${cleanJoin(seed.parentSlug || '', seed.parentStepUrl || '')}`
+        : null);
 
     let live: RenderResult = { html: null, rawHtml: null, markdown: null, screenshot: null, links: null, metadata: null, source: 'none', trace: { url: 'no_url', status: 0, ok: false } };
     if (pageUrl) live = await renderLive(pageUrl, useFirecrawl);
@@ -569,6 +575,26 @@ export async function processAsset(
     };
   }
 
+  if ((task.resource_type as any) === 'location_custom_schema') {
+    const seed = task.seed || {};
+    return {
+      ...(base as any),
+      resource_type: 'location_custom_schema',
+      name: 'Location Custom Fields & Values',
+      raw_payload: seed,
+      html_content: null, raw_html_content: null, markdown_content: null,
+      css_content: null, inlined_css: null, embed_code: null,
+      screenshot_url: null, links: null, metadata: null, submissions_sample: null,
+      asset_manifest: null, asset_count: 0, asset_bytes: 0, portable_html_path: null,
+      reconstruction_notes: 'These are the location-wide Custom Fields & Custom Values used by every form/survey/workflow in this account. The per-form field schema is API-locked, so use this list (plus rendered form HTML) to identify which fields each form collects. Recreate identical custom fields in the new GHL location before importing forms.',
+      enrichment_sources: { source: 'locations/{id}/customFields + customValues' },
+      full_url: null,
+      fetch_status: 'ok',
+      fetch_error: null,
+      endpoints_tried: [],
+    };
+  }
+
   throw new Error(`Unknown resource_type: ${task.resource_type}`);
 }
 
@@ -578,11 +604,32 @@ export async function buildQueue(
   headers: Record<string, string>,
   locationId: string,
   resources: string[],
+  opts?: { funnelDomainOverrides?: Record<string, string> },
 ): Promise<AssetTask[]> {
   const tasks: AssetTask[] = [];
+  const overrides = opts?.funnelDomainOverrides || {};
+
+  // Pull location-wide custom fields once — these are the closest thing to
+  // a recoverable field schema for forms/surveys (the per-form schema is
+  // 401-locked by GHL). Stored as a single special row keyed by location.
+  if (resources.includes('form') || resources.includes('survey')) {
+    const cf = await ghlGet(`/locations/${locationId}/customFields`, headers);
+    const cv = await ghlGet(`/locations/${locationId}/customValues`, headers);
+    if (cf.ok || cv.ok) {
+      tasks.push({
+        resource_type: 'location_custom_schema' as any,
+        ghl_id: locationId,
+        seed: {
+          customFields: cf.body?.customFields || [],
+          customValues: cv.body?.customValues || [],
+        },
+      });
+    }
+  }
 
   if (resources.includes('form')) {
-    const list = await ghlGet(`/forms/?locationId=${locationId}&limit=500`, headers);
+    // GHL caps limit at 100 for /forms
+    const list = await ghlGet(`/forms/?locationId=${locationId}&limit=100`, headers);
     const items: any[] = list.body?.forms || list.body?.data || [];
     for (const f of items) {
       const id = f.id || f._id;
@@ -591,12 +638,20 @@ export async function buildQueue(
   }
 
   if (resources.includes('survey')) {
-    const list = await ghlGet(`/surveys/?locationId=${locationId}&limit=500`, headers);
-    const items: any[] = list.body?.surveys || list.body?.data || [];
-    for (const s of items) {
-      const id = s.id || s._id;
-      const isQuiz = s.isQuiz === true || s.type === 'quiz';
-      if (id) tasks.push({ resource_type: isQuiz ? 'quiz' : 'survey', ghl_id: id, seed: s });
+    // GHL caps limit at 50 for /surveys (422 otherwise) — paginate.
+    let skip = 0;
+    while (true) {
+      const list = await ghlGet(`/surveys/?locationId=${locationId}&limit=50&skip=${skip}`, headers);
+      const items: any[] = list.body?.surveys || list.body?.data || [];
+      if (!items.length) break;
+      for (const s of items) {
+        const id = s.id || s._id;
+        const isQuiz = s.isQuiz === true || s.type === 'quiz';
+        if (id) tasks.push({ resource_type: isQuiz ? 'quiz' : 'survey', ghl_id: id, seed: s });
+      }
+      if (items.length < 50) break;
+      skip += items.length;
+      if (skip > 2000) break;
     }
   }
 
@@ -606,16 +661,40 @@ export async function buildQueue(
     for (const fn of funnels) {
       const fid = fn._id || fn.id;
       if (!fid) continue;
-      tasks.push({ resource_type: 'funnel', ghl_id: fid, seed: fn });
-      const pages: any[] = fn.steps || fn.pages || [];
+      const overrideDomain = overrides[fid] || null;
+      // Hydrate seed with funnel-level domain + slug for downstream URL building
+      tasks.push({
+        resource_type: 'funnel',
+        ghl_id: fid,
+        seed: { ...fn, _publishedDomain: overrideDomain },
+      });
+      // Use the canonical /funnels/page list for full step+page resolution
+      const pageList = await ghlGet(
+        `/funnels/page?locationId=${locationId}&funnelId=${fid}&limit=100&offset=0`,
+        headers,
+      );
+      const pages: any[] = Array.isArray(pageList.body) ? pageList.body : (pageList.body?.data || []);
+      // Map step ID → step.url so we can build the public path
+      const stepUrlById: Record<string, string> = {};
+      for (const st of (fn.steps || [])) {
+        const sid = st.id || st._id;
+        if (sid) stepUrlById[sid] = st.url || '';
+      }
       for (const pg of pages) {
         const pid = pg._id || pg.id;
         if (!pid) continue;
+        const stepPath = pg.stepId ? (stepUrlById[pg.stepId] || '') : '';
         tasks.push({
           resource_type: 'funnel_page',
           ghl_id: pid,
           parent_ghl_id: fid,
-          seed: { ...pg, parentDomain: fn.domain, parentName: fn.name },
+          seed: {
+            ...pg,
+            parentName: fn.name,
+            parentSlug: fn.url || '',
+            parentStepUrl: stepPath,
+            parentDomain: overrideDomain,
+          },
         });
       }
     }
