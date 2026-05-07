@@ -29,9 +29,10 @@ import {
 } from '@/components/ui/dialog';
 import {
   CheckCircle2, ExternalLink, GitBranch, Link2, Link2Off, RefreshCw, Search,
-  AlertCircle, Loader2, Download, Edit3, Eye, Save, X,
+  AlertCircle, Loader2, Download, Edit3, Eye, Save, X, Workflow as WorkflowIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { WorkflowBlueprintEditor, type Blueprint } from './WorkflowBlueprintEditor';
 
 interface Snapshot {
   id: string;
@@ -47,6 +48,7 @@ interface Snapshot {
   rebuild_notes: string | null;
   rebuild_marked_done_at: string | null;
   rebuild_marked_done_by: string | null;
+  rebuild_blueprint?: Blueprint | null;
 }
 interface Mapping {
   old_ghl_id: string;
@@ -84,6 +86,7 @@ export function GhlWorkflowVisualizer() {
   const [linkTargetId, setLinkTargetId] = useState('');
   const [viewJson, setViewJson] = useState<Snapshot | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [blueprintFor, setBlueprintFor] = useState<Snapshot | null>(null);
   const [lastLoadedAt, setLastLoadedAt] = useState<string | null>(null);
 
   async function load() {
@@ -363,6 +366,14 @@ export function GhlWorkflowVisualizer() {
                               >
                                 <Eye className="h-3 w-3" /> Raw JSON
                               </button>
+                              <button
+                                onClick={() => setBlueprintFor(l)}
+                                className={`text-[11px] inline-flex items-center gap-1 ${l.rebuild_blueprint ? 'text-success' : 'text-primary'} hover:underline`}
+                              >
+                                <WorkflowIcon className="h-3 w-3" />
+                                {l.rebuild_blueprint && ((l.rebuild_blueprint.triggers?.length || 0) + (l.rebuild_blueprint.steps?.length || 0)) > 0
+                                  ? 'View blueprint' : 'Build blueprint'}
+                              </button>
                             </div>
                           </div>
                         </div>
@@ -537,6 +548,20 @@ export function GhlWorkflowVisualizer() {
           </ScrollArea>
         </DialogContent>
       </Dialog>
+
+      <WorkflowBlueprintEditor
+        open={!!blueprintFor}
+        onClose={() => setBlueprintFor(null)}
+        workflow={blueprintFor ? {
+          id: blueprintFor.id,
+          workflow_id: blueprintFor.workflow_id,
+          name: blueprintFor.name,
+          rebuild_blueprint: blueprintFor.rebuild_blueprint,
+        } : null}
+        onSaved={(bp) => {
+          setSnapshots(prev => prev.map(s => s.id === blueprintFor?.id ? { ...s, rebuild_blueprint: bp } : s));
+        }}
+      />
     </Card>
   );
 }

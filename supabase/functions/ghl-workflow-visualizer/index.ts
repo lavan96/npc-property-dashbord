@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
     if (action === 'list') {
       const [snapsRes, mapsRes, enrollAgg] = await Promise.all([
         supabase.from('ghl_workflow_snapshots')
-          .select('id, account, workflow_id, location_id, name, status, version, raw_json, last_seen_at, fetched_at, rebuild_notes, rebuild_marked_done_at, rebuild_marked_done_by')
+          .select('id, account, workflow_id, location_id, name, status, version, raw_json, last_seen_at, fetched_at, rebuild_notes, rebuild_marked_done_at, rebuild_marked_done_by, rebuild_blueprint')
           .order('account', { ascending: true })
           .order('name', { ascending: true })
           .limit(2000),
@@ -89,6 +89,15 @@ Deno.serve(async (req) => {
       if (!id) return new Response(JSON.stringify({ error: 'id required' }), { status: 400, headers: corsHeaders });
       const { error } = await supabase.from('ghl_workflow_snapshots')
         .update({ rebuild_notes: body.notes ?? null }).eq('id', id);
+      if (error) throw new Error(error.message);
+      return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    if (action === 'save_blueprint') {
+      const id = String(body.id || '');
+      if (!id) return new Response(JSON.stringify({ error: 'id required' }), { status: 400, headers: corsHeaders });
+      const { error } = await supabase.from('ghl_workflow_snapshots')
+        .update({ rebuild_blueprint: body.blueprint ?? null }).eq('id', id);
       if (error) throw new Error(error.message);
       return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
