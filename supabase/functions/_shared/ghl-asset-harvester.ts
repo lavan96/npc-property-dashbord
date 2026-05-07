@@ -705,23 +705,31 @@ export async function buildQueue(
   if (resources.includes('funnel')) {
     const list = await ghlGet(`/funnels/funnel/list?locationId=${locationId}`, headers);
     const funnels: any[] = list.body?.funnels || list.body?.data || [];
+
+    // First domain we see → used to enumerate the entire public site.
+    const primaryDomain = Object.values(overrides).find(Boolean) || null;
+    const sitePages: string[] = primaryDomain ? await firecrawlMap(primaryDomain) : [];
+    const sitePageSet = new Set(sitePages.map((u) => {
+      try { return new URL(u).pathname.replace(/\/+$/, '') || '/'; } catch { return u; }
+    }));
+    console.log(`[harvester] Firecrawl /map discovered ${sitePages.length} URLs on ${primaryDomain || 'no-domain'}`);
+
+    const claimedPaths = new Set<string>();
+
     for (const fn of funnels) {
       const fid = fn._id || fn.id;
       if (!fid) continue;
-      const overrideDomain = overrides[fid] || null;
-      // Hydrate seed with funnel-level domain + slug for downstream URL building
+      const overrideDomain = overrides[fid] || primaryDomain;
       tasks.push({
         resource_type: 'funnel',
         ghl_id: fid,
         seed: { ...fn, _publishedDomain: overrideDomain },
       });
-      // Use the canonical /funnels/page list for full step+page resolution
       const pageList = await ghlGet(
         `/funnels/page?locationId=${locationId}&funnelId=${fid}&limit=100&offset=0`,
         headers,
       );
       const pages: any[] = Array.isArray(pageList.body) ? pageList.body : (pageList.body?.data || []);
-      // Map step ID → step.url so we can build the public path
       const stepUrlById: Record<string, string> = {};
       for (const st of (fn.steps || [])) {
         const sid = st.id || st._id;
@@ -731,6 +739,10 @@ export async function buildQueue(
         const pid = pg._id || pg.id;
         if (!pid) continue;
         const stepPath = pg.stepId ? (stepUrlById[pg.stepId] || '') : '';
+        const slug = (fn.url || '').replace(/^\/+|\/+$/g, '');
+        const sp = (stepPath || '').replace(/^\/+|\/+$/g, '');
+        const fullPath = '/' + [slug, sp].filter(Boolean).join('/');
+        claimedPaths.add(fullPath.replace(/\/+$/, '') || '/');
         tasks.push({
           resource_type: 'funnel_page',
           ghl_id: pid,
@@ -744,6 +756,35 @@ export async function buildQueue(
           },
         });
       }
+    }
+
+    // Add Firecrawl-discovered pages that no GHL funnel claimed (extra
+    // top-level marketing pages, thank-you pages, sub-steps under a slug
+    // the API didn't list, etc.). These render through the same code path.
+    if (primaryDomain) {
+      let added = 0;
+      for (const url of sitePages) {
+        let path = '/';
+        try { path = new URL(url).pathname.replace(/\/+$/, '') || '/'; } catch {}
+        if (claimedPaths.has(path)) continue;
+        // Skip GHL widget/admin URLs
+        if (/\/(widget|api|hooks|webhooks)\//.test(path)) continue;
+        const synthId = `site:${path.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || 'root'}`;
+        tasks.push({
+          resource_type: 'funnel_page',
+          ghl_id: synthId,
+          parent_ghl_id: null,
+          seed: {
+            name: `Site page ${path}`,
+            fullUrl: url,
+            parentDomain: primaryDomain,
+            _discoveredVia: 'firecrawl_map',
+          },
+        });
+        added++;
+        if (added >= 200) break;
+      }
+      console.log(`[harvester] Added ${added} extra site pages from /map`);
     }
   }
 
