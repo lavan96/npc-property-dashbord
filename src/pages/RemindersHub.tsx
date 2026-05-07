@@ -443,6 +443,7 @@ export default function RemindersHub() {
                                   reminderId={reminder.id}
                                   rawId={reminder.raw_id}
                                   title={reminder.title}
+                                  description={reminder.description}
                                   dueDate={reminder.due_date}
                                   priority={reminder.priority}
                                   source={reminder.source}
