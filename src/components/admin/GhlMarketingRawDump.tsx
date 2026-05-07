@@ -27,8 +27,15 @@ interface SummaryRow {
   fetch_error: string | null;
   last_fetched_at: string;
   has_html: boolean;
+  has_raw_html?: boolean;
+  has_markdown?: boolean;
   has_css: boolean;
   has_embed: boolean;
+  has_screenshot?: boolean;
+  has_links?: boolean;
+  has_metadata?: boolean;
+  has_submissions?: boolean;
+  enrichment_sources?: any;
 }
 
 const TYPE_COLOR: Record<string, string> = {
