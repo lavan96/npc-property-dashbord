@@ -453,7 +453,7 @@ export async function processAsset(
       portable_html_path: null,
       reconstruction_notes: 'Funnel container — recreate in GHL Sites → Funnels with this name and domain, then rebuild each page (see funnel_page rows where parent_ghl_id matches).',
       enrichment_sources: { detail_endpoints_ok: detail.successes.length },
-      full_url: merged.domain ? `https://${merged.domain}` : null,
+      full_url: merged._publishedDomain ? `https://${merged._publishedDomain.replace(/^https?:\/\//,'').replace(/\/+$/,'')}${merged.url || ''}` : null,
       fetch_status: detail.successes.length ? 'ok' : 'partial',
       fetch_error: null,
       endpoints_tried: detail.tried,
