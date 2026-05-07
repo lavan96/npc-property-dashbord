@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -34,6 +35,7 @@ interface ReminderActionsProps {
   reminderId: string;
   rawId: string;
   title: string;
+  description?: string | null;
   dueDate: string;
   priority: string;
   assignedTo?: string[] | null;
@@ -46,6 +48,7 @@ export function ReminderActions({
   reminderId,
   rawId,
   title,
+  description,
   dueDate,
   priority,
   assignedTo,
@@ -56,8 +59,13 @@ export function ReminderActions({
   const [showEdit, setShowEdit] = useState(false);
   const [showSnooze, setShowSnooze] = useState(false);
   const [editTitle, setEditTitle] = useState(title);
+  const [editDescription, setEditDescription] = useState(description || '');
   const [editPriority, setEditPriority] = useState(priority);
   const [editAssigned, setEditAssigned] = useState<string[]>(assignedTo || []);
+  const [editDueDate, setEditDueDate] = useState<Date | undefined>(dueDate ? new Date(dueDate) : undefined);
+  const [editDueTime, setEditDueTime] = useState<string>(
+    dueDate ? format(new Date(dueDate), 'HH:mm') : '09:00'
+  );
   const [customSnoozeDate, setCustomSnoozeDate] = useState<Date | undefined>();
 
   const updateMutation = useUpdateReminder();
@@ -103,12 +111,21 @@ export function ReminderActions({
   };
 
   const handleSaveEdit = () => {
+    let combinedDueDate = dueDate;
+    if (editDueDate) {
+      const [hh, mm] = (editDueTime || '09:00').split(':').map(Number);
+      const d = new Date(editDueDate);
+      d.setHours(hh || 0, mm || 0, 0, 0);
+      combinedDueDate = d.toISOString();
+    }
     updateMutation.mutate(
       {
         id: rawId,
         title: editTitle,
+        description: editDescription,
         priority: editPriority,
         assigned_to: editAssigned,
+        due_date: combinedDueDate,
       },
       {
         onSuccess: () => {
@@ -126,41 +143,87 @@ export function ReminderActions({
   if (showEdit && isEditable && canEdit) {
     return (
       <div
-        className="mt-2 p-2.5 rounded-md border bg-muted/50 space-y-2"
+        className="mt-2 p-3 rounded-md border bg-muted/50 space-y-2.5"
         onClick={(e) => e.stopPropagation()}
       >
-        <Input
-          value={editTitle}
-          onChange={(e) => setEditTitle(e.target.value)}
-          className="h-8 text-sm"
-          placeholder="Reminder title"
-        />
-        <div className="grid grid-cols-2 gap-2">
-          <Select value={editPriority} onValueChange={setEditPriority}>
-            <SelectTrigger className="h-8 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="low">Low</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="high">High</SelectItem>
-              <SelectItem value="urgent">Urgent</SelectItem>
-            </SelectContent>
-          </Select>
-          <MultiTeamUserSelect
-            value={editAssigned}
-            onValueChange={setEditAssigned}
-            placeholder="Assign..."
+        <div className="space-y-1">
+          <label className="text-[10px] font-medium uppercase text-muted-foreground">Title</label>
+          <Input
+            value={editTitle}
+            onChange={(e) => setEditTitle(e.target.value)}
+            className="h-8 text-sm"
+            placeholder="Reminder title"
           />
         </div>
-        <div className="flex gap-1.5">
+        <div className="space-y-1">
+          <label className="text-[10px] font-medium uppercase text-muted-foreground">Description</label>
+          <Textarea
+            value={editDescription}
+            onChange={(e) => setEditDescription(e.target.value)}
+            className="text-sm min-h-[60px]"
+            placeholder="Add notes..."
+          />
+        </div>
+        <div className="space-y-1">
+          <label className="text-[10px] font-medium uppercase text-muted-foreground">Due date & time</label>
+          <div className="flex gap-1.5">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 text-xs flex-1 justify-start gap-1.5">
+                  <CalendarIcon className="h-3 w-3" />
+                  {editDueDate ? format(editDueDate, 'MMM d, yyyy') : 'Pick date'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={editDueDate}
+                  onSelect={setEditDueDate}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+            <Input
+              type="time"
+              value={editDueTime}
+              onChange={(e) => setEditDueTime(e.target.value)}
+              className="h-8 text-xs w-24"
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1">
+            <label className="text-[10px] font-medium uppercase text-muted-foreground">Priority</label>
+            <Select value={editPriority} onValueChange={setEditPriority}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="low">Low</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+                <SelectItem value="urgent">Urgent</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-medium uppercase text-muted-foreground">Assigned to</label>
+            <MultiTeamUserSelect
+              value={editAssigned}
+              onValueChange={setEditAssigned}
+              placeholder="Assign..."
+            />
+          </div>
+        </div>
+        <div className="flex gap-1.5 pt-1">
           <Button
             size="sm"
             className="h-7 text-xs flex-1"
             onClick={handleSaveEdit}
             disabled={!editTitle.trim() || updateMutation.isPending}
           >
-            {updateMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Save'}
+            {updateMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Save changes'}
           </Button>
           <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setShowEdit(false)}>
             Cancel
