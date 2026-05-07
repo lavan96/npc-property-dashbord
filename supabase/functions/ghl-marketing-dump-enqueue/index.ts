@@ -38,6 +38,8 @@ Deno.serve(async (req) => {
     const downloadAssets = body.download_assets !== false;
     const requested: string[] = Array.isArray(body.resources) && body.resources.length
       ? body.resources : ['form', 'survey', 'funnel', 'workflow'];
+    const funnelDomainOverrides: Record<string, string> = (body.funnel_domains && typeof body.funnel_domains === 'object')
+      ? body.funnel_domains : {};
 
     const creds = getGhlCredentials(account);
     const credErr = validateGhlCredentials(creds);
@@ -45,7 +47,7 @@ Deno.serve(async (req) => {
     const headers = buildGhlHeaders(creds.apiKey!);
 
     // Build the queue NOW so we know total_assets up-front
-    const queue = await buildQueue(headers, creds.locationId!, requested);
+    const queue = await buildQueue(headers, creds.locationId!, requested, { funnelDomainOverrides });
 
     const { data: job, error: insErr } = await supabase
       .from('ghl_marketing_dump_jobs')
