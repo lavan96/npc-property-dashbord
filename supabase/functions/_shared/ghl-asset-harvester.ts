@@ -108,9 +108,13 @@ export async function renderLive(url: string, useFirecrawl: boolean): Promise<Re
         headers: { Authorization: `Bearer ${fcKey}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           url,
-          formats: ['markdown', 'html', 'rawHtml', 'links', 'screenshot'],
+          formats: ['markdown', 'html', 'rawHtml', 'links', 'screenshot@fullPage'],
           onlyMainContent: false,
-          waitFor: 3000,
+          waitFor: 6000,
+          timeout: 60000,
+          blockAds: false,
+          mobile: false,
+          skipTlsVerification: false,
         }),
       });
       const text = await res.text();
@@ -121,7 +125,7 @@ export async function renderLive(url: string, useFirecrawl: boolean): Promise<Re
         const d = body.data || body;
         return {
           html: d.html ?? null,
-          rawHtml: d.rawHtml ?? null,
+          rawHtml: d.rawHtml ?? d.html ?? null,
           markdown: d.markdown ?? null,
           screenshot: d.screenshot ?? null,
           links: d.links ?? null,
@@ -135,7 +139,7 @@ export async function renderLive(url: string, useFirecrawl: boolean): Promise<Re
     }
   }
   try {
-    const r = await fetch(url, { redirect: 'follow' });
+    const r = await fetch(url, { redirect: 'follow', headers: { 'User-Agent': 'Mozilla/5.0 (compatible; GHL-Harvester/1.0)' } });
     const t = await r.text();
     return {
       html: r.ok ? t : null,
@@ -153,6 +157,49 @@ export async function renderLive(url: string, useFirecrawl: boolean): Promise<Re
       source: 'none', trace: { url: `fetch:${url}`, status: 0, ok: false },
     };
   }
+}
+
+/**
+ * Use Firecrawl /v2/map to enumerate every public URL on a domain.
+ * Lets us discover funnel step URLs the GHL API doesn't surface.
+ */
+export async function firecrawlMap(domain: string, search?: string): Promise<string[]> {
+  const fcKey = Deno.env.get('FIRECRAWL_API_KEY');
+  if (!fcKey || !domain) return [];
+  try {
+    const res = await fetch(`${FIRECRAWL_BASE}/map`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${fcKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        url: domain.startsWith('http') ? domain : `https://${domain}`,
+        search,
+        limit: 500,
+        includeSubdomains: false,
+      }),
+    });
+    if (!res.ok) { await res.text(); return []; }
+    const body = await res.json().catch(() => null);
+    const links: string[] = body?.links || body?.data?.links || [];
+    return Array.isArray(links) ? links : [];
+  } catch { return []; }
+}
+
+/**
+ * Persist a Firecrawl screenshot URL into our storage bucket so it
+ * doesn't expire. Returns the storage path or null on failure.
+ */
+export async function persistScreenshot(supabase: any, screenshotUrl: string | null, storagePrefix: string): Promise<string | null> {
+  if (!screenshotUrl || !screenshotUrl.startsWith('http')) return null;
+  try {
+    const r = await fetch(screenshotUrl);
+    if (!r.ok) { await r.text(); return null; }
+    const buf = new Uint8Array(await r.arrayBuffer());
+    const path = `${storagePrefix}/screenshot.png`;
+    const { error } = await supabase.storage.from(BUCKET).upload(path, buf, {
+      contentType: 'image/png', upsert: true,
+    });
+    return error ? null : path;
+  } catch { return null; }
 }
 
 // ── Asset extraction & download ─────────────────────────────────
