@@ -7370,8 +7370,71 @@ export type Database = {
         }
         Relationships: []
       }
+      ghl_marketing_dump_jobs: {
+        Row: {
+          account: string
+          created_at: string
+          created_by: string | null
+          current_label: string | null
+          cursor: Json
+          download_assets: boolean
+          error_log: Json
+          failed_assets: number
+          finished_at: string | null
+          id: string
+          processed_assets: number
+          requested_resources: string[]
+          started_at: string | null
+          status: string
+          total_assets: number
+          updated_at: string
+          use_firecrawl: boolean
+        }
+        Insert: {
+          account?: string
+          created_at?: string
+          created_by?: string | null
+          current_label?: string | null
+          cursor?: Json
+          download_assets?: boolean
+          error_log?: Json
+          failed_assets?: number
+          finished_at?: string | null
+          id?: string
+          processed_assets?: number
+          requested_resources?: string[]
+          started_at?: string | null
+          status?: string
+          total_assets?: number
+          updated_at?: string
+          use_firecrawl?: boolean
+        }
+        Update: {
+          account?: string
+          created_at?: string
+          created_by?: string | null
+          current_label?: string | null
+          cursor?: Json
+          download_assets?: boolean
+          error_log?: Json
+          failed_assets?: number
+          finished_at?: string | null
+          id?: string
+          processed_assets?: number
+          requested_resources?: string[]
+          started_at?: string | null
+          status?: string
+          total_assets?: number
+          updated_at?: string
+          use_firecrawl?: boolean
+        }
+        Relationships: []
+      }
       ghl_marketing_raw_dumps: {
         Row: {
+          asset_bytes: number
+          asset_count: number
+          asset_manifest: Json | null
           created_at: string
           css_content: string | null
           embed_code: string | null
@@ -7381,8 +7444,10 @@ export type Database = {
           fetch_status: string | null
           full_url: string | null
           ghl_id: string
+          harvest_job_id: string | null
           html_content: string | null
           id: string
+          inlined_css: string | null
           last_fetched_at: string
           links: Json | null
           location_id: string | null
@@ -7390,14 +7455,19 @@ export type Database = {
           metadata: Json | null
           name: string | null
           parent_ghl_id: string | null
+          portable_html_path: string | null
           raw_html_content: string | null
           raw_payload: Json | null
+          reconstruction_notes: string | null
           resource_type: string
           screenshot_url: string | null
           submissions_sample: Json | null
           updated_at: string
         }
         Insert: {
+          asset_bytes?: number
+          asset_count?: number
+          asset_manifest?: Json | null
           created_at?: string
           css_content?: string | null
           embed_code?: string | null
@@ -7407,8 +7477,10 @@ export type Database = {
           fetch_status?: string | null
           full_url?: string | null
           ghl_id: string
+          harvest_job_id?: string | null
           html_content?: string | null
           id?: string
+          inlined_css?: string | null
           last_fetched_at?: string
           links?: Json | null
           location_id?: string | null
@@ -7416,14 +7488,19 @@ export type Database = {
           metadata?: Json | null
           name?: string | null
           parent_ghl_id?: string | null
+          portable_html_path?: string | null
           raw_html_content?: string | null
           raw_payload?: Json | null
+          reconstruction_notes?: string | null
           resource_type: string
           screenshot_url?: string | null
           submissions_sample?: Json | null
           updated_at?: string
         }
         Update: {
+          asset_bytes?: number
+          asset_count?: number
+          asset_manifest?: Json | null
           created_at?: string
           css_content?: string | null
           embed_code?: string | null
@@ -7433,8 +7510,10 @@ export type Database = {
           fetch_status?: string | null
           full_url?: string | null
           ghl_id?: string
+          harvest_job_id?: string | null
           html_content?: string | null
           id?: string
+          inlined_css?: string | null
           last_fetched_at?: string
           links?: Json | null
           location_id?: string | null
@@ -7442,14 +7521,24 @@ export type Database = {
           metadata?: Json | null
           name?: string | null
           parent_ghl_id?: string | null
+          portable_html_path?: string | null
           raw_html_content?: string | null
           raw_payload?: Json | null
+          reconstruction_notes?: string | null
           resource_type?: string
           screenshot_url?: string | null
           submissions_sample?: Json | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "ghl_marketing_raw_dumps_harvest_job_id_fkey"
+            columns: ["harvest_job_id"]
+            isOneToOne: false
+            referencedRelation: "ghl_marketing_dump_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ghl_migration_baseline: {
         Row: {
@@ -7585,6 +7674,48 @@ export type Database = {
           updated_at?: string
           window_count?: number
           window_start_ms?: number
+        }
+        Relationships: []
+      }
+      ghl_workflow_snapshot_bridge: {
+        Row: {
+          created_at: string
+          id: string
+          legacy_name: string | null
+          legacy_workflow_id: string
+          new_workflow_id: string | null
+          notes: string | null
+          raw_metadata: Json | null
+          status: string
+          step_count: number | null
+          trigger_summary: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          legacy_name?: string | null
+          legacy_workflow_id: string
+          new_workflow_id?: string | null
+          notes?: string | null
+          raw_metadata?: Json | null
+          status?: string
+          step_count?: number | null
+          trigger_summary?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          legacy_name?: string | null
+          legacy_workflow_id?: string
+          new_workflow_id?: string | null
+          notes?: string | null
+          raw_metadata?: Json | null
+          status?: string
+          step_count?: number | null
+          trigger_summary?: string | null
+          updated_at?: string
         }
         Relationships: []
       }

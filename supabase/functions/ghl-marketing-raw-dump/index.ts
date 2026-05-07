@@ -416,6 +416,62 @@ Deno.serve(async (req) => {
     const account: GhlAccount = body.account === 'new' ? 'new' : 'legacy';
     const useFirecrawl = body.use_firecrawl !== false; // default ON
 
+    if (action === 'job_status') {
+      const jobId = body.job_id;
+      if (!jobId) throw new Error('job_id required');
+      const { data, error } = await supabase
+        .from('ghl_marketing_dump_jobs')
+        .select('id,status,account,total_assets,processed_assets,failed_assets,current_label,started_at,finished_at,error_log,requested_resources,use_firecrawl,download_assets,created_at')
+        .eq('id', jobId).single();
+      if (error) throw error;
+      return new Response(JSON.stringify({ success: true, job: data }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    if (action === 'recent_jobs') {
+      const { data, error } = await supabase
+        .from('ghl_marketing_dump_jobs')
+        .select('id,status,total_assets,processed_assets,failed_assets,started_at,finished_at,created_at,current_label')
+        .order('created_at', { ascending: false }).limit(10);
+      if (error) throw error;
+      return new Response(JSON.stringify({ success: true, jobs: data }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    if (action === 'workflow_bridge_list') {
+      const { data, error } = await supabase
+        .from('ghl_workflow_snapshot_bridge')
+        .select('*').order('legacy_name', { ascending: true });
+      if (error) throw error;
+      return new Response(JSON.stringify({ success: true, rows: data || [] }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    if (action === 'workflow_bridge_update') {
+      const { id, new_workflow_id, status, notes } = body;
+      if (!id) throw new Error('id required');
+      const upd: any = {};
+      if (new_workflow_id !== undefined) upd.new_workflow_id = new_workflow_id;
+      if (status !== undefined) upd.status = status;
+      if (notes !== undefined) upd.notes = notes;
+      const { error } = await supabase.from('ghl_workflow_snapshot_bridge').update(upd).eq('id', id);
+      if (error) throw error;
+      return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    if (action === 'asset_signed_url') {
+      const path: string = body.path;
+      if (!path) throw new Error('path required');
+      const { data, error } = await supabase.storage.from('ghl-marketing-dump').createSignedUrl(path, 60 * 60);
+      if (error) throw error;
+      return new Response(JSON.stringify({ success: true, url: data.signedUrl }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    if (action === 'detail') {
+      const { id } = body;
+      if (!id) throw new Error('id required');
+      const { data, error } = await supabase.from('ghl_marketing_raw_dumps').select('*').eq('id', id).single();
+      if (error) throw error;
+      return new Response(JSON.stringify({ success: true, row: data }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     if (action === 'dump') {
       const result = await dumpAll(supabase, account, { useFirecrawl });
       return new Response(JSON.stringify({ success: true, account, firecrawl: useFirecrawl && !!Deno.env.get('FIRECRAWL_API_KEY'), ...result }), {
@@ -438,7 +494,7 @@ Deno.serve(async (req) => {
     // default: list (summary)
     const { data, error } = await supabase
       .from('ghl_marketing_raw_dumps')
-      .select('id,resource_type,ghl_id,name,parent_ghl_id,full_url,fetch_status,fetch_error,last_fetched_at,html_content,raw_html_content,markdown_content,css_content,embed_code,screenshot_url,links,metadata,submissions_sample,enrichment_sources')
+      .select('id,resource_type,ghl_id,name,parent_ghl_id,full_url,fetch_status,fetch_error,last_fetched_at,html_content,raw_html_content,markdown_content,css_content,embed_code,screenshot_url,links,metadata,submissions_sample,enrichment_sources,portable_html_path,inlined_css,asset_count,asset_bytes,asset_manifest')
       .order('resource_type', { ascending: true })
       .order('name', { ascending: true });
     if (error) throw error;
@@ -457,11 +513,15 @@ Deno.serve(async (req) => {
       has_raw_html: !!r.raw_html_content,
       has_markdown: !!r.markdown_content,
       has_css: !!r.css_content,
+      has_inlined_css: !!r.inlined_css,
       has_embed: !!r.embed_code,
       has_screenshot: !!r.screenshot_url,
       has_links: !!r.links,
       has_metadata: !!r.metadata,
       has_submissions: !!r.submissions_sample,
+      has_portable: !!r.portable_html_path,
+      asset_count: r.asset_count || 0,
+      asset_bytes: r.asset_bytes || 0,
     }));
     const counts: Record<string, number> = {};
     for (const r of summary) counts[r.resource_type] = (counts[r.resource_type] || 0) + 1;
