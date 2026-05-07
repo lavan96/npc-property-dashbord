@@ -28,6 +28,7 @@ import {
 } from '@/components/admin/MigrationAdvancedOptions';
 import { MigrationSourceUploader } from '@/components/admin/MigrationSourceUploader';
 import { GhlWorkflowVisualizer } from '@/components/admin/GhlWorkflowVisualizer';
+import { GhlMarketingRawDump } from '@/components/admin/GhlMarketingRawDump';
 
 interface ScopeProbe {
   scope: string;
