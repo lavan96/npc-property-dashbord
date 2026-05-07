@@ -578,11 +578,32 @@ export async function buildQueue(
   headers: Record<string, string>,
   locationId: string,
   resources: string[],
+  opts?: { funnelDomainOverrides?: Record<string, string> },
 ): Promise<AssetTask[]> {
   const tasks: AssetTask[] = [];
+  const overrides = opts?.funnelDomainOverrides || {};
+
+  // Pull location-wide custom fields once — these are the closest thing to
+  // a recoverable field schema for forms/surveys (the per-form schema is
+  // 401-locked by GHL). Stored as a single special row keyed by location.
+  if (resources.includes('form') || resources.includes('survey')) {
+    const cf = await ghlGet(`/locations/${locationId}/customFields`, headers);
+    const cv = await ghlGet(`/locations/${locationId}/customValues`, headers);
+    if (cf.ok || cv.ok) {
+      tasks.push({
+        resource_type: 'location_custom_schema' as any,
+        ghl_id: locationId,
+        seed: {
+          customFields: cf.body?.customFields || [],
+          customValues: cv.body?.customValues || [],
+        },
+      });
+    }
+  }
 
   if (resources.includes('form')) {
-    const list = await ghlGet(`/forms/?locationId=${locationId}&limit=500`, headers);
+    // GHL caps limit at 100 for /forms
+    const list = await ghlGet(`/forms/?locationId=${locationId}&limit=100`, headers);
     const items: any[] = list.body?.forms || list.body?.data || [];
     for (const f of items) {
       const id = f.id || f._id;
@@ -591,12 +612,20 @@ export async function buildQueue(
   }
 
   if (resources.includes('survey')) {
-    const list = await ghlGet(`/surveys/?locationId=${locationId}&limit=500`, headers);
-    const items: any[] = list.body?.surveys || list.body?.data || [];
-    for (const s of items) {
-      const id = s.id || s._id;
-      const isQuiz = s.isQuiz === true || s.type === 'quiz';
-      if (id) tasks.push({ resource_type: isQuiz ? 'quiz' : 'survey', ghl_id: id, seed: s });
+    // GHL caps limit at 50 for /surveys (422 otherwise) — paginate.
+    let skip = 0;
+    while (true) {
+      const list = await ghlGet(`/surveys/?locationId=${locationId}&limit=50&skip=${skip}`, headers);
+      const items: any[] = list.body?.surveys || list.body?.data || [];
+      if (!items.length) break;
+      for (const s of items) {
+        const id = s.id || s._id;
+        const isQuiz = s.isQuiz === true || s.type === 'quiz';
+        if (id) tasks.push({ resource_type: isQuiz ? 'quiz' : 'survey', ghl_id: id, seed: s });
+      }
+      if (items.length < 50) break;
+      skip += items.length;
+      if (skip > 2000) break;
     }
   }
 
@@ -606,16 +635,40 @@ export async function buildQueue(
     for (const fn of funnels) {
       const fid = fn._id || fn.id;
       if (!fid) continue;
-      tasks.push({ resource_type: 'funnel', ghl_id: fid, seed: fn });
-      const pages: any[] = fn.steps || fn.pages || [];
+      const overrideDomain = overrides[fid] || null;
+      // Hydrate seed with funnel-level domain + slug for downstream URL building
+      tasks.push({
+        resource_type: 'funnel',
+        ghl_id: fid,
+        seed: { ...fn, _publishedDomain: overrideDomain },
+      });
+      // Use the canonical /funnels/page list for full step+page resolution
+      const pageList = await ghlGet(
+        `/funnels/page?locationId=${locationId}&funnelId=${fid}&limit=100&offset=0`,
+        headers,
+      );
+      const pages: any[] = Array.isArray(pageList.body) ? pageList.body : (pageList.body?.data || []);
+      // Map step ID → step.url so we can build the public path
+      const stepUrlById: Record<string, string> = {};
+      for (const st of (fn.steps || [])) {
+        const sid = st.id || st._id;
+        if (sid) stepUrlById[sid] = st.url || '';
+      }
       for (const pg of pages) {
         const pid = pg._id || pg.id;
         if (!pid) continue;
+        const stepPath = pg.stepId ? (stepUrlById[pg.stepId] || '') : '';
         tasks.push({
           resource_type: 'funnel_page',
           ghl_id: pid,
           parent_ghl_id: fid,
-          seed: { ...pg, parentDomain: fn.domain, parentName: fn.name },
+          seed: {
+            ...pg,
+            parentName: fn.name,
+            parentSlug: fn.url || '',
+            parentStepUrl: stepPath,
+            parentDomain: overrideDomain,
+          },
         });
       }
     }
