@@ -92,7 +92,9 @@ Deno.serve(async (req) => {
       index.breakdown[r.resource_type] = (index.breakdown[r.resource_type] || 0) + 1;
       const folder = r.resource_type === 'funnel' || r.resource_type === 'funnel_page'
         ? `funnels/${r.parent_ghl_id || r.ghl_id}${r.resource_type === 'funnel_page' ? `/pages/${safeName(r.name, r.ghl_id)}` : ''}`
-        : `${r.resource_type}s/${safeName(r.name, r.ghl_id)}`;
+        : r.resource_type === 'location_custom_schema'
+          ? `_location/custom_fields_and_values`
+          : `${r.resource_type}s/${safeName(r.name, r.ghl_id)}`;
 
       // Raw payload
       zipObj[`${folder}/metadata.json`] = strToU8(JSON.stringify({
