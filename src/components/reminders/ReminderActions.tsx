@@ -73,6 +73,25 @@ export function ReminderActions({
   const [editDueTime, setEditDueTime] = useState<string>(
     dueDate ? format(new Date(dueDate), 'HH:mm') : '09:00'
   );
+  const initialDueIso = dueDate ? new Date(dueDate).toISOString() : '';
+  const currentDueIso = (() => {
+    if (!editDueDate) return '';
+    const [hh, mm] = (editDueTime || '09:00').split(':').map(Number);
+    const d = new Date(editDueDate);
+    d.setHours(hh || 0, mm || 0, 0, 0);
+    return d.toISOString();
+  })();
+  const isDirty =
+    editTitle !== title ||
+    editDescription !== (description || '') ||
+    editPriority !== priority ||
+    JSON.stringify(editAssigned) !== JSON.stringify(assignedTo || []) ||
+    currentDueIso !== initialDueIso;
+
+  const requestCloseEdit = () => {
+    if (isDirty && !window.confirm('Discard unsaved changes?')) return;
+    setShowEdit(false);
+  };
   const [customSnoozeDate, setCustomSnoozeDate] = useState<Date | undefined>();
 
   const updateMutation = useUpdateReminder();
@@ -148,7 +167,7 @@ export function ReminderActions({
   const isEditable = source === 'client_reminder';
 
   const editDialog = isEditable && canEdit ? (
-    <Dialog open={showEdit} onOpenChange={setShowEdit}>
+    <Dialog open={showEdit} onOpenChange={(o) => { if (!o) requestCloseEdit(); else setShowEdit(true); }}>
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <DialogHeader>
           <DialogTitle>Edit reminder</DialogTitle>
@@ -225,7 +244,7 @@ export function ReminderActions({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setShowEdit(false)}>Cancel</Button>
+          <Button variant="outline" onClick={requestCloseEdit}>Cancel</Button>
           <Button
             onClick={handleSaveEdit}
             disabled={!editTitle.trim() || updateMutation.isPending}
