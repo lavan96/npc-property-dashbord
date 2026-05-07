@@ -244,7 +244,7 @@ export function ReminderActions({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setShowEdit(false)}>Cancel</Button>
+          <Button variant="outline" onClick={requestCloseEdit}>Cancel</Button>
           <Button
             onClick={handleSaveEdit}
             disabled={!editTitle.trim() || updateMutation.isPending}
