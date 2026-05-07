@@ -29,9 +29,10 @@ import {
 } from '@/components/ui/dialog';
 import {
   CheckCircle2, ExternalLink, GitBranch, Link2, Link2Off, RefreshCw, Search,
-  AlertCircle, Loader2, Download, Edit3, Eye, Save, X,
+  AlertCircle, Loader2, Download, Edit3, Eye, Save, X, Workflow as WorkflowIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { WorkflowBlueprintEditor, type Blueprint } from './WorkflowBlueprintEditor';
 
 interface Snapshot {
   id: string;
