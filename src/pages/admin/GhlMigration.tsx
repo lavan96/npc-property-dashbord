@@ -28,6 +28,7 @@ import {
 } from '@/components/admin/MigrationAdvancedOptions';
 import { MigrationSourceUploader } from '@/components/admin/MigrationSourceUploader';
 import { GhlWorkflowVisualizer } from '@/components/admin/GhlWorkflowVisualizer';
+import { GhlMarketingRawDump } from '@/components/admin/GhlMarketingRawDump';
 
 interface ScopeProbe {
   scope: string;
@@ -364,6 +365,9 @@ export default function GhlMigration() {
 
       {/* Phase 3 — Manual rebuild visualizer */}
       <GhlWorkflowVisualizer />
+
+      {/* Phase 3b — Raw marketing-asset dump (forms / surveys / quizzes / funnels / pages) */}
+      <GhlMarketingRawDump />
     </div>
   );
 }
