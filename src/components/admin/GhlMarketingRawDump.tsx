@@ -96,7 +96,7 @@ export function GhlMarketingRawDump() {
   const [exporting, setExporting] = useState(false);
   const [bridge, setBridge] = useState<BridgeRow[]>([]);
   const [bridgeEdits, setBridgeEdits] = useState<Record<string, Partial<BridgeRow>>>({});
-  const [funnelDomain, setFunnelDomain] = useState<string>(() => localStorage.getItem('ghl_funnel_domain') || '');
+  const [funnelDomain, setFunnelDomain] = useState<string>(() => localStorage.getItem('ghl_funnel_domain') || 'scale.npcservices.com.au');
   const pollRef = useRef<number | null>(null);
 
   const refresh = async () => {
