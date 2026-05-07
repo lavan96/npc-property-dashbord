@@ -25,6 +25,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { Calendar } from '@/components/ui/calendar';
 import { MultiTeamUserSelect } from '@/components/ui/MultiTeamUserSelect';
 import { useUpdateReminder, useSnoozeReminder, type SnoozeDuration } from '@/hooks/useUpdateReminder';
@@ -140,98 +147,95 @@ export function ReminderActions({
   // Only show actions for client_reminders source (not follow_ups or deal milestones)
   const isEditable = source === 'client_reminder';
 
-  if (showEdit && isEditable && canEdit) {
-    return (
-      <div
-        className="mt-2 p-3 rounded-md border bg-muted/50 space-y-2.5"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="space-y-1">
-          <label className="text-[10px] font-medium uppercase text-muted-foreground">Title</label>
-          <Input
-            value={editTitle}
-            onChange={(e) => setEditTitle(e.target.value)}
-            className="h-8 text-sm"
-            placeholder="Reminder title"
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-[10px] font-medium uppercase text-muted-foreground">Description</label>
-          <Textarea
-            value={editDescription}
-            onChange={(e) => setEditDescription(e.target.value)}
-            className="text-sm min-h-[60px]"
-            placeholder="Add notes..."
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-[10px] font-medium uppercase text-muted-foreground">Due date & time</label>
-          <div className="flex gap-1.5">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 text-xs flex-1 justify-start gap-1.5">
-                  <CalendarIcon className="h-3 w-3" />
-                  {editDueDate ? format(editDueDate, 'MMM d, yyyy') : 'Pick date'}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={editDueDate}
-                  onSelect={setEditDueDate}
-                  initialFocus
-                  className={cn("p-3 pointer-events-auto")}
-                />
-              </PopoverContent>
-            </Popover>
+  const editDialog = isEditable && canEdit ? (
+    <Dialog open={showEdit} onOpenChange={setShowEdit}>
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <DialogHeader>
+          <DialogTitle>Edit reminder</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Title</label>
             <Input
-              type="time"
-              value={editDueTime}
-              onChange={(e) => setEditDueTime(e.target.value)}
-              className="h-8 text-xs w-24"
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              placeholder="Reminder title"
             />
           </div>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <div className="space-y-1">
-            <label className="text-[10px] font-medium uppercase text-muted-foreground">Priority</label>
-            <Select value={editPriority} onValueChange={setEditPriority}>
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="low">Low</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
-                <SelectItem value="high">High</SelectItem>
-                <SelectItem value="urgent">Urgent</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1">
-            <label className="text-[10px] font-medium uppercase text-muted-foreground">Assigned to</label>
-            <MultiTeamUserSelect
-              value={editAssigned}
-              onValueChange={setEditAssigned}
-              placeholder="Assign..."
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Description</label>
+            <Textarea
+              value={editDescription}
+              onChange={(e) => setEditDescription(e.target.value)}
+              className="min-h-[90px]"
+              placeholder="Add notes..."
             />
           </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Due date & time</label>
+            <div className="flex gap-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="flex-1 justify-start gap-2">
+                    <CalendarIcon className="h-4 w-4" />
+                    {editDueDate ? format(editDueDate, 'MMM d, yyyy') : 'Pick date'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={editDueDate}
+                    onSelect={setEditDueDate}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+              <Input
+                type="time"
+                value={editDueTime}
+                onChange={(e) => setEditDueTime(e.target.value)}
+                className="w-28"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Priority</label>
+              <Select value={editPriority} onValueChange={setEditPriority}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="urgent">Urgent</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Assigned to</label>
+              <MultiTeamUserSelect
+                value={editAssigned}
+                onValueChange={setEditAssigned}
+                placeholder="Assign..."
+              />
+            </div>
+          </div>
         </div>
-        <div className="flex gap-1.5 pt-1">
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setShowEdit(false)}>Cancel</Button>
           <Button
-            size="sm"
-            className="h-7 text-xs flex-1"
             onClick={handleSaveEdit}
             disabled={!editTitle.trim() || updateMutation.isPending}
           >
-            {updateMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Save changes'}
+            {updateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save changes'}
           </Button>
-          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setShowEdit(false)}>
-            Cancel
-          </Button>
-        </div>
-      </div>
-    );
-  }
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  ) : null;
 
   if (showSnooze && isEditable && canEdit) {
     return (
@@ -305,6 +309,8 @@ export function ReminderActions({
   }
 
   return (
+    <>
+    {editDialog}
     <div className="flex gap-0.5 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0" onClick={(e) => e.stopPropagation()}>
       {isEditable && canEdit && (
         <>
@@ -359,5 +365,6 @@ export function ReminderActions({
         </Button>
       )}
     </div>
+    </>
   );
 }
