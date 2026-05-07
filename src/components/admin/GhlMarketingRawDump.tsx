@@ -146,8 +146,26 @@ export function GhlMarketingRawDump() {
     setExporting(false);
     if (res.error) { toast.error(res.error.message); return; }
     if (res.data?.url) {
-      window.open(res.data.url, '_blank');
-      toast.success(`ZIP ready (${fmtBytes(res.data.bytes || 0)}) — ${res.data.total_assets} assets`);
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const filename = `ghl-rebuild-kit-${stamp}.zip`;
+      try {
+        const r = await fetch(res.data.url);
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const blob = await r.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+        toast.success(`ZIP downloaded (${fmtBytes(res.data.bytes || 0)}) — ${res.data.total_assets} assets`);
+      } catch (e: any) {
+        // Fallback: open in new tab
+        window.open(res.data.url, '_blank');
+        toast.warning(`Download fallback opened in new tab: ${e?.message || e}`);
+      }
     }
   };
 
