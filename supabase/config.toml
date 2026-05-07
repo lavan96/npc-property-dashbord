@@ -634,3 +634,15 @@ request_timeout = 30
 [functions.ghl-legacy-backfill-gaps]
 verify_jwt = false
 request_timeout = 400
+
+[functions.ghl-marketing-dump-enqueue]
+verify_jwt = false
+request_timeout = 120
+
+[functions.ghl-marketing-dump-worker]
+verify_jwt = false
+request_timeout = 400
+
+[functions.ghl-marketing-dump-export]
+verify_jwt = false
+request_timeout = 300
