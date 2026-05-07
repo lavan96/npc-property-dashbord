@@ -365,6 +365,9 @@ export default function GhlMigration() {
 
       {/* Phase 3 — Manual rebuild visualizer */}
       <GhlWorkflowVisualizer />
+
+      {/* Phase 3b — Raw marketing-asset dump (forms / surveys / quizzes / funnels / pages) */}
+      <GhlMarketingRawDump />
     </div>
   );
 }
