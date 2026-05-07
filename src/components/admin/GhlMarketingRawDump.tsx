@@ -324,6 +324,53 @@ export function GhlMarketingRawDump() {
                   <pre className="text-[11px] p-3 font-mono whitespace-pre-wrap break-all">{detail.full.embed_code}</pre>
                 </ScrollArea>
               </TabsContent>
+              <TabsContent value="rawhtml" className="flex-1 overflow-hidden mt-2">
+                <div className="flex justify-end mb-2">
+                  <Button size="sm" variant="outline" onClick={() => download(`${detail.summary.resource_type}-${detail.summary.ghl_id}.raw.html`, detail.full.raw_html_content || '', 'text/html')}>
+                    <Download className="h-3.5 w-3.5 mr-1" /> Download Raw HTML
+                  </Button>
+                </div>
+                <ScrollArea className="h-full border border-border/40 rounded-md">
+                  <pre className="text-[11px] p-3 font-mono whitespace-pre-wrap break-all">{detail.full.raw_html_content}</pre>
+                </ScrollArea>
+              </TabsContent>
+              <TabsContent value="markdown" className="flex-1 overflow-hidden mt-2">
+                <div className="flex justify-end mb-2">
+                  <Button size="sm" variant="outline" onClick={() => download(`${detail.summary.resource_type}-${detail.summary.ghl_id}.md`, detail.full.markdown_content || '', 'text/markdown')}>
+                    <Download className="h-3.5 w-3.5 mr-1" /> Download Markdown
+                  </Button>
+                </div>
+                <ScrollArea className="h-full border border-border/40 rounded-md">
+                  <pre className="text-[11px] p-3 font-mono whitespace-pre-wrap break-words">{detail.full.markdown_content}</pre>
+                </ScrollArea>
+              </TabsContent>
+              <TabsContent value="screenshot" className="flex-1 overflow-hidden mt-2">
+                <ScrollArea className="h-full border border-border/40 rounded-md">
+                  {detail.full.screenshot_url && (
+                    <img src={detail.full.screenshot_url} alt="page screenshot" className="w-full" />
+                  )}
+                </ScrollArea>
+              </TabsContent>
+              <TabsContent value="links" className="flex-1 overflow-hidden mt-2">
+                <ScrollArea className="h-full border border-border/40 rounded-md">
+                  <pre className="text-[11px] p-3 font-mono whitespace-pre-wrap break-all">{JSON.stringify(detail.full.links, null, 2)}</pre>
+                </ScrollArea>
+              </TabsContent>
+              <TabsContent value="metadata" className="flex-1 overflow-hidden mt-2">
+                <ScrollArea className="h-full border border-border/40 rounded-md">
+                  <pre className="text-[11px] p-3 font-mono whitespace-pre-wrap break-all">{JSON.stringify(detail.full.metadata, null, 2)}</pre>
+                </ScrollArea>
+              </TabsContent>
+              <TabsContent value="submissions" className="flex-1 overflow-hidden mt-2">
+                <div className="flex justify-end mb-2">
+                  <Button size="sm" variant="outline" onClick={() => download(`${detail.summary.resource_type}-${detail.summary.ghl_id}.submissions.json`, JSON.stringify(detail.full.submissions_sample, null, 2), 'application/json')}>
+                    <Download className="h-3.5 w-3.5 mr-1" /> Download
+                  </Button>
+                </div>
+                <ScrollArea className="h-full border border-border/40 rounded-md">
+                  <pre className="text-[11px] p-3 font-mono whitespace-pre-wrap break-all">{JSON.stringify(detail.full.submissions_sample, null, 2)}</pre>
+                </ScrollArea>
+              </TabsContent>
               <TabsContent value="meta" className="flex-1 overflow-hidden mt-2">
                 <ScrollArea className="h-full border border-border/40 rounded-md">
                   <pre className="text-[11px] p-3 font-mono whitespace-pre-wrap break-all">
