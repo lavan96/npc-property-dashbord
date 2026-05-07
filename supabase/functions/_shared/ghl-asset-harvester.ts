@@ -575,6 +575,26 @@ export async function processAsset(
     };
   }
 
+  if ((task.resource_type as any) === 'location_custom_schema') {
+    const seed = task.seed || {};
+    return {
+      ...(base as any),
+      resource_type: 'location_custom_schema',
+      name: 'Location Custom Fields & Values',
+      raw_payload: seed,
+      html_content: null, raw_html_content: null, markdown_content: null,
+      css_content: null, inlined_css: null, embed_code: null,
+      screenshot_url: null, links: null, metadata: null, submissions_sample: null,
+      asset_manifest: null, asset_count: 0, asset_bytes: 0, portable_html_path: null,
+      reconstruction_notes: 'These are the location-wide Custom Fields & Custom Values used by every form/survey/workflow in this account. The per-form field schema is API-locked, so use this list (plus rendered form HTML) to identify which fields each form collects. Recreate identical custom fields in the new GHL location before importing forms.',
+      enrichment_sources: { source: 'locations/{id}/customFields + customValues' },
+      full_url: null,
+      fetch_status: 'ok',
+      fetch_error: null,
+      endpoints_tried: [],
+    };
+  }
+
   throw new Error(`Unknown resource_type: ${task.resource_type}`);
 }
 
