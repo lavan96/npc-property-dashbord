@@ -471,8 +471,14 @@ export async function processAsset(
     ], headers);
     const merged = { ...seed, ...detail.merged };
     const { html, css, embed } = pickHtmlCss(merged);
+    // Build a public URL: priority is explicit override → seed.fullUrl
+    // → constructed from parentDomain + parentSlug + parentStepUrl.
+    const cleanJoin = (...parts: string[]) =>
+      '/' + parts.map((p) => (p || '').replace(/^\/+|\/+$/g, '')).filter(Boolean).join('/');
     const pageUrl: string | null = merged.fullUrl || seed.fullUrl
-      || (seed.parentDomain && (merged.path || merged.slug) ? `https://${seed.parentDomain}/${merged.path || merged.slug}` : null);
+      || (seed.parentDomain
+        ? `https://${seed.parentDomain.replace(/^https?:\/\//, '').replace(/\/+$/, '')}${cleanJoin(seed.parentSlug || '', seed.parentStepUrl || '')}`
+        : null);
 
     let live: RenderResult = { html: null, rawHtml: null, markdown: null, screenshot: null, links: null, metadata: null, source: 'none', trace: { url: 'no_url', status: 0, ok: false } };
     if (pageUrl) live = await renderLive(pageUrl, useFirecrawl);
