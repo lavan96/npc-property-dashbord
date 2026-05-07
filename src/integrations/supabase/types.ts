@@ -7519,6 +7519,9 @@ export type Database = {
           location_id: string | null
           name: string | null
           raw_json: Json
+          rebuild_marked_done_at: string | null
+          rebuild_marked_done_by: string | null
+          rebuild_notes: string | null
           status: string | null
           updated_at: string
           version: number | null
@@ -7535,6 +7538,9 @@ export type Database = {
           location_id?: string | null
           name?: string | null
           raw_json?: Json
+          rebuild_marked_done_at?: string | null
+          rebuild_marked_done_by?: string | null
+          rebuild_notes?: string | null
           status?: string | null
           updated_at?: string
           version?: number | null
@@ -7551,6 +7557,9 @@ export type Database = {
           location_id?: string | null
           name?: string | null
           raw_json?: Json
+          rebuild_marked_done_at?: string | null
+          rebuild_marked_done_by?: string | null
+          rebuild_notes?: string | null
           status?: string | null
           updated_at?: string
           version?: number | null
