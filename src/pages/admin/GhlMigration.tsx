@@ -27,6 +27,7 @@ import {
   buildDomainPayloadPatch,
 } from '@/components/admin/MigrationAdvancedOptions';
 import { MigrationSourceUploader } from '@/components/admin/MigrationSourceUploader';
+import { GhlWorkflowVisualizer } from '@/components/admin/GhlWorkflowVisualizer';
 
 interface ScopeProbe {
   scope: string;
