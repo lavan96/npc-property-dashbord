@@ -93,6 +93,15 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
+    if (action === 'save_blueprint') {
+      const id = String(body.id || '');
+      if (!id) return new Response(JSON.stringify({ error: 'id required' }), { status: 400, headers: corsHeaders });
+      const { error } = await supabase.from('ghl_workflow_snapshots')
+        .update({ rebuild_blueprint: body.blueprint ?? null }).eq('id', id);
+      if (error) throw new Error(error.message);
+      return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     if (action === 'mark_done') {
       const id = String(body.id || '');
       if (!id) return new Response(JSON.stringify({ error: 'id required' }), { status: 400, headers: corsHeaders });
