@@ -27,6 +27,7 @@ import {
   buildDomainPayloadPatch,
 } from '@/components/admin/MigrationAdvancedOptions';
 import { MigrationSourceUploader } from '@/components/admin/MigrationSourceUploader';
+import { GhlWorkflowVisualizer } from '@/components/admin/GhlWorkflowVisualizer';
 
 interface ScopeProbe {
   scope: string;
@@ -360,6 +361,9 @@ export default function GhlMigration() {
 
       {/* Phase 3 — Workflow migration (snapshot + enrollment mirror + re-enroll) */}
       <WorkflowMigrationPanel />
+
+      {/* Phase 3 — Manual rebuild visualizer */}
+      <GhlWorkflowVisualizer />
     </div>
   );
 }
