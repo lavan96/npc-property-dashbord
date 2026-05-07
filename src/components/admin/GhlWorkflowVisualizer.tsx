@@ -548,6 +548,20 @@ export function GhlWorkflowVisualizer() {
           </ScrollArea>
         </DialogContent>
       </Dialog>
+
+      <WorkflowBlueprintEditor
+        open={!!blueprintFor}
+        onClose={() => setBlueprintFor(null)}
+        workflow={blueprintFor ? {
+          id: blueprintFor.id,
+          workflow_id: blueprintFor.workflow_id,
+          name: blueprintFor.name,
+          rebuild_blueprint: blueprintFor.rebuild_blueprint,
+        } : null}
+        onSaved={(bp) => {
+          setSnapshots(prev => prev.map(s => s.id === blueprintFor?.id ? { ...s, rebuild_blueprint: bp } : s));
+        }}
+      />
     </Card>
   );
 }
