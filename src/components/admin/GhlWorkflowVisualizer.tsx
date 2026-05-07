@@ -86,6 +86,7 @@ export function GhlWorkflowVisualizer() {
   const [linkTargetId, setLinkTargetId] = useState('');
   const [viewJson, setViewJson] = useState<Snapshot | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [blueprintFor, setBlueprintFor] = useState<Snapshot | null>(null);
   const [lastLoadedAt, setLastLoadedAt] = useState<string | null>(null);
 
   async function load() {
