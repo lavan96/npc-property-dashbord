@@ -19,7 +19,7 @@ const ASSET_CONCURRENCY = 5;
 export interface EndpointTrace { url: string; status: number; ok: boolean; bytes?: number }
 
 export interface DumpRow {
-  resource_type: 'form' | 'survey' | 'quiz' | 'funnel' | 'funnel_page' | 'workflow';
+  resource_type: 'form' | 'survey' | 'quiz' | 'funnel' | 'funnel_page' | 'workflow' | 'location_custom_schema';
   ghl_id: string;
   location_id: string;
   name: string | null;
