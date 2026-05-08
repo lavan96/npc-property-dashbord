@@ -204,6 +204,29 @@ Deno.serve(async (req) => {
 
     console.log(`Synced ${Object.keys(stageIdMap).length} pipeline stages to database`);
 
+    // Purge stale pipelines & stages from previous accounts/locations or removed in GHL.
+    // Anything not touched by this run is stale.
+    let stalePipelinesDeleted = 0;
+    let staleStagesDeleted = 0;
+    try {
+      const { data: deletedStages } = await supabase
+        .from('ghl_pipeline_stages')
+        .delete()
+        .lt('synced_at', syncRunStartedAt)
+        .select('id');
+      staleStagesDeleted = deletedStages?.length || 0;
+
+      const { data: deletedPipelines } = await supabase
+        .from('ghl_pipelines')
+        .delete()
+        .lt('synced_at', syncRunStartedAt)
+        .select('id');
+      stalePipelinesDeleted = deletedPipelines?.length || 0;
+      console.log(`Purged ${stalePipelinesDeleted} stale pipelines and ${staleStagesDeleted} stale stages`);
+    } catch (e) {
+      console.error('Stale pipeline purge failed:', e);
+    }
+
     // Step 3: Fetch all opportunities from GHL - increased limit to ensure all are fetched
     let allOpportunities: GHLOpportunity[] = [];
     let startAfterId: string | null = null;
