@@ -886,28 +886,32 @@ Deno.serve(async (req) => {
       const docExt = 'pdf';
       console.log('[DocuSign] Final PDF size:', finalPdfBytes.length, 'bytes (raw Gamma, no execution page)');
 
-      // Build signer tabs against our reliable anchors.
-      // anchorUnits=pixels, anchorXOffset/YOffset position the tab relative to
-      // the bottom-left of the matched anchor text. We push signature graphic
-      // up so it sits centered ABOVE the underline; date/name sit on the line.
+      // Build signer tabs against the anchor tokens embedded in the Gamma
+      // template. Tokens should be placed (white, ~6pt) where you want the
+      // signature/date/name to appear. The signature graphic is centered on the
+      // anchor (offset up so it sits ABOVE the token's baseline). Date/name
+      // sit on the token's baseline. anchorIgnoreIfNotPresent=true so that an
+      // absent token (e.g. secondary buyer in a single-buyer template) is a
+      // no-op rather than an envelope failure.
       const buildTabs = (sig: string, date: string, name: string) => ({
         signHereTabs: [{
           anchorString: sig,
           anchorUnits: 'pixels',
           anchorXOffset: '0',
-          anchorYOffset: '-22',
-          anchorIgnoreIfNotPresent: 'false',
+          anchorYOffset: '-30',
+          anchorIgnoreIfNotPresent: 'true',
           anchorCaseSensitive: 'true',
-          anchorMatchWholeWord: 'true',
-          scaleValue: '0.6',
+          anchorMatchWholeWord: 'false',
+          scaleValue: '0.7',
         }],
         dateSignedTabs: [{
           anchorString: date,
           anchorUnits: 'pixels',
           anchorXOffset: '0',
-          anchorYOffset: '-14',
+          anchorYOffset: '-2',
+          anchorIgnoreIfNotPresent: 'true',
           anchorCaseSensitive: 'true',
-          anchorMatchWholeWord: 'true',
+          anchorMatchWholeWord: 'false',
           font: 'Helvetica',
           fontSize: 'Size10',
         }],
@@ -915,9 +919,10 @@ Deno.serve(async (req) => {
           anchorString: name,
           anchorUnits: 'pixels',
           anchorXOffset: '0',
-          anchorYOffset: '-14',
+          anchorYOffset: '-2',
+          anchorIgnoreIfNotPresent: 'true',
           anchorCaseSensitive: 'true',
-          anchorMatchWholeWord: 'true',
+          anchorMatchWholeWord: 'false',
           font: 'Helvetica',
           fontSize: 'Size10',
         }],
