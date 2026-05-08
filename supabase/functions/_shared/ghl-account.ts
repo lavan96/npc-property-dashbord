@@ -51,6 +51,75 @@ export function getGhlCredentials(account: GhlAccount = 'legacy'): GhlCredential
   };
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// Effective-account resolution (post-cutover aware)
+// ─────────────────────────────────────────────────────────────────────────
+// Reads `ghl_account_config.default_account` from the database. When the
+// legacy GHL account has been decommissioned (legacy_disabled_at IS NOT NULL),
+// the default flips to 'new' automatically.
+//
+// Cached for 60s in-memory (per cold container).
+let _accountCache: { value: GhlAccount; legacyDisabled: boolean; until: number } | null = null;
+const ACCOUNT_CACHE_MS = 60_000;
+
+export class LegacyAccountDisabledError extends Error {
+  constructor(msg = 'Legacy GHL account has been decommissioned. Use account = "new".') {
+    super(msg);
+    this.name = 'LegacyAccountDisabledError';
+  }
+}
+
+async function readAccountConfig(supabase: any): Promise<{ default_account: GhlAccount; legacy_disabled: boolean }> {
+  if (_accountCache && _accountCache.until > Date.now()) {
+    return { default_account: _accountCache.value, legacy_disabled: _accountCache.legacyDisabled };
+  }
+  try {
+    const { data } = await supabase
+      .from('ghl_account_config')
+      .select('default_account, legacy_disabled_at')
+      .eq('id', true)
+      .maybeSingle();
+    const def = (data?.default_account === 'new' ? 'new' : 'legacy') as GhlAccount;
+    const disabled = !!data?.legacy_disabled_at;
+    _accountCache = { value: def, legacyDisabled: disabled, until: Date.now() + ACCOUNT_CACHE_MS };
+    return { default_account: def, legacy_disabled: disabled };
+  } catch (e) {
+    console.warn('[ghl-account] readAccountConfig failed, defaulting to legacy:', (e as any)?.message);
+    return { default_account: 'legacy', legacy_disabled: false };
+  }
+}
+
+/**
+ * Resolve which GHL account a caller should hit, taking the live cutover
+ * config into account. If `requested` is omitted, returns the configured
+ * default. If `requested === 'legacy'` AFTER cutover, throws.
+ */
+export async function resolveGhlAccount(
+  supabase: any,
+  requested?: GhlAccount,
+): Promise<GhlAccount> {
+  const cfg = await readAccountConfig(supabase);
+  if (cfg.legacy_disabled && requested === 'legacy') {
+    throw new LegacyAccountDisabledError();
+  }
+  if (requested) return requested;
+  return cfg.default_account;
+}
+
+/** Get creds for the resolved effective account. */
+export async function getEffectiveGhlCredentials(
+  supabase: any,
+  requested?: GhlAccount,
+): Promise<GhlCredentials> {
+  const account = await resolveGhlAccount(supabase, requested);
+  return getGhlCredentials(account);
+}
+
+/** Force a refresh of the account-config cache. */
+export function invalidateGhlAccountCache(): void {
+  _accountCache = null;
+}
+
 /**
  * Validates that credentials exist for the chosen account; returns a
  * friendly error message if not, otherwise null.
