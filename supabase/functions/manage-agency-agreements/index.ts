@@ -992,21 +992,44 @@ Deno.serve(async (req) => {
       console.log('[DocuSign] Final PDF size:', finalPdfBytes.length, 'bytes');
 
       // Build signer tabs against our reliable anchors.
-      const buyerTabs = {
-        signHereTabs: [{ anchorString: ANCHOR.buyerSig, anchorUnits: 'pixels', anchorXOffset: '0', anchorYOffset: '-6', anchorIgnoreIfNotPresent: 'false' }],
-        dateSignedTabs: [{ anchorString: ANCHOR.buyerDate, anchorUnits: 'pixels', anchorXOffset: '0', anchorYOffset: '-2' }],
-        fullNameTabs: [{ anchorString: ANCHOR.buyerName, anchorUnits: 'pixels', anchorXOffset: '0', anchorYOffset: '-2' }],
-      };
-      const secondaryTabs = {
-        signHereTabs: [{ anchorString: ANCHOR.secSig, anchorUnits: 'pixels', anchorXOffset: '0', anchorYOffset: '-6' }],
-        dateSignedTabs: [{ anchorString: ANCHOR.secDate, anchorUnits: 'pixels', anchorXOffset: '0', anchorYOffset: '-2' }],
-        fullNameTabs: [{ anchorString: ANCHOR.secName, anchorUnits: 'pixels', anchorXOffset: '0', anchorYOffset: '-2' }],
-      };
-      const agentTabs = {
-        signHereTabs: [{ anchorString: ANCHOR.agentSig, anchorUnits: 'pixels', anchorXOffset: '0', anchorYOffset: '-6' }],
-        dateSignedTabs: [{ anchorString: ANCHOR.agentDate, anchorUnits: 'pixels', anchorXOffset: '0', anchorYOffset: '-2' }],
-        fullNameTabs: [{ anchorString: ANCHOR.agentName, anchorUnits: 'pixels', anchorXOffset: '0', anchorYOffset: '-2' }],
-      };
+      // anchorUnits=pixels, anchorXOffset/YOffset position the tab relative to
+      // the bottom-left of the matched anchor text. We push signature graphic
+      // up so it sits centered ABOVE the underline; date/name sit on the line.
+      const buildTabs = (sig: string, date: string, name: string) => ({
+        signHereTabs: [{
+          anchorString: sig,
+          anchorUnits: 'pixels',
+          anchorXOffset: '0',
+          anchorYOffset: '-22',
+          anchorIgnoreIfNotPresent: 'false',
+          anchorCaseSensitive: 'true',
+          anchorMatchWholeWord: 'true',
+          scaleValue: '0.6',
+        }],
+        dateSignedTabs: [{
+          anchorString: date,
+          anchorUnits: 'pixels',
+          anchorXOffset: '0',
+          anchorYOffset: '-14',
+          anchorCaseSensitive: 'true',
+          anchorMatchWholeWord: 'true',
+          font: 'Helvetica',
+          fontSize: 'Size10',
+        }],
+        fullNameTabs: [{
+          anchorString: name,
+          anchorUnits: 'pixels',
+          anchorXOffset: '0',
+          anchorYOffset: '-14',
+          anchorCaseSensitive: 'true',
+          anchorMatchWholeWord: 'true',
+          font: 'Helvetica',
+          fontSize: 'Size10',
+        }],
+      });
+      const buyerTabs = buildTabs(ANCHOR.buyerSig, ANCHOR.buyerDate, ANCHOR.buyerName);
+      const secondaryTabs = buildTabs(ANCHOR.secSig, ANCHOR.secDate, ANCHOR.secName);
+      const agentTabs = buildTabs(ANCHOR.agentSig, ANCHOR.agentDate, ANCHOR.agentName);
 
       const signers: any[] = [
         {
