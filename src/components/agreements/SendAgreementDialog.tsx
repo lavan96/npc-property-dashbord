@@ -36,6 +36,8 @@ interface SendAgreementDialogProps {
     current_address?: string | null;
     secondary_first_name?: string | null;
     secondary_surname?: string | null;
+    secondary_email?: string | null;
+    secondary_mobile?: string | null;
   };
   dealId?: string;
 }
