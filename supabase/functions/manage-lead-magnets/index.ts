@@ -98,9 +98,30 @@ Deno.serve(async (req) => {
       }
 
       case 'list_pipelines': {
-        const { data: pipelines } = await supabase.from('ghl_pipelines').select('id, ghl_id, name').order('name');
-        const { data: stages } = await supabase.from('ghl_pipeline_stages').select('id, ghl_id, pipeline_id, name, position').order('position');
-        return json({ pipelines: pipelines || [], stages: stages || [] });
+        // Live-fetch pipelines + stages from the NEW GHL account so leads route there.
+        const creds = getGhlCredentials('new');
+        const credErr = validateGhlCredentials(creds);
+        if (credErr) return json({ error: credErr, pipelines: [], stages: [] }, 200);
+        try {
+          const { accessToken } = await resolveGhlAccessTokenForLocation(creds);
+          const res = await fetch(`${GHL_API_BASE}/opportunities/pipelines?locationId=${creds.locationId}`, {
+            headers: buildGhlHeaders(accessToken),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            return json({ error: `GHL pipelines fetch failed: ${res.status} ${JSON.stringify(data).slice(0, 300)}`, pipelines: [], stages: [] }, 200);
+          }
+          const rawPipelines = Array.isArray(data?.pipelines) ? data.pipelines : [];
+          const pipelines = rawPipelines.map((p: any) => ({ id: p.id, ghl_id: p.id, name: p.name }));
+          const stages = rawPipelines.flatMap((p: any) =>
+            (p.stages || []).map((s: any) => ({
+              id: s.id, ghl_id: s.id, pipeline_id: p.id, name: s.name, position: s.position ?? 0,
+            }))
+          );
+          return json({ pipelines, stages, account: 'new' });
+        } catch (e) {
+          return json({ error: `GHL fetch error: ${(e as Error).message}`, pipelines: [], stages: [] }, 200);
+        }
       }
 
       case 'list_downloads': {
