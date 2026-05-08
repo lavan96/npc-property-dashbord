@@ -1,6 +1,9 @@
 // Admin CRUD + upload for lead magnets. Requires authenticated session.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from '../_shared/auth.ts';
+import { getGhlCredentials, validateGhlCredentials, buildGhlHeaders, resolveGhlAccessTokenForLocation } from '../_shared/ghl-account.ts';
+
+const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 
 Deno.serve(async (req) => {
   const corsHeaders = createCorsHeaders(req.headers.get('origin'));
