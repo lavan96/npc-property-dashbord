@@ -921,8 +921,15 @@ Deno.serve(async (req) => {
       drawText('terms and conditions of this Agreement in full.', margin, y, { size: 10 });
       y -= 30;
 
-      // Signer block renderer — draws label + a visible underline + invisible
-      // (white) anchor token where DocuSign will place the signature graphic.
+      // Signer block renderer. Layout (per signer):
+      //   TITLE
+      //   Signature: __________________________   Date: __________________
+      //   Printed Name: ________________________________________________
+      //
+      // We place each anchor token in white text *exactly on the underline*
+      // (baseline = line Y). DocuSign positions a tab so its bottom-left
+      // corner sits at the anchor baseline + offset, so a signature with
+      // anchorYOffset=0 will sit cleanly ABOVE the line — which is what we want.
       const renderSignerBlock = (
         title: string,
         printedName: string,
@@ -931,22 +938,34 @@ Deno.serve(async (req) => {
       ): number => {
         let yy = startY;
         drawText(title, margin, yy, { size: 11, bold: true });
-        yy -= 18;
-        drawText('Signature:', margin, yy, { size: 10 });
-        // Underline for visual signature line
-        sigPage.drawLine({ start: { x: margin + 70, y: yy - 2 }, end: { x: margin + 270, y: yy - 2 }, thickness: 0.5, color: rgb(0.4, 0.4, 0.4) });
-        // White-text anchor token — invisible to readers, found by DocuSign.
-        drawText(anchors.sig, margin + 75, yy + 2, { size: 8, color: rgb(1, 1, 1) });
-        // Date column
-        drawText('Date:', margin + 310, yy, { size: 10 });
-        sigPage.drawLine({ start: { x: margin + 345, y: yy - 2 }, end: { x: margin + 495, y: yy - 2 }, thickness: 0.5, color: rgb(0.4, 0.4, 0.4) });
-        drawText(anchors.date, margin + 350, yy + 2, { size: 8, color: rgb(1, 1, 1) });
         yy -= 22;
+
+        // Signature row
+        drawText('Signature:', margin, yy, { size: 10 });
+        const sigLineY = yy - 2;
+        const sigLineX1 = margin + 70;
+        const sigLineX2 = margin + 290;
+        sigPage.drawLine({ start: { x: sigLineX1, y: sigLineY }, end: { x: sigLineX2, y: sigLineY }, thickness: 0.5, color: rgb(0.4, 0.4, 0.4) });
+        // Anchor token — baseline sits ON the line, white text → invisible.
+        drawText(anchors.sig, sigLineX1 + 2, sigLineY, { size: 6, color: rgb(1, 1, 1) });
+
+        // Date column
+        const dateLabelX = margin + 310;
+        drawText('Date:', dateLabelX, yy, { size: 10 });
+        const dateLineX1 = dateLabelX + 35;
+        const dateLineX2 = margin + 495;
+        sigPage.drawLine({ start: { x: dateLineX1, y: sigLineY }, end: { x: dateLineX2, y: sigLineY }, thickness: 0.5, color: rgb(0.4, 0.4, 0.4) });
+        drawText(anchors.date, dateLineX1 + 2, sigLineY, { size: 6, color: rgb(1, 1, 1) });
+        yy -= 32;
+
+        // Printed Name row
         drawText('Printed Name:', margin, yy, { size: 10 });
-        sigPage.drawLine({ start: { x: margin + 90, y: yy - 2 }, end: { x: margin + 495, y: yy - 2 }, thickness: 0.5, color: rgb(0.4, 0.4, 0.4) });
-        if (printedName) drawText(printedName, margin + 95, yy + 2, { size: 10 });
-        // Hidden FullName anchor (so DocuSign auto-fills if name not pre-printed)
-        drawText(anchors.name, margin + 400, yy + 2, { size: 8, color: rgb(1, 1, 1) });
+        const nameLineY = yy - 2;
+        const nameLineX1 = margin + 90;
+        sigPage.drawLine({ start: { x: nameLineX1, y: nameLineY }, end: { x: margin + 495, y: nameLineY }, thickness: 0.5, color: rgb(0.4, 0.4, 0.4) });
+        if (printedName) drawText(printedName, nameLineX1 + 4, nameLineY + 3, { size: 10 });
+        // Hidden FullName anchor at right side so it doesn't overlap printed name
+        drawText(anchors.name, margin + 380, nameLineY, { size: 6, color: rgb(1, 1, 1) });
         yy -= 30;
         return yy;
       };
