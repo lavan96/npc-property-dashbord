@@ -56,6 +56,43 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ─── Read-only modes (status / list) ───────────────────────────────
+    const action = body.action || (body.list ? 'list' : (body.job_id && !body.dry_run && !body.confirmation ? 'status' : 'dispatch'));
+
+    if (action === 'list') {
+      const { data, error } = await supabase
+        .from('legacy_wipe_jobs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(Math.min(Number(body.limit) || 10, 50));
+      if (error) throw new Error(error.message);
+      return new Response(JSON.stringify({ success: true, jobs: data || [] }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (action === 'status') {
+      const { data, error } = await supabase
+        .from('legacy_wipe_jobs').select('*').eq('id', body.job_id).maybeSingle();
+      if (error) throw new Error(error.message);
+      return new Response(JSON.stringify({ success: true, job: data }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (action === 'cancel') {
+      const { error } = await supabase
+        .from('legacy_wipe_jobs')
+        .update({ status: 'cancelled', completed_at: new Date().toISOString(), worker_lock_until: null })
+        .eq('id', body.job_id)
+        .in('status', ['pending', 'processing']);
+      if (error) throw new Error(error.message);
+      return new Response(JSON.stringify({ success: true, cancelled: body.job_id }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // ─── Dispatch a new job ────────────────────────────────────────────
     const dry_run = body.dry_run !== false; // default true
 
     if (!dry_run && body.confirmation !== LIVE_CONFIRMATION) {
