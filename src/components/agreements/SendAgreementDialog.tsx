@@ -117,6 +117,7 @@ export function SendAgreementDialog({ open, onOpenChange, client, dealId }: Send
         buyerEmail,
         agreementDate,
         secondaryBuyerName: secondaryBuyerName || undefined,
+        secondaryBuyerEmail: secondaryBuyerEmail || undefined,
         dealId,
         notes: notes || undefined,
         initialCommitmentFee: commitmentFee || undefined,
