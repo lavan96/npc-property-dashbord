@@ -148,7 +148,7 @@
         status.textContent = '';
         status.className = 'lm-status';
         btn.disabled = true;
-        btn.innerHTML = '<span class="lm-spinner"></span>SENDING...';
+        btn.innerHTML = '<span class="lm-spinner"></span>Sending...';
 
         var fd = new FormData(form);
         var payload = {
@@ -173,7 +173,7 @@
 
           status.textContent = 'Success — your download is starting...';
           status.className = 'lm-status success';
-          btn.innerHTML = 'DOWNLOADED';
+          btn.innerHTML = 'Downloaded';
 
           // Trigger download
           var a = document.createElement('a');
@@ -188,7 +188,7 @@
           status.textContent = err.message || 'Something went wrong. Please try again.';
           status.className = 'lm-status error';
           btn.disabled = false;
-          btn.innerHTML = 'UNLOCK GUIDE';
+          btn.innerHTML = 'Unlock Guide';
         }
       });
     })();
