@@ -88,6 +88,8 @@ Deno.serve(async (req) => {
       });
     }
     const supabase = createClient(supabaseUrl, supabaseKey);
+    // Capture run start so we can purge any rows not touched by this sync
+    const syncRunStartedAt = new Date().toISOString();
     const _ghlCreds = await getEffectiveGhlCredentials(supabase);
     const apiKey = _ghlCreds.apiKey;
     const locationId = _ghlCreds.locationId;
@@ -426,6 +428,24 @@ Deno.serve(async (req) => {
 
     console.log(`Opportunities upserted: ${opportunitiesUpserted}, skipped (no client): ${opportunitiesSkipped}`);
 
+    // Step 5b: Purge stale opportunities (legacy rows from old GHL account or deleted opps)
+    // Any row not touched by this sync run (synced_at < syncRunStartedAt) no longer exists in GHL.
+    let staleOpportunitiesDeleted = 0;
+    {
+      const { data: deleted, error: purgeError } = await supabase
+        .from('ghl_client_opportunities')
+        .delete()
+        .lt('synced_at', syncRunStartedAt)
+        .select('id');
+      if (purgeError) {
+        console.error('Error purging stale opportunities:', purgeError);
+      } else {
+        staleOpportunitiesDeleted = deleted?.length || 0;
+        console.log(`Purged ${staleOpportunitiesDeleted} stale opportunities not present in current GHL account`);
+      }
+    }
+
+
     // Step 6: Update clients table with the "best" opportunity (legacy fields)
     let updatedCount = 0;
     let notFoundCount = 0;
@@ -513,15 +533,44 @@ Deno.serve(async (req) => {
       })),
     }));
 
+    // Step 6b: Clear stale pipeline fields on clients whose ghl_opportunity_id no longer exists
+    let orphanClientsCleared = 0;
+    {
+      const { data: orphans, error: orphanErr } = await supabase
+        .from('clients')
+        .update({
+          pipeline_status: null,
+          ghl_opportunity_id: null,
+          opportunity_status: null,
+          current_pipeline_id: null,
+          current_stage_id: null,
+          pipeline_updated_at: new Date().toISOString(),
+        })
+        .not('ghl_opportunity_id', 'is', null)
+        .not('ghl_opportunity_id', 'in', `(${
+          allOpportunities.map(o => `"${o.id}"`).join(',') || '""'
+        })`)
+        .select('id');
+      if (orphanErr) {
+        console.error('Error clearing orphan client pipeline fields:', orphanErr);
+      } else {
+        orphanClientsCleared = orphans?.length || 0;
+        console.log(`Cleared pipeline fields on ${orphanClientsCleared} orphan clients`);
+      }
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Pipeline sync complete! Synced ${ghlPipelines.length} pipelines, ${opportunitiesUpserted} opportunities stored, ${updatedCount} clients updated.`,
+        message: `Pipeline sync complete! Synced ${ghlPipelines.length} pipelines, ${opportunitiesUpserted} opportunities stored, ${updatedCount} clients updated, ${staleOpportunitiesDeleted} stale opps purged.`,
         stats: {
           pipelinesFound: ghlPipelines.length,
           stagesSynced: Object.keys(stageIdMap).length,
           opportunitiesFound: allOpportunities.length,
           opportunitiesStored: opportunitiesUpserted,
+          opportunitiesSkippedNoClient: opportunitiesSkipped,
+          staleOpportunitiesDeleted,
+          orphanClientsCleared,
           clientsUpdated: updatedCount,
           contactsNotFound: notFoundCount,
         },
