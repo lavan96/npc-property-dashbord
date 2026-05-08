@@ -90,7 +90,7 @@ Deno.serve(async (req) => {
     // Fire-and-forget GHL push
     (async () => {
       try {
-        const creds = getGhlCredentials('legacy');
+        const creds = getGhlCredentials('new');
         const validateErr = validateGhlCredentials(creds);
         if (validateErr) { console.warn('[request-lead-magnet] GHL skipped:', validateErr); return; }
 
