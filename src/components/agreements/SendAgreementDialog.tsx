@@ -78,6 +78,10 @@ export function SendAgreementDialog({ open, onOpenChange, client, dealId }: Send
   const [notes, setNotes] = useState('');
   const [step, setStep] = useState<'fill' | 'confirm' | 'sent'>('fill');
   const [generatedId, setGeneratedId] = useState<string | null>(null);
+  const [pdfReady, setPdfReady] = useState(false);
+  const [pdfPolling, setPdfPolling] = useState(false);
+  const [pdfPollAttempts, setPdfPollAttempts] = useState(0);
+  const [pdfTimedOut, setPdfTimedOut] = useState(false);
 
   // Pre-fill when dialog opens
   useEffect(() => {
@@ -97,8 +101,51 @@ export function SendAgreementDialog({ open, onOpenChange, client, dealId }: Send
       setNotes('');
       setStep('fill');
       setGeneratedId(null);
+      setPdfReady(false);
+      setPdfPolling(false);
+      setPdfPollAttempts(0);
+      setPdfTimedOut(false);
     }
   }, [open, client]);
+
+  // Poll PDF readiness once we have a generated agreement (Gamma generation is async)
+  useEffect(() => {
+    if (step !== 'confirm' || !generatedId || pdfReady) return;
+    let cancelled = false;
+    setPdfPolling(true);
+    setPdfTimedOut(false);
+
+    const MAX_ATTEMPTS = 40; // ~2 min @ 3s
+    let attempt = 0;
+
+    const tick = async () => {
+      if (cancelled) return;
+      attempt += 1;
+      setPdfPollAttempts(attempt);
+      try {
+        const { data, error } = await supabase
+          .from('agency_agreements')
+          .select('pdf_storage_path, status')
+          .eq('id', generatedId)
+          .maybeSingle();
+        if (!cancelled && !error && data?.pdf_storage_path) {
+          setPdfReady(true);
+          setPdfPolling(false);
+          return;
+        }
+      } catch { /* ignore */ }
+      if (attempt >= MAX_ATTEMPTS) {
+        if (!cancelled) {
+          setPdfTimedOut(true);
+          setPdfPolling(false);
+        }
+        return;
+      }
+      setTimeout(tick, 3000);
+    };
+    tick();
+    return () => { cancelled = true; };
+  }, [step, generatedId, pdfReady]);
 
   // Auto-select default template when templates load
   useEffect(() => {
