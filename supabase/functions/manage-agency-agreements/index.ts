@@ -822,14 +822,42 @@ Deno.serve(async (req) => {
         agentName: '\\name_agent\\',
       };
 
-      // Build the document bytes. Start from the Gamma PDF when available,
-      // else fall back to the inline HTML rendered as a single-page PDF placeholder.
+      // Build the document bytes. Start from the Gamma PDF when available.
+      // If the Gamma generation hasn't been backfilled to storage yet, attempt
+      // a deferred fetch (re-poll Gamma + upload) before falling back to the
+      // appended execution page only.
       let pdfBytes: Uint8Array | null = null;
-      if (agreement.pdf_storage_path) {
-        console.log('[DocuSign] Downloading Gamma PDF from storage:', agreement.pdf_storage_path);
+      let resolvedAgreement = agreement;
+
+      if (!resolvedAgreement.pdf_storage_path && resolvedAgreement.gamma_document_id) {
+        const gammaApiKey = Deno.env.get('GAMMA_API_KEY');
+        if (gammaApiKey) {
+          console.log('[DocuSign] No pdf_storage_path yet — attempting deferred Gamma fetch for:', resolvedAgreement.gamma_document_id);
+          const deferredUrl = await attemptDeferredPdfFetch(supabase, resolvedAgreement, gammaApiKey);
+          if (deferredUrl) {
+            // Re-fetch agreement to pick up the newly-set pdf_storage_path
+            const { data: refreshed } = await supabase
+              .from('agency_agreements')
+              .select('*')
+              .eq('id', agreement_id)
+              .single();
+            if (refreshed?.pdf_storage_path) {
+              resolvedAgreement = refreshed;
+              console.log('[DocuSign] Deferred fetch succeeded — using PDF at:', refreshed.pdf_storage_path);
+            }
+          } else {
+            console.warn('[DocuSign] Deferred Gamma fetch did not yield a PDF; envelope will contain execution page only.');
+          }
+        } else {
+          console.warn('[DocuSign] GAMMA_API_KEY not configured — cannot attempt deferred PDF fetch.');
+        }
+      }
+
+      if (resolvedAgreement.pdf_storage_path) {
+        console.log('[DocuSign] Downloading Gamma PDF from storage:', resolvedAgreement.pdf_storage_path);
         const { data: pdfBlob, error: dlErr } = await supabase.storage
           .from('agency-agreements')
-          .download(agreement.pdf_storage_path);
+          .download(resolvedAgreement.pdf_storage_path);
         if (dlErr || !pdfBlob) {
           console.error('[DocuSign] Failed to download stored PDF:', dlErr?.message);
           return new Response(
@@ -838,6 +866,9 @@ Deno.serve(async (req) => {
           );
         }
         pdfBytes = new Uint8Array(await pdfBlob.arrayBuffer());
+        console.log('[DocuSign] Loaded Gamma PDF, size:', pdfBytes.byteLength, 'bytes');
+      } else {
+        console.warn('[DocuSign] Proceeding without Gamma PDF — envelope will contain execution page only.');
       }
 
       // Append a programmatic signature page so DocuSign always finds anchors at
