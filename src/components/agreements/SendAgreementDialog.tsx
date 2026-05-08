@@ -36,6 +36,8 @@ interface SendAgreementDialogProps {
     current_address?: string | null;
     secondary_first_name?: string | null;
     secondary_surname?: string | null;
+    secondary_email?: string | null;
+    secondary_mobile?: string | null;
   };
   dealId?: string;
 }
@@ -69,6 +71,8 @@ export function SendAgreementDialog({ open, onOpenChange, client, dealId }: Send
   const [buyerEmail, setBuyerEmail] = useState('');
   const [agreementDate, setAgreementDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [secondaryBuyerName, setSecondaryBuyerName] = useState('');
+  const [secondaryBuyerEmail, setSecondaryBuyerEmail] = useState('');
+  const hasSecondaryContact = !!(client.secondary_first_name || client.secondary_surname);
   const [commitmentFee, setCommitmentFee] = useState('$1,500.00 + GST');
   const [notes, setNotes] = useState('');
   const [step, setStep] = useState<'fill' | 'confirm' | 'sent'>('fill');
@@ -87,6 +91,7 @@ export function SendAgreementDialog({ open, onOpenChange, client, dealId }: Send
           ? `${client.secondary_first_name} ${client.secondary_surname}`
           : ''
       );
+      setSecondaryBuyerEmail(client.secondary_email || '');
       setCommitmentFee('$1,500.00 + GST');
       setNotes('');
       setStep('fill');
@@ -112,6 +117,7 @@ export function SendAgreementDialog({ open, onOpenChange, client, dealId }: Send
         buyerEmail,
         agreementDate,
         secondaryBuyerName: secondaryBuyerName || undefined,
+        secondaryBuyerEmail: secondaryBuyerEmail || undefined,
         dealId,
         notes: notes || undefined,
         initialCommitmentFee: commitmentFee || undefined,
@@ -266,19 +272,39 @@ export function SendAgreementDialog({ open, onOpenChange, client, dealId }: Send
               </div>
             </div>
 
-            {/* Secondary Buyer */}
-            <div className="space-y-1.5">
-              <Label htmlFor="secondary-buyer" className="flex items-center gap-1.5">
-                <UserPlus className="h-3.5 w-3.5 text-muted-foreground" />
-                Secondary Buyer Name (optional)
-              </Label>
-              <Input
-                id="secondary-buyer"
-                value={secondaryBuyerName}
-                onChange={(e) => setSecondaryBuyerName(e.target.value)}
-                placeholder="Joint applicant name"
-              />
-            </div>
+            {/* Secondary Buyer — only when client profile has a secondary contact */}
+            {hasSecondaryContact && (
+              <div>
+                <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-1.5">
+                  <UserPlus className="h-3.5 w-3.5 text-muted-foreground" />
+                  Secondary Buyer
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="secondary-buyer">Name</Label>
+                    <Input
+                      id="secondary-buyer"
+                      value={secondaryBuyerName}
+                      onChange={(e) => setSecondaryBuyerName(e.target.value)}
+                      placeholder="Joint applicant name"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="secondary-buyer-email">Email (for DocuSign)</Label>
+                    <Input
+                      id="secondary-buyer-email"
+                      type="email"
+                      value={secondaryBuyerEmail}
+                      onChange={(e) => setSecondaryBuyerEmail(e.target.value)}
+                      placeholder="Leave blank to reuse primary email"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1.5">
+                  If left blank, the secondary signer will receive the envelope at the primary buyer's email.
+                </p>
+              </div>
+            )}
 
             {/* Initial Commitment Fee */}
             <div className="space-y-1.5">
