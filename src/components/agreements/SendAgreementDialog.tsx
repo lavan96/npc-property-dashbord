@@ -542,14 +542,17 @@ export function SendAgreementDialog({ open, onOpenChange, client, dealId }: Send
             {step === 'confirm' && (
               <Button
                 onClick={handleSendDocuSign}
-                disabled={isSending}
+                disabled={isSending || (!pdfReady && !pdfTimedOut)}
+                title={!pdfReady ? 'Waiting for the agreement document to finish generating…' : undefined}
               >
                 {isSending ? (
                   <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                ) : !pdfReady && pdfPolling ? (
+                  <Hourglass className="h-4 w-4 mr-1.5 animate-pulse" />
                 ) : (
                   <Send className="h-4 w-4 mr-1.5" />
                 )}
-                Send via DocuSign
+                {!pdfReady && pdfPolling ? 'Waiting for document…' : 'Send via DocuSign'}
               </Button>
             )}
           </DialogFooter>
