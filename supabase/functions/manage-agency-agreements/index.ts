@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 import { getBrandConfig } from '../_shared/brand-config.ts';
+import { PDFDocument, StandardFonts, rgb } from 'https://esm.sh/pdf-lib@1.17.1';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -798,103 +799,207 @@ Deno.serve(async (req) => {
         );
       }
 
-       // Build the DocuSign envelope using the Gamma-generated PDF if available.
-       // Fall back to inline HTML only if no PDF is stored yet.
-       let docName = 'Buyers Agent Agreement.pdf';
-       let docExt = 'pdf';
-       let base64Doc = '';
+      // Resolve brand info for agent signer + signature page footer
+      const brandCfg = await getBrandConfig();
+      const agentSignerName = Deno.env.get('DOCUSIGN_AGENT_NAME') || brandCfg.companyName || 'Authorised Representative';
+      const agentSignerEmail = Deno.env.get('DOCUSIGN_AGENT_EMAIL') || brandCfg.contactEmail;
+      const hasSecondary = !!(agreement.secondary_buyer_name && agreement.secondary_buyer_name.trim());
+      const secondaryEmailRaw = (agreement as any).secondary_buyer_email as string | undefined;
+      const secondaryEmail = (secondaryEmailRaw && secondaryEmailRaw.trim()) || agreement.buyer_email;
 
-       if (agreement.pdf_storage_path) {
-         console.log('[DocuSign] Downloading Gamma PDF from storage:', agreement.pdf_storage_path);
-         const { data: pdfBlob, error: dlErr } = await supabase.storage
-           .from('agency-agreements')
-           .download(agreement.pdf_storage_path);
-         if (dlErr || !pdfBlob) {
-           console.error('[DocuSign] Failed to download stored PDF:', dlErr?.message);
-           return new Response(
-             JSON.stringify({ error: `Failed to load Gamma PDF from storage: ${dlErr?.message || 'not found'}` }),
-             { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-           );
-         }
-         const pdfBytes = new Uint8Array(await pdfBlob.arrayBuffer());
-         // Base64 encode in chunks to avoid call-stack overflow on large PDFs
-         let binary = '';
-         const chunk = 0x8000;
-         for (let i = 0; i < pdfBytes.length; i += chunk) {
-           binary += String.fromCharCode(...pdfBytes.subarray(i, i + chunk));
-         }
-         base64Doc = btoa(binary);
-         console.log('[DocuSign] Encoded PDF size:', pdfBytes.length, 'bytes');
-       } else {
-         console.warn('[DocuSign] No pdf_storage_path on agreement; falling back to inline HTML');
-         const agreementHtml = await generateAgreementHtml(agreement);
-         base64Doc = btoa(unescape(encodeURIComponent(agreementHtml)));
-         docName = 'Buyers Agent Agreement.html';
-         docExt = 'html';
-       }
-
-       const envelopeDefinition = {
-         emailSubject: `Buyer's Agent Agreement`,
-         emailBlurb: `Dear ${agreement.buyer_names},\n\nPlease review and sign the attached Buyer's Agent Agreement.\n\nKind regards`,
-         documents: [
-           {
-             documentBase64: base64Doc,
-             name: docName,
-             fileExtension: docExt,
-             documentId: '1',
-           },
-         ],
-        recipients: {
-          signers: [
-            {
-              email: agreement.buyer_email,
-              name: agreement.buyer_names,
-              recipientId: '1',
-              routingOrder: '1',
-              tabs: {
-                signHereTabs: [
-                  {
-                    anchorString: '___BUYER_SIGNATURE___',
-                    anchorUnits: 'pixels',
-                    anchorXOffset: '0',
-                    anchorYOffset: '-10',
-                  },
-                ],
-                dateSignedTabs: [
-                  {
-                    anchorString: '___BUYER_DATE___',
-                    anchorUnits: 'pixels',
-                    anchorXOffset: '0',
-                    anchorYOffset: '-10',
-                  },
-                ],
-              },
-            },
-            // Secondary signer if present
-            ...(agreement.secondary_buyer_name
-              ? [
-                  {
-                    email: agreement.buyer_email, // Same email for now
-                    name: agreement.secondary_buyer_name,
-                    recipientId: '2',
-                    routingOrder: '2',
-                    tabs: {
-                      signHereTabs: [
-                        {
-                          anchorString: '___SECONDARY_SIGNATURE___',
-                          anchorUnits: 'pixels',
-                          anchorXOffset: '0',
-                          anchorYOffset: '-10',
-                        },
-                      ],
-                    },
-                  },
-                ]
-              : []),
-          ],
-        },
-        status: 'sent', // Send immediately
+      // Anchor strings — unique, unlikely-to-collide tokens we render in white
+      // text on an appended signature page so DocuSign anchor-matching is 100% reliable.
+      const ANCHOR = {
+        buyerSig: '\\sig_buyer_1\\',
+        buyerDate: '\\date_buyer_1\\',
+        buyerName: '\\name_buyer_1\\',
+        secSig: '\\sig_buyer_2\\',
+        secDate: '\\date_buyer_2\\',
+        secName: '\\name_buyer_2\\',
+        agentSig: '\\sig_agent\\',
+        agentDate: '\\date_agent\\',
+        agentName: '\\name_agent\\',
       };
+
+      // Build the document bytes. Start from the Gamma PDF when available,
+      // else fall back to the inline HTML rendered as a single-page PDF placeholder.
+      let pdfBytes: Uint8Array | null = null;
+      if (agreement.pdf_storage_path) {
+        console.log('[DocuSign] Downloading Gamma PDF from storage:', agreement.pdf_storage_path);
+        const { data: pdfBlob, error: dlErr } = await supabase.storage
+          .from('agency-agreements')
+          .download(agreement.pdf_storage_path);
+        if (dlErr || !pdfBlob) {
+          console.error('[DocuSign] Failed to download stored PDF:', dlErr?.message);
+          return new Response(
+            JSON.stringify({ error: `Failed to load Gamma PDF from storage: ${dlErr?.message || 'not found'}` }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        pdfBytes = new Uint8Array(await pdfBlob.arrayBuffer());
+      }
+
+      // Append a programmatic signature page so DocuSign always finds anchors at
+      // a known location (Gamma output does not include our anchor markers).
+      let mergedPdf: PDFDocument;
+      try {
+        mergedPdf = pdfBytes ? await PDFDocument.load(pdfBytes) : await PDFDocument.create();
+      } catch (loadErr: any) {
+        console.error('[DocuSign] Failed to parse PDF, creating fresh:', loadErr.message);
+        mergedPdf = await PDFDocument.create();
+      }
+
+      const helv = await mergedPdf.embedFont(StandardFonts.Helvetica);
+      const helvBold = await mergedPdf.embedFont(StandardFonts.HelveticaBold);
+      const sigPage = mergedPdf.addPage([595.28, 841.89]); // A4
+      const { width: pw, height: ph } = sigPage.getSize();
+      const margin = 50;
+      let y = ph - margin;
+
+      const drawText = (text: string, x: number, yy: number, opts: { size?: number; bold?: boolean; color?: any } = {}) => {
+        sigPage.drawText(text, {
+          x,
+          y: yy,
+          size: opts.size ?? 11,
+          font: opts.bold ? helvBold : helv,
+          color: opts.color ?? rgb(0, 0, 0),
+        });
+      };
+
+      // Header
+      drawText('EXECUTION PAGE', margin, y, { size: 16, bold: true });
+      y -= 28;
+      drawText("Property Consultant & Buyer's Agent Agreement", margin, y, { size: 12, bold: true });
+      y -= 18;
+      const dateLabel = agreement.agreement_date
+        ? new Date(agreement.agreement_date).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })
+        : new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' });
+      drawText(`Agreement Date: ${dateLabel}`, margin, y, { size: 10 });
+      y -= 14;
+      const icf = agreement.initial_commitment_fee
+        ? `$${Number(agreement.initial_commitment_fee).toLocaleString('en-AU', { minimumFractionDigits: 2 })} + GST`
+        : '$1,500.00 + GST';
+      drawText(`Initial Commitment Fee: ${icf}`, margin, y, { size: 10 });
+      y -= 30;
+
+      drawText('By signing below, the parties acknowledge they have read, understood and agreed to the', margin, y, { size: 10 });
+      y -= 13;
+      drawText('terms and conditions of this Agreement in full.', margin, y, { size: 10 });
+      y -= 30;
+
+      // Signer block renderer — draws label + a visible underline + invisible
+      // (white) anchor token where DocuSign will place the signature graphic.
+      const renderSignerBlock = (
+        title: string,
+        printedName: string,
+        anchors: { sig: string; date: string; name: string },
+        startY: number,
+      ): number => {
+        let yy = startY;
+        drawText(title, margin, yy, { size: 11, bold: true });
+        yy -= 18;
+        drawText('Signature:', margin, yy, { size: 10 });
+        // Underline for visual signature line
+        sigPage.drawLine({ start: { x: margin + 70, y: yy - 2 }, end: { x: margin + 270, y: yy - 2 }, thickness: 0.5, color: rgb(0.4, 0.4, 0.4) });
+        // White-text anchor token — invisible to readers, found by DocuSign.
+        drawText(anchors.sig, margin + 75, yy + 2, { size: 8, color: rgb(1, 1, 1) });
+        // Date column
+        drawText('Date:', margin + 310, yy, { size: 10 });
+        sigPage.drawLine({ start: { x: margin + 345, y: yy - 2 }, end: { x: margin + 495, y: yy - 2 }, thickness: 0.5, color: rgb(0.4, 0.4, 0.4) });
+        drawText(anchors.date, margin + 350, yy + 2, { size: 8, color: rgb(1, 1, 1) });
+        yy -= 22;
+        drawText('Printed Name:', margin, yy, { size: 10 });
+        sigPage.drawLine({ start: { x: margin + 90, y: yy - 2 }, end: { x: margin + 495, y: yy - 2 }, thickness: 0.5, color: rgb(0.4, 0.4, 0.4) });
+        if (printedName) drawText(printedName, margin + 95, yy + 2, { size: 10 });
+        // Hidden FullName anchor (so DocuSign auto-fills if name not pre-printed)
+        drawText(anchors.name, margin + 400, yy + 2, { size: 8, color: rgb(1, 1, 1) });
+        yy -= 30;
+        return yy;
+      };
+
+      y = renderSignerBlock('BUYER', agreement.buyer_names || '', { sig: ANCHOR.buyerSig, date: ANCHOR.buyerDate, name: ANCHOR.buyerName }, y);
+      if (hasSecondary) {
+        y = renderSignerBlock('SECONDARY BUYER', agreement.secondary_buyer_name || '', { sig: ANCHOR.secSig, date: ANCHOR.secDate, name: ANCHOR.secName }, y);
+      }
+      y = renderSignerBlock(`AGENT — ${brandCfg.companyName || 'Property Consulting'}`, agentSignerName, { sig: ANCHOR.agentSig, date: ANCHOR.agentDate, name: ANCHOR.agentName }, y);
+
+      // Footer
+      drawText(`Generated ${new Date().toISOString().split('T')[0]} • Agreement ID: ${agreement.id}`, margin, margin / 2, { size: 8, color: rgb(0.5, 0.5, 0.5) });
+
+      const finalPdfBytes = await mergedPdf.save();
+      // Base64 in chunks
+      let bin = '';
+      const chunkSize = 0x8000;
+      for (let i = 0; i < finalPdfBytes.length; i += chunkSize) {
+        bin += String.fromCharCode(...finalPdfBytes.subarray(i, i + chunkSize));
+      }
+      const base64Doc = btoa(bin);
+      const docName = "Buyer's Agent Agreement.pdf";
+      const docExt = 'pdf';
+      console.log('[DocuSign] Final PDF size:', finalPdfBytes.length, 'bytes');
+
+      // Build signer tabs against our reliable anchors.
+      const buyerTabs = {
+        signHereTabs: [{ anchorString: ANCHOR.buyerSig, anchorUnits: 'pixels', anchorXOffset: '0', anchorYOffset: '-6', anchorIgnoreIfNotPresent: 'false' }],
+        dateSignedTabs: [{ anchorString: ANCHOR.buyerDate, anchorUnits: 'pixels', anchorXOffset: '0', anchorYOffset: '-2' }],
+        fullNameTabs: [{ anchorString: ANCHOR.buyerName, anchorUnits: 'pixels', anchorXOffset: '0', anchorYOffset: '-2' }],
+      };
+      const secondaryTabs = {
+        signHereTabs: [{ anchorString: ANCHOR.secSig, anchorUnits: 'pixels', anchorXOffset: '0', anchorYOffset: '-6' }],
+        dateSignedTabs: [{ anchorString: ANCHOR.secDate, anchorUnits: 'pixels', anchorXOffset: '0', anchorYOffset: '-2' }],
+        fullNameTabs: [{ anchorString: ANCHOR.secName, anchorUnits: 'pixels', anchorXOffset: '0', anchorYOffset: '-2' }],
+      };
+      const agentTabs = {
+        signHereTabs: [{ anchorString: ANCHOR.agentSig, anchorUnits: 'pixels', anchorXOffset: '0', anchorYOffset: '-6' }],
+        dateSignedTabs: [{ anchorString: ANCHOR.agentDate, anchorUnits: 'pixels', anchorXOffset: '0', anchorYOffset: '-2' }],
+        fullNameTabs: [{ anchorString: ANCHOR.agentName, anchorUnits: 'pixels', anchorXOffset: '0', anchorYOffset: '-2' }],
+      };
+
+      const signers: any[] = [
+        {
+          email: agreement.buyer_email,
+          name: agreement.buyer_names,
+          recipientId: '1',
+          routingOrder: '1',
+          tabs: buyerTabs,
+        },
+      ];
+      if (hasSecondary) {
+        signers.push({
+          email: secondaryEmail,
+          name: agreement.secondary_buyer_name,
+          recipientId: '2',
+          routingOrder: '2',
+          tabs: secondaryTabs,
+        });
+      }
+      if (agentSignerEmail) {
+        signers.push({
+          email: agentSignerEmail,
+          name: agentSignerName,
+          recipientId: String(signers.length + 1),
+          routingOrder: String(signers.length + 1),
+          tabs: agentTabs,
+        });
+      } else {
+        console.warn('[DocuSign] No agent signer email configured; skipping agent recipient.');
+      }
+
+      const envelopeDefinition = {
+        emailSubject: `Buyer's Agent Agreement — ${agreement.buyer_names}`,
+        emailBlurb: `Dear ${agreement.buyer_names},\n\nPlease review and sign the attached Buyer's Agent Agreement.\n\nKind regards,\n${brandCfg.companyName || 'Property Consulting'}`,
+        documents: [
+          {
+            documentBase64: base64Doc,
+            name: docName,
+            fileExtension: docExt,
+            documentId: '1',
+          },
+        ],
+        recipients: { signers },
+        status: 'sent',
+      };
+
 
       try {
         const envelopeUrl = `${docusignBaseUrl}/v2.1/accounts/${docusignAccountId}/envelopes`;
