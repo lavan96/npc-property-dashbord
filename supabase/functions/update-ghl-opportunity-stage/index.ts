@@ -88,7 +88,6 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const body = await req.json();
     const { clientId, newStageId } = body;
     
     // SECURITY: Verify authentication
