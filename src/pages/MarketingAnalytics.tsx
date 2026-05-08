@@ -494,6 +494,10 @@ export default function MarketingAnalytics() {
             <Bot className="h-4 w-4" />
             ManyChat
           </TabsTrigger>
+          <TabsTrigger value="lead-magnets" className="gap-1.5">
+            <FileDown className="h-4 w-4" />
+            Lead Magnets
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="meta">
