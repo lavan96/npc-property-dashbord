@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Request Access</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: transparent;
+      color: #f3e9d2;
+    }
+    .lm-card {
+      max-width: 520px;
+      margin: 0 auto;
+      padding: 28px 24px;
+      background: #1a1408;
+      border: 1px solid rgba(212, 168, 67, 0.2);
+      border-radius: 12px;
+    }
+    .lm-header { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+    .lm-lock { width: 28px; height: 28px; color: #d4a843; }
+    .lm-title { font-family: 'Playfair Display', Georgia, serif; font-size: 24px; color: #f3e9d2; margin: 0; font-weight: 500; }
+    .lm-field { margin-bottom: 16px; }
+    .lm-input {
+      width: 100%;
+      background: #0d0a04;
+      border: none;
+      border-bottom: 1px solid rgba(212, 168, 67, 0.4);
+      padding: 16px 12px;
+      color: #f3e9d2;
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .lm-input:focus { border-bottom-color: #d4a843; }
+    .lm-input::placeholder { color: rgba(243, 233, 210, 0.5); }
+    .lm-btn {
+      width: 100%;
+      background: #d4a843;
+      color: #0d0a04;
+      border: none;
+      padding: 16px;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      cursor: pointer;
+      border-radius: 2px;
+      margin-top: 8px;
+      transition: opacity 0.2s;
+    }
+    .lm-btn:hover { opacity: 0.9; }
+    .lm-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .lm-status { margin-top: 12px; font-size: 13px; min-height: 18px; }
+    .lm-status.error { color: #f87171; }
+    .lm-status.success { color: #86efac; }
+    .lm-spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(13,10,4,0.3); border-top-color: #0d0a04; border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 8px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="lm-card">
+    <div class="lm-header">
+      <svg class="lm-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="4" y="11" width="16" height="10" rx="2" />
+        <path d="M8 11V7a4 4 0 1 1 8 0v4" />
+      </svg>
+      <h2 class="lm-title">Request Access</h2>
+    </div>
+    <form id="lm-form">
+      <div class="lm-field"><input class="lm-input" type="text" name="full_name" placeholder="Full Name" required maxlength="200" /></div>
+      <div class="lm-field"><input class="lm-input" type="email" name="email" placeholder="Corporate or Personal Email" required maxlength="255" /></div>
+      <div class="lm-field"><input class="lm-input" type="tel" name="phone" placeholder="Phone Number" maxlength="40" /></div>
+      <button class="lm-btn" type="submit" id="lm-submit">UNLOCK GUIDE</button>
+      <div class="lm-status" id="lm-status"></div>
+    </form>
+  </div>
+
+  <script>
+    (function () {
+      var SUPABASE_URL = 'https://dduzbchuswwbefdunfct.supabase.co';
+      var ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkdXpiY2h1c3d3YmVmZHVuZmN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0NDM4NzksImV4cCI6MjA3MTAxOTg3OX0.eSYU6fxIc3tBQuGLsdBRff0alBMkNfvv7OpW0efNjxk';
+
+      var params = new URLSearchParams(window.location.search);
+      var slug = params.get('slug');
+
+      var form = document.getElementById('lm-form');
+      var btn = document.getElementById('lm-submit');
+      var status = document.getElementById('lm-status');
+
+      if (!slug) {
+        status.textContent = 'Missing magnet slug.';
+        status.className = 'lm-status error';
+        btn.disabled = true;
+        return;
+      }
+
+      form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        status.textContent = '';
+        status.className = 'lm-status';
+        btn.disabled = true;
+        btn.innerHTML = '<span class="lm-spinner"></span>SENDING...';
+
+        var fd = new FormData(form);
+        var payload = {
+          slug: slug,
+          full_name: fd.get('full_name'),
+          email: fd.get('email'),
+          phone: fd.get('phone') || null,
+        };
+
+        try {
+          var res = await fetch(SUPABASE_URL + '/functions/v1/request-lead-magnet', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': ANON_KEY,
+              'Authorization': 'Bearer ' + ANON_KEY,
+            },
+            body: JSON.stringify(payload),
+          });
+          var data = await res.json();
+          if (!res.ok || !data.success) throw new Error(data.error || 'Request failed');
+
+          status.textContent = 'Success — your download is starting...';
+          status.className = 'lm-status success';
+          btn.innerHTML = 'DOWNLOADED';
+
+          // Trigger download
+          var a = document.createElement('a');
+          a.href = data.download_url;
+          a.download = data.file_name || 'guide.pdf';
+          a.target = '_blank';
+          a.rel = 'noopener';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        } catch (err) {
+          status.textContent = err.message || 'Something went wrong. Please try again.';
+          status.className = 'lm-status error';
+          btn.disabled = false;
+          btn.innerHTML = 'UNLOCK GUIDE';
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
