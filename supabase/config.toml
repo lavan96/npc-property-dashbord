@@ -55,6 +55,9 @@ verify_jwt = true
 [functions.get-api-usage-stats]
 verify_jwt = true
 
+[functions.request-lead-magnet]
+verify_jwt = false
+
 [api]
 enabled = true
 port = 54321

@@ -8104,6 +8104,116 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_magnet_downloads: {
+        Row: {
+          created_at: string
+          email: string
+          full_name: string
+          ghl_contact_id: string | null
+          ghl_error: string | null
+          ghl_synced: boolean
+          id: string
+          ip_address: string | null
+          magnet_id: string
+          phone: string | null
+          referrer: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          full_name: string
+          ghl_contact_id?: string | null
+          ghl_error?: string | null
+          ghl_synced?: boolean
+          id?: string
+          ip_address?: string | null
+          magnet_id: string
+          phone?: string | null
+          referrer?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          full_name?: string
+          ghl_contact_id?: string | null
+          ghl_error?: string | null
+          ghl_synced?: boolean
+          id?: string
+          ip_address?: string | null
+          magnet_id?: string
+          phone?: string | null
+          referrer?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_magnet_downloads_magnet_id_fkey"
+            columns: ["magnet_id"]
+            isOneToOne: false
+            referencedRelation: "lead_magnets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_magnets: {
+        Row: {
+          created_at: string
+          description: string | null
+          download_count: number
+          file_name: string
+          file_path: string
+          file_size: number | null
+          ghl_pipeline_id: string | null
+          ghl_stage_id: string | null
+          ghl_tag: string | null
+          id: string
+          is_active: boolean
+          mime_type: string | null
+          slug: string
+          sort_order: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          download_count?: number
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          ghl_pipeline_id?: string | null
+          ghl_stage_id?: string | null
+          ghl_tag?: string | null
+          id?: string
+          is_active?: boolean
+          mime_type?: string | null
+          slug: string
+          sort_order?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          download_count?: number
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          ghl_pipeline_id?: string | null
+          ghl_stage_id?: string | null
+          ghl_tag?: string | null
+          id?: string
+          is_active?: boolean
+          mime_type?: string | null
+          slug?: string
+          sort_order?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       lead_source_attributions: {
         Row: {
           attributed_at: string

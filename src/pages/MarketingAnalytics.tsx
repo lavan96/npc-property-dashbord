@@ -7,8 +7,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Loader2, DollarSign, Eye, MousePointerClick, Target, RefreshCw, BarChart3, TrendingUp, Users, Megaphone, GitCompareArrows, Bot, Layers, Download } from 'lucide-react';
+import { Loader2, DollarSign, Eye, MousePointerClick, Target, RefreshCw, BarChart3, TrendingUp, Users, Megaphone, GitCompareArrows, Bot, Layers, Download, FileDown } from 'lucide-react';
 import { ManyChatPanel } from '@/components/marketing/ManyChatPanel';
+import { LeadMagnetsPanel } from '@/components/marketing/LeadMagnetsPanel';
 import { toast } from 'sonner';
 import { AnomalyAlertsPanel } from '@/components/marketing/AnomalyAlertsPanel';
 import { CampaignHealthPanel } from '@/components/marketing/CampaignHealthPanel';
@@ -493,6 +494,10 @@ export default function MarketingAnalytics() {
             <Bot className="h-4 w-4" />
             ManyChat
           </TabsTrigger>
+          <TabsTrigger value="lead-magnets" className="gap-1.5">
+            <FileDown className="h-4 w-4" />
+            Lead Magnets
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="meta">
@@ -728,6 +733,12 @@ export default function MarketingAnalytics() {
         <TabsContent value="manychat">
           <div className="mt-4">
             <ManyChatPanel />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="lead-magnets">
+          <div className="mt-4">
+            <LeadMagnetsPanel />
           </div>
         </TabsContent>
       </Tabs>
