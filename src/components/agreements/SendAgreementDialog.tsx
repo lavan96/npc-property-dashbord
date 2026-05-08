@@ -91,6 +91,7 @@ export function SendAgreementDialog({ open, onOpenChange, client, dealId }: Send
           ? `${client.secondary_first_name} ${client.secondary_surname}`
           : ''
       );
+      setSecondaryBuyerEmail(client.secondary_email || '');
       setCommitmentFee('$1,500.00 + GST');
       setNotes('');
       setStep('fill');
