@@ -71,19 +71,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (!supabaseUrl || !supabaseKey) {
-      console.error('Supabase credentials not configured');
-      return new Response(JSON.stringify({ 
-        error: 'Supabase credentials not configured',
-        success: false 
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
     const body = await req.json().catch(() => ({}));
     
     // SECURITY: Verify authentication (admin-only for import operations)

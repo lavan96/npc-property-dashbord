@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { getEffectiveGhlCredentials } from '../_shared/ghl-account.ts';
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
@@ -34,8 +35,10 @@ Deno.serve(async (req) => {
     }
 
     // Get GHL API key from env (preferred) or integration_secrets
-    let apiKey = Deno.env.get('GOHIGHLEVEL_API_KEY');
-    let locationId = Deno.env.get('GOHIGHLEVEL_LOCATION_ID');
+    const _ghlCreds = await getEffectiveGhlCredentials(supabase);
+    let apiKey = _ghlCreds.apiKey;
+    let locationId = _ghlCreds.locationId;
+    console.log(`[send-ghl-message] Using GHL account: ${_ghlCreds.label}`);
 
     if (!apiKey) {
       const { data: ghlSecret } = await supabase
