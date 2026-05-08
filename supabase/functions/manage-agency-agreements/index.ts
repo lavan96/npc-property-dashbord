@@ -395,7 +395,7 @@ Deno.serve(async (req) => {
     if (action === 'generate') {
       const {
         client_id, buyer_names, buyer_address, buyer_phone,
-        buyer_email, agreement_date, secondary_buyer_name,
+        buyer_email, agreement_date, secondary_buyer_name, secondary_buyer_email,
         deal_id, notes, initial_commitment_fee, template_id,
       } = body;
 
