@@ -28,7 +28,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    const supabase = createClient(supabaseUrl, supabaseKey);
     const body = await req.json();
 
     const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
