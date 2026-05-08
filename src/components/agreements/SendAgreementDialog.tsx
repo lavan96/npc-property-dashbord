@@ -189,6 +189,10 @@ export function SendAgreementDialog({ open, onOpenChange, client, dealId }: Send
 
   const handleSendDocuSign = async () => {
     if (!generatedId) return;
+    if (!pdfReady) {
+      toast.warning('The agreement document is still being generated. Please wait a few seconds before sending.');
+      return;
+    }
     try {
       await sendViaDocuSign.mutateAsync(generatedId);
       setStep('sent');
