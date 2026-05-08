@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { getEffectiveGhlCredentials } from '../_shared/ghl-account.ts';
 
 /**
  * GHL Conversations Cron Sync
@@ -24,8 +25,11 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const apiKey = Deno.env.get('GOHIGHLEVEL_API_KEY');
-    const locationId = Deno.env.get('GOHIGHLEVEL_LOCATION_ID');
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
+    const _ghlCreds = await getEffectiveGhlCredentials(supabase);
+    const apiKey = _ghlCreds.apiKey;
+    const locationId = _ghlCreds.locationId;
+    console.log(`[ghl-conversations-cron] Using GHL account: ${_ghlCreds.label}`);
 
     if (!apiKey || !locationId) {
       console.log('[ghl-conversations-cron] GHL not configured, skipping');
@@ -33,8 +37,6 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
-    const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     // Get all clients with GHL contact IDs, ordered by least recently synced
     const { data: clients, error: clientsError } = await supabase

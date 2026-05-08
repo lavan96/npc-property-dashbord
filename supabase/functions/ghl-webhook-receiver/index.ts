@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { getEffectiveGhlCredentials } from '../_shared/ghl-account.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -657,6 +658,10 @@ Deno.serve(async (req) => {
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
+    const _ghlCreds = await getEffectiveGhlCredentials(supabase);
+    const apiKey = _ghlCreds.apiKey;
+    const locationId = _ghlCreds.locationId;
+    console.log(`[ghl-webhook] Using GHL account: ${_ghlCreds.label}`);
     const body = await req.json();
 
     console.log('[ghl-webhook] Received webhook:', JSON.stringify({
