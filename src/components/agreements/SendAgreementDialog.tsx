@@ -437,6 +437,66 @@ export function SendAgreementDialog({ open, onOpenChange, client, dealId }: Send
                 </div>
               </CardContent>
             </Card>
+
+            {/* PDF readiness indicator — Gamma generation is async */}
+            {!pdfReady && pdfPolling && (
+              <Card className="border-warning/40 bg-warning/5">
+                <CardContent className="pt-4 flex items-start gap-3">
+                  <Hourglass className="h-5 w-5 text-warning animate-pulse mt-0.5 shrink-0" />
+                  <div className="space-y-1 text-sm">
+                    <p className="font-medium text-foreground">
+                      Generating the agreement document…
+                    </p>
+                    <p className="text-muted-foreground">
+                      The Gamma template is still being rendered into a PDF. The DocuSign envelope
+                      will be unlocked as soon as the document is ready (usually 30–90 seconds).
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Checking… attempt {pdfPollAttempts}/40
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {!pdfReady && pdfTimedOut && (
+              <Card className="border-destructive/40 bg-destructive/5">
+                <CardContent className="pt-4 flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-destructive mt-0.5 shrink-0" />
+                  <div className="space-y-2 text-sm">
+                    <p className="font-medium text-foreground">
+                      Document still not ready after 2 minutes
+                    </p>
+                    <p className="text-muted-foreground">
+                      Gamma is taking longer than expected. You can retry the readiness check, or
+                      send anyway and the edge function will attempt one more deferred fetch before
+                      dispatching the envelope.
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setPdfTimedOut(false);
+                        setPdfPollAttempts(0);
+                        setPdfReady(false);
+                      }}
+                    >
+                      Retry check
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {pdfReady && (
+              <Card className="border-success/40 bg-success/5">
+                <CardContent className="pt-4 flex items-center gap-2">
+                  <CheckCircle2 className="h-5 w-5 text-success" />
+                  <p className="text-sm font-medium">Document ready — safe to send.</p>
+                </CardContent>
+              </Card>
+            )}
+
             <p className="text-sm text-muted-foreground">
               Click <strong>"Send via DocuSign"</strong> to dispatch this agreement to <strong>{buyerEmail}</strong> for electronic signature.
             </p>
