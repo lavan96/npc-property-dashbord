@@ -29,6 +29,7 @@ import {
 import { MigrationSourceUploader } from '@/components/admin/MigrationSourceUploader';
 import { GhlWorkflowVisualizer } from '@/components/admin/GhlWorkflowVisualizer';
 import { GhlMarketingRawDump } from '@/components/admin/GhlMarketingRawDump';
+import { LegacyAccountKillSwitch } from '@/components/admin/LegacyAccountKillSwitch';
 
 interface ScopeProbe {
   scope: string;
@@ -368,6 +369,9 @@ export default function GhlMigration() {
 
       {/* Phase 3b — Raw marketing-asset dump (forms / surveys / quizzes / funnels / pages) */}
       <GhlMarketingRawDump />
+
+      {/* Phase 4 — Legacy account decommission (kill switch + atomic cutover) */}
+      <LegacyAccountKillSwitch />
     </div>
   );
 }
