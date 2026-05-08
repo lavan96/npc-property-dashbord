@@ -71,6 +71,8 @@ export function SendAgreementDialog({ open, onOpenChange, client, dealId }: Send
   const [buyerEmail, setBuyerEmail] = useState('');
   const [agreementDate, setAgreementDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [secondaryBuyerName, setSecondaryBuyerName] = useState('');
+  const [secondaryBuyerEmail, setSecondaryBuyerEmail] = useState('');
+  const hasSecondaryContact = !!(client.secondary_first_name || client.secondary_surname);
   const [commitmentFee, setCommitmentFee] = useState('$1,500.00 + GST');
   const [notes, setNotes] = useState('');
   const [step, setStep] = useState<'fill' | 'confirm' | 'sent'>('fill');
