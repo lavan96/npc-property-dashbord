@@ -88,6 +88,8 @@ Deno.serve(async (req) => {
       });
     }
     const supabase = createClient(supabaseUrl, supabaseKey);
+    // Capture run start so we can purge any rows not touched by this sync
+    const syncRunStartedAt = new Date().toISOString();
     const _ghlCreds = await getEffectiveGhlCredentials(supabase);
     const apiKey = _ghlCreds.apiKey;
     const locationId = _ghlCreds.locationId;
