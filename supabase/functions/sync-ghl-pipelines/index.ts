@@ -428,6 +428,24 @@ Deno.serve(async (req) => {
 
     console.log(`Opportunities upserted: ${opportunitiesUpserted}, skipped (no client): ${opportunitiesSkipped}`);
 
+    // Step 5b: Purge stale opportunities (legacy rows from old GHL account or deleted opps)
+    // Any row not touched by this sync run (synced_at < syncRunStartedAt) no longer exists in GHL.
+    let staleOpportunitiesDeleted = 0;
+    {
+      const { data: deleted, error: purgeError } = await supabase
+        .from('ghl_client_opportunities')
+        .delete()
+        .lt('synced_at', syncRunStartedAt)
+        .select('id');
+      if (purgeError) {
+        console.error('Error purging stale opportunities:', purgeError);
+      } else {
+        staleOpportunitiesDeleted = deleted?.length || 0;
+        console.log(`Purged ${staleOpportunitiesDeleted} stale opportunities not present in current GHL account`);
+      }
+    }
+
+
     // Step 6: Update clients table with the "best" opportunity (legacy fields)
     let updatedCount = 0;
     let notFoundCount = 0;
