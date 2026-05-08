@@ -61,11 +61,11 @@ export function LegacyAccountKillSwitch() {
 
   useEffect(() => { refresh(); }, []);
 
-  // Adaptive polling while a job is active
+  // Adaptive polling while a job is active (3s active, off when idle)
   useEffect(() => {
     const active = jobs.some((j) => j.status === 'pending' || j.status === 'processing');
     if (!active) return;
-    const t = setInterval(refresh, 4000);
+    const t = setInterval(refresh, 3000);
     return () => clearInterval(t);
   }, [jobs]);
 
