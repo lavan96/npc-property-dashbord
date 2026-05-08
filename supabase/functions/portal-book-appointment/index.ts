@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
 import { createCorsHeaders } from "../_shared/auth.ts"
 import { getBrandConfig } from "../_shared/brand-config.ts"
+import { getEffectiveGhlCredentials } from "../_shared/ghl-account.ts"
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 
@@ -27,8 +28,10 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const ghlApiKey = Deno.env.get('GOHIGHLEVEL_API_KEY');
-    const ghlLocationId = Deno.env.get('GOHIGHLEVEL_LOCATION_ID');
+    const _ghlCreds = await getEffectiveGhlCredentials(supabase);
+    const ghlApiKey = _ghlCreds.apiKey;
+    const ghlLocationId = _ghlCreds.locationId;
+    console.log(`[portal-book-appointment] Using GHL account: ${_ghlCreds.label}`);
 
     let body: any = {};
     try { body = await req.json(); } catch { body = {}; }
