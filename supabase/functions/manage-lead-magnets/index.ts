@@ -16,7 +16,7 @@ Deno.serve(async (req) => {
     );
 
     const body = await req.json().catch(() => ({}));
-    const auth = await verifyAuth(req, supabase, body.session_token);
+    const auth = await verifyAuth(supabase, req.headers, body);
     if (auth.error || !auth.userId) return createUnauthorizedResponse(auth.error || 'Unauthorized', corsHeaders);
 
     const { operation } = body;
