@@ -735,6 +735,12 @@ export default function MarketingAnalytics() {
             <ManyChatPanel />
           </div>
         </TabsContent>
+
+        <TabsContent value="lead-magnets">
+          <div className="mt-4">
+            <LeadMagnetsPanel />
+          </div>
+        </TabsContent>
       </Tabs>
     </div>
   );
