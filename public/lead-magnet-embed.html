@@ -15,10 +15,13 @@
     .lm-card {
       max-width: 520px;
       margin: 0 auto;
-      padding: 28px 24px;
+      padding: clamp(20px, 5vw, 28px) clamp(16px, 4vw, 24px);
       background: #1a1408;
       border: 1px solid rgba(212, 168, 67, 0.2);
       border-radius: 12px;
+    }
+    @media (max-width: 480px) {
+      .lm-title { font-size: 20px !important; }
     }
     .lm-header { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
     .lm-lock { width: 28px; height: 28px; color: #d4a843; }
@@ -89,6 +92,17 @@
       var form = document.getElementById('lm-form');
       var btn = document.getElementById('lm-submit');
       var status = document.getElementById('lm-status');
+
+      // Auto-resize: tell parent iframe what height we need
+      function postHeight() {
+        try {
+          var h = document.querySelector('.lm-card').getBoundingClientRect().height + 8;
+          parent.postMessage({ type: 'lm-height', slug: slug, height: Math.ceil(h) }, '*');
+        } catch (e) {}
+      }
+      window.addEventListener('load', postHeight);
+      window.addEventListener('resize', postHeight);
+      try { new MutationObserver(postHeight).observe(document.body, { subtree: true, childList: true, characterData: true }); } catch (e) {}
 
       if (!slug) {
         status.textContent = 'Missing magnet slug.';
