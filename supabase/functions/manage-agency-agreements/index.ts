@@ -808,18 +808,20 @@ Deno.serve(async (req) => {
       const secondaryEmailRaw = (agreement as any).secondary_buyer_email as string | undefined;
       const secondaryEmail = (secondaryEmailRaw && secondaryEmailRaw.trim()) || agreement.buyer_email;
 
-      // Anchor strings — unique, unlikely-to-collide tokens we render in white
-      // text on an appended signature page so DocuSign anchor-matching is 100% reliable.
+      // Anchor strings — unique ASCII tokens we render in white text on an
+      // appended execution page so DocuSign anchor-matching is 100% reliable.
+      // We avoid backslashes (some PDF renderers swap glyphs) and use bracketed
+      // tokens that won't appear elsewhere in the document.
       const ANCHOR = {
-        buyerSig: '\\sig_buyer_1\\',
-        buyerDate: '\\date_buyer_1\\',
-        buyerName: '\\name_buyer_1\\',
-        secSig: '\\sig_buyer_2\\',
-        secDate: '\\date_buyer_2\\',
-        secName: '\\name_buyer_2\\',
-        agentSig: '\\sig_agent\\',
-        agentDate: '\\date_agent\\',
-        agentName: '\\name_agent\\',
+        buyerSig: '{{sig_buyer_1}}',
+        buyerDate: '{{date_buyer_1}}',
+        buyerName: '{{name_buyer_1}}',
+        secSig: '{{sig_buyer_2}}',
+        secDate: '{{date_buyer_2}}',
+        secName: '{{name_buyer_2}}',
+        agentSig: '{{sig_agent}}',
+        agentDate: '{{date_agent}}',
+        agentName: '{{name_agent}}',
       };
 
       // Build the document bytes. Start from the Gamma PDF when available.
