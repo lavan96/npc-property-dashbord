@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { getEffectiveGhlCredentials } from '../_shared/ghl-account.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
