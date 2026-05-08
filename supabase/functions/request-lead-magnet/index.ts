@@ -155,7 +155,7 @@ Deno.serve(async (req) => {
 
     return new Response(JSON.stringify({
       success: true,
-      download_url: signed.signedUrl,
+      download_url: downloadUrl,
       file_name: magnet.file_name,
       title: magnet.title,
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
