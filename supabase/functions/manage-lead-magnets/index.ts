@@ -95,8 +95,8 @@ Deno.serve(async (req) => {
       }
 
       case 'list_pipelines': {
-        const { data: pipelines } = await supabase.from('ghl_pipelines').select('id, ghl_pipeline_id, name').order('name');
-        const { data: stages } = await supabase.from('ghl_pipeline_stages').select('id, ghl_stage_id, pipeline_id, name, position').order('position');
+        const { data: pipelines } = await supabase.from('ghl_pipelines').select('id, ghl_id, name').order('name');
+        const { data: stages } = await supabase.from('ghl_pipeline_stages').select('id, ghl_id, pipeline_id, name, position').order('position');
         return json({ pipelines: pipelines || [], stages: stages || [] });
       }
 
