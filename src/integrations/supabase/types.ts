@@ -6916,6 +6916,30 @@ export type Database = {
         }
         Relationships: []
       }
+      ghl_account_config: {
+        Row: {
+          cutover_job_id: string | null
+          default_account: string
+          id: boolean
+          legacy_disabled_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          cutover_job_id?: string | null
+          default_account?: string
+          id?: boolean
+          legacy_disabled_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cutover_job_id?: string | null
+          default_account?: string
+          id?: boolean
+          legacy_disabled_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ghl_client_opportunities: {
         Row: {
           client_id: string
@@ -8336,6 +8360,69 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      legacy_wipe_jobs: {
+        Row: {
+          completed_at: string | null
+          confirmation_received: string | null
+          created_at: string
+          created_by: string | null
+          current_resource: string | null
+          cutover_finalised: boolean
+          dispatch_count: number
+          dry_run: boolean
+          id: string
+          last_error: string | null
+          progress: Json
+          resources_completed: string[]
+          started_at: string | null
+          status: string
+          total_deleted: number
+          total_failed: number
+          updated_at: string
+          worker_lock_until: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          confirmation_received?: string | null
+          created_at?: string
+          created_by?: string | null
+          current_resource?: string | null
+          cutover_finalised?: boolean
+          dispatch_count?: number
+          dry_run?: boolean
+          id?: string
+          last_error?: string | null
+          progress?: Json
+          resources_completed?: string[]
+          started_at?: string | null
+          status?: string
+          total_deleted?: number
+          total_failed?: number
+          updated_at?: string
+          worker_lock_until?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          confirmation_received?: string | null
+          created_at?: string
+          created_by?: string | null
+          current_resource?: string | null
+          cutover_finalised?: boolean
+          dispatch_count?: number
+          dry_run?: boolean
+          id?: string
+          last_error?: string | null
+          progress?: Json
+          resources_completed?: string[]
+          started_at?: string | null
+          status?: string
+          total_deleted?: number
+          total_failed?: number
+          updated_at?: string
+          worker_lock_until?: string | null
+        }
+        Relationships: []
       }
       lender_comparison_sheets: {
         Row: {
@@ -11032,6 +11119,7 @@ export type Database = {
       cleanup_expired_transport_cache: { Args: never; Returns: undefined }
       cleanup_old_health_logs: { Args: never; Returns: undefined }
       extract_email_address: { Args: { raw_text: string }; Returns: string }
+      finalize_ghl_cutover: { Args: { p_job_id: string }; Returns: Json }
       finalize_migration_upload: {
         Args: { _upload_id: string }
         Returns: {
