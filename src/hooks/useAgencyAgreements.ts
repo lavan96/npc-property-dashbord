@@ -69,6 +69,7 @@ export function useAgreementMutations() {
         buyer_email: params.buyerEmail,
         agreement_date: params.agreementDate,
         secondary_buyer_name: params.secondaryBuyerName,
+        secondary_buyer_email: params.secondaryBuyerEmail,
         deal_id: params.dealId,
         notes: params.notes,
         initial_commitment_fee: params.initialCommitmentFee,
