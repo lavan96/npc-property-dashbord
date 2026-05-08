@@ -40,21 +40,20 @@ Deno.serve(async (req) => {
         if (!title || !slug || !file_data || !file_name) {
           return json({ error: 'title, slug, file_data, file_name required' }, 400);
         }
-        // Decode base64 to bytes (chunked)
         const binary = atob(file_data);
         const bytes = new Uint8Array(binary.length);
         for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
 
         const safeSlug = String(slug).toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-');
         const ext = file_name.split('.').pop() || 'pdf';
-        const path = `${safeSlug}/${Date.now()}.${ext}`;
+        const path = `${safeSlug}/v1-${Date.now()}.${ext}`;
 
         const { error: upErr } = await supabase.storage
           .from('lead-magnets')
           .upload(path, bytes, { contentType: mime_type || 'application/pdf', upsert: false });
         if (upErr) return json({ error: `Upload failed: ${upErr.message}` }, 500);
 
-        const { data, error } = await supabase
+        const { data: magnet, error } = await supabase
           .from('lead_magnets')
           .insert({
             title, slug: safeSlug, description: description || null,
@@ -67,11 +66,115 @@ Deno.serve(async (req) => {
           .select()
           .single();
         if (error) {
-          // rollback upload
           await supabase.storage.from('lead-magnets').remove([path]);
           return json({ error: error.message }, 500);
         }
-        return json({ magnet: data });
+
+        // Create v1 version row + point active_version_id at it
+        const { data: version } = await supabase
+          .from('lead_magnet_versions')
+          .insert({
+            magnet_id: magnet.id, version_number: 1,
+            file_path: path, file_name, file_size: bytes.length,
+            mime_type: mime_type || 'application/pdf',
+            uploaded_by: auth.userId, notes: 'Initial version',
+          })
+          .select().single();
+        if (version) {
+          await supabase.from('lead_magnets').update({ active_version_id: version.id }).eq('id', magnet.id);
+        }
+        return json({ magnet });
+      }
+
+      case 'upload_version': {
+        const { magnet_id, file_data, file_name, mime_type, notes, activate } = body;
+        if (!magnet_id || !file_data || !file_name) return json({ error: 'magnet_id, file_data, file_name required' }, 400);
+
+        const { data: magnet, error: mErr } = await supabase.from('lead_magnets').select('slug').eq('id', magnet_id).single();
+        if (mErr || !magnet) return json({ error: 'Magnet not found' }, 404);
+
+        // Determine next version number
+        const { data: latest } = await supabase
+          .from('lead_magnet_versions')
+          .select('version_number')
+          .eq('magnet_id', magnet_id)
+          .order('version_number', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const nextVersion = (latest?.version_number || 0) + 1;
+
+        const binary = atob(file_data);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        const ext = file_name.split('.').pop() || 'pdf';
+        const path = `${magnet.slug}/v${nextVersion}-${Date.now()}.${ext}`;
+
+        const { error: upErr } = await supabase.storage.from('lead-magnets')
+          .upload(path, bytes, { contentType: mime_type || 'application/pdf', upsert: false });
+        if (upErr) return json({ error: `Upload failed: ${upErr.message}` }, 500);
+
+        const { data: version, error: vErr } = await supabase.from('lead_magnet_versions').insert({
+          magnet_id, version_number: nextVersion,
+          file_path: path, file_name, file_size: bytes.length,
+          mime_type: mime_type || 'application/pdf',
+          uploaded_by: auth.userId, notes: notes || null,
+        }).select().single();
+        if (vErr) {
+          await supabase.storage.from('lead-magnets').remove([path]);
+          return json({ error: vErr.message }, 500);
+        }
+
+        // Auto-activate by default
+        if (activate !== false) {
+          await supabase.from('lead_magnets').update({
+            active_version_id: version.id,
+            file_path: path, file_name, file_size: bytes.length,
+            mime_type: mime_type || 'application/pdf',
+          }).eq('id', magnet_id);
+        }
+        return json({ version });
+      }
+
+      case 'list_versions': {
+        const { magnet_id } = body;
+        if (!magnet_id) return json({ error: 'magnet_id required' }, 400);
+        const { data, error } = await supabase
+          .from('lead_magnet_versions')
+          .select('*')
+          .eq('magnet_id', magnet_id)
+          .order('version_number', { ascending: false });
+        if (error) return json({ error: error.message }, 500);
+        return json({ versions: data });
+      }
+
+      case 'activate_version': {
+        const { magnet_id, version_id } = body;
+        if (!magnet_id || !version_id) return json({ error: 'magnet_id and version_id required' }, 400);
+        const { data: v, error: vErr } = await supabase
+          .from('lead_magnet_versions').select('*').eq('id', version_id).eq('magnet_id', magnet_id).single();
+        if (vErr || !v) return json({ error: 'Version not found' }, 404);
+        const { error } = await supabase.from('lead_magnets').update({
+          active_version_id: v.id,
+          file_path: v.file_path, file_name: v.file_name,
+          file_size: v.file_size, mime_type: v.mime_type,
+        }).eq('id', magnet_id);
+        if (error) return json({ error: error.message }, 500);
+        return json({ success: true, active_version_id: v.id });
+      }
+
+      case 'delete_version': {
+        const { version_id } = body;
+        if (!version_id) return json({ error: 'version_id required' }, 400);
+        const { data: v } = await supabase.from('lead_magnet_versions').select('*').eq('id', version_id).single();
+        if (!v) return json({ error: 'Version not found' }, 404);
+        const { data: magnet } = await supabase.from('lead_magnets').select('active_version_id').eq('id', v.magnet_id).single();
+        if (magnet?.active_version_id === v.id) {
+          return json({ error: 'Cannot delete the active version. Activate another version first.' }, 400);
+        }
+        if (v.file_path) await supabase.storage.from('lead-magnets').remove([v.file_path]);
+        const { error } = await supabase.from('lead_magnet_versions').delete().eq('id', version_id);
+        if (error) return json({ error: error.message }, 500);
+        return json({ success: true });
       }
 
       case 'update': {

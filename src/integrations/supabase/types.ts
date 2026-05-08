@@ -8181,8 +8181,56 @@ export type Database = {
           },
         ]
       }
+      lead_magnet_versions: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_path: string
+          file_size: number | null
+          id: string
+          magnet_id: string
+          mime_type: string | null
+          notes: string | null
+          uploaded_by: string | null
+          version_number: number
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          id?: string
+          magnet_id: string
+          mime_type?: string | null
+          notes?: string | null
+          uploaded_by?: string | null
+          version_number: number
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          magnet_id?: string
+          mime_type?: string | null
+          notes?: string | null
+          uploaded_by?: string | null
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_magnet_versions_magnet_id_fkey"
+            columns: ["magnet_id"]
+            isOneToOne: false
+            referencedRelation: "lead_magnets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_magnets: {
         Row: {
+          active_version_id: string | null
           created_at: string
           description: string | null
           download_count: number
@@ -8201,6 +8249,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          active_version_id?: string | null
           created_at?: string
           description?: string | null
           download_count?: number
@@ -8219,6 +8268,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          active_version_id?: string | null
           created_at?: string
           description?: string | null
           download_count?: number
@@ -8236,7 +8286,15 @@ export type Database = {
           title?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "lead_magnets_active_version_id_fkey"
+            columns: ["active_version_id"]
+            isOneToOne: false
+            referencedRelation: "lead_magnet_versions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       lead_source_attributions: {
         Row: {
