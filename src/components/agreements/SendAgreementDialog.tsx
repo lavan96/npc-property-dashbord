@@ -8,13 +8,14 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FileSignature, Send, Loader2, User, MapPin, Phone, Mail, Calendar, UserPlus, CheckCircle2, DollarSign, Layout } from 'lucide-react';
+import { FileSignature, Send, Loader2, User, MapPin, Phone, Mail, Calendar, UserPlus, CheckCircle2, DollarSign, Layout, Hourglass, AlertTriangle } from 'lucide-react';
 import { useAgreementMutations } from '@/hooks/useAgencyAgreements';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { format } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useGlobalReportSettings } from '@/hooks/useGlobalReportSettings';
+import { toast } from 'sonner';
 
 interface GammaTemplate {
   id: string;
@@ -77,6 +78,10 @@ export function SendAgreementDialog({ open, onOpenChange, client, dealId }: Send
   const [notes, setNotes] = useState('');
   const [step, setStep] = useState<'fill' | 'confirm' | 'sent'>('fill');
   const [generatedId, setGeneratedId] = useState<string | null>(null);
+  const [pdfReady, setPdfReady] = useState(false);
+  const [pdfPolling, setPdfPolling] = useState(false);
+  const [pdfPollAttempts, setPdfPollAttempts] = useState(0);
+  const [pdfTimedOut, setPdfTimedOut] = useState(false);
 
   // Pre-fill when dialog opens
   useEffect(() => {
@@ -96,8 +101,51 @@ export function SendAgreementDialog({ open, onOpenChange, client, dealId }: Send
       setNotes('');
       setStep('fill');
       setGeneratedId(null);
+      setPdfReady(false);
+      setPdfPolling(false);
+      setPdfPollAttempts(0);
+      setPdfTimedOut(false);
     }
   }, [open, client]);
+
+  // Poll PDF readiness once we have a generated agreement (Gamma generation is async)
+  useEffect(() => {
+    if (step !== 'confirm' || !generatedId || pdfReady) return;
+    let cancelled = false;
+    setPdfPolling(true);
+    setPdfTimedOut(false);
+
+    const MAX_ATTEMPTS = 40; // ~2 min @ 3s
+    let attempt = 0;
+
+    const tick = async () => {
+      if (cancelled) return;
+      attempt += 1;
+      setPdfPollAttempts(attempt);
+      try {
+        const { data, error } = await supabase
+          .from('agency_agreements')
+          .select('pdf_storage_path, status')
+          .eq('id', generatedId)
+          .maybeSingle();
+        if (!cancelled && !error && data?.pdf_storage_path) {
+          setPdfReady(true);
+          setPdfPolling(false);
+          return;
+        }
+      } catch { /* ignore */ }
+      if (attempt >= MAX_ATTEMPTS) {
+        if (!cancelled) {
+          setPdfTimedOut(true);
+          setPdfPolling(false);
+        }
+        return;
+      }
+      setTimeout(tick, 3000);
+    };
+    tick();
+    return () => { cancelled = true; };
+  }, [step, generatedId, pdfReady]);
 
   // Auto-select default template when templates load
   useEffect(() => {
@@ -141,6 +189,10 @@ export function SendAgreementDialog({ open, onOpenChange, client, dealId }: Send
 
   const handleSendDocuSign = async () => {
     if (!generatedId) return;
+    if (!pdfReady) {
+      toast.warning('The agreement document is still being generated. Please wait a few seconds before sending.');
+      return;
+    }
     try {
       await sendViaDocuSign.mutateAsync(generatedId);
       setStep('sent');
@@ -385,6 +437,66 @@ export function SendAgreementDialog({ open, onOpenChange, client, dealId }: Send
                 </div>
               </CardContent>
             </Card>
+
+            {/* PDF readiness indicator — Gamma generation is async */}
+            {!pdfReady && pdfPolling && (
+              <Card className="border-warning/40 bg-warning/5">
+                <CardContent className="pt-4 flex items-start gap-3">
+                  <Hourglass className="h-5 w-5 text-warning animate-pulse mt-0.5 shrink-0" />
+                  <div className="space-y-1 text-sm">
+                    <p className="font-medium text-foreground">
+                      Generating the agreement document…
+                    </p>
+                    <p className="text-muted-foreground">
+                      The Gamma template is still being rendered into a PDF. The DocuSign envelope
+                      will be unlocked as soon as the document is ready (usually 30–90 seconds).
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Checking… attempt {pdfPollAttempts}/40
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {!pdfReady && pdfTimedOut && (
+              <Card className="border-destructive/40 bg-destructive/5">
+                <CardContent className="pt-4 flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-destructive mt-0.5 shrink-0" />
+                  <div className="space-y-2 text-sm">
+                    <p className="font-medium text-foreground">
+                      Document still not ready after 2 minutes
+                    </p>
+                    <p className="text-muted-foreground">
+                      Gamma is taking longer than expected. You can retry the readiness check, or
+                      send anyway and the edge function will attempt one more deferred fetch before
+                      dispatching the envelope.
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setPdfTimedOut(false);
+                        setPdfPollAttempts(0);
+                        setPdfReady(false);
+                      }}
+                    >
+                      Retry check
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {pdfReady && (
+              <Card className="border-success/40 bg-success/5">
+                <CardContent className="pt-4 flex items-center gap-2">
+                  <CheckCircle2 className="h-5 w-5 text-success" />
+                  <p className="text-sm font-medium">Document ready — safe to send.</p>
+                </CardContent>
+              </Card>
+            )}
+
             <p className="text-sm text-muted-foreground">
               Click <strong>"Send via DocuSign"</strong> to dispatch this agreement to <strong>{buyerEmail}</strong> for electronic signature.
             </p>
@@ -430,14 +542,17 @@ export function SendAgreementDialog({ open, onOpenChange, client, dealId }: Send
             {step === 'confirm' && (
               <Button
                 onClick={handleSendDocuSign}
-                disabled={isSending}
+                disabled={isSending || (!pdfReady && !pdfTimedOut)}
+                title={!pdfReady ? 'Waiting for the agreement document to finish generating…' : undefined}
               >
                 {isSending ? (
                   <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                ) : !pdfReady && pdfPolling ? (
+                  <Hourglass className="h-4 w-4 mr-1.5 animate-pulse" />
                 ) : (
                   <Send className="h-4 w-4 mr-1.5" />
                 )}
-                Send via DocuSign
+                {!pdfReady && pdfPolling ? 'Waiting for document…' : 'Send via DocuSign'}
               </Button>
             )}
           </DialogFooter>
