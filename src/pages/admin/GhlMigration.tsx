@@ -29,6 +29,7 @@ import {
 import { MigrationSourceUploader } from '@/components/admin/MigrationSourceUploader';
 import { GhlWorkflowVisualizer } from '@/components/admin/GhlWorkflowVisualizer';
 import { GhlMarketingRawDump } from '@/components/admin/GhlMarketingRawDump';
+import { LegacyAccountKillSwitch } from '@/components/admin/LegacyAccountKillSwitch';
 
 interface ScopeProbe {
   scope: string;
