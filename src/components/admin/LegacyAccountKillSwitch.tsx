@@ -239,10 +239,25 @@ function WipeJobRow({ job, onCancel }: { job: WipeJob; onCancel: () => void }) {
             <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
               <span>
                 {doneCount}/{totalResources} resources
-                {job.current_resource && ` — current: ${job.current_resource}`}
+                {job.current_resource && (
+                  <>
+                    {' '}— scanning <span className="font-medium text-foreground">{job.current_resource}</span>
+                    {(() => {
+                      const cur = job.progress?.[job.current_resource!];
+                      if (!cur) return null;
+                      return (
+                        <span className="ml-1 text-foreground/80">
+                          ({cur.found.toLocaleString()} found{job.dry_run ? '' : `, ${cur.deleted.toLocaleString()} deleted`})
+                        </span>
+                      );
+                    })()}
+                  </>
+                )}
               </span>
               <span>
-                deleted {job.total_deleted.toLocaleString()} · failed {job.total_failed.toLocaleString()}
+                {job.dry_run
+                  ? `total found ${Object.values(job.progress || {}).reduce((s, p: any) => s + (p?.found || 0), 0).toLocaleString()}`
+                  : `deleted ${job.total_deleted.toLocaleString()} · failed ${job.total_failed.toLocaleString()}`}
               </span>
             </div>
             <Progress value={pct} className="h-1.5" />
@@ -254,12 +269,29 @@ function WipeJobRow({ job, onCancel }: { job: WipeJob; onCancel: () => void }) {
             {RESOURCES.map((r) => {
               const p = job.progress?.[r];
               const done = job.resources_completed.includes(r);
+              const isCurrent = job.current_resource === r;
+              const cell = !p
+                ? '—'
+                : p.skipped_no_endpoint
+                  ? 'skip'
+                  : job.dry_run
+                    ? p.found.toLocaleString()
+                    : `${p.deleted.toLocaleString()}/${p.found.toLocaleString()}`;
               return (
-                <div key={r} className={`flex items-center justify-between rounded px-2 py-0.5 ${done ? 'bg-success/10 text-success' : p ? 'bg-muted/40' : 'text-muted-foreground/60'}`}>
-                  <span>{r}</span>
-                  <span>
-                    {p ? (p.skipped_no_endpoint ? 'skip' : `${p.deleted}/${p.found}`) : '—'}
-                  </span>
+                <div
+                  key={r}
+                  className={`flex items-center justify-between rounded px-2 py-0.5 ${
+                    done
+                      ? 'bg-success/10 text-success'
+                      : isCurrent
+                        ? 'bg-primary/15 text-foreground'
+                        : p
+                          ? 'bg-muted/40'
+                          : 'text-muted-foreground/60'
+                  }`}
+                >
+                  <span>{r}{isCurrent && !done ? ' …' : ''}</span>
+                  <span>{cell}</span>
                 </div>
               );
             })}
