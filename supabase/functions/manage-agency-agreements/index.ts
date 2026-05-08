@@ -808,26 +808,26 @@ Deno.serve(async (req) => {
       const secondaryEmailRaw = (agreement as any).secondary_buyer_email as string | undefined;
       const secondaryEmail = (secondaryEmailRaw && secondaryEmailRaw.trim()) || agreement.buyer_email;
 
-      // Anchor strings — unique ASCII tokens we render in white text on an
-      // appended execution page so DocuSign anchor-matching is 100% reliable.
-      // We avoid backslashes (some PDF renderers swap glyphs) and use bracketed
-      // tokens that won't appear elsewhere in the document.
+      // Anchor tokens embedded directly inside the Gamma template (white text,
+      // tiny font — invisible to humans, readable by DocuSign's text scanner).
+      // The template author pastes these tokens into the signature block of the
+      // Gamma doc. We then send the raw Gamma PDF to DocuSign untouched — no
+      // appended execution page — so what the buyer sees on mobile is exactly
+      // the branded Gamma layout.
       const ANCHOR = {
-        buyerSig: '{{sig_buyer_1}}',
-        buyerDate: '{{date_buyer_1}}',
-        buyerName: '{{name_buyer_1}}',
-        secSig: '{{sig_buyer_2}}',
-        secDate: '{{date_buyer_2}}',
-        secName: '{{name_buyer_2}}',
-        agentSig: '{{sig_agent}}',
-        agentDate: '{{date_agent}}',
-        agentName: '{{name_agent}}',
+        buyerSig: '\\sig_buyer_1\\',
+        buyerDate: '\\date_buyer_1\\',
+        buyerName: '\\name_buyer_1\\',
+        secSig: '\\sig_buyer_2\\',
+        secDate: '\\date_buyer_2\\',
+        secName: '\\name_buyer_2\\',
+        agentSig: '\\sig_agent\\',
+        agentDate: '\\date_agent\\',
+        agentName: '\\name_agent\\',
       };
 
-      // Build the document bytes. Start from the Gamma PDF when available.
-      // If the Gamma generation hasn't been backfilled to storage yet, attempt
-      // a deferred fetch (re-poll Gamma + upload) before falling back to the
-      // appended execution page only.
+      // Resolve the Gamma PDF. If it's not yet in storage, attempt a deferred
+      // fetch. We REQUIRE the Gamma PDF — no execution-page fallback anymore.
       let pdfBytes: Uint8Array | null = null;
       let resolvedAgreement = agreement;
 
@@ -837,7 +837,6 @@ Deno.serve(async (req) => {
           console.log('[DocuSign] No pdf_storage_path yet — attempting deferred Gamma fetch for:', resolvedAgreement.gamma_document_id);
           const deferredUrl = await attemptDeferredPdfFetch(supabase, resolvedAgreement, gammaApiKey);
           if (deferredUrl) {
-            // Re-fetch agreement to pick up the newly-set pdf_storage_path
             const { data: refreshed } = await supabase
               .from('agency_agreements')
               .select('*')
@@ -847,140 +846,36 @@ Deno.serve(async (req) => {
               resolvedAgreement = refreshed;
               console.log('[DocuSign] Deferred fetch succeeded — using PDF at:', refreshed.pdf_storage_path);
             }
-          } else {
-            console.warn('[DocuSign] Deferred Gamma fetch did not yield a PDF; envelope will contain execution page only.');
           }
-        } else {
-          console.warn('[DocuSign] GAMMA_API_KEY not configured — cannot attempt deferred PDF fetch.');
         }
       }
 
-      if (resolvedAgreement.pdf_storage_path) {
-        console.log('[DocuSign] Downloading Gamma PDF from storage:', resolvedAgreement.pdf_storage_path);
-        const { data: pdfBlob, error: dlErr } = await supabase.storage
-          .from('agency-agreements')
-          .download(resolvedAgreement.pdf_storage_path);
-        if (dlErr || !pdfBlob) {
-          console.error('[DocuSign] Failed to download stored PDF:', dlErr?.message);
-          return new Response(
-            JSON.stringify({ error: `Failed to load Gamma PDF from storage: ${dlErr?.message || 'not found'}` }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-        pdfBytes = new Uint8Array(await pdfBlob.arrayBuffer());
-        console.log('[DocuSign] Loaded Gamma PDF, size:', pdfBytes.byteLength, 'bytes');
-      } else {
-        console.warn('[DocuSign] Proceeding without Gamma PDF — envelope will contain execution page only.');
+      if (!resolvedAgreement.pdf_storage_path) {
+        return new Response(
+          JSON.stringify({
+            error: 'Gamma agreement document is not ready yet. Please wait for generation to complete and try again.',
+            code: 'PDF_NOT_READY',
+          }),
+          { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
 
-      // Append a programmatic signature page so DocuSign always finds anchors at
-      // a known location (Gamma output does not include our anchor markers).
-      let mergedPdf: PDFDocument;
-      try {
-        mergedPdf = pdfBytes ? await PDFDocument.load(pdfBytes) : await PDFDocument.create();
-      } catch (loadErr: any) {
-        console.error('[DocuSign] Failed to parse PDF, creating fresh:', loadErr.message);
-        mergedPdf = await PDFDocument.create();
+      console.log('[DocuSign] Downloading Gamma PDF from storage:', resolvedAgreement.pdf_storage_path);
+      const { data: pdfBlob, error: dlErr } = await supabase.storage
+        .from('agency-agreements')
+        .download(resolvedAgreement.pdf_storage_path);
+      if (dlErr || !pdfBlob) {
+        console.error('[DocuSign] Failed to download stored PDF:', dlErr?.message);
+        return new Response(
+          JSON.stringify({ error: `Failed to load Gamma PDF from storage: ${dlErr?.message || 'not found'}` }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
+      pdfBytes = new Uint8Array(await pdfBlob.arrayBuffer());
+      console.log('[DocuSign] Loaded Gamma PDF, size:', pdfBytes.byteLength, 'bytes');
 
-      const helv = await mergedPdf.embedFont(StandardFonts.Helvetica);
-      const helvBold = await mergedPdf.embedFont(StandardFonts.HelveticaBold);
-      const sigPage = mergedPdf.addPage([595.28, 841.89]); // A4
-      const { width: pw, height: ph } = sigPage.getSize();
-      const margin = 50;
-      let y = ph - margin;
-
-      const drawText = (text: string, x: number, yy: number, opts: { size?: number; bold?: boolean; color?: any } = {}) => {
-        sigPage.drawText(text, {
-          x,
-          y: yy,
-          size: opts.size ?? 11,
-          font: opts.bold ? helvBold : helv,
-          color: opts.color ?? rgb(0, 0, 0),
-        });
-      };
-
-      // Header
-      drawText('EXECUTION PAGE', margin, y, { size: 16, bold: true });
-      y -= 28;
-      drawText("Property Consultant & Buyer's Agent Agreement", margin, y, { size: 12, bold: true });
-      y -= 18;
-      const dateLabel = agreement.agreement_date
-        ? new Date(agreement.agreement_date).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })
-        : new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' });
-      drawText(`Agreement Date: ${dateLabel}`, margin, y, { size: 10 });
-      y -= 14;
-      const icf = agreement.initial_commitment_fee
-        ? `$${Number(agreement.initial_commitment_fee).toLocaleString('en-AU', { minimumFractionDigits: 2 })} + GST`
-        : '$1,500.00 + GST';
-      drawText(`Initial Commitment Fee: ${icf}`, margin, y, { size: 10 });
-      y -= 30;
-
-      drawText('By signing below, the parties acknowledge they have read, understood and agreed to the', margin, y, { size: 10 });
-      y -= 13;
-      drawText('terms and conditions of this Agreement in full.', margin, y, { size: 10 });
-      y -= 30;
-
-      // Signer block renderer. Layout (per signer):
-      //   TITLE
-      //   Signature: __________________________   Date: __________________
-      //   Printed Name: ________________________________________________
-      //
-      // We place each anchor token in white text *exactly on the underline*
-      // (baseline = line Y). DocuSign positions a tab so its bottom-left
-      // corner sits at the anchor baseline + offset, so a signature with
-      // anchorYOffset=0 will sit cleanly ABOVE the line — which is what we want.
-      const renderSignerBlock = (
-        title: string,
-        printedName: string,
-        anchors: { sig: string; date: string; name: string },
-        startY: number,
-      ): number => {
-        let yy = startY;
-        drawText(title, margin, yy, { size: 11, bold: true });
-        yy -= 22;
-
-        // Signature row
-        drawText('Signature:', margin, yy, { size: 10 });
-        const sigLineY = yy - 2;
-        const sigLineX1 = margin + 70;
-        const sigLineX2 = margin + 290;
-        sigPage.drawLine({ start: { x: sigLineX1, y: sigLineY }, end: { x: sigLineX2, y: sigLineY }, thickness: 0.5, color: rgb(0.4, 0.4, 0.4) });
-        // Anchor token — baseline sits ON the line, white text → invisible.
-        drawText(anchors.sig, sigLineX1 + 2, sigLineY, { size: 6, color: rgb(1, 1, 1) });
-
-        // Date column
-        const dateLabelX = margin + 310;
-        drawText('Date:', dateLabelX, yy, { size: 10 });
-        const dateLineX1 = dateLabelX + 35;
-        const dateLineX2 = margin + 495;
-        sigPage.drawLine({ start: { x: dateLineX1, y: sigLineY }, end: { x: dateLineX2, y: sigLineY }, thickness: 0.5, color: rgb(0.4, 0.4, 0.4) });
-        drawText(anchors.date, dateLineX1 + 2, sigLineY, { size: 6, color: rgb(1, 1, 1) });
-        yy -= 32;
-
-        // Printed Name row
-        drawText('Printed Name:', margin, yy, { size: 10 });
-        const nameLineY = yy - 2;
-        const nameLineX1 = margin + 90;
-        sigPage.drawLine({ start: { x: nameLineX1, y: nameLineY }, end: { x: margin + 495, y: nameLineY }, thickness: 0.5, color: rgb(0.4, 0.4, 0.4) });
-        if (printedName) drawText(printedName, nameLineX1 + 4, nameLineY + 3, { size: 10 });
-        // Hidden FullName anchor at right side so it doesn't overlap printed name
-        drawText(anchors.name, margin + 380, nameLineY, { size: 6, color: rgb(1, 1, 1) });
-        yy -= 30;
-        return yy;
-      };
-
-      y = renderSignerBlock('BUYER', agreement.buyer_names || '', { sig: ANCHOR.buyerSig, date: ANCHOR.buyerDate, name: ANCHOR.buyerName }, y);
-      if (hasSecondary) {
-        y = renderSignerBlock('SECONDARY BUYER', agreement.secondary_buyer_name || '', { sig: ANCHOR.secSig, date: ANCHOR.secDate, name: ANCHOR.secName }, y);
-      }
-      y = renderSignerBlock(`AGENT — ${brandCfg.companyName || 'Property Consulting'}`, agentSignerName, { sig: ANCHOR.agentSig, date: ANCHOR.agentDate, name: ANCHOR.agentName }, y);
-
-      // Footer
-      drawText(`Generated ${new Date().toISOString().split('T')[0]} • Agreement ID: ${agreement.id}`, margin, margin / 2, { size: 8, color: rgb(0.5, 0.5, 0.5) });
-
-      const finalPdfBytes = await mergedPdf.save();
-      // Base64 in chunks
+      // Send the Gamma PDF as-is — DocuSign will anchor onto the embedded tokens.
+      const finalPdfBytes = pdfBytes;
       let bin = '';
       const chunkSize = 0x8000;
       for (let i = 0; i < finalPdfBytes.length; i += chunkSize) {
@@ -989,7 +884,7 @@ Deno.serve(async (req) => {
       const base64Doc = btoa(bin);
       const docName = "Buyer's Agent Agreement.pdf";
       const docExt = 'pdf';
-      console.log('[DocuSign] Final PDF size:', finalPdfBytes.length, 'bytes');
+      console.log('[DocuSign] Final PDF size:', finalPdfBytes.length, 'bytes (raw Gamma, no execution page)');
 
       // Build signer tabs against our reliable anchors.
       // anchorUnits=pixels, anchorXOffset/YOffset position the tab relative to
