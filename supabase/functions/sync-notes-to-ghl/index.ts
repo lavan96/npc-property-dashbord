@@ -39,7 +39,6 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const body = await req.json();
     const { action, clientId, noteId, noteContent, noteType } = body;
 
     // SECURITY: Verify authentication

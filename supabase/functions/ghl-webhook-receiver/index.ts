@@ -646,8 +646,7 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     const webhookSecret = Deno.env.get('GHL_WEBHOOK_SECRET');
-    const apiKey = Deno.env.get('GOHIGHLEVEL_API_KEY');
-    const locationId = Deno.env.get('GOHIGHLEVEL_LOCATION_ID');
+    // GHL credentials resolved post-supabase init below
 
     if (!supabaseUrl || !supabaseKey) {
       console.error('[ghl-webhook] Missing Supabase credentials');
