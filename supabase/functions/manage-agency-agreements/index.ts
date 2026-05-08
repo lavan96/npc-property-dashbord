@@ -808,28 +808,58 @@ Deno.serve(async (req) => {
       const secondaryEmailRaw = (agreement as any).secondary_buyer_email as string | undefined;
       const secondaryEmail = (secondaryEmailRaw && secondaryEmailRaw.trim()) || agreement.buyer_email;
 
-      // Anchor strings — unique, unlikely-to-collide tokens we render in white
-      // text on an appended signature page so DocuSign anchor-matching is 100% reliable.
+      // Anchor strings — unique ASCII tokens we render in white text on an
+      // appended execution page so DocuSign anchor-matching is 100% reliable.
+      // We avoid backslashes (some PDF renderers swap glyphs) and use bracketed
+      // tokens that won't appear elsewhere in the document.
       const ANCHOR = {
-        buyerSig: '\\sig_buyer_1\\',
-        buyerDate: '\\date_buyer_1\\',
-        buyerName: '\\name_buyer_1\\',
-        secSig: '\\sig_buyer_2\\',
-        secDate: '\\date_buyer_2\\',
-        secName: '\\name_buyer_2\\',
-        agentSig: '\\sig_agent\\',
-        agentDate: '\\date_agent\\',
-        agentName: '\\name_agent\\',
+        buyerSig: '{{sig_buyer_1}}',
+        buyerDate: '{{date_buyer_1}}',
+        buyerName: '{{name_buyer_1}}',
+        secSig: '{{sig_buyer_2}}',
+        secDate: '{{date_buyer_2}}',
+        secName: '{{name_buyer_2}}',
+        agentSig: '{{sig_agent}}',
+        agentDate: '{{date_agent}}',
+        agentName: '{{name_agent}}',
       };
 
-      // Build the document bytes. Start from the Gamma PDF when available,
-      // else fall back to the inline HTML rendered as a single-page PDF placeholder.
+      // Build the document bytes. Start from the Gamma PDF when available.
+      // If the Gamma generation hasn't been backfilled to storage yet, attempt
+      // a deferred fetch (re-poll Gamma + upload) before falling back to the
+      // appended execution page only.
       let pdfBytes: Uint8Array | null = null;
-      if (agreement.pdf_storage_path) {
-        console.log('[DocuSign] Downloading Gamma PDF from storage:', agreement.pdf_storage_path);
+      let resolvedAgreement = agreement;
+
+      if (!resolvedAgreement.pdf_storage_path && resolvedAgreement.gamma_document_id) {
+        const gammaApiKey = Deno.env.get('GAMMA_API_KEY');
+        if (gammaApiKey) {
+          console.log('[DocuSign] No pdf_storage_path yet — attempting deferred Gamma fetch for:', resolvedAgreement.gamma_document_id);
+          const deferredUrl = await attemptDeferredPdfFetch(supabase, resolvedAgreement, gammaApiKey);
+          if (deferredUrl) {
+            // Re-fetch agreement to pick up the newly-set pdf_storage_path
+            const { data: refreshed } = await supabase
+              .from('agency_agreements')
+              .select('*')
+              .eq('id', agreement_id)
+              .single();
+            if (refreshed?.pdf_storage_path) {
+              resolvedAgreement = refreshed;
+              console.log('[DocuSign] Deferred fetch succeeded — using PDF at:', refreshed.pdf_storage_path);
+            }
+          } else {
+            console.warn('[DocuSign] Deferred Gamma fetch did not yield a PDF; envelope will contain execution page only.');
+          }
+        } else {
+          console.warn('[DocuSign] GAMMA_API_KEY not configured — cannot attempt deferred PDF fetch.');
+        }
+      }
+
+      if (resolvedAgreement.pdf_storage_path) {
+        console.log('[DocuSign] Downloading Gamma PDF from storage:', resolvedAgreement.pdf_storage_path);
         const { data: pdfBlob, error: dlErr } = await supabase.storage
           .from('agency-agreements')
-          .download(agreement.pdf_storage_path);
+          .download(resolvedAgreement.pdf_storage_path);
         if (dlErr || !pdfBlob) {
           console.error('[DocuSign] Failed to download stored PDF:', dlErr?.message);
           return new Response(
@@ -838,6 +868,9 @@ Deno.serve(async (req) => {
           );
         }
         pdfBytes = new Uint8Array(await pdfBlob.arrayBuffer());
+        console.log('[DocuSign] Loaded Gamma PDF, size:', pdfBytes.byteLength, 'bytes');
+      } else {
+        console.warn('[DocuSign] Proceeding without Gamma PDF — envelope will contain execution page only.');
       }
 
       // Append a programmatic signature page so DocuSign always finds anchors at
@@ -888,8 +921,15 @@ Deno.serve(async (req) => {
       drawText('terms and conditions of this Agreement in full.', margin, y, { size: 10 });
       y -= 30;
 
-      // Signer block renderer — draws label + a visible underline + invisible
-      // (white) anchor token where DocuSign will place the signature graphic.
+      // Signer block renderer. Layout (per signer):
+      //   TITLE
+      //   Signature: __________________________   Date: __________________
+      //   Printed Name: ________________________________________________
+      //
+      // We place each anchor token in white text *exactly on the underline*
+      // (baseline = line Y). DocuSign positions a tab so its bottom-left
+      // corner sits at the anchor baseline + offset, so a signature with
+      // anchorYOffset=0 will sit cleanly ABOVE the line — which is what we want.
       const renderSignerBlock = (
         title: string,
         printedName: string,
@@ -898,22 +938,34 @@ Deno.serve(async (req) => {
       ): number => {
         let yy = startY;
         drawText(title, margin, yy, { size: 11, bold: true });
-        yy -= 18;
-        drawText('Signature:', margin, yy, { size: 10 });
-        // Underline for visual signature line
-        sigPage.drawLine({ start: { x: margin + 70, y: yy - 2 }, end: { x: margin + 270, y: yy - 2 }, thickness: 0.5, color: rgb(0.4, 0.4, 0.4) });
-        // White-text anchor token — invisible to readers, found by DocuSign.
-        drawText(anchors.sig, margin + 75, yy + 2, { size: 8, color: rgb(1, 1, 1) });
-        // Date column
-        drawText('Date:', margin + 310, yy, { size: 10 });
-        sigPage.drawLine({ start: { x: margin + 345, y: yy - 2 }, end: { x: margin + 495, y: yy - 2 }, thickness: 0.5, color: rgb(0.4, 0.4, 0.4) });
-        drawText(anchors.date, margin + 350, yy + 2, { size: 8, color: rgb(1, 1, 1) });
         yy -= 22;
+
+        // Signature row
+        drawText('Signature:', margin, yy, { size: 10 });
+        const sigLineY = yy - 2;
+        const sigLineX1 = margin + 70;
+        const sigLineX2 = margin + 290;
+        sigPage.drawLine({ start: { x: sigLineX1, y: sigLineY }, end: { x: sigLineX2, y: sigLineY }, thickness: 0.5, color: rgb(0.4, 0.4, 0.4) });
+        // Anchor token — baseline sits ON the line, white text → invisible.
+        drawText(anchors.sig, sigLineX1 + 2, sigLineY, { size: 6, color: rgb(1, 1, 1) });
+
+        // Date column
+        const dateLabelX = margin + 310;
+        drawText('Date:', dateLabelX, yy, { size: 10 });
+        const dateLineX1 = dateLabelX + 35;
+        const dateLineX2 = margin + 495;
+        sigPage.drawLine({ start: { x: dateLineX1, y: sigLineY }, end: { x: dateLineX2, y: sigLineY }, thickness: 0.5, color: rgb(0.4, 0.4, 0.4) });
+        drawText(anchors.date, dateLineX1 + 2, sigLineY, { size: 6, color: rgb(1, 1, 1) });
+        yy -= 32;
+
+        // Printed Name row
         drawText('Printed Name:', margin, yy, { size: 10 });
-        sigPage.drawLine({ start: { x: margin + 90, y: yy - 2 }, end: { x: margin + 495, y: yy - 2 }, thickness: 0.5, color: rgb(0.4, 0.4, 0.4) });
-        if (printedName) drawText(printedName, margin + 95, yy + 2, { size: 10 });
-        // Hidden FullName anchor (so DocuSign auto-fills if name not pre-printed)
-        drawText(anchors.name, margin + 400, yy + 2, { size: 8, color: rgb(1, 1, 1) });
+        const nameLineY = yy - 2;
+        const nameLineX1 = margin + 90;
+        sigPage.drawLine({ start: { x: nameLineX1, y: nameLineY }, end: { x: margin + 495, y: nameLineY }, thickness: 0.5, color: rgb(0.4, 0.4, 0.4) });
+        if (printedName) drawText(printedName, nameLineX1 + 4, nameLineY + 3, { size: 10 });
+        // Hidden FullName anchor at right side so it doesn't overlap printed name
+        drawText(anchors.name, margin + 380, nameLineY, { size: 6, color: rgb(1, 1, 1) });
         yy -= 30;
         return yy;
       };
@@ -940,21 +992,44 @@ Deno.serve(async (req) => {
       console.log('[DocuSign] Final PDF size:', finalPdfBytes.length, 'bytes');
 
       // Build signer tabs against our reliable anchors.
-      const buyerTabs = {
-        signHereTabs: [{ anchorString: ANCHOR.buyerSig, anchorUnits: 'pixels', anchorXOffset: '0', anchorYOffset: '-6', anchorIgnoreIfNotPresent: 'false' }],
-        dateSignedTabs: [{ anchorString: ANCHOR.buyerDate, anchorUnits: 'pixels', anchorXOffset: '0', anchorYOffset: '-2' }],
-        fullNameTabs: [{ anchorString: ANCHOR.buyerName, anchorUnits: 'pixels', anchorXOffset: '0', anchorYOffset: '-2' }],
-      };
-      const secondaryTabs = {
-        signHereTabs: [{ anchorString: ANCHOR.secSig, anchorUnits: 'pixels', anchorXOffset: '0', anchorYOffset: '-6' }],
-        dateSignedTabs: [{ anchorString: ANCHOR.secDate, anchorUnits: 'pixels', anchorXOffset: '0', anchorYOffset: '-2' }],
-        fullNameTabs: [{ anchorString: ANCHOR.secName, anchorUnits: 'pixels', anchorXOffset: '0', anchorYOffset: '-2' }],
-      };
-      const agentTabs = {
-        signHereTabs: [{ anchorString: ANCHOR.agentSig, anchorUnits: 'pixels', anchorXOffset: '0', anchorYOffset: '-6' }],
-        dateSignedTabs: [{ anchorString: ANCHOR.agentDate, anchorUnits: 'pixels', anchorXOffset: '0', anchorYOffset: '-2' }],
-        fullNameTabs: [{ anchorString: ANCHOR.agentName, anchorUnits: 'pixels', anchorXOffset: '0', anchorYOffset: '-2' }],
-      };
+      // anchorUnits=pixels, anchorXOffset/YOffset position the tab relative to
+      // the bottom-left of the matched anchor text. We push signature graphic
+      // up so it sits centered ABOVE the underline; date/name sit on the line.
+      const buildTabs = (sig: string, date: string, name: string) => ({
+        signHereTabs: [{
+          anchorString: sig,
+          anchorUnits: 'pixels',
+          anchorXOffset: '0',
+          anchorYOffset: '-22',
+          anchorIgnoreIfNotPresent: 'false',
+          anchorCaseSensitive: 'true',
+          anchorMatchWholeWord: 'true',
+          scaleValue: '0.6',
+        }],
+        dateSignedTabs: [{
+          anchorString: date,
+          anchorUnits: 'pixels',
+          anchorXOffset: '0',
+          anchorYOffset: '-14',
+          anchorCaseSensitive: 'true',
+          anchorMatchWholeWord: 'true',
+          font: 'Helvetica',
+          fontSize: 'Size10',
+        }],
+        fullNameTabs: [{
+          anchorString: name,
+          anchorUnits: 'pixels',
+          anchorXOffset: '0',
+          anchorYOffset: '-14',
+          anchorCaseSensitive: 'true',
+          anchorMatchWholeWord: 'true',
+          font: 'Helvetica',
+          fontSize: 'Size10',
+        }],
+      });
+      const buyerTabs = buildTabs(ANCHOR.buyerSig, ANCHOR.buyerDate, ANCHOR.buyerName);
+      const secondaryTabs = buildTabs(ANCHOR.secSig, ANCHOR.secDate, ANCHOR.secName);
+      const agentTabs = buildTabs(ANCHOR.agentSig, ANCHOR.agentDate, ANCHOR.agentName);
 
       const signers: any[] = [
         {
