@@ -33,16 +33,24 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const apiKey = Deno.env.get('GOHIGHLEVEL_API_KEY');
-    const locationId = Deno.env.get('GOHIGHLEVEL_LOCATION_ID');
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-
+    if (!supabaseUrl || !supabaseKey) {
+      console.error('Supabase credentials not configured');
+      return new Response(JSON.stringify({ error: 'Supabase credentials not configured', success: false }), {
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const supabaseTmp = createClient(supabaseUrl, supabaseKey);
+    // Resolve effective GHL credentials (auto-flips to NEW after legacy decommission)
+    const creds = await getEffectiveGhlCredentials(supabaseTmp);
+    const apiKey = creds.apiKey;
+    const locationId = creds.locationId;
     if (!apiKey || !locationId) {
-      console.error('GHL credentials not configured');
-      return new Response(JSON.stringify({ 
-        error: 'GoHighLevel credentials not configured',
-        success: false 
+      console.error(`GHL credentials not configured for ${creds.label} account`);
+      return new Response(JSON.stringify({
+        error: `GoHighLevel credentials not configured for ${creds.label} account`,
+        success: false
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
