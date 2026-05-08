@@ -155,6 +155,27 @@ Deno.serve(async (req) => {
         worker_lock_until: null,
       }).eq('id', jobId);
 
+      // Attempt to vanquish the location shell itself (DELETE /locations/:id).
+      // Sub-account tokens usually lack locations.write — we record the outcome
+      // either way so the UI can surface "manual UI deletion required" if it 401s.
+      let shellDelete: { attempted: boolean; success: boolean; status?: number; body?: string } = { attempted: false, success: false };
+      if (!dryRun) {
+        try {
+          shellDelete.attempted = true;
+          const r = await fetch(`${GHL_API_BASE}/locations/${locationId}`, { method: 'DELETE', headers });
+          shellDelete.status = r.status;
+          const txt = await r.text().catch(() => '');
+          shellDelete.body = txt.substring(0, 500);
+          shellDelete.success = r.ok;
+          console.log(`[legacy-wipe-worker] shell delete -> ${r.status}: ${txt.substring(0, 200)}`);
+        } catch (e: any) {
+          shellDelete.body = e.message || String(e);
+          console.error(`[legacy-wipe-worker] shell delete threw:`, e);
+        }
+        progress.__shell_delete__ = shellDelete;
+        await supabase.from('legacy_wipe_jobs').update({ progress }).eq('id', jobId);
+      }
+
       // Finalise cutover for live runs only
       if (!dryRun) {
         const { data: cutover, error: cutoverErr } = await supabase.rpc('finalize_ghl_cutover', { p_job_id: jobId });
