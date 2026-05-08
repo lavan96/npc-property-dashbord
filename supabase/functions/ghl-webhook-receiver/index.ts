@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { getEffectiveGhlCredentials } from '../_shared/ghl-account.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -646,8 +647,7 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     const webhookSecret = Deno.env.get('GHL_WEBHOOK_SECRET');
-    const apiKey = Deno.env.get('GOHIGHLEVEL_API_KEY');
-    const locationId = Deno.env.get('GOHIGHLEVEL_LOCATION_ID');
+    // GHL credentials resolved post-supabase init below
 
     if (!supabaseUrl || !supabaseKey) {
       console.error('[ghl-webhook] Missing Supabase credentials');
@@ -658,6 +658,10 @@ Deno.serve(async (req) => {
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
+    const _ghlCreds = await getEffectiveGhlCredentials(supabase);
+    const apiKey = _ghlCreds.apiKey;
+    const locationId = _ghlCreds.locationId;
+    console.log(`[ghl-webhook] Using GHL account: ${_ghlCreds.label}`);
     const body = await req.json();
 
     console.log('[ghl-webhook] Received webhook:', JSON.stringify({

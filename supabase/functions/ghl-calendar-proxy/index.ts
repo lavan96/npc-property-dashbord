@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { getEffectiveGhlCredentials } from '../_shared/ghl-account.ts';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 
@@ -12,10 +13,13 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const apiKey = Deno.env.get('GOHIGHLEVEL_API_KEY');
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const locationId = Deno.env.get('GHL_LOCATION_ID') || '8guFPPbpJXYFsw5HDG28';
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    const _ghlCreds = await getEffectiveGhlCredentials(supabase);
+    const apiKey = _ghlCreds.apiKey;
+    const locationId = _ghlCreds.locationId;
+    console.log(`[ghl-calendar-proxy] Using GHL account: ${_ghlCreds.label}`);
 
     if (!apiKey) {
       return new Response(JSON.stringify({ error: 'GoHighLevel API key not configured' }), {
@@ -24,7 +28,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    const supabase = createClient(supabaseUrl, supabaseKey);
     const body = await req.json();
 
     const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);

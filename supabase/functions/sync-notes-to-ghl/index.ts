@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { getEffectiveGhlCredentials } from '../_shared/ghl-account.ts';
 
 // corsHeaders defined dynamically via createCorsHeaders below
 
@@ -14,9 +15,17 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const apiKey = Deno.env.get('GOHIGHLEVEL_API_KEY');
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (!supabaseUrl || !supabaseKey) {
+      return new Response(JSON.stringify({ error: 'Supabase credentials not configured', success: false }), {
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    const _ghlCreds = await getEffectiveGhlCredentials(supabase);
+    const apiKey = _ghlCreds.apiKey;
+    console.log(`[sync-notes-to-ghl] Using GHL account: ${_ghlCreds.label}`);
 
     if (!apiKey) {
       console.error('GHL API key not configured');
@@ -28,19 +37,6 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
-    if (!supabaseUrl || !supabaseKey) {
-      console.error('Supabase credentials not configured');
-      return new Response(JSON.stringify({ 
-        error: 'Supabase credentials not configured',
-        success: false 
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseKey);
 
     const body = await req.json();
     const { action, clientId, noteId, noteContent, noteType } = body;

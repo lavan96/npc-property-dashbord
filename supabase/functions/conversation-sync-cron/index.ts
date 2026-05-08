@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { getEffectiveGhlCredentials } from '../_shared/ghl-account.ts';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 
@@ -18,20 +19,28 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const apiKey = Deno.env.get('GOHIGHLEVEL_API_KEY');
-    const locationId = Deno.env.get('GOHIGHLEVEL_LOCATION_ID');
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-    if (!apiKey || !locationId || !supabaseUrl || !supabaseKey) {
-      console.error('[conversation-sync-cron] Missing configuration');
+    if (!supabaseUrl || !supabaseKey) {
+      console.error('[conversation-sync-cron] Missing supabase configuration');
       return new Response(JSON.stringify({ error: 'Missing configuration' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
+    const _ghlCreds = await getEffectiveGhlCredentials(supabase);
+    const apiKey = _ghlCreds.apiKey;
+    const locationId = _ghlCreds.locationId;
+    console.log(`[conversation-sync-cron] Using GHL account: ${_ghlCreds.label}`);
+
+    if (!apiKey || !locationId) {
+      console.error('[conversation-sync-cron] Missing GHL configuration');
+      return new Response(JSON.stringify({ error: 'Missing GHL configuration' }), {
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     const ghlHeaders = {
       'Authorization': `Bearer ${apiKey}`,
