@@ -93,6 +93,17 @@
       var btn = document.getElementById('lm-submit');
       var status = document.getElementById('lm-status');
 
+      // Auto-resize: tell parent iframe what height we need
+      function postHeight() {
+        try {
+          var h = document.querySelector('.lm-card').getBoundingClientRect().height + 8;
+          parent.postMessage({ type: 'lm-height', slug: slug, height: Math.ceil(h) }, '*');
+        } catch (e) {}
+      }
+      window.addEventListener('load', postHeight);
+      window.addEventListener('resize', postHeight);
+      try { new MutationObserver(postHeight).observe(document.body, { subtree: true, childList: true, characterData: true }); } catch (e) {}
+
       if (!slug) {
         status.textContent = 'Missing magnet slug.';
         status.className = 'lm-status error';
