@@ -369,6 +369,9 @@ export default function GhlMigration() {
 
       {/* Phase 3b — Raw marketing-asset dump (forms / surveys / quizzes / funnels / pages) */}
       <GhlMarketingRawDump />
+
+      {/* Phase 4 — Legacy account decommission (kill switch + atomic cutover) */}
+      <LegacyAccountKillSwitch />
     </div>
   );
 }
