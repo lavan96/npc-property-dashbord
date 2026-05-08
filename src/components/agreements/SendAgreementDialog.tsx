@@ -8,13 +8,14 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FileSignature, Send, Loader2, User, MapPin, Phone, Mail, Calendar, UserPlus, CheckCircle2, DollarSign, Layout } from 'lucide-react';
+import { FileSignature, Send, Loader2, User, MapPin, Phone, Mail, Calendar, UserPlus, CheckCircle2, DollarSign, Layout, Hourglass, AlertTriangle } from 'lucide-react';
 import { useAgreementMutations } from '@/hooks/useAgencyAgreements';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { format } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useGlobalReportSettings } from '@/hooks/useGlobalReportSettings';
+import { toast } from 'sonner';
 
 interface GammaTemplate {
   id: string;
