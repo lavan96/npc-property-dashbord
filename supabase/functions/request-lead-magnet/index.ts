@@ -52,13 +52,13 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Lead magnet not found' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // Generate signed URL (5 minutes)
-    const { data: signed, error: signErr } = await supabase.storage
+    // Public bucket — permanent direct download URL
+    const { data: pub } = supabase.storage
       .from('lead-magnets')
-      .createSignedUrl(magnet.file_path, 300, { download: magnet.file_name });
+      .getPublicUrl(magnet.file_path, { download: magnet.file_name });
 
-    if (signErr || !signed?.signedUrl) {
-      console.error('[request-lead-magnet] Sign error', signErr);
+    const downloadUrl = pub?.publicUrl;
+    if (!downloadUrl) {
       return new Response(JSON.stringify({ error: 'Could not prepare download' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
@@ -155,7 +155,7 @@ Deno.serve(async (req) => {
 
     return new Response(JSON.stringify({
       success: true,
-      download_url: signed.signedUrl,
+      download_url: downloadUrl,
       file_name: magnet.file_name,
       title: magnet.title,
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
