@@ -122,6 +122,7 @@ export type Database = {
           initial_commitment_fee: number | null
           notes: string | null
           pdf_storage_path: string | null
+          secondary_buyer_email: string | null
           secondary_buyer_name: string | null
           sent_via: string | null
           signed_pdf_storage_path: string | null
@@ -150,6 +151,7 @@ export type Database = {
           initial_commitment_fee?: number | null
           notes?: string | null
           pdf_storage_path?: string | null
+          secondary_buyer_email?: string | null
           secondary_buyer_name?: string | null
           sent_via?: string | null
           signed_pdf_storage_path?: string | null
@@ -178,6 +180,7 @@ export type Database = {
           initial_commitment_fee?: number | null
           notes?: string | null
           pdf_storage_path?: string | null
+          secondary_buyer_email?: string | null
           secondary_buyer_name?: string | null
           sent_via?: string | null
           signed_pdf_storage_path?: string | null

@@ -54,6 +54,7 @@ export function useAgreementMutations() {
       buyerEmail: string;
       agreementDate: string;
       secondaryBuyerName?: string;
+      secondaryBuyerEmail?: string;
       dealId?: string;
       notes?: string;
       initialCommitmentFee?: string;
