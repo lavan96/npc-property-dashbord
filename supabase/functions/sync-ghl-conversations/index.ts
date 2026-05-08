@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { getEffectiveGhlCredentials } from '../_shared/ghl-account.ts';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 
@@ -16,19 +17,27 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const apiKey = Deno.env.get('GOHIGHLEVEL_API_KEY');
-    const locationId = Deno.env.get('GOHIGHLEVEL_LOCATION_ID');
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-    if (!apiKey || !locationId || !supabaseUrl || !supabaseKey) {
+    if (!supabaseUrl || !supabaseKey) {
       return new Response(JSON.stringify({ error: 'Missing configuration', success: false }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     const supabase = createClient(supabaseUrl.trim(), supabaseKey.trim());
+    const _ghlCreds = await getEffectiveGhlCredentials(supabase);
+    const apiKey = _ghlCreds.apiKey;
+    const locationId = _ghlCreds.locationId;
+    console.log(`[sync-ghl-conversations] Using GHL account: ${_ghlCreds.label}`);
+
+    if (!apiKey || !locationId) {
+      return new Response(JSON.stringify({ error: 'GHL not configured', success: false }), {
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const body = await req.json().catch(() => ({}));
 
     // Verify authentication
