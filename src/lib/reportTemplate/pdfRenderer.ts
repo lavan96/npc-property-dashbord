@@ -97,9 +97,6 @@ function drawPage(doc: jsPDF, page: Page, ctxBase: ResolveContext) {
     doc.rect(0, 0, page.size.width, page.size.height, 'F');
   }
   // Background image (preloaded to data URL by imagePreloader)
-  const bgUrl = page.background?.imageUrl
-    ? resolveBindableColor // not used; we want raw resolution
-    : null;
   if (page.background?.imageUrl) {
     const url = String(page.background.imageUrl);
     if (url.startsWith('data:') || url.startsWith('http')) {
