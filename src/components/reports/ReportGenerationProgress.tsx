@@ -604,7 +604,12 @@ function ReportGenerationProgressInner() {
   const renderReportList = (mobile: boolean) => (
     <>
       {bulkGroups.map((g) => (
-        <BulkJobGroup key={g.jobId} group={g}>
+        <BulkJobGroup
+          key={g.jobId}
+          group={g}
+          etaForReport={etaForReport}
+          onRetryAllFailed={(ids) => ids.forEach((id) => handleManualContinue(id))}
+        >
           {g.reports.map((r) => renderItem(r, mobile))}
         </BulkJobGroup>
       ))}
