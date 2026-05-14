@@ -154,7 +154,7 @@ export function readShapesBackToOverlays(editor: Editor, originalOverlays: Overl
     const s = byOverlayId.get(o.id);
     if (!s) return o;
     const props: any = s.props || {};
-    const updated: Overlay = {
+    const updated: any = {
       ...o,
       x: Math.round(s.x),
       y: Math.round(s.y),
@@ -163,10 +163,10 @@ export function readShapesBackToOverlays(editor: Editor, originalOverlays: Overl
       rotation: Math.round(((s.rotation || 0) * 180) / Math.PI),
       opacity: s.opacity ?? o.opacity ?? 1,
     };
-    if (updated.type === 'text' && typeof props.text === 'string') {
+    if (o.type === 'text' && typeof props.text === 'string') {
       updated.content = props.text;
     }
-    return updated;
+    return updated as Overlay;
   });
 }
 
