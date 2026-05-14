@@ -276,6 +276,8 @@ const App = () => (
                 <Route path="admin/finance-portal/commissions" element={<ModuleGuard moduleKey="finance_portal_admin"><FinancePortalCommissions /></ModuleGuard>} />
                 <Route path="admin/activity-logs" element={<ModuleGuard moduleKey="activity_logs"><ActivityLogs /></ModuleGuard>} />
                 <Route path="admin/depreciation-comps" element={<ModuleGuard moduleKey="depreciation_comps"><DepreciationCompsAdmin /></ModuleGuard>} />
+                <Route path="admin/template-builder" element={<ModuleGuard moduleKey="templates"><TemplateBuilder /></ModuleGuard>} />
+                <Route path="admin/template-builder/:id" element={<ModuleGuard moduleKey="templates"><TemplateBuilderEdit /></ModuleGuard>} />
                 <Route path="integrations" element={<ModuleGuard moduleKey="integrations"><Integrations /></ModuleGuard>} />
                 <Route path="integrations/ghl-migration" element={<GhlMigration />} />
                 <Route path="cloudflare" element={<ModuleGuard moduleKey="cloudflare"><CloudflareManagement /></ModuleGuard>} />
