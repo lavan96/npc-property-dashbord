@@ -774,18 +774,7 @@ function ReportGenerationProgressInner() {
                   No active generations.
                 </div>
               ) : (
-                reports.map((report) => (
-                  <GenerationProgressItem
-                    key={report.id}
-                    report={report}
-                    etaMs={etaForReport(report)}
-                    retryState={retryStateRef.current[report.id]}
-                    autoContinueSettings={autoContinueSettings}
-                    sectionTimeline={sectionTimelineRef.current.get(report.id) ?? []}
-                    onContinue={() => handleManualContinue(report.id)}
-                    onDismiss={() => dismissReport(report.id)}
-                  />
-                ))
+                renderReportList(false)
               )}
             </div>
             {paused && (
