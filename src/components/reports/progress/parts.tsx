@@ -2,6 +2,16 @@
  * Sub-components for the report generation progress widget.
  * Kept in one file to limit fragmentation while still separating concerns.
  */
+import { useMemo, useState } from 'react';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Layers, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
