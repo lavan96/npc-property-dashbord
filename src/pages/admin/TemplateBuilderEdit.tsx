@@ -41,7 +41,7 @@ import { TemplateCanvas } from '@/components/templateBuilder/TemplateCanvas';
 import { PagesPanel } from '@/components/templateBuilder/PagesPanel';
 import { PropertiesInspector } from '@/components/templateBuilder/PropertiesInspector';
 
-const SAMPLE_DATA = {
+const DEFAULT_SAMPLE_DATA = {
   property: { address: '123 Sample Street, Sydney NSW 2000', suburb: 'Sydney', imageUrl: '' },
   financials: { weeklyRent: 850, purchasePrice: 950000 },
   client: { name: 'Sample Client' },
