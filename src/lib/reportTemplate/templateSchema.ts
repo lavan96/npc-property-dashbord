@@ -58,6 +58,14 @@ export const ImageOverlaySchema = BaseOverlay.extend({
   type: z.literal('image'),
   src: BindableStringSchema,
   fit: z.enum(['cover', 'contain', 'fill']).default('cover'),
+  // Manual crop, expressed as percent (0–100) of the source image trimmed
+  // from each edge before fit/positioning is applied.
+  crop: z.object({
+    left: z.number().min(0).max(100).default(0),
+    right: z.number().min(0).max(100).default(0),
+    top: z.number().min(0).max(100).default(0),
+    bottom: z.number().min(0).max(100).default(0),
+  }).optional(),
 });
 
 export const ShapeOverlaySchema = BaseOverlay.extend({
