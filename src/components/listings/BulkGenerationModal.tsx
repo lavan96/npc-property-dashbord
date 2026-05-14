@@ -350,8 +350,13 @@ export function BulkGenerationModal({
                           {item.property_address}
                         </div>
                         {item.error_message && (
-                          <div className="text-xs text-red-500 mt-1">
+                          <div className="text-xs text-destructive mt-1">
                             {item.error_message}
+                          </div>
+                        )}
+                        {(item.attempts ?? 0) > 1 && (
+                          <div className="text-xs text-muted-foreground mt-1">
+                            Attempt {item.attempts}{item.max_attempts ? ` of ${item.max_attempts}` : ''}
                           </div>
                         )}
                         {item.processing_time_seconds && (
