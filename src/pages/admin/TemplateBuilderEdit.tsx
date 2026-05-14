@@ -59,11 +59,59 @@ export default function TemplateBuilderEdit() {
   const [description, setDescription] = useState('');
   const [reportType, setReportType] = useState('');
   const [tier, setTier] = useState('');
-  const [template, setTemplate] = useState<ReportTemplate>(makeBlankTemplate());
+  const [template, _setTemplate] = useState<ReportTemplate>(makeBlankTemplate());
   const [activePageId, setActivePageId] = useState<string | null>(null);
   const [selectedOverlayId, setSelectedOverlayId] = useState<string | null>(null);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(true);
+
+  // ── Undo / redo history ────────────────────────────────────────────────────
+  const historyRef = useRef<{ past: ReportTemplate[]; future: ReportTemplate[] }>({ past: [], future: [] });
+  const skipHistoryRef = useRef(false);
+  const setTemplate = useCallback((updater: ReportTemplate | ((prev: ReportTemplate) => ReportTemplate)) => {
+    _setTemplate((prev) => {
+      const next = typeof updater === 'function' ? (updater as (p: ReportTemplate) => ReportTemplate)(prev) : updater;
+      if (!skipHistoryRef.current && next !== prev) {
+        historyRef.current.past.push(prev);
+        if (historyRef.current.past.length > 80) historyRef.current.past.shift();
+        historyRef.current.future = [];
+      }
+      skipHistoryRef.current = false;
+      return next;
+    });
+  }, []);
+  const undo = useCallback(() => {
+    const h = historyRef.current;
+    const prev = h.past.pop();
+    if (!prev) { toast('Nothing to undo'); return; }
+    _setTemplate((cur) => {
+      h.future.push(cur);
+      return prev;
+    });
+    skipHistoryRef.current = true;
+  }, []);
+  const redo = useCallback(() => {
+    const h = historyRef.current;
+    const next = h.future.pop();
+    if (!next) { toast('Nothing to redo'); return; }
+    _setTemplate((cur) => {
+      h.past.push(cur);
+      return next;
+    });
+    skipHistoryRef.current = true;
+  }, []);
+
+  // ── Sample data (editable in the Data tab, used for live preview) ───────────
+  const [sampleDataText, setSampleDataText] = useState(JSON.stringify(DEFAULT_SAMPLE_DATA, null, 2));
+  const sampleData = useMemo(() => {
+    try { return JSON.parse(sampleDataText); } catch { return DEFAULT_SAMPLE_DATA; }
+  }, [sampleDataText]);
+  const sampleDataValid = useMemo(() => {
+    try { JSON.parse(sampleDataText); return true; } catch { return false; }
+  }, [sampleDataText]);
+
+  // ── Block clipboard (cross-page copy/paste) ─────────────────────────────────
+  const clipboardRef = useRef<Block | null>(null);
 
   // Hydrate from server
   useEffect(() => {
