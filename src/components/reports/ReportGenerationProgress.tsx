@@ -96,6 +96,7 @@ function ReportGenerationProgressInner() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [paused, setPaused] = useState(false);
   const [corner, setCorner] = useState<Corner>(getCorner);
+  const [drawerSnap, setDrawerSnap] = useState<number | string | null>(0.45);
   const [autoContinueSettings, setAutoContinueSettings] =
     useState<AutoContinueSettings>(getAutoContinueSettings);
 
