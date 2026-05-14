@@ -36,7 +36,14 @@ export const useSecureCallLogs = () => {
     }
 
     console.log('[useSecureCallLogs] Fetched calls via secure Edge Function');
-    return { data: data.calls, error: null };
+    return {
+      data: data.calls,
+      total: data.total ?? null,
+      hasMore: !!data.hasMore,
+      offset: data.offset ?? 0,
+      limit: data.limit ?? 0,
+      error: null,
+    };
   }, []);
 
   // Fetch live calls (in-progress, ringing, queued)
