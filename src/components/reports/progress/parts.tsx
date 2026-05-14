@@ -1,0 +1,804 @@
+/**
+ * Sub-components for the report generation progress widget.
+ * Kept in one file to limit fragmentation while still separating concerns.
+ */
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Switch } from '@/components/ui/switch';
+import { Slider } from '@/components/ui/slider';
+import { Progress } from '@/components/ui/progress';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
+  AlertCircle,
+  CheckCircle2,
+  ChevronDown,
+  Clock,
+  Copy,
+  ExternalLink,
+  History as HistoryIcon,
+  Loader2,
+  MoreVertical,
+  PauseCircle,
+  PlayCircle,
+  RefreshCw,
+  Trash2,
+  X,
+  Zap,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
+import type { GenerationHistoryEntry } from '@/hooks/useGenerationHistory';
+
+/* ---------- Types shared with parent ---------- */
+
+export interface ReportProgress {
+  id: string;
+  property_address: string;
+  status: string;
+  sectionsCompleted: number;
+  totalSections: number;
+  contentLength: number;
+  error_message?: string | null;
+  lastUpdated: Date;
+  lastCompletedSection: number;
+  createdAt: Date;
+}
+
+export interface AutoContinueSettings {
+  enabled: boolean;
+  maxRetries: number;
+  delaySeconds: number;
+}
+
+export interface AggregateCounts {
+  queued: number;
+  processing: number;
+  stalled: number;
+  failed: number;
+  total: number;
+  completedSections: number;
+  totalSections: number;
+}
+
+/* ---------- Header (chips + overflow menu) ---------- */
+
+interface HeaderProps {
+  counts: AggregateCounts;
+  paused: boolean;
+  autoContinueSettings: AutoContinueSettings;
+  onTogglePaused: () => void;
+  onResumeAllStalled: () => void;
+  onClearCompleted: () => void;
+  onToggleHistory: () => void;
+  historyOpen: boolean;
+  onToggleAutoContinue: (enabled: boolean) => void;
+  onChangeDelay: (seconds: number) => void;
+  onMinimize: () => void;
+  onDragStart?: (e: React.PointerEvent) => void;
+  draggable?: boolean;
+}
+
+export function GenerationProgressHeader({
+  counts,
+  paused,
+  autoContinueSettings,
+  onTogglePaused,
+  onResumeAllStalled,
+  onClearCompleted,
+  onToggleHistory,
+  historyOpen,
+  onToggleAutoContinue,
+  onChangeDelay,
+  onMinimize,
+  onDragStart,
+  draggable,
+}: HeaderProps) {
+  const aggregatePct =
+    counts.totalSections > 0
+      ? Math.round((counts.completedSections / counts.totalSections) * 100)
+      : 0;
+
+  return (
+    <div
+      className={cn(
+        'border-b border-border bg-muted/50',
+        draggable && 'cursor-grab active:cursor-grabbing select-none'
+      )}
+      onPointerDown={draggable ? onDragStart : undefined}
+    >
+      <div className="flex items-center justify-between px-3 py-2 gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-sm font-medium text-foreground whitespace-nowrap">
+            {historyOpen ? 'History' : 'Generating'}
+          </span>
+          {!historyOpen && (
+            <div className="flex items-center gap-1 flex-wrap">
+              <StatusChip
+                icon={<Clock className="h-3 w-3" />}
+                value={counts.queued}
+                label="Queued"
+                tone="muted"
+              />
+              <StatusChip
+                icon={<Loader2 className="h-3 w-3 animate-spin" />}
+                value={counts.processing}
+                label="Processing"
+                tone="primary"
+              />
+              <StatusChip
+                icon={<Zap className="h-3 w-3" />}
+                value={counts.stalled}
+                label="Stalled"
+                tone="warning"
+              />
+              <StatusChip
+                icon={<AlertCircle className="h-3 w-3" />}
+                value={counts.failed}
+                label="Failed"
+                tone="destructive"
+              />
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-0.5 shrink-0">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-6 w-6"
+                onClick={onToggleHistory}
+                aria-label="Toggle history"
+                aria-pressed={historyOpen}
+              >
+                <HistoryIcon className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>History (last 10)</TooltipContent>
+          </Tooltip>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-6 w-6"
+                aria-label="Generation options"
+              >
+                <MoreVertical className="h-3.5 w-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuLabel>Bulk actions</DropdownMenuLabel>
+              <DropdownMenuItem onClick={onTogglePaused}>
+                {paused ? (
+                  <>
+                    <PlayCircle className="h-4 w-4 mr-2" /> Resume polling
+                  </>
+                ) : (
+                  <>
+                    <PauseCircle className="h-4 w-4 mr-2" /> Pause polling
+                  </>
+                )}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onResumeAllStalled} disabled={counts.stalled === 0}>
+                <RefreshCw className="h-4 w-4 mr-2" /> Retry all stalled
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onClearCompleted}>
+                <Trash2 className="h-4 w-4 mr-2" /> Clear dismissed
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>Auto-continue</DropdownMenuLabel>
+              <div className="px-2 py-1.5 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs">Enabled</span>
+                  <Switch
+                    checked={autoContinueSettings.enabled}
+                    onCheckedChange={onToggleAutoContinue}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs">
+                    <span>Retry delay</span>
+                    <span className="text-muted-foreground">
+                      {autoContinueSettings.delaySeconds}s
+                    </span>
+                  </div>
+                  <Slider
+                    min={5}
+                    max={60}
+                    step={5}
+                    value={[autoContinueSettings.delaySeconds]}
+                    onValueChange={(v) => onChangeDelay(v[0] ?? 15)}
+                    disabled={!autoContinueSettings.enabled}
+                  />
+                </div>
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-6 w-6"
+                onClick={onMinimize}
+                aria-label="Minimize"
+              >
+                <ChevronDown className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Minimize (⌘⇧R)</TooltipContent>
+          </Tooltip>
+        </div>
+      </div>
+
+      {!historyOpen && counts.total > 0 && (
+        <div className="px-3 pb-2 space-y-1">
+          <Progress value={aggregatePct} className="h-1" />
+          <div className="flex justify-between text-[10px] text-muted-foreground">
+            <span>
+              {counts.completedSections}/{counts.totalSections} sections across {counts.total}{' '}
+              report{counts.total === 1 ? '' : 's'}
+            </span>
+            <span>{aggregatePct}%</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StatusChip({
+  icon,
+  value,
+  label,
+  tone,
+}: {
+  icon: React.ReactNode;
+  value: number;
+  label: string;
+  tone: 'muted' | 'primary' | 'warning' | 'destructive';
+}) {
+  if (value === 0) return null;
+  const toneClass = {
+    muted: 'bg-muted text-muted-foreground',
+    primary: 'bg-primary/10 text-primary',
+    warning: 'bg-warning/10 text-warning',
+    destructive: 'bg-destructive/10 text-destructive',
+  }[tone];
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span
+          className={cn(
+            'inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium',
+            toneClass
+          )}
+        >
+          {icon}
+          {value}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+/* ---------- Rich minimised pill ---------- */
+
+interface PillProps {
+  counts: AggregateCounts;
+  etaMs: number | null;
+  onClick: () => void;
+}
+
+export function GenerationProgressPill({ counts, etaMs, onClick }: PillProps) {
+  const pct =
+    counts.totalSections > 0
+      ? Math.round((counts.completedSections / counts.totalSections) * 100)
+      : 0;
+  const eta = formatEta(etaMs);
+  return (
+    <Button
+      variant="default"
+      onClick={onClick}
+      aria-label={`${counts.total} reports generating, ${pct}% complete${eta ? `, ${eta} remaining` : ''}`}
+      className="h-11 rounded-full shadow-lg pl-2 pr-3 gap-2"
+    >
+      <span className="relative flex h-7 w-7 items-center justify-center">
+        <svg className="absolute inset-0 -rotate-90" viewBox="0 0 28 28">
+          <circle
+            cx="14"
+            cy="14"
+            r="12"
+            strokeWidth="3"
+            className="fill-none stroke-primary-foreground/25"
+          />
+          <circle
+            cx="14"
+            cy="14"
+            r="12"
+            strokeWidth="3"
+            className="fill-none stroke-primary-foreground"
+            strokeDasharray={`${(pct / 100) * 75.4} 75.4`}
+            strokeLinecap="round"
+          />
+        </svg>
+        <span className="text-[10px] font-bold tabular-nums">{pct}</span>
+      </span>
+      <span className="flex flex-col items-start leading-tight">
+        <span className="text-xs font-semibold">
+          {counts.total} report{counts.total === 1 ? '' : 's'}
+        </span>
+        <span className="text-[10px] opacity-80">{eta ?? 'Estimating…'}</span>
+      </span>
+      {counts.failed > 0 && (
+        <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground">
+          {counts.failed}
+        </span>
+      )}
+    </Button>
+  );
+}
+
+/* ---------- Per-report item ---------- */
+
+interface ItemProps {
+  report: ReportProgress;
+  etaMs: number | null;
+  retryState?: { attempts: number; lastAttempt: number };
+  autoContinueSettings: AutoContinueSettings;
+  sectionTimeline: number[]; // epoch ms of each section completion
+  onContinue: () => void;
+  onDismiss: () => void;
+  isMobile?: boolean;
+}
+
+export function GenerationProgressItem({
+  report,
+  etaMs,
+  retryState,
+  autoContinueSettings,
+  sectionTimeline,
+  onContinue,
+  onDismiss,
+  isMobile = false,
+}: ItemProps) {
+  const navigate = useNavigate();
+  const percentage = Math.round((report.sectionsCompleted / report.totalSections) * 100);
+
+  const timeSinceUpdate = Date.now() - report.lastUpdated.getTime();
+  const timeSinceCreation = Date.now() - report.createdAt.getTime();
+  const minutesSinceUpdate = Math.floor(timeSinceUpdate / 60000);
+  const secondsSinceUpdate = Math.floor(timeSinceUpdate / 1000);
+
+  const isTimedOut = timeSinceUpdate > 120000;
+  const hasPartialContent = report.contentLength > 1000;
+  const isIncomplete = report.sectionsCompleted < report.totalSections;
+  const isStuck =
+    report.status === 'processing' && isTimedOut && hasPartialContent && isIncomplete;
+
+  const showContinueButton =
+    isStuck || (report.status === 'pending' && report.sectionsCompleted > 0);
+  const currentSection = Math.min(report.sectionsCompleted + 1, report.totalSections);
+
+  const retriesUsed = retryState?.attempts || 0;
+  const maxRetriesReached = retriesUsed >= autoContinueSettings.maxRetries;
+  const hasScheduledRetry = isStuck && autoContinueSettings.enabled && !maxRetriesReached;
+
+  const openReport = () => navigate(`/investment-report/${report.id}`);
+
+  const copyError = () => {
+    const text = report.error_message || 'No error message';
+    navigator.clipboard
+      .writeText(text)
+      .then(() => toast.success('Error copied to clipboard'))
+      .catch(() => toast.error('Could not copy error'));
+  };
+
+  return (
+    <div className={cn('p-3 border-b border-border last:border-b-0', isMobile && 'px-4 py-3')}>
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <div className="flex-1 min-w-0">
+          <button
+            type="button"
+            onClick={openReport}
+            className={cn(
+              'group flex items-center gap-1 text-left font-medium text-foreground truncate w-full hover:text-primary transition-colors',
+              isMobile ? 'text-sm' : 'text-xs'
+            )}
+            title={`Open report for ${report.property_address}`}
+          >
+            <span className="truncate">{report.property_address}</span>
+            <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 shrink-0" />
+          </button>
+          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+            {report.status === 'pending' && !isStuck && (
+              <>
+                <Loader2 className="h-3 w-3 text-muted-foreground animate-spin" />
+                <span className="text-xs text-muted-foreground">Queued</span>
+              </>
+            )}
+            {report.status === 'processing' && !isStuck && (
+              <>
+                <Loader2 className="h-3 w-3 text-primary animate-spin" />
+                <span className="text-xs text-primary">
+                  Section {currentSection}/{report.totalSections}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  • {formatElapsed(timeSinceCreation)}
+                </span>
+                {etaMs !== null && (
+                  <span className="text-xs text-muted-foreground">
+                    • ~{formatEta(etaMs)} left
+                  </span>
+                )}
+              </>
+            )}
+            {isStuck && (
+              <>
+                {hasScheduledRetry ? (
+                  <>
+                    <Zap className="h-3 w-3 text-warning" />
+                    <span className="text-xs text-warning font-medium">
+                      Auto-retry {retriesUsed + 1}/{autoContinueSettings.maxRetries}
+                    </span>
+                  </>
+                ) : maxRetriesReached ? (
+                  <>
+                    <AlertCircle className="h-3 w-3 text-destructive" />
+                    <span className="text-xs text-destructive font-medium">
+                      Failed ({retriesUsed})
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle className="h-3 w-3 text-warning" />
+                    <span className="text-xs text-warning font-medium">Stalled</span>
+                  </>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1 shrink-0">
+          {showContinueButton && !hasScheduledRetry && (
+            <Button
+              size="sm"
+              variant="outline"
+              className={cn('h-6 text-xs', isMobile ? 'px-3' : 'px-2')}
+              onClick={onContinue}
+            >
+              <PlayCircle className="h-3 w-3 mr-1" />
+              {isMobile ? 'Resume' : 'Continue'}
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+            onClick={onDismiss}
+            title="Dismiss"
+            aria-label="Dismiss report"
+          >
+            <X className="h-3 w-3" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Segmented progress */}
+      <SegmentedProgress
+        total={report.totalSections}
+        completed={report.sectionsCompleted}
+        currentInProgress={report.status === 'processing' && !isStuck}
+        failed={report.status === 'failed' || maxRetriesReached}
+      />
+
+      <div className="mt-1.5 flex justify-between text-xs text-muted-foreground">
+        <TooltipProvider delayDuration={200}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="cursor-help underline decoration-dotted">
+                {report.sectionsCompleted}/{report.totalSections} sections
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-xs">
+              <div className="space-y-1 text-xs">
+                <p>
+                  <strong>DB Saved:</strong> Section {report.lastCompletedSection}/
+                  {report.totalSections}
+                </p>
+                <p>
+                  <strong>Content Detected:</strong> Section {report.sectionsCompleted}/
+                  {report.totalSections}
+                </p>
+                <p>
+                  <strong>Content Size:</strong> {(report.contentLength / 1024).toFixed(1)} KB
+                </p>
+                {sectionTimeline.length >= 2 && (
+                  <p>
+                    <strong>Avg/section:</strong>{' '}
+                    {formatElapsed(
+                      (sectionTimeline[sectionTimeline.length - 1] - sectionTimeline[0]) /
+                        Math.max(1, sectionTimeline.length - 1)
+                    )}
+                  </p>
+                )}
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        <span>{percentage}%</span>
+      </div>
+
+      {/* Mini sparkline of section completion timestamps */}
+      {sectionTimeline.length >= 2 && (
+        <Sparkline timestamps={sectionTimeline} startedAt={report.createdAt.getTime()} />
+      )}
+
+      {retriesUsed > 0 && (
+        <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+          <RefreshCw className="h-3 w-3" />
+          <span>
+            {retriesUsed} auto-retry attempt{retriesUsed > 1 ? 's' : ''} used
+            {maxRetriesReached && ' (max reached)'}
+          </span>
+        </div>
+      )}
+
+      {isStuck && (
+        <div
+          className={cn(
+            'mt-2 p-2 rounded text-xs border',
+            maxRetriesReached
+              ? 'bg-destructive/10 border-destructive/20 text-destructive'
+              : 'bg-warning/10 border-warning/20 text-warning'
+          )}
+        >
+          <div className="flex items-start gap-1.5">
+            {hasScheduledRetry ? (
+              <Zap className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+            ) : maxRetriesReached ? (
+              <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+            ) : (
+              <Clock className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+            )}
+            <div className="space-y-0.5 flex-1">
+              {hasScheduledRetry ? (
+                <>
+                  <p className="font-medium">Auto-resuming in {autoContinueSettings.delaySeconds}s</p>
+                  <p className="opacity-80">
+                    Attempt {retriesUsed + 1} of {autoContinueSettings.maxRetries} • Resume from
+                    section {currentSection}
+                  </p>
+                </>
+              ) : maxRetriesReached ? (
+                <>
+                  <p className="font-medium">Max retries reached</p>
+                  <p className="opacity-80">
+                    Tried {retriesUsed} times • Last update {minutesSinceUpdate}m ago
+                  </p>
+                  <p className="opacity-80">
+                    Press <span className="font-medium">Continue</span> to manually retry from
+                    section {currentSection}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="font-medium">Generation stalled</p>
+                  <p className="opacity-80">
+                    No progress for{' '}
+                    {minutesSinceUpdate > 0
+                      ? `${minutesSinceUpdate} min`
+                      : `${secondsSinceUpdate}s`}
+                  </p>
+                  {autoContinueSettings.enabled ? (
+                    <p className="opacity-80">Auto-continue will retry shortly…</p>
+                  ) : (
+                    <p className="opacity-80">
+                      Press <span className="font-medium">Continue</span> to resume from section{' '}
+                      {currentSection}
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {report.error_message && (
+        <div className="mt-2 p-2 bg-destructive/10 rounded text-xs text-destructive">
+          <div className="flex items-start gap-1.5">
+            <AlertCircle className="h-3 w-3 mt-0.5 shrink-0" />
+            <span className="line-clamp-2 flex-1">{report.error_message}</span>
+            <button
+              type="button"
+              onClick={copyError}
+              className="shrink-0 hover:text-foreground"
+              title="Copy error"
+              aria-label="Copy error message"
+            >
+              <Copy className="h-3 w-3" />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------- Segmented progress bar ---------- */
+
+function SegmentedProgress({
+  total,
+  completed,
+  currentInProgress,
+  failed,
+}: {
+  total: number;
+  completed: number;
+  currentInProgress: boolean;
+  failed: boolean;
+}) {
+  return (
+    <div className="flex gap-0.5" role="progressbar" aria-valuenow={completed} aria-valuemax={total}>
+      {Array.from({ length: total }).map((_, i) => {
+        const isDone = i < completed;
+        const isCurrent = i === completed && currentInProgress;
+        const isFailed = i === completed && failed;
+        return (
+          <span
+            key={i}
+            className={cn(
+              'h-1.5 flex-1 rounded-sm transition-colors',
+              isDone && 'bg-primary',
+              isCurrent && 'bg-primary/60 animate-pulse',
+              isFailed && 'bg-destructive',
+              !isDone && !isCurrent && !isFailed && 'bg-muted'
+            )}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+/* ---------- Sparkline ---------- */
+
+function Sparkline({ timestamps, startedAt }: { timestamps: number[]; startedAt: number }) {
+  const points = [startedAt, ...timestamps];
+  const intervals = points.slice(1).map((t, i) => t - points[i]);
+  if (intervals.length === 0) return null;
+  const max = Math.max(...intervals, 1);
+  const w = 100;
+  const h = 16;
+  const stepX = w / Math.max(intervals.length, 1);
+  const path = intervals
+    .map((v, i) => {
+      const x = i * stepX + stepX / 2;
+      const y = h - (v / max) * (h - 2) - 1;
+      return `${i === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`;
+    })
+    .join(' ');
+  return (
+    <div className="mt-1.5" title="Time per section (lower is faster)">
+      <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none">
+        <path d={path} fill="none" stroke="currentColor" strokeWidth="1" className="text-primary/60" />
+      </svg>
+    </div>
+  );
+}
+
+/* ---------- History list ---------- */
+
+export function GenerationHistoryList({
+  entries,
+  onClear,
+}: {
+  entries: GenerationHistoryEntry[];
+  onClear: () => void;
+}) {
+  const navigate = useNavigate();
+  if (entries.length === 0) {
+    return (
+      <div className="p-6 text-center text-xs text-muted-foreground">
+        <HistoryIcon className="h-6 w-6 mx-auto mb-2 opacity-50" />
+        <p>No completed jobs yet.</p>
+      </div>
+    );
+  }
+  return (
+    <>
+      <div className="px-3 py-1.5 flex justify-between items-center border-b border-border">
+        <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+          Last {entries.length}
+        </span>
+        <button
+          type="button"
+          onClick={onClear}
+          className="text-[10px] text-muted-foreground hover:text-foreground"
+        >
+          Clear all
+        </button>
+      </div>
+      {entries.map((e) => (
+        <button
+          key={e.id + e.finishedAt}
+          type="button"
+          onClick={() => navigate(`/investment-report/${e.id}`)}
+          className="w-full text-left p-3 border-b border-border last:border-b-0 hover:bg-muted/50 transition-colors"
+        >
+          <div className="flex items-start gap-2">
+            {e.status === 'completed' ? (
+              <CheckCircle2 className="h-3.5 w-3.5 text-success mt-0.5 shrink-0" />
+            ) : e.status === 'failed' ? (
+              <AlertCircle className="h-3.5 w-3.5 text-destructive mt-0.5 shrink-0" />
+            ) : (
+              <X className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-foreground truncate">
+                {e.property_address}
+              </p>
+              <p className="text-[10px] text-muted-foreground">
+                {e.sectionsCompleted}/{e.totalSections} sections • {formatElapsed(e.durationMs)} •{' '}
+                {timeAgo(e.finishedAt)}
+              </p>
+              {e.error_message && (
+                <p className="text-[10px] text-destructive line-clamp-1 mt-0.5">
+                  {e.error_message}
+                </p>
+              )}
+            </div>
+          </div>
+        </button>
+      ))}
+    </>
+  );
+}
+
+/* ---------- helpers ---------- */
+
+export function formatElapsed(ms: number): string {
+  const seconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(seconds / 60);
+  if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
+  return `${seconds}s`;
+}
+
+export function formatEta(ms: number | null): string | null {
+  if (ms === null || !isFinite(ms) || ms < 0) return null;
+  const seconds = Math.round(ms / 1000);
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+  return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+}
+
+function timeAgo(epoch: number): string {
+  const diff = Date.now() - epoch;
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
