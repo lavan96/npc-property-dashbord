@@ -496,7 +496,7 @@ interface ImageWarning {
   message: string;
 }
 
-type ImageOverlay = Extract<Overlay, { type: 'image' }>;
+type ImageOverlay = Overlay & { src?: string; fit?: 'cover' | 'contain' | 'fill' };
 
 function ImageUploadField({
   templateId,
