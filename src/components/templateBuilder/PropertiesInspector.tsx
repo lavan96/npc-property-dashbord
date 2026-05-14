@@ -524,8 +524,16 @@ function ImageUploadField({
   const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
   const [warnings, setWarnings] = useState<ImageWarning[]>([]);
   const [imgDims, setImgDims] = useState<{ width: number; height: number } | null>(null);
+  const [autoMatch, setAutoMatch] = useState<boolean>(() => {
+    try { return localStorage.getItem('tb.autoMatchAspect') === '1'; } catch { return false; }
+  });
   const inputRef = useRef<HTMLInputElement | null>(null);
   const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL ?? '';
+
+  const toggleAutoMatch = (next: boolean) => {
+    setAutoMatch(next);
+    try { localStorage.setItem('tb.autoMatchAspect', next ? '1' : '0'); } catch { /* noop */ }
+  };
 
   const hasImage = !!currentSrc && /^https?:\/\//i.test(currentSrc);
 
