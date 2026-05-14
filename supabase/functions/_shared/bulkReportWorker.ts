@@ -125,6 +125,7 @@ async function processOneItem(
   supabase: any,
   item: ClaimedItem,
   userId: string,
+  jobId: string,
 ): Promise<{ success: boolean; error?: string }> {
   const startedAt = Date.now();
   const heartbeat = startHeartbeat(supabase, item.id);
@@ -133,7 +134,7 @@ async function processOneItem(
 
   let reportId: string | null = null;
   try {
-    reportId = await ensureReportRow(supabase, item, userId);
+    reportId = await ensureReportRow(supabase, item, userId, jobId);
     await callInvestmentReport(
       reportId,
       { address: item.property_address },
