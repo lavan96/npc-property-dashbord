@@ -254,21 +254,17 @@ function OverlayEditor({
           />
           <ImageUploadField
             templateId={templateId}
-            overlayId={overlay.id}
-            currentSrc={String(overlay.src ?? '')}
-            overlayWidthPt={overlay.width}
-            overlayHeightPt={overlay.height}
-            onUploaded={(url) => patch({ src: url } as any)}
-            onClearSrc={() => patch({ src: '' } as any)}
+            overlay={overlay}
+            onPatch={(p) => onChange({ ...overlay, ...(p as any) })}
           />
           <div>
             <Label className="text-xs">Fit</Label>
             <Select value={overlay.fit} onValueChange={(v) => patch({ fit: v as any })}>
               <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="cover">Cover</SelectItem>
-                <SelectItem value="contain">Contain</SelectItem>
-                <SelectItem value="fill">Fill</SelectItem>
+                <SelectItem value="cover">Cover (crop to fill)</SelectItem>
+                <SelectItem value="contain">Contain (letterbox)</SelectItem>
+                <SelectItem value="fill">Fill (stretch)</SelectItem>
               </SelectContent>
             </Select>
           </div>
