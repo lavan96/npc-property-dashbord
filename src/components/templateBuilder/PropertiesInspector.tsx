@@ -105,10 +105,6 @@ function OverlayEditor({
   onDelete: () => void;
   onDuplicate: () => void;
 }) {
-  const patch = (p: Partial<Overlay>) => onChange({ ...overlay, ...(p as any) });
-
-  return (
-    <div className="space-y-5">
   const [showDelete, setShowDelete] = useState(false);
 
   return (
