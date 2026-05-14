@@ -10410,6 +10410,44 @@ export type Database = {
           },
         ]
       }
+      report_template_versions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          note: string | null
+          schema: Json
+          template_id: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          schema: Json
+          template_id: string
+          version: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          schema?: Json
+          template_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_template_versions_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "report_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       report_templates: {
         Row: {
           config: Json
@@ -10417,9 +10455,15 @@ export type Database = {
           created_by: string | null
           description: string | null
           id: string
+          is_active: boolean
           is_default: boolean | null
           name: string
+          report_type: string | null
+          schema: Json
+          thumbnail_url: string | null
+          tier: string | null
           updated_at: string
+          version: number
         }
         Insert: {
           config: Json
@@ -10427,9 +10471,15 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           id?: string
+          is_active?: boolean
           is_default?: boolean | null
           name: string
+          report_type?: string | null
+          schema?: Json
+          thumbnail_url?: string | null
+          tier?: string | null
           updated_at?: string
+          version?: number
         }
         Update: {
           config?: Json
@@ -10437,9 +10487,15 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           id?: string
+          is_active?: boolean
           is_default?: boolean | null
           name?: string
+          report_type?: string | null
+          schema?: Json
+          thumbnail_url?: string | null
+          tier?: string | null
           updated_at?: string
+          version?: number
         }
         Relationships: []
       }

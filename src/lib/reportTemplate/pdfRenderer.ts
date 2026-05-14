@@ -1,0 +1,206 @@
+/**
+ * pdfRenderer — turns a `ReportTemplate` JSON into a real PDF blob
+ * using jsPDF (and pdf-lib for richer blocks in later phases).
+ *
+ * This is intentionally pure: same template + same data → byte-identical PDF.
+ */
+import { jsPDF } from 'jspdf';
+import {
+  type ReportTemplate,
+  type Page,
+  type Overlay,
+  parseTemplate,
+} from './templateSchema';
+import {
+  type ResolveContext,
+  resolveBindable,
+  resolveBindableNumber,
+  resolveBindableColor,
+  evalConditional,
+} from './bindingResolver';
+import { getBlockRenderer, type BlockRenderContext } from './blocks';
+
+export interface RenderOptions {
+  /** Sample / live data the template binds against. */
+  data?: Record<string, any>;
+  /** Override tokens on top of `template.tokens` (e.g. white-label brand). */
+  tokenOverrides?: Partial<ReportTemplate['tokens']>;
+}
+
+/** Render a template to a Blob (PDF). */
+export function renderTemplateToBlob(
+  rawTemplate: ReportTemplate | unknown,
+  options: RenderOptions = {},
+): Blob {
+  const template = parseTemplate(rawTemplate);
+  const tokens = mergeTokens(template.tokens, options.tokenOverrides);
+  const ctxBase: ResolveContext = { data: options.data ?? {}, tokens };
+
+  const visiblePages = template.pages.filter((p) => evalConditional(p.conditional, ctxBase));
+  if (visiblePages.length === 0) {
+    // Always produce a valid (blank) PDF
+    const empty = new jsPDF({ unit: 'pt', format: 'a4' });
+    return empty.output('blob');
+  }
+
+  const first = visiblePages[0];
+  const doc = new jsPDF({
+    unit: 'pt',
+    format: [first.size.width, first.size.height],
+    orientation: first.size.width > first.size.height ? 'landscape' : 'portrait',
+  });
+
+  visiblePages.forEach((page, idx) => {
+    if (idx > 0) {
+      doc.addPage([page.size.width, page.size.height]);
+    }
+    drawPage(doc, page, ctxBase);
+  });
+
+  return doc.output('blob');
+}
+
+/** Render to a data URL (handy for <iframe src=...> previews). */
+export function renderTemplateToDataUrl(
+  rawTemplate: ReportTemplate | unknown,
+  options: RenderOptions = {},
+): string {
+  const blob = renderTemplateToBlob(rawTemplate, options);
+  return URL.createObjectURL(blob);
+}
+
+// ─── internals ────────────────────────────────────────────────────────────────
+
+function mergeTokens(
+  base: ReportTemplate['tokens'],
+  overrides?: Partial<ReportTemplate['tokens']>,
+): ReportTemplate['tokens'] {
+  if (!overrides) return base;
+  return {
+    colors: { ...base.colors, ...(overrides.colors ?? {}) },
+    fonts: { ...base.fonts, ...(overrides.fonts ?? {}) },
+    spacing: { ...base.spacing, ...(overrides.spacing ?? {}) },
+  };
+}
+
+function drawPage(doc: jsPDF, page: Page, ctxBase: ResolveContext) {
+  // Background
+  if (page.background?.color) {
+    const hex = resolveBindableColor(page.background.color, ctxBase, '#FFFFFF');
+    const { r, g, b } = hexToRgb(hex);
+    doc.setFillColor(r, g, b);
+    doc.rect(0, 0, page.size.width, page.size.height, 'F');
+  }
+  // (Background image support — Phase 2)
+
+  const blockCtx: BlockRenderContext = {
+    ...ctxBase,
+    doc,
+    page: { width: page.size.width, height: page.size.height },
+  };
+
+  // Blocks
+  for (const block of page.blocks) {
+    if (!evalConditional(block.conditional, ctxBase)) continue;
+    const renderer = getBlockRenderer(block.type);
+    if (renderer) {
+      renderer(block, blockCtx);
+    } else if (block.type !== 'free') {
+      console.warn(`[pdfRenderer] No renderer for block type "${block.type}"`);
+    }
+    // Overlays sit on top of the block
+    for (const overlay of block.overlays) {
+      if (!evalConditional(overlay.conditional, ctxBase)) continue;
+      drawOverlay(doc, overlay, ctxBase);
+    }
+  }
+}
+
+function drawOverlay(doc: jsPDF, overlay: Overlay, ctx: ResolveContext) {
+  switch (overlay.type) {
+    case 'text': {
+      const text = resolveBindable(overlay.content, ctx);
+      if (!text) return;
+      const size = resolveBindableNumber(overlay.fontSize, ctx, 12);
+      const color = resolveBindableColor(overlay.color, ctx, '#000000');
+      const family = resolveBindable(overlay.fontFamily, ctx) || 'helvetica';
+      const { r, g, b } = hexToRgb(color);
+      doc.setTextColor(r, g, b);
+      doc.setFontSize(size);
+      doc.setFont(mapFontFamily(family), overlay.fontWeight === 'bold' ? 'bold' : 'normal');
+      const wrapped = doc.splitTextToSize(text, overlay.width);
+      const align = overlay.align;
+      const x =
+        align === 'center' ? overlay.x + overlay.width / 2 :
+        align === 'right'  ? overlay.x + overlay.width :
+                             overlay.x;
+      // Baseline-correct y
+      doc.text(wrapped, x, overlay.y + size, {
+        align,
+        lineHeightFactor: overlay.lineHeight,
+        maxWidth: overlay.width,
+      });
+      break;
+    }
+    case 'shape': {
+      const fill = overlay.fill ? resolveBindableColor(overlay.fill, ctx, '#000000') : null;
+      const stroke = overlay.stroke ? resolveBindableColor(overlay.stroke, ctx, '#000000') : null;
+      if (fill) {
+        const { r, g, b } = hexToRgb(fill);
+        doc.setFillColor(r, g, b);
+      }
+      if (stroke) {
+        const { r, g, b } = hexToRgb(stroke);
+        doc.setDrawColor(r, g, b);
+        doc.setLineWidth(overlay.strokeWidth || 1);
+      }
+      const style = fill && stroke ? 'FD' : fill ? 'F' : 'S';
+      if (overlay.shape === 'ellipse') {
+        doc.ellipse(
+          overlay.x + overlay.width / 2,
+          overlay.y + overlay.height / 2,
+          overlay.width / 2,
+          overlay.height / 2,
+          style,
+        );
+      } else if (overlay.shape === 'line') {
+        doc.line(overlay.x, overlay.y, overlay.x + overlay.width, overlay.y + overlay.height);
+      } else {
+        if (overlay.borderRadius && overlay.borderRadius > 0) {
+          doc.roundedRect(overlay.x, overlay.y, overlay.width, overlay.height, overlay.borderRadius, overlay.borderRadius, style);
+        } else {
+          doc.rect(overlay.x, overlay.y, overlay.width, overlay.height, style);
+        }
+      }
+      break;
+    }
+    case 'image': {
+      const src = resolveBindable(overlay.src, ctx);
+      if (!src) return;
+      try {
+        // jsPDF auto-detects format from data URL; for http URLs the caller must pre-load.
+        // Best-effort: skip silently on failure.
+        const fmt = src.startsWith('data:image/png') ? 'PNG' : 'JPEG';
+        doc.addImage(src, fmt, overlay.x, overlay.y, overlay.width, overlay.height);
+      } catch (e) {
+        console.warn('[pdfRenderer] image overlay failed:', e);
+      }
+      break;
+    }
+  }
+}
+
+function mapFontFamily(family: string): string {
+  const f = family.toLowerCase();
+  if (f.includes('times')) return 'times';
+  if (f.includes('courier') || f.includes('mono')) return 'courier';
+  return 'helvetica';
+}
+
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
+  let h = hex.replace('#', '').trim();
+  if (h.length === 3) h = h.split('').map((c) => c + c).join('');
+  const num = parseInt(h, 16);
+  if (Number.isNaN(num)) return { r: 0, g: 0, b: 0 };
+  return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
+}
