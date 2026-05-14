@@ -260,7 +260,7 @@ export async function drainJob(
     if (claims.length === 0) break;
 
     const results = await Promise.allSettled(
-      claims.map((c) => processOneItem(supabase, c, userId)),
+      claims.map((c) => processOneItem(supabase, c, userId, jobId)),
     );
     for (const r of results) {
       processed++;
