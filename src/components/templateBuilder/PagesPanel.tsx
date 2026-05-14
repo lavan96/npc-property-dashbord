@@ -156,6 +156,24 @@ export function PagesPanel({
               <span className="text-[10px] text-muted-foreground">
                 {page.blocks.reduce((acc, b) => acc + b.overlays.length, 0)}
               </span>
+              {onMovePage && i > 0 && (
+                <span
+                  onClick={(e) => { e.stopPropagation(); onMovePage(page.id, -1); }}
+                  className="opacity-0 group-hover:opacity-100 hover:text-foreground"
+                  title="Move up"
+                >
+                  <ArrowUp className="h-3 w-3" />
+                </span>
+              )}
+              {onMovePage && i < template.pages.length - 1 && (
+                <span
+                  onClick={(e) => { e.stopPropagation(); onMovePage(page.id, 1); }}
+                  className="opacity-0 group-hover:opacity-100 hover:text-foreground"
+                  title="Move down"
+                >
+                  <ArrowDown className="h-3 w-3" />
+                </span>
+              )}
               <span
                 onClick={(e) => {
                   e.stopPropagation();
