@@ -894,3 +894,72 @@ function ImageUploadField({
     </div>
   );
 }
+
+// ─── Crop controls ───────────────────────────────────────────────────────────
+type CropValue = { left: number; right: number; top: number; bottom: number };
+
+function CropControls({
+  crop,
+  onChange,
+}: {
+  crop: CropValue | undefined;
+  onChange: (next: CropValue | undefined) => void;
+}) {
+  const c: CropValue = crop ?? { left: 0, right: 0, top: 0, bottom: 0 };
+  const total = c.left + c.right + c.top + c.bottom;
+  const set = (k: keyof CropValue, v: number) => {
+    const clamped = Math.max(0, Math.min(95, Number.isFinite(v) ? v : 0));
+    const next = { ...c, [k]: clamped };
+    // Guard against opposite edges summing >= 100% (would zero the visible area).
+    if (next.left + next.right >= 100) next[k === 'left' ? 'right' : k === 'right' ? 'left' : k] = c[k === 'left' ? 'right' : 'left'];
+    if (next.top + next.bottom >= 100) next[k === 'top' ? 'bottom' : k === 'bottom' ? 'top' : k] = c[k === 'top' ? 'bottom' : 'top'];
+    onChange(next);
+  };
+
+  return (
+    <div className="space-y-2 rounded-md border border-border/60 p-2">
+      <div className="flex items-center justify-between">
+        <Label className="text-xs">Manual crop (%)</Label>
+        {total > 0 && (
+          <button
+            type="button"
+            onClick={() => onChange(undefined)}
+            className="text-[10px] text-muted-foreground hover:text-destructive"
+          >
+            Reset
+          </button>
+        )}
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <CropField label="Left" value={c.left} onChange={(v) => set('left', v)} />
+        <CropField label="Right" value={c.right} onChange={(v) => set('right', v)} />
+        <CropField label="Top" value={c.top} onChange={(v) => set('top', v)} />
+        <CropField label="Bottom" value={c.bottom} onChange={(v) => set('bottom', v)} />
+      </div>
+      <p className="text-[10px] text-muted-foreground">
+        Trims the source image from each edge. Red strips in the preview show what is removed.
+      </p>
+    </div>
+  );
+}
+
+function CropField({
+  label,
+  value,
+  onChange,
+}: { label: string; value: number; onChange: (v: number) => void }) {
+  return (
+    <div>
+      <Label className="text-[10px] text-muted-foreground">{label}</Label>
+      <Input
+        type="number"
+        min={0}
+        max={95}
+        step={1}
+        value={value}
+        onChange={(e) => onChange(parseFloat(e.target.value))}
+        className="h-8 text-xs"
+      />
+    </div>
+  );
+}
