@@ -10135,6 +10135,39 @@ export type Database = {
         }
         Relationships: []
       }
+      report_generation_preferences: {
+        Row: {
+          created_at: string
+          default_scope: string
+          default_tier: string
+          last_used_at: string | null
+          last_used_scope: string | null
+          last_used_tier: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          default_scope?: string
+          default_tier?: string
+          last_used_at?: string | null
+          last_used_scope?: string | null
+          last_used_tier?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          default_scope?: string
+          default_tier?: string
+          last_used_at?: string | null
+          last_used_scope?: string | null
+          last_used_tier?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       report_qa_conversation_shares: {
         Row: {
           conversation_id: string
