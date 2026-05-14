@@ -18,6 +18,11 @@ import { drawImageBlock } from './imageBlock';
 import { drawTextBlock } from './textBlock';
 import { drawFooterBlock } from './footer';
 import { drawCoverBlock } from './cover';
+import { drawDividerBlock } from './divider';
+import { drawCalloutBlock } from './callout';
+import { drawTwoColumnBlock } from './twoColumn';
+import { drawGalleryBlock } from './gallery';
+import { drawPageNumberBlock } from './pageNumber';
 
 export interface BlockRenderContext extends ResolveContext {
   doc: jsPDF;
@@ -36,6 +41,11 @@ export const BLOCK_RENDERERS: Record<string, BlockRenderer> = {
   'text-block': drawTextBlock,
   footer: drawFooterBlock,
   cover: drawCoverBlock,
+  divider: drawDividerBlock,
+  callout: drawCalloutBlock,
+  'two-column': drawTwoColumnBlock,
+  gallery: drawGalleryBlock,
+  'page-number': drawPageNumberBlock,
 };
 
 export function getBlockRenderer(type: string): BlockRenderer | null {
@@ -226,6 +236,84 @@ export const BLOCK_DEFS: Record<string, BlockDef> = {
       { kind: 'bindable', key: 'address', label: 'Address' },
       { kind: 'bindable', key: 'abn', label: 'ABN' },
       { kind: 'bindable', key: 'disclaimerText', label: 'Disclaimer text', multiline: true },
+    ],
+  },
+  divider: {
+    type: 'divider',
+    label: 'Divider',
+    defaultProps: () => ({ x: 24, y: 200, width: 547, thickness: 1, color: 'token:muted', style: 'solid' }),
+    fields: [
+      { kind: 'number', key: 'y', label: 'Y' },
+      { kind: 'number', key: 'width', label: 'Width' },
+      { kind: 'number', key: 'thickness', label: 'Thickness' },
+      { kind: 'color', key: 'color', label: 'Color' },
+      { kind: 'select', key: 'style', label: 'Style', options: ['solid', 'dashed', 'dotted'] },
+    ],
+  },
+  callout: {
+    type: 'callout',
+    label: 'Callout',
+    defaultProps: () => ({
+      x: 24, y: 320, width: 547,
+      variant: 'info',
+      title: 'Heads up',
+      body: 'Use callouts to highlight key takeaways or warnings.',
+    }),
+    fields: [
+      { kind: 'select', key: 'variant', label: 'Variant', options: ['info', 'success', 'warning', 'danger', 'quote'] },
+      { kind: 'bindable', key: 'title', label: 'Title' },
+      { kind: 'bindable', key: 'body', label: 'Body', multiline: true },
+      { kind: 'color', key: 'accent', label: 'Accent' },
+    ],
+  },
+  'two-column': {
+    type: 'two-column',
+    label: 'Two-column',
+    defaultProps: () => ({
+      x: 24, y: 320, width: 547, gap: 16, ratio: 0.5,
+      leftHeading: 'Left heading',
+      leftBody: 'Left column body copy.',
+      rightHeading: 'Right heading',
+      rightBody: 'Right column body copy.',
+    }),
+    fields: [
+      { kind: 'bindable', key: 'leftHeading', label: 'Left heading' },
+      { kind: 'bindable', key: 'leftBody', label: 'Left body', multiline: true },
+      { kind: 'bindable', key: 'rightHeading', label: 'Right heading' },
+      { kind: 'bindable', key: 'rightBody', label: 'Right body', multiline: true },
+      { kind: 'number', key: 'ratio', label: 'Left ratio (0-1)', step: 0.05, min: 0.1, max: 0.9 },
+      { kind: 'number', key: 'gap', label: 'Gap' },
+    ],
+  },
+  gallery: {
+    type: 'gallery',
+    label: 'Image gallery',
+    defaultProps: () => ({
+      x: 24, y: 320, width: 547, height: 260, columns: 3, gap: 8,
+      items: [
+        { src: '{{property.imageUrl}}', caption: 'Front' },
+        { src: '{{property.imageUrl}}', caption: 'Side' },
+        { src: '{{property.imageUrl}}', caption: 'Rear' },
+      ],
+    }),
+    fields: [
+      { kind: 'number', key: 'columns', label: 'Columns', min: 1, max: 6 },
+      { kind: 'number', key: 'gap', label: 'Gap' },
+    ],
+  },
+  'page-number': {
+    type: 'page-number',
+    label: 'Page number',
+    defaultProps: () => ({
+      text: 'Page {{pageNumber}} of {{pageCount}}',
+      align: 'center',
+      size: 8,
+    }),
+    fields: [
+      { kind: 'bindable', key: 'text', label: 'Text' },
+      { kind: 'select', key: 'align', label: 'Align', options: ['left', 'center', 'right'] },
+      { kind: 'number', key: 'size', label: 'Size' },
+      { kind: 'color', key: 'color', label: 'Color' },
     ],
   },
   free: {

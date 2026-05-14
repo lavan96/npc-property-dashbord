@@ -50,6 +50,15 @@ export async function preloadImages(template: ReportTemplate): Promise<ReportTem
           tasks.push(fetchAsDataUrl(v).then((d) => { if (d) (block.props as any)[key] = d; }));
         }
       }
+      // Gallery / list-style props with item arrays containing { src }
+      const items = (block.props as any)?.items;
+      if (Array.isArray(items)) {
+        for (const item of items) {
+          if (item && typeof item.src === 'string' && /^https?:\/\//i.test(item.src)) {
+            tasks.push(fetchAsDataUrl(item.src).then((d) => { if (d) item.src = d; }));
+          }
+        }
+      }
       for (const overlay of block.overlays) {
         if (overlay.type !== 'image') continue;
         const src = overlay.src;

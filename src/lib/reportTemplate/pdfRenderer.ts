@@ -54,7 +54,12 @@ export function renderTemplateToBlob(
     if (idx > 0) {
       doc.addPage([page.size.width, page.size.height]);
     }
-    drawPage(doc, page, ctxBase);
+    // Inject pageNumber/pageCount so blocks like page-number / footer can bind them.
+    const pageCtx: ResolveContext = {
+      ...ctxBase,
+      data: { ...ctxBase.data, pageNumber: idx + 1, pageCount: visiblePages.length },
+    };
+    drawPage(doc, page, pageCtx);
   });
 
   return doc.output('blob');
@@ -84,14 +89,23 @@ function mergeTokens(
 }
 
 function drawPage(doc: jsPDF, page: Page, ctxBase: ResolveContext) {
-  // Background
+  // Background colour
   if (page.background?.color) {
     const hex = resolveBindableColor(page.background.color, ctxBase, '#FFFFFF');
     const { r, g, b } = hexToRgb(hex);
     doc.setFillColor(r, g, b);
     doc.rect(0, 0, page.size.width, page.size.height, 'F');
   }
-  // (Background image support — Phase 2)
+  // Background image (preloaded to data URL by imagePreloader)
+  if (page.background?.imageUrl) {
+    const url = String(page.background.imageUrl);
+    if (url.startsWith('data:') || url.startsWith('http')) {
+      try {
+        const fmt = url.startsWith('data:image/png') ? 'PNG' : 'JPEG';
+        doc.addImage(url, fmt, 0, 0, page.size.width, page.size.height);
+      } catch (e) { console.warn('[pdfRenderer] page bg image failed', e); }
+    }
+  }
 
   const blockCtx: BlockRenderContext = {
     ...ctxBase,

@@ -20,6 +20,8 @@ export const KNOWN_DATA_PATHS: string[] = [
   'client.email',
   'tier',
   'reportType',
+  'pageNumber',
+  'pageCount',
 ];
 
 /** Filters supported by the binding resolver. Keep in sync with bindingResolver.ts. */

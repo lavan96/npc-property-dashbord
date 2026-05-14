@@ -12,6 +12,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft, Save, Eye, Loader2, History, Code2, Layout, PanelRightOpen, PanelRightClose,
+  Download, Copy as CopyIcon, CheckCircle2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,6 +62,7 @@ export default function TemplateBuilderEdit() {
   const [template, setTemplate] = useState<ReportTemplate>(makeBlankTemplate());
   const [activePageId, setActivePageId] = useState<string | null>(null);
   const [selectedOverlayId, setSelectedOverlayId] = useState<string | null>(null);
+  const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(true);
 
   // Hydrate from server
@@ -177,6 +179,58 @@ export default function TemplateBuilderEdit() {
   const addBlockToActivePage = (block: Block) => {
     if (!activePage) return;
     updatePage({ ...activePage, blocks: [...activePage.blocks, block] });
+    setSelectedBlockId(block.id);
+    setSelectedOverlayId(null);
+  };
+  const updateBlock = (next: Block) => {
+    if (!activePage) return;
+    updatePage({
+      ...activePage,
+      blocks: activePage.blocks.map((b) => (b.id === next.id ? next : b)),
+    });
+  };
+  const deleteBlock = (bid: string) => {
+    if (!activePage) return;
+    const snapshot: Page = JSON.parse(JSON.stringify(activePage));
+    const pageId = activePage.id;
+    updatePage({ ...activePage, blocks: activePage.blocks.filter((b) => b.id !== bid) });
+    if (selectedBlockId === bid) setSelectedBlockId(null);
+    toast('Block deleted', {
+      description: 'You can restore it within 8 seconds.',
+      duration: 8000,
+      action: {
+        label: 'Undo',
+        onClick: () => {
+          setTemplate((t) => ({
+            ...t,
+            pages: t.pages.map((p) => (p.id === pageId ? snapshot : p)),
+          }));
+          toast.success('Block restored');
+        },
+      },
+    });
+  };
+  const duplicateBlock = (bid: string) => {
+    if (!activePage) return;
+    const idx = activePage.blocks.findIndex((b) => b.id === bid);
+    if (idx < 0) return;
+    const original = activePage.blocks[idx];
+    const copy: Block = JSON.parse(JSON.stringify(original));
+    copy.id = crypto.randomUUID();
+    copy.overlays = copy.overlays.map((o) => ({ ...o, id: crypto.randomUUID() }));
+    const next = [...activePage.blocks];
+    next.splice(idx + 1, 0, copy);
+    updatePage({ ...activePage, blocks: next });
+    setSelectedBlockId(copy.id);
+  };
+  const moveBlock = (bid: string, dir: -1 | 1) => {
+    if (!activePage) return;
+    const idx = activePage.blocks.findIndex((b) => b.id === bid);
+    const j = idx + dir;
+    if (idx < 0 || j < 0 || j >= activePage.blocks.length) return;
+    const next = [...activePage.blocks];
+    [next[idx], next[j]] = [next[j], next[idx]];
+    updatePage({ ...activePage, blocks: next });
   };
 
   const addPage = () => {
@@ -295,14 +349,44 @@ export default function TemplateBuilderEdit() {
           />
         </div>
         <div className="flex items-center gap-2">
-          {bindingIssues.length > 0 && (
+          {bindingIssues.length > 0 ? (
             <span
               className="text-[11px] inline-flex items-center gap-1 px-2 py-0.5 rounded bg-destructive/10 text-destructive border border-destructive/30"
               title={bindingIssues.map((i) => `${i.where}: ${i.message}`).join('\n')}
             >
               ⚠ {bindingIssues.length} binding {bindingIssues.length === 1 ? 'issue' : 'issues'}
             </span>
+          ) : (
+            <span className="text-[11px] inline-flex items-center gap-1 px-2 py-0.5 rounded bg-success/10 text-success border border-success/30">
+              <CheckCircle2 className="h-2.5 w-2.5" /> Bindings OK
+            </span>
           )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(JSON.stringify(template, null, 2));
+                toast.success('Template JSON copied');
+              } catch { toast.error('Copy failed'); }
+            }}
+          >
+            <CopyIcon className="h-4 w-4 mr-1" /> Copy JSON
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={!previewUrl}
+            onClick={() => {
+              if (!previewUrl) return;
+              const a = document.createElement('a');
+              a.href = previewUrl;
+              a.download = `${name || 'template'}.pdf`;
+              a.click();
+            }}
+          >
+            <Download className="h-4 w-4 mr-1" /> Download PDF
+          </Button>
           <Button variant="ghost" size="sm" onClick={() => setShowPreview((s) => !s)}>
             {showPreview ? <PanelRightClose className="h-4 w-4 mr-1" /> : <PanelRightOpen className="h-4 w-4 mr-1" />}
             Preview
@@ -338,7 +422,7 @@ export default function TemplateBuilderEdit() {
             <PagesPanel
               template={template}
               activePageId={activePageId}
-              onSelectPage={(id) => { setActivePageId(id); setSelectedOverlayId(null); }}
+              onSelectPage={(pid) => { setActivePageId(pid); setSelectedOverlayId(null); setSelectedBlockId(null); }}
               onAddPage={addPage}
               onDuplicatePage={duplicatePage}
               onDeletePage={deletePage}
@@ -352,7 +436,7 @@ export default function TemplateBuilderEdit() {
                   key={activePage.id}
                   page={activePage}
                   onOverlaysChange={setActivePageOverlays}
-                  onSelectOverlay={setSelectedOverlayId}
+                  onSelectOverlay={(oid) => { setSelectedOverlayId(oid); if (oid) setSelectedBlockId(null); }}
                 />
               ) : (
                 <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
@@ -367,10 +451,16 @@ export default function TemplateBuilderEdit() {
                 templateId={id}
                 page={activePage}
                 overlay={selectedOverlay}
+                selectedBlockId={selectedBlockId}
                 onUpdateOverlay={updateOverlay}
                 onDeleteOverlay={deleteOverlay}
                 onDuplicateOverlay={duplicateOverlay}
                 onUpdatePage={updatePage}
+                onSelectBlock={setSelectedBlockId}
+                onUpdateBlock={updateBlock}
+                onDeleteBlock={deleteBlock}
+                onDuplicateBlock={duplicateBlock}
+                onMoveBlock={moveBlock}
               />
             </div>
 
@@ -442,13 +532,32 @@ export default function TemplateBuilderEdit() {
             </p>
           ) : (
             <ul className="space-y-2">
-              {versions.map((v) => (
+              {versions.map((v, i) => {
+                const parsed = parseTemplate(v.schema);
+                const pageCount = parsed.pages.length;
+                const blockCount = parsed.pages.reduce((a, p) => a + p.blocks.length, 0);
+                const overlayCount = parsed.pages.reduce(
+                  (a, p) => a + p.blocks.reduce((b, x) => b + x.overlays.length, 0), 0);
+                const prev = versions[i + 1] ? parseTemplate(versions[i + 1].schema) : null;
+                const prevBlocks = prev ? prev.pages.reduce((a, p) => a + p.blocks.length, 0) : null;
+                const blockDiff = prevBlocks != null ? blockCount - prevBlocks : null;
+                return (
                 <li key={v.id} className="flex items-center justify-between border rounded-md px-3 py-2 text-sm gap-2">
                   <div className="min-w-0">
-                    <div className="font-medium">v{v.version}</div>
+                    <div className="font-medium flex items-center gap-2">
+                      v{v.version}
+                      {blockDiff != null && blockDiff !== 0 && (
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${blockDiff > 0 ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}`}>
+                          {blockDiff > 0 ? '+' : ''}{blockDiff} blocks
+                        </span>
+                      )}
+                    </div>
                     <div className="text-xs text-muted-foreground">
                       {new Date(v.created_at).toLocaleString('en-AU')}
                       {v.note && ` — ${v.note}`}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">
+                      {pageCount} page{pageCount === 1 ? '' : 's'} · {blockCount} block{blockCount === 1 ? '' : 's'} · {overlayCount} overlay{overlayCount === 1 ? '' : 's'}
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -505,7 +614,8 @@ export default function TemplateBuilderEdit() {
                     </Button>
                   </div>
                 </li>
-              ))}
+                );
+              })}
             </ul>
           )}
         </TabsContent>
