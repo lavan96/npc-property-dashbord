@@ -720,6 +720,9 @@ function Sparkline({ timestamps, startedAt }: { timestamps: number[]; startedAt:
 
 /* ---------- History list ---------- */
 
+type HistoryFilter = 'all' | 'completed' | 'failed' | 'dismissed';
+type HistorySort = 'recent' | 'oldest';
+
 export function GenerationHistoryList({
   entries,
   onClear,
@@ -728,6 +731,20 @@ export function GenerationHistoryList({
   onClear: () => void;
 }) {
   const navigate = useNavigate();
+  const [filter, setFilter] = useState<HistoryFilter>('all');
+  const [sort, setSort] = useState<HistorySort>('recent');
+  const [query, setQuery] = useState('');
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return entries
+      .filter((e) => (filter === 'all' ? true : e.status === filter))
+      .filter((e) => (q ? e.property_address.toLowerCase().includes(q) : true))
+      .sort((a, b) =>
+        sort === 'recent' ? b.finishedAt - a.finishedAt : a.finishedAt - b.finishedAt,
+      );
+  }, [entries, filter, sort, query]);
+
   if (entries.length === 0) {
     return (
       <div className="p-6 text-center text-xs text-muted-foreground">
@@ -738,53 +755,171 @@ export function GenerationHistoryList({
   }
   return (
     <>
-      <div className="px-3 py-1.5 flex justify-between items-center border-b border-border">
-        <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-          Last {entries.length}
-        </span>
-        <button
-          type="button"
-          onClick={onClear}
-          className="text-[10px] text-muted-foreground hover:text-foreground"
-        >
-          Clear all
-        </button>
+      <div className="px-3 py-2 space-y-2 border-b border-border bg-muted/30">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+            {filtered.length} of {entries.length}
+          </span>
+          <button
+            type="button"
+            onClick={onClear}
+            className="text-[10px] text-muted-foreground hover:text-foreground"
+          >
+            Clear all
+          </button>
+        </div>
+        <div className="relative">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search address…"
+            className="h-7 pl-7 text-xs"
+          />
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Select value={filter} onValueChange={(v) => setFilter(v as HistoryFilter)}>
+            <SelectTrigger className="h-7 text-xs flex-1">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="failed">Failed</SelectItem>
+              <SelectItem value="dismissed">Dismissed</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={sort} onValueChange={(v) => setSort(v as HistorySort)}>
+            <SelectTrigger className="h-7 text-xs w-[110px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="recent">Newest</SelectItem>
+              <SelectItem value="oldest">Oldest</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
-      {entries.map((e) => (
-        <button
-          key={e.id + e.finishedAt}
-          type="button"
-          onClick={() => navigate(`/investment-report/${e.id}`)}
-          className="w-full text-left p-3 border-b border-border last:border-b-0 hover:bg-muted/50 transition-colors"
-        >
-          <div className="flex items-start gap-2">
-            {e.status === 'completed' ? (
-              <CheckCircle2 className="h-3.5 w-3.5 text-success mt-0.5 shrink-0" />
-            ) : e.status === 'failed' ? (
-              <AlertCircle className="h-3.5 w-3.5 text-destructive mt-0.5 shrink-0" />
-            ) : (
-              <X className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
-            )}
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-foreground truncate">
-                {e.property_address}
-              </p>
-              <p className="text-[10px] text-muted-foreground">
-                {e.sectionsCompleted}/{e.totalSections} sections • {formatElapsed(e.durationMs)} •{' '}
-                {timeAgo(e.finishedAt)}
-              </p>
-              {e.error_message && (
-                <p className="text-[10px] text-destructive line-clamp-1 mt-0.5">
-                  {e.error_message}
-                </p>
+      {filtered.length === 0 ? (
+        <div className="p-6 text-center text-xs text-muted-foreground">
+          No matches for current filters.
+        </div>
+      ) : (
+        filtered.map((e) => (
+          <button
+            key={e.id + e.finishedAt}
+            type="button"
+            onClick={() => navigate(`/investment-report/${e.id}`)}
+            className="w-full text-left p-3 border-b border-border last:border-b-0 hover:bg-muted/50 transition-colors"
+          >
+            <div className="flex items-start gap-2">
+              {e.status === 'completed' ? (
+                <CheckCircle2 className="h-3.5 w-3.5 text-success mt-0.5 shrink-0" />
+              ) : e.status === 'failed' ? (
+                <AlertCircle className="h-3.5 w-3.5 text-destructive mt-0.5 shrink-0" />
+              ) : (
+                <X className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
               )}
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-foreground truncate">
+                  {e.property_address}
+                </p>
+                <p className="text-[10px] text-muted-foreground">
+                  {e.sectionsCompleted}/{e.totalSections} sections • {formatElapsed(e.durationMs)} •{' '}
+                  {timeAgo(e.finishedAt)}
+                </p>
+                {e.error_message && (
+                  <p className="text-[10px] text-destructive line-clamp-1 mt-0.5">
+                    {e.error_message}
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
-        </button>
-      ))}
+          </button>
+        ))
+      )}
     </>
   );
 }
+
+/* ---------- Bulk job grouping ---------- */
+
+export interface BulkGroup {
+  jobId: string;
+  reports: ReportProgress[];
+}
+
+export function groupReportsByBulkJob(reports: ReportProgress[]): {
+  groups: BulkGroup[];
+  loose: ReportProgress[];
+} {
+  const map = new Map<string, ReportProgress[]>();
+  const loose: ReportProgress[] = [];
+  for (const r of reports) {
+    if (r.bulkJobId) {
+      const arr = map.get(r.bulkJobId) ?? [];
+      arr.push(r);
+      map.set(r.bulkJobId, arr);
+    } else {
+      loose.push(r);
+    }
+  }
+  const groups: BulkGroup[] = Array.from(map.entries())
+    .filter(([, list]) => list.length > 1) // only group if 2+ from same job
+    .map(([jobId, list]) => ({ jobId, reports: list }));
+  // Reports that were in a singleton group should fall back to loose
+  for (const [jobId, list] of map.entries()) {
+    if (list.length <= 1) loose.push(...list);
+  }
+  return { groups, loose };
+}
+
+export function BulkJobGroup({
+  group,
+  children,
+  defaultOpen = true,
+}: {
+  group: BulkGroup;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  const completed = group.reports.filter(
+    (r) => r.sectionsCompleted >= r.totalSections,
+  ).length;
+  const failed = group.reports.filter((r) => r.status === 'failed').length;
+  return (
+    <div className="border-b border-border last:border-b-0 bg-muted/20">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center justify-between px-3 py-1.5 text-xs hover:bg-muted/40 transition-colors"
+        aria-expanded={open}
+      >
+        <span className="flex items-center gap-1.5 text-muted-foreground">
+          <Layers className="h-3 w-3" />
+          <span className="font-medium text-foreground">Bulk job</span>
+          <span className="font-mono text-[10px] opacity-70">
+            {group.jobId.slice(0, 8)}
+          </span>
+          <span>•</span>
+          <span>
+            {completed}/{group.reports.length} done
+            {failed > 0 ? `, ${failed} failed` : ''}
+          </span>
+        </span>
+        <ChevronDown
+          className={cn(
+            'h-3.5 w-3.5 text-muted-foreground transition-transform',
+            !open && '-rotate-90',
+          )}
+        />
+      </button>
+      {open && <div>{children}</div>}
+    </div>
+  );
+}
+
 
 /* ---------- helpers ---------- */
 
