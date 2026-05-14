@@ -14,6 +14,8 @@ import {
   GenerationProgressItem,
   GenerationProgressPill,
   GenerationHistoryList,
+  BulkJobGroup,
+  groupReportsByBulkJob,
   type AggregateCounts,
   type AutoContinueSettings,
   type ReportProgress,
