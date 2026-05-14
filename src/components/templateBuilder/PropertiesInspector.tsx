@@ -806,6 +806,16 @@ function ImageUploadField({
         )}
       </div>
 
+      <label className="flex items-center gap-2 text-[11px] text-muted-foreground cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={autoMatch}
+          onChange={(e) => toggleAutoMatch(e.target.checked)}
+          className="h-3 w-3 accent-primary"
+        />
+        Auto-match overlay aspect to image on upload
+      </label>
+
       {warnings.length > 0 && (
         <ul className="space-y-0.5">
           {warnings.map((w, i) => (
