@@ -268,6 +268,10 @@ function OverlayEditor({
               </SelectContent>
             </Select>
           </div>
+          <CropControls
+            crop={(overlay as any).crop}
+            onChange={(c) => patch({ crop: c } as any)}
+          />
         </div>
       )}
 
