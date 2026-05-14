@@ -62,6 +62,8 @@ const DEFAULT_SELECTS: Record<TableName, string> = {
   game_plan_actions: '*',
   custom_users: 'id, username, email, is_active',
   cover_page_overlays: '*',
+  report_templates: '*',
+  report_template_versions: '*',
 };
 
 Deno.serve(async (req) => {
