@@ -116,6 +116,9 @@ export default function TemplateBuilderEdit() {
   };
   const deleteOverlay = (oid: string) => {
     if (!activePage) return;
+    // Snapshot the page so the user can undo within a few seconds.
+    const pageSnapshot: Page = JSON.parse(JSON.stringify(activePage));
+    const pageId = activePage.id;
     updatePage({
       ...activePage,
       blocks: activePage.blocks.map((b) => ({
@@ -124,6 +127,21 @@ export default function TemplateBuilderEdit() {
       })),
     });
     setSelectedOverlayId(null);
+    toast('Overlay deleted', {
+      description: 'You can restore it within 8 seconds.',
+      duration: 8000,
+      action: {
+        label: 'Undo',
+        onClick: () => {
+          setTemplate((t) => ({
+            ...t,
+            pages: t.pages.map((p) => (p.id === pageId ? pageSnapshot : p)),
+          }));
+          setSelectedOverlayId(oid);
+          toast.success('Overlay restored');
+        },
+      },
+    });
   };
   const duplicateOverlay = (oid: string) => {
     if (!activePage) return;
