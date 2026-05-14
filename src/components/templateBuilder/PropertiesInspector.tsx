@@ -268,6 +268,10 @@ function OverlayEditor({
               </SelectContent>
             </Select>
           </div>
+          <CropControls
+            crop={(overlay as any).crop}
+            onChange={(c) => patch({ crop: c } as any)}
+          />
         </div>
       )}
 
@@ -520,8 +524,16 @@ function ImageUploadField({
   const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
   const [warnings, setWarnings] = useState<ImageWarning[]>([]);
   const [imgDims, setImgDims] = useState<{ width: number; height: number } | null>(null);
+  const [autoMatch, setAutoMatch] = useState<boolean>(() => {
+    try { return localStorage.getItem('tb.autoMatchAspect') === '1'; } catch { return false; }
+  });
   const inputRef = useRef<HTMLInputElement | null>(null);
   const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL ?? '';
+
+  const toggleAutoMatch = (next: boolean) => {
+    setAutoMatch(next);
+    try { localStorage.setItem('tb.autoMatchAspect', next ? '1' : '0'); } catch { /* noop */ }
+  };
 
   const hasImage = !!currentSrc && /^https?:\/\//i.test(currentSrc);
 
@@ -606,11 +618,22 @@ function ImageUploadField({
         return;
       }
       const publicUrl = `${supabaseUrl}/storage/v1/object/public/report-templates/${result.path ?? path}`;
-      onPatch({ src: publicUrl } as Partial<ImageOverlay>);
+
+      // Optionally compute fresh aspect ratio and apply it together with src.
+      let nextPatch: Partial<ImageOverlay> = { src: publicUrl } as Partial<ImageOverlay>;
+      if (autoMatch) {
+        try {
+          const dims = await readImageDims(file);
+          const ratio = dims.width / Math.max(dims.height, 1);
+          (nextPatch as any).height = Math.round((overlayWidthPt / ratio) * 100) / 100;
+        } catch { /* ignore — keep current height */ }
+      }
+      onPatch(nextPatch);
+
       if (prevSrc && /^https?:\/\//i.test(prevSrc)) {
-        offerUndo(prevSrc, 'Image replaced');
+        offerUndo(prevSrc, autoMatch ? 'Image replaced & overlay resized' : 'Image replaced');
       } else {
-        toast.success('Image uploaded');
+        toast.success(autoMatch ? 'Image uploaded & overlay resized' : 'Image uploaded');
       }
     } finally {
       setBusy(false);
@@ -689,6 +712,9 @@ function ImageUploadField({
   const ratioMismatch = imageRatio != null && Math.abs(imageRatio - overlayRatio) / overlayRatio > 0.02;
   const fitObjectClass =
     fit === 'cover' ? 'object-cover' : fit === 'contain' ? 'object-contain' : 'object-fill';
+  const crop = (overlay as any).crop ?? { left: 0, right: 0, top: 0, bottom: 0 };
+  const hasCrop = crop.left || crop.right || crop.top || crop.bottom;
+  const dimsLoading = hasImage && !imgDims;
 
   return (
     <div className="space-y-2">
@@ -698,11 +724,27 @@ function ImageUploadField({
             className="relative rounded-md overflow-hidden border bg-[repeating-conic-gradient(theme(colors.muted)_0_25%,transparent_0_50%)] bg-[length:12px_12px]"
             style={{ aspectRatio: `${overlayRatio}` }}
           >
-            <img src={currentSrc} alt="Overlay preview" className={`absolute inset-0 w-full h-full ${fitObjectClass}`} />
+            {dimsLoading && (
+              <div className="absolute inset-0 animate-pulse bg-muted/60" aria-hidden />
+            )}
+            <img
+              src={currentSrc}
+              alt="Overlay preview"
+              className={`absolute inset-0 w-full h-full ${fitObjectClass} ${dimsLoading ? 'opacity-0' : 'opacity-100'} transition-opacity`}
+            />
+            {hasCrop && !dimsLoading && (
+              <>
+                {/* Translucent strips show what manual crop will trim. */}
+                <div className="absolute top-0 left-0 right-0 bg-destructive/40" style={{ height: `${crop.top}%` }} />
+                <div className="absolute bottom-0 left-0 right-0 bg-destructive/40" style={{ height: `${crop.bottom}%` }} />
+                <div className="absolute top-0 bottom-0 left-0 bg-destructive/40" style={{ width: `${crop.left}%` }} />
+                <div className="absolute top-0 bottom-0 right-0 bg-destructive/40" style={{ width: `${crop.right}%` }} />
+              </>
+            )}
           </div>
           <div className="flex items-center justify-between text-[10px] text-muted-foreground">
             <span>
-              {imgDims ? `${imgDims.width}×${imgDims.height}px` : '…'} ·
+              {dimsLoading ? 'Loading dimensions…' : imgDims ? `${imgDims.width}×${imgDims.height}px` : '—'} ·
               overlay {Math.round(overlayWidthPt)}×{Math.round(overlayHeightPt)}pt · fit: {fit}
             </span>
             {ratioMismatch && (
@@ -763,6 +805,16 @@ function ImageUploadField({
           </span>
         )}
       </div>
+
+      <label className="flex items-center gap-2 text-[11px] text-muted-foreground cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={autoMatch}
+          onChange={(e) => toggleAutoMatch(e.target.checked)}
+          className="h-3 w-3 accent-primary"
+        />
+        Auto-match overlay aspect to image on upload
+      </label>
 
       {warnings.length > 0 && (
         <ul className="space-y-0.5">
@@ -839,6 +891,75 @@ function ImageUploadField({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+}
+
+// ─── Crop controls ───────────────────────────────────────────────────────────
+type CropValue = { left: number; right: number; top: number; bottom: number };
+
+function CropControls({
+  crop,
+  onChange,
+}: {
+  crop: CropValue | undefined;
+  onChange: (next: CropValue | undefined) => void;
+}) {
+  const c: CropValue = crop ?? { left: 0, right: 0, top: 0, bottom: 0 };
+  const total = c.left + c.right + c.top + c.bottom;
+  const set = (k: keyof CropValue, v: number) => {
+    const clamped = Math.max(0, Math.min(95, Number.isFinite(v) ? v : 0));
+    const next = { ...c, [k]: clamped };
+    // Guard against opposite edges summing >= 100% (would zero the visible area).
+    if (next.left + next.right >= 100) next[k === 'left' ? 'right' : k === 'right' ? 'left' : k] = c[k === 'left' ? 'right' : 'left'];
+    if (next.top + next.bottom >= 100) next[k === 'top' ? 'bottom' : k === 'bottom' ? 'top' : k] = c[k === 'top' ? 'bottom' : 'top'];
+    onChange(next);
+  };
+
+  return (
+    <div className="space-y-2 rounded-md border border-border/60 p-2">
+      <div className="flex items-center justify-between">
+        <Label className="text-xs">Manual crop (%)</Label>
+        {total > 0 && (
+          <button
+            type="button"
+            onClick={() => onChange(undefined)}
+            className="text-[10px] text-muted-foreground hover:text-destructive"
+          >
+            Reset
+          </button>
+        )}
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <CropField label="Left" value={c.left} onChange={(v) => set('left', v)} />
+        <CropField label="Right" value={c.right} onChange={(v) => set('right', v)} />
+        <CropField label="Top" value={c.top} onChange={(v) => set('top', v)} />
+        <CropField label="Bottom" value={c.bottom} onChange={(v) => set('bottom', v)} />
+      </div>
+      <p className="text-[10px] text-muted-foreground">
+        Trims the source image from each edge. Red strips in the preview show what is removed.
+      </p>
+    </div>
+  );
+}
+
+function CropField({
+  label,
+  value,
+  onChange,
+}: { label: string; value: number; onChange: (v: number) => void }) {
+  return (
+    <div>
+      <Label className="text-[10px] text-muted-foreground">{label}</Label>
+      <Input
+        type="number"
+        min={0}
+        max={95}
+        step={1}
+        value={value}
+        onChange={(e) => onChange(parseFloat(e.target.value))}
+        className="h-8 text-xs"
+      />
     </div>
   );
 }
