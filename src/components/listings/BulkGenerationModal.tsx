@@ -39,6 +39,8 @@ interface ItemStatus {
   error_message: string | null;
   processing_time_seconds: number | null;
   report_id: string | null;
+  attempts?: number | null;
+  max_attempts?: number | null;
 }
 
 export function BulkGenerationModal({ 
