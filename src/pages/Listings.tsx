@@ -34,6 +34,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { ReportActionMenu } from '@/components/reports/ReportActionMenu';
+import { useReportPreferences, type ReportScope, type ReportTier } from '@/hooks/useReportPreferences';
+import { useNavigate } from 'react-router-dom';
 
 // Lazy load heavy modal components
 const ListingDetailsModal = lazy(() => import('@/components/listings/ListingDetailsModal').then(m => ({ default: m.ListingDetailsModal })));
@@ -107,6 +109,10 @@ export default function Listings() {
   const [isBulkGenerationModalOpen, setIsBulkGenerationModalOpen] = useState(false);
   
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { prefs, update: updatePrefs, recordLastUsed, effectiveScope, effectiveTier } = useReportPreferences();
+  // Per-row pending scope/tier choice in the picker (controlled)
+  const [rowPicker, setRowPicker] = useState<Record<string, { scope: ReportScope; tier: ReportTier }>>({});
 
   // Sync global search with local search when component mounts or global search changes
   useEffect(() => {
@@ -320,6 +326,41 @@ export default function Listings() {
     setInvestmentReportListing(listing);
     setIsInvestmentReportModalOpen(true);
   };
+
+  /**
+   * Phase B: launch report generation with explicit scope+tier.
+   * - address+compass uses the existing per-listing modal (zero-regression path).
+   * - everything else routes to /reports with prefilled URL params.
+   */
+  const launchScopedGeneration = useCallback(
+    (listing: PropertyListing, scope: ReportScope, tier: ReportTier) => {
+      void recordLastUsed(scope, tier);
+
+      if (scope === 'address' && tier === 'compass') {
+        openInvestmentReportModal(listing);
+        return;
+      }
+
+      const queryByScope: Record<ReportScope, string> = {
+        address: buildFullAddress(listing),
+        suburb: listing.suburb || listing.location || '',
+        zipcode: extractPostcode(buildFullAddress(listing)) || '',
+        state: extractAUState(buildFullAddress(listing)) || '',
+      };
+      const q = queryByScope[scope];
+      if (!q) {
+        toast({
+          title: 'Missing data',
+          description: `Could not determine ${scope} from this listing.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+      const params = new URLSearchParams({ scope, q, tier });
+      navigate(`/reports?${params.toString()}`);
+    },
+    [navigate, recordLastUsed, toast]
+  );
 
   const closeDetailsModal = () => {
     setSelectedListing(null);
@@ -620,17 +661,39 @@ export default function Listings() {
                   </TableCell>
                   
                   <TableCell>
-                    <ReportActionMenu
-                      surface="listing-row"
-                      label={listing.address || listing.location}
-                      callbacks={{
-                        onOpenDetails: () => openDetailsModal(listing),
-                        onOpenSource: listing.url ? () => openSourceUrl(listing.url!) : undefined,
-                        onCopyAddress: () => copyToClipboard(buildFullAddress(listing), 'Full address'),
-                        onOpenGenerateModal: canEditListings ? () => openInvestmentReportModal(listing) : undefined,
-                      }}
-                      permissions={{ canGenerate: canEditListings }}
-                    />
+                    {(() => {
+                      const current = rowPicker[listing.id] ?? { scope: effectiveScope, tier: effectiveTier };
+                      return (
+                        <ReportActionMenu
+                          surface="listing-row"
+                          label={listing.address || listing.location}
+                          callbacks={{
+                            onOpenDetails: () => openDetailsModal(listing),
+                            onOpenSource: listing.url ? () => openSourceUrl(listing.url!) : undefined,
+                            onCopyAddress: () => copyToClipboard(buildFullAddress(listing), 'Full address'),
+                            onOpenGenerateModal: canEditListings ? () => openInvestmentReportModal(listing) : undefined,
+                            onGenerateWithScope: canEditListings
+                              ? ({ scope, tier }) => launchScopedGeneration(listing, scope, tier)
+                              : undefined,
+                          }}
+                          permissions={{ canGenerate: canEditListings }}
+                          generatePicker={
+                            canEditListings
+                              ? {
+                                  scope: current.scope,
+                                  tier: current.tier,
+                                  defaultScope: prefs.default_scope,
+                                  defaultTier: prefs.default_tier,
+                                  onChange: (next) =>
+                                    setRowPicker((m) => ({ ...m, [listing.id]: next })),
+                                  onSaveDefault: ({ scope, tier }) =>
+                                    updatePrefs({ default_scope: scope, default_tier: tier }),
+                                }
+                              : undefined
+                          }
+                        />
+                      );
+                    })()}
                   </TableCell>
                 </TableRow>
               ))}

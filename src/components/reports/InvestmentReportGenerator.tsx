@@ -23,6 +23,7 @@ import { formatNumberWithCommas, removeCommas } from '@/hooks/useFormattedNumber
 import { BuildTypeSelector } from './shared/BuildTypeSelector';
 import { BuildType } from '@/types/overrideFields';
 import { AddressAutocomplete } from '@/components/shared/AddressAutocomplete';
+import { useSearchParams } from 'react-router-dom';
 
 interface RecentReport {
   id: string;
@@ -94,7 +95,28 @@ export function InvestmentReportGenerator() {
       setInputMode('manual');
     }
   }, [isPropertySpecific, inputMode]);
-  
+
+  // Phase B: hydrate from URL params if launched from a ReportActionMenu
+  const [searchParams, setSearchParams] = useSearchParams();
+  const hydratedFromUrl = useRef(false);
+  useEffect(() => {
+    if (hydratedFromUrl.current) return;
+    const urlScope = searchParams.get('scope');
+    const urlQuery = searchParams.get('q');
+    const urlTier = searchParams.get('tier'); // reserved — surfaced via toast for now
+    if (urlScope && ['address', 'zipcode', 'suburb', 'state'].includes(urlScope)) {
+      setQueryType(urlScope as 'address' | 'zipcode' | 'suburb' | 'state');
+    }
+    if (urlQuery) setQuery(urlQuery);
+    if (urlScope || urlQuery || urlTier) {
+      hydratedFromUrl.current = true;
+      // Clean URL so refresh doesn't keep re-prefilling
+      const next = new URLSearchParams(searchParams);
+      ['scope', 'q', 'tier'].forEach((k) => next.delete(k));
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
   // Track if sync is in progress to prevent loops
   const isSyncingFromPreGen = useRef(false);
   const isSyncingToPreGen = useRef(false);

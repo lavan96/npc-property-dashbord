@@ -29,6 +29,10 @@ import {
   Map,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ReportScopeTierPicker } from './ReportScopeTierPicker';
+import type { ReportScope, ReportTier } from '@/hooks/useReportPreferences';
+import { useState } from 'react';
+import { DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from '@/components/ui/dropdown-menu';
 
 /**
  * Unified report action menu used across Listings rows, Generated Reports
@@ -84,6 +88,21 @@ export interface ReportActionCallbacks {
   onOpenSource?: () => void;
   /** Copy the full address to clipboard */
   onCopyAddress?: () => void;
+  /** Phase B: open generate flow with explicit scope + tier */
+  onGenerateWithScope?: (args: { scope: ReportScope; tier: ReportTier }) => void;
+}
+
+export interface GeneratePickerConfig {
+  /** Currently selected scope (controlled) */
+  scope: ReportScope;
+  tier: ReportTier;
+  defaultScope: ReportScope;
+  defaultTier: ReportTier;
+  availableScopes?: ReportScope[];
+  availableTiers?: ReportTier[];
+  onChange: (next: { scope: ReportScope; tier: ReportTier }) => void;
+  /** Persist as default (star button) */
+  onSaveDefault?: (next: { scope: ReportScope; tier: ReportTier }) => void;
 }
 
 export interface ReportActionPermissions {
@@ -114,6 +133,8 @@ export interface ReportActionMenuProps {
   triggerClassName?: string;
   /** Menu alignment */
   align?: 'start' | 'center' | 'end';
+  /** Phase B: when provided, renders the scope+tier picker submenu */
+  generatePicker?: GeneratePickerConfig;
 }
 
 function StatusHint({ status, errorMessage }: { status?: ReportActionStatus; errorMessage?: string | null }) {
@@ -146,6 +167,7 @@ export function ReportActionMenu({
   trigger,
   triggerClassName,
   align = 'end',
+  generatePicker,
 }: ReportActionMenuProps) {
   const {
     canGenerate = true,
@@ -251,6 +273,32 @@ export function ReportActionMenu({
                   <Sparkles className="h-4 w-4 mr-2" />
                   Generate new report…
                 </DropdownMenuItem>
+              )}
+
+              {/* Phase B: scope + tier picker submenu */}
+              {generatePicker && callbacks.onGenerateWithScope && (
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <Sparkles className="h-4 w-4 mr-2 text-primary" />
+                    Generate with options…
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuPortal>
+                    <DropdownMenuSubContent className="w-72 p-0">
+                      <ReportScopeTierPicker
+                        scope={generatePicker.scope}
+                        tier={generatePicker.tier}
+                        defaultScope={generatePicker.defaultScope}
+                        defaultTier={generatePicker.defaultTier}
+                        availableScopes={generatePicker.availableScopes}
+                        availableTiers={generatePicker.availableTiers}
+                        onChange={generatePicker.onChange}
+                        onSaveDefault={generatePicker.onSaveDefault}
+                        onConfirm={(next) => callbacks.onGenerateWithScope?.(next)}
+                        confirmLabel={hasReport ? 'Regenerate' : 'Generate'}
+                      />
+                    </DropdownMenuSubContent>
+                  </DropdownMenuPortal>
+                </DropdownMenuSub>
               )}
             </DropdownMenuGroup>
           )}

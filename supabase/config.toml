@@ -46,6 +46,9 @@ verify_jwt = false
 [functions.manage-call-settings]
 verify_jwt = true
 
+[functions.manage-report-preferences]
+verify_jwt = true
+
 [functions.check-integration-secrets]
 verify_jwt = true
 
